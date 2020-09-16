@@ -2,9 +2,8 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
-from quaProgram import *
+from quaPrograms import *
 import networkx as nx
-import numpy as np
 
 config = {
 
@@ -15,7 +14,7 @@ config = {
         "con1": {
             'type': 'opx1',
             'analog_outputs': {
-                1: {'offset': +0.0},
+                5: {'offset': +0.0},
             },
             'analog_inputs': {
                 1: {'offset': 0},  # SET READ
@@ -27,7 +26,7 @@ config = {
 
         'qe1': {
             'singleInput': {
-                'port': ('con1', 1)
+                'port': ('con1', 5)
             },
             'intermediate_frequency': 100e6,
             'digitalInputs': {
@@ -88,12 +87,16 @@ QMm = QuantumMachinesManager()
 
 # Create a quantum machine based on the configuration.
 
-QM1 = QMm.open_qm(config)
+QM = QMm.open_qm(config)
 
 
 def executor(prog):
-    return QM1.simulate(prog,
-                        SimulationConfig(int(2e3), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+    return QM.simulate(prog,
+                        SimulationConfig(int(2e3), simulation_interface=LoopbackInterface([("con1", 5, "con1", 1)])))
+
+
+def executor2(prog):
+    return QM.execute(prog)
 
 
 def qua_wrap(var_name, W):
@@ -109,13 +112,13 @@ def qua_wrap(var_name, W):
             save(A[i], var_name)
 
         with stream_processing():
-            qua_stream.input1().save_all('qua1_data')
+            qua_stream.input1().save_all('qua_stream')
     return qua_prog
 
 
-qua1 = QuaProgram('qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A': None,'qua_stream': None})
-qua2 = QuaProgram('qua2', qua_wrap, {'var_name': 'B', 'W': 3}, {'B': None,'qua_stream': None})
-qua3 = QuaProgram('qua3', qua_wrap, {'var_name': 'C', 'W': 7}, {'C': None,})
+qua1 = QuaProgramNode('qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A', 'qua_stream'})
+qua2 = QuaProgramNode('qua2', qua_wrap, {'var_name': 'B', 'W': 3}, {'B', 'qua_stream'})
+qua3 = QuaProgramNode('qua3', qua_wrap, {'var_name': 'C', 'W': 7}, {'C', 'qua_stream'})
 
 prog_graph = nx.DiGraph()
 prog_graph.add_node('qua1', prog=qua1)
@@ -123,15 +126,15 @@ prog_graph.add_node('qua2', prog=qua2)
 prog_graph.add_node('qua3', prog=qua3)
 prog_graph.add_edges_from([('qua1', 'qua2'), ('qua2', 'qua3')])
 
-
 runner = QuaGraphExecutor(executor, prog_graph)
 runner.execute()
 runner.plot()
 
-for n in prog_graph.nodes():
-    qua_prog = prog_graph.nodes[n]['prog']
-    data = qua_prog.get_output()
-    for k in data.keys():
+for node in prog_graph.nodes():
+    qua_prog = prog_graph.nodes[node]['prog']
+    data = qua_prog.get_output_values()
+    for key in data.keys():
         plt.figure()
-        plt.plot(data[k])
+        plt.plot(data[key])
         plt.show()
+
