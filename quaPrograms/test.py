@@ -92,7 +92,7 @@ QM = QMm.open_qm(config)
 
 def executor(prog):
     return QM.simulate(prog,
-                        SimulationConfig(int(2e3), simulation_interface=LoopbackInterface([("con1", 5, "con1", 1)])))
+                       SimulationConfig(int(2e3), simulation_interface=LoopbackInterface([("con1", 5, "con1", 1)])))
 
 
 def executor2(prog):
@@ -100,7 +100,7 @@ def executor2(prog):
 
 
 def qua_wrap(var_name, W):
-    with program() as qua_prog:
+    with program() as qua_prog1:
         A = declare(fixed, size=100)
 
         qua_stream = declare_stream()
@@ -113,28 +113,28 @@ def qua_wrap(var_name, W):
 
         with stream_processing():
             qua_stream.input1().save_all('qua_stream')
-    return qua_prog
+    return qua_prog1
 
 
 qua1 = QuaProgramNode('qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A', 'qua_stream'})
 qua2 = QuaProgramNode('qua2', qua_wrap, {'var_name': 'B', 'W': 3}, {'B', 'qua_stream'})
 qua3 = QuaProgramNode('qua3', qua_wrap, {'var_name': 'C', 'W': 7}, {'C', 'qua_stream'})
 
+qua_programs = [qua1, qua2, qua3]
 prog_graph = nx.DiGraph()
-prog_graph.add_node('qua1', prog=qua1)
-prog_graph.add_node('qua2', prog=qua2)
-prog_graph.add_node('qua3', prog=qua3)
-prog_graph.add_edges_from([('qua1', 'qua2'), ('qua2', 'qua3')])
-
 runner = QuaGraphExecutor(executor, prog_graph)
+runner.add_nodes(qua_programs)
+
+runner.graph.add_edges_from([('qua1', 'qua2'), ('qua2', 'qua3')])
+
+
 runner.execute()
 runner.plot()
 
-for node in prog_graph.nodes():
-    qua_prog = prog_graph.nodes[node]['prog']
-    data = qua_prog.get_output_values()
+for node in runner.graph.nodes():
+    qua_prog = runner.graph.nodes[node]['prog']
+    data = qua_prog.get_outputs()
     for key in data.keys():
         plt.figure()
         plt.plot(data[key])
         plt.show()
-

@@ -21,10 +21,7 @@ class QuaProgramNode:
         self.output_params = output_params
         self.result = None
 
-    def update_input_values(self, updated_inputs_values):
-        self.input_params.update(updated_inputs_values)
-
-    def load_input_values(self, input_params=None):
+    def load_inputs(self, input_params=None):
         """
         Loads the specified variable values to the qua program
         :param input_params: variable names values to assign to variables in the qua program
@@ -37,9 +34,9 @@ class QuaProgramNode:
             self.input_params = input_params
         return self.qua_prog(**self.input_params)
 
-    def get_output_values(self, output_params=None):
+    def get_outputs(self, output_params=None):
         """
-        Returns the specified output values from the qua program execution result
+        Returns the specified output values of the qua program result
         :param output_params: the desired output parameters
         :type output_params: set
         :return: dict with the desired output parameters
@@ -51,7 +48,7 @@ class QuaProgramNode:
             try:
                 output_values[param] = getattr(self.result, param).fetch_all()['value']
             except AttributeError:
-                print("The result of '{}' does not contain the variable '{}'".format(self.name, param))
+                print("The result of '{}' doesn't contain the variable '{}'".format(self.name, param))
         return output_values
 
 
@@ -69,6 +66,15 @@ class QuaGraphExecutor:
         self.executor = executor
         self.graph = qua_graph
 
+    def add_nodes(self, qua_programs):
+        """
+        Adds all the programs in the list to the graph
+        :param qua_programs: a list of QuaProgramNode nodes
+        :type qua_programs: list
+        """
+        for node in qua_programs:
+            self.graph.add_node(node.name, prog=node)
+
     def execute(self):
         """
         Execute the qua programs in the graph in a topological order, and save the results in the nodes
@@ -76,19 +82,19 @@ class QuaGraphExecutor:
         program_queue = nx.topological_sort(self.graph)
 
         for prog_name in program_queue:
-            curr_prog_node = self.get_prog_node(prog_name)
+            curr_qua_node = self.get_qua_node(prog_name)
 
             for pred_name in self.graph.predecessors(prog_name):
                 '''
-                Update the current program inputs using the predecessors outputs
+                Update the current qua program inputs using the predecessors' qua program outputs
                 '''
-                curr_prog_node = self.get_prog_node(pred_name)
-                updated_input_params = curr_prog_node.get_output_values(curr_prog_node.input_params)
+                pred_qua_node = self.get_qua_node(pred_name)
+                updated_input_params = pred_qua_node.get_outputs(curr_qua_node.input_params)
 
-                curr_prog_node.update_input_values(updated_input_params)
+                curr_qua_node.input_params.update(updated_input_params)
 
-            job = self.executor(curr_prog_node.load_input_values())
-            curr_prog_node.result = job.result_handles
+            job = self.executor(curr_qua_node.load_inputs())
+            curr_qua_node.result = job.result_handles
 
     def plot(self):
         """
@@ -97,9 +103,9 @@ class QuaGraphExecutor:
         plt.tight_layout()
         nx.draw_networkx(self.graph, arrows=True)
 
-    def get_prog_node(self, name):
+    def get_qua_node(self, name):
         """
-        Returns a qua program given the name
+        Returns a qua program contained in the graph node with the given name
         :param name: the name of the qua program node
         :return: QuaProgramNode
         """
