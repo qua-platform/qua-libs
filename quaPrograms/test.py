@@ -116,16 +116,17 @@ def qua_wrap(var_name, W):
     return qua_prog1
 
 
-qua1 = QuaProgramNode('qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A', 'qua_stream'})
-qua2 = QuaProgramNode('qua2', qua_wrap, {'var_name': 'B', 'W': 3}, {'B', 'qua_stream'})
-qua3 = QuaProgramNode('qua3', qua_wrap, {'var_name': 'C', 'W': 7}, {'C', 'qua_stream'})
+qua1 = QuaProgramNode(0, 'qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A', 'qua_stream'})
+qua2 = QuaProgramNode(1, 'qua2', qua_wrap, {'var_name': 'B', 'W': 3}, {'B', 'qua_stream'})
+qua3 = QuaProgramNode(2, 'qua3', qua_wrap, {'var_name': 'C', 'W': 7}, {'C', 'qua_stream'})
+qua4 = QuaProgramNode(3, 'qua1', qua_wrap, {'var_name': 'A', 'W': 1}, {'A', 'qua_stream'})
 
-qua_programs = [qua1, qua2, qua3]
+qua_programs = [qua1, qua2, qua3, qua4]
 prog_graph = nx.DiGraph()
 runner = QuaGraphExecutor(executor, prog_graph)
 runner.add_nodes(qua_programs)
 
-runner.graph.add_edges_from([('qua1', 'qua2'), ('qua2', 'qua3')])
+runner.graph.add_edges_from([(0, 1), (2, 3)])
 
 
 runner.execute()

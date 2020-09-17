@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 
 
 class QuaProgramNode:
-    def __init__(self, name, qua_prog, input_params, output_params=None):
+    def __init__(self, id, name, qua_prog, input_params, output_params=None):
         """
         Initialized the qua program node
+        :param id: a unique id
         :param name: the name of the qua program
         :type name: str
         :param qua_prog: a python function which returns a qua program
@@ -16,6 +17,7 @@ class QuaProgramNode:
         :type output_params: set
         """
         self.name = name
+        self.id = id
         self.qua_prog = qua_prog
         self.input_params = input_params
         self.output_params = output_params
@@ -54,17 +56,18 @@ class QuaProgramNode:
 
 class QuaGraphExecutor:
 
-    def __init__(self, executor, qua_graph):
+    def __init__(self, executor, graph):
         """
         Initialize qua program graph executor
         :param executor: a python function that returns a QmJob given a qua program
         :type executor: function
-        :param qua_graph: is a DAG that contains the qua program nodes and data flow structure
-        :type qua_graph: networkx.DiGraph
+        :param graph: is a DAG that contains the qua program nodes and data flow structure
+        :type graph: networkx.DiGraph
         """
 
         self.executor = executor
-        self.graph = qua_graph
+        self.graph = graph
+        self.labels = dict()
 
     def add_nodes(self, qua_programs):
         """
@@ -73,9 +76,11 @@ class QuaGraphExecutor:
         :type qua_programs: list
         """
         for node in qua_programs:
-            self.graph.add_node(node.name, prog=node)
+            self.labels[node.id] = node.name
+            self.graph.add_node(node.id, prog=node)
 
-    def execute(self):
+
+    def execute(self, start_node_name=None):
         """
         Execute the qua programs in the graph in a topological order, and save the results in the nodes
         """
@@ -96,12 +101,12 @@ class QuaGraphExecutor:
             job = self.executor(curr_qua_node.load_inputs())
             curr_qua_node.result = job.result_handles
 
-    def plot(self):
+    def plot(self, start_node_name=None):
         """
         Visualize the graph structure
         """
         plt.tight_layout()
-        nx.draw_networkx(self.graph, arrows=True)
+        nx.draw_networkx(self.graph, arrows=True, labels=self.labels)
 
     def get_qua_node(self, name):
         """
@@ -110,3 +115,11 @@ class QuaGraphExecutor:
         :return: QuaProgramNode
         """
         return self.graph.nodes[name]['prog']
+
+    def topological_order(self, node_name):
+        """
+
+        :param node_name: graph node name
+        :return: graph containing qua nodes
+        """
+        return
