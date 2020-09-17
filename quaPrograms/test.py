@@ -127,11 +127,11 @@ prog_graph = nx.DiGraph()
 runner = QuaGraphExecutor(executor, prog_graph)
 runner.add_nodes(qua_programs)
 
-runner.graph.add_edges_from([(0, 1), (2, 3)])
+runner.graph.add_edges_from([(0, 1), (2, 3), (3, 1)])
 
 
 runner.execute()
-runner.plot()
+runner.plot(False)
 
 for node in runner.graph.nodes():
     qua_prog = runner.graph.nodes[node]['prog']

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 
 class QuaProgramNode:
+
     def __init__(self, node_id, label=None, qua_prog=None, input_params=dict(), output_params=set()):
         """
         Initialized the qua program node
@@ -50,7 +51,7 @@ class QuaProgramNode:
             try:
                 output_values[param] = getattr(self.result, param).fetch_all()['value']
             except AttributeError:
-                print("The result of '{}' doesn't contain the variable '{}'".format(self.label, param))
+                print("The result of node {} doesn't contain the variable '{}'".format(self.id, param))
         return output_values
 
     def duplicate(self, qua_program_node):
@@ -63,6 +64,7 @@ class QuaProgramNode:
         self.qua_prog = qua_program_node.qua_prog
         self.input_params = qua_program_node.input_params
         self.output_params = qua_program_node.output_params
+
 
 class QuaGraphExecutor:
 
@@ -89,16 +91,16 @@ class QuaGraphExecutor:
             self.labels[node.id] = node.label
             self.graph.add_node(node.id, prog=node)
 
-    def execute(self, start_node_name=None):
+    def execute(self, start_nodes_ids=None):
         """
         Execute the qua programs in the graph in a topological order, and save the results in the nodes
         """
         program_queue = nx.topological_sort(self.graph)
 
-        for prog_id in program_queue:
-            curr_qua_node = self.get_qua_node(prog_id)
+        for node_id in program_queue:
+            curr_qua_node = self.get_qua_node(node_id)
 
-            for pred_id in self.graph.predecessors(prog_id):
+            for pred_id in self.graph.predecessors(node_id):
                 '''
                 Update the current qua program inputs using the predecessors' qua program outputs
                 '''
@@ -106,16 +108,26 @@ class QuaGraphExecutor:
                 updated_input_params = pred_qua_node.get_outputs(curr_qua_node.input_params)
 
                 curr_qua_node.input_params.update(updated_input_params)
+            print("Executing node {} ...".format(node_id), )
 
-            job = self.executor(curr_qua_node.load_inputs())
-            curr_qua_node.result = job.result_handles
+            try:
+                job = self.executor(curr_qua_node.load_inputs())
+                curr_qua_node.result = job.result_handles
+                print("DONE")
+            except:
+                print("Could not execute node {}".format(node_id))
 
-    def plot(self, start_node_id=None):
+    def plot(self, with_labels=True, start_nodes_ids=None):
         """
         Visualize the graph structure
+        :param with_labels: whether to use node labels rather than node ids
+        :type with_labels: bool
         """
         plt.tight_layout()
-        nx.draw_networkx(self.graph, arrows=True, labels=self.labels)
+        if with_labels:
+            nx.draw_networkx(self.graph, arrows=True, labels=self.labels)
+        else:
+            nx.draw_networkx(self.graph, arrows=True)
 
     def get_qua_node(self, node_id):
         """
