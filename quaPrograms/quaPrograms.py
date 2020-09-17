@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 
 
 class QuaProgramNode:
-    def __init__(self, id, name, qua_prog, input_params, output_params=None):
+    def __init__(self, node_id, name, qua_prog, input_params, output_params=None):
         """
         Initialized the qua program node
-        :param id: a unique id
+        :param node_id: a unique id to identify the node in the graph
         :param name: the name of the qua program
         :type name: str
         :param qua_prog: a python function which returns a qua program
@@ -17,7 +17,7 @@ class QuaProgramNode:
         :type output_params: set
         """
         self.name = name
-        self.id = id
+        self.id = node_id
         self.qua_prog = qua_prog
         self.input_params = input_params
         self.output_params = output_params
@@ -78,7 +78,6 @@ class QuaGraphExecutor:
         for node in qua_programs:
             self.labels[node.id] = node.name
             self.graph.add_node(node.id, prog=node)
-
 
     def execute(self, start_node_name=None):
         """
