@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 
 
 class QuaProgramNode:
-    def __init__(self, node_id, name, qua_prog, input_params, output_params=None):
+    def __init__(self, node_id, label=None, qua_prog=None, input_params=dict(), output_params=set()):
         """
         Initialized the qua program node
         :param node_id: a unique id to identify the node in the graph
-        :param name: the name of the qua program
-        :type name: str
+        :param label: the label of the qua program
+        :type label: str
         :param qua_prog: a python function which returns a qua program
         :type qua_prog: function
         :param input_params: variable names values to assign to variables in the qua program
@@ -16,8 +16,8 @@ class QuaProgramNode:
         :param output_params: the names of the output variables of the qua program
         :type output_params: set
         """
-        self.name = name
         self.id = node_id
+        self.label = label
         self.qua_prog = qua_prog
         self.input_params = input_params
         self.output_params = output_params
@@ -50,9 +50,19 @@ class QuaProgramNode:
             try:
                 output_values[param] = getattr(self.result, param).fetch_all()['value']
             except AttributeError:
-                print("The result of '{}' doesn't contain the variable '{}'".format(self.name, param))
+                print("The result of '{}' doesn't contain the variable '{}'".format(self.label, param))
         return output_values
 
+    def duplicate(self, qua_program_node):
+        """
+        Duplicate all the attributes of a qua node except the id and result
+        :param qua_program_node: a node to duplicate all the values from
+        :type qua_program_node: QuaProgramNode
+        """
+        self.label = qua_program_node.label
+        self.qua_prog = qua_program_node.qua_prog
+        self.input_params = qua_program_node.input_params
+        self.output_params = qua_program_node.output_params
 
 class QuaGraphExecutor:
 
@@ -76,7 +86,7 @@ class QuaGraphExecutor:
         :type qua_programs: list
         """
         for node in qua_programs:
-            self.labels[node.id] = node.name
+            self.labels[node.id] = node.label
             self.graph.add_node(node.id, prog=node)
 
     def execute(self, start_node_name=None):
@@ -85,14 +95,14 @@ class QuaGraphExecutor:
         """
         program_queue = nx.topological_sort(self.graph)
 
-        for prog_name in program_queue:
-            curr_qua_node = self.get_qua_node(prog_name)
+        for prog_id in program_queue:
+            curr_qua_node = self.get_qua_node(prog_id)
 
-            for pred_name in self.graph.predecessors(prog_name):
+            for pred_id in self.graph.predecessors(prog_id):
                 '''
                 Update the current qua program inputs using the predecessors' qua program outputs
                 '''
-                pred_qua_node = self.get_qua_node(pred_name)
+                pred_qua_node = self.get_qua_node(pred_id)
                 updated_input_params = pred_qua_node.get_outputs(curr_qua_node.input_params)
 
                 curr_qua_node.input_params.update(updated_input_params)
@@ -100,25 +110,25 @@ class QuaGraphExecutor:
             job = self.executor(curr_qua_node.load_inputs())
             curr_qua_node.result = job.result_handles
 
-    def plot(self, start_node_name=None):
+    def plot(self, start_node_id=None):
         """
         Visualize the graph structure
         """
         plt.tight_layout()
         nx.draw_networkx(self.graph, arrows=True, labels=self.labels)
 
-    def get_qua_node(self, name):
+    def get_qua_node(self, node_id):
         """
         Returns a qua program contained in the graph node with the given name
-        :param name: the name of the qua program node
+        :param node_id: the name of the qua program node
         :return: QuaProgramNode
         """
-        return self.graph.nodes[name]['prog']
+        return self.graph.nodes[node_id]['prog']
 
-    def topological_order(self, node_name):
+    def topological_order(self, node_id):
         """
 
-        :param node_name: graph node name
+        :param node_id: graph node name
         :return: graph containing qua nodes
         """
         return
