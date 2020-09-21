@@ -164,12 +164,7 @@ class QuaNode(ProgramNode, ABC):
         if _input is not None:
             assert type(_input) is dict, \
                 "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
-            # TODO: add support for ReferenceNode unpacking
-            qua_program = self.program(**_input)
-            assert isinstance(qua_program, qm.program._Program), \
-                "TypeError: Try a different program. Expected <qm.program._Program> but given <{}>".format(
-                    type(qua_program))
-            self._qua_program = qua_program
+            self._input = _input
 
     def get_output(self):
         for var in self._output_vars:
@@ -185,6 +180,14 @@ class QuaNode(ProgramNode, ABC):
         pass
 
     def run(self, **kwargs):
+
+        # Get the Qua program that is wrapped by the python function
+        qua_program = self.program(**self._input)
+        assert isinstance(qua_program, qm.program._Program), \
+            "In node <id:{},label:{}> TypeError: Try a different program. " \
+            "Expected <qm.program._Program> but given <{}>".format(self.id, self.label, type(qua_program))
+        self._qua_program = qua_program
+
         if self._simulate_or_execute == 'simulate':
             self.simulate(**kwargs)
         if self._simulate_or_execute == 'execute':
@@ -201,6 +204,7 @@ class PyNode(ProgramNode):
 
     def __init__(self, _label=None, _program=None, _input=None, _output_vars=None):
         super().__init__(_label, _program, _input, _output_vars)
+        self._job_results = None
 
     @property
     def program(self):
@@ -215,14 +219,22 @@ class PyNode(ProgramNode):
 
     @property
     def input(self):
-        pass
+        return self._input
 
     @input.setter
     def input(self, _input):
-        pass
+        if _input is not None:
+            assert type(_input) is dict, \
+                "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
+            self._input = _input
 
     def get_output(self):
-        pass
+        for var in self._output_vars:
+            try:
+                self._output[var] = self._job_results[var]
+            except KeyError:
+                print("Couldn't fetch {} from Qua program results".format(var))
+
         return self._output
 
     @property
@@ -230,7 +242,9 @@ class PyNode(ProgramNode):
         pass
 
     def run(self):
-        pass
+        self._job_results = self.program(**self.input)
+        assert type(self._job_results) is dict, \
+            "TypeError: Expected <dict> but got <{}> as program results".format(type(self._job_results))
 
 
 class ProgramGraph:
