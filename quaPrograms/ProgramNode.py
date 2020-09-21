@@ -3,17 +3,15 @@ from qm import QuantumMachine
 from qm import SimulationConfig
 import qm
 from types import *
+from typing import *
 
-
-class ReferenceNode:
-    def __init__(self, node, output_vars=None):
-        self.node: ProgramNode = node
-        self.output_vars: set = output_vars
+from typing import Set
 
 
 class ProgramNode(ABC):
 
-    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None, _to_run=True):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,
+                 _to_run: bool = True):
         """
         Program node contains a program to run and description of input/output variables
         :param _label: label for the node
@@ -27,10 +25,10 @@ class ProgramNode(ABC):
         :param _to_run: whether to run the node
         :type _to_run: bool
         """
-        self._id: int = None
+        self._id: int = id(self)
         self._label: str = None
         self._program: FunctionType = None
-        self._input: dict = None
+        self._input: Dict = None
         self._to_run: bool = None
         self._output_vars: set = None
         self._output: dict = None
@@ -55,24 +53,26 @@ class ProgramNode(ABC):
         self._label = _label
 
     @property
-    @abstractmethod
     def program(self):
-        pass
+        return self._program
 
     @program.setter
-    @abstractmethod
     def program(self, _program):
-        pass
+        if _program is not None:
+            assert type(_program) is FunctionType, \
+                "TypeError: Expected FunctionType but given <{}>".format(type(_program))
+        self._program = _program
 
     @property
-    @abstractmethod
     def input(self):
-        pass
+        return self._input
 
     @input.setter
-    @abstractmethod
     def input(self, _input):
-        pass
+        if _input is not None:
+            assert type(_input) is dict, \
+                "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
+            self._input = _input
 
     @property
     def output_vars(self):
@@ -80,7 +80,10 @@ class ProgramNode(ABC):
 
     @output_vars.setter
     def output_vars(self, _output_vars):
-        pass
+        if _output_vars is not None:
+            assert type(_output_vars) is set, \
+                "TypeError: Try a different output_vars. Expected <set> but given <{}>".format(type(_output_vars))
+            self._output_vars = _output_vars
 
     @abstractmethod
     def get_output(self):
@@ -88,7 +91,7 @@ class ProgramNode(ABC):
         return self._output
 
     def output(self, _output_vars=None):
-        return ReferenceNode(self, _output_vars)
+        return OutputNode(self, _output_vars)
 
     @property
     @abstractmethod
@@ -109,10 +112,20 @@ class ProgramNode(ABC):
         self._to_run = to_run
 
 
+class OutputNode:
+    def __init__(self, node, output_vars=None):
+        self.node: ProgramNode = node
+        if output_vars is not None:
+            for var in output_vars:
+                assert var in self.node.output_vars, \
+                    "KeyError: Output of node <{}> doesn't contain the variable <{}>".format(self.node.label, var)
+        self.output_vars: set = output_vars
+
+
 class QuaNode(ProgramNode, ABC):
 
-    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None,
-                 quantum_machine=None, _simulate_or_execute='simulate'):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,
+                 quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate'):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
@@ -143,28 +156,6 @@ class QuaNode(ProgramNode, ABC):
         assert s_or_e == 'simulate' or s_or_e == 'execute', \
             "ValueError: Expected 'simulate' or 'execute' but got {}".format(s_or_e)
         self._simulate_or_execute = s_or_e
-
-    @property
-    def program(self):
-        return self._program
-
-    @program.setter
-    def program(self, _program):
-        if _program is not None:
-            assert type(_program) is FunctionType, \
-                "TypeError: Expected FunctionType but given <{}>".format(type(_program))
-        self._program = _program
-
-    @property
-    def input(self):
-        return self._input
-
-    @input.setter
-    def input(self, _input):
-        if _input is not None:
-            assert type(_input) is dict, \
-                "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
-            self._input = _input
 
     def get_output(self):
         for var in self._output_vars:
@@ -202,31 +193,9 @@ class QuaNode(ProgramNode, ABC):
 
 class PyNode(ProgramNode):
 
-    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,):
         super().__init__(_label, _program, _input, _output_vars)
         self._job_results = None
-
-    @property
-    def program(self):
-        return self._program
-
-    @program.setter
-    def program(self, _program):
-        if _program is not None:
-            assert type(_program) is FunctionType, \
-                "TypeError: Expected <FunctionType> but given <{}>".format(type(_program))
-        self._program = _program
-
-    @property
-    def input(self):
-        return self._input
-
-    @input.setter
-    def input(self, _input):
-        if _input is not None:
-            assert type(_input) is dict, \
-                "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
-            self._input = _input
 
     def get_output(self):
         for var in self._output_vars:
@@ -249,7 +218,7 @@ class PyNode(ProgramNode):
 
 class ProgramGraph:
 
-    def __init__(self, _label):
+    def __init__(self, _label: str = None):
         """
         A program graph describes a program flow with input/output dependencies
         :param _label: a label for the graph
@@ -257,10 +226,10 @@ class ProgramGraph:
         """
         self._id: int = id(self)
         self._label: str = None
-        self._nodes: dict = None
+        self._nodes: Dict[int, ProgramNode] = None
         self._node_counter: int = 0
-        self._edges: dict = None
-        self._backward_edges: dict = None
+        self._edges: Dict[int, set] = None
+        self._backward_edges: Dict[int, set] = None
         self._timestamp = None
         self._output: dict = None
 
@@ -282,45 +251,71 @@ class ProgramGraph:
     def nodes(self):
         return self._nodes
 
-    def add_nodes(self, nodes):
+    def add_nodes(self, new_nodes: List[ProgramNode]):
         """
-        Adds given nodes to the graph
-        :param nodes: list of node objects
+        Adds the given nodes to the graph
+        :param new_nodes: list of node objects
+        :type new_nodes: List[ProgramNode]
         :return:
         """
-        # update edges
-        # update self._node_counter
+        for node in new_nodes:
+            self._nodes[node.id] = node
+            self._node_counter += 1
+            for var, value in node.input.items():
+                if isinstance(value, OutputNode):
+                    self.add_edges([(value.node, node)])
 
-    def remove_nodes(self, node_ids):
+    def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
-        Removes the nodes with given ids from the graph
-        :param node_ids:
+        Removes the given nodes from the graph
+        :param nodes_to_remove: Set of nodes to remove
+        :type nodes_to_remove: Set[ProgramNode]
         :return:
         """
-        # update edges
+        edges_to_remove: Set[Tuple[ProgramNode, ProgramNode]] = set()
+        for source_node in nodes_to_remove:
+            try:
+                ids_to_remove = self._nodes.pop(source_node.id)
+                for dest_node_id in ids_to_remove:
+                    edges_to_remove.add((source_node, self.nodes[dest_node_id]))
+            except KeyError:
+                print("KeyError: Tried to remove node <{}>, but was not found".format(source_node.label))
+        self.remove_edges(edges_to_remove)
 
     @property
     def edges(self):
         return self._edges
 
-    def add_edges(self, _edges):
+    def add_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
-        Add edges between nodes with given ids.
-        This is used to describe time order rather than input/output dependency.
-        :param _edges: list of tuples [(source_node_id, dest_node_id)...]
-        :type _edges: list
+        Add edges between given nodes
+        When used outside of add_nodes method, it describes either time order or input/output dependency as usual.
+        :param _edges: set of tuples {(source_node, dest_node)...}
+        :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
         """
-        # need to update backward_edges
+        for source, dest in _edges:
+            self._edges.setdefault(source.id, set()).add(dest.id)
+            self._backward_edges.setdefault(dest.id, set()).add(source.id)
 
-    def remove_edges(self, _edges):
+    def remove_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
         Remove edges from graph
-        :param _edges: list of tuples [(source_node_id, dest_node_id)...]
-        :type _edges: list
+        :param _edges: set of tuples {(source_node, dest_node)...}
+        :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
         """
         # need to update backward edges
+        for source, dest in _edges:
+            try:
+                self._edges.get(source.id, set()).remove(dest.id)
+                self._backward_edges.get(dest.id, set()).remove(source.id)
+                print("Successfully removed edge from <{}> to <{}>".format(source.id, dest.id))
+            except KeyError:
+                print("KeyError: Tried to remove edge from <{}> to <{}>, "
+                      "but it doesn't exist.".format(source.id, dest.id))
+
+
 
     @property
     def backward_edges(self):
@@ -334,18 +329,18 @@ class ProgramGraph:
     def output(self):
         return self._output
 
-    def run(self, start_node_ids=None):
+    def run(self, start_nodes=None):
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs accordingly
-        :param start_node_ids: list of node ids to start running the graph from
-        :type: start_nodes_ids: list
+        :param start_nodes: list of nodes to start running the graph from
+        :type: start_nodes: list
         :return:
         """
 
-    def plot(self, start_node_ids=None):
+    def plot(self, start_nodes=None):
         """
         Plot starting from the given node and in the direction of propagation
-        :param start_node_ids: list of node ids to start plotting from
+        :param start_nodes: list of nodes to start plotting from
         :return:
         """
 
