@@ -76,10 +76,10 @@ class ProgramNode(ABC):
 
 class QuaNode(ProgramNode):
 
-    def __init__(self, _id, _label=None, _program=None, _input=None, _quantum_machine=None):
+    def __init__(self, _id, _label=None, _program=None, _input=None, quantum_machine=None):
         super().__init__(_id, _label, _program, _input)
         self._quantum_machine = None
-        self.quantum_machine = _quantum_machine
+        self.quantum_machine = quantum_machine
 
     @property
     def quantum_machine(self):
@@ -90,7 +90,7 @@ class QuaNode(ProgramNode):
         if quantum_machine is not None:
             assert isinstance(quantum_machine, QuantumMachine), \
                 "TypeError: Expected QuantumMachine but given {}".format(type(quantum_machine))
-            self._quantum_machine = quantum_machine
+        self._quantum_machine = quantum_machine
 
     @property
     def program(self):
@@ -147,13 +147,15 @@ class PyNode(ProgramNode):
 
 class ProgramGraph:
 
-    def __init__(self, _id, _label):
-        
-        self._id = _id
-        self._label = _label
+    def __init__(self, _label):
+        self._id = id(self)
+        self._label = None
         self._nodes = None
+        self._node_counter = 0
         self._edges = None
         self._backward_edges = None
+
+        self.label = _label
 
     @property
     def id(self):
@@ -177,7 +179,7 @@ class ProgramGraph:
         :param node_ids: list of node objects
         :return:
         """
-
+        # update self._node_counter
 
     def remove_nodes(self, node_ids):
         """
