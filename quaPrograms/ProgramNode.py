@@ -10,17 +10,19 @@ class ReferenceNode:
 
 class ProgramNode(ABC):
 
-    def __init__(self, _id, _label=None, _program=None, _input=None, _to_run=True):
-        self._id = _id
+    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None, _to_run=True):
+        self._id = None
         self._label = None
         self._program = None
         self._input = None
         self._to_run = None
+        self._output_vars = None
         self._output = None
 
         self.label = _label
         self.program = _program
         self.input = _input
+        self.output_vars = _output_vars
         self.to_run = _to_run
 
     @property
@@ -56,9 +58,15 @@ class ProgramNode(ABC):
         pass
 
     @property
-    @abstractmethod
-    def output(self):
+    def output_vars(self):
+        return self._output_vars
+
+    @output_vars.setter
+    def output_vars(self, _output_vars):
         pass
+
+    def output(self, _output_vars):
+        return ReferenceNode(self.id, _output_vars)
 
     @abstractmethod
     def run(self):
@@ -76,8 +84,8 @@ class ProgramNode(ABC):
 
 class QuaNode(ProgramNode):
 
-    def __init__(self, _id, _label=None, _program=None, _input=None, quantum_machine=None):
-        super().__init__(_id, _label, _program, _input)
+    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None, quantum_machine=None):
+        super().__init__(_label, _program, _input, _output_vars)
         self._quantum_machine = None
         self.quantum_machine = quantum_machine
 
@@ -108,18 +116,14 @@ class QuaNode(ProgramNode):
     def input(self, _input):
         pass
 
-    @property
-    def output(self):
-        pass
-
     def run(self):
         pass
 
 
 class PyNode(ProgramNode):
 
-    def __init__(self, _id, _label=None, _program=None, _input=None):
-        super().__init__(_id, _label, _program, _input)
+    def __init__(self, _label=None, _program=None, _input=None, _output_vars=None):
+        super().__init__(_label, _program, _input, _output_vars)
 
     @property
     def program(self):
@@ -135,10 +139,6 @@ class PyNode(ProgramNode):
 
     @input.setter
     def input(self, _input):
-        pass
-
-    @property
-    def output(self):
         pass
 
     def run(self):
@@ -173,10 +173,10 @@ class ProgramGraph:
     def nodes(self):
         return self._nodes
 
-    def add_nodes(self, node_ids):
+    def add_nodes(self, nodes):
         """
         Adds given nodes to the graph
-        :param node_ids: list of node objects
+        :param nodes: list of node objects
         :return:
         """
         # update self._node_counter
