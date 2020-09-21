@@ -2,6 +2,12 @@ from abc import ABC, abstractmethod
 from qm import QuantumMachine
 
 
+class ReferenceNode:
+    def __init__(self, node_id, output_vars):
+        self.node_id = node_id
+        self.output_vars = output_vars
+
+
 class ProgramNode(ABC):
 
     def __init__(self, _id, _label=None, _program=None, _input=None, _to_run=True):
@@ -137,3 +143,84 @@ class PyNode(ProgramNode):
 
     def run(self):
         pass
+
+
+class ProgramGraph:
+
+    def __init__(self, _id, _label):
+        
+        self._id = _id
+        self._label = _label
+        self._nodes = None
+        self._edges = None
+        self._backward_edges = None
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, _label):
+        self._label = _label
+
+    @property
+    def nodes(self):
+        return self._nodes
+
+    def add_nodes(self, node_ids):
+        """
+        Adds given nodes to the graph
+        :param node_ids: list of node objects
+        :return:
+        """
+
+
+    def remove_nodes(self, node_ids):
+        """
+        Removes the nodes with given ids from the graph
+        :param node_ids:
+        :return:
+        """
+
+    @property
+    def edges(self):
+        return self._edges
+
+    def add_edges(self, _edges):
+        """
+        Add edges between given node ids
+        :param _edges: list of tuples [(source_node_id, dest_node_id)...]
+        :return:
+        """
+        # need to update backward_edges
+
+    def remove_edges(self, _edges):
+        """
+        Remove edges from graph
+        :param _edges: list of tuples [(source_node_id, dest_node_id)...]
+        :return:
+        """
+        # need to update backward edges
+
+    @property
+    def backward_edges(self):
+        return self._backward_edges
+
+    def run(self, start_node_ids=None):
+        """
+        Run the graph nodes in the correct order while propagating the inputs/outputs accordingly
+        :param start_node_ids: list of node ids to start running the graph from
+        :type: start_nodes_ids: list
+        :return:
+        """
+
+    def plot(self, start_node_ids=None):
+        """
+        Plot starting from the given node and in the direction of propagation
+        :param start_node_ids: list of node ids to start plotting from
+        :return:
+        """
