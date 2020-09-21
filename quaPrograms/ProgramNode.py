@@ -11,6 +11,19 @@ class ReferenceNode:
 class ProgramNode(ABC):
 
     def __init__(self, _label=None, _program=None, _input=None, _output_vars=None, _to_run=True):
+        """
+
+        :param _label: label of the node
+        :type: _label: str
+        :param _program: a function to run
+        :type _program: function
+        :param _input: input variable names and values
+        :type _input: dict
+        :param _output_vars: output variable names
+        :type _output_vars: set
+        :param _to_run: whether to run the node
+        :type _to_run: bool
+        """
         self._id = None
         self._label = None
         self._program = None
