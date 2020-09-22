@@ -10,7 +10,8 @@ from copy import deepcopy
 
 class ProgramNode(ABC):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
+                 _output_vars: Set[str] = None,
                  _to_run: bool = True):
         """
         Program node contains a program to run and description of input/output variables
@@ -28,10 +29,10 @@ class ProgramNode(ABC):
         self._id: int = id(self)
         self._label: str = None
         self._program: FunctionType = None
-        self._input: Dict = None
+        self._input: Dict[str, Any] = None
         self._to_run: bool = None
-        self._output_vars: set = None
-        self._output: dict = None
+        self._output_vars: Set[str] = None
+        self._result: Dict[str, Any] = None
         self._timestamp = None
 
         self.label = _label
@@ -85,13 +86,16 @@ class ProgramNode(ABC):
                 "TypeError: Try a different output_vars. Expected <set> but given <{}>".format(type(_output_vars))
             self._output_vars = _output_vars
 
+    @property
+    def result(self):
+        return self._result
+
     @abstractmethod
-    def get_output(self):
+    def get_result(self):
         pass
-        return self._output
 
     def output(self, _output_vars=None):
-        return OutputNode(self, _output_vars)
+        return LinkNode(self, _output_vars)
 
     @property
     @abstractmethod
@@ -112,26 +116,29 @@ class ProgramNode(ABC):
         self._to_run = to_run
 
 
-class OutputNode:
-    def __init__(self, node, output_vars=None):
+class LinkNode:
+    def __init__(self, node, output_var: str = None):
         self.node: ProgramNode = node
-        if output_vars is not None:
-            for var in output_vars:
-                assert var in self.node.output_vars, \
-                    "KeyError: Output of node <{}> doesn't contain the variable <{}>".format(self.node.label, var)
-        self.output_vars: set = output_vars
+        if output_var is not None:
+            assert output_var in self.node.output_vars, \
+                "KeyError: Output of node <{}> doesn't contain the variable <{}>".format(self.node.label, output_var)
+        self.output_var: str = output_var
 
 
 class QuaNode(ProgramNode, ABC):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,
-                 quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate'):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
+                 _output_vars: Set[str] = None,
+                 quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate', _execution_kwargs=None,
+                 _simulation_kwargs=None):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
         self._qua_program: qm.program._Program = None
         self._quantum_machine: QuantumMachine = None
         self._simulate_or_execute: str = None
+        self._execution_kwargs = _execution_kwargs
+        self._simulation_kwargs = _simulation_kwargs
 
         self.quantum_machine = quantum_machine
         self.simulate_or_execute = _simulate_or_execute
@@ -157,20 +164,18 @@ class QuaNode(ProgramNode, ABC):
             "ValueError: Expected 'simulate' or 'execute' but got {}".format(s_or_e)
         self._simulate_or_execute = s_or_e
 
-    def get_output(self):
-        for var in self._output_vars:
+    def get_result(self):
+        for var in self.output_vars:
             try:
-                self._output[var] = self._job.result_handles[var]
+                self._result[var] = self._job.result_handles[var]
             except KeyError:
                 print("Couldn't fetch {} from Qua program results".format(var))
-
-        return self._output
 
     @property
     def timestamp(self):
         pass
 
-    def run(self, **kwargs):
+    def run(self):
 
         # Get the Qua program that is wrapped by the python function
         qua_program = self.program(**self._input)
@@ -180,32 +185,32 @@ class QuaNode(ProgramNode, ABC):
         self._qua_program = qua_program
 
         if self._simulate_or_execute == 'simulate':
-            self.simulate(**kwargs)
+            self.simulate()
         if self._simulate_or_execute == 'execute':
-            self.execute(**kwargs)
+            self.execute()
 
-    def execute(self, **kwargs):
-        self._job = self._quantum_machine.execute(self._qua_program, **kwargs)
+        self.get_result()
 
-    def simulate(self, sim_config=SimulationConfig(), **kwargs):
-        self._job = self._quantum_machine.simulate(self._qua_program, sim_config, **kwargs)
+    def execute(self):
+        self._job = self._quantum_machine.execute(self._qua_program, **self._execution_kwargs)
+
+    def simulate(self):
+        self._job = self._quantum_machine.simulate(self._qua_program, **self._simulation_kwargs)
 
 
 class PyNode(ProgramNode):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None,
-                 _output_vars: set = None, ):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
+                 _output_vars: Set[str] = None):
         super().__init__(_label, _program, _input, _output_vars)
         self._job_results = None
 
-    def get_output(self):
-        for var in self._output_vars:
+    def get_result(self):
+        for var in self.output_vars:
             try:
-                self._output[var] = self._job_results[var]
+                self._result[var] = self._job_results[var]
             except KeyError:
                 print("Couldn't fetch {} from Qua program results".format(var))
-
-        return self._output
 
     @property
     def timestamp(self):
@@ -215,6 +220,7 @@ class PyNode(ProgramNode):
         self._job_results = self.program(**self.input)
         assert type(self._job_results) is dict, \
             "TypeError: Expected <dict> but got <{}> as program results".format(type(self._job_results))
+        self.get_result()
 
 
 class ProgramGraph:
@@ -233,6 +239,7 @@ class ProgramGraph:
         self._backward_edges: Dict[int, Set[int]] = None
         self._timestamp = None
         self._output: dict = None
+        self._link_nodes: Dict[int, Dict[str, LinkNode]] = None  # Dict[node_id,Dict[input_var_name,LinkNode]]
 
         self.label = _label
 
@@ -263,8 +270,9 @@ class ProgramGraph:
             self._nodes[node.id] = node
             self._node_counter += 1
             for var, value in node.input.items():
-                if isinstance(value, OutputNode):
+                if isinstance(value, LinkNode):
                     self.add_edges({(value.node, node)})
+                    self._link_nodes[node.id][var] = value
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -339,7 +347,16 @@ class ProgramGraph:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
-        execution_order: List[ProgramNode] = self.topological_sort(start_nodes)
+
+        execution_order: List[int] = self.topological_sort(start_nodes)
+        for node_id in execution_order:
+            # Put one output variable of one node into one input variable of of a different node
+            input_vars: Dict[str, LinkNode] = self._link_nodes.getdefault(node_id, set())
+            for var in input_vars:
+                link_node = input_vars[var]
+                self.nodes[node_id].input[var] = link_node.node.result[link_node.out_var]
+
+            self.nodes[node_id].run()
 
     def topological_sort(self, start_nodes: List[ProgramNode] = None) -> List[int]:
         """
@@ -378,7 +395,7 @@ class ProgramGraph:
 
         if sorted_set & edges.keys() != set():
             # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
-            print("Error: Graph is not acyclic ! Try changing dependencies")
+            print("Error: Graph is not acyclic ! Try changing dependencies.")
             raise Exception
 
         return sorted_list
