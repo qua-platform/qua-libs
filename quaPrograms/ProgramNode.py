@@ -378,7 +378,8 @@ class ProgramGraph:
             for var in input_vars:
                 link_node = input_vars[var]
                 assert self.nodes[link_node.node.id], \
-                    "Error: Tried to use the output of node <{}>, but the node isn't in the graph".format(link_node.node.id)
+                    "Error: Tried to use the output of node <{}>, but the node isn't in the graph".format(
+                        link_node.node.id)
                 if link_out := link_node.output_var:
                     self.nodes[node_id].input[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
@@ -403,9 +404,9 @@ class ProgramGraph:
             s = [n for n in self.nodes if n not in backward_edges]
         else:
             s = [n.id for n in start_nodes]
-
+        assert s != [], "Error: Graph is cyclic ! All nodes depend on other nodes, try changing dependencies."
         sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
-
+        asas = s.copy()
         while s:
             n = s.pop(0)
             sorted_set.add(n)
@@ -421,10 +422,12 @@ class ProgramGraph:
                 if backward_edges[m] == set():
                     del backward_edges[m]
                     s.append(m)
-
-        assert sorted_set & edges.keys() == set(),\
+        print(self.edges.keys())
+        print(sorted_set, " & ", edges.keys(), "=", sorted_set & edges.keys())
+        # TODO: Fix this doesn't work properly
+        assert sorted_set & edges.keys() == set(), \
             "Error: Graph is cyclic ! Try changing dependencies."
-            # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
+        # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
 
         return sorted_list
 
