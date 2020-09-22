@@ -5,7 +5,7 @@ import qm
 from types import *
 from typing import *
 
-from typing import Set
+from copy import deepcopy
 
 
 class ProgramNode(ABC):
@@ -193,7 +193,8 @@ class QuaNode(ProgramNode, ABC):
 
 class PyNode(ProgramNode):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None, _output_vars: set = None,):
+    def __init__(self, _label: str = None, _program: FunctionType = None, _input: dict = None,
+                 _output_vars: set = None, ):
         super().__init__(_label, _program, _input, _output_vars)
         self._job_results = None
 
@@ -228,15 +229,15 @@ class ProgramGraph:
         self._label: str = None
         self._nodes: Dict[int, ProgramNode] = None
         self._node_counter: int = 0
-        self._edges: Dict[int, set] = None
-        self._backward_edges: Dict[int, set] = None
+        self._edges: Dict[int, Set[int]] = None
+        self._backward_edges: Dict[int, Set[int]] = None
         self._timestamp = None
         self._output: dict = None
 
         self.label = _label
 
     @property
-    def id(self):
+    def id(self) -> int:
         return self._id
 
     @property
@@ -263,7 +264,7 @@ class ProgramGraph:
             self._node_counter += 1
             for var, value in node.input.items():
                 if isinstance(value, OutputNode):
-                    self.add_edges([(value.node, node)])
+                    self.add_edges({(value.node, node)})
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -315,8 +316,6 @@ class ProgramGraph:
                 print("KeyError: Tried to remove edge from <{}> to <{}>, "
                       "but it doesn't exist.".format(source.id, dest.id))
 
-
-
     @property
     def backward_edges(self):
         return self._backward_edges
@@ -329,13 +328,60 @@ class ProgramGraph:
     def output(self):
         return self._output
 
-    def run(self, start_nodes=None):
+    def run(self, start_nodes: List[ProgramNode] = None):
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs accordingly
         :param start_nodes: list of nodes to start running the graph from
-        :type: start_nodes: list
+        :type: start_nodes: List[ProgramNode]
         :return:
         """
+        if start_nodes is None:
+            for node_id in self.nodes:
+                if node_id not in self.backward_edges:
+                    start_nodes.append(self.nodes[node_id])
+        execution_order: List[ProgramNode] = self.topological_sort(start_nodes)
+
+    def topological_sort(self, start_nodes: List[ProgramNode] = None) -> List[int]:
+        """
+        Returns a list of graph node ids in a topological order. Starting from given start nodes.
+        Implements Kahn's algorithm.
+        :param start_nodes: list of nodes to start the sort from
+        :type start_nodes: List[ProgramNode]
+        :return:
+        """
+        edges: Dict[int, Set[int]] = deepcopy(self.edges)
+        backward_edges: Dict[int, Set[int]] = deepcopy(self.backward_edges)
+
+        s: List[int]  # list of node ids with no incoming edges
+        sorted_set: Set[int] = set()  # set of node ids
+        if start_nodes is None:
+            s = [n.id for n in self.nodes if n.id not in backward_edges]
+        else:
+            s = [n.id for n in start_nodes]
+
+        sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
+
+        while s:
+            n = s.pop(0)
+            sorted_set.add(n)
+            sorted_list.append(n)
+            n_edges = edges[n].copy()
+            for m in n_edges:
+                edges.get(n, set()).remove(m)
+                if edges[n] == set():
+                    del edges[n]
+
+                backward_edges.get(m, set()).remove(n)
+                if backward_edges[m] == set():
+                    del backward_edges[m]
+                    s.append(m)
+
+        if sorted_set & edges.keys() != set():
+            # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
+            print("Error: Graph is not acyclic ! Try changing dependencies")
+            raise Exception
+
+        return sorted_list
 
     def plot(self, start_nodes=None):
         """
