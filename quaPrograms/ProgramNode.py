@@ -355,7 +355,7 @@ class ProgramGraph:
     def output(self):
         return self._output
 
-    def run(self, start_nodes: List[ProgramNode] = None):
+    def run(self, start_nodes: List[ProgramNode] = []):
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
         If given start_nodes, run the directed subgraph starting from those nodes.
@@ -363,7 +363,7 @@ class ProgramGraph:
         :type: start_nodes: List[ProgramNode]
         :return:
         """
-        if start_nodes is None:
+        if not start_nodes:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
@@ -374,9 +374,11 @@ class ProgramGraph:
 
         for node_id in self._execution_order:
             # Put one output variable of one node into one input variable of of a different node
-            input_vars: Dict[str, LinkNode] = self._link_nodes.getdefault(node_id, set())
+            input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
+                assert self.nodes[link_node.node.id], \
+                    "Error: Tried to use the output of node <{}>, but the node isn't in the graph".format(link_node.node.id)
                 if link_out := link_node.output_var:
                     self.nodes[node_id].input[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
@@ -384,7 +386,7 @@ class ProgramGraph:
 
             self.nodes[node_id].run()
 
-    def topological_sort(self, start_nodes: List[ProgramNode] = None) -> List[int]:
+    def topological_sort(self, start_nodes: List[ProgramNode] = []) -> List[int]:
         """
         Returns a list of graph node ids in a topological order. Starting from given start nodes.
         Implements Kahn's algorithm.
@@ -397,18 +399,18 @@ class ProgramGraph:
 
         s: List[int]  # list of node ids with no incoming edges
         sorted_set: Set[int] = set()  # set of node ids
-        if start_nodes is None:
+        if not start_nodes:
             s = [n.id for n in self.nodes if n.id not in backward_edges]
         else:
             s = [n.id for n in start_nodes]
 
         sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
 
-        while s:
+        while s and edges:
             n = s.pop(0)
             sorted_set.add(n)
             sorted_list.append(n)
-            n_edges = edges[n].copy()
+            n_edges = edges.get(n, set()).copy()
             for m in n_edges:
                 edges.get(n, set()).remove(m)
                 if edges[n] == set():
