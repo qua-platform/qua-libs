@@ -286,16 +286,20 @@ class ProgramGraph:
         :return:
         """
         edges_to_remove: Set[Tuple[ProgramNode, ProgramNode]] = set()
-        for source_node in nodes_to_remove:
+        for node in nodes_to_remove:
             try:
-                ids_to_remove = self._nodes.pop(source_node.id)
+                self._nodes.pop(node.id)
+                # remove forward edges
+                ids_to_remove = self.edges[node.id]
                 for dest_node_id in ids_to_remove:
-                    edges_to_remove.add((source_node, self.nodes[dest_node_id]))
+                    edges_to_remove.add((node, self.nodes[dest_node_id]))
+                # remove backward edges
+                ids_to_remove = self.backward_edges[node.id]
+                for source_node_id in ids_to_remove:
+                    edges_to_remove.add((self.nodes[source_node_id], node))
             except KeyError:
-                print("KeyError: Tried to remove node <{}>, but was not found".format(source_node.label))
+                print("KeyError: Tried to remove node <{}>, but was not found".format(node.label))
         self.remove_edges(edges_to_remove)
-
-        self.update_order = True
 
     @property
     def edges(self):
@@ -327,10 +331,16 @@ class ProgramGraph:
             try:
                 self._edges.get(source.id, set()).remove(dest.id)
                 self._backward_edges.get(dest.id, set()).remove(source.id)
+                if not self._edges[source.id]:
+                    del self._edges[source.id]
+                if not self._backward_edges[dest.id]:
+                    del self._backward_edges[dest.id]
+
                 print("Successfully removed edge from <{}> to <{}>".format(source.id, dest.id))
             except KeyError:
                 print("KeyError: Tried to remove edge from <{}> to <{}>, "
                       "but it doesn't exist.".format(source.id, dest.id))
+
         self.update_order = True
 
     @property
