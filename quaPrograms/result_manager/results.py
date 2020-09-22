@@ -1,11 +1,12 @@
+import datetime
+
 from qm.persistence import *
 from pathlib import Path
 from datetime import date
 from shutil import copyfile
 import os
-from typing import Callable
+import yattag
 import json
-import pandas as pd
 
 
 class ResultStore(BaseStore):
@@ -24,7 +25,7 @@ class ResultStore(BaseStore):
         self.store_path_root = Path(store_path_root).absolute()
         self.script_path = script_path
         self.exp_name = exp_name
-        self.results = {}
+        self.results = {'exp_name': self.exp_name, 'user_name': os.getlogin()}
 
     def _job_path(self, job_id: str):
 
@@ -45,11 +46,18 @@ class ResultStore(BaseStore):
         """
         This function defines what is saved upon calling job.save_results()
         """
+
         if self.script_path != '':
             copyfile(self.script_path, self._script_path(job_id))
 
+        self.add_result('run_end_time', datetime.datetime.now().strftime('%c'))
+        self.add_result('job_id', job_id)
+
         with open(self._results_path(job_id), "w") as results_file:
             json.dump(self.results, results_file)
+
+        self._make_log_file()
+
         return FileBinaryAsset(self._job_path(job_id).joinpath(f"results.npz"))
 
     def _script_path(self, job_id):
@@ -59,7 +67,24 @@ class ResultStore(BaseStore):
     def _results_path(self, job_id):
         return self._job_path(job_id).joinpath(f"results.json")
 
-    def get_save_path(self,job_id):
+    def _make_log_file(self):
+        try:
+            log = f"Log for QM run {self.results['job_id']}\n"
+            if self.exp_name:
+                log += f"Experiment name: {self.exp_name}\n"
+
+            log += f"Run ended on {self.results['run_end_time']}\n"
+
+            with open(self._job_path(self.results['job_id']).joinpath(f"result.log"), 'w') as log_file:
+                log_file.write(log)
+
+        except KeyError:
+            print('No job id. cannot generate log file')
+            # raise KeyError
+
+
+
+    def get_save_path(self, job_id):
         return self._job_path(job_id)
 
     def add_result(self, name: str, res):
@@ -88,8 +113,23 @@ class ResultStore(BaseStore):
         print('------------------')
         [print(f"{key} : {self.results[key]}") for key in self.results]
 
-if __name__ =='__main__':
-    a=ResultStore()
-    a.add_result('this',1)
+
+def result_report():
+    pass
+
+
+def get_results_in_path(path):
+    folder_list = [x[0] for x in os.walk(path)]
+    res_folder_list=[]
+    for folder in folder_list:
+        if os.path.exists(os.path.join(folder,'result.log')):
+            res_folder_list.append(folder)
+            print('results folder found!')
+    print(res_folder_list)
+
+if __name__ == '__main__':
+    a = ResultStore()
+    a.add_result('this', 1)
     a.add_result('that', 2)
     a.list_results()
+    get_results_in_path('res')
