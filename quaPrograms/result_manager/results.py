@@ -45,11 +45,11 @@ class ResultStore(BaseStore):
         """
         This function defines what is saved upon calling job.save_results()
         """
-        with open(self._results_path(job_id), "w") as dictator_file:
-            json.dump(self.results, dictator_file)
         if self.script_path != '':
             copyfile(self.script_path, self._script_path(job_id))
 
+        with open(self._results_path(job_id), "w") as results_file:
+            json.dump(self.results, results_file)
         return FileBinaryAsset(self._job_path(job_id).joinpath(f"results.npz"))
 
     def _script_path(self, job_id):
@@ -58,6 +58,9 @@ class ResultStore(BaseStore):
 
     def _results_path(self, job_id):
         return self._job_path(job_id).joinpath(f"results.json")
+
+    def get_save_path(self,job_id):
+        return self._job_path(job_id)
 
     def add_result(self, name: str, res):
         """

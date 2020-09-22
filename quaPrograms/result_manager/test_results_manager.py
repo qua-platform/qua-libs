@@ -7,11 +7,38 @@ from qm import SimulationConfig
 import shutil
 
 
-def test_results_manager():
-    qmm = QuantumMachinesManager(store=ResultStore())
+def test_results_manager_path_generate():
+    myResults = ResultStore()
+    qmm = QuantumMachinesManager(store=myResults)
     qm1 = qmm.open_qm(config)
     job = qm1.simulate(hello_qua(), SimulationConfig(1000))
     res = job.result_handles
     res.save_to_store()
-    assert(1)
+    assert(os.path.exists(myResults.get_save_path(res._job_id)))
+    shutil.rmtree('res')
+
+def test_results_manager_add_result():
+    myResults=ResultStore()
+    qmm = QuantumMachinesManager(store=myResults)
+    myResults.add_result('a', 1)
+    qm1 = qmm.open_qm(config)
+    job = qm1.simulate(hello_qua(), SimulationConfig(1000))
+    res = job.result_handles
+    res.save_to_store()
+    res_path = myResults.get_save_path(res._job_id)
+    with open(os.path.join(res_path,'results.json'),'r') as f:
+        res_dictionary=json.loads(f.read())
+        assert(res_dictionary['a']==1)
+    shutil.rmtree('res')
+
+def test_results_manager_save_calling_script():
+    myResults=ResultStore(script_path=__file__)
+    qmm = QuantumMachinesManager(store=myResults)
+    myResults.add_result('a', 1)
+    qm1 = qmm.open_qm(config)
+    job = qm1.simulate(hello_qua(), SimulationConfig(1000))
+    res = job.result_handles
+    res.save_to_store()
+    res_path=myResults.get_save_path(res._job_id)
+    assert(os.path.exists(os.path.join(res_path,__file__)))
     shutil.rmtree('res')
