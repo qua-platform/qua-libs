@@ -406,7 +406,7 @@ class ProgramGraph:
             s = [n.id for n in start_nodes]
         assert s != [], "Error: Graph is cyclic ! All nodes depend on other nodes, try changing dependencies."
         sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
-        asas = s.copy()
+
         while s:
             n = s.pop(0)
             sorted_set.add(n)
@@ -424,8 +424,8 @@ class ProgramGraph:
                     s.append(m)
         print(self.edges.keys())
         print(sorted_set, " & ", edges.keys(), "=", sorted_set & edges.keys())
-        # TODO: Fix this doesn't work properly
-        assert sorted_set & edges.keys() == set(), \
+        # TODO: currently works only for starting from non-dependent nodes
+        assert edges.keys() == set(), \
             "Error: Graph is cyclic ! Try changing dependencies."
         # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
 
@@ -446,8 +446,12 @@ class ProgramGraph:
                 else:
                     dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
                 if dest_id in self._link_nodes_ids:
-                    var_name = self._link_nodes_ids[dest_id][node_id]
-                    dot_graph += ' [label="{}"]'.format(var_name if var_name else '!all')
+                    var_name = self._link_nodes_ids[dest_id].get(node_id, -1)
+                    if var_name is None:
+                        var_name = '!all'
+                    if var_name == -1:
+                        var_name = '!none'
+                    dot_graph += ' [label="{}"]'.format(var_name)
 
                 dot_graph += ';'
         dot_graph += '}'
