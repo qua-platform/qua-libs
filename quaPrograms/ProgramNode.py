@@ -1,10 +1,9 @@
-from abc import ABC, abstractmethod
 from qm import QuantumMachine
-from qm import SimulationConfig
 import qm
+
+from abc import ABC, abstractmethod
 from types import *
 from typing import *
-
 from copy import deepcopy
 
 
@@ -129,8 +128,8 @@ class QuaNode(ProgramNode, ABC):
 
     def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
                  _output_vars: Set[str] = None,
-                 quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate', _execution_kwargs=None,
-                 _simulation_kwargs=None):
+                 _quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate',
+                 _execution_kwargs: Dict[str, Any] = None, _simulation_kwargs: Dict[str, Any] = None):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
@@ -140,7 +139,7 @@ class QuaNode(ProgramNode, ABC):
         self._execution_kwargs = _execution_kwargs
         self._simulation_kwargs = _simulation_kwargs
 
-        self.quantum_machine = quantum_machine
+        self.quantum_machine = _quantum_machine
         self.simulate_or_execute = _simulate_or_execute
 
     @property
@@ -233,14 +232,14 @@ class ProgramGraph:
         """
         self._id: int = id(self)
         self._label: str = None
-        self._nodes: Dict[int, ProgramNode] = None
+        self._nodes: Dict[int, ProgramNode] = dict()
         self._node_counter: int = 0
-        self._edges: Dict[int, Set[int]] = None
-        self._backward_edges: Dict[int, Set[int]] = None
+        self._edges: Dict[int, Set[int]] = dict()
+        self._backward_edges: Dict[int, Set[int]] = dict()
         self._timestamp = None
-        self._output: dict = None
-        self._link_nodes: Dict[int, Dict[str, LinkNode]] = None  # Dict[node_id,Dict[input_var_name,LinkNode]]
-
+        self._output: dict = dict()
+        self._link_nodes: Dict[int, Dict[str, LinkNode]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
+        self._link_nodes_ids: Dict[int,Dict[int,str]] = dict() # Dict[node_id,Dict[out_node_id,out_var]]
         self.label = _label
 
     @property
@@ -272,7 +271,8 @@ class ProgramGraph:
             for var, value in node.input.items():
                 if isinstance(value, LinkNode):
                     self.add_edges({(value.node, node)})
-                    self._link_nodes[node.id][var] = value
+                    self._link_nodes.setdefault(node.id, dict())[var] = value
+                    self._link_nodes_ids.setdefault(node.id, dict())[value.node.id] = value.output_var
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -338,7 +338,8 @@ class ProgramGraph:
 
     def run(self, start_nodes: List[ProgramNode] = None):
         """
-        Run the graph nodes in the correct order while propagating the inputs/outputs accordingly
+        Run the graph nodes in the correct order while propagating the inputs/outputs.
+        If given start_nodes, run the directed subgraph starting from those nodes.
         :param start_nodes: list of nodes to start running the graph from
         :type: start_nodes: List[ProgramNode]
         :return:
@@ -354,8 +355,10 @@ class ProgramGraph:
             input_vars: Dict[str, LinkNode] = self._link_nodes.getdefault(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
-                self.nodes[node_id].input[var] = link_node.node.result[link_node.out_var]
-
+                if link_out := link_node.output_var:
+                    self.nodes[node_id].input[var] = link_node.node.result[link_out]
+                else:  # if output_var in the link node is not specified, forward the full result
+                    self.nodes[node_id].input[var] = link_node.node.result
             self.nodes[node_id].run()
 
     def topological_sort(self, start_nodes: List[ProgramNode] = None) -> List[int]:
@@ -400,9 +403,26 @@ class ProgramGraph:
 
         return sorted_list
 
+    def export_dot_graph(self, use_labels=True):
+        dot_graph = 'digraph {} {{'.format(self.label)
+
+        for node_id in self.edges:
+            for dest_id in self.edges[node_id]:
+                if use_labels:
+                    dot_graph += '"{}" -> "{}"'.format(self.nodes[node_id].label, self.nodes[dest_id].label)
+                else:
+                    dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
+                if dest_id in self._link_nodes_ids:
+                    dot_graph += ' [label="{}"]'.format(self._link_nodes_ids[dest_id][node_id])
+                dot_graph += ';'
+        dot_graph += '}'
+
+        return dot_graph
+
     def plot(self, start_nodes=None):
         """
-        Plot starting from the given node and in the direction of propagation
+        Plot the directed graph.
+        If given start_nodes, plot the directed subgraph starting from those nodes.
         :param start_nodes: list of nodes to start plotting from
         :return:
         """
