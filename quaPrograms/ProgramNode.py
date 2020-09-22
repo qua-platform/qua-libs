@@ -129,7 +129,7 @@ class QuaNode(ProgramNode, ABC):
     def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
                  _output_vars: Set[str] = None,
                  _quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate',
-                 _execution_kwargs: Dict[str, Any] = None, _simulation_kwargs: Dict[str, Any] = None):
+                 _simulation_kwargs: Dict[str, Any] = None, _execution_kwargs: Dict[str, Any] = None):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
@@ -150,7 +150,7 @@ class QuaNode(ProgramNode, ABC):
     def quantum_machine(self, quantum_machine):
         if quantum_machine is not None:
             assert isinstance(quantum_machine, QuantumMachine), \
-                "TypeError: Expected QuantumMachine but given <{}>".format(type(quantum_machine))
+                "TypeError: Expected <QuantumMachine> but given {}".format(type(quantum_machine))
         self._quantum_machine = quantum_machine
 
     @property
@@ -239,7 +239,10 @@ class ProgramGraph:
         self._timestamp = None
         self._output: dict = dict()
         self._link_nodes: Dict[int, Dict[str, LinkNode]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
-        self._link_nodes_ids: Dict[int,Dict[int,str]] = dict() # Dict[node_id,Dict[out_node_id,out_var]]
+        self._link_nodes_ids: Dict[int, Dict[int, str]] = dict()  # Dict[node_id,Dict[out_node_id,out_var]]
+        self._execution_order: List[int] = list()
+        self.update_order = True  # Whether to update the execution order when running
+
         self.label = _label
 
     @property
@@ -273,6 +276,7 @@ class ProgramGraph:
                     self.add_edges({(value.node, node)})
                     self._link_nodes.setdefault(node.id, dict())[var] = value
                     self._link_nodes_ids.setdefault(node.id, dict())[value.node.id] = value.output_var
+        self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -291,14 +295,16 @@ class ProgramGraph:
                 print("KeyError: Tried to remove node <{}>, but was not found".format(source_node.label))
         self.remove_edges(edges_to_remove)
 
+        self.update_order = True
+
     @property
     def edges(self):
         return self._edges
 
     def add_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
-        Add edges between given nodes
-        When used outside of add_nodes method, it describes either time order or input/output dependency as usual.
+        Add edges between given nodes.
+        When used outside of add_nodes method, it describes either time order rather than input/output dependency as usual.
         :param _edges: set of tuples {(source_node, dest_node)...}
         :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
@@ -306,6 +312,8 @@ class ProgramGraph:
         for source, dest in _edges:
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
+
+        self.update_order = True
 
     def remove_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
@@ -323,6 +331,7 @@ class ProgramGraph:
             except KeyError:
                 print("KeyError: Tried to remove edge from <{}> to <{}>, "
                       "but it doesn't exist.".format(source.id, dest.id))
+        self.update_order = True
 
     @property
     def backward_edges(self):
@@ -349,8 +358,11 @@ class ProgramGraph:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
 
-        execution_order: List[int] = self.topological_sort(start_nodes)
-        for node_id in execution_order:
+        if self.update_order:
+            self._execution_order = self.topological_sort(start_nodes)
+            self.update_order = False
+
+        for node_id in self._execution_order:
             # Put one output variable of one node into one input variable of of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.getdefault(node_id, set())
             for var in input_vars:
@@ -359,6 +371,7 @@ class ProgramGraph:
                     self.nodes[node_id].input[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
                     self.nodes[node_id].input[var] = link_node.node.result
+
             self.nodes[node_id].run()
 
     def topological_sort(self, start_nodes: List[ProgramNode] = None) -> List[int]:
@@ -398,12 +411,17 @@ class ProgramGraph:
 
         if sorted_set & edges.keys() != set():
             # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
-            print("Error: Graph is not acyclic ! Try changing dependencies.")
+            print("Error: Graph is cyclic ! Try changing dependencies.")
             raise Exception
 
         return sorted_list
 
     def export_dot_graph(self, use_labels=True):
+        """
+        Converts the graph into DOT graph format
+        :param use_labels:
+        :return: str
+        """
         dot_graph = 'digraph {} {{'.format(self.label)
 
         for node_id in self.edges:
@@ -413,7 +431,9 @@ class ProgramGraph:
                 else:
                     dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
                 if dest_id in self._link_nodes_ids:
-                    dot_graph += ' [label="{}"]'.format(self._link_nodes_ids[dest_id][node_id])
+                    var_name = self._link_nodes_ids[dest_id][node_id]
+                    dot_graph += ' [label="{}"]'.format(var_name if var_name else '!all')
+
                 dot_graph += ';'
         dot_graph += '}'
 
