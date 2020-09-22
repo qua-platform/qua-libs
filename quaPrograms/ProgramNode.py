@@ -31,7 +31,7 @@ class ProgramNode(ABC):
         self._input: Dict[str, Any] = None
         self._to_run: bool = None
         self._output_vars: Set[str] = None
-        self._result: Dict[str, Any] = None
+        self._result: Dict[str, Any] = dict()
         self._timestamp = None
 
         self.label = _label
@@ -166,7 +166,7 @@ class QuaNode(ProgramNode, ABC):
     def get_result(self):
         for var in self.output_vars:
             try:
-                self._result[var] = self._job.result_handles[var]
+                self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except KeyError:
                 print("Couldn't fetch {} from Qua program results".format(var))
 
