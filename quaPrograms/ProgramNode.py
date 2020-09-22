@@ -400,16 +400,17 @@ class ProgramGraph:
         s: List[int]  # list of node ids with no incoming edges
         sorted_set: Set[int] = set()  # set of node ids
         if not start_nodes:
-            s = [n.id for n in self.nodes if n.id not in backward_edges]
+            s = [n for n in self.nodes if n not in backward_edges]
         else:
             s = [n.id for n in start_nodes]
 
         sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
 
-        while s and edges:
+        while s:
             n = s.pop(0)
             sorted_set.add(n)
             sorted_list.append(n)
+
             n_edges = edges.get(n, set()).copy()
             for m in n_edges:
                 edges.get(n, set()).remove(m)
@@ -421,10 +422,9 @@ class ProgramGraph:
                     del backward_edges[m]
                     s.append(m)
 
-        if sorted_set & edges.keys() != set():
+        assert sorted_set & edges.keys() == set(),\
+            "Error: Graph is cyclic ! Try changing dependencies."
             # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
-            print("Error: Graph is cyclic ! Try changing dependencies.")
-            raise Exception
 
         return sorted_list
 
