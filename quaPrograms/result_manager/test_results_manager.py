@@ -78,4 +78,5 @@ def test_results_manager_list_results_in_folder():
     job = qm1.simulate(hello_qua(), SimulationConfig(1000))
     res = job.result_handles
     res.save_to_store()
+    shutil.rmtree('res')
 

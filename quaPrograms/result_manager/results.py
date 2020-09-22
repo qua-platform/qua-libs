@@ -5,8 +5,9 @@ from pathlib import Path
 from datetime import date
 from shutil import copyfile
 import os
-import yattag
 import json
+import dominate
+import dominate.tags as dom_tags
 
 
 class ResultStore(BaseStore):
@@ -114,8 +115,28 @@ class ResultStore(BaseStore):
         [print(f"{key} : {self.results[key]}") for key in self.results]
 
 
-def result_report():
-    pass
+def result_report(result_folder_list):
+    doc = dominate.document(title='QM results report')
+
+    with doc.head:
+        dom_tags.link(rel='stylesheet', href='style.css')
+        # dom_tags.script(type='text/javascript', src='script.js')
+
+    with doc:
+        with dom_tags.div(id='header').add(dom_tags.ol()):
+            dom_tags.h1('QM Results report')
+
+        with dom_tags.div():
+            dom_tags.attr(cls='body')
+
+            for folder in result_folder_list:
+                dom_tags.p(f"{folder}")
+                for file in os.listdir(folder):
+                    dom_tags.p(file)
+
+    with open('report.html','w') as report_html:
+        report_html.write(doc.__str__())
+
 
 
 def get_results_in_path(path):
@@ -125,11 +146,13 @@ def get_results_in_path(path):
         if os.path.exists(os.path.join(folder,'result.log')):
             res_folder_list.append(folder)
             print('results folder found!')
-    print(res_folder_list)
+    return res_folder_list
 
 if __name__ == '__main__':
     a = ResultStore()
     a.add_result('this', 1)
     a.add_result('that', 2)
     a.list_results()
-    get_results_in_path('res')
+    res_list=get_results_in_path('res')
+    result_report(res_list)
+
