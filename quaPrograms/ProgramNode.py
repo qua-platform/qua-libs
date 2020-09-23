@@ -225,12 +225,12 @@ class QuaNode(ProgramNode, ABC):
         self.get_result()
 
     def execute(self):
-        print("EXECUTING QuaNode {}...".format(self.label))
+        print("EXECUTING QuaNode '{}'...".format(self.label))
         self._job = self._quantum_machine.execute(self._qua_program, **self._execution_kwargs)
         print("DONE")
 
     def simulate(self):
-        print("SIMULATING QuaNode {}...".format(self.label))
+        print("SIMULATING QuaNode '{}'...".format(self.label))
         self._job = self._quantum_machine.simulate(self._qua_program, **self._simulation_kwargs)
         print("DONE")
 
@@ -247,14 +247,14 @@ class PyNode(ProgramNode):
             try:
                 self._result[var] = self._job_results[var]
             except KeyError:
-                print("Couldn't fetch {} from Qua program results".format(var))
+                print("Couldn't fetch '{}' from Qua program results".format(var))
 
     @property
     def timestamp(self):
         pass
 
     def run(self):
-        print("RUNNING PyNode {}...".format(self.label))
+        print("RUNNING PyNode '{}'...".format(self.label))
         self._job_results = self.program(**self.input)
         print("DONE")
         assert type(self._job_results) is dict, \
@@ -478,21 +478,25 @@ class ProgramGraph:
         """
         dot_graph = 'digraph {} {{'.format(self.label)
 
-        for node_id in self.edges:
-            for dest_id in self.edges[node_id]:
-                if use_labels:
-                    dot_graph += '"{}" -> "{}"'.format(self.nodes[node_id].label, self.nodes[dest_id].label)
-                else:
-                    dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
+        for node_id in self.nodes:
+            outgoing_edges = self.edges.get(node_id, None)
+            if outgoing_edges is not None:
+                for dest_id in outgoing_edges:
+                    if use_labels:
+                        dot_graph += '"{}" -> "{}"'.format(self.nodes[node_id].label, self.nodes[dest_id].label)
+                    else:
+                        dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
 
-                var_name = self._link_nodes_ids.get(dest_id, dict()).get(node_id, -1)
-                if var_name is None:
-                    var_name = '!all'
-                if var_name == -1:
-                    var_name = '!none'
-                dot_graph += ' [label="{}"]'.format(var_name)
+                    var_name = self._link_nodes_ids.get(dest_id, dict()).get(node_id, -1)
+                    if var_name is None:
+                        var_name = '!all'
+                    if var_name == -1:
+                        var_name = '!none'
+                    dot_graph += ' [label="{}"]'.format(var_name)
 
-                dot_graph += ';'
+                    dot_graph += ';'
+            else:
+                dot_graph += '"{}";'.format(self.nodes[node_id].label)
         dot_graph += '}'
 
         return dot_graph

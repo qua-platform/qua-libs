@@ -1,8 +1,8 @@
 from ProgramNode import *
-from graphviz import Source
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig, LoopbackInterface
+from random import random
 
 config = {
 
@@ -13,12 +13,13 @@ config = {
         "con1": {
             'type': 'opx1',
             'analog_outputs': {
-                1: {'offset': +0.0},
+                1: {'offset': 0},
+                2: {'offset': 0}
             },
             'analog_inputs': {
                 1: {'offset': 0}  # SET READ
             }
-        }
+        },
     },
 
     'elements': {
@@ -27,10 +28,28 @@ config = {
             "singleInput": {
                 "port": ("con1", 1)
             },
-            'intermediate_frequency': 1e6,
+            'intermediate_frequency': 0,  # randomized frequency for testing
             'operations': {
                 'playOp': "constPulse",
             },
+
+        },
+
+        "qe2": {
+            "singleInput": {
+                # the port we play on to influence qe2
+                "port": ("con1", 2)
+            },
+            'intermediate_frequency': 0,
+            'operations': {
+                'playOp': "constPulse",
+            },
+            'outputs': {
+                # the port we measure to get the output of qe2
+                'output1': ('con1', 1)
+            },
+            'time_of_flight': 28,
+            'smearing': 0
         },
     },
 
@@ -51,4 +70,38 @@ config = {
         },
     }
 }
+
+# Open communication with the server.
+QMm = QuantumMachinesManager()
+
+# Create a quantum machine based on the configuration.
+
+QM = QMm.open_qm(config)
+
+sim_args = {'simulate': SimulationConfig(int(1e3), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)]))}
+
+
+def resonator_spectroscopy(res_freq):
+    with program() as qua_prog:
+        a = declare(int, value=int(res_freq))
+        save(a, 'known_res_freq')
+
+        int_freq = declare(int)
+        with for_(int_freq, 90e6, int_freq < 110e6, int_freq+1e5):
+            update_frequency('qe1', int_freq)
+            update_frequency('qe2', int_freq)
+
+    return qua_prog
+
+
+cal_graph = ProgramGraph()
+
+a = QuaNode('resonator-spect', resonator_spectroscopy)
+a.input = {'res_freq': 100e6 + (random() - 0.5) * 10e6}
+a.output_vars = {'known_res_freq'}
+a.quantum_machine = QM
+a.simulation_kwargs = sim_args
+cal_graph.add_nodes([a])
+cal_graph.run()
+print(a.result)
 
