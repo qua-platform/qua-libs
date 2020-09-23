@@ -41,9 +41,6 @@ config = {
                 "port": ("con1", 2)
             },
             'intermediate_frequency': 0,
-            'operations': {
-                'playOp': "constPulse",
-            },
             'outputs': {
                 # the port we measure to get the output of qe2
                 'output1': ('con1', 1)
@@ -71,14 +68,22 @@ config = {
             'waveforms': {
                 'single': 'const_wf'
             },
+            'integration_weights': {
+                'integW1': 'integW1',
+                'integW2': 'integW2',
+            }
         },
     },
     'integration_weights': {
-            'integW': {
-                'cosine': [1] * 1000,
-                'sine': [1] * 1000
-            },
+        'integW1': {
+            'cosine': [1] * 1000,
+            'sine': [0] * 1000
         },
+        'integW2': {
+            'cosine': [0] * 1000,
+            'sine': [1] * 1000
+        },
+    },
     "waveforms": {
         'const_wf': {
             'type': 'constant',
@@ -100,25 +105,33 @@ sim_args = {'simulate': SimulationConfig(int(1e3), simulation_interface=Loopback
 def resonator_spectroscopy(res_freq):
     with program() as qua_prog:
         stream = declare_stream()
-        x = declare(fixed, value=res_freq-90e6)
+        x = declare(fixed, value=(res_freq - 90e6) / 100e6)
+        save(x, 'x')
         int_freq = declare(int)
-        with for_(int_freq, 90e6, int_freq < 110e6, int_freq + 1e5):
+        I = declare(fixed)
+        Q = declare(fixed)
+
+        with for_(int_freq, 90e6, int_freq < 110e6, int_freq + 1e6):
             update_frequency('qe1', int_freq)
             update_frequency('qe2', int_freq)
-            play('playOp' * amp(1/(1+x*x)), 'qe1')
-            measure('readoutOp', 'qe2', stream)
-            assign(x, x+1e5)
+            play('playOp' * amp(1 / (1 + x * x)), 'qe1')
+            measure('readoutOp', 'qe2', stream, ('integW1', I), ('integW2', Q))
+            assign(x, x + 0.01)
+            save(I, 'I')
+            save(Q, 'Q')
+        with stream_processing():
+            stream.input1().with_timestamps().save_all('data')
     return qua_prog
 
 
 cal_graph = ProgramGraph()
 
-a = QuaNode('resonator-spect', resonator_spectroscopy)
+a = QuaNode('resonator_spect', resonator_spectroscopy)
 a.input = {'res_freq': int(100e6 + (random() - 0.5) * 10e6)}
-print(a.input['res_freq'])
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
-a.output_vars = {'a'}
+a.output_vars = {'data', 'x', 'I', 'Q'}
 cal_graph.add_nodes([a])
 cal_graph.run()
 
+print(a.result)
