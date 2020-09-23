@@ -222,10 +222,14 @@ class QuaNode(ProgramNode, ABC):
         self.get_result()
 
     def execute(self):
+        print("EXECUTING QuaNode {}...".format(self.label))
         self._job = self._quantum_machine.execute(self._qua_program, **self._execution_kwargs)
+        print("DONE")
 
     def simulate(self):
+        print("SIMULATING QuaNode {}...".format(self.label))
         self._job = self._quantum_machine.simulate(self._qua_program, **self._simulation_kwargs)
+        print("DONE")
 
 
 class PyNode(ProgramNode):
@@ -247,7 +251,9 @@ class PyNode(ProgramNode):
         pass
 
     def run(self):
+        print("RUNNING PyNode {}...".format(self.label))
         self._job_results = self.program(**self.input)
+        print("DONE")
         assert type(self._job_results) is dict, \
             "TypeError: Expected <dict> but got <{}> as program results".format(type(self._job_results))
         self.get_result()
