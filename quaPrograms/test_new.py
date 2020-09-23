@@ -111,19 +111,23 @@ sim_args = {'simulate': SimulationConfig(int(1e3))}
 
 a = QuaNode(1, _program=qua_wrap, _input={'var_name': 'ap'}, _output_vars={'ap'},
             _quantum_machine=QM, _simulation_kwargs=sim_args)
-b = PyNode(2, _program=py_func, _input={'s': 0.55, 'ab': a.output('ap')}, _output_vars={'v'})
 
-c = QuaNode(3, _program=qua_wrap2, _input={'d': a.output(), 'a': b.output('v')}, _output_vars={'aas'},
-            _quantum_machine=QM, _simulation_kwargs=sim_args)
-d = PyNode(4, _program=lambda x: {'x': x}, _input={'x': 1}, _output_vars={'x'})
+b = PyNode(2, py_func, _input={'s': 0.55})
+b.input['ab'] = a.output('ap')
+b.output_vars = {'v'}
+
+c = QuaNode(3, qua_wrap2, {'d': a.output(), 'a': b.output('v')}, {'aas'}, QM, sim_args)
+
+d = PyNode(4, lambda x: {'m': x}, {'x': 1}, {'m'})
+
 g = ProgramGraph()
 g.add_nodes([a, b, c, d])
 g.add_edges({(d, c)})
 # g.remove_nodes({c})
-print("Put the following in webgraphviz.com:")
-print(g.export_dot_graph())
+print("TO visualize graph put the following string in webgraphviz.com:\n")
+print(g.export_dot_graph(), '\n')
 g.run()
 print(c.result)
 # graph_plot = Source(g.export_dot_graph())
 # graph_plot.render('g', view=True)
-
+#

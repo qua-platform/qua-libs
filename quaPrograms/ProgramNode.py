@@ -128,14 +128,15 @@ class QuaNode(ProgramNode, ABC):
 
     def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
                  _output_vars: Set[str] = None,
-                 _quantum_machine: QuantumMachine = None, _simulate_or_execute: str = 'simulate',
-                 _simulation_kwargs: Dict[str, Any] = None, _execution_kwargs: Dict[str, Any] = None):
+                 _quantum_machine: QuantumMachine = None, _simulation_kwargs: Dict[str, Any] = None,
+                 _execution_kwargs: Dict[str, Any] = None,  _simulate_or_execute: str = None):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
         self._qua_program: qm.program._Program = None
         self._quantum_machine: QuantumMachine = None
         self._simulate_or_execute: str = None
+
         self._execution_kwargs = _execution_kwargs
         self._simulation_kwargs = _simulation_kwargs
 
@@ -159,9 +160,15 @@ class QuaNode(ProgramNode, ABC):
 
     @simulate_or_execute.setter
     def simulate_or_execute(self, s_or_e):
-        assert s_or_e == 'simulate' or s_or_e == 'execute', \
-            "ValueError: Expected 'simulate' or 'execute' but got {}".format(s_or_e)
-        self._simulate_or_execute = s_or_e
+        if s_or_e is not None:
+            assert s_or_e == 'simulate' or s_or_e == 'execute', \
+                "ValueError: Expected 'simulate' or 'execute' but got '{}'".format(s_or_e)
+            self._simulate_or_execute = s_or_e
+        else:
+            if self._simulation_kwargs:
+                self._simulate_or_execute = 'simulate'
+            elif self._execution_kwargs:
+                self._simulate_or_execute = 'execute'
 
     def get_result(self):
         for var in self.output_vars:
@@ -182,6 +189,10 @@ class QuaNode(ProgramNode, ABC):
             "In node <id:{},label:{}> TypeError: Try a different program. " \
             "Expected <qm.program._Program> but given <{}>".format(self.id, self.label, type(qua_program))
         self._qua_program = qua_program
+
+        assert self._simulate_or_execute is not None,\
+            "Error: Either missing parameters or " \
+            "didn't specify whether simulate or execute QuaNode {}".format(self.label)
 
         if self._simulate_or_execute == 'simulate':
             self.simulate()
