@@ -156,6 +156,11 @@ class QuaNode(ProgramNode, ABC):
 
     @property
     def simulate_or_execute(self):
+        if self._simulate_or_execute is None:
+            if self._simulation_kwargs:
+                self._simulate_or_execute = 'simulate'
+            elif self._execution_kwargs:
+                self._simulate_or_execute = 'execute'
         return self._simulate_or_execute
 
     @simulate_or_execute.setter
@@ -164,11 +169,26 @@ class QuaNode(ProgramNode, ABC):
             assert s_or_e == 'simulate' or s_or_e == 'execute', \
                 "ValueError: Expected 'simulate' or 'execute' but got '{}'".format(s_or_e)
             self._simulate_or_execute = s_or_e
-        else:
-            if self._simulation_kwargs:
-                self._simulate_or_execute = 'simulate'
-            elif self._execution_kwargs:
-                self._simulate_or_execute = 'execute'
+
+    @property
+    def execution_kwargs(self):
+        return self._execution_kwargs
+
+    @execution_kwargs.setter
+    def execution_kwargs(self, kwargs):
+        assert type(kwargs) is dict,\
+            "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+        self._execution_kwargs = kwargs
+
+    @property
+    def simulation_kwargs(self):
+        return self._simulation_kwargs
+
+    @simulation_kwargs.setter
+    def simulation_kwargs(self, kwargs):
+        assert type(kwargs) is dict, \
+            "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+        self._simulation_kwargs = kwargs
 
     def get_result(self):
         for var in self.output_vars:
@@ -190,13 +210,13 @@ class QuaNode(ProgramNode, ABC):
             "Expected <qm.program._Program> but given <{}>".format(self.id, self.label, type(qua_program))
         self._qua_program = qua_program
 
-        assert self._simulate_or_execute is not None,\
+        assert self.simulate_or_execute is not None,\
             "Error: Either missing parameters or " \
             "didn't specify whether simulate or execute QuaNode {}".format(self.label)
 
-        if self._simulate_or_execute == 'simulate':
+        if self.simulate_or_execute == 'simulate':
             self.simulate()
-        if self._simulate_or_execute == 'execute':
+        if self.simulate_or_execute == 'execute':
             self.execute()
 
         self.get_result()

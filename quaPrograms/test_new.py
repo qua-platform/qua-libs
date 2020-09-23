@@ -116,8 +116,8 @@ b = PyNode(2, py_func, _input={'s': 0.55})
 b.input['ab'] = a.output('ap')
 b.output_vars = {'v'}
 
-c = QuaNode(3, qua_wrap2, {'d': a.output(), 'a': b.output('v')}, {'aas'}, QM, sim_args)
-
+c = QuaNode(3, qua_wrap2, {'d': a.output(), 'a': b.output('v')}, {'aas'}, QM)
+c.simulation_kwargs = sim_args
 d = PyNode(4, lambda x: {'m': x}, {'x': 1}, {'m'})
 
 g = ProgramGraph()
