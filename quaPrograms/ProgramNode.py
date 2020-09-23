@@ -358,7 +358,7 @@ class ProgramGraph:
     def run(self, start_nodes: List[ProgramNode] = []):
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
-        If given start_nodes, run the directed subgraph starting from those nodes.
+        NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
         :param start_nodes: list of nodes to start running the graph from
         :type: start_nodes: List[ProgramNode]
         :return:
@@ -422,8 +422,7 @@ class ProgramGraph:
                 if backward_edges[m] == set():
                     del backward_edges[m]
                     s.append(m)
-        print(self.edges.keys())
-        print(sorted_set, " & ", edges.keys(), "=", sorted_set & edges.keys())
+
         # TODO: currently works only for starting from non-dependent nodes
         assert edges.keys() == set(), \
             "Error: Graph is cyclic ! Try changing dependencies."
@@ -445,13 +444,13 @@ class ProgramGraph:
                     dot_graph += '"{}" -> "{}"'.format(self.nodes[node_id].label, self.nodes[dest_id].label)
                 else:
                     dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
-                if dest_id in self._link_nodes_ids:
-                    var_name = self._link_nodes_ids[dest_id].get(node_id, -1)
-                    if var_name is None:
-                        var_name = '!all'
-                    if var_name == -1:
-                        var_name = '!none'
-                    dot_graph += ' [label="{}"]'.format(var_name)
+
+                var_name = self._link_nodes_ids.get(dest_id, dict()).get(node_id, -1)
+                if var_name is None:
+                    var_name = '!all'
+                if var_name == -1:
+                    var_name = '!none'
+                dot_graph += ' [label="{}"]'.format(var_name)
 
                 dot_graph += ';'
         dot_graph += '}'

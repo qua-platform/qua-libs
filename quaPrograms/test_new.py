@@ -102,27 +102,27 @@ def py_func(s, ab):
 
 def qua_wrap2(d, a):
     with program() as qua_prog:
-        A = declare(fixed, value=a + d['ass'][0])
+        A = declare(fixed, value=a + d['ap'][0])
         save(A, 'aas')
     return qua_prog
 
 
 sim_args = {'simulate': SimulationConfig(int(1e3))}
 
-a = QuaNode(1, _program=qua_wrap, _input={'var_name': 'ass'}, _output_vars={'ass'},
+a = QuaNode(1, _program=qua_wrap, _input={'var_name': 'ap'}, _output_vars={'ap'},
             _quantum_machine=QM, _simulation_kwargs=sim_args)
-b = PyNode(2, _program=py_func, _input={'s': 0.55, 'ab': a.output('ass')}, _output_vars={'v'})
+b = PyNode(2, _program=py_func, _input={'s': 0.55, 'ab': a.output('ap')}, _output_vars={'v'})
 
 c = QuaNode(3, _program=qua_wrap2, _input={'d': a.output(), 'a': b.output('v')}, _output_vars={'aas'},
             _quantum_machine=QM, _simulation_kwargs=sim_args)
 d = PyNode(4, _program=lambda x: {'x': x}, _input={'x': 1}, _output_vars={'x'})
 g = ProgramGraph()
 g.add_nodes([a, b, c, d])
-g.add_edges({(d, a)})
+g.add_edges({(d, c)})
 # g.remove_nodes({c})
 print("Put the following in webgraphviz.com:")
 print(g.export_dot_graph())
-g.run({a})
+g.run()
 print(c.result)
 # graph_plot = Source(g.export_dot_graph())
 # graph_plot.render('g', view=True)
