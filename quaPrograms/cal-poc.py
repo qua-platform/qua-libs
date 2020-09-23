@@ -1,9 +1,12 @@
 from ProgramNode import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig, LoopbackInterface
-from random import random
 
+from qm import LoopbackInterface
+from qm import SimulationConfig
+from random import random
+import matplotlib.pyplot as plt
+import numpy as np
 config = {
 
     'version': 1,
@@ -13,48 +16,51 @@ config = {
         "con1": {
             'type': 'opx1',
             'analog_outputs': {
-                1: {'offset': 0},
-                2: {'offset': 0}
+                1: {'offset': +0.0},
+                2: {'offset': +0.},
+                3: {'offset': +0.},
+
+            },
+            'digital_outputs': {
+                1: {},
             },
             'analog_inputs': {
-                1: {'offset': 0}  # SET READ
+                1: {'offset': +0.0},
             }
-        },
+        }
     },
 
     'elements': {
 
+
         "qe1": {
             "singleInput": {
-                "port": ("con1", 1)
+                "port": ("con1", 3)
             },
-            'intermediate_frequency': 0,  # randomized frequency for testing
+            'intermediate_frequency': 100e6,
             'operations': {
                 'playOp': "constPulse",
             },
-
         },
-
         "qe2": {
             "singleInput": {
-                # the port we play on to influence qe2
                 "port": ("con1", 2)
             },
-            'intermediate_frequency': 0,
             'outputs': {
-                # the port we measure to get the output of qe2
                 'output1': ('con1', 1)
             },
+            'intermediate_frequency': 100e6,
             'operations': {
                 'readoutOp': 'readoutPulse',
 
             },
-            'time_of_flight': 28,
+            'time_of_flight': 180,
             'smearing': 0
         },
     },
 
     "pulses": {
+
         "constPulse": {
             'operation': 'control',
             'length': 1000,
@@ -68,27 +74,33 @@ config = {
             'waveforms': {
                 'single': 'const_wf'
             },
+            'digital_marker': 'ON',
             'integration_weights': {
-                'integW1': 'integW1',
-                'integW2': 'integW2',
-            }
+                'x': 'xWeights',
+                'y': 'yWeights'}
         },
     },
-    'integration_weights': {
-        'integW1': {
-            'cosine': [1] * 1000,
-            'sine': [0] * 1000
-        },
-        'integW2': {
-            'cosine': [0] * 1000,
-            'sine': [1] * 1000
-        },
-    },
+
     "waveforms": {
         'const_wf': {
             'type': 'constant',
-            'sample': 0.2
+            'sample': 0.4
         },
+    },
+    'digital_waveforms': {
+        'ON': {
+            'samples': [(1, 0)]
+        },
+    },
+    'integration_weights': {
+        'xWeights': {
+            'cosine': [1.0] * 1000,
+            'sine': [0.0] * 1000
+        },
+        'yWeights': {
+            'cosine': [0.0] * 1000,
+            'sine': [1.0] * 1000
+        }
     }
 }
 
@@ -99,39 +111,47 @@ QMm = QuantumMachinesManager()
 
 QM = QMm.open_qm(config)
 
-sim_args = {'simulate': SimulationConfig(int(1e3), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)]))}
+sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)]))}
 
 
 def resonator_spectroscopy(res_freq):
-    with program() as qua_prog:
-        stream = declare_stream()
-        x = declare(fixed, value=(res_freq - 90e6) / 100e6)
-        save(x, 'x')
-        int_freq = declare(int)
-        I = declare(fixed)
-        Q = declare(fixed)
+    x_vals = np.linspace(-5, 5, 100)
+    a_vals = (1 / (1 + x_vals ** 2)).tolist()
+    freqs = np.linspace(0.9*res_freq, 1.1*res_freq, 100).astype(int).tolist()
 
-        with for_(int_freq, 90e6, int_freq < 110e6, int_freq + 1e6):
-            update_frequency('qe1', int_freq)
-            update_frequency('qe2', int_freq)
-            play('playOp' * amp(1 / (1 + x * x)), 'qe1')
-            measure('readoutOp', 'qe2', stream, ('integW1', I), ('integW2', Q))
-            assign(x, x + 0.01)
-            save(I, 'I')
-            save(Q, 'Q')
+    with program() as qua_prog:
+        vec = declare(fixed, value=a_vals)
+        freq_vec = declare(int, value=freqs)
+        ind = declare(int)
+        a = declare(fixed)
+        I = declare(fixed, value=0)
+        Q = declare(fixed, value=0)
+        I_stream = declare_stream()
+        Q_stream = declare_stream()
+
+        # with for_each_(a,a_vals):
+        with for_(ind, 0, ind <= 100, ind + 1):
+            update_frequency('qe1', freq_vec[ind])
+            update_frequency('qe2', freq_vec[ind])
+            play('playOp' * amp(vec[ind]), 'qe1')
+            measure('readoutOp', 'qe2', 'raw', demod.full('x', I), demod.full('y', Q))
+            save(I, I_stream)
+            save(Q, Q_stream)
+
         with stream_processing():
-            stream.input1().with_timestamps().save_all('data')
+            I_stream.with_timestamps().save_all('I')
+            Q_stream.with_timestamps().save_all('Q')
     return qua_prog
 
-
 cal_graph = ProgramGraph()
-
+#
 a = QuaNode('resonator_spect', resonator_spectroscopy)
+
 a.input = {'res_freq': int(100e6 + (random() - 0.5) * 10e6)}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
 a.output_vars = {'data', 'x', 'I', 'Q'}
 cal_graph.add_nodes([a])
 cal_graph.run()
-
 print(a.result)
+plt.plot(np.sqrt(a.result['Q']**2+a.result['I']**2))
