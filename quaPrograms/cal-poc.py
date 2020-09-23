@@ -48,6 +48,10 @@ config = {
                 # the port we measure to get the output of qe2
                 'output1': ('con1', 1)
             },
+            'operations': {
+                'readoutOp': 'readoutPulse',
+
+            },
             'time_of_flight': 28,
             'smearing': 0
         },
@@ -61,8 +65,20 @@ config = {
                 'single': 'const_wf'
             }
         },
+        'readoutPulse': {
+            'operation': 'measure',
+            'length': 1000,
+            'waveforms': {
+                'single': 'const_wf'
+            },
+        },
     },
-
+    'integration_weights': {
+            'integW': {
+                'cosine': [1] * 1000,
+                'sine': [1] * 1000
+            },
+        },
     "waveforms": {
         'const_wf': {
             'type': 'constant',
@@ -84,21 +100,21 @@ sim_args = {'simulate': SimulationConfig(int(1e3), simulation_interface=Loopback
 def resonator_spectroscopy(res_freq):
     with program() as qua_prog:
         stream = declare_stream()
-        x = declare(int)
+        x = declare(fixed, value=res_freq-90e6)
         int_freq = declare(int)
         with for_(int_freq, 90e6, int_freq < 110e6, int_freq + 1e5):
             update_frequency('qe1', int_freq)
             update_frequency('qe2', int_freq)
-            x = res_freq-int_freq
-            play('playOp' * amp(1/(1 + x * x)), 'qe1')
-
+            play('playOp' * amp(1/(1+x*x)), 'qe1')
+            measure('readoutOp', 'qe2', stream)
+            assign(x, x+1e5)
     return qua_prog
 
 
 cal_graph = ProgramGraph()
 
 a = QuaNode('resonator-spect', resonator_spectroscopy)
-a.input = {'res_freq': 100e6 + (random() - 0.5) * 10e6}
+a.input = {'res_freq': int(100e6 + (random() - 0.5) * 10e6)}
 print(a.input['res_freq'])
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
