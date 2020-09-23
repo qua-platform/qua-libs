@@ -6,9 +6,15 @@ from datetime import date
 from shutil import copyfile
 import os
 import json
+import jinja2
 import dominate
 import dominate.tags as dom_tags
 
+
+# class GraphStore:
+#     def __init__(self):
+#         self.resStore=ResultStore()
+#  json report format, jinja,
 
 class ResultStore(BaseStore):
 
@@ -83,8 +89,6 @@ class ResultStore(BaseStore):
             print('No job id. cannot generate log file')
             # raise KeyError
 
-
-
     def get_save_path(self, job_id):
         return self._job_path(job_id)
 
@@ -114,8 +118,10 @@ class ResultStore(BaseStore):
         print('------------------')
         [print(f"{key} : {self.results[key]}") for key in self.results]
 
+def make_report(result_folder_list):
+    pass
 
-def result_report(result_folder_list):
+def make_result_report(result_folder_list):
     doc = dominate.document(title='QM results report')
 
     with doc.head:
@@ -130,29 +136,34 @@ def result_report(result_folder_list):
             dom_tags.attr(cls='body')
 
             for folder in result_folder_list:
-                dom_tags.p(f"{folder}")
-                for file in os.listdir(folder):
-                    dom_tags.p(file)
+                with dom_tags.div(id=folder):
+                    dom_tags.p(f"{folder}")
+                    for file_name in os.listdir(folder):
+                        with dom_tags.div(id=file_name):
+                            if file_name.split('.')[1] == 'npz':
+                                dom_tags.p(file_name)
+                            else:
+                                with open(os.path.join(folder, file_name), 'r') as f:
+                                    dom_tags.p(f.read())
 
-    with open('report.html','w') as report_html:
+    with open('report.html', 'w') as report_html:
         report_html.write(doc.__str__())
-
 
 
 def get_results_in_path(path):
     folder_list = [x[0] for x in os.walk(path)]
-    res_folder_list=[]
+    res_folder_list = []
     for folder in folder_list:
-        if os.path.exists(os.path.join(folder,'result.log')):
+        if os.path.exists(os.path.join(folder, 'result.log')):
             res_folder_list.append(folder)
             print('results folder found!')
     return res_folder_list
+
 
 if __name__ == '__main__':
     a = ResultStore()
     a.add_result('this', 1)
     a.add_result('that', 2)
     a.list_results()
-    res_list=get_results_in_path('res')
-    result_report(res_list)
-
+    res_list = get_results_in_path('res')
+    make_result_report(res_list)

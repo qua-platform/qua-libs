@@ -1,13 +1,13 @@
 import pytest
 
-from result_manager.results import *
-
-from base_configuration.vanilla_config import *
-from base_configuration.hello_qua import *
+from quaLibs.result_manager.results import *
+from quaLibs.base_configuration.vanilla_config import *
+from quaLibs.base_configuration.hello_qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 import shutil
 
+curr_path='res'
 
 def test_results_manager_path_generate():
     myResults = ResultStore()
@@ -17,7 +17,7 @@ def test_results_manager_path_generate():
     res = job.result_handles
     res.save_to_store()
     assert(os.path.exists(myResults.get_save_path(res._job_id)))
-    shutil.rmtree('res')
+    shutil.rmtree(curr_path)
 
 def test_results_manager_add_result():
     myResults=ResultStore()
@@ -31,7 +31,7 @@ def test_results_manager_add_result():
     with open(os.path.join(res_path,'results.json'),'r') as f:
         res_dictionary=json.loads(f.read())
         assert(res_dictionary['a']==1)
-    shutil.rmtree('res')
+    shutil.rmtree(curr_path)
 
 def test_results_manager_drop_result():
     myResults=ResultStore()
@@ -47,7 +47,7 @@ def test_results_manager_drop_result():
         res_dictionary=json.loads(f.read())
         with pytest.raises(KeyError):
             res_dictionary['a']==1
-    shutil.rmtree('res')
+    shutil.rmtree(curr_path)
 
 def test_results_manager_save_calling_script():
     myResults=ResultStore(script_path=__file__)
@@ -59,7 +59,7 @@ def test_results_manager_save_calling_script():
     res.save_to_store()
     res_path=myResults.get_save_path(res._job_id)
     assert(os.path.exists(os.path.join(res_path,__file__)))
-    shutil.rmtree('res')
+    shutil.rmtree(curr_path)
 
 def test_results_manager_save_arb_root():
     myResults = ResultStore()
@@ -69,7 +69,7 @@ def test_results_manager_save_arb_root():
     res = job.result_handles
     res.save_to_store()
     assert (os.path.exists(myResults.get_save_path(res._job_id)))
-    shutil.rmtree('res')
+    shutil.rmtree(curr_path)
 
 def test_results_manager_list_results_in_folder():
     myResults = ResultStore()
@@ -78,5 +78,5 @@ def test_results_manager_list_results_in_folder():
     job = qm1.simulate(hello_qua(), SimulationConfig(1000))
     res = job.result_handles
     res.save_to_store()
-    shutil.rmtree('res')
+    # shutil.rmtree('res')
 

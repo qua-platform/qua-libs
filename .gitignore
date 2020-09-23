@@ -2,3 +2,5 @@
 quaPrograms/.idea/
 
 .idea/
+
+quaPrograms/quaLibs/result_manager/.pytest_cache/
