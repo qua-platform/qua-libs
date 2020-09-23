@@ -4,3 +4,7 @@ quaPrograms/.idea/
 .idea/
 
 quaPrograms/quaLibs/result_manager/.pytest_cache/
+
+quaPrograms/quaLibs/__pycache__/
+
+quaPrograms/quaLibs/result_manager/__pycache__/
