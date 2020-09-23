@@ -136,11 +136,12 @@ class QuaNode(ProgramNode, ABC):
         self._qua_program: qm.program._Program = None
         self._quantum_machine: QuantumMachine = None
         self._simulate_or_execute: str = None
-
-        self._execution_kwargs = _execution_kwargs
-        self._simulation_kwargs = _simulation_kwargs
+        self._execution_kwargs = None
+        self._simulation_kwargs = None
 
         self.quantum_machine = _quantum_machine
+        self.execution_kwargs = _execution_kwargs
+        self.simulation_kwargs = _simulation_kwargs
         self.simulate_or_execute = _simulate_or_execute
 
     @property
@@ -176,8 +177,9 @@ class QuaNode(ProgramNode, ABC):
 
     @execution_kwargs.setter
     def execution_kwargs(self, kwargs):
-        assert type(kwargs) is dict,\
-            "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+        if kwargs is not None:
+            assert type(kwargs) is dict,\
+                "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
         self._execution_kwargs = kwargs
 
     @property
@@ -186,8 +188,9 @@ class QuaNode(ProgramNode, ABC):
 
     @simulation_kwargs.setter
     def simulation_kwargs(self, kwargs):
-        assert type(kwargs) is dict, \
-            "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+        if kwargs is not None:
+            assert type(kwargs) is dict, \
+                "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
         self._simulation_kwargs = kwargs
 
     def get_result(self):
@@ -212,7 +215,7 @@ class QuaNode(ProgramNode, ABC):
 
         assert self.simulate_or_execute is not None,\
             "Error: Either missing parameters or " \
-            "didn't specify whether simulate or execute QuaNode {}".format(self.label)
+            "didn't specify whether to simulate/execute QuaNode {}".format(self.label)
 
         if self.simulate_or_execute == 'simulate':
             self.simulate()
