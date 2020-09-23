@@ -83,13 +83,14 @@ sim_args = {'simulate': SimulationConfig(int(1e3), simulation_interface=Loopback
 
 def resonator_spectroscopy(res_freq):
     with program() as qua_prog:
-        a = declare(int, value=int(res_freq))
-        save(a, 'known_res_freq')
-
+        stream = declare_stream()
+        x = declare(int)
         int_freq = declare(int)
-        with for_(int_freq, 90e6, int_freq < 110e6, int_freq+1e5):
+        with for_(int_freq, 90e6, int_freq < 110e6, int_freq + 1e5):
             update_frequency('qe1', int_freq)
             update_frequency('qe2', int_freq)
+            x = res_freq-int_freq
+            play('playOp' * amp(1/(1 + x * x)), 'qe1')
 
     return qua_prog
 
@@ -98,10 +99,10 @@ cal_graph = ProgramGraph()
 
 a = QuaNode('resonator-spect', resonator_spectroscopy)
 a.input = {'res_freq': 100e6 + (random() - 0.5) * 10e6}
-a.output_vars = {'known_res_freq'}
+print(a.input['res_freq'])
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
+a.output_vars = {'a'}
 cal_graph.add_nodes([a])
 cal_graph.run()
-print(a.result)
 
