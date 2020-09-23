@@ -194,11 +194,13 @@ class QuaNode(ProgramNode, ABC):
         self._simulation_kwargs = kwargs
 
     def get_result(self):
+        assert self.output_vars is not None, \
+            "Error: must specify output variables for node <{}>".format(self.label)
         for var in self.output_vars:
             try:
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
-            except KeyError:
-                print("Couldn't fetch {} from Qua program results".format(var))
+            except AttributeError:
+                print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
 
     @property
     def timestamp(self):
@@ -243,6 +245,8 @@ class PyNode(ProgramNode):
         self._job_results = None
 
     def get_result(self):
+        assert self.output_vars is not None, \
+            "Error: must specify output variables for node <{}>".format(self.label)
         for var in self.output_vars:
             try:
                 self._result[var] = self._job_results[var]
