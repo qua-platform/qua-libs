@@ -114,10 +114,10 @@ QM = QMm.open_qm(config)
 sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)]))}
 
 
-def resonator_spectroscopy(res_freq):
-    x_vals = np.linspace(-5, 5, 100)
+def spectroscopy(res_freq, range_):
+    x_vals = np.linspace(-range_ / 2, range_ / 2, 100)
     a_vals = (1 / (1 + x_vals ** 2)).tolist()
-    freqs = np.linspace(0.95 * res_freq, 1.05 * res_freq, 100).astype(int).tolist()
+    freqs = np.linspace((1 - range_ / 20) * res_freq, (1 + range_ / 20) * res_freq, 100).astype(int).tolist()
 
     with program() as qua_prog:
         vec = declare(fixed, value=a_vals)
@@ -143,35 +143,49 @@ def resonator_spectroscopy(res_freq):
     return qua_prog
 
 
-def rand_freq():
-    return {'rand_freq': int(100e6 + (random() - 0.5) * 10e6)}
+def rand_freq(freq, range_):
+    return {'rand_freq': int(freq + (random() - 0.5) * range_)}
 
 
-def extract_res_freq(freqs, I, Q):
+def extract_res_freq(freqs, I, Q, name):
     res_freq = freqs[np.argmax(np.sqrt(I ** 2 + Q ** 2))]
 
-    plt.plot(freqs * 1e-6, np.sqrt(I ** 2 +Q ** 2))
+    plt.plot(freqs * 1e-6, np.sqrt(I ** 2 + Q ** 2), label=name)
     plt.axvline(x=res_freq * 1e-6, color='r')
     plt.xlabel('Frequence [MHz]')
+    plt.ylabel('Response')
+    plt.legend()
 
     return {'res_freq': res_freq}
 
 
-r = PyNode('randomize freq', rand_freq)
-r.output_vars = {'rand_freq'}
+r = PyNode('rand resonator freq', rand_freq, {'freq': 100e6, 'range_': 10e6}, {'rand_freq'})
 
-a = QuaNode('resonator spect', resonator_spectroscopy)
-a.input = {'res_freq': r.output('rand_freq')}
+a = QuaNode('resonator spect', spectroscopy)
+a.input = {'res_freq': r.output('rand_freq'), 'range_': 10}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
 a.output_vars = {'I', 'Q', 'freqs'}
 
-b = PyNode('extract_res_freq', extract_res_freq)
-b.input = {'freqs': a.output('freqs'), 'I': a.output('I'), 'Q': a.output('Q')}
+b = PyNode('extract res freq', extract_res_freq)
+b.input = {'freqs': a.output('freqs'), 'I': a.output('I'), 'Q': a.output('Q'), 'name': 'Readout resonator'}
 b.output_vars = {'res_freq'}
 
+c = PyNode('rand qubit freq', rand_freq, {'freq': b.output('res_freq'), 'range_': 1e6}, {'rand_freq'})
+
+d = QuaNode('qubit spect', spectroscopy)
+d.input = {'res_freq': c.output('rand_freq'), 'range_': 1}
+d.output_vars = {'freqs', 'I', 'Q'}
+d.quantum_machine = QM
+d.simulation_kwargs = sim_args
+
+e = PyNode('extract qubit freq', extract_res_freq)
+e.input = {'freqs': d.output('freqs'), 'I': d.output('I'), 'Q': d.output('Q'), 'name': 'Qubit'}
+e.output_vars = {'res_freq'}
+
 cal_graph = ProgramGraph()
-cal_graph.add_nodes([a, b, r])
+cal_graph.add_nodes([a, b, r, c, d, e])
+
 cal_graph.run()
 
 print(cal_graph.export_dot_graph())
