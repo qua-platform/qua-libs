@@ -219,8 +219,8 @@ class QuaNode(ProgramNode, ABC):
         # Get the Qua program that is wrapped by the python function
         qua_program = self.program(**self._input)
         assert isinstance(qua_program, qm.program._Program), \
-            "In node <id:{},label:{}> TypeError: Try a different program. " \
-            "Expected <qm.program._Program> but given <{}>".format(self.id, self.label, type(qua_program))
+            "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
+            "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
         self._qua_program = qua_program
 
         assert self.simulate_or_execute is not None, \
@@ -254,8 +254,9 @@ class PyNode(ProgramNode):
         self._type = 'Py'
 
     def get_result(self):
-        assert self.output_vars is not None, \
-            "Error: must specify output variables for node <{}>".format(self.label)
+        if self.output_vars is None:
+            print("ATTENTION! No output variables defined for node <{}>".format(self.label))
+            return
         for var in self.output_vars:
             try:
                 self._result[var] = self._job_results[var]
@@ -271,7 +272,8 @@ class PyNode(ProgramNode):
         self._job_results = self.program(**self.input)
         print("DONE")
         assert type(self._job_results) is dict, \
-            "TypeError: Expected <dict> but got <{}> as program results".format(type(self._job_results))
+            "TypeError: Expected <dict> but got <{}> as program results.\n" \
+            "PyNode program must return a dictionary.".format(type(self._job_results))
         self.get_result()
 
 

@@ -115,8 +115,10 @@ sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=Loopback
 
 
 def spectroscopy(res_freq, range_):
+    # to simulate response
     x_vals = np.linspace(-range_ / 2, range_ / 2, 100)
     a_vals = (1 / (1 + x_vals ** 2)).tolist()
+
     freqs = np.linspace((1 - range_ / 20) * res_freq, (1 + range_ / 20) * res_freq, 100).astype(int).tolist()
 
     with program() as qua_prog:
@@ -159,6 +161,16 @@ def extract_res_freq(freqs, I, Q, name):
     return {'res_freq': res_freq}
 
 
+def blobs(I, Q):
+    plt.figure()
+    plt.hist2d(I, Q, bins=100)
+    plt.xlabel('I')
+    plt.ylabel('Q')
+    plt.title('thermal distribution')
+
+    # return dict()
+
+
 r = PyNode('rand_resonator_freq', rand_freq, {'freq': 100e6, 'range_': 10e6}, {'rand_freq'})
 
 a = QuaNode('resonator_spect', spectroscopy)
@@ -183,9 +195,13 @@ e = PyNode('extract_qubit_freq', extract_res_freq)
 e.input = {'freqs': d.output('freqs'), 'I': d.output('I'), 'Q': d.output('Q'), 'name': 'Qubit'}
 e.output_vars = {'res_freq'}
 
+g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
+
 cal_graph = ProgramGraph()
-cal_graph.add_nodes([a, b, r, c, d, e])
+cal_graph.add_nodes([a, b, r, c, d, e, g])
+cal_graph.add_edges([(e, g)])
 
 cal_graph.run()
 
+print("TO visualize graph put the following string in webgraphviz.com:\n")
 print(cal_graph.export_dot_graph())
