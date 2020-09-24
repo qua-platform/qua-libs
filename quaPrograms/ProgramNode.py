@@ -431,9 +431,10 @@ class ProgramGraph:
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
-                assert self.nodes[link_node.node.id], \
-                    "Error: Tried to use the output of node <{}>, but the node isn't in the graph".format(
-                        link_node.node.id)
+                assert self.nodes.get(link_node.node.id, None), \
+                    "Tried to use the output of node <{}> as input to <{}>,\n" \
+                    "but <{}> isn't in the graph.".format(
+                        link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 if link_out := link_node.output_var:
                     self.nodes[node_id].input[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
