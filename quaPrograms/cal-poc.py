@@ -151,7 +151,18 @@ a.input = {'res_freq': int(100e6 + (random() - 0.5) * 10e6)}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
 a.output_vars = {'I', 'Q', 'freqs'}
-cal_graph.add_nodes([a])
+
+
+def extract_res_freq(freqs, I, Q):
+    return {'res_freq': freqs[np.argmax(np.sqrt(I ** 2 + Q ** 2))]}
+
+
+b = PyNode('extract_res_freq', extract_res_freq)
+b.input = {'freqs': a.output('freqs'), 'I': a.output('I'), 'Q': a.output('Q')}
+b.output_vars = {'res_freq'}
+
+cal_graph.add_nodes([a, b])
 cal_graph.run()
-print(a.result)
+
 plt.plot(a.result['freqs'], np.sqrt(a.result['Q'] ** 2 + a.result['I'] ** 2))
+plt.axvline(x=b.result['res_freq'], color='r')
