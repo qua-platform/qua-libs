@@ -7,6 +7,7 @@ from qm import SimulationConfig
 from random import random
 import matplotlib.pyplot as plt
 import numpy as np
+
 config = {
 
     'version': 1,
@@ -32,7 +33,6 @@ config = {
 
     'elements': {
 
-
         "qe1": {
             "singleInput": {
                 "port": ("con1", 3)
@@ -54,7 +54,7 @@ config = {
                 'readoutOp': 'readoutPulse',
 
             },
-            'time_of_flight': 180,
+            'time_of_flight': 28,
             'smearing': 0
         },
     },
@@ -94,12 +94,12 @@ config = {
     },
     'integration_weights': {
         'xWeights': {
-            'cosine': [1.0] * 1000,
-            'sine': [0.0] * 1000
+            'cosine': [1.0] * 500,
+            'sine': [0.0] * 500
         },
         'yWeights': {
-            'cosine': [0.0] * 1000,
-            'sine': [1.0] * 1000
+            'cosine': [0.0] * 500,
+            'sine': [1.0] * 500
         }
     }
 }
@@ -117,31 +117,31 @@ sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=Loopback
 def resonator_spectroscopy(res_freq):
     x_vals = np.linspace(-5, 5, 100)
     a_vals = (1 / (1 + x_vals ** 2)).tolist()
-    freqs = np.linspace(0.9*res_freq, 1.1*res_freq, 100).astype(int).tolist()
+    freqs = np.linspace(0.95 * res_freq, 1.05 * res_freq, 100).astype(int).tolist()
 
     with program() as qua_prog:
         vec = declare(fixed, value=a_vals)
         freq_vec = declare(int, value=freqs)
         ind = declare(int)
-        a = declare(fixed)
-        I = declare(fixed, value=0)
-        Q = declare(fixed, value=0)
+        I = declare(fixed)
+        Q = declare(fixed)
         I_stream = declare_stream()
         Q_stream = declare_stream()
 
-        # with for_each_(a,a_vals):
-        with for_(ind, 0, ind <= 100, ind + 1):
+        with for_(ind, 0, ind < 100, ind + 1):
             update_frequency('qe1', freq_vec[ind])
             update_frequency('qe2', freq_vec[ind])
             play('playOp' * amp(vec[ind]), 'qe1')
             measure('readoutOp', 'qe2', 'raw', demod.full('x', I), demod.full('y', Q))
             save(I, I_stream)
             save(Q, Q_stream)
+            save(freq_vec[ind], 'freqs')
 
         with stream_processing():
             I_stream.with_timestamps().save_all('I')
             Q_stream.with_timestamps().save_all('Q')
     return qua_prog
+
 
 cal_graph = ProgramGraph()
 #
@@ -150,8 +150,8 @@ a = QuaNode('resonator_spect', resonator_spectroscopy)
 a.input = {'res_freq': int(100e6 + (random() - 0.5) * 10e6)}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
-a.output_vars = {'data', 'x', 'I', 'Q'}
+a.output_vars = {'I', 'Q', 'freqs'}
 cal_graph.add_nodes([a])
 cal_graph.run()
 print(a.result)
-plt.plot(np.sqrt(a.result['Q']**2+a.result['I']**2))
+plt.plot(a.result['freqs'], np.sqrt(a.result['Q'] ** 2 + a.result['I'] ** 2))
