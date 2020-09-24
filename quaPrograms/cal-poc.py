@@ -148,14 +148,19 @@ def rand_freq():
 
 
 def extract_res_freq(freqs, I, Q):
-    return {'res_freq': freqs[np.argmax(np.sqrt(I ** 2 + Q ** 2))]}
+    res_freq = freqs[np.argmax(np.sqrt(I ** 2 + Q ** 2))]
+
+    plt.plot(freqs * 1e-6, np.sqrt(I ** 2 +Q ** 2))
+    plt.axvline(x=res_freq * 1e-6, color='r')
+    plt.xlabel('Frequence [MHz]')
+
+    return {'res_freq': res_freq}
 
 
 r = PyNode('randomize freq', rand_freq)
 r.output_vars = {'rand_freq'}
-#
-a = QuaNode('resonator spect', resonator_spectroscopy)
 
+a = QuaNode('resonator spect', resonator_spectroscopy)
 a.input = {'res_freq': r.output('rand_freq')}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
@@ -168,9 +173,5 @@ b.output_vars = {'res_freq'}
 cal_graph = ProgramGraph()
 cal_graph.add_nodes([a, b, r])
 cal_graph.run()
-
-plt.plot(a.result['freqs'] * 1e-6, np.sqrt(a.result['Q'] ** 2 + a.result['I'] ** 2))
-plt.axvline(x=b.result['res_freq'] * 1e-6, color='r')
-plt.xlabel('Frequence [MHz]')
 
 print(cal_graph.export_dot_graph())
