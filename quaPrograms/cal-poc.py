@@ -173,5 +173,4 @@ plt.plot(a.result['freqs'] * 1e-6, np.sqrt(a.result['Q'] ** 2 + a.result['I'] **
 plt.axvline(x=b.result['res_freq'] * 1e-6, color='r')
 plt.xlabel('Frequence [MHz]')
 
-cal_graph.remove_nodes({b})
 print(cal_graph.export_dot_graph())

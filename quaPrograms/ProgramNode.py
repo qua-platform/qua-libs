@@ -322,8 +322,7 @@ class ProgramGraph:
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
-                        self._link_nodes_ids.setdefault(node.id, {value.node.id: []})
-                        [value.node.id].append(value.output_var)
+                        self._link_nodes_ids.setdefault(node.id, {value.node.id: []})[value.node.id].append(value.output_var)
         self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
@@ -351,6 +350,7 @@ class ProgramGraph:
                         edges_to_remove.add((self.nodes[source_node_id], node))
                 except KeyError:
                     print('Node <{}> has no incoming edges.'.format(node.label))
+                print("Successfully removed node <{}>".format(node.label))
             except KeyError:
                 print("KeyError: Tried to remove node <{}>, but was not found".format(node.label))
         self.remove_edges(edges_to_remove)
@@ -479,7 +479,7 @@ class ProgramGraph:
 
         # TODO: currently works only for starting from non-dependent nodes
         assert edges.keys() == set(), \
-            "Error: Graph is cyclic ! Try changing dependencies."
+            "Error: Graph is cyclic! Try changing dependencies."
         # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
 
         return sorted_list
