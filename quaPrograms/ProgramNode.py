@@ -33,12 +33,17 @@ class ProgramNode(ABC):
         self._output_vars: Set[str] = None
         self._result: Dict[str, Any] = dict()
         self._timestamp = None
+        self._type = None
 
         self.label = _label
         self.program = _program
         self.input = _input
         self.output_vars = _output_vars
         self.to_run = _to_run
+
+    @property
+    def type(self):
+        return self._type
 
     @property
     def id(self):
@@ -131,7 +136,7 @@ class QuaNode(ProgramNode, ABC):
     def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
                  _output_vars: Set[str] = None,
                  _quantum_machine: QuantumMachine = None, _simulation_kwargs: Dict[str, Any] = None,
-                 _execution_kwargs: Dict[str, Any] = None,  _simulate_or_execute: str = None):
+                 _execution_kwargs: Dict[str, Any] = None, _simulate_or_execute: str = None):
 
         super().__init__(_label, _program, _input, _output_vars)
         self._job: qm.QmJob.QmJob = None
@@ -140,6 +145,7 @@ class QuaNode(ProgramNode, ABC):
         self._simulate_or_execute: str = None
         self._execution_kwargs = None
         self._simulation_kwargs = None
+        self._type = 'Qua'
 
         self.quantum_machine = _quantum_machine
         self.execution_kwargs = _execution_kwargs
@@ -180,7 +186,7 @@ class QuaNode(ProgramNode, ABC):
     @execution_kwargs.setter
     def execution_kwargs(self, kwargs):
         if kwargs is not None:
-            assert type(kwargs) is dict,\
+            assert type(kwargs) is dict, \
                 "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
         self._execution_kwargs = kwargs
 
@@ -217,7 +223,7 @@ class QuaNode(ProgramNode, ABC):
             "Expected <qm.program._Program> but given <{}>".format(self.id, self.label, type(qua_program))
         self._qua_program = qua_program
 
-        assert self.simulate_or_execute is not None,\
+        assert self.simulate_or_execute is not None, \
             "Error: Either missing parameters or " \
             "didn't specify whether to simulate/execute QuaNode {}".format(self.label)
 
@@ -245,6 +251,7 @@ class PyNode(ProgramNode):
                  _output_vars: Set[str] = None):
         super().__init__(_label, _program, _input, _output_vars)
         self._job_results = None
+        self._type = 'Py'
 
     def get_result(self):
         assert self.output_vars is not None, \
@@ -322,7 +329,8 @@ class ProgramGraph:
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
-                        self._link_nodes_ids.setdefault(node.id, {value.node.id: []})[value.node.id].append(value.output_var)
+                        self._link_nodes_ids.setdefault(node.id, {value.node.id: []})[value.node.id].append(
+                            value.output_var)
         self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
@@ -493,6 +501,16 @@ class ProgramGraph:
         """
         dot_graph = 'digraph {} {{'.format(self.label)
 
+        dot_graph += '{'
+        for node_id in self.nodes:
+            if use_labels:
+                dot_graph += '{} [shape={}];' \
+                    .format(self.nodes[node_id].label, 'ellipse' if self.nodes[node_id].type == 'Qua' else 'box')
+            else:
+                dot_graph += '{} [shape={}];' \
+                    .format(node_id, 'ellipse' if self.nodes[node_id].type == 'Qua' else 'box')
+        dot_graph += '};'
+
         for node_id in self.nodes:
             outgoing_edges = self.edges.get(node_id, None)
             if outgoing_edges is not None:
@@ -512,6 +530,7 @@ class ProgramGraph:
                     dot_graph += ';'
             else:
                 dot_graph += '"{}";'.format(self.nodes[node_id].label)
+
         dot_graph += '}'
 
         return dot_graph

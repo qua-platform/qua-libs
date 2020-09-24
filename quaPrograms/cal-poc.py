@@ -159,27 +159,27 @@ def extract_res_freq(freqs, I, Q, name):
     return {'res_freq': res_freq}
 
 
-r = PyNode('rand resonator freq', rand_freq, {'freq': 100e6, 'range_': 10e6}, {'rand_freq'})
+r = PyNode('rand_resonator_freq', rand_freq, {'freq': 100e6, 'range_': 10e6}, {'rand_freq'})
 
-a = QuaNode('resonator spect', spectroscopy)
+a = QuaNode('resonator_spect', spectroscopy)
 a.input = {'res_freq': r.output('rand_freq'), 'range_': 10}
 a.quantum_machine = QM
 a.simulation_kwargs = sim_args
 a.output_vars = {'I', 'Q', 'freqs'}
 
-b = PyNode('extract res freq', extract_res_freq)
+b = PyNode('extract_res_freq', extract_res_freq)
 b.input = {'freqs': a.output('freqs'), 'I': a.output('I'), 'Q': a.output('Q'), 'name': 'Readout resonator'}
 b.output_vars = {'res_freq'}
 
-c = PyNode('rand qubit freq', rand_freq, {'freq': b.output('res_freq'), 'range_': 1e6}, {'rand_freq'})
+c = PyNode('rand_qubit_freq', rand_freq, {'freq': b.output('res_freq'), 'range_': 1e6}, {'rand_freq'})
 
-d = QuaNode('qubit spect', spectroscopy)
+d = QuaNode('qubit_spect', spectroscopy)
 d.input = {'res_freq': c.output('rand_freq'), 'range_': 1}
 d.output_vars = {'freqs', 'I', 'Q'}
 d.quantum_machine = QM
 d.simulation_kwargs = sim_args
 
-e = PyNode('extract qubit freq', extract_res_freq)
+e = PyNode('extract_qubit_freq', extract_res_freq)
 e.input = {'freqs': d.output('freqs'), 'I': d.output('I'), 'Q': d.output('Q'), 'name': 'Qubit'}
 e.output_vars = {'res_freq'}
 
