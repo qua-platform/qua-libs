@@ -73,6 +73,8 @@ class ProgramNode(ABC):
             assert type(_input) is dict, \
                 "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
             self._input = _input
+        else:
+            self._input = dict()
 
     @property
     def output_vars(self):
@@ -315,11 +317,13 @@ class ProgramGraph:
         for node in new_nodes:
             self._nodes[node.id] = node
             self._node_counter += 1
-            for var, value in node.input.items():
-                if isinstance(value, LinkNode):
-                    self.add_edges({(value.node, node)})
-                    self._link_nodes.setdefault(node.id, dict())[var] = value
-                    self._link_nodes_ids.setdefault(node.id, dict())[value.node.id] = value.output_var
+            if node.input is not dict():
+                for var, value in node.input.items():
+                    if isinstance(value, LinkNode):
+                        self.add_edges({(value.node, node)})
+                        self._link_nodes.setdefault(node.id, dict())[var] = value
+                        self._link_nodes_ids.setdefault(node.id, {value.node.id: []})
+                        [value.node.id].append(value.output_var)
         self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
@@ -334,13 +338,19 @@ class ProgramGraph:
             try:
                 self._nodes.pop(node.id)
                 # remove forward edges
-                ids_to_remove = self.edges[node.id]
-                for dest_node_id in ids_to_remove:
-                    edges_to_remove.add((node, self.nodes[dest_node_id]))
+                try:
+                    ids_to_remove = self.edges[node.id]
+                    for dest_node_id in ids_to_remove:
+                        edges_to_remove.add((node, self.nodes[dest_node_id]))
+                except KeyError:
+                    print('Node <{}> has no outgoing edges.'.format(node.label))
                 # remove backward edges
-                ids_to_remove = self.backward_edges[node.id]
-                for source_node_id in ids_to_remove:
-                    edges_to_remove.add((self.nodes[source_node_id], node))
+                try:
+                    ids_to_remove = self.backward_edges[node.id]
+                    for source_node_id in ids_to_remove:
+                        edges_to_remove.add((self.nodes[source_node_id], node))
+                except KeyError:
+                    print('Node <{}> has no incoming edges.'.format(node.label))
             except KeyError:
                 print("KeyError: Tried to remove node <{}>, but was not found".format(node.label))
         self.remove_edges(edges_to_remove)
