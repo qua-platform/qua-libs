@@ -103,7 +103,7 @@ def py_func(s, ab):
 def qua_wrap2(d, a):
     with program() as qua_prog:
         A = declare(fixed, value=a + d['ap'][0])
-        save(A, 'aas')
+        save(A, 'q')
     return qua_prog
 
 
@@ -116,14 +116,15 @@ b = PyNode(2, py_func, _input={'s': 0.55})
 b.input['ab'] = a.output('ap')
 b.output_vars = {'v'}
 
-c = QuaNode(3, qua_wrap2, {'d': a.output(), 'a': b.output('v')}, {'aas'}, QM)
+c = QuaNode(3, qua_wrap2, {'d': a.output(), 'a': b.output('v')}, {'q'}, QM)
 c.simulation_kwargs = sim_args
 
 d = PyNode(4, lambda x: {'m': x}, {'x': 1}, {'m'})
-
+e = PyNode(5, lambda x: {'m': x}, {'x': 1}, {'m'})
 g = ProgramGraph()
 g.add_nodes([a, b, c, d])
 g.add_edges({(d, c)})
+g.add_nodes([e])
 # g.remove_nodes({c})
 print("TO visualize graph put the following string in webgraphviz.com:\n")
 print(g.export_dot_graph(), '\n')
