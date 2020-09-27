@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block content %}
+
+  <br>
+
+  <p>Loop through the list:</p>
+  <ul>
+    {% for key, value in report.items() %}
+    <li>{{ key }} - {{ value }}</li>
+    {% endfor %}
+  </ul>
+
+{% endblock %}

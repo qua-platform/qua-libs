@@ -12,7 +12,7 @@ from quaLibs.result_manager.report_generator import *
 #     def __init__(self):
 #         self.resStore=ResultStore()
 #  json report format, jinja,
-from quaLibs.result_manager.report_generator import make_result_report, get_results_in_path
+from quaLibs.result_manager.report_generator import get_results_in_path
 
 
 class ResultStore(BaseStore):
