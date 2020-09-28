@@ -1,7 +1,6 @@
-from ProgramNode import *
+from quaLibs.program_components import PyNode, QuaNode, ProgramGraph
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-
 from qm import LoopbackInterface
 from qm import SimulationConfig
 from random import random
@@ -168,7 +167,7 @@ def blobs(I, Q):
     plt.ylabel('Q')
     plt.title('thermal distribution')
 
-    # return dict()
+    return dict()
 
 
 r = PyNode('rand_resonator_freq', rand_freq, {'freq': 100e6, 'range_': 10e6}, {'rand_freq'})
@@ -198,7 +197,7 @@ e.output_vars = {'res_freq'}
 g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
 
 cal_graph = ProgramGraph()
-cal_graph.add_nodes([a, b, r, c, d, e, g])
+cal_graph.add_nodes([r, a, b, c, d, e, g])
 cal_graph.add_edges([(e, g)])
 
 cal_graph.run()
