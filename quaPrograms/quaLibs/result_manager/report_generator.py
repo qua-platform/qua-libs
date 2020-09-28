@@ -77,6 +77,6 @@ def make_web_report(report):
 
 
 if __name__ == '__main__':
-    page=make_web_report(make_report(get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res\27092020')))
+    page=make_web_report(make_report(get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res')))
     with open('report.html','w') as f:
         f.write(page)

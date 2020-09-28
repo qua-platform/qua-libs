@@ -1,0 +1,17 @@
+body {
+  background-color: black;
+}
+
+h1 {
+  color: navy;
+  margin-left: 20px;
+}
+p{
+color:white
+}
+
+ .container {
+        max-width: 500px;
+        padding-top: 100px;
+      }
+      h2 {color: navy;}

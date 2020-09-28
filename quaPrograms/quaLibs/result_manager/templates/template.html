@@ -3,11 +3,14 @@
 
   <br>
 
-  <p>Loop through the list:</p>
-  <ul>
-    {% for key, value in report.items() %}
-    <li>{{ key }} - {{ value }}</li>
-    {% endfor %}
-  </ul>
+  <h2>Found results:</h2>
+<div>
+  {% for key, value in report.items() %}
+    <div id={{key}}>
+      <p>{{ key }} - {{ value }}</p>
+    </div>
+  {% endfor %}
+</div>
+
 
 {% endblock %}
