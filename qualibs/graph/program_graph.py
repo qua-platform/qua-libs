@@ -1,18 +1,18 @@
-from qualibs.program_components import LinkNode, ProgramNode
+from .program_node import LinkNode, ProgramNode
 from typing import Dict, Set, List, Tuple
 from copy import deepcopy
 
 
 class ProgramGraph:
 
-    def __init__(self, _label: str = None) -> None:
+    def __init__(self, label: str = None) -> None:
         """
-        A program graph describes a program flow with input/output dependencies
-        :param _label: a label for the graph
-        :type _label: str
+        A program graph describes a program flow with input_vars/output dependencies
+        :param label: a label for the graph
+        :type label: str
         """
         self._id: int = id(self)
-        self.label: str = _label
+        self.label: str = label
         self._nodes: Dict[int, ProgramNode] = dict()
         self._node_counter: int = 0
         self._edges: Dict[int, Set[int]] = dict()
@@ -50,8 +50,8 @@ class ProgramGraph:
         for node in new_nodes:
             self._nodes[node.id] = node
             self._node_counter += 1
-            if node.input is not dict():
-                for var, value in node.input.items():
+            if node.input_vars is not dict():
+                for var, value in node.input_vars.items():
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
@@ -97,7 +97,7 @@ class ProgramGraph:
         """
         Add edges between given nodes.
         When used outside of add_nodes method,
-        it describes either time order rather than input/output dependency as usual.
+        it describes either time order rather than input_vars/output dependency as usual.
         :param _edges: set of tuples {(source_node, dest_node)...}
         :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
@@ -162,18 +162,18 @@ class ProgramGraph:
             self.update_order = False
 
         for node_id in self._execution_order:
-            # Put one output variable of one node into one input variable of of a different node
+            # Put one output variable of one node into one input_vars variable of of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
                 assert self.nodes.get(link_node.node.id, None), \
-                    "Tried to use the output of node <{}> as input to <{}>,\n" \
+                    "Tried to use the output of node <{}> as input_vars to <{}>,\n" \
                     "but <{}> isn't in the graph.".format(
                         link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 if link_out := link_node.output_var:
-                    self.nodes[node_id].input[var] = link_node.node.result[link_out]
+                    self.nodes[node_id].input_vars[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
-                    self.nodes[node_id].input[var] = link_node.node.result
+                    self.nodes[node_id].input_vars[var] = link_node.node.result
 
             self.nodes[node_id].run()
 

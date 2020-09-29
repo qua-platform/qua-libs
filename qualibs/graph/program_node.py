@@ -21,28 +21,28 @@ class LinkNode:
 
 class ProgramNode(ABC):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
-                 _output_vars: Set[str] = None,
-                 _to_run: bool = True):
+    def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
+                 output_vars: Set[str] = None,
+                 to_run: bool = True):
         """
-        Program node contains a program to run and description of input/output variables
-        :param _label: label for the node
+        Program node contains a program to run and description of input_vars/output variables
+        :param label: label for the node
         :type: _label: str
-        :param _program: a python function to run
-        :type _program: function
-        :param _input: input variables names and values
-        :type _input: dict
-        :param _output_vars: output variable names
-        :type _output_vars: set
-        :param _to_run: whether to run the node
-        :type _to_run: bool
+        :param program: a python function to run
+        :type program: function
+        :param input_vars: input_vars variables names and values
+        :type input_vars: dict
+        :param output_vars: output variable names
+        :type output_vars: set
+        :param to_run: whether to run the node
+        :type to_run: bool
         """
         self._id: int = id(self)
-        self.label = _label
-        self.program = _program
-        self.input = _input
-        self.output_vars = _output_vars
-        self.to_run = _to_run
+        self.label = label
+        self.program = program
+        self.input_vars = input_vars
+        self.output_vars = output_vars
+        self.to_run = to_run
 
         self._result: Dict[str, Any] = dict()
         self._timestamp = None
@@ -76,17 +76,17 @@ class ProgramNode(ABC):
         self._program = _program
 
     @property
-    def input(self):
-        return self._input
+    def input_vars(self):
+        return self._input_vars
 
-    @input.setter
-    def input(self, _input):
-        if _input is not None:
-            assert type(_input) is dict, \
-                "TypeError: Try a different input. Expected <dict> but given <{}>".format(type(_input))
-            self._input = _input
+    @input_vars.setter
+    def input_vars(self, input_vars):
+        if input_vars is not None:
+            assert type(input_vars) is dict, \
+                "TypeError: Try a different input_vars. Expected <dict> but given <{}>".format(type(input_vars))
+            self._input_vars = input_vars
         else:
-            self._input = dict()
+            self._input_vars = dict()
 
     @property
     def output_vars(self) -> Set[str]:
@@ -133,17 +133,17 @@ class ProgramNode(ABC):
 
 class QuaNode(ProgramNode):
 
-    def __init__(self, _label: str = None, _program: FunctionType = None, _input: Dict[str, Any] = None,
-                 _output_vars: Set[str] = None,
-                 _quantum_machine: qm.QuantumMachine = None, _simulation_kwargs: Dict[str, Any] = None,
-                 _execution_kwargs: Dict[str, Any] = None, _simulate_or_execute: str = None):
+    def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
+                 output_vars: Set[str] = None,
+                 quantum_machine: qm.QuantumMachine = None, simulation_kwargs: Dict[str, Any] = None,
+                 execution_kwargs: Dict[str, Any] = None, simulate_or_execute: str = None):
 
-        super().__init__(_label, _program, _input, _output_vars)
+        super().__init__(label, program, input_vars, output_vars)
 
-        self.quantum_machine = _quantum_machine
-        self.execution_kwargs = _execution_kwargs
-        self.simulation_kwargs = _simulation_kwargs
-        self.simulate_or_execute: str = _simulate_or_execute
+        self.quantum_machine = quantum_machine
+        self.execution_kwargs = execution_kwargs
+        self.simulation_kwargs = simulation_kwargs
+        self.simulate_or_execute: str = simulate_or_execute
 
         self._type = 'Qua'
         self._job: qm.QmJob.QmJob = None
@@ -217,7 +217,7 @@ class QuaNode(ProgramNode):
     def run(self) -> None:
 
         # Get the Qua program that is wrapped by the python function
-        qua_program = self.program(**self._input)
+        qua_program = self.program(**self.input_vars)
         assert isinstance(qua_program, qm.program._Program), \
             "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
             "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
@@ -269,7 +269,7 @@ class PyNode(ProgramNode):
 
     def run(self):
         print("\nRUNNING PyNode '{}'...".format(self.label))
-        self._job_results = self.program(**self.input)
+        self._job_results = self.program(**self.input_vars)
         print("DONE")
         assert type(self._job_results) is dict, \
             "TypeError: Expected <dict> but got <{}> as program results.\n" \
