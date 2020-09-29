@@ -1,4 +1,4 @@
-from quaLibs.program_components import PyNode, QuaNode, ProgramGraph
+from qualibs.graph import PyNode, QuaNode, ProgramGraph
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import LoopbackInterface
@@ -179,6 +179,7 @@ a.simulation_kwargs = sim_args
 a.output_vars = {'I', 'Q', 'freqs'}
 
 b = PyNode('extract_res_freq', extract_res_freq)
+
 b.input = {'freqs': a.output('freqs'), 'I': a.output('I'), 'Q': a.output('Q'), 'name': 'Readout resonator'}
 b.output_vars = {'res_freq'}
 
@@ -195,12 +196,16 @@ e.input = {'freqs': d.output('freqs'), 'I': d.output('I'), 'Q': d.output('Q'), '
 e.output_vars = {'res_freq'}
 
 g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
+g.dependsOn = [e]
 
 cal_graph = ProgramGraph()
 cal_graph.add_nodes([r, a, b, c, d, e, g])
-cal_graph.add_edges([(e, g)])
+# cal_graph.add_edges([(e, g)])
 
-cal_graph.run()
+#g.run() -> e&d, d&e, c&d&e, ... , a&b&c&d&e&g
+
+cal_graph.run() -> 123   123.{r.id}
+cal_graph.run() -> 876   876.{r.id}
 
 print("TO visualize graph put the following string in webgraphviz.com:\n")
 print(cal_graph.export_dot_graph())

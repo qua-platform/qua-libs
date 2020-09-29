@@ -56,6 +56,19 @@ def make_report(result_folder_list):
 #     with open('report.html', 'w') as report_html:
 #         report_html.write(doc.__str__())
 
+def init_db(db_name):
+    con = sl.connect(db_name)
+    with con:
+        con.execute("""
+            CREATE TABLE Results (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                path TEXT,
+                result TEXT
+                NPZ TEXT
+            );
+        """)
+
+
 
 def get_results_in_path(path):
     folder_list = [x[0] for x in os.walk(path)]
@@ -87,9 +100,10 @@ def make_web_report(report):
 
 
 if __name__ == '__main__':
-    res_list = get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res')
-    report = make_report(res_list)
-    page = make_web_report(report)
-    with open('report.html', 'w') as f:
-        f.write(page)
-    get_results_by_param(res_list, 'user_name', val='galw')
+    # res_list = get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res')
+    # report = make_report(res_list)
+    # page = make_web_report(report)
+    # with open('report.html', 'w') as f:
+    #     f.write(page)
+    # get_results_by_param(res_list, 'user_name', val='galw')
+    init_db('my_db.db')

@@ -1,8 +1,8 @@
 import pytest
 
-from quaLibs.result_manager.results import *
-from quaLibs.base_configuration.vanilla_config import *
-from quaLibs.base_configuration.hello_qua import *
+from qualibs.results.results import *
+from qualibs.templates.vanilla_config import *
+from qualibs.templates.hello_qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 import shutil

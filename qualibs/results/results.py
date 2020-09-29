@@ -6,13 +6,14 @@ from datetime import date
 from shutil import copyfile
 import os
 import json
-from quaLibs.result_manager.report_generator import *
+import sqlite3 as sl
+from qualibs.results.report_generator import *
 
 # class GraphStore:
 #     def __init__(self):
 #         self.resStore=ResultStore()
 #  json report format, jinja,
-from quaLibs.result_manager.report_generator import get_results_in_path
+from qualibs.results.report_generator import get_results_in_path
 
 
 class ResultStore(BaseStore):
@@ -29,9 +30,35 @@ class ResultStore(BaseStore):
         """
         super().__init__()
         self.store_path_root = Path(store_path_root).absolute()
+        self.con = self.init_db(self.store_path_root)
         self.script_path = script_path
         self.exp_name = exp_name
         self.results = {'exp_name': self.exp_name, 'user_name': os.getlogin()}
+
+    def init_db(self, path):
+        con = sl.connect(os.path.join(path, 'QM_DB.db'))
+
+        with con:
+            con.execute("""
+                CREATE TABLE if not exists Results (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    job_id INT,
+                    user_id TEXT,
+                    start_time DATETIME,
+                    end_time DATETIME,
+                    path TEXT,
+                    result TEXT,
+                    NPZ_file BLOB
+                );
+            """)
+            return con
+
+    def add_db_result(self, res):
+        sql = ''' INSERT INTO Results(job_id,user_id,start_time,end_time,path,result,NPZ_file)
+                      VALUES(?,?,?,?,?,?,?) '''
+        cur = self.con.cursor()
+        cur.execute(sql, res)
+        self.con.commit()
 
     def _job_path(self, job_id: str):
 
@@ -53,11 +80,16 @@ class ResultStore(BaseStore):
         This function defines what is saved upon calling job.save_results()
         """
 
+        end_time=datetime.datetime.now().strftime('%c')
+        npz=FileBinaryAsset(self._job_path(job_id).joinpath(f"results.npz"))
+        self.add_result('run_end_time', end_time)
+        self.add_result('job_id', job_id)
+
+        self.add_db_result((job_id,self.exp_name,12321,end_time,'path',json.dumps(self.results),'NPZ_file'))
         if self.script_path != '':
             copyfile(self.script_path, self._script_path(job_id))
 
-        self.add_result('run_end_time', datetime.datetime.now().strftime('%c'))
-        self.add_result('job_id', job_id)
+
 
         with open(self._results_path(job_id), "w") as results_file:
             json.dump(self.results, results_file)

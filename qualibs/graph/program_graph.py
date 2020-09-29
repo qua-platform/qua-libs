@@ -1,4 +1,4 @@
-from quaLibs.program_components import LinkNode, ProgramNode
+from qualibs.program_components import LinkNode, ProgramNode
 from typing import Dict, Set, List, Tuple
 from copy import deepcopy
 
