@@ -67,16 +67,29 @@ def get_results_in_path(path):
     return res_folder_list
 
 
+def get_results_by_param(res_folder_list, param, val):
+    filterd_report = {}
+    report = make_report(res_folder_list)
+    for key in report.keys():
+        if report[key]['results'][param] == val:
+            filterd_report[key] = report[key]
+    return filterd_report
+
+
 def make_web_report(report):
     env = Environment(
-        loader=FileSystemLoader(os.path.join('.','templates')),
+        loader=FileSystemLoader(os.path.join('.', 'templates')),
         autoescape=select_autoescape(['html', 'xml'])
     )
     template = env.get_template('template.html')
+
     return template.render(report=report)
 
 
 if __name__ == '__main__':
-    page=make_web_report(make_report(get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res')))
-    with open('report.html','w') as f:
+    res_list = get_results_in_path(r'C:\Users\galw\Documents\libs_repo\qua-libs\quaPrograms\tests\res')
+    report = make_report(res_list)
+    page = make_web_report(report)
+    with open('report.html', 'w') as f:
         f.write(page)
+    get_results_by_param(res_list, 'user_name', val='galw')

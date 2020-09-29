@@ -3,8 +3,8 @@ body {
 }
 
 h1 {
-  color: navy;
-  margin-left: 20px;
+  color: white;
+
 }
 p{
 color:white
@@ -14,4 +14,9 @@ color:white
         max-width: 500px;
         padding-top: 100px;
       }
-      h2 {color: navy;}
+      h2 {color: white;}
+
+table, th, td {
+  border: 1px solid white;
+  background-color: gray;
+}
