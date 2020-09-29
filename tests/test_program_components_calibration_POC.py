@@ -198,11 +198,11 @@ e.output_vars = {'res_freq'}
 g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
 g.dependsOn = [e]
 
-cal_graph = ProgramGraph('hello')
+cal_graph = ProgramGraph('hello', {'rf': r.output('rand_freq')})
 cal_graph.add_nodes([r, a, b, c, d, e, g])
 cal_graph.add_edges([(e, g)])
 
-cal_graph.run()
+gjob = cal_graph.run()
 
 print("TO visualize graph put the following string in webgraphviz.com:\n")
 print(cal_graph.export_dot_graph())

@@ -3,7 +3,7 @@ from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Dict, Set, Any
+from typing import Dict, Set, Any, Union
 from time import time_ns
 
 
@@ -20,22 +20,28 @@ class LinkNode:
                 "KeyError: Output of node <{}> doesn't contain the variable <{}>".format(self.node.label, output_var)
         self.output_var: str = output_var
 
+    def get_output(self):
+        if self.output_var is not None:
+            return self.node.result[self.output_var]
+        else:
+            return self.node.result
+
 
 class ProgramNode(ABC):
 
     def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
-                 output_vars: Set[str] = None,
+                 output_vars: Set[Union[str, LinkNode]] = None,
                  to_run: bool = True):
         """
         Program node contains a program to run and description of input_vars/output variables
         :param label: label for the node
-        :type: _label: str
+        :type: label: str
         :param program: a python function to run
         :type program: function
         :param input_vars: input_vars variables names and values
         :type input_vars: dict
         :param output_vars: output variable names
-        :type output_vars: set
+        :type output_vars: Set[Union[str, LinkNode]]
         :param to_run: whether to run the node
         :type to_run: bool
         """
@@ -43,11 +49,11 @@ class ProgramNode(ABC):
         self.label = label
         self.program = program
         self.input_vars = input_vars
-        self.output_vars = output_vars
+        self.output_vars: Set[Union[str, LinkNode]] = output_vars
         self.to_run = to_run
 
         self._result: Dict[str, Any] = dict()
-        self._timestamp = None
+        self._timestamp = None  # when last finished running
         self._type = None
 
     @property
@@ -115,9 +121,8 @@ class ProgramNode(ABC):
         return LinkNode(self, output_vars)
 
     @property
-    @abstractmethod
     def timestamp(self):
-        pass
+        return self._timestamp
 
     @abstractmethod
     def run(self) -> None:
@@ -212,10 +217,6 @@ class QuaNode(ProgramNode):
             except AttributeError:
                 print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
 
-    @property
-    def timestamp(self):
-        return self._timestamp
-
     def run(self) -> None:
 
         # Get the Qua program that is wrapped by the python function
@@ -263,11 +264,7 @@ class PyNode(ProgramNode):
             try:
                 self._result[var] = self._job_results[var]
             except KeyError:
-                print("Couldn't fetch '{}' from Qua program results".format(var))
-
-    @property
-    def timestamp(self):
-        return self._timestamp
+                print("Couldn't fetch '{}' from Python program results".format(var))
 
     def run(self):
         print("\nRUNNING PyNode '{}'...".format(self.label))
@@ -278,3 +275,19 @@ class PyNode(ProgramNode):
             "PyNode program must return a dictionary.".format(type(self._job_results))
         self._timestamp = time_ns()
         self.get_result()
+
+
+class GraphNode(ProgramNode):
+
+    def __init__(self, label: str = None, graph=None, input_vars: Dict[str, Any] = None,
+                 output_vars: Set[Union[str, LinkNode]] = None):
+        super().__init__(label, None, input_vars, output_vars)
+        self.graph = graph
+        self._job_results = None
+        self._type = 'Graph'
+
+    def get_result(self):
+        pass
+
+    def run(self):
+        pass
