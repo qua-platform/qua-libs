@@ -1,8 +1,10 @@
-import qm
+from qm import QmJob, QuantumMachine
+from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
 from typing import Dict, Set, Any
+from time import time_ns
 
 
 class LinkNode:
@@ -69,11 +71,11 @@ class ProgramNode(ABC):
         return self._program
 
     @program.setter
-    def program(self, _program):
-        if _program is not None:
-            assert type(_program) is FunctionType, \
-                "TypeError: Expected FunctionType but given <{}>".format(type(_program))
-        self._program = _program
+    def program(self, program):
+        if program is not None:
+            assert type(program) is FunctionType, \
+                "TypeError: Expected FunctionType but given <{}>".format(type(program))
+        self._program = program
 
     @property
     def input_vars(self):
@@ -93,11 +95,11 @@ class ProgramNode(ABC):
         return self._output_vars
 
     @output_vars.setter
-    def output_vars(self, _output_vars):
-        if _output_vars is not None:
-            assert type(_output_vars) is set, \
-                "TypeError: Try a different output_vars. Expected <set> but given <{}>".format(type(_output_vars))
-            self._output_vars = _output_vars
+    def output_vars(self, output_vars):
+        if output_vars is not None:
+            assert type(output_vars) is set, \
+                "TypeError: Try a different output_vars. Expected <set> but given <{}>".format(type(output_vars))
+            self._output_vars = output_vars
         else:
             self._output_vars = set()
 
@@ -109,8 +111,8 @@ class ProgramNode(ABC):
     def get_result(self) -> None:
         pass
 
-    def output(self, _output_vars=None) -> LinkNode:
-        return LinkNode(self, _output_vars)
+    def output(self, output_vars=None) -> LinkNode:
+        return LinkNode(self, output_vars)
 
     @property
     @abstractmethod
@@ -135,7 +137,7 @@ class QuaNode(ProgramNode):
 
     def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 quantum_machine: qm.QuantumMachine = None, simulation_kwargs: Dict[str, Any] = None,
+                 quantum_machine: QuantumMachine = None, simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None, simulate_or_execute: str = None):
 
         super().__init__(label, program, input_vars, output_vars)
@@ -146,17 +148,17 @@ class QuaNode(ProgramNode):
         self.simulate_or_execute: str = simulate_or_execute
 
         self._type = 'Qua'
-        self._job: qm.QmJob.QmJob = None
-        self._qua_program: qm.program._Program = None
+        self._job: QmJob.QmJob = None
+        self._qua_program: QuaProgram = None
 
     @property
-    def quantum_machine(self) -> qm.QuantumMachine:
+    def quantum_machine(self) -> QuantumMachine:
         return self._quantum_machine
 
     @quantum_machine.setter
     def quantum_machine(self, quantum_machine):
         if quantum_machine is not None:
-            assert isinstance(quantum_machine, qm.QuantumMachine), \
+            assert isinstance(quantum_machine, QuantumMachine), \
                 "TypeError: Expected <QuantumMachine> but given {}".format(type(quantum_machine))
         self._quantum_machine = quantum_machine
 
@@ -212,13 +214,13 @@ class QuaNode(ProgramNode):
 
     @property
     def timestamp(self):
-        pass
+        return self._timestamp
 
     def run(self) -> None:
 
         # Get the Qua program that is wrapped by the python function
         qua_program = self.program(**self.input_vars)
-        assert isinstance(qua_program, qm.program._Program), \
+        assert isinstance(qua_program, QuaProgram), \
             "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
             "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
         self._qua_program = qua_program
@@ -231,7 +233,7 @@ class QuaNode(ProgramNode):
             self.simulate()
         if self.simulate_or_execute == 'execute':
             self.execute()
-
+        self._timestamp = time_ns()
         self.get_result()
 
     def execute(self) -> None:
@@ -265,7 +267,7 @@ class PyNode(ProgramNode):
 
     @property
     def timestamp(self):
-        pass
+        return self._timestamp
 
     def run(self):
         print("\nRUNNING PyNode '{}'...".format(self.label))
@@ -274,7 +276,5 @@ class PyNode(ProgramNode):
         assert type(self._job_results) is dict, \
             "TypeError: Expected <dict> but got <{}> as program results.\n" \
             "PyNode program must return a dictionary.".format(type(self._job_results))
+        self._timestamp = time_ns()
         self.get_result()
-
-
-

@@ -3,6 +3,11 @@ from typing import Dict, Set, List, Tuple
 from copy import deepcopy
 
 
+class GraphJob:
+    def __init__(self, graph):
+        self.execution = graph
+
+
 class ProgramGraph:
 
     def __init__(self, label: str = None) -> None:
@@ -93,30 +98,30 @@ class ProgramGraph:
     def edges(self):
         return self._edges
 
-    def add_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
+    def add_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
         Add edges between given nodes.
         When used outside of add_nodes method,
         it describes either time order rather than input_vars/output dependency as usual.
-        :param _edges: set of tuples {(source_node, dest_node)...}
-        :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
+        :param edges: set of tuples {(source_node, dest_node)...}
+        :type edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
         """
-        for source, dest in _edges:
+        for source, dest in edges:
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
 
         self.update_order = True
 
-    def remove_edges(self, _edges: Set[Tuple[ProgramNode, ProgramNode]]):
+    def remove_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
         Remove edges from graph
-        :param _edges: set of tuples {(source_node, dest_node)...}
-        :type _edges: Set[Tuple[ProgramNode, ProgramNode]]
+        :param edges: set of tuples {(source_node, dest_node)...}
+        :type edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
         """
         # need to update backward edges
-        for source, dest in _edges:
+        for source, dest in edges:
             try:
                 self._edges.get(source.id, set()).remove(dest.id)
                 self._backward_edges.get(dest.id, set()).remove(source.id)
@@ -168,8 +173,8 @@ class ProgramGraph:
                 link_node = input_vars[var]
                 assert self.nodes.get(link_node.node.id, None), \
                     "Tried to use the output of node <{}> as input_vars to <{}>,\n" \
-                    "but <{}> isn't in the graph.".format(
-                        link_node.node.label, self.nodes[node_id].label, link_node.node.label)
+                    "but <{}> isn't in the graph." \
+                    .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 if link_out := link_node.output_var:
                     self.nodes[node_id].input_vars[var] = link_node.node.result[link_out]
                 else:  # if output_var in the link node is not specified, forward the full result
