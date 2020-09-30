@@ -304,3 +304,30 @@ class ProgramGraph:
         :return:
         """
         pass
+
+
+class GraphNode(ProgramNode):
+
+    def __init__(self, label: str = None, graph: ProgramGraph = None, input_vars: Dict[str, Any] = None,
+                 output_vars: Set[str] = None):
+        super().__init__(label, None, input_vars, output_vars)
+        self.graph: ProgramGraph = graph
+        self._type = 'Graph'
+        self._job = None
+
+    def get_result(self):
+        if self.output_vars is None:
+            print("ATTENTION! No output variables defined for node <{}>".format(self.label))
+            return
+        for var in self.output_vars:
+            try:
+                self._result[var] = self.graph.result[var]
+            except KeyError:
+                print("Couldn't fetch '{}' from the program graph results".format(var))
+
+    def run(self):
+        print("\nRUNNING PyNode '{}'...".format(self.label))
+        self._job = self.graph.run()
+        print("DONE")
+        self._timestamp = time_ns()
+        self.get_result()
