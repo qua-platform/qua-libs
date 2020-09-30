@@ -30,7 +30,7 @@ class LinkNode:
 class ProgramNode(ABC):
 
     def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
-                 output_vars: Set[Union[str, LinkNode]] = None,
+                 output_vars: Set[str] = None,
                  to_run: bool = True):
         """
         Program node contains a program to run and description of input_vars/output variables
@@ -41,7 +41,7 @@ class ProgramNode(ABC):
         :param input_vars: input_vars variables names and values
         :type input_vars: dict
         :param output_vars: output variable names
-        :type output_vars: Set[Union[str, LinkNode]]
+        :type output_vars: Set[str]
         :param to_run: whether to run the node
         :type to_run: bool
         """
@@ -49,7 +49,7 @@ class ProgramNode(ABC):
         self.label = label
         self.program = program
         self.input_vars = input_vars
-        self.output_vars: Set[Union[str, LinkNode]] = output_vars
+        self.output_vars: Set[str] = output_vars
         self.to_run = to_run
 
         self._result: Dict[str, Any] = dict()
@@ -275,19 +275,3 @@ class PyNode(ProgramNode):
             "PyNode program must return a dictionary.".format(type(self._job_results))
         self._timestamp = time_ns()
         self.get_result()
-
-
-class GraphNode(ProgramNode):
-
-    def __init__(self, label: str = None, graph=None, input_vars: Dict[str, Any] = None,
-                 output_vars: Set[Union[str, LinkNode]] = None):
-        super().__init__(label, None, input_vars, output_vars)
-        self.graph = graph
-        self._job_results = None
-        self._type = 'Graph'
-
-    def get_result(self):
-        pass
-
-    def run(self):
-        pass
