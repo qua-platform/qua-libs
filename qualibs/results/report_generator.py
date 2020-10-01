@@ -1,6 +1,8 @@
 import os
 import json
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import sqlite3 as sl
+from time import time_ns
 
 
 # import dominate
@@ -56,18 +58,84 @@ def make_report(result_folder_list):
 #     with open('report.html', 'w') as report_html:
 #         report_html.write(doc.__str__())
 
+
+def write_res_to_db(db_name):
+    con = sl.connect(db_name)
+
+    with con:
+        g_id = time_ns()
+        n_id = time_ns()
+        r_id = time_ns()
+        con.execute("""  
+                    INSERT INTO Graphs (graph_id,graph_script) 
+                    VALUES (?,1); 
+                    """, (g_id,))
+        con.execute(""" 
+                    INSERT INTO Nodes (graph_id,node_id) 
+                    VALUES (?,?); 
+                    """, (g_id, n_id))
+        con.execute(""" 
+                    INSERT INTO Results (graph_id,node_id,result_id,user_id,start_time,end_time,res_name,res_val) 
+                    VALUES (?,?,?,'Gal',1,2,'this',12); 
+
+
+                    """, (g_id, n_id, r_id))
+        con.execute(f""" 
+                        INSERT INTO Metadata (graph_id,node_id,data_id,name,val) 
+                        VALUES (?,?,1,'V1',1) 
+                        """, (g_id, n_id))
+
+
 def init_db(db_name):
     con = sl.connect(db_name)
-    with con:
-        con.execute("""
-            CREATE TABLE Results (
-                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                path TEXT,
-                result TEXT
-                NPZ TEXT
-            );
-        """)
 
+    with con:
+        con.execute(""" 
+           CREATE TABLE  IF NOT EXISTS Results 
+            ( 
+                graph_id   INT NOT NULL, 
+                node_id    INTEGER NOT NULL, 
+                result_id  INTEGER NOT NULL, 
+                user_id    TEXT, 
+                start_time DATETIME, 
+                end_time   DATETIME, 
+                res_name   TEXT, 
+                res_val    TEXT, 
+                PRIMARY KEY (graph_id, node_id, result_id), 
+                CONSTRAINT node_results_FK FOREIGN KEY (node_id) REFERENCES Nodes (node_id) ON DELETE CASCADE ON UPDATE CASCADE 
+            ); 
+
+                    """)
+        con.execute(""" 
+                    CREATE TABLE  IF NOT EXISTS Nodes 
+                    ( 
+                        graph_id INTEGER NOT NULL, 
+                        node_id  INTEGER NOT NULL, 
+                        PRIMARY KEY (graph_id, node_id), 
+                        CONSTRAINT graph_nodes_FK FOREIGN KEY (graph_id) REFERENCES Graphs (graph_id) ON DELETE CASCADE ON UPDATE CASCADE 
+                    ); 
+                    """)
+        con.execute(""" 
+                    CREATE TABLE  IF NOT EXISTS Graphs 
+                    ( 
+                        graph_id     INTEGER NOT NULL PRIMARY KEY, 
+                        graph_script TEXT    NOT NULL 
+                    ); 
+
+                    """)
+
+        con.execute(""" 
+                    CREATE TABLE  IF NOT EXISTS Metadata 
+                    ( 
+                        graph_id INTEGER NOT NULL, 
+                        node_id  INTEGER NOT NULL, 
+                        data_id  INTEGER NOT NULL, 
+                        name     TEXT    NOT NULL, 
+                        val      TEXT    NOT NULL, 
+                        PRIMARY KEY (graph_id, node_id, data_id), 
+                        CONSTRAINT node_metadata_FK FOREIGN KEY (node_id) REFERENCES Nodes(node_id) ON DELETE CASCADE ON UPDATE CASCADE 
+                    ); 
+                    """)
 
 
 def get_results_in_path(path):
@@ -106,4 +174,5 @@ if __name__ == '__main__':
     # with open('report.html', 'w') as f:
     #     f.write(page)
     # get_results_by_param(res_list, 'user_name', val='galw')
-    init_db('my_db.db')
+    # init_db('my_db.db')
+    write_res_to_db('my_db.db')
