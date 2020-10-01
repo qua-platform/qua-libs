@@ -1,28 +1,18 @@
 from .program_node import LinkNode, ProgramNode
-from typing import Dict, Set, List, Tuple, Any, Union
+from typing import Dict, Set, List, Tuple, Any
 from copy import deepcopy
 from time import time_ns
 
 
 class GraphJob:
-    def __init__(self):
+    def __init__(self, graph):
         self.timestamp = time_ns()  # when job started
-        self.graph_output = None
-        self.result = None
-
-    def fetch_results(self, program_graph) -> Dict[str, Any]:
-        """
-        Return the desired results from the given graph
-        :param program_graph: the graph associated with the job
-        :type program_graph: ProgramGraph
-        :return: a dictionary of variable values keyed by name
-        """
-        self.graph_output = program_graph.result
+        self.graph = graph
 
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None, output_vars: Dict[str, LinkNode] = None) -> None:
+    def __init__(self, label: str = None) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -35,8 +25,6 @@ class ProgramGraph:
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._timestamp = None  # when last finished running
-        self.output_vars: Dict[str, LinkNode] = output_vars
-        self._result: Dict[str, Any] = dict()  # Dict[var_name,var_value]
         self._link_nodes: Dict[int, Dict[str, LinkNode]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._execution_order: List[int] = list()
@@ -162,14 +150,6 @@ class ProgramGraph:
     def result(self):
         return self._result
 
-    def get_result(self):
-        if self.output_vars is not None:
-            for var, link_node in self.output_vars.items():
-                try:
-                    self._result[var] = link_node.get_output()
-                except KeyError:
-                    print("Couldn't fetch '{}' from {} node results".format(var, link_node.node.type))
-
     def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
@@ -187,21 +167,21 @@ class ProgramGraph:
             self._execution_order = self.topological_sort(start_nodes)
             self.update_order = False
 
-        current_job = GraphJob()
+        current_job = GraphJob(self)
         for node_id in self._execution_order:
-            # Put one output variable of one node into one input_vars variable of of a different node
+            # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
                 assert self.nodes.get(link_node.node.id, None), \
                     "Tried to use the output of node <{}> as input_vars to <{}>,\nbut <{}> isn't in the graph." \
-                    .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
+                        .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 self.nodes[node_id].input_vars[var] = link_node.get_output()
 
             self.nodes[node_id].run()
         self._timestamp = time_ns()
-        self.get_result()
-        current_job.fetch_results(self)
+
+        # TODO: Maybe do something to current job before returning
         return current_job
 
     def topological_sort(self, start_nodes: List[ProgramNode] = list()) -> List[int]:
@@ -216,7 +196,6 @@ class ProgramGraph:
         backward_edges: Dict[int, Set[int]] = deepcopy(self.backward_edges)
 
         s: List[int]  # list of node ids with no incoming edges
-        sorted_set: Set[int] = set()  # set of node ids
         if not start_nodes:
             s = [n for n in self.nodes if n not in backward_edges]
         else:
@@ -226,7 +205,6 @@ class ProgramGraph:
 
         while s:
             n = s.pop(0)
-            sorted_set.add(n)
             sorted_list.append(n)
 
             n_edges = edges.get(n, set()).copy()
