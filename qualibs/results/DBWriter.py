@@ -1,3 +1,4 @@
+import datetime
 import os
 from abc import ABC, abstractmethod
 import sqlite3 as sl
@@ -113,6 +114,14 @@ class GraphStoreSqlite(GraphStore):
             rows = cur.fetchall()
             return rows[0]
 
+    def get_res_by_start_date(self,date):
+        with self.con as con:
+            cur=con.cursor()
+            cur.execute(""" 
+                           SELECT * FROM Results where start_time=date('1004-01-01')
+                           """,(date,))
+            rows = cur.fetchall()
+            return rows[0]
 
 
     def write_node(self, node: Tuple[int, int]):
@@ -160,12 +169,14 @@ if __name__ == '__main__':
         print('no file')
     a = GraphStoreSqlite('my_db.db')
     a.init_db()
+
     for g_id in range(10):
         a.write_graph((g_id, 'a'))
         for n_id in range(10):
             a.write_node((g_id, n_id))
             for r_id in range(2):
-                a.write_res((g_id, n_id, r_id, 'a', 1, 1, 'a', 'a'))
+                now = datetime.datetime.now().isoformat()
+                a.write_res((g_id, n_id, r_id, 'a', now, 1, 'a', 'a'))
                 # for d_id in range(3):
                 #     a.write_metadata((g_id,n_id,d_id,'a','a'))
     print(a.get_res_by_id(1))

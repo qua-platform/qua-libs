@@ -177,10 +177,11 @@ class ProgramGraph:
                     "Tried to use the output of node <{}> as input_vars to <{}>,\nbut <{}> isn't in the graph." \
                         .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 self.nodes[node_id].input_vars[var] = link_node.get_output()
-
+            #SAVE METADATE TO DB HERE
             self.nodes[node_id].run()
+            #SAVE NODE RES TO DB HERE
         self._timestamp = time_ns()
-
+        #SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
 
