@@ -4,6 +4,8 @@ import time
 from dataclasses import dataclass
 from random import randint
 from typing import List, Optional, Tuple
+
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Sequence, DATETIME
@@ -72,10 +74,13 @@ class Graphs(Base):
 @dataclass
 class DataReaderQuery:
     # object to collect arguments to the query
-    id: Optional[str] = None
+    graph_id: Optional[int] = None
+    node_id: Optional[int] = None
+    result_id: Optional[int] = None
     id_range: Optional[Tuple[int, int]] = None
     start_time: Optional[datetime.datetime] = None
     end_time: Optional[datetime.datetime] = None
+    user_id: Optional[str] = None
 
 
 # dr.graph(graph_id).node(node_id).results()
@@ -96,7 +101,7 @@ class DataReader:
          """
         if not isinstance(query_obj, DataReaderQuery):
             raise TypeError('query_obj must be a DataReaderQuery object')
-        self.conn.fetch(query_obj)
+        return self.conn.fetch(query_obj)
         # if query_obj.id:
         #     self.conn.fetch(id=query_obj.id)
         # elif query_obj.start_time:
@@ -148,59 +153,59 @@ class DBConnector:
 
     def fetch(self, query_obj: DataReaderQuery):
         with self._session_maker() as sess:
-            query = sess.query(Results)
-            if query_obj.id:
-                query = query.filter(Results.graph_id == query_obj.id)
-                print(query.first())
+            query = sess.query(Results).order_by(Results.graph_id)
+            if query_obj.graph_id:
+                query = query.filter(Results.graph_id == query_obj.graph_id)
+
             if query_obj.start_time:
-                print('using start time')
                 query = query.filter(Results.start_time >= query_obj.start_time)
-                for row in query.all():
-                    print(row)
+
             if query_obj.end_time:
-                print('using end time')
                 query = query.filter(Results.start_time <= query_obj.end_time)
-                for row in query.all():
-                    print(row)
-            else:
-                for row in sess.query(Results).order_by(Results.graph_id):
-                    print(row.graph_id)
+
+            if query_obj.user_id:
+                query = query.filter(Results.user_id == query_obj.user_id)
+
+            return np.array([row.res_val for row in query.all()])
 
 
 if __name__ == '__main__':
     # engine = create_engine('sqlite:///:memory:', echo=True)
-    os.remove('my_db.db')
+    try:
+        os.remove('my_db.db')
+    except FileNotFoundError:
+        pass
+
     now = datetime.datetime.now
 
     # saver = DBSaver(DB_path=':memory:')
     dbcon = DBConnector()
-    # engine = create_engine('sqlite:///my_db.db', echo=True)
-    # Base.metadata.create_all(engine)
 
-    # Session = sessionmaker(bind=engine)
-    # session = Session()
-    res_a = Results(graph_id=1, node_id=1, result_id=1, user_id='Gal', start_time=now(), end_time=now(),
+    res_a = Results(graph_id=1, node_id=1, result_id=1, user_id='Dan', start_time=now() + datetime.timedelta(days=-2),
+                    end_time=now(),
                     res_name="this",
                     res_val='that')
-    res_b = Results(graph_id=2, node_id=2, result_id=2, user_id='Gal', start_time=now(), end_time=now(),
+    res_b = Results(graph_id=1, node_id=2, result_id=2, user_id='Gal', start_time=now() + datetime.timedelta(days=-2),
+                    end_time=now(),
                     res_name="this",
                     res_val='that')
     graph = Graphs(graph_id=randint(1000, 2000), graph_script='a')
-    # session.add_all([a, b])
+
     dbcon.save(res_a)
 
     dbcon.save(
-        [Results(graph_id=randint(1000, 2000), node_id=1, result_id=1, user_id='Gal', start_time=now(), end_time=now(),
+        [Results(graph_id=randint(1000, 2000), node_id=1, result_id=1, user_id='Gal',
+                 start_time=now() + datetime.timedelta(days=-2), end_time=now(),
                  res_name="this",
-                 res_val='that') for x in range(10)])
+                 res_val=str(randint(-1e6, 1e6))) for x in range(10)])
 
-    # # b=Results(graph_id=2,node_id=1,result_id=1)
-    # # session.add(b)
-    # session.commit()
     dbcon.save([res_b, graph])
-    # dbcon.fetch('1:2')
+
     # time.sleep(5)
     rdr = DataReader('my_db.db')
 
-    rdr.fetch(DataReaderQuery(start_time=datetime.datetime.today() - datetime.timedelta(days=1),
-                              end_time=datetime.datetime.today() + datetime.timedelta(days=1)))
+    # a = rdr.fetch(DataReaderQuery(start_time=datetime.datetime.today() + datetime.timedelta(days=-3),
+    #                               end_time=datetime.datetime.today() + datetime.timedelta(days=-1),
+    #                               user_id='Gal'))
+
+    rdr.fetch(DataReaderQuery(graph_id=1))
