@@ -168,6 +168,7 @@ class ProgramGraph:
             self.update_order = False
 
         current_job = GraphJob(self)
+        #dbSaver = DBSaver()
         for node_id in self._execution_order:
             # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
@@ -177,9 +178,13 @@ class ProgramGraph:
                     "Tried to use the output of node <{}> as input_vars to <{}>,\nbut <{}> isn't in the graph." \
                         .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 self.nodes[node_id].input_vars[var] = link_node.get_output()
+
             #SAVE METADATE TO DB HERE
+            #node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
+            #self.nodes[node_id].pre_run(node_db_saver)
             self.nodes[node_id].run()
             #SAVE NODE RES TO DB HERE
+            # self.nodes[node_id].post_run(node_db_saver)
         self._timestamp = time_ns()
         #SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
