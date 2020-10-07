@@ -1,8 +1,8 @@
 import pytest
 
-from qualibs.results.ORM import DBConnector
+from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector
 
 
 @pytest.fixture()
-def db_connector():
-    return DBConnector(DB_path=':memory:')
+def results_connector():
+    return SqlAlchemyResultsConnector(backend='sqlite:///:memory:', echo=True)  # this is memory sqlite
