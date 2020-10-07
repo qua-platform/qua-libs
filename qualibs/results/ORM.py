@@ -89,8 +89,8 @@ class DataReaderQuery:
 class DataReader:
     """ A class to run queries against the persistence backend """
 
-    def __init__(self, DB_path):
-        self.conn = DBConnector(DB_path)
+    def __init__(self, connector: 'DBConnector'):
+        self.conn = connector
 
     def fetch(self, query_obj: DataReaderQuery):
         """
@@ -123,7 +123,8 @@ class NodeDataWriter:
         self._dbsaver = dbsaver
 
     def save(self):
-        self._dbsaver.save(DataReaderQuery(graph_id=self._graph_id,node_id=self._node_id))
+        self._dbsaver.save(DataReaderQuery(graph_id=self._graph_id, node_id=self._node_id))
+
 
 class DBConnector:
     def __init__(self, DB_path='my_db.db', backend='sqlite'):
