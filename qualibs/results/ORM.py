@@ -122,6 +122,8 @@ class NodeDataWriter:
         self._graph_id = graph_id
         self._dbsaver = dbsaver
 
+    def save(self):
+        self._dbsaver.save(DataReaderQuery(graph_id=self._graph_id,node_id=self._node_id))
 
 class DBConnector:
     def __init__(self, DB_path='my_db.db', backend='sqlite'):
