@@ -88,6 +88,7 @@ class Nodes(Base):
 class Graphs(Base):
     __tablename__ = 'Graphs'
     graph_id = Column(Integer, primary_key=True)
+    graph_name = Column(String)
     graph_script = Column(String)
     # results = relationship("Results", cascade="all, delete-orphan")
     # metadata = relationship("Metadata", cascade="all, delete-orphan")
@@ -100,6 +101,7 @@ class Graphs(Base):
     def to_model(self):
         return Graph(
             graph_id=self.graph_id,
+            graph_name=self.graph_name,
             graph_script=self.graph_script,
         )
 
@@ -169,8 +171,11 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
             if query_obj.node_name:
                 query = query.filter(Nodes.node_name == query_obj.node_name)
 
+            if query_obj.graph_name:
+                query = query.join(Graphs,Graphs.graph_id==Results.graph_id).filter(Graphs.graph_name == query_obj.graph_name)
+
             if query_obj.min_size:
-                query = query.filter(func.length(Results.res_val) >=query_obj.min_size)
+                query = query.filter(func.length(Results.res_val) >= query_obj.min_size)
 
             return query
 

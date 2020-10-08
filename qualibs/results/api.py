@@ -9,6 +9,7 @@ import abc
 class DataReaderQuery:
     table: str = 'Results'
     node_name: Optional[str] = None
+    graph_name: Optional[str] = None
     # object to collect arguments to the query
     graph_id: Optional[int] = None
     node_id: Optional[int] = None
@@ -51,6 +52,7 @@ class Metadatum:
 @dataclass
 class Graph:
     graph_id: int
+    graph_name:str
     graph_script: str
 
 
