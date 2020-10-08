@@ -89,8 +89,8 @@ class DataReaderQuery:
 class DataReader:
     """ A class to run queries against the persistence backend """
 
-    def __init__(self, DB_path):
-        self.conn = DBConnector(DB_path)
+    def __init__(self, DB_path, engine=''):
+        self.conn = DBConnector(DB_path, engine)
 
     def fetch(self, query_obj: DataReaderQuery):
         """
@@ -108,12 +108,23 @@ class DataReader:
         #     self.conn.fetch(start_time=query_obj.start_time)
 
 
-class GraphDataReader:
-    pass
+class ResultItem:
+    def __init__(self, result):
+        self.graph_id = result.graph_id
+        self.node_id = result.node_id
+        self.result_id = result.result_id
+        self.start_time = result.start_time
+        self.end_time = result.end_time
+        self.user_id = result.user_id
+        self.res_name = result.res_name
+        self.res_val = result.res_val
 
+    def __eq__(self):
+        pass
 
-class NodeDataReader:
-    pass
+    def __repr__(self):
+        return "<ResultItem(graph_id='%s', node_id='%s', result_id='%s',res_name='%s',res_val='%s')>" % (
+            self.graph_id, self.node_id, self.result_id, self.res_name, self.res_val)
 
 
 class NodeDataWriter:
@@ -123,11 +134,16 @@ class NodeDataWriter:
         self._dbsaver = dbsaver
 
     def save(self):
-        self._dbsaver.save(DataReaderQuery(graph_id=self._graph_id,node_id=self._node_id))
+        self._dbsaver.save(DataReaderQuery(graph_id=self._graph_id, node_id=self._node_id))
+
 
 class DBConnector:
-    def __init__(self, DB_path='my_db.db', backend='sqlite'):
-        self._engine = create_engine(f'sqlite:///{DB_path}', echo=True)
+    def __init__(self, DB_path='my_db.db', engine='', backend='sqlite'):
+        if engine:
+            self._engine = engine
+        else:
+            self._engine = create_engine(f'sqlite:///{DB_path}', echo=True)
+
         Base.metadata.create_all(self._engine)
 
         self._Session = sessionmaker(bind=self._engine)
@@ -168,7 +184,7 @@ class DBConnector:
             if query_obj.user_id:
                 query = query.filter(Results.user_id == query_obj.user_id)
 
-            return np.array([row.res_val for row in query.all()])
+            return [ResultItem(row) for row in query.all()]
 
 
 if __name__ == '__main__':
