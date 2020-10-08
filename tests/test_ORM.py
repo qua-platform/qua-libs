@@ -1,12 +1,7 @@
 from qualibs.results.ORM import *
 
-# @pytest.fixture
-# def db_fixture():
-#     dbcon = DBConnector(DB_path=':memory:')
-#     session=dbcon._Session()
 
-def test_save_record():
-    dbcon = DBConnector(DB_path=':memory:')
+def test_save_record(results_connector):
     now = datetime.datetime.now
 
 
@@ -14,11 +9,7 @@ def test_save_record():
                     end_time=now(),
                     res_name="this",
                     res_val='that')
-    res_ref = ResultItem(res_a)
-    dbcon.save(res_a)
-    rdr = DataReader(':memory:',engine=dbcon._engine)
-    res=rdr.fetch(DataReaderQuery(graph_id=1))
+    results_connector.save(res_a)
+    rdr = DataReader(results_connector) # Gal - this should receive the same connector
+    res = rdr.fetch(DataReaderQuery(graph_id=1))
     assert res is res_a
-
-
-
