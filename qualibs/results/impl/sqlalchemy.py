@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Iterable
+from typing import Optional, List, Union, Iterable, TypeVar
 
 import numpy as np
 from sqlalchemy import create_engine
@@ -8,8 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.util.compat import contextmanager
+from sqlalchemy.sql.expression import func
 
-from qualibs.results.api import BaseResultsConnector, DataReaderQuery, Result
+from qualibs.results.api import BaseResultsConnector, DataReaderQuery, Result, Node, Graph, Metadatum
 
 Base = declarative_base()
 
@@ -54,17 +55,34 @@ class Metadata(Base):
         return "<Metadata(graph_id='%s', node_id='%s', data_id='%s')>" % (
             self.graph_id, self.node_id, self.data_id)
 
+    def to_model(self):
+        return Metadatum(
+            graph_id=self.graph_id,
+            node_id=self.node_id,
+            data_id=self.data_id,
+            name=self.name,
+            val=self.val
+        )
+
 
 class Nodes(Base):
     __tablename__ = 'Nodes'
     graph_id = Column(Integer, ForeignKey('Graphs.graph_id', ondelete="CASCADE"), primary_key=True)
     node_id = Column(Integer, primary_key=True)
+    node_name = Column(String)
     results = relationship("Results", cascade="all, delete-orphan")
     metadat = relationship("Metadata", cascade="all, delete-orphan")
 
     def __repr__(self):
         return "<Node(graph_id='%s', node_id='%s')>" % (
             self.graph_id, self.node_id)
+
+    def to_model(self):
+        return Node(
+            graph_id=self.graph_id,
+            node_id=self.node_id,
+            node_name=self.node_name,
+        )
 
 
 class Graphs(Base):
@@ -79,9 +97,15 @@ class Graphs(Base):
         return "<Graph(graph_id='%s')>" % (
             self.graph_id)
 
+    def to_model(self):
+        return Graph(
+            graph_id=self.graph_id,
+            graph_script=self.graph_script,
+        )
+
 
 class SqlAlchemyResultsConnector(BaseResultsConnector):
-    def __init__(self, backend='sqlite:///:memory:', echo=False):  # GAL - by default use memory database
+    def __init__(self, backend='sqlite:///:memory:', echo=False):
         super(SqlAlchemyResultsConnector, self).__init__()
         self._engine = create_engine(backend, echo=echo)
         Base.metadata.create_all(self._engine)
@@ -101,10 +125,26 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
         finally:
             session.close()
 
-    def save(self, items: Union[Result, Iterable[Result]]):
+    T = TypeVar('T', Result, Graph, Node, Metadatum)
+
+    def table_setter(self, item):
+        if isinstance(item, Node) or item == 'Nodes':
+            return Nodes
+        elif isinstance(item, Result) or item == 'Results':
+            return Results
+        elif isinstance(item, Graph) or item == 'Graphs':
+            return Graphs
+        elif isinstance(item, Metadatum) or item == 'Metadata':
+            return Metadata
+        else:
+            raise TypeError('Error in item save type')
+
+    def save(self, items: Union[T, Iterable[T]]):
+
         with self._session_maker() as sess:
-            iter_items = [items] if type(items) is Result else list(items)
-            rows = [Results(**it.__dict__) for it in iter_items]
+            iter_items = [items] if type(items) in (Result, Node, Metadatum, Graph) else list(items)
+
+            rows = [self.table_setter(it)(**it.__dict__) for it in iter_items]
             if len(rows) == 1:
                 sess.add(rows[0])
             else:
@@ -112,18 +152,25 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
 
     def _query(self, query_obj: DataReaderQuery):
         with self._session_maker() as sess:
-            query = sess.query(Results).order_by(Results.graph_id)
+            table_object = self.table_setter(query_obj.table)
+            query = sess.query(table_object).order_by(table_object.graph_id)
             if query_obj.graph_id:
-                query = query.filter(Results.graph_id == query_obj.graph_id)
+                query = query.filter(table_object.graph_id == query_obj.graph_id)
 
             if query_obj.start_time:
-                query = query.filter(Results.start_time >= query_obj.start_time)
+                query = query.filter(table_object.start_time >= query_obj.start_time)
 
             if query_obj.end_time:
-                query = query.filter(Results.start_time <= query_obj.end_time)
+                query = query.filter(table_object.start_time <= query_obj.end_time)
 
             if query_obj.user_id:
-                query = query.filter(Results.user_id == query_obj.user_id)
+                query = query.filter(table_object.user_id == query_obj.user_id)
+
+            if query_obj.node_name:
+                query = query.filter(Nodes.node_name == query_obj.node_name)
+
+            if query_obj.min_size:
+                query = query.filter(func.length(Results.res_val) >=query_obj.min_size)
 
             return query
 

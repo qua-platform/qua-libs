@@ -4,8 +4,11 @@ from typing import Optional, Tuple, Iterable, TypeVar, List, Union
 import abc
 
 
+
 @dataclass
 class DataReaderQuery:
+    table: str = 'Results'
+    node_name: Optional[str] = None
     # object to collect arguments to the query
     graph_id: Optional[int] = None
     node_id: Optional[int] = None
@@ -14,6 +17,7 @@ class DataReaderQuery:
     start_time: Optional[datetime.datetime] = None
     end_time: Optional[datetime.datetime] = None
     user_id: Optional[str] = None
+    min_size: Optional[int]=None
 
 
 @dataclass
@@ -26,6 +30,28 @@ class Result:
     res_name: str
     res_val: str
     user_id: str
+
+
+@dataclass
+class Node:
+    graph_id: int
+    node_id: int
+    node_name: str
+
+
+@dataclass
+class Metadatum:
+    graph_id: int
+    node_id: int
+    data_id: int
+    name: str
+    val: str
+
+
+@dataclass
+class Graph:
+    graph_id: int
+    graph_script: str
 
 
 class BaseResultsConnector(abc.ABC):
@@ -47,9 +73,10 @@ class BaseResultsConnector(abc.ABC):
 
 
 class NodeDataWriter:
-    def __init__(self, node_id, graph_id, connector: BaseResultsConnector):
+    def __init__(self, node_id, graph_id, node_name, connector: BaseResultsConnector):
         self._node_id = node_id
         self._graph_id = graph_id
+        self._node_name = node_name
         self._connector = connector
 
     def save(self):
