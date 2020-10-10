@@ -171,8 +171,8 @@ class ProgramGraph:
             self.update_order = False
 
         current_job = GraphJob(self)
-        if self._results_path:
-            self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        # if self._results_path:
+        #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
         for node_id in self._execution_order:
             # Put one output variable of one node into one input_vars variable of a different node
