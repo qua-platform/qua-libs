@@ -2,6 +2,8 @@ from .program_node import LinkNode, ProgramNode
 from typing import Dict, Set, List, Tuple, Any
 from copy import deepcopy
 from time import time_ns
+from qualibs.results.api import *
+from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
 
 
 class GraphJob:
@@ -12,7 +14,7 @@ class GraphJob:
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None) -> None:
+    def __init__(self, label: str = None, results_path: str = None) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -29,6 +31,7 @@ class ProgramGraph:
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._execution_order: List[int] = list()
         self.update_order: bool = True  # Whether to update the execution order when running
+        self._results_path = results_path
 
     @property
     def id(self) -> int:
@@ -168,7 +171,9 @@ class ProgramGraph:
             self.update_order = False
 
         current_job = GraphJob(self)
-        #dbSaver = DBSaver()
+        if self._results_path:
+            self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+
         for node_id in self._execution_order:
             # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
@@ -179,14 +184,14 @@ class ProgramGraph:
                         .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 self.nodes[node_id].input_vars[var] = link_node.get_output()
 
-            #SAVE METADATE TO DB HERE
-            #node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
-            #self.nodes[node_id].pre_run(node_db_saver)
+            # SAVE METADATE TO DB HERE
+            # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
+            # self.nodes[node_id].pre_run(node_db_saver)
             self.nodes[node_id].run()
-            #SAVE NODE RES TO DB HERE
+            # SAVE NODE RES TO DB HERE
             # self.nodes[node_id].post_run(node_db_saver)
         self._timestamp = time_ns()
-        #SAVE GRAPH RES TO DB HERE
+        # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
 
