@@ -196,9 +196,9 @@ e.input_vars = {'freqs': d.output('freqs'), 'I': d.output('I'), 'Q': d.output('Q
 e.output_vars = {'res_freq'}
 
 g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
-g.dependsOn = [e]
+# g.dependsOn = [e]
 
-cal_graph = ProgramGraph('hello', {'rf': r.output('rand_freq')})
+cal_graph = ProgramGraph('hello')
 cal_graph.add_nodes([r, a, b, c, d, e, g])
 cal_graph.add_edges([(e, g)])
 

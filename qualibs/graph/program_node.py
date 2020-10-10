@@ -3,9 +3,9 @@ from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Dict, Set, Any, Union
+from typing import Dict, Set, Any
 from time import time_ns
-
+import asyncio
 
 class LinkNode:
     def __init__(self, node, output_var: str = None):
@@ -213,6 +213,7 @@ class QuaNode(ProgramNode):
             "Error: must specify output variables for node <{}>".format(self.label)
         for var in self.output_vars:
             try:
+                # TODO: Make sure it works for all ways of saving data in qua
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except AttributeError:
                 print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))

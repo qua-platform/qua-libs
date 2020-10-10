@@ -4,6 +4,7 @@ from copy import deepcopy
 from time import time_ns
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
+import asyncio
 
 
 class GraphJob:
@@ -64,8 +65,8 @@ class ProgramGraph:
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
-                        self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})[value.node.id].append(
-                            value.output_var)
+                        node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
+                        node_input_ids.setdefault(value.node.id, list()).append(value.output_var)
         self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
@@ -175,13 +176,15 @@ class ProgramGraph:
         #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
         for node_id in self._execution_order:
+        #dbSaver = DBSaver()
+        for node_id in self.get_next(start_nodes):
             # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             for var in input_vars:
                 link_node = input_vars[var]
                 assert self.nodes.get(link_node.node.id, None), \
                     "Tried to use the output of node <{}> as input_vars to <{}>,\nbut <{}> isn't in the graph." \
-                        .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
+                    .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
                 self.nodes[node_id].input_vars[var] = link_node.get_output()
 
             # SAVE METADATE TO DB HERE
@@ -194,6 +197,17 @@ class ProgramGraph:
         # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
+
+    def get_next(self, start_nodes):
+        to_do = [start_nodes]
+        while to_do:
+            s = self.nodes[to_do.pop(0)]
+            yield s.id
+            try:
+                for child in self.edges[s.id]:
+                    to_do.append(child)
+            except KeyError:
+                pass
 
     def topological_sort(self, start_nodes: List[ProgramNode] = list()) -> List[int]:
         """
