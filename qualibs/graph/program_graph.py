@@ -33,6 +33,7 @@ class ProgramGraph:
         self._execution_order: List[int] = list()
         self.update_order: bool = True  # Whether to update the execution order when running
         self._results_path = results_path
+        self._tasks = dict()
 
     @property
     def id(self) -> int:
@@ -167,30 +168,52 @@ class ProgramGraph:
         # if self._results_path:
         #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
         # dbSaver = DBSaver()
-        tasks = list()
+
         for node_id in self.get_next(start_nodes):
-            # Put one output variable of one node into one input_vars variable of a different node
-            input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
-            try:
-                for var in input_vars:
-                    link_node = input_vars[var]
-                    assert self.nodes.get(link_node.node.id, None), \
-                        f"Tried to use the output of node <{link_node.node.label}> " \
-                        f"as input to <{self.nodes[node_id].label}>,\nbut <{link_node.node.label}> isn't in the graph."
-                    self.nodes[node_id].input_vars[var] = link_node.get_output()
-            except KeyError:
-                continue
-            # SAVE METADATE TO DB HERE
-            # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
-            # self.nodes[node_id].pre_run(node_db_saver)
-            tasks.append(asyncio.create_task(self.nodes[node_id].run()))
+            if node_id not in self._tasks:
+                # Put one output variable of one node into one input_vars variable of a different node
+                input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
+                # SAVE METADATE TO DB HERE
+                # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
+                # self.nodes[node_id].pre_run(node_db_saver)
+                if self.dependencies_started(node_id):
+                    await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
+                    try:
+                        for var in input_vars:
+                            link_node = input_vars[var]
+                            assert self.nodes.get(link_node.node.id, None), \
+                                f"Tried to use the output of node <{link_node.node.label}> " \
+                                f"as input to <{self.nodes[node_id].label}>," \
+                                f"\nbut <{link_node.node.label}> isn't in the graph."
+                            self.nodes[node_id].input_vars[var] = link_node.get_output()
+                    except KeyError:
+                        print(f"Couldn't find the variable '{link_node.output_var}' "
+                              f"in the output of node <{link_node.node.label}>")
+                        raise KeyError
+                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run())
+
             # SAVE NODE RES TO DB HERE
             # self.nodes[node_id].post_run(node_db_saver)
-        await asyncio.gather(*tasks)
+
+        await asyncio.gather(*self._tasks.values())
         self._timestamp = time_ns()
         # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
+
+    def dependencies_started(self, node_id) -> bool:
+        return self._backward_edges.get(node_id, set()) <= self._tasks.keys()
+
+    def dependencies_done(self, node_id) -> bool:
+        for depend_id in self.backward_edges.get(node_id, set()):
+            try:
+                if self._tasks[depend_id].done():
+                    continue
+                else:
+                    return False
+            except KeyError:
+                return False
+        return True
 
     def get_next(self, start_nodes):
         to_do = [n.id for n in start_nodes]

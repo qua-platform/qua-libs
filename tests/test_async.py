@@ -59,9 +59,9 @@ graph = Graph(nodes, edges, a)
 
 async def main(graph):
     a = [asyncio.create_task(n.run()) for n in graph.get_next()]
-    # await asyncio.gather(*a)
-
+    await asyncio.gather(*a)
+    return a
 
 s = time.perf_counter()
-asyncio.run(main(graph))
+f = asyncio.run(main(graph))
 print(Fore.WHITE + f"Total took: {time.perf_counter() - s}")

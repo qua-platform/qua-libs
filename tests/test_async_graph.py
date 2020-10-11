@@ -161,5 +161,3 @@ d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
 g = ProgramGraph()
 g.add_nodes([a1, b1, c1, d1])
 asyncio.run(g.run())
-# for i in g.get_next():
-#     print(g.nodes[i].label)
