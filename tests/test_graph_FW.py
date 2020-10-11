@@ -37,12 +37,14 @@ def test_run_quaNode():
         return prog
 
     node = QuaNode('node_name', qua_prog)
-    node.input_vars = {}
+    # node.input_vars = {}
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}  # TODO: can I have a qua node without outputs?
     node.run()
-    assert node.result['res'][0]==1
+    print(node.result)
+    assert node.result['res'][0] == 1
+
 
 def test_make_graph_with_quaNode():
     sim_args = {

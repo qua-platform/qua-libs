@@ -2,10 +2,12 @@ from qm import QmJob, QuantumMachine
 from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
-from types import FunctionType
-from typing import Dict, Set, Any
+from types import FunctionType, CoroutineType
+from typing import Dict, Set, Any, Union
+from collections.abc import Coroutine
 from time import time_ns
-import asyncio
+from inspect import iscoroutinefunction
+
 
 class LinkNode:
     def __init__(self, node, output_var: str = None):
@@ -22,14 +24,19 @@ class LinkNode:
 
     def get_output(self):
         if self.output_var is not None:
-            return self.node.result[self.output_var]
+            try:
+                return self.node.result[self.output_var]
+            except KeyError:
+                print(f"'{self.output_var}' is not in the result of <{self.node.label}>.")
+                raise
         else:
             return self.node.result
 
 
 class ProgramNode(ABC):
 
-    def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
+    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None,
+                 input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
                  to_run: bool = True):
         """
@@ -125,7 +132,7 @@ class ProgramNode(ABC):
         return self._timestamp
 
     @abstractmethod
-    def run(self) -> None:
+    async def run(self) -> None:
         pass
 
     @property
@@ -140,7 +147,7 @@ class ProgramNode(ABC):
 
 class QuaNode(ProgramNode):
 
-    def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
+    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None, input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
                  quantum_machine: QuantumMachine = None, simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None, simulate_or_execute: str = None):
@@ -218,25 +225,28 @@ class QuaNode(ProgramNode):
             except AttributeError:
                 print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
 
-    def run(self) -> None:
+    async def run(self) -> None:
+        if self.to_run:
+            # Get the Qua program that is wrapped by the python function
+            if iscoroutinefunction(self.program):
+                qua_program = await self.program(**self.input_vars)
+            else:
+                qua_program = self.program(**self.input_vars)
+            assert isinstance(qua_program, QuaProgram), \
+                "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
+                "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
+            self._qua_program = qua_program
 
-        # Get the Qua program that is wrapped by the python function
-        qua_program = self.program(**self.input_vars)
-        assert isinstance(qua_program, QuaProgram), \
-            "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
-            "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
-        self._qua_program = qua_program
+            assert self.simulate_or_execute is not None, \
+                "Error: Either missing parameters or " \
+                "didn't specify whether to simulate/execute QuaNode {}".format(self.label)
 
-        assert self.simulate_or_execute is not None, \
-            "Error: Either missing parameters or " \
-            "didn't specify whether to simulate/execute QuaNode {}".format(self.label)
-
-        if self.simulate_or_execute == 'simulate':
-            self.simulate()
-        if self.simulate_or_execute == 'execute':
-            self.execute()
-        self._timestamp = time_ns()
-        self.get_result()
+            if self.simulate_or_execute == 'simulate':
+                self.simulate()
+            if self.simulate_or_execute == 'execute':
+                self.execute()
+            self._timestamp = time_ns()
+            self.get_result()
 
     def execute(self) -> None:
         print("\nEXECUTING QuaNode '{}'...".format(self.label))
@@ -251,7 +261,8 @@ class QuaNode(ProgramNode):
 
 class PyNode(ProgramNode):
 
-    def __init__(self, label: str = None, program: FunctionType = None, input_vars: Dict[str, Any] = None,
+    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None,
+                 input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None):
         super().__init__(label, program, input_vars, output_vars)
         self._job_results = None
@@ -267,12 +278,16 @@ class PyNode(ProgramNode):
             except KeyError:
                 print("Couldn't fetch '{}' from Python program results".format(var))
 
-    def run(self):
-        print("\nRUNNING PyNode '{}'...".format(self.label))
-        self._job_results = self.program(**self.input_vars)
-        print("DONE")
-        assert type(self._job_results) is dict, \
-            "TypeError: Expected <dict> but got <{}> as program results.\n" \
-            "PyNode program must return a dictionary.".format(type(self._job_results))
-        self._timestamp = time_ns()
-        self.get_result()
+    async def run(self):
+        if self.to_run:
+            print("\nRUNNING PyNode '{}'...".format(self.label))
+            if iscoroutinefunction(self.program):
+                self._job_results = await self.program(**self.input_vars)
+            else:
+                self._job_results = self.program(**self.input_vars)
+            print("DONE")
+            assert type(self._job_results) is dict, \
+                "TypeError: Expected <dict> but got <{}> as program results.\n" \
+                "PyNode program must return a dictionary.".format(type(self._job_results))
+            self._timestamp = time_ns()
+            self.get_result()

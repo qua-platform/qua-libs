@@ -118,17 +118,21 @@ QM = QMm.open_qm(config)
 sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)]))}
 
 
-async def a():
+def a():
     rest = random.random()
     print(f"Node a resting for {rest}")
-    await asyncio.sleep(rest)
-    return {'x': rest}
+    # await asyncio.sleep(rest)
+    with program() as qua_prog:
+        x = declare(fixed, value=rest)
+        save(x, 'x')
+    return qua_prog
 
 
 async def b(x):
     rest = random.random()
     print(f"Node b resting for {x * rest}")
     await asyncio.sleep(x * rest)
+    # time.sleep(rest)
     return {'zx': x * rest}
 
 
@@ -140,19 +144,21 @@ async def c(x):
 
 
 async def d(zx, yx):
-    print(f"Node c resting for {zx * yx}")
+    print(f"Node d resting for {zx * yx}")
     await asyncio.sleep(zx * yx)
     print(f"Result: {yx * zx}")
     return {'zxyx': zx * yx}
 
 
-a1 = PyNode('a', a, None, {'x'})
+a1 = QuaNode('a', a, None, {'x'})
+a1.quantum_machine = QM
+a1.simulation_kwargs = sim_args
 b1 = PyNode('b', b, {'x': a1.output('x')}, {'zx'})
 c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
 d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
 
 g = ProgramGraph()
 g.add_nodes([a1, b1, c1, d1])
-
-for i in g.get_next():
-    print(g.nodes[i].label)
+asyncio.run(g.run())
+# for i in g.get_next():
+#     print(g.nodes[i].label)

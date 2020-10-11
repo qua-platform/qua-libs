@@ -150,11 +150,7 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    @property
-    def result(self):
-        return self._result
-
-    def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    async def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
         NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
@@ -174,32 +170,36 @@ class ProgramGraph:
         current_job = GraphJob(self)
         # if self._results_path:
         #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        # dbSaver = DBSaver()
 
-        for node_id in self._execution_order:
-        #dbSaver = DBSaver()
+        # for node_id in self._execution_order:
+        tasks = list()
         for node_id in self.get_next(start_nodes):
             # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
-            for var in input_vars:
-                link_node = input_vars[var]
-                assert self.nodes.get(link_node.node.id, None), \
-                    "Tried to use the output of node <{}> as input_vars to <{}>,\nbut <{}> isn't in the graph." \
-                    .format(link_node.node.label, self.nodes[node_id].label, link_node.node.label)
-                self.nodes[node_id].input_vars[var] = link_node.get_output()
-
+            try:
+                for var in input_vars:
+                    link_node = input_vars[var]
+                    assert self.nodes.get(link_node.node.id, None), \
+                        f"Tried to use the output of node <{link_node.node.label}> " \
+                        f"as input to <{self.nodes[node_id].label}>,\nbut <{link_node.node.label}> isn't in the graph."
+                    self.nodes[node_id].input_vars[var] = link_node.get_output()
+            except KeyError:
+                continue
             # SAVE METADATE TO DB HERE
             # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
             # self.nodes[node_id].pre_run(node_db_saver)
-            self.nodes[node_id].run()
+            tasks.append(asyncio.create_task(self.nodes[node_id].run()))
             # SAVE NODE RES TO DB HERE
             # self.nodes[node_id].post_run(node_db_saver)
+        await asyncio.gather(*tasks)
         self._timestamp = time_ns()
         # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
 
     def get_next(self, start_nodes):
-        to_do = [start_nodes]
+        to_do = [n.id for n in start_nodes]
         while to_do:
             s = self.nodes[to_do.pop(0)]
             yield s.id
@@ -329,8 +329,9 @@ class GraphNode(ProgramNode):
                 print("Couldn't fetch '{}' from the program graph results".format(var))
 
     def run(self):
-        print("\nRUNNING PyNode '{}'...".format(self.label))
-        self._job = self.graph.run()
-        print("DONE")
-        self._timestamp = time_ns()
-        self.get_result()
+        if self.to_run:
+            print("\nRUNNING PyNode '{}'...".format(self.label))
+            self._job = self.graph.run()
+            print("DONE")
+            self._timestamp = time_ns()
+            self.get_result()

@@ -58,7 +58,8 @@ graph = Graph(nodes, edges, a)
 
 
 async def main(graph):
-    await asyncio.gather(*[asyncio.create_task(n.run()) for n in graph.get_next()])
+    a = [asyncio.create_task(n.run()) for n in graph.get_next()]
+    # await asyncio.gather(*a)
 
 
 s = time.perf_counter()
