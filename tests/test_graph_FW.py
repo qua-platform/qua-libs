@@ -64,12 +64,12 @@ def test_make_graph_with_quaNode():
         return prog
 
     node = QuaNode('node_name', qua_prog)
-    node.input_vars = {}
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
 
-    graph = ProgramGraph('test_graph', {'output': node.output('res')})
+    graph = ProgramGraph('test_graph')
     graph.add_nodes([node])
     gjob = graph.run()
-    assert 1
+
+    assert node.result['res'][0] == 1
