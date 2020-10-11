@@ -150,7 +150,7 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    async def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
         NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
@@ -163,17 +163,12 @@ class ProgramGraph:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
 
-        if self.update_order:
-            self._execution_order = self.topological_sort(start_nodes)
-            self.update_order = False
-
         current_job = GraphJob(self)
         # if self._results_path:
         #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
         # dbSaver = DBSaver()
-        for node_id in self._execution_order:
-        # tasks = list()
-        # for node_id in self.get_next(start_nodes):
+        tasks = list()
+        for node_id in self.get_next(start_nodes):
             # Put one output variable of one node into one input_vars variable of a different node
             input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
             try:
@@ -188,11 +183,10 @@ class ProgramGraph:
             # SAVE METADATE TO DB HERE
             # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
             # self.nodes[node_id].pre_run(node_db_saver)
-            # tasks.append(asyncio.create_task(self.nodes[node_id].run()))
-            self.nodes[node_id].run()
+            tasks.append(asyncio.create_task(self.nodes[node_id].run()))
             # SAVE NODE RES TO DB HERE
             # self.nodes[node_id].post_run(node_db_saver)
-        # await asyncio.gather(*tasks)
+        await asyncio.gather(*tasks)
         self._timestamp = time_ns()
         # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning

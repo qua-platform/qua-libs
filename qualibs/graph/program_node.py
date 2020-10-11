@@ -225,12 +225,11 @@ class QuaNode(ProgramNode):
             except AttributeError:
                 print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
 
-    def run(self) -> None:
+    async def run(self) -> None:
         if self.to_run:
             # Get the Qua program that is wrapped by the python function
             if iscoroutinefunction(self.program):
-                pass
-                # qua_program = await self.program(**self.input_vars)
+                qua_program = await self.program(**self.input_vars)
             else:
                 qua_program = self.program(**self.input_vars)
             assert isinstance(qua_program, QuaProgram), \
@@ -279,12 +278,11 @@ class PyNode(ProgramNode):
             except KeyError:
                 print("Couldn't fetch '{}' from Python program results".format(var))
 
-    def run(self):
+    async def run(self):
         if self.to_run:
             print("\nRUNNING PyNode '{}'...".format(self.label))
             if iscoroutinefunction(self.program):
-                pass
-                # self._job_results = await self.program(**self.input_vars)
+                self._job_results = await self.program(**self.input_vars)
             else:
                 self._job_results = self.program(**self.input_vars)
             print("DONE")
