@@ -147,7 +147,7 @@ class ProgramNode(ABC):
         self._to_run = to_run
 
 
-class QuaJob:
+class QuaJobNode:
     def __init__(self, node):
         """
         Provides a link between a QuaNode job result handle and another node
@@ -243,7 +243,7 @@ class QuaNode(ProgramNode):
                 raise AttributeError(f"The variable '{var}' isn't in the job result of node <{self.label}>")
 
     def job(self):
-        return QuaJob(self)
+        return QuaJobNode(self)
 
     async def run(self) -> None:
         if self.to_run:

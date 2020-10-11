@@ -1,9 +1,9 @@
-from .program_node import LinkNode, ProgramNode
+from .program_node import LinkNode, ProgramNode, QuaJobNode
+from qualibs.results.api import *
+from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
 from typing import Dict, Set, List, Tuple, Any
 from copy import deepcopy
 from time import time_ns
-from qualibs.results.api import *
-from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
 import asyncio
 
 
@@ -28,7 +28,7 @@ class ProgramGraph:
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._timestamp = None  # when last finished running
-        self._link_nodes: Dict[int, Dict[str, LinkNode]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
+        self._link_nodes: Dict[int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._execution_order: List[int] = list()
         self.update_order: bool = True  # Whether to update the execution order when running
@@ -68,6 +68,11 @@ class ProgramGraph:
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append(value.output_var)
+                    if isinstance(value, QuaJobNode):
+                        self.add_edges({(value.node, node)})
+                        self._link_nodes.setdefault(node.id, dict())[var] = value
+                        node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
+                        node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
         self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
@@ -152,7 +157,11 @@ class ProgramGraph:
         return self._timestamp
 
     async def _run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
-
+        """
+        Run the nodes in the graph by BFS order, while waiting for dependent tasks to complete
+        :param start_nodes:
+        :return:
+        """
         if not start_nodes:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
@@ -172,14 +181,15 @@ class ProgramGraph:
                     # wait for dependencies to complete
                     await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
                     # direct the output of the dependencies input the input of the node
-                    input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
+                    input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
                     for var in input_vars:
-                        link_node = input_vars[var]
-                        assert self.nodes.get(link_node.node.id, None), \
-                            f"Tried to use the output of node <{link_node.node.label}> " \
-                            f"as input to <{self.nodes[node_id].label}>," \
-                            f"\nbut <{link_node.node.label}> isn't in the graph."
-                        self.nodes[node_id].input_vars[var] = link_node.get_output()
+                        if isinstance(input_vars[var], LinkNode):
+                            link_node = input_vars[var]
+                            assert self.nodes.get(link_node.node.id, None), \
+                                f"Tried to use the output of node <{link_node.node.label}> " \
+                                f"as input to <{self.nodes[node_id].label}>," \
+                                f"\nbut <{link_node.node.label}> isn't in the graph."
+                            self.nodes[node_id].input_vars[var] = link_node.get_output()
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run())
 
@@ -225,6 +235,11 @@ class ProgramGraph:
         return True
 
     def get_next(self, start_nodes):
+        """
+        Generator of graph nodes - implementing BFS
+        :param start_nodes:
+        :return:
+        """
         to_do = [n.id for n in start_nodes]
         while to_do:
             s = self.nodes[to_do.pop(0)]
@@ -308,6 +323,7 @@ class ProgramGraph:
                         var_name = '!all'
                     if var_name == -1:
                         var_name = '!none'
+
                     dot_graph += ' [label="{}"]'.format(var_name)
 
                     dot_graph += ';'

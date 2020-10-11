@@ -144,7 +144,8 @@ async def c(x):
     return {'yx': x * rest}
 
 
-async def d(zx, yx):
+async def d(zx, yx, m):
+    print(m.result_handles)
     print(f"Node d resting for {zx * yx}")
     await asyncio.sleep(zx * yx)
     print(f"Result: {yx * zx}")
@@ -156,8 +157,9 @@ a1.quantum_machine = QM
 a1.simulation_kwargs = sim_args
 b1 = PyNode('b', b, {'x': a1.output('x'), 'm': a1.job()}, {'zx'})
 c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
-d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
+d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx'), 'm': a1.job()}, {'zxyx'})
 
 g = ProgramGraph()
 g.add_nodes([a1, b1, c1, d1])
 g.run()
+print(g.export_dot_graph())
