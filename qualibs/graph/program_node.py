@@ -145,6 +145,23 @@ class ProgramNode(ABC):
         self._to_run = to_run
 
 
+class QuaJob:
+    def __init__(self, node):
+        """
+        Provides a link between a QuaNode job result handle and another node
+        :param node: source ProgramNode
+        """
+        self.node: QuaNode = node
+
+    @property
+    def result_handles(self):
+        return self.node._job.result_handles
+
+    @property
+    def quantum_machine(self):
+        return self.node.quantum_machine
+
+
 class QuaNode(ProgramNode):
 
     def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None, input_vars: Dict[str, Any] = None,
@@ -224,6 +241,9 @@ class QuaNode(ProgramNode):
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except AttributeError:
                 print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
+
+    def job(self):
+        return QuaJob(self)
 
     async def run(self) -> None:
         if self.to_run:
