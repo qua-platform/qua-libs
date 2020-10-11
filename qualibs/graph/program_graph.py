@@ -151,14 +151,8 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    async def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
-        """
-        Run the graph nodes in the correct order while propagating the inputs/outputs.
-        NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
-        :param start_nodes: list of nodes to start running the graph from
-        :type: start_nodes: List[ProgramNode]
-        :return:
-        """
+    async def _run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+
         if not start_nodes:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
@@ -197,6 +191,24 @@ class ProgramGraph:
         # SAVE GRAPH RES TO DB HERE
         # TODO: Maybe do something to current job before returning
         return current_job
+
+    def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+        """
+        Run the graph nodes in the correct order while propagating the inputs/outputs.
+        NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
+        :param start_nodes: list of nodes to start running the graph from
+        :type: start_nodes: List[ProgramNode]
+        :return:
+        """
+        return asyncio.run(self._run_async(start_nodes))
+
+    async def run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+        """
+        Same as run() but asynchronous
+        :param start_nodes:
+        :return:
+        """
+        return asyncio.run(self._run_async(start_nodes))
 
     def dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()

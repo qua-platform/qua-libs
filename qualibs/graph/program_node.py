@@ -2,7 +2,7 @@ from qm import QmJob, QuantumMachine
 from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
-from types import FunctionType, CoroutineType
+from types import FunctionType
 from typing import Dict, Set, Any, Union
 from collections.abc import Coroutine
 from time import time_ns
@@ -240,8 +240,7 @@ class QuaNode(ProgramNode):
                 # TODO: Make sure it works for all ways of saving data in qua
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except AttributeError:
-                print("Error: the variable '{}' isn't in the job result of node <{}>".format(var, self.label))
-                raise
+                raise AttributeError(f"The variable '{var}' isn't in the job result of node <{self.label}>")
 
     def job(self):
         return QuaJob(self)
