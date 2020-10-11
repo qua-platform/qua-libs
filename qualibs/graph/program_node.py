@@ -17,18 +17,20 @@ class LinkNode:
         :param output_var: the desired output variable of the given ProgramNode
         """
         self.node: ProgramNode = node
+
         if output_var is not None:
-            assert output_var in self.node.output_vars, \
-                "KeyError: Output of node <{}> doesn't contain the variable <{}>".format(self.node.label, output_var)
+
+            try:
+                assert output_var in self.node.output_vars
+            except AssertionError:
+                raise Exception(f"Output variables of node <{self.node.label}> "
+                                f"don't contain the variable '{output_var}'")
+
         self.output_var: str = output_var
 
     def get_output(self):
         if self.output_var is not None:
-            try:
-                return self.node.result[self.output_var]
-            except KeyError:
-                print(f"'{self.output_var}' is not in the result of <{self.node.label}>.")
-                raise
+            return self.node.result[self.output_var]
         else:
             return self.node.result
 
@@ -238,7 +240,8 @@ class QuaNode(ProgramNode):
                 # TODO: Make sure it works for all ways of saving data in qua
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except AttributeError:
-                print("Error: the variable '{}' isn't in the output of node <{}>".format(var, self.label))
+                print("Error: the variable '{}' isn't in the job result of node <{}>".format(var, self.label))
+                raise
 
     def job(self):
         return QuaJob(self)
@@ -267,14 +270,14 @@ class QuaNode(ProgramNode):
             self.get_result()
 
     def execute(self) -> None:
-        print("\nEXECUTING QuaNode '{}'...".format(self.label))
+        print("\nEXECUTING QuaNode <{}>...".format(self.label))
         self._job = self._quantum_machine.execute(self._qua_program, **self._execution_kwargs)
-        print("DONE")
+        print(f"DONE running node <{self.label}>")
 
     def simulate(self) -> None:
-        print("\nSIMULATING QuaNode '{}'...".format(self.label))
+        print("\nSIMULATING QuaNode <{}>...".format(self.label))
         self._job = self._quantum_machine.simulate(self._qua_program, **self._simulation_kwargs)
-        print("DONE")
+        print(f"DONE running node <{self.label}>")
 
 
 class PyNode(ProgramNode):
@@ -294,16 +297,16 @@ class PyNode(ProgramNode):
             try:
                 self._result[var] = self._job_results[var]
             except KeyError:
-                print("Couldn't fetch '{}' from Python program results".format(var))
+                print(f"Couldn't fetch '{var}' from results of node <{self.label}>")
 
     async def run(self):
         if self.to_run:
-            print("\nRUNNING PyNode '{}'...".format(self.label))
+            print("\nRUNNING PyNode <{}>...".format(self.label))
             if iscoroutinefunction(self.program):
                 self._job_results = await self.program(**self.input_vars)
             else:
                 self._job_results = self.program(**self.input_vars)
-            print("DONE")
+            print(f"DONE running node <{self.label}>")
             assert type(self._job_results) is dict, \
                 "TypeError: Expected <dict> but got <{}> as program results.\n" \
                 "PyNode program must return a dictionary.".format(type(self._job_results))

@@ -171,25 +171,22 @@ class ProgramGraph:
 
         for node_id in self.get_next(start_nodes):
             if node_id not in self._tasks:
-                # Put one output variable of one node into one input_vars variable of a different node
-                input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
                 # SAVE METADATE TO DB HERE
                 # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
                 # self.nodes[node_id].pre_run(node_db_saver)
                 if self.dependencies_started(node_id):
+                    # wait for dependencies to complete
                     await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
-                    try:
-                        for var in input_vars:
-                            link_node = input_vars[var]
-                            assert self.nodes.get(link_node.node.id, None), \
-                                f"Tried to use the output of node <{link_node.node.label}> " \
-                                f"as input to <{self.nodes[node_id].label}>," \
-                                f"\nbut <{link_node.node.label}> isn't in the graph."
-                            self.nodes[node_id].input_vars[var] = link_node.get_output()
-                    except KeyError:
-                        print(f"Couldn't find the variable '{link_node.output_var}' "
-                              f"in the output of node <{link_node.node.label}>")
-                        raise KeyError
+                    # direct the output of the dependencies input the input of the node
+                    input_vars: Dict[str, LinkNode] = self._link_nodes.get(node_id, set())
+                    for var in input_vars:
+                        link_node = input_vars[var]
+                        assert self.nodes.get(link_node.node.id, None), \
+                            f"Tried to use the output of node <{link_node.node.label}> " \
+                            f"as input to <{self.nodes[node_id].label}>," \
+                            f"\nbut <{link_node.node.label}> isn't in the graph."
+                        self.nodes[node_id].input_vars[var] = link_node.get_output()
+                    # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run())
 
             # SAVE NODE RES TO DB HERE
