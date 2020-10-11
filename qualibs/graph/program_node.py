@@ -233,8 +233,6 @@ class QuaNode(ProgramNode):
         self._simulation_kwargs = kwargs
 
     def get_result(self) -> None:
-        assert self.output_vars is not None, \
-            "Error: must specify output variables for node <{}>".format(self.label)
         for var in self.output_vars:
             try:
                 # TODO: Make sure it works for all ways of saving data in qua
