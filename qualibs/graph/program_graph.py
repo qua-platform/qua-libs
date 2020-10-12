@@ -28,7 +28,8 @@ class ProgramGraph:
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._timestamp = None  # when last finished running
-        self._link_nodes: Dict[int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
+        self._link_nodes: Dict[
+            int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._execution_order: List[int] = list()
         self.update_order: bool = True  # Whether to update the execution order when running
@@ -202,17 +203,16 @@ class ProgramGraph:
         # TODO: Maybe do something to current job before returning
         return current_job
 
-    def run(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    def run(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list()) -> GraphJob:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
-        NOT YET: If given start_nodes, run the directed subgraph starting from those nodes.
         :param start_nodes: list of nodes to start running the graph from
-        :type: start_nodes: List[ProgramNode]
+        :type: start_nodes: : Union[List[ProgramNode], Set[ProgramNode]]
         :return:
         """
         return asyncio.run(self._run_async(start_nodes))
 
-    async def run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    async def run_async(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list()) -> GraphJob:
         """
         Same as run() but asynchronous
         :param start_nodes:
@@ -234,10 +234,11 @@ class ProgramGraph:
                 return False
         return True
 
-    def get_next(self, start_nodes):
+    def get_next(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]]):
         """
         Generator of graph nodes - implementing BFS
-        :param start_nodes:
+        :param start_nodes: the start positions of graph traversal
+        :type start_nodes: List/Set of ProgramNode
         :return:
         """
         to_do = [n.id for n in start_nodes]

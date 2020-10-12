@@ -160,6 +160,7 @@ c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
 d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx'), 'm': a1.job()}, {'zxyx'})
 
 g = ProgramGraph()
-g.add_nodes([a1, b1, c1, d1])
+g.add_nodes([d1, c1, b1, a1])
 g.run()
+# g.run([b1, c1]) need to open new event loop
 print(g.export_dot_graph())
