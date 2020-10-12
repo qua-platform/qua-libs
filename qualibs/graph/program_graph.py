@@ -15,9 +15,17 @@ class GraphJob:
         self.graph = graph
 
 
+class GraphDB:
+    def __init__(self, results_path: str = ':memory:'):
+        self._results_path = results_path
+        self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        self.calling_script_path = inspect.stack()[1][0].f_code.co_filename
+        self.calling_script = open(self.calling_script_path).read() if self.calling_script_path else None
+
+
 class ProgramGraph:
 
-    def __init__(self, label: str = None, results_path: str = ':memory:', calling_script_path: str = None) -> None:
+    def __init__(self, label: str = None, results_path: str = ':memory:') -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -34,10 +42,10 @@ class ProgramGraph:
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
         self._results_path = results_path
-
+        
         # connect graph to DB
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self.init_graph_db(calling_script_path)
+        self.init_graph_db(inspect.stack()[1][0].f_code.co_filename)
 
     def init_graph_db(self, calling_script_path):
         # get script that runs graph
