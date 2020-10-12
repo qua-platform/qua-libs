@@ -7,7 +7,7 @@ from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
 
 @pytest.fixture()
 def results_connector():
-    return SqlAlchemyResultsConnector(backend='sqlite:///:memory:', echo=True)  # this is memory sqlite
+    return SqlAlchemyResultsConnector(backend=':memory:', echo=True)  # this is memory sqlite
 
 
 def test_save_single_result(results_connector):

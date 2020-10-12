@@ -107,7 +107,8 @@ class Graphs(Base):
 
 
 class SqlAlchemyResultsConnector(BaseResultsConnector):
-    def __init__(self, backend='sqlite:///:memory:', echo=False):
+    def __init__(self, backend=':memory:', echo=False):
+        backend = 'sqlite:///' + backend
         super(SqlAlchemyResultsConnector, self).__init__()
         self._engine = create_engine(backend, echo=echo)
         Base.metadata.create_all(self._engine)
@@ -172,7 +173,8 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
                 query = query.filter(Nodes.node_name == query_obj.node_name)
 
             if query_obj.graph_name:
-                query = query.join(Graphs,Graphs.graph_id==Results.graph_id).filter(Graphs.graph_name == query_obj.graph_name)
+                query = query.join(Graphs, Graphs.graph_id == Results.graph_id).filter(
+                    Graphs.graph_name == query_obj.graph_name)
 
             if query_obj.min_size:
                 query = query.filter(func.length(Results.res_val) >= query_obj.min_size)

@@ -15,7 +15,7 @@ def test_run_pyNode():
             return {'out1': False}
 
     node = PyNode('test', myfunc, {'a': 1}, {'out1'})
-    node.run()
+    asyncio.run(node.run())
     assert node.result['out1']
 
 
@@ -69,6 +69,34 @@ def test_make_graph_with_quaNode():
     node.output_vars = {'res'}
 
     graph = ProgramGraph('test_graph')
+    graph.add_nodes([node])
+    gjob = graph.run()
+
+    assert node.result['res'][0] == 1
+
+def test_save_graph_to_db():
+    sim_args = {
+        'simulate': SimulationConfig(int(1e3))}
+    QMm = QuantumMachinesManager()
+    QM = QMm.open_qm(config)
+
+    def qua_prog():
+        with program() as prog:
+            res = declare(int)
+            res_str = declare_stream()
+            play('playOp', 'qe1')
+            assign(res, 1)
+            save(res, res_str)
+            with stream_processing():
+                res_str.save_all('res')
+        return prog
+
+    node = QuaNode('node_name', qua_prog)
+    node.quantum_machine = QM
+    node.simulation_kwargs = sim_args
+    node.output_vars = {'res'}
+
+    graph = ProgramGraph('test_graph',results_path='my_db.db',calling_script_path=__file__)
     graph.add_nodes([node])
     gjob = graph.run()
 

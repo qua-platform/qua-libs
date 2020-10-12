@@ -1,3 +1,5 @@
+import inspect
+
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
@@ -15,7 +17,7 @@ class GraphJob:
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None, results_path: str = None) -> None:
+    def __init__(self, label: str = None, results_path: str = ':memory:', calling_script_path: str = None) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -35,6 +37,13 @@ class ProgramGraph:
         self.update_order: bool = True  # Whether to update the execution order when running
         self._results_path = results_path
         self._tasks = dict()
+        self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        if calling_script_path:
+            with open(calling_script_path) as f:
+                self._calling_script = f.read()
+        else:
+            self._calling_script = None
+        self._dbcon.save(Graph(graph_id=self._id, graph_script=self._calling_script, graph_name=self.label))
 
     @property
     def id(self) -> int:
@@ -169,13 +178,11 @@ class ProgramGraph:
                     start_nodes.append(self.nodes[node_id])
 
         current_job = GraphJob(self)
-        # if self._results_path:
-        #     self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        # dbSaver = DBSaver()
 
         for node_id in self.get_next(start_nodes):
             if node_id not in self._tasks:
-                # SAVE METADATE TO DB HERE
+                # SAVE METADATA TO DB HERE
+
                 # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
                 # self.nodes[node_id].pre_run(node_db_saver)
                 if self.dependencies_started(node_id):
@@ -192,6 +199,7 @@ class ProgramGraph:
                                 f"\nbut <{link_node.node.label}> isn't in the graph."
                             self.nodes[node_id].input_vars[var] = link_node.get_output()
                     # create task to run the node and start running
+                    self._dbcon.save(Node(graph_id=self.id, node_id=node_id, node_name=self.nodes[node_id].label))
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run())
 
             # SAVE NODE RES TO DB HERE
@@ -199,8 +207,18 @@ class ProgramGraph:
 
         await asyncio.gather(*self._tasks.values())
         self._timestamp = time_ns()
-        # SAVE GRAPH RES TO DB HERE
-        # TODO: Maybe do something to current job before returning
+        for n in self.nodes:
+            for key in self.nodes[n].result.keys():
+                self._dbcon.save(Result(graph_id=self._id, node_id=n, result_id=1,
+                                        start_time=datetime.datetime.now(),
+                                        end_time=datetime.datetime.now(), #TODO: database to ns timestamp
+                                        user_id='User',
+                                        res_name=key,
+                                        res_val=str(self.nodes[n].result[key])
+                                        ))
+
+            # SAVE GRAPH RES TO DB HERE
+            # TODO: Maybe do something to current job before returning
         return current_job
 
     def run(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list()) -> GraphJob:
@@ -350,7 +368,6 @@ class ProgramGraph:
         :return:
         """
         pass
-
 
 class GraphNode(ProgramNode):
 
