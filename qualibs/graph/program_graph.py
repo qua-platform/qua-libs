@@ -11,6 +11,10 @@ import inspect
 
 class GraphDB:
     def __init__(self, results_path: str = ':memory:'):
+        """
+        Creating a link to a SQLite DB
+        :param results_path: store location for DB
+        """
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
@@ -25,10 +29,14 @@ class GraphDB:
 
     def save_graph(self, graph, calling_script_path):
         calling_script = open(calling_script_path).read() if calling_script_path else None
-        self._dbcon.save(Graph(graph_id=graph.id, graph_script=calling_script, graph_name=graph.label))
+        self._dbcon.save(Graph(graph_id=graph.id,
+                               graph_script=calling_script,
+                               graph_name=graph.label))
         # save nodes to database
         for node_id, node in graph.nodes.items():
-            self._dbcon.save(Node(graph_id=graph.id, node_id=node_id, node_name=node.label))
+            self._dbcon.save(Node(graph_id=graph.id,
+                                  node_id=node_id,
+                                  node_name=node.label))
 
     def save_graph_results(self, graph):
         for node_id, node in graph.nodes.items():
@@ -49,6 +57,8 @@ class ProgramGraph:
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
         :type label: str
+        :param graph_db: a GraphDB to specify an optional DB to save graph related data
+        :type graph_db: GraphDB
         """
         self._id: int = time_ns()
         self.label: str = label
@@ -149,8 +159,8 @@ class ProgramGraph:
 
     def remove_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
-        Remove edges from graph
-        :param edges: set of tuples {(source_node, dest_node)...}
+        Remove edges between pairs of nodes
+        :param edges: Pairs of nodes {(source_node, dest_node)...}
         :type edges: Set[Tuple[ProgramNode, ProgramNode]]
         :return:
         """
@@ -177,17 +187,19 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    async def run_async(self, start_nodes: List[ProgramNode] = list(),
+    async def run_async(self,
                         graph_db: GraphDB = None,
+                        start_nodes: List[ProgramNode] = list(),
                         _calling_script_path: str = None
                         ) -> GraphDB:
         """
-        Run the nodes in the graph by BFS order, while waiting for dependent tasks to complete
+        Run the nodes in the graph in a BFS traversal order, while waiting for dependent tasks to complete
         :param graph_db:
         :param _calling_script_path:
         :param start_nodes:
         :return:
         """
+
         if _calling_script_path is None:
             _calling_script_path = inspect.stack()[1][0].f_code.co_filename
 
@@ -224,7 +236,7 @@ class ProgramGraph:
 
         # wait for all tasks(nodes) to complete running
         await asyncio.gather(*self._tasks.values())
-        # self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
+        self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
         self._timestamp = time_ns()
 
         # SAVE GRAPH RES TO DB HERE
@@ -233,18 +245,19 @@ class ProgramGraph:
 
         return graph_db
 
-    def run(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list(),
-            graph_db: GraphDB = None
+    def run(self,
+            graph_db: GraphDB = None,
+            start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list(),
             ) -> GraphDB:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
-        :param graph_db:
         :param start_nodes: list of nodes to start running the graph from
-        :type: start_nodes: : Union[List[ProgramNode], Set[ProgramNode]]
+        :type: start_nodes: Union[List[ProgramNode], Set[ProgramNode]]
+        :param graph_db:
         :return:
         """
         calling_script_path = inspect.stack()[1][0].f_code.co_filename
-        return asyncio.run(self.run_async(start_nodes, graph_db, calling_script_path))
+        return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path))
 
     def dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()
@@ -363,8 +376,12 @@ class ProgramGraph:
 
 
 class GraphNode(ProgramNode):
-    def __init__(self, label: str = None, graph: ProgramGraph = None, input_vars: Dict[str, Any] = None,
+
+    def __init__(self, label: str = None,
+                 graph: ProgramGraph = None,
+                 input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None):
+
         super().__init__(label, None, input_vars, output_vars)
         self.graph: ProgramGraph = graph
         self._type = 'Graph'
@@ -380,7 +397,7 @@ class GraphNode(ProgramNode):
             except KeyError:
                 print("Couldn't fetch '{}' from the program graph results".format(var))
 
-    async def run(self):
+    async def run_async(self) -> None:
         if self.to_run:
             self._start_time = datetime.now()
             print("\nRUNNING GraphNode '{}'...".format(self.label))

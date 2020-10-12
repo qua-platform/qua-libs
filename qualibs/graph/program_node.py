@@ -37,7 +37,8 @@ class LinkNode:
 
 class ProgramNode(ABC):
 
-    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None,
+    def __init__(self, label: str = None,
+                 program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
                  to_run: bool = True):
@@ -166,11 +167,14 @@ class QuaJobNode:
 
 class QuaNode(ProgramNode):
 
-    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None,
+    def __init__(self, label: str = None,
+                 program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 quantum_machine: QuantumMachine = None, simulation_kwargs: Dict[str, Any] = None,
-                 execution_kwargs: Dict[str, Any] = None, simulate_or_execute: str = None):
+                 quantum_machine: QuantumMachine = None,
+                 simulation_kwargs: Dict[str, Any] = None,
+                 execution_kwargs: Dict[str, Any] = None,
+                 simulate_or_execute: str = None):
 
         super().__init__(label, program, input_vars, output_vars)
 
@@ -282,9 +286,11 @@ class QuaNode(ProgramNode):
 
 class PyNode(ProgramNode):
 
-    def __init__(self, label: str = None, program: Union[FunctionType, Coroutine] = None,
+    def __init__(self, label: str = None,
+                 program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None):
+
         super().__init__(label, program, input_vars, output_vars)
         self._job_results = None
         self._type = 'Py'

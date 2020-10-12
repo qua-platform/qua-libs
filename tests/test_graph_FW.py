@@ -96,9 +96,10 @@ def test_save_graph_to_db():
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-    graph_db = GraphDB('my_db2.db')
-    graph = ProgramGraph('test_graph', graph_db)
+    graph_db = GraphDB('my_db.db')
+    graph = ProgramGraph('test_graph')
+    # graph = ProgramGraph('test_graph',graph_db) #another option
     graph.add_nodes([node])
-    job_db = graph.run()
+    job_db = graph.run(graph_db)
 
     assert node.result['res'][0] == 1
