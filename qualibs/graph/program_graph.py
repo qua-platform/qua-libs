@@ -44,7 +44,7 @@ class GraphDB:
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None, graph_db: GraphDB = GraphDB()) -> None:
+    def __init__(self, label: str = None, graph_db: GraphDB = None) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -193,7 +193,8 @@ class ProgramGraph:
 
         graph_db = graph_db if graph_db else self._graph_db
         # Save graph to DB
-        graph_db.save_graph(self, _calling_script_path)
+        if graph_db:
+            graph_db.save_graph(self, _calling_script_path)
 
         if not start_nodes:
             for node_id in self.nodes:
@@ -227,7 +228,8 @@ class ProgramGraph:
         self._timestamp = time_ns()
 
         # SAVE GRAPH RES TO DB HERE
-        graph_db.save_graph_results(self)
+        if graph_db:
+            graph_db.save_graph_results(self)
 
         return graph_db
 
