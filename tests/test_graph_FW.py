@@ -15,7 +15,7 @@ def test_run_pyNode():
             return {'out1': False}
 
     node = PyNode('test', myfunc, {'a': 1}, {'out1'})
-    asyncio.run(node.run())
+    node.run()
     assert node.result['out1']
 
 
@@ -74,6 +74,7 @@ def test_make_graph_with_quaNode():
 
     assert node.result['res'][0] == 1
 
+
 def test_save_graph_to_db():
     sim_args = {
         'simulate': SimulationConfig(int(1e3))}
@@ -96,7 +97,7 @@ def test_save_graph_to_db():
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
 
-    graph = ProgramGraph('test_graph',results_path='my_db.db',calling_script_path=__file__)
+    graph = ProgramGraph('test_graph', results_path='my_db.db', calling_script_path=__file__)
     graph.add_nodes([node])
     gjob = graph.run()
 

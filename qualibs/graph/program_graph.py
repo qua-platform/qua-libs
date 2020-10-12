@@ -23,27 +23,30 @@ class ProgramGraph:
         :param label: a label for the graph
         :type label: str
         """
-        self._id: int = id(self)
+        self._id: int = time_ns()
         self.label: str = label
         self._nodes: Dict[int, ProgramNode] = dict()
-        self._node_counter: int = 0
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._timestamp = None  # when last finished running
         self._link_nodes: Dict[
             int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
-        self._execution_order: List[int] = list()
-        self.update_order: bool = True  # Whether to update the execution order when running
-        self._results_path = results_path
         self._tasks = dict()
+        self._results_path = results_path
+
+        # connect graph to DB
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        if calling_script_path:
-            with open(calling_script_path) as f:
-                self._calling_script = f.read()
-        else:
-            self._calling_script = None
-        self._dbcon.save(Graph(graph_id=self._id, graph_script=self._calling_script, graph_name=self.label))
+        self.init_graph_db(calling_script_path)
+
+    def init_graph_db(self, calling_script_path):
+        # get script that runs graph
+        calling_script = open(calling_script_path).read() if calling_script_path else None
+        # save graph to database
+        self._dbcon.save(Graph(graph_id=self.id, graph_script=calling_script, graph_name=self.label))
+        # save nodes to database
+        for node_id, node in self.nodes.items():
+            self._dbcon.save(Node(graph_id=self.id, node_id=node_id, node_name=node.label))
 
     @property
     def id(self) -> int:
@@ -70,7 +73,6 @@ class ProgramGraph:
         """
         for node in new_nodes:
             self._nodes[node.id] = node
-            self._node_counter += 1
             if node.input_vars is not dict():
                 for var, value in node.input_vars.items():
                     if isinstance(value, LinkNode):
@@ -83,7 +85,6 @@ class ProgramGraph:
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
-        self.update_order = True
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -132,8 +133,6 @@ class ProgramGraph:
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
 
-        self.update_order = True
-
     def remove_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
         Remove edges from graph
@@ -156,8 +155,6 @@ class ProgramGraph:
                 print("KeyError: Tried to remove edge from <{}> to <{}>, "
                       "but it doesn't exist.".format(source.id, dest.id))
 
-        self.update_order = True
-
     @property
     def backward_edges(self):
         return self._backward_edges
@@ -166,7 +163,7 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    async def _run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    async def run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
         """
         Run the nodes in the graph by BFS order, while waiting for dependent tasks to complete
         :param start_nodes:
@@ -181,11 +178,7 @@ class ProgramGraph:
 
         for node_id in self.get_next(start_nodes):
             if node_id not in self._tasks:
-                # SAVE METADATA TO DB HERE
-
-                # node_db_saver=NodeDBSaver(graph_id,node_id,dbSaver)
-                # self.nodes[node_id].pre_run(node_db_saver)
-                if self.dependencies_started(node_id):
+                if self.dependencies_started(node_id):  # or node_id in start_nodes: # TODO: make sure it works
                     # wait for dependencies to complete
                     await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
                     # direct the output of the dependencies input the input of the node
@@ -198,23 +191,24 @@ class ProgramGraph:
                                 f"as input to <{self.nodes[node_id].label}>," \
                                 f"\nbut <{link_node.node.label}> isn't in the graph."
                             self.nodes[node_id].input_vars[var] = link_node.get_output()
+
+                    # SAVE METADATA TO DB HERE
+
                     # create task to run the node and start running
-                    self._dbcon.save(Node(graph_id=self.id, node_id=node_id, node_name=self.nodes[node_id].label))
-                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run())
+                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
 
-            # SAVE NODE RES TO DB HERE
-            # self.nodes[node_id].post_run(node_db_saver)
-
+        # wait for all tasks(nodes) to complete running
         await asyncio.gather(*self._tasks.values())
+        # self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
         self._timestamp = time_ns()
-        for n in self.nodes:
-            for key in self.nodes[n].result.keys():
-                self._dbcon.save(Result(graph_id=self._id, node_id=n, result_id=1,
-                                        start_time=datetime.datetime.now(),
-                                        end_time=datetime.datetime.now(), #TODO: database to ns timestamp
+        for node_id, node in self.nodes.items():
+            for res_name in node.result.keys():
+                self._dbcon.save(Result(graph_id=self.id, node_id=node_id, result_id=1,
+                                        start_time=node._start_time,
+                                        end_time=node._end_time,
                                         user_id='User',
-                                        res_name=key,
-                                        res_val=str(self.nodes[n].result[key])
+                                        res_name=res_name,
+                                        res_val=str(node.result[res_name])
                                         ))
 
             # SAVE GRAPH RES TO DB HERE
@@ -228,15 +222,7 @@ class ProgramGraph:
         :type: start_nodes: : Union[List[ProgramNode], Set[ProgramNode]]
         :return:
         """
-        return asyncio.run(self._run_async(start_nodes))
-
-    async def run_async(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list()) -> GraphJob:
-        """
-        Same as run() but asynchronous
-        :param start_nodes:
-        :return:
-        """
-        return asyncio.run(self._run_async(start_nodes))
+        return asyncio.run(self.run_async(start_nodes))
 
     def dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()
@@ -353,24 +339,8 @@ class ProgramGraph:
 
         return dot_graph
 
-    def plot(self, start_nodes=None):
-        """
-        Plot the directed graph.
-        If given start_nodes, plot the directed subgraph starting from those nodes.
-        :param start_nodes: list of nodes to start plotting from
-        :return:
-        """
-
-    def merge(self, graph):
-        """
-        Merge graph into the current graph
-        :param graph:
-        :return:
-        """
-        pass
 
 class GraphNode(ProgramNode):
-
     def __init__(self, label: str = None, graph: ProgramGraph = None, input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None):
         super().__init__(label, None, input_vars, output_vars)
@@ -388,10 +358,11 @@ class GraphNode(ProgramNode):
             except KeyError:
                 print("Couldn't fetch '{}' from the program graph results".format(var))
 
-    def run(self):
+    async def run(self):
         if self.to_run:
-            print("\nRUNNING PyNode '{}'...".format(self.label))
-            self._job = self.graph.run()
+            self._start_time = datetime.now()
+            print("\nRUNNING GraphNode '{}'...".format(self.label))
+            self._job = await asyncio.create_task(self.graph.run_async())
             print("DONE")
-            self._timestamp = time_ns()
+            self._end_time = datetime.now()
             self.get_result()

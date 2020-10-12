@@ -4,13 +4,10 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm import SimulationConfig
 from random import random
-import matplotlib.pyplot as plt
-import numpy as np
 
 import asyncio
-import time
 import random
-from colorama import Fore
+
 
 config = {
 
@@ -144,8 +141,7 @@ async def c(x):
     return {'yx': x * rest}
 
 
-async def d(zx, yx, m):
-    print(m.result_handles)
+async def d(zx, yx):
     print(f"Node d resting for {zx * yx}")
     await asyncio.sleep(zx * yx)
     print(f"Result: {yx * zx}")
@@ -157,10 +153,10 @@ a1.quantum_machine = QM
 a1.simulation_kwargs = sim_args
 b1 = PyNode('b', b, {'x': a1.output('x'), 'm': a1.job()}, {'zx'})
 c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
-d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx'), 'm': a1.job()}, {'zxyx'})
+d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
 
 g = ProgramGraph()
 g.add_nodes([d1, c1, b1, a1])
 g.run()
-# g.run([b1, c1]) need to open new event loop
+# g.run([b1, c1])  # need to open new event loop
 print(g.export_dot_graph())
