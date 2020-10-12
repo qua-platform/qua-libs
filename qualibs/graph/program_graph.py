@@ -1,31 +1,50 @@
-import inspect
-
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
-from qualibs.results.impl.sqlalchemy import Results, SqlAlchemyResultsConnector
+from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector
+
 from typing import Dict, Set, List, Tuple, Any
 from copy import deepcopy
 from time import time_ns
 import asyncio
-
-
-class GraphJob:
-    def __init__(self, graph):
-        self.timestamp = time_ns()  # when job started
-        self.graph = graph
+import inspect
 
 
 class GraphDB:
     def __init__(self, results_path: str = ':memory:'):
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self.calling_script_path = inspect.stack()[1][0].f_code.co_filename
-        self.calling_script = open(self.calling_script_path).read() if self.calling_script_path else None
+
+    @property
+    def results_path(self):
+        return self._results_path
+
+    @results_path.setter
+    def results_path(self, results_path):
+        self._results_path = results_path
+        self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+
+    def save_graph(self, graph, calling_script_path):
+        calling_script = open(calling_script_path).read() if calling_script_path else None
+        self._dbcon.save(Graph(graph_id=graph.id, graph_script=calling_script, graph_name=graph.label))
+        # save nodes to database
+        for node_id, node in graph.nodes.items():
+            self._dbcon.save(Node(graph_id=graph.id, node_id=node_id, node_name=node.label))
+
+    def save_graph_results(self, graph):
+        for node_id, node in graph.nodes.items():
+            for res_name in node.result.keys():
+                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id, result_id=1,
+                                        start_time=node._start_time,
+                                        end_time=node._end_time,
+                                        user_id='User',
+                                        res_name=res_name,
+                                        res_val=str(node.result[res_name])
+                                        ))
 
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None, results_path: str = ':memory:') -> None:
+    def __init__(self, label: str = None, graph_db: GraphDB = GraphDB()) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -41,20 +60,7 @@ class ProgramGraph:
             int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
-        self._results_path = results_path
-        
-        # connect graph to DB
-        self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self.init_graph_db(inspect.stack()[1][0].f_code.co_filename)
-
-    def init_graph_db(self, calling_script_path):
-        # get script that runs graph
-        calling_script = open(calling_script_path).read() if calling_script_path else None
-        # save graph to database
-        self._dbcon.save(Graph(graph_id=self.id, graph_script=calling_script, graph_name=self.label))
-        # save nodes to database
-        for node_id, node in self.nodes.items():
-            self._dbcon.save(Node(graph_id=self.id, node_id=node_id, node_name=node.label))
+        self._graph_db = graph_db
 
     @property
     def id(self) -> int:
@@ -171,18 +177,28 @@ class ProgramGraph:
     def timestamp(self):
         return self._timestamp
 
-    async def run_async(self, start_nodes: List[ProgramNode] = list()) -> GraphJob:
+    async def run_async(self, start_nodes: List[ProgramNode] = list(),
+                        graph_db: GraphDB = None,
+                        _calling_script_path: str = None
+                        ) -> GraphDB:
         """
         Run the nodes in the graph by BFS order, while waiting for dependent tasks to complete
+        :param graph_db:
+        :param _calling_script_path:
         :param start_nodes:
         :return:
         """
+        if _calling_script_path is None:
+            _calling_script_path = inspect.stack()[1][0].f_code.co_filename
+
+        graph_db = graph_db if graph_db else self._graph_db
+        # Save graph to DB
+        graph_db.save_graph(self, _calling_script_path)
+
         if not start_nodes:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
-
-        current_job = GraphJob(self)
 
         for node_id in self.get_next(start_nodes):
             if node_id not in self._tasks:
@@ -209,28 +225,24 @@ class ProgramGraph:
         await asyncio.gather(*self._tasks.values())
         # self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
         self._timestamp = time_ns()
-        for node_id, node in self.nodes.items():
-            for res_name in node.result.keys():
-                self._dbcon.save(Result(graph_id=self.id, node_id=node_id, result_id=1,
-                                        start_time=node._start_time,
-                                        end_time=node._end_time,
-                                        user_id='User',
-                                        res_name=res_name,
-                                        res_val=str(node.result[res_name])
-                                        ))
 
-            # SAVE GRAPH RES TO DB HERE
-            # TODO: Maybe do something to current job before returning
-        return current_job
+        # SAVE GRAPH RES TO DB HERE
+        graph_db.save_graph_results(self)
 
-    def run(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list()) -> GraphJob:
+        return graph_db
+
+    def run(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list(),
+            graph_db: GraphDB = None
+            ) -> GraphDB:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
+        :param graph_db:
         :param start_nodes: list of nodes to start running the graph from
         :type: start_nodes: : Union[List[ProgramNode], Set[ProgramNode]]
         :return:
         """
-        return asyncio.run(self.run_async(start_nodes))
+        calling_script_path = inspect.stack()[1][0].f_code.co_filename
+        return asyncio.run(self.run_async(start_nodes, graph_db, calling_script_path))
 
     def dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()

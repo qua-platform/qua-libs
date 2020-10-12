@@ -1,4 +1,4 @@
-from qualibs.graph import PyNode, QuaNode, ProgramGraph
+from qualibs.graph import PyNode, QuaNode, ProgramGraph, GraphDB
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import LoopbackInterface
@@ -155,8 +155,9 @@ b1 = PyNode('b', b, {'x': a1.output('x'), 'm': a1.job()}, {'zx'})
 c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
 d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
 
-g = ProgramGraph()
+g = ProgramGraph('hello')
 g.add_nodes([d1, c1, b1, a1])
 g.run()
-# g.run([b1, c1])  # need to open new event loop
-print(g.export_dot_graph())
+# # g.run([b1, c1])  # need to open new event loop
+# print(g.export_dot_graph())
+# print(open(__file__).read())

@@ -70,7 +70,7 @@ def test_make_graph_with_quaNode():
 
     graph = ProgramGraph('test_graph')
     graph.add_nodes([node])
-    gjob = graph.run()
+    graph.run()
 
     assert node.result['res'][0] == 1
 
@@ -96,9 +96,9 @@ def test_save_graph_to_db():
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-
-    graph = ProgramGraph('test_graph', results_path='my_db.db', calling_script_path=__file__)
+    graph_db = GraphDB('my_db2.db')
+    graph = ProgramGraph('test_graph', graph_db)
     graph.add_nodes([node])
-    gjob = graph.run()
+    job_db = graph.run()
 
     assert node.result['res'][0] == 1
