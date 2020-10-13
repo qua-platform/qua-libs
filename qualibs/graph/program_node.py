@@ -45,6 +45,28 @@ class LinkNode:
             return self.node.result
 
 
+class InputVars:
+    def __init__(self, input_vars):
+        if input_vars:
+            for var, val in input_vars.items():
+                setattr(self, var, val)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __delitem__(self, key):
+        delattr(self, key)
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class ProgramNode(ABC):
 
     def __init__(self, label: str = None,
@@ -113,12 +135,10 @@ class ProgramNode(ABC):
 
     @input_vars.setter
     def input_vars(self, input_vars):
-        if input_vars is not None:
-            if type(input_vars) is not dict:
-                raise TypeError(f"In node <{self.label}> expected {dict} but given {type(input_vars)}")
-            self._input_vars = input_vars
+        if type(input_vars) is dict or input_vars is None:
+            self._input_vars = InputVars(input_vars)
         else:
-            self._input_vars = dict()
+            raise TypeError(f"In node <{self.label}> expected {dict} but given {type(input_vars)}")
 
     @property
     def output_vars(self) -> Set[str]:
@@ -271,9 +291,9 @@ class QuaNode(ProgramNode):
         if self.to_run:
             # Get the Qua program that is wrapped by the python function
             if iscoroutinefunction(self.program):
-                qua_program = await self.program(**self.input_vars)
+                qua_program = await self.program(**self.input_vars.__dict__)
             else:
-                qua_program = self.program(**self.input_vars)
+                qua_program = self.program(**self.input_vars.__dict__)
 
             if not isinstance(qua_program, QuaProgram):
                 raise TypeError(f"Program given to node <{self.label}> must return a "
@@ -330,9 +350,9 @@ class PyNode(ProgramNode):
 
             print("\nRUNNING PyNode <{}>...".format(self.label))
             if iscoroutinefunction(self.program):
-                self._job_results = await self.program(**self.input_vars)
+                self._job_results = await self.program(**self.input_vars.__dict__)
             else:
-                self._job_results = self.program(**self.input_vars)
+                self._job_results = self.program(**self.input_vars.__dict__)
             print_green(f"DONE running node <{self.label}>")
 
             self._end_time = datetime.now()

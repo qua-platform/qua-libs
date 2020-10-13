@@ -111,7 +111,7 @@ class ProgramGraph:
         for node in new_nodes:
             self._nodes[node.id] = node
             if node.input_vars is not dict():
-                for var, value in node.input_vars.items():
+                for var, value in node.input_vars.__dict__.items():
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
@@ -266,7 +266,7 @@ class ProgramGraph:
                                 raise RuntimeError(f"Tried to use the output of node <{link_node.node.label}> "
                                                    f"but the node is not in the graph.")
 
-                            self.nodes[node_id].input_vars[var] = link_node.get_output()
+                            setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
 
                     # SAVE METADATA TO DB HERE
 
