@@ -1,22 +1,104 @@
+import functools
+
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
-from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector
+from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
 
 from typing import Dict, Set, List, Tuple, Any
+from collections.abc import Callable
 from copy import deepcopy
 from time import time_ns
 import asyncio
 import inspect
 
+envmodule = {}
+
+
+def env_dependency(x=None):
+    global envmodule
+
+    def decorator_env_dependency(func):
+        envmodule[func.__name__] = func
+
+        @functools.wraps(func)
+        def wrapper_x(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper_x
+
+    return decorator_env_dependency
+
+
+def env_resolve(fn, cache={}):
+    import inspect
+    global envmodule
+    sig = inspect.signature(fn)
+    args = []
+    for pname, pobj in sig.parameters.items():
+        if pname not in cache:
+            cache[pname] = env_resolve(envmodule[pname], envmodule, cache)
+        args.append(cache[pname])
+    return lambda: fn(*args)
+
+
+class Dependency:
+    """
+    A class to represent any piece of metadata relating to an experiment
+    :param val: Handle to a resource or a concrete value
+    :type val: any type convertible to string.
+    :param getter: function to retrieve the dependency value
+    """
+
+    def __init__(self, name: str, val=None, getter: Callable = None):
+        self.name = name
+        self._val = val
+        self._getter = getter
+
+    def getter(self):
+        if self._getter:
+            return self._getter()
+        else:
+            return self._val
+
+
+class ExecutionEnvironment:
+    """
+    class to save the experiment metadata
+    """
+
+    def __init__(self, dependency_dict: Dict[str, Dependency] = None):
+        if dependency_dict is None:
+            self.dependencies = {}
+        else:
+            self.dependencies = dependency_dict
+
+    def __setattr__(self, name: str, value: Union[Dependency, Dict[str, Dependency]]) -> None:
+        if isinstance(value, Dependency):
+            self.dependencies[name] = value
+        elif isinstance(value, Dict) & all([isinstance(val, Dependency) for val in value.values()]):
+            self.dependencies = {**self.dependencies, **value}
+        else:
+            raise TypeError
+
+    def __delattr__(self, name: str) -> None:
+        del self.dependencies[name]
+
+    def __getattribute__(self, name: str) -> Any:
+        return self.dependencies[name]
+
+    def get_state(self):
+        return {key: self.dependencies[key].getter() for key in self.dependencies.keys()}
+
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:'):
+    def __init__(self, results_path: str = ':memory:', dependency_list=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
         """
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        self._graph_dependencies = dependency_list
 
     @property
     def results_path(self):
@@ -31,22 +113,25 @@ class GraphDB:
         calling_script = open(calling_script_path).read() if calling_script_path else None
         self._dbcon.save(Graph(graph_id=graph.id,
                                graph_script=calling_script,
-                               graph_name=graph.label))
+                               graph_name=graph.label,
+                               graph_dot_repr=graph.export_dot_graph()))  # TODO: add full graphID, nodeID to dot graph
         # save nodes to database
         for node_id, node in graph.nodes.items():
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
+                                  node_type=NodeTypes[node.type],
+                                  version='1',
                                   node_name=node.label))
 
     def save_graph_results(self, graph):
         for node_id, node in graph.nodes.items():
-            for res_name in node.result.keys():
-                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id, result_id=1,
+            for name in node.result.keys():
+                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
                                         start_time=node._start_time,
                                         end_time=node._end_time,
                                         user_id='User',
-                                        res_name=res_name,
-                                        res_val=str(node.result[res_name])
+                                        name=name,
+                                        val=str(node.result[name])
                                         ))
 
 
@@ -229,7 +314,7 @@ class ProgramGraph:
                                 f"\nbut <{link_node.node.label}> isn't in the graph."
                             self.nodes[node_id].input_vars[var] = link_node.get_output()
 
-                    # SAVE METADATA TO DB HERE
+                    # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
 
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())

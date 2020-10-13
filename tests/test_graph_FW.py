@@ -76,6 +76,7 @@ def test_make_graph_with_quaNode():
 
 
 def test_save_graph_to_db():
+
     sim_args = {
         'simulate': SimulationConfig(int(1e3))}
     QMm = QuantumMachinesManager()

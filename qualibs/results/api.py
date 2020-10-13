@@ -25,11 +25,11 @@ class DataReaderQuery:
 class Result:
     graph_id: int
     node_id: int
-    result_id: int
+    # result_id: int
     start_time: datetime.datetime
     end_time: datetime.datetime
-    res_name: str
-    res_val: str
+    name: str
+    val: str
     user_id: str
 
 
@@ -38,13 +38,15 @@ class Node:
     graph_id: int
     node_id: int
     node_name: str
+    node_type: int
+    version: str
 
 
 @dataclass
 class Metadatum:
     graph_id: int
     node_id: int
-    data_id: int
+    # data_id: int
     name: str
     val: str
 
@@ -54,6 +56,7 @@ class Graph:
     graph_id: int
     graph_name:str
     graph_script: str
+    graph_dot_repr: str
 
 
 class BaseResultsConnector(abc.ABC):
