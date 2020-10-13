@@ -6,8 +6,14 @@ from types import FunctionType
 from typing import Dict, Set, Any, Union
 from collections.abc import Coroutine
 from datetime import datetime
-from inspect import iscoroutinefunction
+from colorama import Fore, Style
+from inspect import iscoroutinefunction, isfunction
 import asyncio
+
+
+def print_red(skk): print(Fore.RED+f"{skk}"+Style.RESET_ALL)
+def print_green(skk): print(Fore.GREEN+f"{skk}"+Style.RESET_ALL)
+def print_yellow(skk): print(Fore.YELLOW+f"{skk}"+Style.RESET_ALL)
 
 
 class LinkNode:
@@ -23,12 +29,16 @@ class LinkNode:
             try:
                 assert output_var in self.node.output_vars
             except AssertionError:
-                raise Exception(f"Output variables of node <{self.node.label}> "
-                                f"don't contain the variable '{output_var}'")
+                raise ValueError(f"Output variables of node <{self.node.label}> "
+                                 f"do not contain the variable '{output_var}'")
 
         self.output_var: str = output_var
 
     def get_output(self):
+        """
+        In case of a specified output variable returns it's value, otherwise returns the full result
+        :return:
+        """
         if self.output_var is not None:
             return self.node.result[self.output_var]
         else:
@@ -81,6 +91,9 @@ class ProgramNode(ABC):
 
     @label.setter
     def label(self, _label):
+        if _label is not None:
+            if type(_label) is not str:
+                raise TypeError(f"In node <{self.label}> expected {str} but given {type(_label)}")
         self._label = _label
 
     @property
@@ -90,8 +103,8 @@ class ProgramNode(ABC):
     @program.setter
     def program(self, program):
         if program is not None:
-            assert type(program) is FunctionType, \
-                "TypeError: Expected FunctionType but given <{}>".format(type(program))
+            if not isfunction(program):
+                raise TypeError(f"In node <{self.label}> expected {FunctionType} but given {type(program)}")
         self._program = program
 
     @property
@@ -101,8 +114,8 @@ class ProgramNode(ABC):
     @input_vars.setter
     def input_vars(self, input_vars):
         if input_vars is not None:
-            assert type(input_vars) is dict, \
-                "TypeError: Try a different input_vars. Expected <dict> but given <{}>".format(type(input_vars))
+            if type(input_vars) is not dict:
+                raise TypeError(f"In node <{self.label}> expected {dict} but given {type(input_vars)}")
             self._input_vars = input_vars
         else:
             self._input_vars = dict()
@@ -114,8 +127,9 @@ class ProgramNode(ABC):
     @output_vars.setter
     def output_vars(self, output_vars):
         if output_vars is not None:
-            assert type(output_vars) is set, \
-                "TypeError: Try a different output_vars. Expected <set> but given <{}>".format(type(output_vars))
+            if type(output_vars) is not set:
+                raise TypeError(f"In node <{self.label}> expected {set} but given {type(output_vars)}")
+
             self._output_vars = output_vars
         else:
             self._output_vars = set()
@@ -125,7 +139,7 @@ class ProgramNode(ABC):
         return self._result
 
     @abstractmethod
-    def get_result(self) -> None:
+    def _get_result(self) -> None:
         pass
 
     def output(self, output_vars=None) -> LinkNode:
@@ -144,7 +158,8 @@ class ProgramNode(ABC):
 
     @to_run.setter
     def to_run(self, to_run):
-        assert type(to_run) is bool, "TypeError: Expected bool but given {}".format(type(to_run))
+        if type(to_run) is not bool:
+            raise TypeError(f"In node <{self.label}> expected {bool} but given {type(to_run)}")
         self._to_run = to_run
 
 
@@ -194,16 +209,15 @@ class QuaNode(ProgramNode):
     @quantum_machine.setter
     def quantum_machine(self, quantum_machine):
         if quantum_machine is not None:
-            assert isinstance(quantum_machine, QuantumMachine), \
-                "TypeError: Expected <QuantumMachine> but given {}".format(type(quantum_machine))
+            if not isinstance(quantum_machine, QuantumMachine):
+                raise TypeError(f"In node <{self.label}> expected {QuantumMachine} but given {type(quantum_machine)}")
         self._quantum_machine = quantum_machine
 
     @property
     def simulate_or_execute(self) -> str:
-        try:
-            if self._simulate_or_execute:
-                return self._simulate_or_execute
-        except AttributeError:
+        if hasattr(self, '_simulate_or_execute'):
+            return self._simulate_or_execute
+        else:
             if self._simulation_kwargs:
                 self._simulate_or_execute = 'simulate'
             elif self._execution_kwargs:
@@ -213,8 +227,8 @@ class QuaNode(ProgramNode):
     @simulate_or_execute.setter
     def simulate_or_execute(self, s_or_e):
         if s_or_e is not None:
-            assert s_or_e == 'simulate' or s_or_e == 'execute', \
-                "ValueError: Expected 'simulate' or 'execute' but got '{}'".format(s_or_e)
+            if s_or_e != 'simulate' and s_or_e != 'execute':
+                raise ValueError(f"In node <{self.label}> expected 'simulate' or 'execute' but got {s_or_e}")
             self._simulate_or_execute = s_or_e
 
     @property
@@ -224,8 +238,8 @@ class QuaNode(ProgramNode):
     @execution_kwargs.setter
     def execution_kwargs(self, kwargs):
         if kwargs is not None:
-            assert type(kwargs) is dict, \
-                "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+            if type(kwargs) is not dict:
+                raise TypeError(f"In node <{self.label}> expected {dict} but got {type(kwargs)}")
         self._execution_kwargs = kwargs
 
     @property
@@ -235,17 +249,20 @@ class QuaNode(ProgramNode):
     @simulation_kwargs.setter
     def simulation_kwargs(self, kwargs):
         if kwargs is not None:
-            assert type(kwargs) is dict, \
-                "TypeError: Expecting a <dict> of args but got {}.".format(type(kwargs))
+            if type(kwargs) is not dict:
+                raise TypeError(f"In node <{self.label}> expected {dict} but got {type(kwargs)}")
         self._simulation_kwargs = kwargs
 
-    def get_result(self) -> None:
+    def _get_result(self) -> None:
+        if self.output_vars is None:
+            print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
+            return
         for var in self.output_vars:
             try:
                 # TODO: Make sure it works for all ways of saving data in qua
                 self._result[var] = getattr(self._job.result_handles, var).fetch_all()['value']
             except AttributeError:
-                raise AttributeError(f"The variable '{var}' isn't in the job result of node <{self.label}>")
+                print_red(f"WARNING Could not fetch variable '{var}' from the job results of node <{self.label}>")
 
     def job(self):
         return QuaJobNode(self)
@@ -257,31 +274,33 @@ class QuaNode(ProgramNode):
                 qua_program = await self.program(**self.input_vars)
             else:
                 qua_program = self.program(**self.input_vars)
-            assert isinstance(qua_program, QuaProgram), \
-                "In node <id:{},label:{}> TypeError: Expected <qm.program._Program> but given <{}>.\n" \
-                "QuaNode program must return a Qua program.".format(self.id, self.label, type(qua_program))
+
+            if not isinstance(qua_program, QuaProgram):
+                raise TypeError(f"Program given to node <{self.label}> must return a "
+                                f"Qua program as {QuaProgram} but returns {type(qua_program)}")
+
             self._qua_program = qua_program
 
-            assert self.simulate_or_execute is not None, \
-                "Error: Either missing parameters or " \
-                "didn't specify whether to simulate/execute QuaNode {}".format(self.label)
+            if self.simulate_or_execute is None:
+                raise ValueError(f"Must specify simulation/execution parameters for QuaNode <{self.label}>")
+
             self._start_time = datetime.now()
             if self.simulate_or_execute == 'simulate':
-                self.simulate()
+                self._simulate()
             if self.simulate_or_execute == 'execute':
-                self.execute()
+                self._execute()
             self._end_time = datetime.now()
-            self.get_result()
+            self._get_result()
 
-    def execute(self) -> None:
+    def _execute(self) -> None:
         print("\nEXECUTING QuaNode <{}>...".format(self.label))
         self._job = self._quantum_machine.execute(self._qua_program, **self._execution_kwargs)
-        print(f"DONE running node <{self.label}>")
+        print_green(f"DONE running node <{self.label}>")
 
-    def simulate(self) -> None:
+    def _simulate(self) -> None:
         print("\nSIMULATING QuaNode <{}>...".format(self.label))
         self._job = self._quantum_machine.simulate(self._qua_program, **self._simulation_kwargs)
-        print(f"DONE running node <{self.label}>")
+        print_green(f"DONE running node <{self.label}>")
 
 
 class PyNode(ProgramNode):
@@ -295,27 +314,31 @@ class PyNode(ProgramNode):
         self._job_results = None
         self._type = 'Py'
 
-    def get_result(self):
+    def _get_result(self):
         if self.output_vars is None:
-            print("ATTENTION! No output variables defined for node <{}>".format(self.label))
+            print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
             return
         for var in self.output_vars:
             try:
                 self._result[var] = self._job_results[var]
             except KeyError:
-                print(f"Could not fetch '{var}' from results of node <{self.label}>")
+                print_red(f"WARNING Could not fetch variable '{var}' from the results of node <{self.label}>")
 
     async def run_async(self) -> None:
         if self.to_run:
             self._start_time = datetime.now()
+
             print("\nRUNNING PyNode <{}>...".format(self.label))
             if iscoroutinefunction(self.program):
                 self._job_results = await self.program(**self.input_vars)
             else:
                 self._job_results = self.program(**self.input_vars)
-            print(f"DONE running node <{self.label}>")
+            print_green(f"DONE running node <{self.label}>")
+
             self._end_time = datetime.now()
-            assert type(self._job_results) is dict, \
-                "TypeError: Expected <dict> but got <{}> as program results.\n" \
-                "PyNode program must return a dictionary.".format(type(self._job_results))
-            self.get_result()
+
+            if self._job_results:
+                if type(self._job_results) is not dict:
+                    raise TypeError(f"In node <{self.label}> expected {dict} but got <{type(self._job_results)}> "
+                                    f"as the result")
+                self._get_result()

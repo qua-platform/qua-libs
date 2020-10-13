@@ -5,8 +5,15 @@ from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector
 from typing import Dict, Set, List, Tuple, Any
 from copy import deepcopy
 from time import time_ns
+from datetime import datetime
+from colorama import Fore, Style
+from inspect import stack
 import asyncio
-import inspect
+
+
+def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
@@ -15,7 +22,7 @@ class GraphDB:
         Creating a link to a SQLite DB
         :param results_path: store location for DB
         """
-        self._results_path = results_path
+        self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
     @property
@@ -24,6 +31,8 @@ class GraphDB:
 
     @results_path.setter
     def results_path(self, results_path):
+        if type(results_path) != str:
+            raise TypeError(f"Excpected {str} but given {type(results_path)} as results path")
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
@@ -65,12 +74,13 @@ class ProgramGraph:
         self._nodes: Dict[int, ProgramNode] = dict()
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
-        self._timestamp = None  # when last finished running
+        self._start_time = None  # last time started running
+        self._end_time = None  # last time when finished running
         self._link_nodes: Dict[
             int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
-        self._graph_db = graph_db
+        self.graph_db = graph_db
 
     @property
     def id(self) -> int:
@@ -82,6 +92,9 @@ class ProgramGraph:
 
     @label.setter
     def label(self, _label):
+        if _label is not None:
+            if type(_label) is not str:
+                raise TypeError(f"Expected {str} but given {type(_label)}")
         self._label = _label
 
     @property
@@ -109,6 +122,7 @@ class ProgramGraph:
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
+        print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to the graph")
 
     def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
         """
@@ -120,24 +134,29 @@ class ProgramGraph:
         edges_to_remove: Set[Tuple[ProgramNode, ProgramNode]] = set()
         for node in nodes_to_remove:
             try:
+                # remove node
                 self._nodes.pop(node.id)
+
                 # remove forward edges
                 try:
                     ids_to_remove = self.edges[node.id]
                     for dest_node_id in ids_to_remove:
                         edges_to_remove.add((node, self.nodes[dest_node_id]))
                 except KeyError:
-                    print('Node <{}> has no outgoing edges.'.format(node.label))
+                    print_yellow(f'Node <{node.label}> has no outgoing edges.')
+
                 # remove backward edges
                 try:
                     ids_to_remove = self.backward_edges[node.id]
                     for source_node_id in ids_to_remove:
                         edges_to_remove.add((self.nodes[source_node_id], node))
                 except KeyError:
-                    print('Node <{}> has no incoming edges.'.format(node.label))
-                print("Successfully removed node <{}>".format(node.label))
+                    print_yellow(f'Node <{node.label}> has no incoming edges.')
+
+                print_green(f"SUCCESS removed node <{node.label}>")
             except KeyError:
-                print("KeyError: Tried to remove node <{}>, but was not found".format(node.label))
+                print_yellow(f"ATTENTION Tried to remove node <{node.label}> but it was not found in the graph")
+
         self.remove_edges(edges_to_remove)
 
     @property
@@ -174,22 +193,28 @@ class ProgramGraph:
                 if not self._backward_edges[dest.id]:
                     del self._backward_edges[dest.id]
 
-                print("Successfully removed edge from <{}> to <{}>".format(source.id, dest.id))
+                print_green(f"SUCCESS removed edge from <{source.label}> to <{dest.label}>")
             except KeyError:
-                print("KeyError: Tried to remove edge from <{}> to <{}>, "
-                      "but it doesn't exist.".format(source.id, dest.id))
+                print_yellow(f"ATTENTION Tried to remove edge from <{source.label}> to <{dest.label}> "
+                             f"but it doesn't exist.")
 
     @property
     def backward_edges(self):
         return self._backward_edges
 
     @property
-    def timestamp(self):
-        return self._timestamp
+    def graph_db(self):
+        return self._graph_db
+
+    @graph_db.setter
+    def graph_db(self, graph_db):
+        if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
+            raise TypeError(f"graph_db must be of type {GraphDB}")
+        self._graph_db = graph_db
 
     async def run_async(self,
                         graph_db: GraphDB = None,
-                        start_nodes: List[ProgramNode] = list(),
+                        start_nodes: List[ProgramNode] = None,
                         _calling_script_path: str = None
                         ) -> GraphDB:
         """
@@ -199,34 +224,48 @@ class ProgramGraph:
         :param start_nodes:
         :return:
         """
+        if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
+            raise TypeError(f"graph_db must be of type {GraphDB}")
+        if (start_nodes is not None) and (type(start_nodes) != list) and (type(start_nodes) != set):
+            raise TypeError(f"start_nodes must be of type {list} or {set} containing ProgramNode "
+                            f"but given {type(start_nodes)}")
 
         if _calling_script_path is None:
-            _calling_script_path = inspect.stack()[1][0].f_code.co_filename
+            _calling_script_path = stack()[1][0].f_code.co_filename
 
-        graph_db = graph_db if graph_db else self._graph_db
+        graph_db = graph_db if graph_db else self.graph_db
         # Save graph to DB
         if graph_db:
             graph_db.save_graph(self, _calling_script_path)
 
         if not start_nodes:
+            start_nodes = list()
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
                     start_nodes.append(self.nodes[node_id])
 
-        for node_id in self.get_next(start_nodes):
+        self._start_time = datetime.now()
+
+        try_again = list()
+        for node_id, other_node_ids in self._get_next(start_nodes, try_again):
+            try_again = list()
             if node_id not in self._tasks:
-                if self.dependencies_started(node_id):  # or node_id in start_nodes: # TODO: make sure it works
+                if self._dependencies_started(node_id):  # or node_id in start_nodes: # TODO: make sure it works
+
                     # wait for dependencies to complete
                     await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
+
                     # direct the output of the dependencies input the input of the node
                     input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
                     for var in input_vars:
                         if isinstance(input_vars[var], LinkNode):
                             link_node = input_vars[var]
-                            assert self.nodes.get(link_node.node.id, None), \
-                                f"Tried to use the output of node <{link_node.node.label}> " \
-                                f"as input to <{self.nodes[node_id].label}>," \
-                                f"\nbut <{link_node.node.label}> isn't in the graph."
+                            try:
+                                self.nodes[link_node.node.id]
+                            except KeyError:
+                                raise RuntimeError(f"Tried to use the output of node <{link_node.node.label}> "
+                                                   f"but the node is not in the graph.")
+
                             self.nodes[node_id].input_vars[var] = link_node.get_output()
 
                     # SAVE METADATA TO DB HERE
@@ -234,10 +273,10 @@ class ProgramGraph:
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
 
-        # wait for all tasks(nodes) to complete running
+        # wait for all tasks(nodes) to complete
         await asyncio.gather(*self._tasks.values())
         self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
-        self._timestamp = time_ns()
+        self._end_time = datetime.now()
 
         # SAVE GRAPH RES TO DB HERE
         if graph_db:
@@ -247,22 +286,28 @@ class ProgramGraph:
 
     def run(self,
             graph_db: GraphDB = None,
-            start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = list(),
+            start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = None,
             ) -> GraphDB:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
         :param start_nodes: list of nodes to start running the graph from
         :type: start_nodes: Union[List[ProgramNode], Set[ProgramNode]]
-        :param graph_db:
+        :param graph_db: a GraphDB instance that provides a connection to a DB
         :return:
         """
-        calling_script_path = inspect.stack()[1][0].f_code.co_filename
+        if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
+            raise TypeError(f"graph_db must be of type {GraphDB}")
+        if (start_nodes is not None) and (type(start_nodes) != list) and (type(start_nodes) != set):
+            raise TypeError(f"start_nodes must be of type {list} or {set} containing ProgramNode "
+                            f"but given {type(start_nodes)}")
+
+        calling_script_path = stack()[1][0].f_code.co_filename
         return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path))
 
-    def dependencies_started(self, node_id) -> bool:
+    def _dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()
 
-    def dependencies_done(self, node_id) -> bool:
+    def _dependencies_done(self, node_id) -> bool:
         for depend_id in self.backward_edges.get(node_id, set()):
             try:
                 if self._tasks[depend_id].done():
@@ -273,24 +318,26 @@ class ProgramGraph:
                 return False
         return True
 
-    def get_next(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]]):
+    def _get_next(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]], try_again: List = list()):
         """
         Generator of graph nodes - implementing BFS
+        :param try_again:
         :param start_nodes: the start positions of graph traversal
         :type start_nodes: List/Set of ProgramNode
         :return:
         """
         to_do = [n.id for n in start_nodes]
+        to_do += try_again
         while to_do:
-            s = self.nodes[to_do.pop(0)]
-            yield s.id
+            s = to_do.pop(0)
+            yield s, to_do
             try:
-                for child in self.edges[s.id]:
+                for child in self.edges[s]:
                     to_do.append(child)
             except KeyError:
                 pass
 
-    def topological_sort(self, start_nodes: List[ProgramNode] = list()) -> List[int]:
+    def _topological_sort(self, start_nodes: List[ProgramNode] = list()) -> List[int]:
         """
         Returns a list of graph node ids in a topological order. Starting from given start nodes.
         Implements Kahn's algorithm.
@@ -304,9 +351,10 @@ class ProgramGraph:
         s: List[int]  # list of node ids with no incoming edges
         if not start_nodes:
             s = [n for n in self.nodes if n not in backward_edges]
+            assert s != [], "Graph is cyclic! All nodes depend on other nodes, try changing dependencies."
         else:
             s = [n.id for n in start_nodes]
-        assert s != [], "Error: Graph is cyclic ! All nodes depend on other nodes, try changing dependencies."
+
         sorted_list: List[int] = []  # list that will contain the topologically sorted node ids
 
         while s:
@@ -354,9 +402,9 @@ class ProgramGraph:
             if outgoing_edges is not None:
                 for dest_id in outgoing_edges:
                     if use_labels:
-                        dot_graph += '"{}" -> "{}"'.format(self.nodes[node_id].label, self.nodes[dest_id].label)
+                        dot_graph += f'"{self.nodes[node_id].label}" -> "{self.nodes[dest_id].label}"'
                     else:
-                        dot_graph += '"{}" -> "{}"'.format(node_id, dest_id)
+                        dot_graph += f'"{node_id}" -> "{dest_id}"'
 
                     var_name = self._link_nodes_ids.get(dest_id, dict()).get(node_id, -1)
                     if var_name is None:
@@ -364,11 +412,10 @@ class ProgramGraph:
                     if var_name == -1:
                         var_name = '!none'
 
-                    dot_graph += ' [label="{}"]'.format(var_name)
-
+                    dot_graph += f' [label="{var_name}"]'
                     dot_graph += ';'
             else:
-                dot_graph += '"{}";'.format(self.nodes[node_id].label)
+                dot_graph += f'"{self.nodes[node_id].label}";'
 
         dot_graph += '}'
 
@@ -387,15 +434,16 @@ class GraphNode(ProgramNode):
         self._type = 'Graph'
         self._job = None
 
-    def get_result(self):
+    def _get_result(self):
         if self.output_vars is None:
-            print("ATTENTION! No output variables defined for node <{}>".format(self.label))
+            print_yellow(f"ATTENTION No output variables were defined for node <{self.label}>")
             return
         for var in self.output_vars:
             try:
-                self._result[var] = self.graph.result[var]
+                pass
+                # self._result[var] = self.graph.result[var]
             except KeyError:
-                print("Couldn't fetch '{}' from the program graph results".format(var))
+                print_red(f"WARNING Could not fetch '{var}' from node <{self.label}> results")
 
     async def run_async(self) -> None:
         if self.to_run:
@@ -404,4 +452,4 @@ class GraphNode(ProgramNode):
             self._job = await asyncio.create_task(self.graph.run_async())
             print("DONE")
             self._end_time = datetime.now()
-            self.get_result()
+            self._get_result()
