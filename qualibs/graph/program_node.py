@@ -8,12 +8,13 @@ from collections.abc import Coroutine
 from datetime import datetime
 from colorama import Fore, Style
 from inspect import iscoroutinefunction, isfunction
+from copy import deepcopy
 import asyncio
 
 
-def print_red(skk): print(Fore.RED+f"{skk}"+Style.RESET_ALL)
-def print_green(skk): print(Fore.GREEN+f"{skk}"+Style.RESET_ALL)
-def print_yellow(skk): print(Fore.YELLOW+f"{skk}"+Style.RESET_ALL)
+def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class LinkNode:
@@ -44,6 +45,20 @@ class LinkNode:
         else:
             return self.node.result
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
 
 class InputVars:
     def __init__(self, input_vars):
@@ -66,6 +81,34 @@ class InputVars:
     def __repr__(self):
         return self.__str__()
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def copy(self):
+        """
+        Implements  shallow copy - copy by reference
+        :return:
+        """
+        return self.__copy__()
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
+    def deepcopy(self):
+        """
+        Implements deep copy - copy by value
+        :return:
+        """
+        return self.__deepcopy__()
+
 
 class ProgramNode(ABC):
 
@@ -74,6 +117,7 @@ class ProgramNode(ABC):
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
                  to_run: bool = True):
+
         """
         Program node contains a program to run and description of input_vars/output variables
         :param label: label for the node
@@ -87,7 +131,7 @@ class ProgramNode(ABC):
         :param to_run: whether to run the node
         :type to_run: bool
         """
-        self._id: int = id(self)
+        self._id = id(self)
         self.label = label
         self.program = program
         self.input_vars = input_vars
@@ -98,6 +142,44 @@ class ProgramNode(ABC):
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
         self._type = None
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def copy(self):
+        """
+        Implements  shallow copy - copy by reference, provides new id
+        :return:
+        """
+        self_copy = self.__copy__()
+        self_copy._id = id(self_copy)
+        return self_copy
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
+    def deepcopy(self):
+        """
+        Implements deep copy - copy by value, provides new id
+        :return:
+        """
+        self_copy = self.__deepcopy__()
+        self_copy._id = id(self_copy)
+        return self_copy
 
     @property
     def type(self):
@@ -199,6 +281,21 @@ class QuaJobNode:
     def quantum_machine(self):
         return self.node.quantum_machine
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            print(k)
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
 
 class QuaNode(ProgramNode):
 
@@ -221,6 +318,19 @@ class QuaNode(ProgramNode):
         self._type = 'Qua'
         self._job: QmJob.QmJob = None
         self._qua_program: QuaProgram = None
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == '_quantum_machine':
+                setattr(result, k, v)
+            elif k == '_job':
+                setattr(result, k, None)
+            else:
+                setattr(result, k, deepcopy(v, memo))
+        return result
 
     @property
     def quantum_machine(self) -> QuantumMachine:

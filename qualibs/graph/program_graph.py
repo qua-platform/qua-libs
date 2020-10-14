@@ -25,6 +25,22 @@ class GraphDB:
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == '_dbcon':
+                setattr(result, k, v)
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
     @property
     def results_path(self):
         return self._results_path
@@ -72,6 +88,7 @@ class ProgramGraph:
         self._id: int = time_ns()
         self.label: str = label
         self._nodes: Dict[int, ProgramNode] = dict()
+        self._nodes_by_label: Dict[str, Set[ProgramNode]] = dict()
         self._edges: Dict[int, Set[int]] = dict()
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._start_time = None  # last time started running
@@ -81,6 +98,44 @@ class ProgramGraph:
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
         self.graph_db = graph_db
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __copy__(self):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def copy(self):
+        """
+        Implements  shallow copy - copy by reference, provides new id
+        :return:
+        """
+        self_copy = self.__copy__()
+        self_copy._id = id(self_copy)
+        return self_copy
+
+    def __deepcopy__(self, memo=dict()):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
+
+    def deepcopy(self):
+        """
+        Implements deep copy - copy by value, provides new id
+        :return:
+        """
+        self_copy = self.__deepcopy__()
+        self_copy._id = id(self_copy)
+        return self_copy
 
     @property
     def id(self) -> int:
@@ -110,6 +165,7 @@ class ProgramGraph:
         """
         for node in new_nodes:
             self._nodes[node.id] = node
+            self._nodes_by_label.setdefault(node.label, set()).add(node)
             if node.input_vars is not dict():
                 for var, value in node.input_vars.__dict__.items():
                     if isinstance(value, LinkNode):
@@ -136,6 +192,9 @@ class ProgramGraph:
             try:
                 # remove node
                 self._nodes.pop(node.id)
+                self._nodes_by_label.get(node.label, {node}).remove(node)
+                if not self._nodes_by_label[node.label]:
+                    del self._nodes_by_label[node.label]
 
                 # remove forward edges
                 try:
@@ -231,11 +290,12 @@ class ProgramGraph:
                             f"but given {type(start_nodes)}")
 
         if _calling_script_path is None:
+            # get the script of the file that called self.run_async()
             _calling_script_path = stack()[1][0].f_code.co_filename
 
         graph_db = graph_db if graph_db else self.graph_db
-        # Save graph to DB
         if graph_db:
+            # Save graph to DB
             graph_db.save_graph(self, _calling_script_path)
 
         if not start_nodes:
@@ -278,8 +338,8 @@ class ProgramGraph:
         self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
         self._end_time = datetime.now()
 
-        # SAVE GRAPH RES TO DB HERE
         if graph_db:
+            # SAVE GRAPH RES TO DB HERE
             graph_db.save_graph_results(self)
 
         return graph_db
@@ -301,6 +361,7 @@ class ProgramGraph:
             raise TypeError(f"start_nodes must be of type {list} or {set} containing ProgramNode "
                             f"but given {type(start_nodes)}")
 
+        # get the script of the file that called self.run()
         calling_script_path = stack()[1][0].f_code.co_filename
         return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path))
 
