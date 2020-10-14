@@ -1,8 +1,12 @@
+import functools
+import sys
+
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
-from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector
+from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
 
 from typing import Dict, Set, List, Tuple, Any
+from collections.abc import Callable
 from copy import deepcopy
 from time import time_ns
 from datetime import datetime
@@ -17,13 +21,14 @@ def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:'):
+    def __init__(self, results_path: str = ':memory:', dependency_list=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
         """
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
+        self._graph_dependencies = dependency_list
 
     def __copy__(self):
         cls = self.__class__
@@ -56,22 +61,31 @@ class GraphDB:
         calling_script = open(calling_script_path).read() if calling_script_path else None
         self._dbcon.save(Graph(graph_id=graph.id,
                                graph_script=calling_script,
-                               graph_name=graph.label))
+                               graph_name=graph.label,
+                               graph_dot_repr=graph.export_dot_graph()))  # TODO: add full graphID, nodeID to dot graph
         # save nodes to database
         for node_id, node in graph.nodes.items():
+            if NodeTypes[node.type] == NodeTypes.Qua:
+                version = str(node.quantum_machine._manager.version())
+            elif NodeTypes[node.type] == NodeTypes.Py:
+                version = sys.version_info
+            else:
+                version=1
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
+                                  node_type=NodeTypes[node.type],
+                                  version=version,
                                   node_name=node.label))
 
     def save_graph_results(self, graph):
         for node_id, node in graph.nodes.items():
-            for res_name in node.result.keys():
-                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id, result_id=1,
+            for name in node.result.keys():
+                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
                                         start_time=node._start_time,
                                         end_time=node._end_time,
                                         user_id='User',
-                                        res_name=res_name,
-                                        res_val=str(node.result[res_name])
+                                        name=name,
+                                        val=str(node.result[name])
                                         ))
 
 
@@ -328,7 +342,7 @@ class ProgramGraph:
 
                             setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
 
-                    # SAVE METADATA TO DB HERE
+                    # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
 
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())

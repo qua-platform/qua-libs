@@ -1,9 +1,10 @@
+import enum
 from typing import Optional, List, Union, Iterable, TypeVar
 
 import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Sequence, DATETIME
+from sqlalchemy import Column, Integer, String, Sequence, DATETIME, Enum
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
@@ -19,27 +20,27 @@ class Results(Base):
     __tablename__ = 'Results'
     graph_id = Column(Integer, primary_key=True)
     node_id = Column(Integer, ForeignKey('Nodes.node_id', ondelete="CASCADE"), primary_key=True)
-    result_id = Column(Integer, primary_key=True)
+    # result_id = Column(Integer, primary_key=True)
     user_id = Column(String, nullable=False)
     start_time = Column(DATETIME, nullable=False)
     end_time = Column(DATETIME, nullable=False)
-    res_name = Column(String, nullable=False)
-    res_val = Column(String, nullable=False)
+    name = Column(String, primary_key=True, nullable=False)
+    val = Column(String, nullable=False)
 
     def __repr__(self):
-        return "<Result(graph_id='%s', node_id='%s', result_id='%s')>" % (
-            self.graph_id, self.node_id, self.result_id)
+        return "<Result(graph_id='%s', node_id='%s')>" % (
+            self.graph_id, self.node_id)
 
     def to_model(self):
         return Result(
             graph_id=self.graph_id,
             node_id=self.node_id,
-            result_id=self.result_id,
+            # result_id=self.result_id,
             user_id=self.user_id,
             start_time=self.start_time,
             end_time=self.end_time,
-            res_name=self.res_name,
-            res_val=self.res_val,
+            name=self.name,
+            val=self.val,
         )
 
 
@@ -47,22 +48,27 @@ class Metadata(Base):
     __tablename__ = 'Metadata'
     graph_id = Column(Integer, primary_key=True)
     node_id = Column(Integer, ForeignKey('Nodes.node_id', ondelete="CASCADE"), primary_key=True)
-    data_id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+    # data_id = Column(Integer, primary_key=True)
+    name = Column(String, primary_key=True, nullable=False)
     val = Column(String, nullable=False)
 
     def __repr__(self):
-        return "<Metadata(graph_id='%s', node_id='%s', data_id='%s')>" % (
-            self.graph_id, self.node_id, self.data_id)
+        return "<Metadata(graph_id='%s', node_id='%s')>" % (
+            self.graph_id, self.node_id)
 
     def to_model(self):
         return Metadatum(
             graph_id=self.graph_id,
             node_id=self.node_id,
-            data_id=self.data_id,
+            # data_id=self.data_id,
             name=self.name,
             val=self.val
         )
+
+
+class NodeTypes(enum.Enum):
+    Py = 1
+    Qua = 2
 
 
 class Nodes(Base):
@@ -70,6 +76,8 @@ class Nodes(Base):
     graph_id = Column(Integer, ForeignKey('Graphs.graph_id', ondelete="CASCADE"), primary_key=True)
     node_id = Column(Integer, primary_key=True)
     node_name = Column(String)
+    node_type = Column(Enum(NodeTypes))
+    version=Column(String)
     results = relationship("Results", cascade="all, delete-orphan")
     metadat = relationship("Metadata", cascade="all, delete-orphan")
 
@@ -82,6 +90,8 @@ class Nodes(Base):
             graph_id=self.graph_id,
             node_id=self.node_id,
             node_name=self.node_name,
+            node_type=self.node_type,
+            version=self.version
         )
 
 
@@ -90,6 +100,7 @@ class Graphs(Base):
     graph_id = Column(Integer, primary_key=True)
     graph_name = Column(String)
     graph_script = Column(String)
+    graph_dot_repr = Column(String)
     # results = relationship("Results", cascade="all, delete-orphan")
     # metadata = relationship("Metadata", cascade="all, delete-orphan")
     nodes = relationship("Nodes", cascade="all, delete-orphan")
@@ -103,6 +114,7 @@ class Graphs(Base):
             graph_id=self.graph_id,
             graph_name=self.graph_name,
             graph_script=self.graph_script,
+            graph_dot_repr=self.graph_dot_repr
         )
 
 
@@ -177,7 +189,7 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
                     Graphs.graph_name == query_obj.graph_name)
 
             if query_obj.min_size:
-                query = query.filter(func.length(Results.res_val) >= query_obj.min_size)
+                query = query.filter(func.length(Results.val) >= query_obj.min_size)
 
             return query
 
