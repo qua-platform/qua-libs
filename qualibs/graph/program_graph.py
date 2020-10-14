@@ -1,8 +1,11 @@
+<<<<<<< HEAD
 import functools
 import sys
 from io import BytesIO
 
 from .environment import env_resolve
+=======
+>>>>>>> master
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
@@ -110,11 +113,14 @@ class GraphDB:
                                             name='npz',
                                             val=npz_store.getvalue()
                                             ))
+<<<<<<< HEAD
 
     def save_metadata(self, graph,node, node_id):
         metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
         for key, val in metadata.items():
             self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
+=======
+>>>>>>> master
 
 
 class ProgramGraph:
