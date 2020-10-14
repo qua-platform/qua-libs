@@ -1,6 +1,8 @@
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+
+from qualibs.graph.environment import env_dependency, env_resolve
 from qualibs.graph.program_node import *
 from qualibs.graph.program_graph import *
 from qualibs.templates import hello_qua
