@@ -1,11 +1,10 @@
-<<<<<<< HEAD
+
 import functools
 import sys
 from io import BytesIO
 
 from .environment import env_resolve
-=======
->>>>>>> master
+
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
@@ -32,7 +31,7 @@ def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:', env_dependency_list=None, envmodule=None):
+    def __init__(self, results_path: str = ':memory:', env_dependency_list=[], envmodule=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
@@ -113,14 +112,12 @@ class GraphDB:
                                             name='npz',
                                             val=npz_store.getvalue()
                                             ))
-<<<<<<< HEAD
+
 
     def save_metadata(self, graph,node, node_id):
         metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
         for key, val in metadata.items():
             self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
-=======
->>>>>>> master
 
 
 class ProgramGraph:
@@ -213,7 +210,9 @@ class ProgramGraph:
         :return:
         """
         for node in new_nodes:
-            node.dependencies = list(set(node.dependencies + self._graph_db._env_dependency_list))
+            if self._graph_db:
+                node.dependencies = list(set(node.dependencies + self._graph_db._env_dependency_list))
+
             self._nodes[node.id] = node
             self._nodes_by_label.setdefault(node.label, set()).add(node)
             if node.input_vars is not dict():
@@ -391,7 +390,8 @@ class ProgramGraph:
                             setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
 
                     # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
-                    graph_db.save_metadata(self,self.nodes[node_id], node_id)
+                    if graph_db:
+                        graph_db.save_metadata(self,self.nodes[node_id], node_id)
                     # metadat={dep.__name__: env_resolve(dep, self.graph_db._envmodule)() for dep in self.graph_db._env_dependency_list}
                     # for key in metadat.keys():
                     #     Metadatum(graph_id=
