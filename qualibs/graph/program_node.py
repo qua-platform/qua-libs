@@ -45,7 +45,10 @@ class LinkNode:
         :return:
         """
         if self.output_var is not None:
-            return self.node.result[self.output_var]
+            try:
+                return self.node.result[self.output_var]
+            except KeyError:
+                raise KeyError(f"The variable '{self.output_var}' is not in the result of node <{self.node.label}>")
         else:
             return self.node.result
 
@@ -55,7 +58,9 @@ class LinkNode:
         result.__dict__.update(self.__dict__)
         return result
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -98,12 +103,17 @@ class InputVars:
         """
         return self.__copy__()
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            if isinstance(v, LinkNode):
+                setattr(result, k, v)
+            else:
+                setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -169,7 +179,9 @@ class ProgramNode(ABC):
         self_copy._id = id(self_copy)
         return self_copy
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -292,12 +304,13 @@ class QuaJobNode:
         result.__dict__.update(self.__dict__)
         return result
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            print(k)
             setattr(result, k, deepcopy(v, memo))
         return result
 
@@ -325,8 +338,9 @@ class QuaNode(ProgramNode):
         self._job: QmJob.QmJob = None
         self._qua_program: QuaProgram = None
 
-
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
