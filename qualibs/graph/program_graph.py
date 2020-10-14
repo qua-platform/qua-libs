@@ -15,8 +15,8 @@ import inspect
 envmodule = {}
 
 
-def env_dependency(x=None):
-    global envmodule
+def env_dependency(envmodule):
+    # global envmodule
 
     def decorator_env_dependency(func):
         envmodule[func.__name__] = func
@@ -30,9 +30,9 @@ def env_dependency(x=None):
     return decorator_env_dependency
 
 
-def env_resolve(fn, cache={}):
+def env_resolve(fn, envmodule,cache={}):
     import inspect
-    global envmodule
+    # global envmodule
     sig = inspect.signature(fn)
     args = []
     for pname, pobj in sig.parameters.items():
