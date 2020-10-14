@@ -151,13 +151,17 @@ async def d(zx, yx):
 a1 = QuaNode('a', a, None, {'x'})
 a1.quantum_machine = QM
 a1.simulation_kwargs = sim_args
-b1 = PyNode('b', b, {'x': a1.output('x'), 'm': a1.job()}, {'zx'})
-c1 = PyNode('c', c, {'x': a1.output('x')}, {'yx'})
+v = a1.copy()
+b1 = PyNode('b', b, None, {'zx'})
+b1.input_vars.x = v.output('x')
+b1.input_vars.m = v.job()
+c1 = PyNode('c', c, {'x': v.output('x')}, {'yx'})
 d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
 
 g = ProgramGraph('hello')
-g.add_nodes([d1, c1, b1, a1])
-g.run()
+g.add_nodes([d1, c1, b1, v])
+db = GraphDB('here3.db')
+n = g.copy()
+n.run(db)
 # # g.run([b1, c1])  # need to open new event loop
-# print(g.export_dot_graph())
-# print(open(__file__).read())
+print(g.export_dot_graph())
