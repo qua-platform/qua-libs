@@ -1,19 +1,17 @@
-import functools
-import sys
-from io import BytesIO
-
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
 
 from typing import Dict, Set, List, Tuple, Any
-from collections.abc import Callable
 from copy import deepcopy
 from time import time_ns
 from datetime import datetime
 from colorama import Fore, Style
 from inspect import stack
+from io import BytesIO
+
 import asyncio
+import sys
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
@@ -59,7 +57,10 @@ class GraphDB:
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
     def save_graph(self, graph, calling_script_path):
-        calling_script = open(calling_script_path).read() if calling_script_path else None
+        try:
+            calling_script = open(calling_script_path).read() if calling_script_path else None
+        except OSError:
+            calling_script = open(graph._calling_script).read()
         self._dbcon.save(Graph(graph_id=graph.id,
                                graph_script=calling_script,
                                graph_name=graph.label,
@@ -70,7 +71,7 @@ class GraphDB:
                 version = str(node.quantum_machine._manager.version())
             elif NodeTypes[node.type] == NodeTypes.Py:
                 version = str(sys.version_info)
-    
+
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
                                   node_type=NodeTypes[node.type],
@@ -87,9 +88,9 @@ class GraphDB:
                                         name=name,
                                         val=str(node.result[name])
                                         ))
-                if node.type=='Qua':
-                    res=node._job.result_handles
-                    npz_store=BytesIO()
+                if node.type == 'Qua':
+                    res = node._job.result_handles
+                    npz_store = BytesIO()
                     res.save_to_store(writer=npz_store)
                     self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
                                             start_time=node._start_time,
@@ -122,6 +123,7 @@ class ProgramGraph:
             int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
+        self._calling_script = stack()[1][0].f_code.co_filename
         self.graph_db = graph_db
 
     def __str__(self):
@@ -159,7 +161,7 @@ class ProgramGraph:
         :return:
         """
         self_copy = self.__deepcopy__()
-        self_copy._id = id(self_copy)
+        self_copy._id = time_ns()
         return self_copy
 
     @property
@@ -257,6 +259,14 @@ class ProgramGraph:
         :return:
         """
         for source, dest in edges:
+            if source.id not in self.nodes:
+                print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
+                          f"but <{source.label}> was not added to the graph "
+                          f"(maybe a copy of the node was added instead)")
+            if dest.id not in self.nodes:
+                print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
+                          f"but <{dest.label}> was not added to the graph "
+                          f"(maybe a copy of the node was added instead)")
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
 
@@ -308,6 +318,8 @@ class ProgramGraph:
         :param start_nodes:
         :return:
         """
+        self._id = time_ns()  # update graph id every run
+
         if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
             raise TypeError(f"graph_db must be of type {GraphDB}")
         if (start_nodes is not None) and (type(start_nodes) != list) and (type(start_nodes) != set):
@@ -323,22 +335,24 @@ class ProgramGraph:
             # Save graph to DB
             graph_db.save_graph(self, _calling_script_path)
 
+        # the starting point of the run
         if not start_nodes:
             start_nodes = list()
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
-                    start_nodes.append(self.nodes[node_id])
+                    start_nodes.append(node_id)
+        else:
+            start_nodes = [n.id for n in start_nodes]
 
         self._start_time = datetime.now()
-
-        try_again = list()
-        for node_id, other_node_ids in self._get_next(start_nodes, try_again):
-            try_again = list()
+        self._tasks = dict()
+        for node_id in self._get_next(start_nodes):
             if node_id not in self._tasks:
-                if self._dependencies_started(node_id):  # or node_id in start_nodes: # TODO: make sure it works
+                if self._dependencies_started(node_id):  # or node_id in start_nodes:  # TODO: make sure it works
 
                     # wait for dependencies to complete
-                    await asyncio.gather(*{self._tasks[t] for t in self.backward_edges.get(node_id, set())})
+                    # if node_id not in start_nodes:
+                    await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
 
                     # direct the output of the dependencies input the input of the node
                     input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
@@ -360,7 +374,6 @@ class ProgramGraph:
 
         # wait for all tasks(nodes) to complete
         await asyncio.gather(*self._tasks.values())
-        self._tasks = dict()  # TODO: Figure out whether there's need to reset the tasks dict
         self._end_time = datetime.now()
 
         if graph_db:
@@ -404,19 +417,18 @@ class ProgramGraph:
                 return False
         return True
 
-    def _get_next(self, start_nodes: Union[List[ProgramNode], Set[ProgramNode]], try_again: List = list()):
+    def _get_next(self, start_nodes: Union[List[int], Set[int]], try_again: List = list()):
         """
         Generator of graph nodes - implementing BFS
         :param try_again:
         :param start_nodes: the start positions of graph traversal
-        :type start_nodes: List/Set of ProgramNode
+        :type start_nodes: List/Set of node ids
         :return:
         """
-        to_do = [n.id for n in start_nodes]
-        to_do += try_again
+        to_do = start_nodes.copy()
         while to_do:
             s = to_do.pop(0)
-            yield s, to_do
+            yield s
             try:
                 for child in self.edges[s]:
                     to_do.append(child)
