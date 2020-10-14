@@ -68,9 +68,8 @@ class GraphDB:
             if NodeTypes[node.type] == NodeTypes.Qua:
                 version = str(node.quantum_machine._manager.version())
             elif NodeTypes[node.type] == NodeTypes.Py:
-                version = sys.version_info
-            else:
-                version=1
+                version = str(sys.version_info)
+    
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
                                   node_type=NodeTypes[node.type],
