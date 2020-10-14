@@ -2,6 +2,7 @@ import functools
 import sys
 from io import BytesIO
 
+from .environment import env_resolve
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
@@ -17,19 +18,25 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:', dependency_list=None):
+    def __init__(self, results_path: str = ':memory:', env_dependency_list=None, envmodule=None):
         """
         Creating a link to a SQLite DB
+        :param results_path: store location for DB
         :param results_path: store location for DB
         """
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self._graph_dependencies = dependency_list
+        self._env_dependency_list = env_dependency_list
+        self._envmodule = envmodule
 
     def __copy__(self):
         cls = self.__class__
@@ -70,7 +77,7 @@ class GraphDB:
                 version = str(node.quantum_machine._manager.version())
             elif NodeTypes[node.type] == NodeTypes.Py:
                 version = str(sys.version_info)
-    
+
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
                                   node_type=NodeTypes[node.type],
@@ -87,9 +94,9 @@ class GraphDB:
                                         name=name,
                                         val=str(node.result[name])
                                         ))
-                if node.type=='Qua':
-                    res=node._job.result_handles
-                    npz_store=BytesIO()
+                if node.type == 'Qua':
+                    res = node._job.result_handles
+                    npz_store = BytesIO()
                     res.save_to_store(writer=npz_store)
                     self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
                                             start_time=node._start_time,
@@ -98,6 +105,11 @@ class GraphDB:
                                             name='npz',
                                             val=npz_store.getvalue()
                                             ))
+
+    def save_metadata(self, graph,node, node_id):
+        metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
+        for key, val in metadata.items():
+            self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
 
 
 class ProgramGraph:
@@ -189,6 +201,7 @@ class ProgramGraph:
         :return:
         """
         for node in new_nodes:
+            node.dependencies = list(set(node.dependencies + self._graph_db._env_dependency_list))
             self._nodes[node.id] = node
             self._nodes_by_label.setdefault(node.label, set()).add(node)
             if node.input_vars is not dict():
@@ -354,7 +367,10 @@ class ProgramGraph:
                             setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
 
                     # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
-
+                    graph_db.save_metadata(self,self.nodes[node_id], node_id)
+                    # metadat={dep.__name__: env_resolve(dep, self.graph_db._envmodule)() for dep in self.graph_db._env_dependency_list}
+                    # for key in metadat.keys():
+                    #     Metadatum(graph_id=
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
 

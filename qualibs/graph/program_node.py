@@ -13,7 +13,11 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
@@ -116,7 +120,8 @@ class ProgramNode(ABC):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 to_run: bool = True):
+                 to_run: bool = True,
+                 dependencies: list = []):
 
         """
         Program node contains a program to run and description of input_vars/output variables
@@ -137,7 +142,7 @@ class ProgramNode(ABC):
         self.input_vars = input_vars
         self.output_vars: Set[str] = output_vars
         self.to_run = to_run
-
+        self.dependencies = dependencies
         self._result: Dict[str, Any] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
@@ -306,7 +311,8 @@ class QuaNode(ProgramNode):
                  quantum_machine: QuantumMachine = None,
                  simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None,
-                 simulate_or_execute: str = None):
+                 simulate_or_execute: str = None,
+                 dependencies: list = []):
 
         super().__init__(label, program, input_vars, output_vars)
 
@@ -314,10 +320,11 @@ class QuaNode(ProgramNode):
         self.execution_kwargs = execution_kwargs
         self.simulation_kwargs = simulation_kwargs
         self.simulate_or_execute: str = simulate_or_execute
-
+        self.dependencies = list(set(self.dependencies + dependencies))
         self._type = 'Qua'
         self._job: QmJob.QmJob = None
         self._qua_program: QuaProgram = None
+
 
     def __deepcopy__(self, memo=dict()):
         cls = self.__class__
@@ -438,9 +445,11 @@ class PyNode(ProgramNode):
     def __init__(self, label: str = None,
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
-                 output_vars: Set[str] = None):
+                 output_vars: Set[str] = None,
+                 dependencies : list = []):
 
         super().__init__(label, program, input_vars, output_vars)
+        self.dependencies = list(set(self.dependencies + dependencies))
         self._job_results = None
         self._type = 'Py'
 

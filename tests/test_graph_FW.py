@@ -142,11 +142,15 @@ def test_metadata_save():
         return []
 
 
-    def get_dat_from_device1():
+    def device1():
         a=my_device1()
         return 1
 
-    def get_dat_from_device2():
+    def device2():
+        a=my_device2()
+        return 2
+
+    def device3():
         a=my_device2()
         return 2
 
@@ -154,17 +158,17 @@ def test_metadata_save():
     def py_node_script():
         set_my_device()
 
-    dep_list = [get_dat_from_device1,get_dat_from_device2]
-    print({dep.__name__:env_resolve(dep, envmodule)() for dep in dep_list})
+    dep_list = [device1,device2]
 
-    pnode = PyNode('py_node', py_node_script)
+    pnode = PyNode('py_node', py_node_script,dependencies=[device3])
 
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-    # graph_db = GraphDB('my_db.db')
-    graph = ProgramGraph('test_graph')
-    # graph = ProgramGraph('test_graph',graph_db) #another option
+    graph_db = GraphDB('my_db.db',env_dependency_list=dep_list,envmodule=envmodule)
+    # graph = ProgramGraph('test_graph',graph_db)
+    graph = ProgramGraph('test_graph',graph_db)
+
     graph.add_nodes([node, pnode])
     job_db = graph.run()
 
