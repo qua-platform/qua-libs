@@ -1,4 +1,5 @@
 import functools
+import sys
 
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
@@ -117,10 +118,16 @@ class GraphDB:
                                graph_dot_repr=graph.export_dot_graph()))  # TODO: add full graphID, nodeID to dot graph
         # save nodes to database
         for node_id, node in graph.nodes.items():
+            if NodeTypes[node.type] == NodeTypes.Qua:
+                version = str(node.quantum_machine._manager.version())
+            elif NodeTypes[node.type] == NodeTypes.Py:
+                version = sys.version_info
+            else:
+                version=1
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
                                   node_type=NodeTypes[node.type],
-                                  version='1',
+                                  version=version,
                                   node_name=node.label))
 
     def save_graph_results(self, graph):

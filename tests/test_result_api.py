@@ -50,15 +50,15 @@ def test_fetch_by_graph_and_node_id(results_connector):
 
 
 def test_save_node(results_connector):
-    expected = Node(graph_id=100, node_id=2, node_type=NodeTypes.Py,node_name='me')
+    expected = Node(graph_id=100, node_id=2, node_type=NodeTypes.Py, version='1', node_name='me')
     results_connector.save(expected)
     reader = DataReader(results_connector)
     assert expected == reader.fetch_first(DataReaderQuery(table='Nodes', node_id=2))
 
 
 def test_fetch_result_by_node_name(results_connector):
-    node1 = Node(graph_id=1, node_id=1, node_type=NodeTypes.Py,node_name='test_name')
-    node2 = Node(graph_id=1, node_id=2, node_type=NodeTypes.Py,node_name='test_name2')
+    node1 = Node(graph_id=1, node_id=1, node_type=NodeTypes.Py, version='1', node_name='test_name')
+    node2 = Node(graph_id=1, node_id=2, node_type=NodeTypes.Py, version='1', node_name='test_name2')
     res1 = Result(graph_id=1, node_id=1, user_id='Name', start_time=now(),
                   end_time=now(),
                   name="this",
@@ -75,7 +75,7 @@ def test_fetch_result_by_node_name(results_connector):
 def test_fetch_metadata_by_node_name(results_connector):
     metadat = [Metadatum(graph_id=1, node_id=x, name='val_name', val=str(x)) for x in range(10)]
 
-    node = Node(graph_id=1, node_id=1,node_type=NodeTypes.Py, node_name='test_name')
+    node = Node(graph_id=1, node_id=1, node_type=NodeTypes.Py, version='1', node_name='test_name')
 
     results_connector.save([*metadat, node])
     reader = DataReader(results_connector)
@@ -83,8 +83,8 @@ def test_fetch_metadata_by_node_name(results_connector):
 
 
 def test_fetch_result_by_graph_name(results_connector):
-    g1 = Graph(graph_id=1, graph_name='test1', graph_script='',graph_dot_repr='')
-    g2 = Graph(graph_id=2, graph_name='test2', graph_script='',graph_dot_repr='')
+    g1 = Graph(graph_id=1, graph_name='test1', graph_script='', graph_dot_repr='')
+    g2 = Graph(graph_id=2, graph_name='test2', graph_script='', graph_dot_repr='')
     res1 = [Result(graph_id=1, node_id=x, user_id='User', start_time=now(), end_time=now(), name='a',
                    val='a') for x in range(10)]
     res2 = [Result(graph_id=2, node_id=x, user_id='User', start_time=now(), end_time=now(), name='a',
@@ -96,6 +96,7 @@ def test_fetch_result_by_graph_name(results_connector):
     a = reader.fetch(DataReaderQuery(table='Results', graph_name='test1'))
 
     assert res1 == reader.fetch(DataReaderQuery(graph_name='test1'))
+
 
 def test_fetch_metadata_by_res_size(results_connector):
     val = ''.join(choice(string.digits + string.ascii_letters) for i in range(int(1e4)))
