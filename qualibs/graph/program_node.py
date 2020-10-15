@@ -13,11 +13,7 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-
-
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-
-
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
@@ -130,8 +126,9 @@ class ProgramNode(ABC):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 to_run: bool = True,
-                 dependencies: list = []):
+                 dependencies: list = [],
+                 to_run: bool = True
+                 ):
 
         """
         Program node contains a program to run and description of input_vars/output variables
@@ -152,7 +149,7 @@ class ProgramNode(ABC):
         self.input_vars = input_vars
         self.output_vars: Set[str] = output_vars
         self.to_run = to_run
-        self.dependencies = dependencies
+        self.dependencies = list(set(dependencies))
         self._result: Dict[str, Any] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
@@ -327,7 +324,7 @@ class QuaNode(ProgramNode):
                  simulate_or_execute: str = None,
                  dependencies: list = []):
 
-        super().__init__(label, program, input_vars, output_vars)
+        super().__init__(label, program, input_vars, output_vars, dependencies)
 
         self.quantum_machine = quantum_machine
         self.execution_kwargs = execution_kwargs
@@ -460,10 +457,9 @@ class PyNode(ProgramNode):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 dependencies : list = []):
+                 dependencies: list = []):
 
-        super().__init__(label, program, input_vars, output_vars)
-        self.dependencies = list(set(self.dependencies + dependencies))
+        super().__init__(label, program, input_vars, output_vars, dependencies)
         self._job_results = None
         self._type = 'Py'
 

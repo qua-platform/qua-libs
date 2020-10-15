@@ -1,10 +1,4 @@
-
-import functools
-import sys
-from io import BytesIO
-
 from .environment import env_resolve
-
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
@@ -121,8 +115,7 @@ class GraphDB:
                                             val=npz_store.getvalue()
                                             ))
 
-
-    def save_metadata(self, graph,node, node_id):
+    def save_metadata(self, graph, node, node_id):
         metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
         for key, val in metadata.items():
             self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
@@ -367,7 +360,7 @@ class ProgramGraph:
         graph_db = graph_db if graph_db else self.graph_db
         if graph_db:
             # Save graph to DB
-            graph_db.save_graph( self, _calling_script_path)
+            graph_db.save_graph(self, _calling_script_path)
 
         # the starting point of the run
         if not start_nodes:
@@ -384,10 +377,10 @@ class ProgramGraph:
             # node_ids = node_ids.copy()
             # print(node_ids)
             # while node_ids:
-                # print(node_ids)
-                # node_id = node_ids.pop(0)
-                # if not node_ids:
-                #     await asyncio.gather(*self._tasks.values())
+            # print(node_ids)
+            # node_id = node_ids.pop(0)
+            # if not node_ids:
+            #     await asyncio.gather(*self._tasks.values())
             if node_id not in self._tasks:
                 if self._dependencies_started(node_id) or node_id in start_nodes:  # TODO: make sure it works
                     # if not self._dependencies_done(node_id):
@@ -415,10 +408,11 @@ class ProgramGraph:
 
                     # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
                     if graph_db:
-                        graph_db.save_metadata(self,self.nodes[node_id], node_id)
+                        graph_db.save_metadata(self, self.nodes[node_id], node_id)
                     # metadat={dep.__name__: env_resolve(dep, self.graph_db._envmodule)() for dep in self.graph_db._env_dependency_list}
                     # for key in metadat.keys():
                     #     Metadatum(graph_id=
+
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
 
