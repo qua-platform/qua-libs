@@ -1,12 +1,10 @@
 import functools
 from typing import Dict, Union, Any
 from collections.abc import Callable
-envmodule = {}
+from inspect import signature
 
 
-def env_dependency(envmodule):
-    # global envmodule
-
+def env_dependency(envmodule={}):
     def decorator_env_dependency(func):
         envmodule[func.__name__] = func
 
@@ -19,10 +17,8 @@ def env_dependency(envmodule):
     return decorator_env_dependency
 
 
-def env_resolve(fn, envmodule,cache={}):
-    import inspect
-    # global envmodule
-    sig = inspect.signature(fn)
+def env_resolve(fn, envmodule={}, cache={}):
+    sig = signature(fn)
     args = []
     for pname, pobj in sig.parameters.items():
         if pname not in cache:

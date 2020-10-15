@@ -2,10 +2,9 @@ from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 
-from qualibs.graph.environment import env_dependency, env_resolve
+from qualibs.graph.environment import env_dependency
 from qualibs.graph.program_node import *
 from qualibs.graph.program_graph import *
-from qualibs.templates import hello_qua
 from qualibs.templates.vanilla_config import config
 
 
@@ -132,35 +131,21 @@ def test_metadata_save():
 
     @env_dependency(envmodule)
     def my_device1():
-        "returns a list object to emulate a device"
         print("opened device 1")
         return []
 
     @env_dependency(envmodule)
     def my_device2():
-        "returns a list object to emulate a device"
         print("opened device 2")
         return []
-
-    def device1():
-        a = my_device1()
-        return 1
-
-    def device2(my_device2):
-        a = my_device2()
-        return 2
-
-    def device3():
-        a = my_device2()
-        return 2
 
     def py_node_script():
         set_my_device()
 
-    def globalMeta(my_device2,my_device1):
+    def globalMeta(my_device2, my_device1):
         print('called global meta')
-        res1=my_device1()
-        res2=my_device2()
+        res1 = my_device1()
+        res2 = my_device2()
         return {'g1': res1}
 
     def myMeta():
@@ -172,10 +157,8 @@ def test_metadata_save():
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-    dep_list = [device1, device2]
     # global metadata func to resolve
     graph_db = GraphDB('my_db.db', global_metadata_func=globalMeta, envmodule=envmodule)
-    # graph = ProgramGraph('test_graph',graph_db)
     graph = ProgramGraph('test_graph', graph_db)
 
     graph.add_nodes([node, pnode])
