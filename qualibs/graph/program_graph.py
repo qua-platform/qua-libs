@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .environment import env_resolve
 from .program_node import LinkNode, ProgramNode, QuaJobNode
 from qualibs.results.api import *
@@ -174,7 +176,8 @@ class ProgramGraph:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            if k != '_tasks':
+                setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -205,7 +208,7 @@ class ProgramGraph:
     def nodes(self):
         return self._nodes
 
-    def add_nodes(self, new_nodes: List[ProgramNode]):
+    def add_nodes(self, new_nodes: List[ProgramNode]) -> None:
         """
         Adds the given nodes to the graph
         :param new_nodes: list of node objects
@@ -219,7 +222,7 @@ class ProgramGraph:
             self._nodes[node.id] = node
             self._nodes_by_label.setdefault(node.label, set()).add(node)
             if node.input_vars is not dict():
-                for var, value in node.input_vars.__dict__.items():
+                for var, value in node.input_vars:
                     if isinstance(value, LinkNode):
                         self.add_edges({(value.node, node)})
                         self._link_nodes.setdefault(node.id, dict())[var] = value
@@ -230,48 +233,72 @@ class ProgramGraph:
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
-        print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to the graph")
 
-    def remove_nodes(self, nodes_to_remove: Set[ProgramNode]):
+        print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to graph <{self.label}>")
+
+    def remove_nodes(self, nodes_to_remove: Set[Union[int, str, ProgramNode]]) -> None:
         """
         Removes the given nodes from the graph
-        :param nodes_to_remove: Set of nodes to remove
-        :type nodes_to_remove: Set[ProgramNode]
+        :param nodes_to_remove: Set of nodes to remove by object, id or label
+        :type nodes_to_remove: Set[ProgramNode,int,str]
         :return:
         """
         edges_to_remove: Set[Tuple[ProgramNode, ProgramNode]] = set()
         for node in nodes_to_remove:
+            if type(node) is str:
+                node_ids = [node.id for node in self._nodes_by_label[node]]
+                print_yellow(f"ATTENTION removing {len(self._nodes_by_label[node])} node with the label <{node}>")
+                for node_id in node_ids:
+                    try:
+                        edges_to_remove = self.remove_node(node_id, edges_to_remove)
+                        print_green(f"SUCCESS removed node <{node}>")
+                    except KeyError:
+                        print_yellow(f"ATTENTION Tried to remove node <{node}> but it was not found in the graph")
+                continue
+            elif isinstance(node, ProgramNode):
+                node_id = node.id
+            elif type(node) is int:
+                node_id = node
+                node = self.nodes[node_id]
+            else:
+                print_red(f"WARNING given node must be one of a [{int},{str},{ProgramNode}] "
+                          f"but given <{node}> is {type(node)}")
+                continue
             try:
-                # remove node
-                self._nodes.pop(node.id)
-                self._nodes_by_label.get(node.label, {node}).remove(node)
-                if not self._nodes_by_label[node.label]:
-                    del self._nodes_by_label[node.label]
-
-                # remove forward edges
-                try:
-                    ids_to_remove = self.edges[node.id]
-                    for dest_node_id in ids_to_remove:
-                        edges_to_remove.add((node, self.nodes[dest_node_id]))
-                except KeyError:
-                    print_yellow(f'Node <{node.label}> has no outgoing edges.')
-
-                # remove backward edges
-                try:
-                    ids_to_remove = self.backward_edges[node.id]
-                    for source_node_id in ids_to_remove:
-                        edges_to_remove.add((self.nodes[source_node_id], node))
-                except KeyError:
-                    print_yellow(f'Node <{node.label}> has no incoming edges.')
-
+                edges_to_remove = self.remove_node(node_id, edges_to_remove)
                 print_green(f"SUCCESS removed node <{node.label}>")
             except KeyError:
                 print_yellow(f"ATTENTION Tried to remove node <{node.label}> but it was not found in the graph")
 
         self.remove_edges(edges_to_remove)
 
+    def remove_node(self, node_id, edges_to_remove) -> set:
+        # remove node
+        node = self._nodes.pop(node_id)
+        self._nodes_by_label.get(node.label, {node}).remove(node)
+        if not self._nodes_by_label[node.label]:
+            del self._nodes_by_label[node.label]
+
+        # remove forward edges
+        try:
+            ids_to_remove = self.edges[node.id]
+            for dest_node_id in ids_to_remove:
+                edges_to_remove.add((node, self.nodes[dest_node_id]))
+        except KeyError:
+            print_yellow(f'Node <{node.label}> has no outgoing edges.')
+
+        # remove backward edges
+        try:
+            ids_to_remove = self.backward_edges[node.id]
+            for source_node_id in ids_to_remove:
+                edges_to_remove.add((self.nodes[source_node_id], node))
+        except KeyError:
+            print_yellow(f'Node <{node.label}> has no incoming edges.')
+
+        return edges_to_remove
+
     @property
-    def edges(self):
+    def edges(self) -> dict:
         return self._edges
 
     def add_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
@@ -320,15 +347,15 @@ class ProgramGraph:
                              f"but it doesn't exist.")
 
     @property
-    def backward_edges(self):
+    def backward_edges(self) -> dict:
         return self._backward_edges
 
     @property
-    def graph_db(self):
+    def graph_db(self) -> GraphDB:
         return self._graph_db
 
     @graph_db.setter
-    def graph_db(self, graph_db):
+    def graph_db(self, graph_db: GraphDB):
         if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
             raise TypeError(f"graph_db must be of type {GraphDB}")
         self._graph_db = graph_db
@@ -374,21 +401,8 @@ class ProgramGraph:
         self._start_time = datetime.now()
         self._tasks = dict()
         for node_id in self._get_next(start_nodes):
-            # node_ids = node_ids.copy()
-            # print(node_ids)
-            # while node_ids:
-            # print(node_ids)
-            # node_id = node_ids.pop(0)
-            # if not node_ids:
-            #     await asyncio.gather(*self._tasks.values())
             if node_id not in self._tasks:
-                if self._dependencies_started(node_id) or node_id in start_nodes:  # TODO: make sure it works
-                    # if not self._dependencies_done(node_id):
-                    #     if node_id in start_nodes:
-                    #         pass
-                    #     else:
-                    #         node_ids.append(node_id)
-                    #         continue
+                if self._dependencies_started(node_id) or node_id in start_nodes:
                     if node_id not in start_nodes:
                         # wait for dependencies to complete
                         await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
@@ -461,10 +475,9 @@ class ProgramGraph:
                 return False
         return True
 
-    def _get_next(self, start_nodes: Union[List[int], Set[int]]):
+    def _get_next(self, start_nodes: Union[List[int], Set[int]]) -> int:
         """
         Generator of graph nodes - implementing BFS
-        :param try_again:
         :param start_nodes: the start positions of graph traversal
         :type start_nodes: List/Set of node ids
         :return:
@@ -523,6 +536,22 @@ class ProgramGraph:
 
         return sorted_list
 
+    def join(self, graph: ProgramGraph = None) -> None:
+        """
+         Join a different graph to the current graph
+        :param graph:
+        :type graph: ProgramGraph
+        :return:
+        """
+        if graph is not None:
+            try:
+                self._edges.update(graph.edges)
+                self._backward_edges.update(graph.backward_edges)
+                self.add_nodes(list(graph.nodes.values()))
+            except:
+                raise
+        print_green(f"SUCCESS joined graph <{graph.label}> to graph <{self.label}")
+
     def export_dot_graph(self, use_labels=True):
         """
         Converts the graph into DOT graph format
@@ -570,27 +599,39 @@ class GraphNode(ProgramNode):
 
     def __init__(self, label: str = None,
                  graph: ProgramGraph = None,
-                 input_vars: Dict[str, Any] = None,
-                 output_vars: Set[str] = None):
+                 input_vars: Dict[str, List[Tuple[Any, ProgramNode]]] = None,
+                 output_vars: Set[Tuple[str, str, ProgramNode]] = None,
+                 dependencies: list = []):
 
-        super().__init__(label, None, input_vars, output_vars)
+        super().__init__(label, None, input_vars, output_vars, dependencies)
         self.graph: ProgramGraph = graph
         self._type = 'Graph'
         self._job = None
+        # TODO: figure out how to combine graphs properly or i/o through graph node
+        # self.input_vars: {var:[(value, node),...],...}, the value wil go as input to of var to node
+        # self.output_vars: {(self_var, node_var,node),...}
 
     def _get_result(self):
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables were defined for node <{self.label}>")
             return
-        for var in self.output_vars:
+        for self_var, node_var, node in self.output_vars:
             try:
                 pass
-                # self._result[var] = self.graph.result[var]
+                self._result[self_var] = self.graph.nodes[node.id].result[node_var]
             except KeyError:
-                print_red(f"WARNING Could not fetch '{var}' from node <{self.label}> results")
+                print_red(f"WARNING Could not fetch '{node_var}' from node <{node.label}> results")
 
     async def run_async(self) -> None:
         if self.to_run:
+            # populate inputs
+            for var, vals in self.input_vars:
+                for val, node in vals:
+                    if isinstance(val, LinkNode):
+                        node.input_vars.var = val.get_output()
+                    else:
+                        node.input_vars.var = val
+
             self._start_time = datetime.now()
             print("\nRUNNING GraphNode '{}'...".format(self.label))
             self._job = await asyncio.create_task(self.graph.run_async())

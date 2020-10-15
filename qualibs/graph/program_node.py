@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from qm import QmJob, QuantumMachine
 from qm.program import _Program as QuaProgram
 
@@ -79,6 +81,9 @@ class InputVars:
 
     def __delitem__(self, key):
         delattr(self, key)
+
+    def __iter__(self):
+        return ((k, v) for k, v in self.__dict__.items())
 
     def __str__(self):
         return str(self.__dict__)
