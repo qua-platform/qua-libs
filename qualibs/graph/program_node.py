@@ -131,7 +131,7 @@ class ProgramNode(ABC):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 node_metadata_func: FunctionType = None):
+                 node_metadata_func: FunctionType = None,
                  to_run: bool = True
                  ):
 
@@ -334,7 +334,7 @@ class QuaNode(ProgramNode):
                  simulate_or_execute: str = None,
                  metadata_func: FunctionType = None):
 
-        super().__init__(label, program, input_vars, output_vars, dependencies)
+        super().__init__(label, program, input_vars, output_vars)
 
         self.quantum_machine = quantum_machine
         self.execution_kwargs = execution_kwargs

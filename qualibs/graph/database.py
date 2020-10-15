@@ -14,7 +14,7 @@ def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:', env_dependency_list=[], envmodule=None):
+    def __init__(self, results_path: str = ':memory:', global_metadata_func=[], envmodule=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
@@ -22,7 +22,7 @@ class GraphDB:
         """
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self._env_dependency_list = env_dependency_list
+        self._global_metadata_func = global_metadata_func
         self._envmodule = envmodule
 
     def __copy__(self):
@@ -106,7 +106,9 @@ class GraphDB:
                                             ))
 
     def save_metadata(self, graph, node, node_id):
-        metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
-        for key, val in metadata.items():
-            self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
+        for fn in node.metadata_func_list:
+            metadata = env_resolve(fn, self._envmodule)()
+            for key, val in metadata.items():
+                print('saved meta')
+                self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=str(val)))
 
