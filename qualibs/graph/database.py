@@ -106,9 +106,9 @@ class GraphDB:
                                             ))
 
     def save_metadata(self, graph, node, node_id):
+        print_green(f"Saving metadata before running node <{node.label}>")
         for fn in node.metadata_func_list:
             metadata = env_resolve(fn, self._envmodule)()
             for key, val in metadata.items():
-                print('saved meta')
                 self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=str(val)))
 

@@ -4,6 +4,7 @@ from .program_node import LinkNode, ProgramNode, QuaJobNode
 from .database import GraphDB
 
 from typing import Dict, Set, List, Tuple, Union, Any
+from types import FunctionType
 from copy import deepcopy
 from time import time_ns
 from datetime import datetime
@@ -218,6 +219,7 @@ class ProgramGraph:
                 continue
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
+            print_green(f"SUCCESS added edge from <{source.label}> to <{dest.label}>")
 
     def remove_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
         """
@@ -235,11 +237,10 @@ class ProgramGraph:
                     del self._edges[source.id]
                 if not self._backward_edges[dest.id]:
                     del self._backward_edges[dest.id]
-
                 print_green(f"SUCCESS removed edge from <{source.label}> to <{dest.label}>")
             except KeyError:
                 print_yellow(f"ATTENTION Tried to remove edge from <{source.label}> to <{dest.label}> "
-                             f"but it doesn't exist.")
+                             f"but it does not exist.")
 
     @property
     def backward_edges(self) -> dict:
@@ -492,9 +493,9 @@ class GraphNode(ProgramNode):
                  graph: ProgramGraph = None,
                  input_vars: Dict[str, List[Tuple[Any, ProgramNode]]] = None,
                  output_vars: Set[Tuple[str, str, ProgramNode]] = None,
-                 dependencies: list = []):
+                 node_metadata_func: FunctionType = None):
 
-        super().__init__(label, None, input_vars, output_vars, dependencies)
+        super().__init__(label, None, input_vars, output_vars, node_metadata_func)
         self.graph: ProgramGraph = graph
         self._type = 'Graph'
         self._job = None
