@@ -111,7 +111,8 @@ class ProgramGraph:
         """
         for node in new_nodes:
             if self._graph_db:
-                node.dependencies = list(set(node.dependencies + self._graph_db._env_dependency_list))
+                if self._graph_db._global_metadata_func:
+                    node.metadata_func_list = node.metadata_func_list + [self._graph_db._global_metadata_func]
 
             self._nodes[node.id] = node
             self._nodes_by_label.setdefault(node.label, set()).add(node)
@@ -317,10 +318,6 @@ class ProgramGraph:
                     # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
                     if graph_db:
                         graph_db.save_metadata(self, self.nodes[node_id], node_id)
-                    # metadat={dep.__name__: env_resolve(dep, self.graph_db._envmodule)() for dep in self.graph_db._env_dependency_list}
-                    # for key in metadat.keys():
-                    #     Metadatum(graph_id=
-
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
 
@@ -528,6 +525,7 @@ class GraphNode(ProgramNode):
 
             self._start_time = datetime.now()
             print("\nRUNNING GraphNode '{}'...".format(self.label))
+
             self._job = await asyncio.create_task(self.graph.run_async())
             print("DONE")
             self._end_time = datetime.now()

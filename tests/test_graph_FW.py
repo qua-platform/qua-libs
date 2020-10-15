@@ -146,7 +146,7 @@ def test_metadata_save():
         a = my_device1()
         return 1
 
-    def device2():
+    def device2(my_device2):
         a = my_device2()
         return 2
 
@@ -157,14 +157,24 @@ def test_metadata_save():
     def py_node_script():
         set_my_device()
 
-    dep_list = [device1, device2]
+    def globalMeta(my_device2,my_device1):
+        print('called global meta')
+        res1=my_device1()
+        res2=my_device2()
+        return {'g1': res1}
 
-    pnode = PyNode('py_node', py_node_script, dependencies=[device3])
+    def myMeta():
+        print('called local meta')
+        return {'k1': 'v1'}
 
+    pnode = PyNode('py_node', py_node_script, metadata_func=myMeta)
+    # metadata func to resolve
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-    graph_db = GraphDB('my_db.db', env_dependency_list=dep_list, envmodule=envmodule)
+    dep_list = [device1, device2]
+    # global metadata func to resolve
+    graph_db = GraphDB('my_db.db', global_metadata_func=globalMeta, envmodule=envmodule)
     # graph = ProgramGraph('test_graph',graph_db)
     graph = ProgramGraph('test_graph', graph_db)
 
