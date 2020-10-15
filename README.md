@@ -1,4 +1,4 @@
-#qua-libs
+# qua-libs
 
 This repo contains high level libraries over QUA.
 It has tools for both general usage, and qubit-specific tools. 

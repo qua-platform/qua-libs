@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<br>
+
+<h2>Found results:</h2>
+<div>
+    <table id=".result_row">
+        <tr>
+            <th>Results folder</th>
+            <th>results dictionary</th>
+            <th>log</th>
+            <th>npz file</th>
+        </tr>
+        {% for key, value in report.items() %}
+
+
+        <TR>
+            <TD>{{key}}</TD>
+            {% for v2 in value.items() %}
+            <TD>{{v2}}</TD>
+            {% endfor %}
+        </TR>
+
+
+        {% endfor %}
+    </table>
+</div>
+
+
+{% endblock %}

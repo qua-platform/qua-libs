@@ -1,0 +1,22 @@
+body {
+  background-color: black;
+}
+
+h1 {
+  color: white;
+
+}
+p{
+color:white
+}
+
+ .container {
+        max-width: 500px;
+        padding-top: 100px;
+      }
+      h2 {color: white;}
+
+table, th, td {
+  border: 1px solid white;
+  background-color: gray;
+}
