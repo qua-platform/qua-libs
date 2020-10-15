@@ -131,7 +131,7 @@ class ProgramNode(ABC):
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
                  to_run: bool = True,
-                 dependencies: list = []):
+                 node_metadata_func: FunctionType = None):
 
         """
         Program node contains a program to run and description of input_vars/output variables
@@ -152,7 +152,12 @@ class ProgramNode(ABC):
         self.input_vars = input_vars
         self.output_vars: Set[str] = output_vars
         self.to_run = to_run
-        self.dependencies = dependencies
+        self.metadata_func_list = []
+        if node_metadata_func:
+            self.metadata_func_list.append([node_metadata_func])
+        # else:
+        #     self.metadata_func_list = []
+
         self._result: Dict[str, Any] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
@@ -325,7 +330,7 @@ class QuaNode(ProgramNode):
                  simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None,
                  simulate_or_execute: str = None,
-                 dependencies: list = []):
+                 metadata_func: FunctionType = None):
 
         super().__init__(label, program, input_vars, output_vars)
 
@@ -333,7 +338,8 @@ class QuaNode(ProgramNode):
         self.execution_kwargs = execution_kwargs
         self.simulation_kwargs = simulation_kwargs
         self.simulate_or_execute: str = simulate_or_execute
-        self.dependencies = list(set(self.dependencies + dependencies))
+        # self.metadata_func_list = self.metadata_func_list.append(metadata_func)
+        if metadata_func: self.metadata_func_list.append(metadata_func)
         self._type = 'Qua'
         self._job: QmJob.QmJob = None
         self._qua_program: QuaProgram = None
@@ -460,10 +466,10 @@ class PyNode(ProgramNode):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 dependencies : list = []):
+                 metadata_func: FunctionType = None):
 
         super().__init__(label, program, input_vars, output_vars)
-        self.dependencies = list(set(self.dependencies + dependencies))
+        if metadata_func: self.metadata_func_list.append(metadata_func)
         self._job_results = None
         self._type = 'Py'
 
