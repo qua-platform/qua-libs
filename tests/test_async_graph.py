@@ -1,13 +1,13 @@
-from qualibs.graph import PyNode, QuaNode, ProgramGraph, GraphDB
+from qualibs.graph import PyNode, QuaNode, GraphNode, ProgramGraph, GraphDB
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import LoopbackInterface
 from qm import SimulationConfig
 from random import random
 
+import time
 import asyncio
 import random
-
 
 config = {
 
@@ -115,53 +115,75 @@ QM = QMm.open_qm(config)
 sim_args = {'simulate': SimulationConfig(int(1e5), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)]))}
 
 
-def a():
-    rest = random.random()
+async def a():
+    rest = 5
     print(f"Node a resting for {rest}")
-    # await asyncio.sleep(rest)
+    await asyncio.sleep(rest)
     with program() as qua_prog:
         x = declare(fixed, value=rest)
         save(x, 'x')
     return qua_prog
 
 
-async def b(x, m):
-    rest = random.random()
-    m = m.result_handles
-    print(f"Node b resting for {x * rest}")
-    await asyncio.sleep(x * rest)
+async def b():
+    rest = 3
+    # m = m.result_handles
+    print(f"Node b resting for {rest}")
+    await asyncio.sleep(rest)
     # time.sleep(rest)
-    return {'zx': x * rest}
+    return {'y': rest}
 
 
-async def c(x):
-    rest = random.random()
-    print(f"Node c resting for {x * rest}")
-    await asyncio.sleep(x * rest)
-    return {'yx': x * rest}
+async def c():
+    rest = 1
+    print(f"Node c resting for {rest}")
+    await asyncio.sleep(rest)
+    # time.sleep(rest)
+    return {'z': rest}
 
 
-async def d(zx, yx):
-    print(f"Node d resting for {zx * yx}")
-    await asyncio.sleep(zx * yx)
-    print(f"Result: {yx * zx}")
-    return {'zxyx': zx * yx}
+async def d(x, y):
+    print(f"Node d resting for {x / y}")
+    await asyncio.sleep(x / y)
+    print(f"d Result: {x + y}")
+    return {'x_y': x + y}
+
+
+async def e(y, z):
+    print(f"Node e resting for {y / z}")
+    await asyncio.sleep(y / z)
+    print(f"e Result: {y + z}")
+    return {'y_z': y + z}
+
+
+def f(x):
+    print(x)
+    return {'y_z': x}
 
 
 a1 = QuaNode('a', a, None, {'x'})
 a1.quantum_machine = QM
 a1.simulation_kwargs = sim_args
-v = a1.copy()
-b1 = PyNode('b', b, None, {'zx'})
-b1.input_vars.x = v.output('x')
-b1.input_vars.m = v.job()
-c1 = PyNode('c', c, {'x': v.output('x')}, {'yx'})
-d1 = PyNode('d', d, {'zx': b1.output('zx'), 'yx': c1.output('yx')}, {'zxyx'})
+v = a1.deepcopy()
+b1 = PyNode('b', b, None, {'y'})
+c1 = PyNode('c', c, None, {'z'})
+d1 = PyNode('d', d, {'x': v.output('x'), 'y': b1.output('y')}, {'x_y'})
+e1 = d1.deepcopy()
+e1.program = e
+del e1.input_vars['x']
+e1.input_vars['z'] = c1.output('z')
+e1.label = 'e'
+e1.output_vars = {'y_z'}
+db = GraphDB('here1.db')
+g = ProgramGraph('hello', graph_db=db)
+g.add_nodes([v, c1, b1, d1, e1])
+new_g = ProgramGraph()
+f1 = PyNode('f', f, {'x': 1}, {'y_z'})
+new_g.add_nodes([f1])
+# f1.input_vars.x = e1.output('y_z')
+# g.run()
+g.join(new_g)
+n = g.deepcopy()
+n.run()
 
-g = ProgramGraph('hello')
-g.add_nodes([d1, c1, b1, v])
-db = GraphDB('here3.db')
-n = g.copy()
-n.run(db)
-# # g.run([b1, c1])  # need to open new event loop
-print(g.export_dot_graph())
+print(n.export_dot_graph())

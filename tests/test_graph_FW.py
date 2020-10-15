@@ -112,7 +112,8 @@ def test_metadata_save():
         'simulate': SimulationConfig(int(1e3))}
     QMm = QuantumMachinesManager()
     QM = QMm.open_qm(config)
-    envmodule={}
+    envmodule = {}
+
     def qua_prog():
         with program() as prog:
             res = declare(int)
@@ -141,33 +142,31 @@ def test_metadata_save():
         print("opened device 2")
         return []
 
-
     def device1():
-        a=my_device1()
+        a = my_device1()
         return 1
 
     def device2():
-        a=my_device2()
+        a = my_device2()
         return 2
 
     def device3():
-        a=my_device2()
+        a = my_device2()
         return 2
-
 
     def py_node_script():
         set_my_device()
 
-    dep_list = [device1,device2]
+    dep_list = [device1, device2]
 
-    pnode = PyNode('py_node', py_node_script,dependencies=[device3])
+    pnode = PyNode('py_node', py_node_script, dependencies=[device3])
 
     node.quantum_machine = QM
     node.simulation_kwargs = sim_args
     node.output_vars = {'res'}
-    graph_db = GraphDB('my_db.db',env_dependency_list=dep_list,envmodule=envmodule)
+    graph_db = GraphDB('my_db.db', env_dependency_list=dep_list, envmodule=envmodule)
     # graph = ProgramGraph('test_graph',graph_db)
-    graph = ProgramGraph('test_graph',graph_db)
+    graph = ProgramGraph('test_graph', graph_db)
 
     graph.add_nodes([node, pnode])
     job_db = graph.run()

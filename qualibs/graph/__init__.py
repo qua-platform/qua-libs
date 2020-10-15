@@ -4,4 +4,4 @@ from .program_node import QuaNode as QuaNode
 from .program_node import PyNode as PyNode
 from .program_graph import ProgramGraph as ProgramGraph
 from .program_graph import GraphNode as GraphNode
-from .program_graph import GraphDB as GraphDB
+from .database import GraphDB as GraphDB
