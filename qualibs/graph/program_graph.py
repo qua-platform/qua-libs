@@ -16,7 +16,6 @@ from datetime import datetime
 from colorama import Fore, Style
 from inspect import stack
 from io import BytesIO
-
 import asyncio
 import sys
 
@@ -48,14 +47,17 @@ class GraphDB:
         result.__dict__.update(self.__dict__)
         return result
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
             if k == '_dbcon':
                 setattr(result, k, v)
-            setattr(result, k, deepcopy(v, memo))
+            else:
+                setattr(result, k, deepcopy(v, memo))
         return result
 
     @property
@@ -70,6 +72,7 @@ class GraphDB:
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
     def save_graph(self, graph, calling_script_path):
+        print_green(f"Saving graph <{graph.label}> to DB at {self.results_path}")
         try:
             calling_script = open(calling_script_path).read() if calling_script_path else None
         except OSError:
@@ -84,6 +87,10 @@ class GraphDB:
                 version = str(node.quantum_machine._manager.version())
             elif NodeTypes[node.type] == NodeTypes.Py:
                 version = str(sys.version_info)
+            elif NodeTypes[node.type] == NodeTypes.Graph:
+                version = str(sys.version_info)
+            else:
+                version = str(sys.version_info)
 
             self._dbcon.save(Node(graph_id=graph.id,
                                   node_id=node_id,
@@ -92,6 +99,7 @@ class GraphDB:
                                   node_name=node.label))
 
     def save_graph_results(self, graph):
+        print_green(f"Saving graph <{graph.label}> results to DB at {self.results_path}")
         for node_id, node in graph.nodes.items():
             for name in node.result.keys():
                 self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
@@ -166,7 +174,9 @@ class ProgramGraph:
         self_copy._id = id(self_copy)
         return self_copy
 
-    def __deepcopy__(self, memo=dict()):
+    def __deepcopy__(self, memo=None):
+        if memo is None:
+            memo = dict()
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -285,10 +295,12 @@ class ProgramGraph:
                 print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
                           f"but <{source.label}> was not added to the graph "
                           f"(maybe a copy of the node was added instead)")
+                continue
             if dest.id not in self.nodes:
                 print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
                           f"but <{dest.label}> was not added to the graph "
                           f"(maybe a copy of the node was added instead)")
+                continue
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
 
@@ -355,7 +367,7 @@ class ProgramGraph:
         graph_db = graph_db if graph_db else self.graph_db
         if graph_db:
             # Save graph to DB
-            graph_db.save_graph(self, _calling_script_path)
+            graph_db.save_graph( self, _calling_script_path)
 
         # the starting point of the run
         if not start_nodes:
@@ -369,12 +381,24 @@ class ProgramGraph:
         self._start_time = datetime.now()
         self._tasks = dict()
         for node_id in self._get_next(start_nodes):
+            # node_ids = node_ids.copy()
+            # print(node_ids)
+            # while node_ids:
+                # print(node_ids)
+                # node_id = node_ids.pop(0)
+                # if not node_ids:
+                #     await asyncio.gather(*self._tasks.values())
             if node_id not in self._tasks:
-                if self._dependencies_started(node_id):  # or node_id in start_nodes:  # TODO: make sure it works
-
-                    # wait for dependencies to complete
-                    # if node_id not in start_nodes:
-                    await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
+                if self._dependencies_started(node_id) or node_id in start_nodes:  # TODO: make sure it works
+                    # if not self._dependencies_done(node_id):
+                    #     if node_id in start_nodes:
+                    #         pass
+                    #     else:
+                    #         node_ids.append(node_id)
+                    #         continue
+                    if node_id not in start_nodes:
+                        # wait for dependencies to complete
+                        await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
 
                     # direct the output of the dependencies input the input of the node
                     input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
@@ -443,7 +467,7 @@ class ProgramGraph:
                 return False
         return True
 
-    def _get_next(self, start_nodes: Union[List[int], Set[int]], try_again: List = list()):
+    def _get_next(self, start_nodes: Union[List[int], Set[int]]):
         """
         Generator of graph nodes - implementing BFS
         :param try_again:
@@ -461,7 +485,7 @@ class ProgramGraph:
             except KeyError:
                 pass
 
-    def _topological_sort(self, start_nodes: List[ProgramNode] = list()) -> List[int]:
+    def _topological_sort(self, start_nodes=None) -> List[int]:
         """
         Returns a list of graph node ids in a topological order. Starting from given start nodes.
         Implements Kahn's algorithm.
@@ -469,6 +493,8 @@ class ProgramGraph:
         :type start_nodes: List[ProgramNode]
         :return:
         """
+        if start_nodes is None:
+            start_nodes = list()
         edges: Dict[int, Set[int]] = deepcopy(self.edges)
         backward_edges: Dict[int, Set[int]] = deepcopy(self.backward_edges)
 

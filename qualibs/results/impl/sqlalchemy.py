@@ -69,6 +69,7 @@ class Metadata(Base):
 class NodeTypes(enum.Enum):
     Py = 1
     Qua = 2
+    Graph = 3
 
 
 class Nodes(Base):
@@ -77,7 +78,7 @@ class Nodes(Base):
     node_id = Column(Integer, primary_key=True)
     node_name = Column(String)
     node_type = Column(Enum(NodeTypes))
-    version=Column(String)
+    version = Column(String)
     results = relationship("Results", cascade="all, delete-orphan")
     metadat = relationship("Metadata", cascade="all, delete-orphan")
 
