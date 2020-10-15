@@ -70,7 +70,7 @@ def test_make_graph_with_quaNode():
     node.output_vars = {'res'}
 
     graph = ProgramGraph('test_graph')
-    graph.add_nodes([node])
+    graph.add_nodes(node)
     graph.run()
 
     assert node.result['res'][0] == 1
@@ -100,7 +100,7 @@ def test_save_graph_to_db():
     graph_db = GraphDB('my_db.db')
     graph = ProgramGraph('test_graph')
     # graph = ProgramGraph('test_graph',graph_db) #another option
-    graph.add_nodes([node])
+    graph.add_nodes(node)
     job_db = graph.run(graph_db)
 
     assert node.result['res'][0] == 1
@@ -161,7 +161,7 @@ def test_metadata_save():
     graph_db = GraphDB('my_db.db', global_metadata_func=globalMeta, envmodule=envmodule)
     graph = ProgramGraph('test_graph', graph_db)
 
-    graph.add_nodes([node, pnode])
+    graph.add_nodes(node, pnode)
     job_db = graph.run()
 
     assert node.result['res'][0] == 1

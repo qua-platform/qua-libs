@@ -103,11 +103,11 @@ class ProgramGraph:
     def nodes(self):
         return self._nodes
 
-    def add_nodes(self, new_nodes: List[ProgramNode]) -> None:
+    def add_nodes(self, *new_nodes: ProgramNode):
         """
         Adds the given nodes to the graph
-        :param new_nodes: list of node objects
-        :type new_nodes: List[ProgramNode]
+        :param new_nodes: node objects
+        :type new_nodes: ProgramNode
         :return:
         """
         for node in new_nodes:
@@ -120,23 +120,23 @@ class ProgramGraph:
             if node.input_vars is not dict():
                 for var, value in node.input_vars:
                     if isinstance(value, LinkNode):
-                        self.add_edges({(value.node, node)})
+                        self.add_edges((value.node, node))
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append(value.output_var)
                     if isinstance(value, QuaJobNode):
-                        self.add_edges({(value.node, node)})
+                        self.add_edges((value.node, node))
                         self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
 
         print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to graph <{self.label}>")
 
-    def remove_nodes(self, nodes_to_remove: Set[Union[int, str, ProgramNode]]) -> None:
+    def remove_nodes(self, *nodes_to_remove: Union[int, str, ProgramNode]) -> None:
         """
         Removes the given nodes from the graph
-        :param nodes_to_remove: Set of nodes to remove by object, id or label
-        :type nodes_to_remove: Set[ProgramNode,int,str]
+        :param nodes_to_remove:nodes to remove by object, id or label
+        :type nodes_to_remove: Union[ProgramNode,int,str]
         :return:
         """
         edges_to_remove: Set[Tuple[ProgramNode, ProgramNode]] = set()
@@ -166,7 +166,7 @@ class ProgramGraph:
             except KeyError:
                 print_yellow(f"ATTENTION Tried to remove node <{node.label}> but it was not found in the graph")
 
-        self.remove_edges(edges_to_remove)
+        self.remove_edges(*edges_to_remove)
 
     def _remove_node(self, node_id, edges_to_remove) -> set:
         # remove node
@@ -197,13 +197,13 @@ class ProgramGraph:
     def edges(self) -> dict:
         return self._edges
 
-    def add_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
+    def add_edges(self, *edges: Tuple[ProgramNode, ProgramNode]):
         """
         Add edges between given nodes.
         When used outside of add_nodes method,
         it describes either time order rather than input_vars/output dependency as usual.
-        :param edges: set of tuples {(source_node, dest_node)...}
-        :type edges: Set[Tuple[ProgramNode, ProgramNode]]
+        :param edges: tuples (source_node, dest_node)...
+        :type edges: Tuple[ProgramNode, ProgramNode]
         :return:
         """
         for source, dest in edges:
@@ -221,11 +221,11 @@ class ProgramGraph:
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
             print_green(f"SUCCESS added edge from <{source.label}> to <{dest.label}>")
 
-    def remove_edges(self, edges: Set[Tuple[ProgramNode, ProgramNode]]):
+    def remove_edges(self, *edges: Tuple[ProgramNode, ProgramNode]):
         """
         Remove edges between pairs of nodes
-        :param edges: Pairs of nodes {(source_node, dest_node)...}
-        :type edges: Set[Tuple[ProgramNode, ProgramNode]]
+        :param edges: Pairs of nodes (source_node, dest_node)...
+        :type edges: Tuple[ProgramNode, ProgramNode]
         :return:
         """
         # need to update backward edges
@@ -439,7 +439,7 @@ class ProgramGraph:
             try:
                 self._edges.update(graph.edges)
                 self._backward_edges.update(graph.backward_edges)
-                self.add_nodes(list(graph.nodes.values()))
+                self.add_nodes(*graph.nodes.values())
             except:
                 raise
         print_green(f"SUCCESS joined graph <{graph.label}> to graph <{self.label}")
