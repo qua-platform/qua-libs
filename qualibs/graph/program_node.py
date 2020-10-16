@@ -219,6 +219,14 @@ class ProgramNode(ABC):
         self._label = _label
 
     @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
+
+    @property
     def program(self) -> FunctionType:
         return self._program
 

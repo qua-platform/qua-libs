@@ -176,10 +176,10 @@ e1.label = 'e'
 e1.output_vars = {'y_z'}
 db = GraphDB('here1.db')
 g = ProgramGraph('hello', graph_db=db)
-g.add_nodes([v, c1, b1, d1, e1])
+g.add_nodes(*[v, c1, b1, d1, e1])
 new_g = ProgramGraph()
 f1 = PyNode('f', f, {'x': 1}, {'y_z'})
-new_g.add_nodes([f1])
+new_g.add_nodes(f1)
 # f1.input_vars.x = e1.output('y_z')
 # g.run()
 g.join(new_g)

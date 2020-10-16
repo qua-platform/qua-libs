@@ -100,6 +100,14 @@ class ProgramGraph:
         self._label = _label
 
     @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
+
+    @property
     def nodes(self):
         return self._nodes
 
@@ -285,42 +293,11 @@ class ProgramGraph:
             # Save graph to DB
             graph_db.save_graph(self, _calling_script_path)
 
-        # the starting point of the run
-        if not start_nodes:
-            start_nodes = list()
-            for node_id in self.nodes:
-                if node_id not in self.backward_edges:
-                    start_nodes.append(node_id)
-        else:
-            start_nodes = [n.id for n in start_nodes]
-
         self._start_time = datetime.now()
         self._tasks = dict()
-        for node_id in self._get_next(start_nodes):
-            if node_id not in self._tasks:
-                if self._dependencies_started(node_id) or node_id in start_nodes:
-                    if node_id not in start_nodes:
-                        # wait for dependencies to complete
-                        await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
 
-                    # direct the output of the dependencies input the input of the node
-                    input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
-                    for var in input_vars:
-                        if isinstance(input_vars[var], LinkNode):
-                            link_node = input_vars[var]
-                            try:
-                                self.nodes[link_node.node.id]
-                            except KeyError:
-                                raise RuntimeError(f"Tried to use the output of node <{link_node.node.label}> "
-                                                   f"but the node is not in the graph.")
-
-                            setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
-
-                    # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
-                    if graph_db:
-                        graph_db.save_metadata(self, self.nodes[node_id], node_id)
-                    # create task to run the node and start running
-                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
+        # traverse the graph and run the nodes
+        await self._graph_traversal(graph_db, start_nodes)
 
         # wait for all tasks(nodes) to complete
         await asyncio.gather(*self._tasks.values())
@@ -345,6 +322,7 @@ class ProgramGraph:
         """
         if (graph_db is not None) and (not isinstance(graph_db, GraphDB)):
             raise TypeError(f"graph_db must be of type {GraphDB}")
+
         if (start_nodes is not None) and (type(start_nodes) != list) and (type(start_nodes) != set):
             raise TypeError(f"start_nodes must be of type {list} or {set} containing ProgramNode "
                             f"but given {type(start_nodes)}")
@@ -352,6 +330,49 @@ class ProgramGraph:
         # get the script of the file that called self.run()
         calling_script_path = stack()[1][0].f_code.co_filename
         return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path))
+
+    async def _graph_traversal(self, graph_db, start_nodes):
+
+        # the starting nodes of the run
+        if not start_nodes:
+            start_nodes = list()
+            for node_id in self.nodes:
+                if node_id not in self.backward_edges:
+                    start_nodes.append(node_id)
+        else:
+            start_nodes = [n.id for n in start_nodes]
+
+        for node_id in self._get_next(start_nodes):
+            if node_id not in self._tasks:
+                if self._dependencies_started(node_id) or node_id in start_nodes:
+
+                    if node_id not in start_nodes:
+                        # wait for dependencies to complete
+                        await asyncio.gather(*{self._tasks[t] for t in (self.backward_edges.get(node_id, set()))})
+
+                    # direct the output of the dependencies input the input of the node
+
+                    self._populate_input(node_id)
+
+                    # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
+                    if graph_db:
+                        graph_db.save_metadata(self, self.nodes[node_id], node_id)
+
+                    # create task to run the node and start running
+                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
+
+    def _populate_input(self, node_id):
+        input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
+        for var in input_vars:
+            if isinstance(input_vars[var], LinkNode):
+                link_node = input_vars[var]
+                try:
+                    self.nodes[link_node.node.id]
+                except KeyError:
+                    raise RuntimeError(f"Tried to use the output of node <{link_node.node.label}> "
+                                       f"but the node is not in the graph.")
+
+                setattr(self.nodes[node_id].input_vars, var, link_node.get_output())
 
     def _dependencies_started(self, node_id) -> bool:
         return self._backward_edges.get(node_id, set()) <= self._tasks.keys()
@@ -384,6 +405,8 @@ class ProgramGraph:
             except KeyError:
                 pass
 
+
+
     def _topological_sort(self, start_nodes=None) -> List[int]:
         """
         Returns a list of graph node ids in a topological order. Starting from given start nodes.
@@ -394,6 +417,7 @@ class ProgramGraph:
         """
         if start_nodes is None:
             start_nodes = list()
+
         edges: Dict[int, Set[int]] = deepcopy(self.edges)
         backward_edges: Dict[int, Set[int]] = deepcopy(self.backward_edges)
 
