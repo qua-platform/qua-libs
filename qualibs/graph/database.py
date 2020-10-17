@@ -1,16 +1,22 @@
 from .environment import env_resolve
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
-from qualibs.results.api import *
-
+from qualibs.results.api import Graph, Node, Result, Metadatum
 from colorama import Fore, Style
 from copy import deepcopy
 from io import BytesIO
 import sys
 
 
-def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
+def print_red(skk):
+    print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
+def print_green(skk):
+    print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
+def print_yellow(skk):
+    print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class GraphDB:
@@ -111,4 +117,3 @@ class GraphDB:
             metadata = env_resolve(fn, self._envmodule)()
             for key, val in metadata.items():
                 self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=str(val)))
-

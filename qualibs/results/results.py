@@ -81,7 +81,7 @@ class ResultStore(BaseStore):
         """
 
         end_time=datetime.datetime.now().strftime('%c')
-        npz=FileBinaryAsset(self._job_path(job_id).joinpath(f"results.npz"))
+        npz=FileBinaryAsset(self._job_path(job_id).joinpath("results.npz"))
         self.add_result('run_end_time', end_time)
         self.add_result('job_id', job_id)
 
@@ -89,21 +89,19 @@ class ResultStore(BaseStore):
         if self.script_path != '':
             copyfile(self.script_path, self._script_path(job_id))
 
-
-
         with open(self._results_path(job_id), "w") as results_file:
             json.dump(self.results, results_file)
 
         self._make_log_file()
 
-        return FileBinaryAsset(self._job_path(job_id).joinpath(f"results.npz"))
+        return FileBinaryAsset(self._job_path(job_id).joinpath("results.npz"))
 
     def _script_path(self, job_id):
         head, tail = os.path.split(self.script_path)
         return self._job_path(job_id).joinpath(tail)
 
     def _results_path(self, job_id):
-        return self._job_path(job_id).joinpath(f"results.json")
+        return self._job_path(job_id).joinpath("results.json")
 
     def _make_log_file(self):
         try:
@@ -113,7 +111,7 @@ class ResultStore(BaseStore):
 
             log += f"Run ended on {self.results['run_end_time']}\n"
 
-            with open(self._job_path(self.results['job_id']).joinpath(f"result.log"), 'w') as log_file:
+            with open(self._job_path(self.results['job_id']).joinpath("result.log"), 'w') as log_file:
                 log_file.write(log)
 
         except KeyError:
@@ -148,12 +146,3 @@ class ResultStore(BaseStore):
         print('Results dictionary')
         print('------------------')
         [print(f"{key} : {self.results[key]}") for key in self.results]
-
-
-if __name__ == '__main__':
-    a = ResultStore()
-    a.add_result('this', 1)
-    a.add_result('that', 2)
-    a.list_results()
-    res_list = get_results_in_path('res')
-    make_result_report(res_list)

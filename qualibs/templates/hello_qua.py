@@ -1,4 +1,4 @@
-from qm.qua import *
+from qm.qua import program, play
 
 
 def hello_qua():

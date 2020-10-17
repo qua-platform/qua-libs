@@ -1,10 +1,11 @@
 import enum
 from typing import Optional, List, Union, Iterable, TypeVar
 
-import numpy as np
+# import numpy as np
 from sqlalchemy import create_engine
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Sequence, DATETIME, Enum
+from sqlalchemy import Column, Integer, String, DATETIME, Enum
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
@@ -135,7 +136,7 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
         try:
             yield session
             session.commit()
-        except:
+        except DBAPIError:
             session.rollback()
             raise
         finally:
@@ -199,44 +200,3 @@ class SqlAlchemyResultsConnector(BaseResultsConnector):
 
     def fetch_first(self, query_obj: DataReaderQuery) -> Optional[Result]:
         return self._query(query_obj).first().to_model()
-
-# if __name__ == '__main__':
-#     # engine = create_engine('sqlite:///:memory:', echo=True)
-#     try:
-#         os.remove('my_db.db')
-#     except FileNotFoundError:
-#         pass
-#
-#     now = datetime.datetime.now
-#
-#     # saver = DBSaver(DB_path=':memory:')
-#     dbcon = DBConnector()
-#
-#     res_a = Results(graph_id=1, node_id=1, result_id=1, user_id='Dan', start_time=now() + datetime.timedelta(days=-2),
-#                     end_time=now(),
-#                     res_name="this",
-#                     res_val='that')
-#     res_b = Results(graph_id=1, node_id=2, result_id=2, user_id='Gal', start_time=now() + datetime.timedelta(days=-2),
-#                     end_time=now(),
-#                     res_name="this",
-#                     res_val='that')
-#     graph = Graphs(graph_id=randint(1000, 2000), graph_script='a')
-#
-#     dbcon.save(res_a)
-#
-#     dbcon.save(
-#         [Results(graph_id=randint(1000, 2000), node_id=1, result_id=1, user_id='Gal',
-#                  start_time=now() + datetime.timedelta(days=-2), end_time=now(),
-#                  res_name="this",
-#                  res_val=str(randint(-1e6, 1e6))) for x in range(10)])
-#
-#     dbcon.save([res_b, graph])
-#
-#     # time.sleep(5)
-#     rdr = DataReader('my_db.db')
-#
-#     # a = rdr.fetch(DataReaderQuery(start_time=datetime.datetime.today() + datetime.timedelta(days=-3),
-#     #                               end_time=datetime.datetime.today() + datetime.timedelta(days=-1),
-#     #                               user_id='Gal'))
-#
-#     rdr.fetch(DataReaderQuery(graph_id=1))
