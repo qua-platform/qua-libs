@@ -95,13 +95,13 @@ class InputVars:
         result = cls.__new__(cls)
         result.__dict__.update(self.__dict__)
         return result
-
-    def copy(self):
-        """
-        Implements  shallow copy - copy by reference
-        :return:
-        """
-        return self.__copy__()
+    #
+    # def copy(self):
+    #     """
+    #     Implements  shallow copy - copy by reference
+    #     :return:
+    #     """
+    #     return self.__copy__()
 
     def __deepcopy__(self, memo=None):
         if memo is None:
@@ -171,14 +171,14 @@ class ProgramNode(ABC):
         result.__dict__.update(self.__dict__)
         return result
 
-    def copy(self):
-        """
-        Implements  shallow copy - copy by reference, provides new id
-        :return:
-        """
-        self_copy = self.__copy__()
-        self_copy._id = id(self_copy)
-        return self_copy
+    # def copy(self):
+    #     """
+    #     Implements  shallow copy - copy by reference, provides new id
+    #     :return:
+    #     """
+    #     self_copy = self.__copy__()
+    #     self_copy._id = id(self_copy)
+    #     return self_copy
 
     def __deepcopy__(self, memo=None):
         if memo is None:

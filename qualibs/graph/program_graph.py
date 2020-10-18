@@ -55,14 +55,14 @@ class ProgramGraph:
         result.__dict__.update(self.__dict__)
         return result
 
-    def copy(self):
-        """
-        Implements  shallow copy - copy by reference, provides new id
-        :return:
-        """
-        self_copy = self.__copy__()
-        self_copy._id = id(self_copy)
-        return self_copy
+    # def copy(self):
+    #     """
+    #     Implements  shallow copy - copy by reference, provides new id
+    #     :return:
+    #     """
+    #     self_copy = self.__copy__()
+    #     self_copy._id = id(self_copy)
+    #     return self_copy
 
     def __deepcopy__(self, memo=None):
         if memo is None:
@@ -353,13 +353,15 @@ class ProgramGraph:
                     # direct the output of the dependencies input the input of the node
 
                     self._populate_input(node_id)
+                    node = self.nodes[node_id]
 
-                    # SAVE METADATA TO DB HERE graphdb.metadata.save(node_id)
                     if graph_db:
-                        graph_db.save_metadata(self, self.nodes[node_id], node_id)
+                        # save node and metadata to DB
+                        graph_db.save_node(self, node)
+                        graph_db.save_metadata(self, node)
 
                     # create task to run the node and start running
-                    self._tasks[node_id] = asyncio.create_task(self.nodes[node_id].run_async())
+                    self._tasks[node_id] = asyncio.create_task(node.run_async())
 
     def _populate_input(self, node_id):
         input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
@@ -404,8 +406,6 @@ class ProgramGraph:
                     to_do.append(child)
             except KeyError:
                 pass
-
-
 
     def _topological_sort(self, start_nodes=None) -> List[int]:
         """
