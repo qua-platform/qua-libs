@@ -75,7 +75,7 @@ class CalibrationGraph(ProgramGraph):
 
         # the starting nodes of the run
         if not start_nodes:
-            # start from the nodes that
+            # start from the nodes that don't have outgoing edges
             start_nodes = list()
             for node_id in self.nodes:
                 if node_id not in self.edges:
@@ -96,7 +96,7 @@ class CalibrationGraph(ProgramGraph):
             return
 
         # check_data
-        self._populate_input(node_id)
+        self._feed_input(node_id)
         _, state = await self.nodes[node_id].check_data()
         if state == 'in_spec':
             return
@@ -105,7 +105,7 @@ class CalibrationGraph(ProgramGraph):
                 await self.diagnose(depend_id)
 
         # calibrate
-        self._populate_input(node_id)
+        self._feed_input(node_id)
         await self.nodes[node_id].calibrate()
         return
 
@@ -137,7 +137,7 @@ class CalibrationGraph(ProgramGraph):
         :return:
         """
         # check_data
-        self._populate_input(node_id)
+        self._feed_input(node_id)
         state = await self.nodes[node_id].check_data()
 
         # in spec case
@@ -151,6 +151,6 @@ class CalibrationGraph(ProgramGraph):
                 return False
 
         # calibrate
-        self._populate_input(node_id)
+        self._feed_input(node_id)
         await self.nodes[node_id].calibrate()
         return True

@@ -5,7 +5,7 @@ from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Dict, Set, Any, Union
+from typing import Dict, Set, Any, Union, List
 from collections.abc import Coroutine
 from datetime import datetime
 from colorama import Fore, Style
@@ -15,7 +15,11 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
@@ -62,8 +66,23 @@ class LinkNode:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, v)
         return result
+
+    def __eq__(self, other: LinkNode):
+        if not self.output_var == other.output_var:
+            return False
+        if not self.node.output_vars == other.node.output_vars:
+            return False
+        if not self.node.label == other.node.label:
+            return False
+        if not self.node.program == other.node.program:
+            return False
+        if not self.node.input_vars == other.node.input_vars:
+            return False
+        if not self.node.result == other.node.result:
+            return False
+        return True
 
 
 class InputVars:
@@ -84,6 +103,15 @@ class InputVars:
     def __iter__(self):
         return ((k, v) for k, v in self.__dict__.items())
 
+    def __eq__(self, other):
+        for k, v in self.__iter__():
+            if not type(other[k]) == type(v):
+                return False
+            else:
+                if not v == other[k]:
+                    return False
+        return True
+
     def __str__(self):
         return str(self.__dict__)
 
@@ -95,6 +123,7 @@ class InputVars:
         result = cls.__new__(cls)
         result.__dict__.update(self.__dict__)
         return result
+
     #
     # def copy(self):
     #     """
@@ -110,10 +139,7 @@ class InputVars:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, LinkNode):
-                setattr(result, k, v)
-            else:
-                setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -130,7 +156,7 @@ class ProgramNode(ABC):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 node_metadata_func: FunctionType = None,
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None,
                  to_run: bool = True
                  ):
 
@@ -144,6 +170,7 @@ class ProgramNode(ABC):
         :type input_vars: dict
         :param output_vars: output variable names
         :type output_vars: Set[str]
+        :param node_metadata_func: a list of functions or a single function that describes the node's metadata
         :param to_run: whether to run the node
         :type to_run: bool
         """
@@ -153,7 +180,7 @@ class ProgramNode(ABC):
         self.input_vars = input_vars
         self.output_vars: Set[str] = output_vars
         self.to_run = to_run
-        self.metadata_func_list = [node_metadata_func] if node_metadata_func else list()
+        self.metadata_funcs = metadata_funcs
         self._result: Dict[str, Any] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
@@ -187,7 +214,10 @@ class ProgramNode(ABC):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            if k == '_id':
+                setattr(result, k, id(result))
+            else:
+                setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -195,9 +225,7 @@ class ProgramNode(ABC):
         Implements deep copy - copy by value, provides new id
         :return:
         """
-        self_copy = self.__deepcopy__()
-        self_copy._id = id(self_copy)
-        return self_copy
+        return self.__deepcopy__()
 
     @property
     def type(self):
@@ -290,6 +318,22 @@ class ProgramNode(ABC):
             raise TypeError(f"In node <{self.label}> expected {bool} but given {type(to_run)}")
         self._to_run = to_run
 
+    @property
+    def metadata_funcs(self):
+        return self._metadata_funcs
+
+    @metadata_funcs.setter
+    def metadata_funcs(self, node_metadata):
+        if node_metadata:
+            if isfunction(node_metadata):
+                self._metadata_funcs = [node_metadata]
+            elif type(node_metadata) is list:
+                self._metadata_funcs = node_metadata
+            else:
+                raise TypeError(f"Metadata parameter must be a {FunctionType} or a {List[FunctionType]}")
+        else:
+            self._metadata_funcs = list()
+
 
 class QuaJobNode:
     def __init__(self, node):
@@ -320,9 +364,24 @@ class QuaJobNode:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, v)
         return result
 
+    def __eq__(self, other: QuaJobNode):
+        if not self.quantum_machine == other.quantum_machine:
+            return False
+        if not self.node.output_vars == other.node.output_vars:
+            return False
+        if not self.node.label == other.node.label:
+            return False
+        if not self.node.program == other.node.program:
+            return False
+        if not self.node.input_vars == other.node.input_vars:
+            return False
+        if not self.node.result == other.node.result:
+            return False
+
+        return True
 
 class QuaNode(ProgramNode):
 
@@ -334,9 +393,9 @@ class QuaNode(ProgramNode):
                  simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None,
                  simulate_or_execute: str = None,
-                 metadata_func: FunctionType = None):
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None):
 
-        super().__init__(label, program, input_vars, output_vars, metadata_func)
+        super().__init__(label, program, input_vars, output_vars, metadata_funcs)
 
         self.quantum_machine = quantum_machine
         self.execution_kwargs = execution_kwargs
@@ -353,7 +412,9 @@ class QuaNode(ProgramNode):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == '_quantum_machine':
+            if k == '_id':
+                setattr(result, k, id(result))
+            elif k == '_quantum_machine':
                 setattr(result, k, v)
             elif k == '_job':
                 setattr(result, k, None)
@@ -468,9 +529,9 @@ class PyNode(ProgramNode):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 metadata_func: FunctionType = None):
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None):
 
-        super().__init__(label, program, input_vars, output_vars, metadata_func)
+        super().__init__(label, program, input_vars, output_vars, metadata_funcs)
         self._job_results = None
         self._type = 'Py'
 

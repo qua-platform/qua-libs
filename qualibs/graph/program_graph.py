@@ -14,13 +14,17 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class ProgramGraph:
 
-    def __init__(self, label: str = None, graph_db: GraphDB = None) -> None:
+    def __init__(self, label: str = None, graph_db: GraphDB = None, verbose=False) -> None:
         """
         A program graph describes a program flow with input_vars/output dependencies
         :param label: a label for the graph
@@ -36,12 +40,11 @@ class ProgramGraph:
         self._backward_edges: Dict[int, Set[int]] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
-        self._link_nodes: Dict[
-            int, Dict[str, Union[LinkNode, QuaJobNode]]] = dict()  # Dict[node_id,Dict[input_var_name,LinkNode]]
         self._link_nodes_ids: Dict[int, Dict[int, List[str]]] = dict()  # Dict[node_id,Dict[out_node_id,out_vars_list]]
         self._tasks = dict()
         self._calling_script = stack()[1][0].f_code.co_filename
-        self.graph_db = graph_db
+        self.graph_db: GraphDB = graph_db
+        self.verbose = verbose
 
     def __str__(self):
         return str(self.__dict__)
@@ -70,9 +73,55 @@ class ProgramGraph:
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
+
+        # deep copy nodes
+        _nodes_copy = dict()
+        nodes_map = dict()
+        for node in self.nodes.values():
+            node_copy = node.deepcopy()
+            _nodes_copy[node_copy.id] = node_copy
+            # map the old node id's to the new ones
+            nodes_map[node.id] = node_copy.id
+        setattr(result, '_nodes', _nodes_copy)
+        # update id's for LinkNode and QuaJobNode
+        for node in self.nodes.values():
+            node_copy = _nodes_copy[nodes_map[node.id]]
+            for var, value in node_copy.input_vars.__dict__.items():
+                if isinstance(value, LinkNode) or isinstance(value, QuaJobNode):
+                    setattr(node_copy.input_vars, var, deepcopy(value))
+                    node_copy.input_vars[var].node = _nodes_copy[nodes_map[value.node.id]]
+
         for k, v in self.__dict__.items():
-            if k != '_tasks':
+            if k == '_id':
+                setattr(result, k, time_ns())
+            elif k == '_nodes_by_label':
+                _nodes_by_label_copy = dict()
+                for k2, v2 in self._nodes_by_label.items():
+                    _nodes_by_label_copy[k2] = {_nodes_copy[nodes_map[node.id]] for node in v2}
+                setattr(result, k, _nodes_by_label_copy)
+            elif k == '_edges':
+                _edges_copy = dict()
+                for k2, v2 in self.edges.items():
+                    _edges_copy[nodes_map[k2]] = {nodes_map[node_id] for node_id in v2}
+                setattr(result, k, _edges_copy)
+            elif k == '_backward_edges':
+                _backward_edges_copy = dict()
+                for k2, v2 in self.backward_edges.items():
+                    _backward_edges_copy[nodes_map[k2]] = {nodes_map[node_id] for node_id in v2}
+                setattr(result, k, _backward_edges_copy)
+
+            elif k == '_link_nodes_ids':
+                _link_nodes_ids_copy = dict()
+                for k2, v2 in self._link_nodes_ids.items():
+                    v_copy = dict()
+                    for node_id, vars2 in v2.items():
+                        v_copy[nodes_map[node_id]] = vars2
+                    _link_nodes_ids_copy[nodes_map[k2]] = v_copy
+                setattr(result, k, _link_nodes_ids_copy)
+
+            elif k != '_tasks' and k != '_nodes':
                 setattr(result, k, deepcopy(v, memo))
+
         return result
 
     def deepcopy(self):
@@ -80,9 +129,7 @@ class ProgramGraph:
         Implements deep copy - copy by value, provides new id
         :return:
         """
-        self_copy = self.__deepcopy__()
-        self_copy._id = time_ns()
-        return self_copy
+        return self.__deepcopy__()
 
     @property
     def id(self) -> int:
@@ -111,6 +158,10 @@ class ProgramGraph:
     def nodes(self):
         return self._nodes
 
+    @property
+    def nodes_by_label(self):
+        return self._nodes_by_label
+
     def add_nodes(self, *new_nodes: ProgramNode):
         """
         Adds the given nodes to the graph
@@ -119,9 +170,9 @@ class ProgramGraph:
         :return:
         """
         for node in new_nodes:
-            if self._graph_db:
-                if self._graph_db._global_metadata_func:
-                    node.metadata_func_list = node.metadata_func_list + [self._graph_db._global_metadata_func]
+            if self.graph_db:
+                if self.graph_db.global_metadata_funcs:
+                    node.metadata_funcs += self.graph_db.global_metadata_funcs
 
             self._nodes[node.id] = node
             self._nodes_by_label.setdefault(node.label, set()).add(node)
@@ -129,16 +180,14 @@ class ProgramGraph:
                 for var, value in node.input_vars:
                     if isinstance(value, LinkNode):
                         self.add_edges((value.node, node))
-                        self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append(value.output_var)
                     if isinstance(value, QuaJobNode):
                         self.add_edges((value.node, node))
-                        self._link_nodes.setdefault(node.id, dict())[var] = value
                         node_input_ids = self._link_nodes_ids.setdefault(node.id, {value.node.id: list()})
                         node_input_ids.setdefault(value.node.id, list()).append('!Qua-Job')
-
-        print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to graph <{self.label}>")
+        if self.verbose:
+            print_green(f"SUCCESS added nodes {[n.label for n in new_nodes]} to graph <{self.label}>")
 
     def remove_nodes(self, *nodes_to_remove: Union[int, str, ProgramNode]) -> None:
         """
@@ -155,7 +204,8 @@ class ProgramGraph:
                 for node_id in node_ids:
                     try:
                         edges_to_remove = self._remove_node(node_id, edges_to_remove)
-                        print_green(f"SUCCESS removed node <{node}>")
+                        if self.verbose:
+                            print_green(f"SUCCESS removed node <{node}>")
                     except KeyError:
                         print_yellow(f"ATTENTION Tried to remove node <{node}> but it was not found in the graph")
                 continue
@@ -170,7 +220,8 @@ class ProgramGraph:
                 continue
             try:
                 edges_to_remove = self._remove_node(node_id, edges_to_remove)
-                print_green(f"SUCCESS removed node <{node.label}>")
+                if self.verbose:
+                    print_green(f"SUCCESS removed node <{node.label}>")
             except KeyError:
                 print_yellow(f"ATTENTION Tried to remove node <{node.label}> but it was not found in the graph")
 
@@ -189,7 +240,8 @@ class ProgramGraph:
             for dest_node_id in ids_to_remove:
                 edges_to_remove.add((node, self.nodes[dest_node_id]))
         except KeyError:
-            print_yellow(f'Node <{node.label}> has no outgoing edges.')
+            if self.verbose:
+                print_yellow(f'Node <{node.label}> has no outgoing edges.')
 
         # remove backward edges
         try:
@@ -197,7 +249,8 @@ class ProgramGraph:
             for source_node_id in ids_to_remove:
                 edges_to_remove.add((self.nodes[source_node_id], node))
         except KeyError:
-            print_yellow(f'Node <{node.label}> has no incoming edges.')
+            if self.verbose:
+                print_yellow(f'Node <{node.label}> has no incoming edges.')
 
         return edges_to_remove
 
@@ -217,17 +270,18 @@ class ProgramGraph:
         for source, dest in edges:
             if source.id not in self.nodes:
                 print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
-                          f"but <{source.label}> was not added to the graph "
+                          f"but <{source.label}> was not added yet to the graph "
                           f"(maybe a copy of the node was added instead)")
                 continue
             if dest.id not in self.nodes:
                 print_red(f"WARNING tried to add edge between <{source.label}> and <{dest.label}>, "
-                          f"but <{dest.label}> was not added to the graph "
+                          f"but <{dest.label}> was not added yet to the graph "
                           f"(maybe a copy of the node was added instead)")
                 continue
             self._edges.setdefault(source.id, set()).add(dest.id)
             self._backward_edges.setdefault(dest.id, set()).add(source.id)
-            print_green(f"SUCCESS added edge from <{source.label}> to <{dest.label}>")
+            if self.verbose:
+                print_green(f"SUCCESS added edge from <{source.label}> to <{dest.label}>")
 
     def remove_edges(self, *edges: Tuple[ProgramNode, ProgramNode]):
         """
@@ -245,7 +299,8 @@ class ProgramGraph:
                     del self._edges[source.id]
                 if not self._backward_edges[dest.id]:
                     del self._backward_edges[dest.id]
-                print_green(f"SUCCESS removed edge from <{source.label}> to <{dest.label}>")
+                if self.verbose:
+                    print_green(f"SUCCESS removed edge from <{source.label}> to <{dest.label}>")
             except KeyError:
                 print_yellow(f"ATTENTION Tried to remove edge from <{source.label}> to <{dest.label}> "
                              f"but it does not exist.")
@@ -291,6 +346,8 @@ class ProgramGraph:
         graph_db = graph_db if graph_db else self.graph_db
         if graph_db:
             # Save graph to DB
+            if self.verbose:
+                print_green(f"Saving graph <{self.label}> to DB at '{graph_db.results_path}'")
             graph_db.save_graph(self, _calling_script_path)
 
         self._start_time = datetime.now()
@@ -305,6 +362,8 @@ class ProgramGraph:
 
         if graph_db:
             # SAVE GRAPH RES TO DB HERE
+            if self.verbose:
+                print_green(f"Saving graph <{self.label}> results to DB at '{graph_db.results_path}'")
             graph_db.save_graph_results(self)
 
         return graph_db
@@ -335,6 +394,7 @@ class ProgramGraph:
 
         # the starting nodes of the run
         if not start_nodes:
+            # start from the nodes that don't have incoming edges
             start_nodes = list()
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
@@ -352,22 +412,23 @@ class ProgramGraph:
 
                     # direct the output of the dependencies input the input of the node
 
-                    self._populate_input(node_id)
+                    self._feed_input(node_id)
                     node = self.nodes[node_id]
 
                     if graph_db:
                         # save node and metadata to DB
                         graph_db.save_node(self, node)
+                        if self.verbose:
+                            print_green(f"Saving metadata before running node <{node.label}>")
                         graph_db.save_metadata(self, node)
 
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(node.run_async())
 
-    def _populate_input(self, node_id):
-        input_vars: Dict[str, Union[LinkNode, QuaJobNode]] = self._link_nodes.get(node_id, set())
-        for var in input_vars:
-            if isinstance(input_vars[var], LinkNode):
-                link_node = input_vars[var]
+    def _feed_input(self, node_id):
+        for var, value in self.nodes[node_id].input_vars:
+            if isinstance(value, LinkNode):
+                link_node = value
                 try:
                     self.nodes[link_node.node.id]
                 except KeyError:

@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+
 from .environment import env_resolve
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
 from qualibs.results.api import Graph, Node, Result, Metadatum
 from qualibs.graph import *
+
+from inspect import isfunction
+from types import FunctionType
+from typing import List
 from colorama import Fore, Style
 from copy import deepcopy
 from io import BytesIO
@@ -23,7 +28,7 @@ def print_yellow(skk):
 
 
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:', global_metadata_func=[], envmodule=None):
+    def __init__(self, results_path: str = ':memory:', global_metadata_funcs=[], envmodule=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
@@ -31,7 +36,7 @@ class GraphDB:
         """
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self._global_metadata_func = global_metadata_func
+        self.global_metadata_funcs = global_metadata_funcs
         self._envmodule = envmodule
 
     def __copy__(self):
@@ -64,8 +69,23 @@ class GraphDB:
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
+    @property
+    def global_metadata_funcs(self):
+        return self._global_metadata_funcs
+
+    @global_metadata_funcs.setter
+    def global_metadata_funcs(self, graph_metadata):
+        if graph_metadata:
+            if isfunction(graph_metadata):
+                self._global_metadata_funcs = [graph_metadata]
+            elif type(graph_metadata) is list:
+                self._global_metadata_funcs = graph_metadata
+            else:
+                raise TypeError(f"Metadata parameter must be a {FunctionType} or a {List[FunctionType]}")
+        else:
+            self._global_metadata_funcs = list()
+
     def save_graph(self, graph: ProgramGraph, calling_script_path: str):
-        print_green(f"Saving graph <{graph.label}> to DB at '{self.results_path}'")
         try:
             calling_script = open(calling_script_path).read() if calling_script_path else None
         except OSError:
@@ -91,9 +111,9 @@ class GraphDB:
                               node_type=NodeTypes[node.type],
                               version=version,
                               node_name=node.label))
+        # TODO: Add 'points_to = graph.edges[node.id]' and 'script=inspect.getsource(node._program)'
 
     def save_graph_results(self, graph: ProgramGraph):
-        print_green(f"Saving graph <{graph.label}> results to DB at '{self.results_path}'")
         for node_id, node in graph.nodes.items():
             for name in node.result.keys():
                 self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
@@ -116,8 +136,7 @@ class GraphDB:
                                             ))
 
     def save_metadata(self, graph: ProgramGraph, node: ProgramNode):
-        print_green(f"Saving metadata before running node <{node.label}>")
-        for fn in node.metadata_func_list:
+        for fn in node.metadata_funcs:
             metadata = env_resolve(fn, self._envmodule)()
             for key, val in metadata.items():
                 self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node.id, name=key, val=str(val)))
