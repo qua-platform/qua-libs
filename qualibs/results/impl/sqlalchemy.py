@@ -82,6 +82,9 @@ class Nodes(Base):
     version = Column(String)
     results = relationship("Results", cascade="all, delete-orphan")
     metadat = relationship("Metadata", cascade="all, delete-orphan")
+    points_to = Column(String)
+    program = Column(String)
+    input_vars = Column(String)
 
     def __repr__(self):
         return "<Node(graph_id='%s', node_id='%s')>" % (
@@ -93,7 +96,10 @@ class Nodes(Base):
             node_id=self.node_id,
             node_name=self.node_name,
             node_type=self.node_type,
-            version=self.version
+            version=self.version,
+            points_to=self.points_to,
+            program=self.program,
+            input_vars=self.input_vars
         )
 
 

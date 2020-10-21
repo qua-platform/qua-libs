@@ -84,6 +84,12 @@ class LinkNode:
             return False
         return True
 
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class InputVars:
     def __init__(self, input_vars):
@@ -383,6 +389,13 @@ class QuaJobNode:
 
         return True
 
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class QuaNode(ProgramNode):
 
     def __init__(self, label: str = None,
@@ -418,6 +431,7 @@ class QuaNode(ProgramNode):
                 setattr(result, k, v)
             elif k == '_job':
                 setattr(result, k, None)
+                print_yellow(f"ATTENTION the QuaJob of node <{self.label}> was NOT copied")
             else:
                 setattr(result, k, deepcopy(v, memo))
         return result

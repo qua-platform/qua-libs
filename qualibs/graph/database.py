@@ -6,7 +6,7 @@ from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeType
 from qualibs.results.api import Graph, Node, Result, Metadatum
 from qualibs.graph import *
 
-from inspect import isfunction
+from inspect import isfunction, getsource
 from types import FunctionType
 from typing import List
 from colorama import Fore, Style
@@ -110,8 +110,11 @@ class GraphDB:
                               node_id=node.id,
                               node_type=NodeTypes[node.type],
                               version=version,
-                              node_name=node.label))
-        # TODO: Add 'points_to = graph.edges[node.id]' and 'script=inspect.getsource(node._program)'
+                              node_name=node.label,
+                              points_to=str(graph.edges[node.id] if node.id in graph.edges else set()),
+                              program=getsource(node.program),
+                              input_vars=str(node.input_vars)
+                              ))
 
     def save_graph_results(self, graph: ProgramGraph):
         for node_id, node in graph.nodes.items():

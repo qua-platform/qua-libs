@@ -149,8 +149,9 @@ async def d(x, y):
     return {'x_y': x + y}
 
 
-async def e(y, z):
+async def e(y, z, q):
     print(f"Node e resting for {y / z}")
+    print(q.quantum_machine)
     await asyncio.sleep(y / z)
     print(f"e Result: {y + z}")
     return {'y_z': y + z}
@@ -172,6 +173,7 @@ e1 = d1.deepcopy()
 e1.program = e
 del e1.input_vars['x']
 e1.input_vars['z'] = c1.output('z')
+e1.input_vars['q'] = v.job()
 e1.label = 'e'
 e1.output_vars = {'y_z'}
 db = GraphDB('here1.db')

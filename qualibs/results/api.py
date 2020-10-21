@@ -4,7 +4,6 @@ from typing import Optional, Tuple, Iterable, TypeVar, List, Union
 import abc
 
 
-
 @dataclass
 class DataReaderQuery:
     table: str = 'Results'
@@ -40,6 +39,9 @@ class Node:
     node_name: str
     node_type: int
     version: str
+    points_to: str
+    program: str
+    input_vars: str
 
 
 @dataclass
