@@ -109,19 +109,19 @@ class GraphDB:
         for node_id, node in graph.nodes.items():
             for name in node.result.keys():
                 self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
-                                        start_time=node._start_time,
-                                        end_time=node._end_time,
+                                        start_time=node.start_time,
+                                        end_time=node.end_time,
                                         user_id='User',
                                         name=name,
                                         val=str(node.result[name])
                                         ))
                 if node.type == 'Qua':
-                    res = node._job.result_handles
+                    res = node.job.result_handles
                     npz_store = BytesIO()
                     res.save_to_store(writer=npz_store)
                     self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
-                                            start_time=node._start_time,
-                                            end_time=node._end_time,
+                                            start_time=node.start_time,
+                                            end_time=node.end_time,
                                             user_id='User',
                                             name='npz',
                                             val=npz_store.getvalue()

@@ -306,7 +306,7 @@ def test_graph_deepcopy_2():
         return {'k1': 'v1'}
 
     pnode = PyNode('py_node', py_node_script, output_vars={'x', 'y'}, metadata_funcs=myMeta)
-    p2node = PyNode('py2_node', py2_node_script, {'x': pnode.output('x'), 'y': pnode.output('y'), 'm': node.job()},
+    p2node = PyNode('py2_node', py2_node_script, {'x': pnode.output('x'), 'y': pnode.output('y'), 'm': node.qua_job()},
                     {'y', 'm'})
     # metadata func to resolve
     node.quantum_machine = QM

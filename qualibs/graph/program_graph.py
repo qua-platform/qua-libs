@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qualibs.graph import *
 from .database import GraphDB
-from .program_node import print_yellow, print_green, print_red
+from .program_node import LinkNode, QuaJobNode, print_yellow, print_green, print_red
 from typing import Dict, Set, List, Tuple, Union
 from copy import deepcopy
 from time import time_ns
@@ -72,7 +72,7 @@ class ProgramGraph:
             # map the old node id's to the new ones
             nodes_map[node.id] = node_copy.id
         setattr(result, '_nodes', _nodes_copy)
-        # update id's for LinkNode and QuaJobNode
+        # update id's for LinkNode and _QuaJobNode
         for node in self.nodes.values():
             node_copy = _nodes_copy[nodes_map[node.id]]
             for var, value in node_copy.input_vars.__dict__.items():

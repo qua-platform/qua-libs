@@ -346,8 +346,15 @@ class QuaJobNode:
         self.node: QuaNode = node
 
     @property
+    def job(self):
+        return self.node.job
+
+    @property
     def result_handles(self):
-        return self.node._job.result_handles
+        return self.node.job.result_handles
+
+    def get_values(self, var):
+        return getattr(self.result_handles, var).fetch_all()['value']
 
     @property
     def quantum_machine(self):
@@ -483,6 +490,10 @@ class QuaNode(ProgramNode):
                 raise TypeError(f"In node <{self.label}> expected {dict} but got {type(kwargs)}")
         self._simulation_kwargs = kwargs
 
+    @property
+    def job(self):
+        return self._job
+
     def _get_result(self) -> None:
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
@@ -494,7 +505,7 @@ class QuaNode(ProgramNode):
             except AttributeError:
                 print_red(f"WARNING Could not fetch variable '{var}' from the job results of node <{self.label}>")
 
-    def job(self):
+    def qua_job(self) -> QuaJobNode:
         return QuaJobNode(self)
 
     async def run_async(self) -> None:

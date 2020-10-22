@@ -173,7 +173,7 @@ e1 = d1.deepcopy()
 e1.program = e
 del e1.input_vars['x']
 e1.input_vars['z'] = c1.output('z')
-e1.input_vars['q'] = v.job()
+e1.input_vars['q'] = v.qua_job()
 e1.label = 'e'
 e1.output_vars = {'y_z'}
 db = GraphDB('here1.db')
