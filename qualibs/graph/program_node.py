@@ -5,7 +5,7 @@ from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Dict, Set, Any, Union, List
+from typing import Dict, Set, Any, Union, List, Optional
 from collections.abc import Coroutine
 from datetime import datetime
 from colorama import Fore, Style
@@ -172,7 +172,7 @@ class ProgramNode(ABC):
         :type input_vars: dict
         :param output_vars: output variable names
         :type output_vars: Set[str]
-        :param node_metadata_func: a list of functions or a single function that describes the node's metadata
+        :param metadata_funcs: a list of functions or a single function that describes the node's metadata
         :param to_run: whether to run the node
         :type to_run: bool
         """
@@ -349,6 +349,24 @@ class QuaJobNode:
     def job(self):
         return self.node.job
 
+    def resume(self):
+        self.job.resume()
+
+    def wait(self, timeout: Optional[int] = None):
+        """
+        Wait until the job is finished and all the results are available for retrieving
+        :argument timeout: The maximum time to wait in seconds
+        :type timeout: int
+        """
+        self.job.wait_for_all_results(timeout)
+
+    def stop(self):
+        """
+        Stops the job
+        :return:
+        """
+        self.job.halt()
+
     @property
     def result_handles(self):
         return self.node.job.result_handles
@@ -359,6 +377,32 @@ class QuaJobNode:
     @property
     def quantum_machine(self):
         return self.node.quantum_machine
+
+    @property
+    def IO1(self):
+        return self.quantum_machine.get_io1_value()
+
+    @IO1.setter
+    def IO1(self, val):
+        """
+                Sets the value of ``IO1``. Can be used inside qua as IO1 without decleration
+                :param val: the value to be placed in ``IO1``
+                :type val: float | bool | int
+        """
+        self.quantum_machine.set_io1_value(val)
+
+    @property
+    def IO2(self):
+        return self.quantum_machine.get_io2_value()
+
+    @IO2.setter
+    def IO2(self, val):
+        """
+                Sets the value of ``IO2``. Can be used inside qua as IO1 without decleration
+                :param val: the value to be placed in ``IO2``
+                :type val: float | bool | int
+        """
+        self.quantum_machine.set_io2_value(val)
 
     def __copy__(self):
         cls = self.__class__
