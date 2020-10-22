@@ -80,12 +80,12 @@ class ResultStore(BaseStore):
         This function defines what is saved upon calling job.save_results()
         """
 
-        end_time=datetime.datetime.now().strftime('%c')
-        npz=FileBinaryAsset(self._job_path(job_id).joinpath("results.npz"))
+        end_time = datetime.datetime.now().strftime('%c')
+        npz = FileBinaryAsset(self._job_path(job_id).joinpath("results.npz"))
         self.add_result('run_end_time', end_time)
         self.add_result('job_id', job_id)
 
-        self.add_db_result((job_id,self.exp_name,12321,end_time,'path',json.dumps(self.results),'NPZ_file'))
+        self.add_db_result((job_id, self.exp_name, 12321, end_time, 'path', json.dumps(self.results), 'NPZ_file'))
         if self.script_path != '':
             copyfile(self.script_path, self._script_path(job_id))
 

@@ -15,11 +15,7 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-
-
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-
-
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 

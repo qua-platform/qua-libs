@@ -3,8 +3,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 
 from qualibs.graph.environment import env_dependency
-from qualibs.graph.program_node import *
-from qualibs.graph.program_graph import *
+from qualibs.graph import *
 from qualibs.templates.vanilla_config import config
 
 

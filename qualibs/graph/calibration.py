@@ -1,4 +1,5 @@
 from qualibs.graph import *
+from .program_node import print_yellow, print_green, print_red
 from datetime import datetime, timedelta
 from types import FunctionType
 import asyncio
@@ -6,16 +7,16 @@ import asyncio
 
 class CalibrationNode(ProgramNode):
     def __init__(self, label: str = None,
-                 optimal_params: dict = None,
                  extract_params: FunctionType = None,
+                 optimal_params: dict = None,
                  check_data_params: dict = None,
                  calibrate_params: dict = None,
                  tolerance: dict = None,
                  timeout: timedelta = None,
                  metadata_func: FunctionType = None
                  ):
-        super().__init__(label, None, optimal_params, set(optimal_params.keys()), metadata_func)
-
+        super().__init__(label, extract_params, optimal_params, set(optimal_params.keys()) if optimal_params else set(), metadata_func)
+        self._type = 'Cal'
         self.optimal_params: dict = self.input_vars  # these are the calibration parameters
         self.tolerance: dict = tolerance  # these are the tolerance for the calibration parameters
         self.state: str = 'out_spec'  # one of {in_spec,out_spec,bad_data}
@@ -35,19 +36,20 @@ class CalibrationNode(ProgramNode):
 
     async def check_data(self):
         self._start_time = datetime.now()
-        params, state = asyncio.get_running_loop().run_in_executor(None,
-                                                                   self.extract_params,
-                                                                   self.check_data_params,
-                                                                   self.optimal_params,
-                                                                   self.tolerance)
+        params, state = await asyncio.get_running_loop().run_in_executor(None,
+                                                                         self.extract_params,
+                                                                         self.check_data_params,
+                                                                         self.optimal_params,
+                                                                         self.tolerance)
         self.state = state
         self._end_time = datetime.now()
+        return state
 
     async def calibrate(self):
         self._start_time = datetime.now()
-        params, state = asyncio.get_running_loop().run_in_executor(None,
-                                                                   self.extract_params,
-                                                                   self.calibrate_params)
+        params, state = await asyncio.get_running_loop().run_in_executor(None,
+                                                                         self.extract_params,
+                                                                         self.calibrate_params)
         if state == 'bad_data':
             self.state = state
             raise Exception
@@ -56,13 +58,13 @@ class CalibrationNode(ProgramNode):
         self._last_calibrated = datetime.now()
         self.optimal_params.update(params)
         self.state = 'in_spec'
-        self._result = self.optimal_params
+        self._get_result()
 
     async def run_async(self) -> None:
         pass
 
     def _get_result(self) -> None:
-        pass
+        self._result = self.optimal_params
 
 
 class CalibrationGraph(ProgramGraph):
@@ -84,12 +86,22 @@ class CalibrationGraph(ProgramGraph):
             start_nodes = [n.id for n in start_nodes]
 
         for node_id in start_nodes:
-            await self.maintain(node_id)
+            if graph_db:
+                node = self.nodes[node_id]
+                graph_db.save_node(node, self)
+                if self.verbose: print_green(f"Saving metadata before running node <{node.label}>")
+                graph_db.save_node_metadata(node, self)
+            await self.maintain(node_id, graph_db)
 
-    async def maintain(self, node_id):
+    async def maintain(self, node_id, graph_db):
         # recursive maintain
-        for depend_id in self.backward_edges[node_id]:
-            await self.maintain(depend_id)
+        for depend_id in self.backward_edges.get(node_id, set()):
+            if graph_db:
+                node = self.nodes[node_id]
+                graph_db.save_node(node, self)
+                if self.verbose: print_green(f"Saving metadata before running node <{node.label}>")
+                graph_db.save_node_metadata(node, self)
+            await self.maintain(depend_id, graph_db)
 
         # check_state
         if await self.check_state(node_id):
@@ -97,7 +109,7 @@ class CalibrationGraph(ProgramGraph):
 
         # check_data
         self._feed_input(node_id)
-        _, state = await self.nodes[node_id].check_data()
+        state = await self.nodes[node_id].check_data()
         if state == 'in_spec':
             return
         elif state == 'bad_data':
@@ -107,6 +119,7 @@ class CalibrationGraph(ProgramGraph):
         # calibrate
         self._feed_input(node_id)
         await self.nodes[node_id].calibrate()
+        print_green(f"Calibrated node <{self.nodes[node_id].label}> as part of maintain")
         return
 
     async def check_state(self, node_id):
@@ -121,7 +134,7 @@ class CalibrationGraph(ProgramGraph):
             return False
 
         # have dependencies recalibrated after node.end_time and pass check_state
-        for depend_id in self.backward_edges[node_id]:
+        for depend_id in self.backward_edges.get(node_id, set()):
             if self.nodes[depend_id].last_calibrated > node.end_time:
                 return False
             if not await self.check_state(depend_id):
@@ -153,4 +166,5 @@ class CalibrationGraph(ProgramGraph):
         # calibrate
         self._feed_input(node_id)
         await self.nodes[node_id].calibrate()
+        print_green(f"Calibrated node <{self.nodes[node_id].label}> as part of diagnose")
         return True

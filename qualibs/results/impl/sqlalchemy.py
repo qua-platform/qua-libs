@@ -70,7 +70,7 @@ class Metadata(Base):
 class NodeTypes(enum.Enum):
     Py = 1
     Qua = 2
-    Graph = 3
+    Cal = 3
 
 
 class Nodes(Base):
@@ -85,6 +85,7 @@ class Nodes(Base):
     points_to = Column(String)
     program = Column(String)
     input_vars = Column(String)
+    node_as_dict = Column(String)
 
     def __repr__(self):
         return "<Node(graph_id='%s', node_id='%s')>" % (
@@ -99,7 +100,8 @@ class Nodes(Base):
             version=self.version,
             points_to=self.points_to,
             program=self.program,
-            input_vars=self.input_vars
+            input_vars=self.input_vars,
+            node_as_dict=self.node_as_dict
         )
 
 

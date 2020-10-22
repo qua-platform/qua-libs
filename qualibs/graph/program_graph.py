@@ -1,25 +1,14 @@
 from __future__ import annotations
 
-from .program_node import LinkNode, ProgramNode, QuaJobNode
+from qualibs.graph import *
 from .database import GraphDB
-
-from typing import Dict, Set, List, Tuple, Union, Any
-from types import FunctionType
+from .program_node import print_yellow, print_green, print_red
+from typing import Dict, Set, List, Tuple, Union
 from copy import deepcopy
 from time import time_ns
 from datetime import datetime
-from colorama import Fore, Style
 from inspect import stack
 import asyncio
-
-
-def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-
-
-def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-
-
-def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
 class ProgramGraph:
@@ -322,10 +311,12 @@ class ProgramGraph:
     async def run_async(self,
                         graph_db: GraphDB = None,
                         start_nodes: List[ProgramNode] = None,
-                        _calling_script_path: str = None
+                        _calling_script_path: str = None,
+                        verbose: bool = None
                         ) -> GraphDB:
         """
         Run the nodes in the graph in a BFS traversal order, while waiting for dependent tasks to complete
+        :param verbose:
         :param graph_db:
         :param _calling_script_path:
         :param start_nodes:
@@ -342,6 +333,9 @@ class ProgramGraph:
         if _calling_script_path is None:
             # get the script of the file that called self.run_async()
             _calling_script_path = stack()[1][0].f_code.co_filename
+
+        if verbose:
+            self.verbose = verbose
 
         graph_db = graph_db if graph_db else self.graph_db
         if graph_db:
@@ -371,9 +365,11 @@ class ProgramGraph:
     def run(self,
             graph_db: GraphDB = None,
             start_nodes: Union[List[ProgramNode], Set[ProgramNode]] = None,
+            verbose: bool = None
             ) -> GraphDB:
         """
         Run the graph nodes in the correct order while propagating the inputs/outputs.
+        :param verbose: set True to print a more detailed description during the run
         :param start_nodes: list of nodes to start running the graph from
         :type: start_nodes: Union[List[ProgramNode], Set[ProgramNode]]
         :param graph_db: a GraphDB instance that provides a connection to a DB
@@ -388,7 +384,7 @@ class ProgramGraph:
 
         # get the script of the file that called self.run()
         calling_script_path = stack()[1][0].f_code.co_filename
-        return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path))
+        return asyncio.run(self.run_async(graph_db, start_nodes, calling_script_path, verbose))
 
     async def _graph_traversal(self, graph_db, start_nodes):
 
@@ -416,11 +412,9 @@ class ProgramGraph:
                     node = self.nodes[node_id]
 
                     if graph_db:
-                        # save node and metadata to DB
-                        graph_db.save_node(self, node)
-                        if self.verbose:
-                            print_green(f"Saving metadata before running node <{node.label}>")
-                        graph_db.save_metadata(self, node)
+                        graph_db.save_node(node, self)
+                        if self.verbose: print_green(f"Saving metadata before running node <{node.label}>")
+                        graph_db.save_node_metadata(node, self)
 
                     # create task to run the node and start running
                     self._tasks[node_id] = asyncio.create_task(node.run_async())
@@ -571,48 +565,47 @@ class ProgramGraph:
 
         return dot_graph
 
-
-class GraphNode(ProgramNode):
-
-    def __init__(self, label: str = None,
-                 graph: ProgramGraph = None,
-                 input_vars: Dict[str, List[Tuple[Any, ProgramNode]]] = None,
-                 output_vars: Set[Tuple[str, str, ProgramNode]] = None,
-                 node_metadata_func: FunctionType = None):
-
-        super().__init__(label, None, input_vars, output_vars, node_metadata_func)
-        self.graph: ProgramGraph = graph
-        self._type = 'Graph'
-        self._job = None
-        # TODO: figure out how to combine graphs properly or i/o through graph node
-        # self.input_vars: {var:[(value, node),...],...}, the value wil go as input to of var to node
-        # self.output_vars: {(self_var, node_var,node),...}
-
-    def _get_result(self):
-        if self.output_vars is None:
-            print_yellow(f"ATTENTION No output variables were defined for node <{self.label}>")
-            return
-        for self_var, node_var, node in self.output_vars:
-            try:
-                pass
-                self._result[self_var] = self.graph.nodes[node.id].result[node_var]
-            except KeyError:
-                print_red(f"WARNING Could not fetch '{node_var}' from node <{node.label}> results")
-
-    async def run_async(self) -> None:
-        if self.to_run:
-            # populate inputs
-            for var, vals in self.input_vars:
-                for val, node in vals:
-                    if isinstance(val, LinkNode):
-                        node.input_vars.var = val.get_output()
-                    else:
-                        node.input_vars.var = val
-
-            self._start_time = datetime.now()
-            print("\nRUNNING GraphNode '{}'...".format(self.label))
-
-            self._job = await asyncio.create_task(self.graph.run_async())
-            print("DONE")
-            self._end_time = datetime.now()
-            self._get_result()
+# class GraphNode(ProgramNode):
+#
+#     def __init__(self, label: str = None,
+#                  graph: ProgramGraph = None,
+#                  input_vars: Dict[str, List[Tuple[Any, ProgramNode]]] = None,
+#                  output_vars: Set[Tuple[str, str, ProgramNode]] = None,
+#                  node_metadata_func: FunctionType = None):
+#
+#         super().__init__(label, None, input_vars, output_vars, node_metadata_func)
+#         self.graph: ProgramGraph = graph
+#         self._type = 'Graph'
+#         self._job = None
+#         # TODO: figure out how to combine graphs properly or i/o through graph node
+#         # self.input_vars: {var:[(value, node),...],...}, the value wil go as input to of var to node
+#         # self.output_vars: {(self_var, node_var,node),...}
+#
+#     def _get_result(self):
+#         if self.output_vars is None:
+#             print_yellow(f"ATTENTION No output variables were defined for node <{self.label}>")
+#             return
+#         for self_var, node_var, node in self.output_vars:
+#             try:
+#                 pass
+#                 self._result[self_var] = self.graph.nodes[node.id].result[node_var]
+#             except KeyError:
+#                 print_red(f"WARNING Could not fetch '{node_var}' from node <{node.label}> results")
+#
+#     async def run_async(self) -> None:
+#         if self.to_run:
+#             # populate inputs
+#             for var, vals in self.input_vars:
+#                 for val, node in vals:
+#                     if isinstance(val, LinkNode):
+#                         node.input_vars.var = val.get_output()
+#                     else:
+#                         node.input_vars.var = val
+#
+#             self._start_time = datetime.now()
+#             print("\nRUNNING GraphNode '{}'...".format(self.label))
+#
+#             self._job = await asyncio.create_task(self.graph.run_async())
+#             print("DONE")
+#             self._end_time = datetime.now()
+#             self._get_result()

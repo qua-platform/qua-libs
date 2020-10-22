@@ -15,18 +15,6 @@ from io import BytesIO
 import sys
 
 
-def print_red(skk):
-    print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-
-
-def print_green(skk):
-    print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-
-
-def print_yellow(skk):
-    print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
-
-
 class GraphDB:
     def __init__(self, results_path: str = ':memory:', global_metadata_funcs=[], envmodule=None):
         """
@@ -95,13 +83,13 @@ class GraphDB:
                                graph_name=graph.label,
                                graph_dot_repr=graph.export_dot_graph()))  # TODO: add full graphID, nodeID to dot graph
 
-    def save_node(self, graph: ProgramGraph, node: ProgramNode):
+    def save_node(self, node: ProgramNode, graph: ProgramGraph):
         # save nodes to database
         if NodeTypes[node.type] == NodeTypes.Qua:
             version = str(node.quantum_machine._manager.version())
         elif NodeTypes[node.type] == NodeTypes.Py:
             version = str(sys.version_info)
-        elif NodeTypes[node.type] == NodeTypes.Graph:
+        elif NodeTypes[node.type] == NodeTypes.Cal:
             version = str(sys.version_info)
         else:
             version = str(sys.version_info)
@@ -113,7 +101,8 @@ class GraphDB:
                               node_name=node.label,
                               points_to=str(graph.edges[node.id] if node.id in graph.edges else set()),
                               program=getsource(node.program),
-                              input_vars=str(node.input_vars)
+                              input_vars=str(node.input_vars),
+                              node_as_dict=str(node)
                               ))
 
     def save_graph_results(self, graph: ProgramGraph):
@@ -138,7 +127,7 @@ class GraphDB:
                                             val=npz_store.getvalue()
                                             ))
 
-    def save_metadata(self, graph: ProgramGraph, node: ProgramNode):
+    def save_node_metadata(self, node: ProgramNode, graph: ProgramGraph):
         for fn in node.metadata_funcs:
             metadata = env_resolve(fn, self._envmodule)()
             for key, val in metadata.items():
