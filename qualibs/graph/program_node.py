@@ -297,7 +297,7 @@ class ProgramNode(ABC):
         return self._result
 
     @abstractmethod
-    def _get_result(self) -> None:
+    def _fetch_result(self) -> None:
         pass
 
     def output(self, output_vars=None) -> LinkNode:
@@ -538,7 +538,7 @@ class QuaNode(ProgramNode):
     def job(self):
         return self._job
 
-    def _get_result(self) -> None:
+    def _fetch_result(self) -> None:
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
             return
@@ -575,7 +575,7 @@ class QuaNode(ProgramNode):
             if self.simulate_or_execute == 'execute':
                 self._execute()
             self._end_time = datetime.now()
-            self._get_result()
+            self._fetch_result()
 
     def _execute(self) -> None:
         print("\nEXECUTING QuaNode <{}>...".format(self.label))
@@ -600,7 +600,7 @@ class PyNode(ProgramNode):
         self._job_results = None
         self._type = 'Py'
 
-    def _get_result(self):
+    def _fetch_result(self):
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
             return
@@ -627,4 +627,4 @@ class PyNode(ProgramNode):
                 if type(self._job_results) is not dict:
                     raise TypeError(f"In node <{self.label}> expected {dict} but got <{type(self._job_results)}> "
                                     f"as the result")
-                self._get_result()
+                self._fetch_result()

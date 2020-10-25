@@ -58,12 +58,12 @@ class CalibrationNode(ProgramNode):
         self._last_calibrated = datetime.now()
         self.optimal_params.update(params)
         self.state = 'in_spec'
-        self._get_result()
+        self._fetch_result()
 
     async def run_async(self) -> None:
         pass
 
-    def _get_result(self) -> None:
+    def _fetch_result(self) -> None:
         self._result = self.optimal_params
 
 
