@@ -107,25 +107,26 @@ class GraphDB:
 
     def save_graph_results(self, graph: ProgramGraph):
         for node_id, node in graph.nodes.items():
-            for name in node.result.keys():
-                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
-                                        start_time=node.start_time,
-                                        end_time=node.end_time,
-                                        user_id='User',
-                                        name=name,
-                                        val=str(node.result[name])
-                                        ))
-                if node.type == 'Qua':
-                    res = node.job.result_handles
-                    npz_store = BytesIO()
-                    res.save_to_store(writer=npz_store)
+            if node.save_result_to_db:
+                for name in node.result.keys():
                     self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
                                             start_time=node.start_time,
                                             end_time=node.end_time,
                                             user_id='User',
-                                            name='npz',
-                                            val=npz_store.getvalue()
+                                            name=name,
+                                            val=str(node.result[name])
                                             ))
+                    if node.type == 'Qua':
+                        res = node.job.result_handles
+                        npz_store = BytesIO()
+                        res.save_to_store(writer=npz_store)
+                        self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
+                                                start_time=node.start_time,
+                                                end_time=node.end_time,
+                                                user_id='User',
+                                                name='npz',
+                                                val=npz_store.getvalue()
+                                                ))
 
     def save_node_metadata(self, node: ProgramNode, graph: ProgramGraph):
         for fn in node.metadata_funcs:

@@ -15,7 +15,11 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
@@ -187,6 +191,7 @@ class ProgramNode(ABC):
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
         self._type = None
+        self.save_result_to_db = True
 
     def __str__(self):
         return str(self.__dict__)
@@ -335,6 +340,16 @@ class ProgramNode(ABC):
                 raise TypeError(f"Metadata parameter must be a {FunctionType} or a {List[FunctionType]}")
         else:
             self._metadata_funcs = list()
+
+    @property
+    def save_result_to_db(self):
+        return self._save_result_to_db
+
+    @save_result_to_db.setter
+    def save_result_to_db(self, t):
+        if not type(t) is bool:
+            raise TypeError(f"Must be of type {bool}")
+        self._save_result_to_db = t
 
 
 class QuaJobNode:
