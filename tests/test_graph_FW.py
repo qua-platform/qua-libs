@@ -45,6 +45,23 @@ def test_run_quaNode():
     print(node.result)
     assert node.result['res'][0] == 1
 
+# def test_acyclic(): ## needs to raise exception!
+#     a = PyNode('square')
+#     a.program = lambda x: {'y': x**2}
+#     a.input_vars = {'x': 3}
+#     a.output_vars = {'y'}
+#
+#     def add(x, y):
+#         return {"x": x, "y": y, "sum": x + y}
+#
+#     sum_node = PyNode("sum_two", add, {'x': 2, 'y': -3}, {'sum', 'x'})
+#
+#     g = ProgramGraph('new_graph')
+#     sum_node.input_vars.y = a.output('y')
+#     g.add_nodes(a, sum_node)
+#     g.run()
+#     g.add_edges((sum_node, a))
+#     g.run()
 
 def compare_py_nodes(a: PyNode, b: PyNode):
     assert a.input_vars == b.input_vars

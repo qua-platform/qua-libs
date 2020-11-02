@@ -313,7 +313,11 @@ class ProgramNode(ABC):
         pass
 
     def run(self) -> None:
-        asyncio.run(self.run_async())
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.run_async())
+        except RuntimeError:
+            asyncio.run(self.run_async())
 
     @property
     def to_run(self) -> bool:

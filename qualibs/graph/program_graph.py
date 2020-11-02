@@ -272,6 +272,8 @@ class ProgramGraph:
             if self.verbose:
                 print_green(f"SUCCESS added edge from <{source.label}> to <{dest.label}>")
 
+        self._topological_sort()
+
     def remove_edges(self, *edges: Tuple[ProgramNode, ProgramNode]):
         """
         Remove edges between pairs of nodes
@@ -395,6 +397,8 @@ class ProgramGraph:
             for node_id in self.nodes:
                 if node_id not in self.backward_edges:
                     start_nodes.append(node_id)
+            if not start_nodes:
+                raise ValueError("Graph must be acyclic! Try changing dependencies.")
         else:
             start_nodes = [n.id for n in start_nodes]
 
@@ -479,7 +483,8 @@ class ProgramGraph:
         s: List[int]  # list of node ids with no incoming edges
         if not start_nodes:
             s = [n for n in self.nodes if n not in backward_edges]
-            assert s != [], "Graph is cyclic! All nodes depend on other nodes, try changing dependencies."
+            if not start_nodes:
+                raise ValueError("Graph must be acyclic! Try changing dependencies.")
         else:
             s = [n.id for n in start_nodes]
 
@@ -501,8 +506,8 @@ class ProgramGraph:
                     s.append(m)
 
         # TODO: currently works only for starting from non-dependent nodes
-        assert edges.keys() == set(), \
-            "Error: Graph is cyclic! Try changing dependencies."
+        if edges.keys() != set():
+            raise ValueError("Graph must be acyclic! Try changing dependencies.")
         # If graph has edges containing the supposedly sorted nodes, then there's a cycle.
 
         return sorted_list

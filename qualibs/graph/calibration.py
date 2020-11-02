@@ -86,8 +86,8 @@ class CalibrationGraph(ProgramGraph):
             start_nodes = [n.id for n in start_nodes]
 
         for node_id in start_nodes:
+            node = self.nodes[node_id]
             if graph_db:
-                node = self.nodes[node_id]
                 graph_db.save_node(node, self)
                 if self.verbose: print_green(f"Saving metadata before running node <{node.label}>")
                 graph_db.save_node_metadata(node, self)
@@ -96,8 +96,8 @@ class CalibrationGraph(ProgramGraph):
     async def maintain(self, node_id, graph_db):
         # recursive maintain
         for depend_id in self.backward_edges.get(node_id, set()):
+            node = self.nodes[depend_id]
             if graph_db:
-                node = self.nodes[node_id]
                 graph_db.save_node(node, self)
                 if self.verbose: print_green(f"Saving metadata before running node <{node.label}>")
                 graph_db.save_node_metadata(node, self)
