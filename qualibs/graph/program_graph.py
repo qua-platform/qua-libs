@@ -483,8 +483,6 @@ class ProgramGraph:
         s: List[int]  # list of node ids with no incoming edges
         if not start_nodes:
             s = [n for n in self.nodes if n not in backward_edges]
-            if not start_nodes:
-                raise ValueError("Graph must be acyclic! Try changing dependencies.")
         else:
             s = [n.id for n in start_nodes]
 

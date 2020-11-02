@@ -9,7 +9,6 @@ from qualibs.graph import *
 from inspect import isfunction, getsource
 from types import FunctionType
 from typing import List
-from colorama import Fore, Style
 from copy import deepcopy
 from io import BytesIO
 import sys
@@ -77,7 +76,10 @@ class GraphDB:
         try:
             calling_script = open(calling_script_path).read() if calling_script_path else None
         except OSError:
-            calling_script = open(graph._calling_script).read()
+            try:
+                calling_script = open(graph._calling_script).read()
+            except OSError:
+                calling_script = None
         self._dbcon.save(Graph(graph_id=graph.id,
                                graph_script=calling_script,
                                graph_name=graph.label,
