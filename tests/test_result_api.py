@@ -1,9 +1,8 @@
 import string
-
-from qualibs.results.api import *
+import datetime
+from qualibs.results.api import Graph, Node, Result, Metadatum, DataReader, DataReaderQuery
 from random import choice
 
-# from datetime.datetime import now
 from qualibs.results.impl.sqlalchemy import NodeTypes
 
 now = datetime.datetime.now
@@ -93,8 +92,6 @@ def test_fetch_result_by_graph_name(results_connector):
     results_connector.save([g1, g2, *res1, *res2])
 
     reader = DataReader(results_connector)
-    a = reader.fetch(DataReaderQuery(table='Results', graph_name='test1'))
-
     assert res1 == reader.fetch(DataReaderQuery(graph_name='test1'))
 
 

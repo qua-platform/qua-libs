@@ -5,7 +5,7 @@ from qm.program import _Program as QuaProgram
 
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Dict, Set, Any, Union
+from typing import Dict, Set, Any, Union, List, Optional
 from collections.abc import Coroutine
 from datetime import datetime
 from colorama import Fore, Style
@@ -15,7 +15,11 @@ import asyncio
 
 
 def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
+
+
 def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
+
+
 def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
 
 
@@ -34,7 +38,6 @@ class LinkNode:
             except AssertionError:
                 raise ValueError(f"Output variables of node <{self.node.label}> "
                                  f"do not contain the variable '{output_var}'")
-
         self.output_var: str = output_var
 
     def get_output(self):
@@ -63,8 +66,29 @@ class LinkNode:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, v)
         return result
+
+    def __eq__(self, other: LinkNode):
+        if not self.output_var == other.output_var:
+            return False
+        if not self.node.output_vars == other.node.output_vars:
+            return False
+        if not self.node.label == other.node.label:
+            return False
+        if not self.node.program == other.node.program:
+            return False
+        if not self.node.input_vars == other.node.input_vars:
+            return False
+        if not self.node.result == other.node.result:
+            return False
+        return True
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class InputVars:
@@ -85,6 +109,15 @@ class InputVars:
     def __iter__(self):
         return ((k, v) for k, v in self.__dict__.items())
 
+    def __eq__(self, other):
+        for k, v in self.__iter__():
+            if not type(other[k]) == type(v):
+                return False
+            else:
+                if not v == other[k]:
+                    return False
+        return True
+
     def __str__(self):
         return str(self.__dict__)
 
@@ -97,12 +130,13 @@ class InputVars:
         result.__dict__.update(self.__dict__)
         return result
 
-    def copy(self):
-        """
-        Implements  shallow copy - copy by reference
-        :return:
-        """
-        return self.__copy__()
+    #
+    # def copy(self):
+    #     """
+    #     Implements  shallow copy - copy by reference
+    #     :return:
+    #     """
+    #     return self.__copy__()
 
     def __deepcopy__(self, memo=None):
         if memo is None:
@@ -111,10 +145,7 @@ class InputVars:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, LinkNode):
-                setattr(result, k, v)
-            else:
-                setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -131,7 +162,7 @@ class ProgramNode(ABC):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 dependencies: list = [],
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None,
                  to_run: bool = True
                  ):
 
@@ -145,6 +176,7 @@ class ProgramNode(ABC):
         :type input_vars: dict
         :param output_vars: output variable names
         :type output_vars: Set[str]
+        :param metadata_funcs: a list of functions or a single function that describes the node's metadata
         :param to_run: whether to run the node
         :type to_run: bool
         """
@@ -154,11 +186,12 @@ class ProgramNode(ABC):
         self.input_vars = input_vars
         self.output_vars: Set[str] = output_vars
         self.to_run = to_run
-        self.dependencies = list(set(dependencies))
+        self.metadata_funcs = metadata_funcs
         self._result: Dict[str, Any] = dict()
         self._start_time = None  # last time started running
         self._end_time = None  # last time when finished running
         self._type = None
+        self.save_result_to_db = True
 
     def __str__(self):
         return str(self.__dict__)
@@ -172,14 +205,14 @@ class ProgramNode(ABC):
         result.__dict__.update(self.__dict__)
         return result
 
-    def copy(self):
-        """
-        Implements  shallow copy - copy by reference, provides new id
-        :return:
-        """
-        self_copy = self.__copy__()
-        self_copy._id = id(self_copy)
-        return self_copy
+    # def copy(self):
+    #     """
+    #     Implements  shallow copy - copy by reference, provides new id
+    #     :return:
+    #     """
+    #     self_copy = self.__copy__()
+    #     self_copy._id = id(self_copy)
+    #     return self_copy
 
     def __deepcopy__(self, memo=None):
         if memo is None:
@@ -188,7 +221,10 @@ class ProgramNode(ABC):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            if k == '_id':
+                setattr(result, k, id(result))
+            else:
+                setattr(result, k, deepcopy(v, memo))
         return result
 
     def deepcopy(self):
@@ -196,9 +232,7 @@ class ProgramNode(ABC):
         Implements deep copy - copy by value, provides new id
         :return:
         """
-        self_copy = self.__deepcopy__()
-        self_copy._id = id(self_copy)
-        return self_copy
+        return self.__deepcopy__()
 
     @property
     def type(self):
@@ -218,6 +252,14 @@ class ProgramNode(ABC):
             if type(_label) is not str:
                 raise TypeError(f"In node <{self.label}> expected {str} but given {type(_label)}")
         self._label = _label
+
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
 
     @property
     def program(self) -> FunctionType:
@@ -260,7 +302,7 @@ class ProgramNode(ABC):
         return self._result
 
     @abstractmethod
-    def _get_result(self) -> None:
+    def _fetch_result(self) -> None:
         pass
 
     def output(self, output_vars=None) -> LinkNode:
@@ -271,7 +313,11 @@ class ProgramNode(ABC):
         pass
 
     def run(self) -> None:
-        asyncio.run(self.run_async())
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.run_async())
+        except RuntimeError:
+            asyncio.run(self.run_async())
 
     @property
     def to_run(self) -> bool:
@@ -283,6 +329,32 @@ class ProgramNode(ABC):
             raise TypeError(f"In node <{self.label}> expected {bool} but given {type(to_run)}")
         self._to_run = to_run
 
+    @property
+    def metadata_funcs(self):
+        return self._metadata_funcs
+
+    @metadata_funcs.setter
+    def metadata_funcs(self, node_metadata):
+        if node_metadata:
+            if isfunction(node_metadata):
+                self._metadata_funcs = [node_metadata]
+            elif type(node_metadata) is list:
+                self._metadata_funcs = node_metadata
+            else:
+                raise TypeError(f"Metadata parameter must be a {FunctionType} or a {List[FunctionType]}")
+        else:
+            self._metadata_funcs = list()
+
+    @property
+    def save_result_to_db(self):
+        return self._save_result_to_db
+
+    @save_result_to_db.setter
+    def save_result_to_db(self, t):
+        if not type(t) is bool:
+            raise TypeError(f"Must be of type {bool}")
+        self._save_result_to_db = t
+
 
 class QuaJobNode:
     def __init__(self, node):
@@ -293,12 +365,63 @@ class QuaJobNode:
         self.node: QuaNode = node
 
     @property
+    def job(self):
+        return self.node.job
+
+    def resume(self):
+        self.job.resume()
+
+    def wait(self, timeout: Optional[int] = None):
+        """
+        Wait until the job is finished and all the results are available for retrieving
+        :argument timeout: The maximum time to wait in seconds
+        :type timeout: int
+        """
+        self.job.wait_for_all_results(timeout)
+
+    def stop(self):
+        """
+        Stops the job
+        :return:
+        """
+        self.job.halt()
+
+    @property
     def result_handles(self):
-        return self.node._job.result_handles
+        return self.node.job.result_handles
+
+    def get_values(self, var):
+        return getattr(self.result_handles, var).fetch_all()['value']
 
     @property
     def quantum_machine(self):
         return self.node.quantum_machine
+
+    @property
+    def IO1(self):
+        return self.quantum_machine.get_io1_value()
+
+    @IO1.setter
+    def IO1(self, val):
+        """
+                Sets the value of ``IO1``. Can be used inside qua as IO1 without decleration
+                :param val: the value to be placed in ``IO1``
+                :type val: float | bool | int
+        """
+        self.quantum_machine.set_io1_value(val)
+
+    @property
+    def IO2(self):
+        return self.quantum_machine.get_io2_value()
+
+    @IO2.setter
+    def IO2(self, val):
+        """
+                Sets the value of ``IO2``. Can be used inside qua as IO1 without decleration
+                :param val: the value to be placed in ``IO2``
+                :type val: float | bool | int
+        """
+        self.quantum_machine.set_io2_value(val)
 
     def __copy__(self):
         cls = self.__class__
@@ -313,8 +436,30 @@ class QuaJobNode:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            setattr(result, k, deepcopy(v, memo))
+            setattr(result, k, v)
         return result
+
+    def __eq__(self, other: QuaJobNode):
+        if not self.quantum_machine == other.quantum_machine:
+            return False
+        if not self.node.output_vars == other.node.output_vars:
+            return False
+        if not self.node.label == other.node.label:
+            return False
+        if not self.node.program == other.node.program:
+            return False
+        if not self.node.input_vars == other.node.input_vars:
+            return False
+        if not self.node.result == other.node.result:
+            return False
+
+        return True
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class QuaNode(ProgramNode):
@@ -327,15 +472,14 @@ class QuaNode(ProgramNode):
                  simulation_kwargs: Dict[str, Any] = None,
                  execution_kwargs: Dict[str, Any] = None,
                  simulate_or_execute: str = None,
-                 dependencies: list = []):
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None):
 
-        super().__init__(label, program, input_vars, output_vars, dependencies)
+        super().__init__(label, program, input_vars, output_vars, metadata_funcs)
 
         self.quantum_machine = quantum_machine
         self.execution_kwargs = execution_kwargs
         self.simulation_kwargs = simulation_kwargs
         self.simulate_or_execute: str = simulate_or_execute
-        self.dependencies = list(set(self.dependencies + dependencies))
         self._type = 'Qua'
         self._job: QmJob.QmJob = None
         self._qua_program: QuaProgram = None
@@ -347,10 +491,13 @@ class QuaNode(ProgramNode):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == '_quantum_machine':
+            if k == '_id':
+                setattr(result, k, id(result))
+            elif k == '_quantum_machine':
                 setattr(result, k, v)
             elif k == '_job':
                 setattr(result, k, None)
+                print_yellow(f"ATTENTION the QuaJob of node <{self.label}> was NOT copied")
             else:
                 setattr(result, k, deepcopy(v, memo))
         return result
@@ -406,7 +553,11 @@ class QuaNode(ProgramNode):
                 raise TypeError(f"In node <{self.label}> expected {dict} but got {type(kwargs)}")
         self._simulation_kwargs = kwargs
 
-    def _get_result(self) -> None:
+    @property
+    def job(self):
+        return self._job
+
+    def _fetch_result(self) -> None:
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
             return
@@ -417,7 +568,7 @@ class QuaNode(ProgramNode):
             except AttributeError:
                 print_red(f"WARNING Could not fetch variable '{var}' from the job results of node <{self.label}>")
 
-    def job(self):
+    def qua_job(self) -> QuaJobNode:
         return QuaJobNode(self)
 
     async def run_async(self) -> None:
@@ -443,7 +594,7 @@ class QuaNode(ProgramNode):
             if self.simulate_or_execute == 'execute':
                 self._execute()
             self._end_time = datetime.now()
-            self._get_result()
+            self._fetch_result()
 
     def _execute(self) -> None:
         print("\nEXECUTING QuaNode <{}>...".format(self.label))
@@ -462,13 +613,13 @@ class PyNode(ProgramNode):
                  program: Union[FunctionType, Coroutine] = None,
                  input_vars: Dict[str, Any] = None,
                  output_vars: Set[str] = None,
-                 dependencies: list = []):
+                 metadata_funcs: Union[FunctionType, List[FunctionType]] = None):
 
-        super().__init__(label, program, input_vars, output_vars, dependencies)
+        super().__init__(label, program, input_vars, output_vars, metadata_funcs)
         self._job_results = None
         self._type = 'Py'
 
-    def _get_result(self):
+    def _fetch_result(self):
         if self.output_vars is None:
             print_yellow(f"ATTENTION No output variables defined for node <{self.label}>")
             return
@@ -495,4 +646,4 @@ class PyNode(ProgramNode):
                 if type(self._job_results) is not dict:
                     raise TypeError(f"In node <{self.label}> expected {dict} but got <{type(self._job_results)}> "
                                     f"as the result")
-                self._get_result()
+                self._fetch_result()

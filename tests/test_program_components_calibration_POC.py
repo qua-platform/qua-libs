@@ -199,8 +199,8 @@ g = PyNode('IQ_blobs', blobs, {'I': d.output('I'), 'Q': d.output('Q')})
 # g.dependsOn = [e]
 
 cal_graph = ProgramGraph('hello')
-cal_graph.add_nodes([r, a, b, c, d, e, g])
-cal_graph.add_edges([(e, g)])
+cal_graph.add_nodes(r, a, b, c, d, e, g)
+cal_graph.add_edges((e, g))
 
 gjob = cal_graph.run()
 

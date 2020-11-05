@@ -4,7 +4,6 @@ from typing import Optional, Tuple, Iterable, TypeVar, List, Union
 import abc
 
 
-
 @dataclass
 class DataReaderQuery:
     table: str = 'Results'
@@ -18,7 +17,7 @@ class DataReaderQuery:
     start_time: Optional[datetime.datetime] = None
     end_time: Optional[datetime.datetime] = None
     user_id: Optional[str] = None
-    min_size: Optional[int]=None
+    min_size: Optional[int] = None
 
 
 @dataclass
@@ -40,6 +39,10 @@ class Node:
     node_name: str
     node_type: int
     version: str
+    points_to: str
+    program: str
+    input_vars: str
+    node_as_dict: str
 
 
 @dataclass
@@ -54,7 +57,7 @@ class Metadatum:
 @dataclass
 class Graph:
     graph_id: int
-    graph_name:str
+    graph_name: str
     graph_script: str
     graph_dot_repr: str
 

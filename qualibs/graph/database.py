@@ -1,20 +1,21 @@
+from __future__ import annotations
+
+
 from .environment import env_resolve
 from qualibs.results.impl.sqlalchemy import SqlAlchemyResultsConnector, NodeTypes
-from qualibs.results.api import *
+from qualibs.results.api import Graph, Node, Result, Metadatum
+from qualibs.graph import *
 
-from colorama import Fore, Style
+from inspect import isfunction, getsource
+from types import FunctionType
+from typing import List
 from copy import deepcopy
 from io import BytesIO
 import sys
 
 
-def print_red(skk): print(Fore.RED + f"{skk}" + Style.RESET_ALL)
-def print_green(skk): print(Fore.GREEN + f"{skk}" + Style.RESET_ALL)
-def print_yellow(skk): print(Fore.YELLOW + f"{skk}" + Style.RESET_ALL)
-
-
 class GraphDB:
-    def __init__(self, results_path: str = ':memory:', env_dependency_list=[], envmodule=None):
+    def __init__(self, results_path: str = ':memory:', global_metadata_funcs=[], envmodule=None):
         """
         Creating a link to a SQLite DB
         :param results_path: store location for DB
@@ -22,7 +23,7 @@ class GraphDB:
         """
         self.results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
-        self._env_dependency_list = env_dependency_list
+        self.global_metadata_funcs = global_metadata_funcs
         self._envmodule = envmodule
 
     def __copy__(self):
@@ -55,58 +56,82 @@ class GraphDB:
         self._results_path = results_path
         self._dbcon = SqlAlchemyResultsConnector(backend=self._results_path)
 
-    def save_graph(self, graph, calling_script_path):
-        print_green(f"Saving graph <{graph.label}> to DB at '{self.results_path}'")
+    @property
+    def global_metadata_funcs(self):
+        return self._global_metadata_funcs
+
+    @global_metadata_funcs.setter
+    def global_metadata_funcs(self, graph_metadata):
+        if graph_metadata:
+            if isfunction(graph_metadata):
+                self._global_metadata_funcs = [graph_metadata]
+            elif type(graph_metadata) is list:
+                self._global_metadata_funcs = graph_metadata
+            else:
+                raise TypeError(f"Metadata parameter must be a {FunctionType} or a {List[FunctionType]}")
+        else:
+            self._global_metadata_funcs = list()
+
+    def save_graph(self, graph: ProgramGraph, calling_script_path: str):
         try:
             calling_script = open(calling_script_path).read() if calling_script_path else None
         except OSError:
-            calling_script = open(graph._calling_script).read()
+            try:
+                calling_script = open(graph._calling_script).read()
+            except OSError:
+                calling_script = None
         self._dbcon.save(Graph(graph_id=graph.id,
                                graph_script=calling_script,
                                graph_name=graph.label,
                                graph_dot_repr=graph.export_dot_graph()))  # TODO: add full graphID, nodeID to dot graph
+
+    def save_node(self, node: ProgramNode, graph: ProgramGraph):
         # save nodes to database
-        for node_id, node in graph.nodes.items():
-            if NodeTypes[node.type] == NodeTypes.Qua:
-                version = str(node.quantum_machine._manager.version())
-            elif NodeTypes[node.type] == NodeTypes.Py:
-                version = str(sys.version_info)
-            elif NodeTypes[node.type] == NodeTypes.Graph:
-                version = str(sys.version_info)
-            else:
-                version = str(sys.version_info)
+        if NodeTypes[node.type] == NodeTypes.Qua:
+            version = str(node.quantum_machine._manager.version())
+        elif NodeTypes[node.type] == NodeTypes.Py:
+            version = str(sys.version_info)
+        elif NodeTypes[node.type] == NodeTypes.Cal:
+            version = str(sys.version_info)
+        else:
+            version = str(sys.version_info)
 
-            self._dbcon.save(Node(graph_id=graph.id,
-                                  node_id=node_id,
-                                  node_type=NodeTypes[node.type],
-                                  version=version,
-                                  node_name=node.label))
+        self._dbcon.save(Node(graph_id=graph.id,
+                              node_id=node.id,
+                              node_type=NodeTypes[node.type],
+                              version=version,
+                              node_name=node.label,
+                              points_to=str(graph.edges[node.id] if node.id in graph.edges else set()),
+                              program=getsource(node.program),
+                              input_vars=str(node.input_vars),
+                              node_as_dict=str(node)
+                              ))
 
-    def save_graph_results(self, graph):
-        print_green(f"Saving graph <{graph.label}> results to DB at '{self.results_path}'")
+    def save_graph_results(self, graph: ProgramGraph):
         for node_id, node in graph.nodes.items():
-            for name in node.result.keys():
-                self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
-                                        start_time=node._start_time,
-                                        end_time=node._end_time,
-                                        user_id='User',
-                                        name=name,
-                                        val=str(node.result[name])
-                                        ))
-                if node.type == 'Qua':
-                    res = node._job.result_handles
-                    npz_store = BytesIO()
-                    res.save_to_store(writer=npz_store)
+            if node.save_result_to_db:
+                for name in node.result.keys():
                     self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
-                                            start_time=node._start_time,
-                                            end_time=node._end_time,
+                                            start_time=node.start_time,
+                                            end_time=node.end_time,
                                             user_id='User',
-                                            name='npz',
-                                            val=npz_store.getvalue()
+                                            name=name,
+                                            val=str(node.result[name])
                                             ))
+                    if node.type == 'Qua':
+                        res = node.job.result_handles
+                        npz_store = BytesIO()
+                        res.save_to_store(writer=npz_store)
+                        self._dbcon.save(Result(graph_id=graph.id, node_id=node_id,
+                                                start_time=node.start_time,
+                                                end_time=node.end_time,
+                                                user_id='User',
+                                                name='npz',
+                                                val=npz_store.getvalue()
+                                                ))
 
-    def save_metadata(self, graph, node, node_id):
-        metadata = {dep.__name__: env_resolve(dep, self._envmodule)() for dep in node.dependencies}
-        for key, val in metadata.items():
-            self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node_id, name=key, val=val))
-
+    def save_node_metadata(self, node: ProgramNode, graph: ProgramGraph):
+        for fn in node.metadata_funcs:
+            metadata = env_resolve(fn, self._envmodule)()
+            for key, val in metadata.items():
+                self._dbcon.save(Metadatum(graph_id=graph.id, node_id=node.id, name=key, val=str(val)))
