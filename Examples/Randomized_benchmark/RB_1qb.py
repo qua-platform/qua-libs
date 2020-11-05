@@ -11,7 +11,8 @@ from itertools import chain
 ################
 
 # The configuration is our way to describe your setup.
-t = np.linspace(-3, 3, 1000)
+pulse_len = 100
+t = np.linspace(-3, 3, pulse_len)
 gauss = (0.2 * np.exp(-t ** 2)).tolist()
 config = {
 
@@ -48,9 +49,12 @@ config = {
             'intermediate_frequency': 0,
             'operations': {
                 # 'playOp': "constPulse",
-                'Rx_pi/2': "XPulse",
-                'Rx_pi': "XPulse",
-                'Rx_-pi/2': "XPulse",
+                'X/2': "X/2Pulse",
+                'X': "XPulse",
+                '-X/2': "-X/2Pulse",
+                'Y/2': "Y/2Pulse",
+                'Y': "YPulse",
+                '-Y/2': "-Y/2Pulse",
                 # 'gaussianOp': "gaussianPulse",
                 'readout': 'readoutPulse'
             },
@@ -62,7 +66,7 @@ config = {
     "pulses": {
         "constPulse": {
             'operation': 'control',
-            'length': 1000,
+            'length': pulse_len,
             'waveforms': {
                 'I': 'gauss_wf',
                 'Q': 'gauss_wf'
@@ -70,15 +74,55 @@ config = {
         },
         "XPulse": {
             'operation': 'control',
-            'length': 1000,
+            'length': pulse_len,
             'waveforms': {
                 'I': 'gauss_wf',
                 'Q': 'zero_wf'
             }
         },
+        "X/2Pulse": {
+            'operation': 'control',
+            'length': pulse_len,
+            'waveforms': {
+                'I': 'gauss_wf',
+                'Q': 'zero_wf'
+            }
+        },
+        "-X/2Pulse": {
+            'operation': 'control',
+            'length': pulse_len,
+            'waveforms': {
+                'I': 'gauss_wf',
+                'Q': 'zero_wf'
+            }
+        },
+        "YPulse": {
+            'operation': 'control',
+            'length': pulse_len,
+            'waveforms': {
+                'I': 'zero_wf',
+                'Q': 'gauss_wf'
+            }
+        },
+        "Y/2Pulse": {
+            'operation': 'control',
+            'length': pulse_len,
+            'waveforms': {
+                'I': 'zero_wf',
+                'Q': 'gauss_wf'
+            }
+        },
+        "-Y/2Pulse": {
+            'operation': 'control',
+            'length': pulse_len,
+            'waveforms': {
+                'I': 'zero_wf',
+                'Q': 'gauss_wf'
+            }
+        },
         "readoutPulse": {
             'operation': 'measure',
-            'length': 1000,
+            'length': pulse_len,
             'waveforms': {
                 'I': 'gauss_wf',
                 'Q': 'gauss_wf'
@@ -112,12 +156,12 @@ config = {
     },
     'integration_weights': {
         'xWeights': {
-            'cosine': [1.0] * 250,
-            'sine': [0.0] * 250
+            'cosine': [1.0] * (pulse_len // 4),
+            'sine': [0.0] * (pulse_len // 4)
         },
         'yWeights': {
-            'cosine': [0.0] * 250,
-            'sine': [1.0] * 250
+            'cosine': [0.0] * (pulse_len // 4),
+            'sine': [1.0] * (pulse_len // 4)
         }
     }
 }
@@ -125,65 +169,48 @@ config = {
 # Open communication with the server.
 QMm = QuantumMachinesManager()
 
-def make_cliffords():
-    cliffords = np.empty([0, 2], dtype=int)
-    # x_ops = ["0", "Rz_pi", "Rz_pi/2", "Rz_-pi/2", ["Rx_pi/2", "Rz_pi/2"], ["Rx_-pi/2", "Rz_pi/2"]]
-    # x_anti_ops = ["0", "Rz_pi", "Rz_-pi/2", "Rz_pi/2", ["Rz_-pi/2", "Rx_-pi/2"], ["Rx_pi/2", "Rz_-pi/2"]]
-    x_transformation = np.array([[0, 0], [0, 2], [0, 1], [0, 3], [1, 1], [3, 1]])
-    # z_ops = ["0", "Rx_pi/2", "Rx_pi", "Rx_-pi/2"]
-    # z_anti_ops = ["0", "Rx_-pi/2", "Rx_pi", "Rx_pi/2"]
-    z_transformation = np.array([[0, 0], [3, 0], [2, 0], [1, 0]])
-
-    for op1 in x_transformation:
-        for op2 in z_transformation:
-            cliffords = np.append(cliffords, [(op1 + op2) % 4], axis=0)
-    return cliffords
-
-def invert_circuit(circ):
-    return invert_clifford(sum(circ)%4)
-
-def invert_clifford(clifford):
-    inv_clifford = (4 - clifford) % 4
-    return inv_clifford
+cliffords = [['I'], ['X'], ['Y'], ['Y', 'X'],
+             ['X/2', 'Y/2'], ['X/2', '-Y/2'], ['-X/2', 'Y/2'], ['-X/2', '-Y/2'], ['Y/2', 'X/2'], ['Y/2', '-X/2'],
+             ['-Y/2', 'X/2'], ['-Y/2', '-X/2'],
+             ['X/2'], ['-X/2'], ['Y/2'], ['-Y/2'], ['-X/2', 'Y/2', 'X/2'], ['-X/2', '-Y/2', 'X/2'],
+             ['X', 'Y/2'], ['X', '-Y/2'], ['Y', 'X/2'], ['Y', '-X/2'], ['X/2', 'Y/2', 'X/2'], ['-X/2', 'Y/2', '-X/2']]
 
 
-def play_clifford(clifford):
-    z_state = clifford[1]
-    x_state = clifford[0]
-
-    if z_state == 0:
-        pass
-    elif z_state == 1:
-        frame_rotation(np.pi/2,'qe1')
-    elif z_state == 2:
-        frame_rotation(np.pi, 'qe1')
-    elif z_state == 3:
-        frame_rotation(-np.pi / 2, 'qe1')
-
-    if x_state == 0:
-        pass
-    elif x_state == 1:
-        play('Rx_-pi/2', 'qe1')
-    elif x_state == 2:
-        play('Rx_pi', 'qe1')
-    elif x_state == 3:
-        play('Rx_pi/2', 'qe1')
+def recovery_clifford(state):
+    operations = {'x': ['I'], '-x': ['Y'], 'y': ['X/2', '-Y/2'], '-y': ['-X/2', '-Y/2'], 'z': ['-Y/2'], '-z': ['Y/2']}
+    return operations[state]
 
 
-def randomize_circuit(n_gates: int):
+def transform_state(input_state, transformation):
+    transformations = {'x': {'I': 'x', 'X/2': 'x', 'X': 'x', '-X/2': 'x', 'Y/2': 'z', 'Y': '-x', '-Y/2': '-z'},
+                       '-x': {'I': '-x', 'X/2': '-x', 'X': '-x', '-X/2': '-x', 'Y/2': '-z', 'Y': 'x', '-Y/2': 'z'},
+                       'y': {'I': 'y', 'X/2': 'z', 'X': '-y', '-X/2': '-z', 'Y/2': 'y', 'Y': 'y', '-Y/2': 'y'},
+                       '-y': {'I': '-y', 'X/2': '-z', 'X': 'y', '-X/2': 'z', 'Y/2': '-y', 'Y': '-y', '-Y/2': '-y'},
+                       'z': {'I': 'z', 'X/2': '-y', 'X': '-z', '-X/2': 'y', 'Y/2': '-x', 'Y': '-z', '-Y/2': 'x'},
+                       '-z': {'I': '-z', 'X/2': 'y', 'X': 'z', '-X/2': '-y', 'Y/2': 'x', 'Y': 'z', '-Y/2': '-x'}}
 
-    cliffords = make_cliffords()
-    circuit = np.empty([0, 2], dtype=int)
-    for ind in np.random.randint(0, len(cliffords), size=(1, n_gates)):
-        circuit = np.append(circuit, cliffords[ind], axis=0)
+    return transformations[input_state][transformation]
 
-    return circuit
+
+def play_clifford(clifford, state):
+    for op in clifford:
+        state = transform_state(state, op)
+        if op != 'I':
+            play(op, 'qe1')
+    return state
+
+
+def randomize_circuit(n_gates: int, init_state: str = 'x'):
+    state = init_state
+    for ind in range(n_gates):
+        state = play_clifford(cliffords[np.random.randint(0, len(cliffords))], state)
+    return state
 
 
 QM1 = QMm.open_qm(config)
 
 N_avg = 10
-circuit_depth_vec = list(range(500, 1000, 100))
+circuit_depth_vec = list(range(10, 50, 1))
 
 with program() as RBprog:
     N = declare(int)
@@ -192,28 +219,26 @@ with program() as RBprog:
 
     with for_(N, 0, N < N_avg, N + 1):
         for depth in circuit_depth_vec:
-            circ = randomize_circuit(depth)
-            for gate in circ:
-                play_clifford(gate)
-            play_clifford(invert_circuit(circ))
+            final_state = randomize_circuit(depth)
+            play_clifford(recovery_clifford(final_state), final_state)
             measure('readout', 'qe1', None, integration.full('x', I))
             save(I, out_str)
 
     with stream_processing():
         out_str.save_all('out_stream')
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
-QuantumMachinesManager
+# job = QM1.simulate(RBprog,
+#                    SimulationConfig(int(10000)))
+job = QM1.execute(RBprog)
 
-job = QM1.simulate(RBprog,
-                   SimulationConfig(int(50000)))
+# def estimate_state(I, Q, d):
 
-def estimate_state(I,Q,d):
-    #return 0 with prob exp(-d/alpha)
+
+# return 0 with prob exp(-d/alpha)
 
 # res = job.result_handles
 # I = res.out_stream.fetch_all()
 
-samples = job.get_simulated_samples()
-
-samples.con1.plot()
+# samples = job.get_simulated_samples()
+#
+# samples.con1.plot()
