@@ -16,8 +16,8 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = [200, 200, 200]
-states = ['g', 'e', 'f']
+N = [200, 200, 200, 200]
+states = ['g', 'e', 'f', 'h']
 
 wait_time = 10
 with program() as training_program:
@@ -43,7 +43,7 @@ with program() as training_program:
             wait(wait_time, "rr1a")
 
 qmm = QuantumMachinesManager()
-discriminator = StateDiscriminator(qmm, config, 'rr1a', 'gef_disc_params.npz')
+discriminator = StateDiscriminator(qmm, config, 'rr1a', len(states), 'gef_disc_params.npz')
 discriminator.train(program=training_program, plot=True, dry_run=True, simulate=simulation_config)
 
 with program() as test_program:
@@ -67,7 +67,7 @@ res = result_handles.get('res').fetch_all()['value']
 p_s = np.zeros(shape=(len(states), len(states)))
 measures_per_state = [0] + list(np.cumsum(N))
 for i in range(len(states)):
-    res_i = res[measures_per_state[i]:measures_per_state[i+1]]
+    res_i = res[measures_per_state[i]:measures_per_state[i + 1]]
     p_s[i, :] = np.array([np.mean(res_i == j) for j in range(len(states))])
 
 fig = plt.figure()

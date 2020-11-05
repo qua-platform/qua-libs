@@ -42,7 +42,8 @@ k = 0.04
 chi = 0.023
 [tg_, Ig_, Qg_, Sg_] = simulate_pulse(IF_freq, -1 * chi, k, Ts, Td, power)
 [te_, Ie_, Qe_, Se_] = simulate_pulse(IF_freq, 1 * chi, k, Ts, Td, power)
-[tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 5 * chi, k, Ts, Td, power)
+[tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 3 * chi, k, Ts, Td, power)
+[th_, Ih_, Qh_, Sh_] = simulate_pulse(IF_freq, 5 * chi, k, Ts, Td, power)
 
 plt.figure()
 plt.plot(Ig_, Qg_)
@@ -100,7 +101,8 @@ config = {
                 'readout': 'readout_pulse_q1a',
                 'readout_pulse_g': 'readout_pulse_g',
                 'readout_pulse_e': 'readout_pulse_e',
-                'readout_pulse_f': 'readout_pulse_f'
+                'readout_pulse_f': 'readout_pulse_f',
+                'readout_pulse_h': 'readout_pulse_h'
             },
             'outputs': {
                 'out1': ('con1', 1),
@@ -122,7 +124,8 @@ config = {
                 'readout': 'readout_pulse_q1a',
                 'readout_pulse_g': 'readout_pulse_g',
                 'readout_pulse_e': 'readout_pulse_e',
-                'readout_pulse_f': 'readout_pulse_f'
+                'readout_pulse_f': 'readout_pulse_f',
+                'readout_pulse_h': 'readout_pulse_h'
             },
             'outputs': {
                 'out1': ('con1', 1),
@@ -194,6 +197,20 @@ config = {
             'digital_marker': 'ON'
         },
 
+        'readout_pulse_h': {
+            'operation': 'measurement',
+            'length': readout_len,
+            'waveforms': {
+                'I': 'Ih_wf',
+                'Q': 'Qh_wf'
+            },
+            'integration_weights': {
+                'integW_cos': 'integW_cos',
+                'integW_sin': 'integW_sin'
+            },
+            'digital_marker': 'ON'
+        },
+
     },
 
     'waveforms': {
@@ -236,6 +253,16 @@ config = {
         'Qf_wf': {
             'type': 'arbitrary',
             'samples': [float(arg / divide_signal_factor) for arg in Qf_]
+        },
+
+        'Ih_wf': {
+            'type': 'arbitrary',
+            'samples': [float(arg / divide_signal_factor) for arg in Ih_]
+        },
+
+        'Qh_wf': {
+            'type': 'arbitrary',
+            'samples': [float(arg / divide_signal_factor) for arg in Qh_]
         },
 
     },

@@ -1,9 +1,8 @@
 import numpy as np
-from pandas import DataFrame
 from qm.qua import *
+from qm.qua.math import argmax
 import os
 import matplotlib.pyplot as plt
-from sklearn import mixture
 from scipy import signal
 
 from TimeDiffCalibrator import TimeDiffCalibrator
@@ -14,11 +13,11 @@ class StateDiscriminator:
     The state discriminator is a class that generates optimized measure procedure for state discrimination
     of a multi-level qubit.
     .. note:
-        Currently only 3-states discrimination is supported. The setup assumed here includes IQ mixer both in the up-
+        The setup assumed here includes IQ mixer both in the up-
         and down-conversion of the readout pulse.
     """
 
-    def __init__(self, qmm, config, rr_qe, path):
+    def __init__(self, qmm, config, rr_qe, num_of_states, path):
         """
         Constructor for the state discriminator class.
         :param qmm: A QuantumMachineManager object
@@ -32,7 +31,7 @@ class StateDiscriminator:
         self.qmm = qmm
         self.config = config
         self.rr_qe = rr_qe
-        self.num_of_states = 3
+        self.num_of_states = num_of_states
         self.path = path
         self.saved_data = None
         self.time_diff = None
@@ -152,8 +151,10 @@ class StateDiscriminator:
         weights = self._quantize_traces(traces)
         norm = np.max(np.abs(weights))
 
-        # The weights and biases are calculated in order to optimally perform the Maximum Likelihood estimation of
-        # the states the integration weights for each of the states
+        '''
+        The weights and biases are calculated in order to optimally perform the Maximum Likelihood estimation of
+        the states
+        '''
         weights = weights / norm
         # the biases for each of the states
         bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
@@ -208,12 +209,11 @@ class StateDiscriminator:
          complex IN(t) signal).
         :param out2: A string with the name second output of the readout resonator (corresponding to the imaginary part
         of the complex IN(t) signal).
-        :param res: An integer QUA variable that will receive the discrimination result (0,1 or 2)
+        :param res: An integer QUA variable that will receive the discrimination result (0,1,... #states)
         :param adc: (optional) the stream variable which the raw ADC data will be saved and will appear in result
         analysis scope.
         """
         bias = self.saved_data['bias']
-        # currently it allows only 3 states
 
         d1_st = declare(fixed, size=self.num_of_states)
         d2_st = declare(fixed, size=self.num_of_states)
@@ -228,9 +228,4 @@ class StateDiscriminator:
         for i in range(self.num_of_states):
             assign(st[i], d1_st[i] + d2_st[i] - bias[i])
 
-        with if_((st[0] >= st[1]) & (st[0] >= st[2])):
-            assign(res, 0)
-        with if_((st[1] >= st[0]) & (st[1] >= st[2])):
-            assign(res, 1)
-        with if_((st[2] >= st[0]) & (st[2] >= st[1])):
-            assign(res, 2)
+        assign(res, argmax(st))
