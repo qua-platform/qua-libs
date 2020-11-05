@@ -23,7 +23,7 @@ config = {
             'type': 'opx1',
             'analog_outputs': {
                 1: {'offset': +0.0},  # qubit 1
-                2: {'offset': +0.0}what,  # flux line
+                2: {'offset': +0.0},  # flux line
                 3: {'offset': +0.0},  # qubit 2
             },
             'digital_outputs': {
@@ -195,17 +195,21 @@ with program() as RBprog:
             circ = randomize_circuit(depth)
             for gate in circ:
                 play_clifford(gate)
-                play_clifford(invert_circuit(circ))
-                measure('readout', 'qe1', None, integration.full('x', I))
-                save(I, out_str)
+            play_clifford(invert_circuit(circ))
+            measure('readout', 'qe1', None, integration.full('x', I))
+            save(I, out_str)
 
     with stream_processing():
         out_str.save_all('out_stream')
 
-
+from qm.QuantumMachinesManager import QuantumMachinesManager
+QuantumMachinesManager
 
 job = QM1.simulate(RBprog,
                    SimulationConfig(int(50000)))
+
+def estimate_state(I,Q,d):
+    #return 0 with prob exp(-d/alpha)
 
 # res = job.result_handles
 # I = res.out_stream.fetch_all()
