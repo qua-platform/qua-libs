@@ -33,28 +33,6 @@ WG2_lo = resonators_lo
 q1a_res_IF = 40e6
 q2a_res_IF = 41e6
 
-# readout_len = 480
-# IF_freq = q1a_res_IF
-# Ts = readout_len-200
-# Td = 200
-# power = 0.2*2
-# k = 0.04/3
-# chi = 0.023*10
-# [tg_, Ig_, Qg_, Sg_] = simulate_pulse(IF_freq, -1 * chi, k, Ts, Td, power)
-# [te_, Ie_, Qe_, Se_] = simulate_pulse(IF_freq, 1 * chi, k, Ts, Td, power)
-# [tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 2 * chi, k, Ts, Td, power)
-
-# readout_len = 480
-# IF_freq = q1a_res_IF
-# Ts = readout_len-200
-# Td = 200
-# power = 0.2*2
-# k = 0.04/3
-# chi = 0.023*20
-# [tg_, Ig_, Qg_, Sg_] = simulate_pulse(IF_freq, -1 * chi, k, Ts, Td, power)
-# [te_, Ie_, Qe_, Se_] = simulate_pulse(IF_freq, 1 * chi, k, Ts, Td, power)
-# [tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 2 * chi, k, Ts, Td, power)
-
 readout_len = 480
 IF_freq = q1a_res_IF
 Ts = readout_len-200
@@ -83,8 +61,8 @@ plt.figure()
 plt.plot(np.abs(Ig_+1j*Qg_))
 plt.plot(np.abs(Ie_+1j*Qe_))
 plt.plot(np.abs(If_+1j*Qf_))
-divide_signal_factor = 100
 
+divide_signal_factor = 100
 config = {
 
     'version': 1,

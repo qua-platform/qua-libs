@@ -47,16 +47,37 @@ class StateDiscriminator:
         return self.config['elements'][qe]['intermediate_frequency']
 
     def _downconvert(self, qe, x, ts):
+        """
+        Down-convert the input signal from qe
+        :param qe: quantum element, origin of signal
+        :param x: input analog signal
+        :param ts: timestamps
+        :return:
+        """
         if self.time_diff is None:
+            '''
+            There's a time difference between the reception of the analog input signal,
+            and the moment that the signal is written to memory (when the timestamps are created).
+            This time difference needs to be accounted for in order to digitally down-convert correctly 
+            '''
             self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config['controllers'].keys())[0])
         rr_freq = self._get_qe_freq(qe)
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig
 
     def _get_traces(self, qe, seq0, sig, use_hann_filter):
-
-        traces = np.array([np.median(np.real(sig[seq0 == i, :]), axis=0)
-                           + 1j * np.median(np.imag(sig[seq0 == i, :]), axis=0) for i in range(self.num_of_states)])
+        """
+        Get the measured waveforms from the resonator in each of the states.
+        Need to select the median due to the gaussian noise and apply a LPF
+        :param qe: the quantum element being measured
+        :param seq0: indexes for the different states
+        :param sig: the measured waveform
+        :param use_hann_filter:
+        :return:
+        """
+        traces = np.array([np.median(np.real(sig[seq0[i]:seq0[i + 1], :]), axis=0)
+                           + 1j * np.median(np.imag(sig[seq0[i]:seq0[i + 1], :]), axis=0)
+                           for i in range(self.num_of_states)])
 
         if use_hann_filter:
             rr_freq = self._get_qe_freq(qe)
@@ -68,6 +89,12 @@ class StateDiscriminator:
 
     @staticmethod
     def _quantize_traces(traces):
+        """
+        Convert input waveform that comes in on a 1ns scale to an averaged waveform on a 4ns scale,
+        as saved digitally by the OPX
+        :param traces: the down-converted waveforms
+        :return:
+        """
         weights = []
         for i in range(traces.shape[0]):
             weights.append(np.average(np.reshape(traces[i, :], (-1, 4)), axis=1))
@@ -87,7 +114,7 @@ class StateDiscriminator:
         ts = res_handles.adc_input1.fetch_all()['timestamp'].reshape((len(I_res), -1))
         in1 = res_handles.adc_input1.fetch_all()['value'].reshape((len(I_res), -1))
         in2 = res_handles.adc_input2.fetch_all()['value'].reshape((len(I_res), -1))
-        return I_res, Q_res, ts, in1 + 1j*in2
+        return I_res, Q_res, ts, in1 + 1j * in2
 
     def train(self, program, use_hann_filter=True, plot=False, **execute_args):
         """
@@ -118,14 +145,17 @@ class StateDiscriminator:
         I_res, Q_res, ts, x = self._execute_and_fetch(program, **execute_args)
 
         measures_per_state = len(I_res) // self.num_of_states
-        seq0 = np.array([[i] * measures_per_state for i in range(self.num_of_states)]).flatten()
+        seq0 = [i * measures_per_state for i in range(self.num_of_states + 1)]
 
         sig = self._downconvert(self.rr_qe, x, ts)
         traces = self._get_traces(self.rr_qe, seq0, sig, use_hann_filter)
         weights = self._quantize_traces(traces)
-
         norm = np.max(np.abs(weights))
+
+        # The weights and biases are calculated in order to optimally perform the Maximum Likelihood estimation of
+        # the states the integration weights for each of the states
         weights = weights / norm
+        # the biases for each of the states
         bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
 
         np.savez(self.path, weights=weights, bias=bias)
@@ -135,8 +165,8 @@ class StateDiscriminator:
         if plot:
             plt.figure()
             for i in range(self.num_of_states):
-                I_ = I_res[seq0 == i]
-                Q_ = Q_res[seq0 == i]
+                I_ = I_res[seq0[i]:seq0[i + 1]]
+                Q_ = Q_res[seq0[i]:seq0[i + 1]]
                 plt.plot(I_, Q_, '.', label=f'state {i}')
                 plt.axis('equal')
             plt.xlabel('I')
@@ -185,32 +215,22 @@ class StateDiscriminator:
         bias = self.saved_data['bias']
         # currently it allows only 3 states
 
-        d1_st0 = declare(fixed)
-        d2_st0 = declare(fixed)
-        d1_st1 = declare(fixed)
-        d2_st1 = declare(fixed)
-        d1_st2 = declare(fixed)
-        d2_st2 = declare(fixed)
+        d1_st = declare(fixed, size=self.num_of_states)
+        d2_st = declare(fixed, size=self.num_of_states)
 
-        st0 = declare(fixed)
-        st1 = declare(fixed)
-        st2 = declare(fixed)
+        st = declare(fixed, size=self.num_of_states)
 
         measure(pulse, self.rr_qe, adc,
-                demod.full('state_0_in1', d1_st0, out1),
-                demod.full('state_0_in2', d2_st0, out2),
-                demod.full('state_1_in1', d1_st1, out1),
-                demod.full('state_1_in2', d2_st1, out2),
-                demod.full('state_2_in1', d1_st2, out1),
-                demod.full('state_2_in2', d2_st2, out2))
+                *[demod.full(f'state_{str(i)}_in1', d1_st[i], out1) for i in range(self.num_of_states)],
+                *[demod.full(f'state_{str(i)}_in2', d2_st[i], out2) for i in range(self.num_of_states)]
+                )
 
-        assign(st0, d1_st0 + d2_st0 - bias[0])
-        assign(st1, d1_st1 + d2_st1 - bias[1])
-        assign(st2, d1_st2 + d2_st2 - bias[2])
+        for i in range(self.num_of_states):
+            assign(st[i], d1_st[i] + d2_st[i] - bias[i])
 
-        with if_((st0 >= st1) & (st0 >= st2)):
+        with if_((st[0] >= st[1]) & (st[0] >= st[2])):
             assign(res, 0)
-        with if_((st1 >= st0) & (st1 >= st2)):
+        with if_((st[1] >= st[0]) & (st[1] >= st[2])):
             assign(res, 1)
-        with if_((st2 >= st0) & (st2 >= st1)):
+        with if_((st[2] >= st[0]) & (st[2] >= st[1])):
             assign(res, 2)

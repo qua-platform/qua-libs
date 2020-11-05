@@ -16,10 +16,10 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = [500, 500, 500]
+N = [200, 200, 200]
 states = ['g', 'e', 'f']
-wait_time = 10
 
+wait_time = 10
 with program() as training_program:
     n = declare(int)
     I = declare(fixed)
@@ -50,9 +50,8 @@ with program() as test_program:
     n = declare(int)
     res = declare(int)
     seq0 = []
-    for (i, state), shots in zip(enumerate(states), N):
+    for state, shots in zip(states, N):
         with for_(n, 0, n < shots, n + 1):
-            seq0 += [i] * int(shots)
             discriminator.measure_state("readout_pulse_" + state, "out1", "out2", res)
 
             save(res, 'res')
@@ -65,10 +64,11 @@ result_handles = job.result_handles
 result_handles.wait_for_all_values()
 res = result_handles.get('res').fetch_all()['value']
 
-p_s = np.zeros(shape=(3, 3))
-for i in range(3):
-    res_i = res[np.array(seq0) == i]
-    p_s[i, :] = np.array([np.mean(res_i == j) for j in range(3)])
+p_s = np.zeros(shape=(len(states), len(states)))
+measures_per_state = [0] + list(np.cumsum(N))
+for i in range(len(states)):
+    res_i = res[measures_per_state[i]:measures_per_state[i+1]]
+    p_s[i, :] = np.array([np.mean(res_i == j) for j in range(len(states))])
 
 fig = plt.figure()
 ax = plt.subplot()
