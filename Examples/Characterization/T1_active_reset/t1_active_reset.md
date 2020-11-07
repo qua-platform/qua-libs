@@ -1,4 +1,4 @@
-#Superconducting qubit T1 measurement 
+#Superconducting qubit T1 measurement with active reset 
 
 The is a T1 decay time measurement written specifically for the 
 superconducting qubit case. 
