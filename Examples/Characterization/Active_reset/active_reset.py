@@ -1,6 +1,6 @@
 """
-t1_active_reset.py: Single qubit T1 decay time with active reset
-Author: Niv Druker - Quantum Machines
+active_reset.py: Single qubit T1 decay time with active reset
+Author: Niv Drucker - Quantum Machines
 Created: 7/11/2020
 Created on QUA version: 0.5.138
 """

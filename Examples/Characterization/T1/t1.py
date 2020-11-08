@@ -35,6 +35,7 @@ with program() as T1:
         with for_(tau, 4, tau < taumax, tau + dtau):
             play('X', 'qubit')
             wait(tau, 'qubit')
+            align('rr','qubit')
             measure('readout', 'rr', None, demod.full('integW1', I), demod.full('integW2', Q))
             save(I, 'I_res')
             save(Q, 'Q_res')
