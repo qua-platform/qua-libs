@@ -119,12 +119,10 @@ class StateDiscriminator:
         """
         The train procedure is used to calibrate the optimal weights and bias for each state. A file with the optimal
         parameters is generated during training, and it is used during the subsequent measure_state procedure.
-        A training program must be provided in the constructor.
-        :param program: a training program. A program that generates training sets. The program should generate equal
-        number of training sets for each one of the states. Collection of training sets is achieved by first preparing
-        the qubit in one of the states, and then measure the readout resonator element. The measure command must include
-        streaming of the raw data (the tag must be called "adc") and the final complex demodulation results (which is
-        constructed from 4 real demodulations) must be saved under the tags "I" and "Q". E.g:
+        :param program: The program should generate equal number of training sets for each one of the qubit states.
+        One first prepares the qubit in one of the states, and then measures the readout resonator element. The measure
+        command must include saving the raw data (the tag must be called "adc") and the final complex demodulation
+        results (which is constructed from 4 real demodulations) must be saved under the tags "I" and "Q". E.g:
 
             measure("readout", "rr", "adc", demod.full("integW_cos", I1, "out1"),
                                             demod.full("integW_sin", Q1, "out1"),
@@ -136,9 +134,9 @@ class StateDiscriminator:
             save(Q, 'Q')
 
         :param use_hann_filter: Whether or not to use a LPF on the averaged sampled baseband waveforms.
-        :type bool.
+        :type use_hann_filter: bool
         :param plot: Whether or not to plot some figures for debug purposes.
-        :type bool
+        :type plot: bool
         """
 
         I_res, Q_res, ts, x = self._execute_and_fetch(program, **execute_args)
@@ -153,10 +151,9 @@ class StateDiscriminator:
 
         '''
         The weights and biases are calculated in order to optimally perform the Maximum Likelihood estimation of
-        the states
+        the qubit state
         '''
         weights = weights / norm
-        # the biases for each of the states
         bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
 
         np.savez(self.path, weights=weights, bias=bias)
@@ -204,10 +201,10 @@ class StateDiscriminator:
         """
         This procedure generates a macro of QUA commands for measuring the readout resonator and discriminating between
         the states of the qubit its states.
-        :param pulse: A string with the readout pulse name.
-        :param out1: A string with the name first output of the readout resonator (corresponding to the real part of the
+        :param pulse: readout pulse name.
+        :param out1: output 1 name of the readout resonator (corresponding to the real part of the
          complex IN(t) signal).
-        :param out2: A string with the name second output of the readout resonator (corresponding to the imaginary part
+        :param out2: output 2 name of the readout resonator (corresponding to the imaginary part
         of the complex IN(t) signal).
         :param res: An integer QUA variable that will receive the discrimination result (0,1,... #states)
         :param adc: (optional) the stream variable which the raw ADC data will be saved and will appear in result

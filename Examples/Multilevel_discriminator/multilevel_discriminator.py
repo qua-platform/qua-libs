@@ -1,3 +1,10 @@
+"""
+multilevel_discriminator.py: Multilevel discriminator for qubit state measurement
+Author: Ilan Mitnikov, Nir Halay - Quantum Machines
+Created: 8/11/2020
+Created on QUA version: 0.6.156
+"""
+
 from StateDiscriminator import StateDiscriminator
 from configuration import config
 
@@ -16,11 +23,16 @@ simulation_config = SimulationConfig(
     )
 )
 
-N = [200, 200, 200, 200]
-states = ['g', 'e', 'f', 'h']
+states = ['g', 'e', 'f']  # state labels
+N = [200] * len(states)  # number of shots per state
+
+assert len(states) == len(N)
 
 wait_time = 10
 with program() as training_program:
+    '''
+    This program prepares the qubits in each of the states and then measures the readout response
+    '''
     n = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
@@ -31,6 +43,11 @@ with program() as training_program:
 
     for state, shots in zip(states, N):
         with for_(n, 0, n < shots, n + 1):
+            # prepare qubit state
+            play('prepare_' + state, 'qb1a')
+            # send a mixed IQ readout pulse, and demodulate in order to get the I and Q components
+            # in general the readout pulse could be the same for all qubit state,
+            # it is different for the simulation purposes
             measure("readout_pulse_" + state, "rr1a", "adc",
                     demod.full("integW_cos", I1, "out1"),
                     demod.full("integW_sin", Q1, "out1"),
@@ -43,27 +60,40 @@ with program() as training_program:
             wait(wait_time, "rr1a")
 
 qmm = QuantumMachinesManager()
-discriminator = StateDiscriminator(qmm, config, 'rr1a', len(states), 'gef_disc_params.npz')
-discriminator.train(program=training_program, plot=True, dry_run=True, simulate=simulation_config)
+discriminator = StateDiscriminator(qmm, config, 'rr1a', len(states), 'discriminator_params.npz')
 
+# train the discriminator on the prepared states and readout response, for best state assignment during measurement
+# for simulating:
+discriminator.train(program=training_program, plot=True, dry_run=True, simulate=simulation_config)
+# when running a real experiment:
+# discriminator.train(program=training_program, plot=True)
+
+# after training the discriminator one can use it to measure the qubit states
 with program() as test_program:
+    '''
+    This program measures the readout response and determines the state of the qubit according to the discriminator
+    '''
     n = declare(int)
     res = declare(int)
     seq0 = []
     for state, shots in zip(states, N):
         with for_(n, 0, n < shots, n + 1):
             discriminator.measure_state("readout_pulse_" + state, "out1", "out2", res)
-
             save(res, 'res')
             wait(wait_time, "rr1a")
 
 qm = qmm.open_qm(config)
+
+# for simulating do:
 job = qm.execute(test_program, duration_limit=0, data_limit=0, dry_run=True, simulate=simulation_config)
+# when running a real experiment simply specify the desired duration and data limits:
+# job = qm.execute(test_program, duration_limit=, data_limit=)
 
 result_handles = job.result_handles
 result_handles.wait_for_all_values()
 res = result_handles.get('res').fetch_all()['value']
 
+# plot the confusion matrix to see how well the discriminator does
 p_s = np.zeros(shape=(len(states), len(states)))
 measures_per_state = [0] + list(np.cumsum(N))
 for i in range(len(states)):

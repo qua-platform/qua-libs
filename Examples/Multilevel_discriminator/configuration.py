@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 #############################
 # simulation helpers #
@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 def simulate_pulse(IF_freq, chi, k, Ts, Td, power):
     I = [0]
     Q = [0]
-
+    # solve numerically a simplified version of the readout resonator
     for t in range(Ts):
-        I.append(I[-1]+(power/2 - k*I[-1]+Q[-1]*chi))
-        Q.append(Q[-1]+(power/2 - k*Q[-1]-I[-1]*chi))
+        I.append(I[-1] + (power / 2 - k * I[-1] + Q[-1] * chi))
+        Q.append(Q[-1] + (power / 2 - k * Q[-1] - I[-1] * chi))
 
     for t in range(Td - 1):
-        I.append(I[-1]+(-k*I[-1]+Q[-1]*chi))
-        Q.append(Q[-1]+(-k*Q[-1]-I[-1]*chi))
+        I.append(I[-1] + (-k * I[-1] + Q[-1] * chi))
+        Q.append(Q[-1] + (-k * Q[-1] - I[-1] * chi))
 
     I = np.array(I)
     Q = np.array(Q)
@@ -30,38 +30,23 @@ def simulate_pulse(IF_freq, chi, k, Ts, Td, power):
 resonators_lo = 7.1e9  # High Band Pass
 WG1_lo = resonators_lo
 WG2_lo = resonators_lo
-q1a_res_IF = 40e6
-q2a_res_IF = 41e6
+rr1a_res_IF = 40e6
+qb1a_res_IF = 50e6
 
 readout_len = 480
-IF_freq = q1a_res_IF
-Ts = readout_len-200
+IF_freq = rr1a_res_IF
+Ts = readout_len - 200
 Td = 200
 power = 0.2
 k = 0.04
 chi = 0.023
+
+# simulate the readout resonator response for different qubit states
+# and assign this as pulses for the loopback interface only for simulation purposes
+# Need to assign the chi parameter for each state, relative to the measurement frequency
 [tg_, Ig_, Qg_, Sg_] = simulate_pulse(IF_freq, -1 * chi, k, Ts, Td, power)
 [te_, Ie_, Qe_, Se_] = simulate_pulse(IF_freq, 1 * chi, k, Ts, Td, power)
-[tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 3 * chi, k, Ts, Td, power)
-[th_, Ih_, Qh_, Sh_] = simulate_pulse(IF_freq, 5 * chi, k, Ts, Td, power)
-
-plt.figure()
-plt.plot(Ig_, Qg_)
-plt.plot(Ie_, Qe_)
-plt.plot(If_, Qf_)
-
-plt.figure()
-plt.plot(Ig_)
-plt.plot(Qg_)
-plt.figure()
-plt.plot(Ie_)
-plt.plot(Qe_)
-plt.plot(If_)
-plt.plot(Qf_)
-plt.figure()
-plt.plot(np.abs(Ig_+1j*Qg_))
-plt.plot(np.abs(Ie_+1j*Qe_))
-plt.plot(np.abs(If_+1j*Qf_))
+[tf_, If_, Qf_, Sf_] = simulate_pulse(IF_freq, 5 * chi, k, Ts, Td, power)
 
 divide_signal_factor = 100
 config = {
@@ -96,13 +81,11 @@ config = {
                 'lo_frequency': WG1_lo,
                 'mixer': 'mixer_WG1',
             },
-            'intermediate_frequency': q1a_res_IF,
+            'intermediate_frequency': rr1a_res_IF,
             'operations': {
-                'readout': 'readout_pulse_q1a',
                 'readout_pulse_g': 'readout_pulse_g',
                 'readout_pulse_e': 'readout_pulse_e',
                 'readout_pulse_f': 'readout_pulse_f',
-                'readout_pulse_h': 'readout_pulse_h'
             },
             'outputs': {
                 'out1': ('con1', 1),
@@ -111,21 +94,19 @@ config = {
             'time_of_flight': 188,
             'smearing': 0,
         },
-
-        'rr2a': {
+        # qubits
+        'qb1a': {
             'mixInputs': {
                 'I': ('con1', 1),
                 'Q': ('con1', 2),
                 'lo_frequency': WG2_lo,
                 'mixer': 'mixer_WG2',
             },
-            'intermediate_frequency': q2a_res_IF,
+            'intermediate_frequency': qb1a_res_IF,
             'operations': {
-                'readout': 'readout_pulse_q1a',
-                'readout_pulse_g': 'readout_pulse_g',
-                'readout_pulse_e': 'readout_pulse_e',
-                'readout_pulse_f': 'readout_pulse_f',
-                'readout_pulse_h': 'readout_pulse_h'
+                'prepare_g': 'prepare_g',
+                'prepare_e': 'prepare_e',
+                'prepare_f': 'prepare_f',
             },
             'outputs': {
                 'out1': ('con1', 1),
@@ -135,24 +116,35 @@ config = {
             'smearing': 0,
         },
 
-
-
     },
 
     'pulses': {
 
-        'readout_pulse_q1a': {
-            'operation': 'measurement',
-            'length': readout_len,
+        'prepare_g': {
+            'operation': 'control',
+            'length': 16,
             'waveforms': {
-                'I': 'ro_wf_q1a',
+                'I': 'zero_wf',
                 'Q': 'zero_wf'
-            },
-            'integration_weights': {
-                'integW_cos': 'integW_cos',
-                'integW_sin': 'integW_sin'
-            },
-            'digital_marker': 'ON'
+            }
+        },
+
+        'prepare_e': {
+            'operation': 'control',
+            'length': 20,
+            'waveforms': {
+                'I': 'const_wf',
+                'Q': 'zero_wf'
+            }
+        },
+
+        'prepare_f': {
+            'operation': 'control',
+            'length': 32,
+            'waveforms': {
+                'I': 'const_wf',
+                'Q': 'const_wf'
+            }
         },
 
         'readout_pulse_g': {
@@ -197,20 +189,6 @@ config = {
             'digital_marker': 'ON'
         },
 
-        'readout_pulse_h': {
-            'operation': 'measurement',
-            'length': readout_len,
-            'waveforms': {
-                'I': 'Ih_wf',
-                'Q': 'Qh_wf'
-            },
-            'integration_weights': {
-                'integW_cos': 'integW_cos',
-                'integW_sin': 'integW_sin'
-            },
-            'digital_marker': 'ON'
-        },
-
     },
 
     'waveforms': {
@@ -220,9 +198,9 @@ config = {
             'sample': 0.0
         },
 
-        'ro_wf_q1a': {
+        'const_wf': {
             'type': 'constant',
-            'sample': 0.11
+            'sample': 0.1
         },
 
         'Ig_wf': {
@@ -255,16 +233,6 @@ config = {
             'samples': [float(arg / divide_signal_factor) for arg in Qf_]
         },
 
-        'Ih_wf': {
-            'type': 'arbitrary',
-            'samples': [float(arg / divide_signal_factor) for arg in Ih_]
-        },
-
-        'Qh_wf': {
-            'type': 'arbitrary',
-            'samples': [float(arg / divide_signal_factor) for arg in Qh_]
-        },
-
     },
 
     'digital_waveforms': {
@@ -290,11 +258,11 @@ config = {
 
     'mixers': {
         'mixer_WG1': [
-            {'intermediate_frequency': q1a_res_IF, 'lo_frequency': WG1_lo, 'correction': [1, 0, 0, 1]},
+            {'intermediate_frequency': rr1a_res_IF, 'lo_frequency': WG1_lo, 'correction': [1, 0, 0, 1]},
         ],
 
         'mixer_WG2': [
-            {'intermediate_frequency': q2a_res_IF, 'lo_frequency': WG2_lo, 'correction': [1, 0, 0, 1]},
+            {'intermediate_frequency': qb1a_res_IF, 'lo_frequency': WG2_lo, 'correction': [1, 0, 0, 1]},
         ],
     }
 }
