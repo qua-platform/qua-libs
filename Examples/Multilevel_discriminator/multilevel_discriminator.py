@@ -27,7 +27,9 @@ states = ['g', 'e', 'f']  # state labels
 N = [200] * len(states)  # number of shots per state
 
 assert len(states) == len(N)
-
+'''
+Training
+'''
 wait_time = 10
 with program() as training_program:
     '''
@@ -46,8 +48,7 @@ with program() as training_program:
             # prepare qubit state
             play('prepare_' + state, 'qb1a')
             # send a mixed IQ readout pulse, and demodulate in order to get the I and Q components
-            # in general the readout pulse could be the same for all qubit state,
-            # it is different for the simulation purposes
+            # In an experiment with a real physical system use just 'readout_pulse' instead.
             measure("readout_pulse_" + state, "rr1a", "adc",
                     demod.full("integW_cos", I1, "out1"),
                     demod.full("integW_sin", Q1, "out1"),
@@ -68,17 +69,26 @@ discriminator.train(program=training_program, plot=True, dry_run=True, simulate=
 # when running a real experiment:
 # discriminator.train(program=training_program, plot=True)
 
+'''
+Testing
+'''
 # after training the discriminator one can use it to measure the qubit states
 with program() as test_program:
     '''
-    This program measures the readout response and determines the state of the qubit according to the discriminator
+    This program prepares the qubit state and measures the readout response.
+    Then determines the state of the qubit according to the discriminator
     '''
     n = declare(int)
     res = declare(int)
     seq0 = []
     for state, shots in zip(states, N):
         with for_(n, 0, n < shots, n + 1):
+            # prepare qubit state
+            play('prepare_' + state, 'qb1a')
+            # measure using loopback simulation
             discriminator.measure_state("readout_pulse_" + state, "out1", "out2", res)
+            # measure a real physical system
+            # discriminator.measure_state("readout_pulse", "out1", "out2", res)
             save(res, 'res')
             wait(wait_time, "rr1a")
 

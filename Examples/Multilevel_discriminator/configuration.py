@@ -27,9 +27,8 @@ def simulate_pulse(IF_freq, chi, k, Ts, Td, power):
     return t, I, Q, S
 
 
-resonators_lo = 7.1e9  # High Band Pass
-WG1_lo = resonators_lo
-WG2_lo = resonators_lo
+WG1_lo = 7.1e9
+WG2_lo = 6.2e9
 rr1a_res_IF = 40e6
 qb1a_res_IF = 50e6
 
@@ -83,6 +82,7 @@ config = {
             },
             'intermediate_frequency': rr1a_res_IF,
             'operations': {
+                'readout_pulse' : 'readout_pulse',
                 'readout_pulse_g': 'readout_pulse_g',
                 'readout_pulse_e': 'readout_pulse_e',
                 'readout_pulse_f': 'readout_pulse_f',
@@ -146,7 +146,19 @@ config = {
                 'Q': 'const_wf'
             }
         },
-
+        'readout_pulse': {
+            'operation': 'measurement',
+            'length': readout_len,
+            'waveforms': {
+                'I': 'const_wf',
+                'Q': 'zero_wf'
+            },
+            'integration_weights': {
+                'integW_cos': 'integW_cos',
+                'integW_sin': 'integW_sin'
+            },
+            'digital_marker': 'ON'
+        },
         'readout_pulse_g': {
             'operation': 'measurement',
             'length': readout_len,
