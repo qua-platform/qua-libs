@@ -30,6 +30,8 @@ with program() as T1:
     n = declare(int)
     tau = declare(int)
     tau_vec = declare_stream()
+    I_res=declare_stream()
+    Q_res = declare_stream()
 
     with for_(n, 0, n < NAVG, n + 1):
         with for_(tau, 4, tau < taumax, tau + dtau):
@@ -37,13 +39,15 @@ with program() as T1:
             wait(tau, 'qubit')
             align('rr','qubit')
             measure('readout', 'rr', None, demod.full('integW1', I), demod.full('integW2', Q))
-            save(I, 'I_res')
-            save(Q, 'Q_res')
+            save(I, I_res)
+            save(Q, Q_res)
             wait(recovery_delay // 4, 'qubit')
             save(tau, tau_vec)
 
     with stream_processing():
         tau_vec.save_all('tau_vec')
+        I_res.save_all('I_res')
+        Q_res.save_all('Q_res')
 
 job = QM1.simulate(T1,
                    SimulationConfig(int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
