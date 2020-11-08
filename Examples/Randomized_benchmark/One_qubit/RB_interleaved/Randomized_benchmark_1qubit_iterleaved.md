@@ -1,7 +1,7 @@
-#Interleaved randomized benchmarking - 1 Qubit
+# Interleaved randomized benchmarking - 1 Qubit
 
  
-##config
+## config
 
 The configuration dictionary is in the `configuration.py` file and is imported into the main program file 
 `t1.py`. 
@@ -30,7 +30,7 @@ be defined to perform a measurement. As for the `qubit` we define the associated
 > ⚠️Note that failing to declare a `digital_marker` will not fail program compilation, 
 but will prevent data from being acquired. 
 
-##program 
+## program 
 
 The QUA program `T1` is built around two nested `for_` loops. The external 
 loop is used for repeated averaging stesp and the internal loop scans the parameter `tau`.
@@ -52,7 +52,7 @@ get the stream (`raw_adc_input1`). This is an idiosyncrasy of the
 raw ADC interface which doesn't not appear in other QUA data saving 
 mechanisms.
    
-##post processing
+## post processing
 
 To get an estimate of the probability to be in the excited state as a function of delay duration, 
 we need to reshape the output streams and calculate the statistics: mean and variance of the 

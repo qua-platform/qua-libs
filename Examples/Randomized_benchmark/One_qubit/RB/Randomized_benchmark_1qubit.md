@@ -1,11 +1,11 @@
-#Randomized benchmarking - 1 Qubit
+# Randomized benchmarking - 1 Qubit
 
 Randomized benchmarking is a procedure to generate an 
 average figure-of-merit characterizing the fidelity of 
 qubit operations. As full process tomograph is costly in terms
 of the number of required operations,  
  
-##config
+## config
 
 The configuration defines a mixed input quantum element: `qe1`. 
 This element has operations to rotate the qubit by plus/minus pi/2 or pi around the
@@ -28,7 +28,7 @@ be defined to perform a measurement. As for the `qubit` we define the associated
 > ⚠️Note that failing to declare a `digital_marker` will not fail program compilation, 
 but will prevent data from being acquired. 
 
-##program 
+## program 
 
 The QUA program `T1` is built around two nested `for_` loops. The external 
 loop is used for repeated averaging stesp and the internal loop scans the parameter `tau`.
@@ -50,7 +50,7 @@ get the stream (`raw_adc_input1`). This is an idiosyncrasy of the
 raw ADC interface which doesn't not appear in other QUA data saving 
 mechanisms.
    
-##post processing
+## post processing
 
 To get an estimate of the probability to be in the excited state as a function of delay duration, 
 we need to reshape the output streams and calculate the statistics: mean and variance of the 

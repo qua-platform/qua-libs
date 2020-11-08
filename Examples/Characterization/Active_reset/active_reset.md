@@ -1,4 +1,4 @@
-#Superconducting qubit active reset 
+# Superconducting qubit active reset 
 
 The active reset procedure is a good example of how the OPX can use feedback from
 a measurement to feed-forward the state of a qubit. 
@@ -7,7 +7,7 @@ and itegrated in-phase signal to a threshold value. It then conditionally plays 
 pi pulse on that qubit. 
 
  
-##config
+## config
 
 The configuration dictionary is in the `configuration.py` file and is imported into the main program file 
 `t1.py`. 
@@ -36,7 +36,7 @@ be defined to perform a measurement. As for the `qubit` we define the associated
 > ⚠️Note that failing to declare a `digital_marker` will not fail program compilation, 
 but will prevent data from being acquired. 
 
-##program 
+## program 
 
 The QUA program `active_reset` is built an averaging `for_` loop. 
 The body of the loops plays the `pi` operation if `I>th`.
@@ -45,6 +45,6 @@ It then perform an additional meausrmeent and saves the `I`,`Q` results to strea
 manipulated by the user on the client side (in Python)
 
    
-##post processing
+## post processing
 
 No post processing is currently supplied for this script. 

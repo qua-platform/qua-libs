@@ -10,7 +10,7 @@ Furthermore, we define two operations `readout` and `long_readout`, associated w
 Both pulses define a constant signal on the `I` component and zero on the `Q` component. 
 That is because we are just interested in the resonance frequency so we care only about the magnitude of the signal.
 
-##Program
+## Program
 The program `resonator_spectroscopy` consists of an outer averaging loop and an inner scanning loop.
 The inner loop scans a range of frequencies and in each cycle changes the frequency using the `update_frequency` command,
 and then measures the readout resonator using the `measure` command.
@@ -26,6 +26,6 @@ of the I,Q response at that frequency.
 > ⚠ Note that the buffer output anything only when full, 
 >i.e if the buffer of size 100 but one only saves 70 values it will be empty at the fetching stage.
 
-##Post Processing
+## Post Processing
 No post processing provided. 
 One needs to use the extracted I,Q values to determine the resonance frequency by the response spectrum.
