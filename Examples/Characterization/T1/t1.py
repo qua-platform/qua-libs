@@ -21,7 +21,7 @@ QM1 = QMm.open_qm(config)
 
 taumax = 100
 dtau = 12
-NAVG = 80
+NAVG = 60
 recovery_delay = 100  # wait to return to ground
 N_tau = taumax // dtau
 with program() as T1:
