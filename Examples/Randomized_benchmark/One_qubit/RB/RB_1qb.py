@@ -52,7 +52,7 @@ def randomize_circuit(n_gates: int, init_state: str = 'x'):
 QM1 = QMm.open_qm(config)
 
 N_avg = 10
-circuit_depth_vec = list(range(10, 50, 10))
+circuit_depth_vec = list(range(1, 20, 1))
 
 with program() as RBprog:
     N = declare(int)
