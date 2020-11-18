@@ -1,0 +1,229 @@
+Quantum Machines End User License Agreement
+===========================================
+
+PLEASE READ CAREFULLY END USER LICENSE AGREEMENT (THE "EULA") BEFORE INSTALLING,
+ACCESSING, DOWNLOADING OR USING THE SOLUTION (AS DEFINED BELOW) INCLUDING ANY
+SOFTWARE OR HARDWAR THEREIN, PROVIDED TO YOU ("USER", "YOU") BY QM (AS DEFINED BELOW).
+BY INSTALLING, HAVING INSTALLED, CONTROLLING, ACCESSING, DOWNLOADING OR OTHERWISE
+USING THE SOLUTION IN ANY MANNER, YOU ARE ACCEPTING AND AGREEING TO BE BOUND BY
+ALL THE TERMS AND CONDITIONS HEREOF AND REPRESENTING THAT YOU HAVE FULL RIGHT,
+POWER, AND AUTHORITY TO ENTER INTO AND PERFORM HEREUNDER. WRITTEN APPROVAL IS NOT
+A PREREQUISITE TO THE VALIDITY OR ENFORCEABILITY OF THIS EULA. YOU MAY NOT INSTALL,
+DEPLOY, DOWNLOAD, CONTROL, ACCESS OR USE THE SOLUTION IN ANY MANNER UNTIL YOU
+HAVE ACCEPTED THIS EULA.
+THIS EULA IS MADE BETWEEN YOU AND QM MACHINES LTD. AND ITS AFFILIATES (AS DEFINED BELOW)
+("QM"), WITH RESPECT TO THE SOLUTION.
+YOU ASSUME ALL RESPONSIBILITY FOR THE SELECTION OF THE SOLUTION, FOR YOUR RELIANCE ON
+THE RESULTS OF USE OF THE SOLUTION AND SOLUTION SERVICES AND FOR ANY USE OF THE SOLUTION
+NOT IN ACCORDANCE WITH THE TERMS HEREOF OR AS CONTEMPLATED HEREUNDER.
+
+1. DEFINITIONS
+--------------
+
+1.1    "Affiliate" means any entity which controls, is controlled or is under common control
+       with either of the parties.  Any entity shall be deemed to "control" another entity if it
+       owns directly or indirectly more than 50% of the outstanding voting securities or capital
+       of other entity or other comparable equity with respect to an entity other than a company.
+
+1.2    "Documentation" means the standard written materials regarding the Solution issued and
+       generally provided by QM to its customers.
+
+1.3    "Third Party Components" shall mean collectively any devices and products, whether
+       hardware or software, which are licensed by third parties and that are integrated
+       into or with the Solution.
+
+1.4    "Software" shall mean QM’s proprietary software components, provided with and/or
+       incorporated into the Solution.
+
+1.5    "Solution" shall mean QM’s equipment, including all Software and hardware therein.
+
+2. LICENSE RIGHTS; RESTRICTIONS
+-------------------------------
+
+2.1    QM grants you, subject to full compliance with the terms and conditions set forth
+       herein, a non-exclusive, non-transferable, non-sublicensable, limited under this EULA) license to:
+
+2.1.1  use, access, and operate the Solution as provided, installed and configured by QM,
+       solely for your internal or personal use and in any event not for any further
+       commercialization or provision of the Solution or any parts thereof, to any third
+       party ("Purpose") all strictly in accordance with the technical instructions set
+       forth in the Documentation; and
+
+2.1.2  access, use and make verbatim copies of the Documentation provided to you by QM,
+       solely in connection with your internal or personal use of the Solution as permitted
+       hereunder solely for the Purpose, and provided that all copyright notices are included
+       and maintained therein.
+
+2.2    Use Restrictions.
+
+2.2.1  Unless otherwise expressly provided herein, you agree that you will not, nor will you
+       allow any third party whether or not on your behalf to: (a) distribute, license, rent,
+       lease, sublicense, loan, sell or otherwise allow any third party to access the Solution;
+       (b) modify, alter, copy, transfer, emulate or create any derivative works of the Solution
+       or of any part thereof (including any of the Software components thereof); (c) reverse
+       engineer, decompile, decode, decrypt, disassemble, or in any way attempt to derive source
+       code or designs from the Solution or any part thereof (including of any of the Software
+       components thereof); (d) remove, alter or obscure any copyright, trademark or other proprietary
+       rights notice, on or in, the Solution, any of its components and/or the Documentation;
+       (e) bundle, integrate, or attempt to integrate with the Solution or with any component
+       thereof, any third-party software,   hardware or technology other than as expressly permitted
+       in writing by QM (including through the Documentation); (f) use the Solution for any
+       benchmarking or for competing development activities, (g) publish or disclose to any third
+       party any technical features, quality, performance or benchmark test, or comparative analyses
+       relating to the Solution, except for your internal use or as expressly permitted by QM in writing;
+       or (h) disable or otherwise circumvent any license management measures included in the Software
+       and/or the Solution. You shall limit access to the Solution to your authorized employees,
+       Affiliates and personnel, and will administer account information and passwords accordingly,
+       and will cause all such employees, Affiliates and personnel to comply with the terms of this EULA.
+
+2.2.2  Without derogating from the foregoing, you shall take all commercially reasonable precautions to
+       prevent any unauthorized access and/or unauthorized usage of the Solution. You shall be responsible
+       and liable for any act or omission by anyone acting on your (or your Affiliates’) behalf or
+       authorization, and/or anyone having obtained use of or access to the Solution from you (or your
+       Affiliates), including without limitation your employees, representatives, personnel, or your
+       Affiliates, and such Affiliates’ employees, representatives, and personnel ("Representatives"),
+       as if performed by you.
+
+2.3    Marks and Use of Name.  This EULA does not grant to you any rights to QM’s trademarks or service marks.
+
+2.4    Third Party Software.  IN ACCEPTING THIS EULA, YOU CONFIRM AND ACKNOWLEDGE THE UTILIZATION OF
+       THIRD-PARTY COMPONENTS, IN THE SOLUTION AND ACKNOWLEDGE THAT SUCH THIRD-PARTY COMPONENTS ARE BEING
+       INSTALLED WITH YOUR CONSENT. WITHOUT DEROGATING FROM QM’S LIMITED WARRANTY PROVIDED IN SECTION 3 BELOW,
+       SUCH THIRD PARTY COMPONENTS ARE UTILIZED ON AN "AS IS" BASIS WITHOUT ANY WARRANTY WHATSOEVER AND QM HEREBY
+       EXPRESSLY DISCLAIMS WITH RESPECT TO ANY SUCH THIRD PARTY COMPONENTS, AND TO THE MAXIMUM EXTENT PERMITTED
+       BY APPLICABLE LAW ALL WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, WITHOUT LIMITATION,
+       THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+2.5    Export Restrictions.  You acknowledge that the Solution may be subject to applicable export jurisdiction
+       and to any other applicable laws and regulation concerning the transfer of the Solution or any part thereof
+       across international borders. You will comply with all applicable national and international laws that
+       apply to your use of the Solution, including United States Export Administration Regulations, as well as
+       end user, end use and destination restrictions which may be issued by the United States and other
+       governments from time to time.
+
+3. MAINTENANCE AND SUPPORT; WARRANTIES; DISCLAIMERS
+---------------------------------------------------
+
+3.1    Alpha Version. You acknowledge that the Solution including all components thereof, is an Alpha/Beta version
+       which is still under development, and as such (i) is not at the level of performance or compatibility of
+       final, generally available products; (ii) may not operate correctly, (iii) may be further developed or
+       modified; (iv) may not be made for general release, and (v) should not be used in a commercial production
+       environment.
+
+3.2    QM may provide periodic updates to the Solution and may provide maintenance and support for the Solution
+       in accordance with the terms and conditions under which the Solution was purchased. You hereby grant QM the
+       right to remotely access the Solution and any of its components, including as installed or connected to your
+       hardware, for the purpose of customer support only.
+
+3.3    Notwithstanding, QM will not provide any maintenance and support (if applicable) in the event the Solution
+       or any part thereof is (i) modified or adjusted in any manner by any party other than QM or without QM’s
+       written approval, (ii) used in conjunction with your or any third party’s products, which resulted in the
+       defect, other than as specified in the Documentation or approved in writing by QM, (iii) abused, mishandled,
+       misused or otherwise used not in accordance with the Documentation and/or this EULA, or (iv) was not fully
+       paid for.
+
+3.4    EXCEPT AS EXPRESSLY PROVIDED IN THIS EULA, THE SOLUTION, IS PROVIDED BY QM "AS IS" AND QM MAKES NO
+       REPRESENTATIONS OR WARRANTIES, ORAL OR WRITTEN, EXPRESS OR IMPLIED, REGARDING THE SOLUTION, ARISING FROM
+       COURSE OF DEALING, COURSE OF PERFORMANCE, USAGE OF TRADE, QUALITY OF INFORMATION, QUIET ENJOYMENT OR OTHERWISE,
+       INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, OR NON-INTERFERENCE.
+       YOU ACKNOWLEDGE THAT YOU HAVE NOT ENTERED INTO THIS EULA IN RELIANCE UPON ANY WARRANTY OR REPRESENTATION NOT
+       EXPRESSLY CONTAINED IN THIS EULA.
+
+4. FEES.
+--------
+
+4.1    If you are a paying customer, you shall pay QM the fees as described in the Order Form added with any
+       applicable VAT or sales taxes (as applicable). Payment shall be due as described in the Order Form and
+       made in United States Dollars or New Israeli Shekels by wire transfer to QM’s designated bank account.
+       All fees shall be non-cancellable, and the sums paid non-refundable. If you are a paying customer,
+       you are responsible for payment of any taxes resulting from the possession and use of the Solution,
+       except for payment of any taxes based on or related to QM’s income.
+
+5. PROPRIETARY RIGHTS. You agree and acknowledge that, QM is and shall remain the sole and exclusive owner of
+       any and all Intellectual Property rights in or to the Solution and any part thereof, including any
+       modifications, enhancements, improvements, updates and upgrades, and derivative works thereof including
+       if originates, learned or derived from the use of the Solution or any part thereof by you or by any
+       Representatives or from information you or any Representatives provide to QM in connection with the Solution.
+       "Intellectual Property" shall mean all inventions, ideas, concepts, analyses, (whether patented,
+       or patentable, or not), methods, methodologies, designs, processes, patents, patent applications,
+       rights associated with works of authorship, including copyrights, copyrights applications, copyrights
+       restrictions, moral rights, any information, ancillary materials, devices, results, know-how, and all
+       rights relating to the protection of trade secrets and confidential information; design rights and industrial
+       property rights; mask works, software, all code including source code, object code, firmware; and any other
+       proprietary rights relating to intangible property. Other than as explicitly stated hereunder, no right or
+       license, express or implied, in or to the Intellectual Property of QM, is granted to you or to any
+       Representative under this EULA.
+
+6. INDEMNIFICATION. QM shall indemnify and hold you and your respective officers, directors, employees and
+       successors and permitted assigns ("Indemnified Parties") harmless from and against any costs and damages
+       actually awarded against the Indemnified Parties by a competent court in a final judgment, as a result of,
+       and defend the Indemnified Parties against, any third party claim that the Solution, or any portion thereof,
+       directly infringes such third party’s Intellectual Property rights. Such obligation is subject to: (i) the
+       Indemnified Parties promptly notifying QM in writing of any such claim; (ii) QM having the ability to assume
+       ole control of the defense and/or settlement of such claim; (iii) the Indemnified Parties furnishing to QM,
+       on request, all reasonable information available to the Indemnified Parties for such defense; and (iv) the
+       Indemnified Parties not admitting fault with respect to any such claim and/or making any payments or
+       concessions with respect to such claim without the prior written consent of QM. QM shall (i) keep the
+       Indemnified Parties duly informed in connection with the litigation and/or settlement negotiations,
+       and (ii) not execute any settlement covenant that imposes any liability or obligations on the Indemnified
+       Parties without the prior written consent from the relevant Indemnified Parties.
+
+6.1    Should the Solution, or any part thereof, become, or in QM’s opinion be likely to become, the subject of
+       any infringement claim as specified above, then QM will, at its own option and expense either: (i) procure
+       the right to continue using the Solution without infringement; (ii) replace or modify the Solution without
+       non-negligibly reducing its functionality, so that it becomes non-infringing; or (iii) if (i) or (ii) cannot
+       be achieved with by using reasonable commercial efforts, QM shall be entitled to terminate your license to
+       use the Solution immediately upon written notice.
+
+6.2    Notwithstanding the foregoing, QM shall have no liability for any claim of infringement which results from
+       (a) the use of the Solution or any part thereof in violation of any provision of this EULA, (b) your failure
+       to install changes, revisions or new releases as instructed or provided by QM at no cost, (c) use of a
+       combination of the Solution or any part thereof with other products, equipment, or software not provided
+       or approved in writing for such use under the Documentation or by QM, or (d) modifications of the Solution
+       not made by QM or without QM’s prior written consent.
+
+6.3    This section 6 states the exclusive remedy of the Indemnified Parties and the entire liability of QM with
+       respect to infringement claims involving the Solution or any part or use thereof, and QM shall have no
+       additional liability with respect to any alleged or proven infringement.
+
+7. LIMITATION OF LIABILITY. IN NO EVENT WILL QM, OR ITS AFFILIATES, OR THEIR RESPECTIVE DIRECTORS, OFFICERS,
+       SHAREHOLDER, AND EMPLOYEES’ ("QM’S PARTIES") AGGREGATE LIABILTY TO YOU, EXCEED THE AMOUNTS PAID BY YOU
+       TO QM IN RESPECT OF THE SOLUTION. IN NO EVENT WILL QM OR QM PARTIES, HAVE ANY LIABILITY TO YOU FOR ANY
+       INDIRECT, CONSEQUENTIAL, SPECIAL, EXEMPLARY OR INCIDENTAL DAMAGES, INCLUDING WITHOUT LIMITATION DAMAGES
+       FOR LOST PROFITS OR REVENUES, BUSINESS INTERRUPTION, LOSS OF GOODWILL, COMPUTER FAILURE OR MALFUNCTION,
+       LOSS OF DATA OR BUSINESS INFORMATION ARISING FROM THE INSTALLATION, OPERATION, USE OF OR INABILITY TO USE
+       THE SOLUTION, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES OR IF SUCH POSSIBILITY WAS
+       REASONABLY FORESEEABLE. NO ACTION, REGARDLESS OF FORM, ARISING OUT OF OR RELATING TO THIS EULA MAY BE
+       BROUGHT AGAINST QM MORE THAN TWELVE (12) MONTHS AFTER THE TERMINATION OR EXPIRATION OF THIS EULA.
+
+8. TERM AND TERMINATION.  You will have the rights set forth herein for the duration set forth by QM at its
+       discretion (unless otherwise agreed between QM and you under an applicable written agreement) and only for
+       so long as the you comply with this EULA. This EULA and all rights and licenses granted hereunder shall
+       automatically terminate if you breach the terms hereof and such breach is not cured within fourteen (14)
+       days of written notice of such breach.  Sections 1, 2.2, 2.3, 2.4, 2.5, 5, 6, 7, 8 and 9, will survive any
+       termination or expiration of This EULA.
+
+9. GENERAL
+
+9.1    Severability.  In the event any provision or part of This EULA is held to be invalid or unenforceable by any
+       court of competent jurisdiction, it shall be amended to the extent required to render it valid, legal and
+       enforceable, or deleted if no such amendment is feasible, and such amendment or deletion shall not affect
+       the enforceability of the other provisions hereof.
+
+9.2    Waiver.  No waiver of any breach of This EULA will be a waiver of any other breach, and no waiver will be
+       effective unless made in writing and signed by an authorized representative of the waiving party.
+       The failure of either party to enforce any rights granted hereunder or to take action against the other
+       party in the event of any breach hereunder shall not be deemed a waiver by that party as to subsequent
+       enforcement of rights or subsequent actions in the event of future breaches.
+
+9.3    Entire Agreement; Updates.  This EULA supersede all previous agreements or representations, written or oral,
+       with respect to the subject matter hereof between you and QM.  These Terms may not be modified or amended
+       except in writing signed by a duly authorized representative of each party. This EULA may be amended,
+       updated or modified, at QM's sole discretion, with any update of the Solution or any part thereof.
+
+9.4    Governing Law.  The validity, interpretation, and performance of this EULA shall be controlled by and
+       construed under the laws of the State of Israel/New York as if performed wholly within Israel/New York
+       and without giving effect to the principles of conflicts of laws.  The Parties hereby consent to the
+       exclusive jurisdiction of the courts of Tel Aviv/New York.
+
+------------------- [End of End User License Agreement] -------------------------
