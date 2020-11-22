@@ -47,6 +47,11 @@ def randomize_and_play_circuit(n_gates: int, init_state: str = 'x'):
         state = play_clifford(cliffords[np.random.randint(0, len(cliffords))], state)
     return state
 
+#   This measurement function is a typical SC qubit measurement (via a dispersive readout)
+def measure_state(state):
+  th = 0
+  measure('readout', 'rr', None, integration.full('integW1', I))
+            assign(state,I>th)
 
 QM1 = QMm.open_qm(config)
 
@@ -70,13 +75,8 @@ with program() as RBprog:
             final_state = randomize_and_play_circuit(depth)
             play_clifford(recovery_clifford(final_state), final_state)
             align('rr', 'qe1')
-            measure('readout', 'rr', None, integration.full('integW1', I))
-            # assign(state,I>th)
-            # save(state, out_str)
-            with if_(I > th):
-                save(s1, out_str)
-            with else_():
-                save(s0, out_str)
+            measure_state(state)
+            save(state, out_str)
             wait(10 * t1, 'qe1')
 
     with stream_processing():
