@@ -64,9 +64,6 @@ t1 = 10
 with program() as RBprog:
     N = declare(int)
     I = declare(fixed)
-    s1 = declare(int, val=1)
-    s0 = declare(int, val=0)
-    th = declare(fixed, val=0)
     state = declare(bool)
     out_str = declare_stream()
 
@@ -80,7 +77,7 @@ with program() as RBprog:
             wait(10 * t1, 'qe1')
 
     with stream_processing():
-        out_str.buffer(len(circuit_depth_vec)).average().save('out_stream')
+        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save('out_stream')
 
 job = QM1.simulate(RBprog,
                    SimulationConfig(int(100000)))
