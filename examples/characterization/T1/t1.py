@@ -15,7 +15,18 @@ from scipy.optimize import curve_fit
 
 QMm = QuantumMachinesManager()
 
+
 # Create a quantum machine based on the configuration.
+
+def estimate_state(th: fixed) -> bool:
+    """
+    Perform a qubit readout and estimate the resulting state
+    A superconducting qubit example is implemented
+    """
+    measure('readout', 'rr', None, demod.full('integW1', I))
+    save(I, I_res)
+    return I > th
+
 
 QM1 = QMm.open_qm(config)
 
@@ -30,14 +41,14 @@ with program() as T1:
     n = declare(int)
     tau = declare(int)
     tau_vec = declare_stream()
-    I_res=declare_stream()
+    I_res = declare_stream()
     Q_res = declare_stream()
 
     with for_(n, 0, n < NAVG, n + 1):
         with for_(tau, 4, tau < taumax, tau + dtau):
             play('X', 'qubit')
             wait(tau, 'qubit')
-            align('rr','qubit')
+            align('rr', 'qubit')
             measure('readout', 'rr', None, demod.full('integW1', I), demod.full('integW2', Q))
             save(I, I_res)
             save(Q, Q_res)
@@ -80,15 +91,17 @@ state_value = state_value.reshape(NAVG, N_tau)
 state_value_mean = state_value.mean(axis=0)
 state_value_var = state_value.var(axis=0)
 
-def decay(t, a,b):
-    return a*np.exp(-t/b)
-param0=[1,10]
-popt, pcov = curve_fit(decay, tau_vec, state_value_mean,param0,sigma=state_value_var)
 
+def decay(t, a, b):
+    return a * np.exp(-t / b)
+
+
+param0 = [1, 10]
+popt, pcov = curve_fit(decay, tau_vec, state_value_mean, param0, sigma=state_value_var)
 
 plt.figure()
-plt.errorbar(tau_vec, state_value_mean, yerr=state_value_var,label='measurement')
-plt.plot(tau_vec,decay(tau_vec,*popt),'-r',label='fit')
+plt.errorbar(tau_vec, state_value_mean, yerr=state_value_var, label='measurement')
+plt.plot(tau_vec, decay(tau_vec, *popt), '-r', label='fit')
 plt.legend()
 plt.title(f'T1 measurement T1={popt[1]:.1f} [ns]')
 plt.xlabel('tau[ns]')

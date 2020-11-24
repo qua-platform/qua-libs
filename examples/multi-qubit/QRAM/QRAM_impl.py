@@ -1,3 +1,6 @@
+import uuid
+
+
 class QuantumRouter:
     def __init__(self, id, top=0, routing=0, right=0, left=0):
         self.id = id
@@ -36,7 +39,8 @@ class QRAM:
         self.root = self.make_tree(address_width)
 
     def make_tree(self, depth):
-        node = QuantumRouter(id=depth)
+
+        node = QuantumRouter(id=uuid.uuid4())
         if depth == 1:
             return node
         node.left = self.make_tree(depth - 1)
@@ -49,3 +53,4 @@ class QRAM:
 
 if __name__ == '__main__':
     qram = QRAM(3)
+    print(qram.root)
