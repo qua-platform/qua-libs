@@ -51,12 +51,6 @@ def play_clifford(clifford: list, state: str):
     return state
 
 
-# def randomize_circuit(d: int, init_state: str = 'x'):
-#     state = init_state
-#     for ind in range(d):
-#         state = play_clifford(cliffords[np.random.randint(0, len(cliffords))], state)
-#     return state
-
 def randomize_and_play_circuit(n_gates: int, init_state: str = 'z'):
     """
 
