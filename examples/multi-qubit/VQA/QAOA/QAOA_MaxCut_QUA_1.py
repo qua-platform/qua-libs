@@ -22,14 +22,11 @@ from scipy.optimize import minimize, differential_evolution, brute
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
+from matplotlib import rc
 
-get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'svg' # Makes the images look nice")
 
-# Others
-# get_ipython().run_line_magic('matplotlib', 'inline')
-# useful additional packages
+π = np.pi
 
-# import math tools
 qm1 = QuantumMachinesManager("3.122.60.129")
 # QM configuration based on IBM Quantum Computer :
 # Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
@@ -90,15 +87,21 @@ def Hadamard(tgt):
 
 
 def U2(tgt, 𝜙=0, 𝜆=0):
-    z_rot(-𝜆, tgt)
-    play("DragOp_I", tgt)
+    Rz(𝜆, tgt)
+    Y90(tgt)
+    Rz(𝜙, tgt)
 
 
 def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
-    return None
+    Rz(𝜆-π/2, tgt)
+    X90(tgt)
+    Rz(π-𝜃, tgt)
+    X90(tgt)
+    Rz(𝜙-π/2)
 
 
-def CNOT(ctrl, tgt):
+
+def CNOT(ctrl, tgt):  # To be defined
     return None
 
 
@@ -116,6 +119,13 @@ def CU1(𝜆, ctrl, tgt):
 
 def Rx(𝜆, tgt):
     U3(𝜆, -π / 2, π / 2)
+
+def X90(tgt):
+    play('Drag_Op_I', tgt)
+
+def Y90(tgt):
+    play('Drag_Op_Q', tgt)
+
 
 
 def measurement(resonator, I, Q):  # Simple measurement command, could be changed/generalized
@@ -274,7 +284,7 @@ def quantum_avg_computation(angles, G, Nrep, QM,
         # job = QM.execute(Launch_QAOA(γ, β, G, Nrep))
         print(real_device)
     else:
-        job = QM.simulate(Launch_QAOA(γ, β, G, Nrep),
+        job = QM.simulate(IBMconfig, Launch_QAOA(γ, β, G, Nrep),
                           SimulationConfig(int(5000), simulation_interface=LoopbackInterface(
                               [("con1", 1, "con1",
                                 1)])))
@@ -293,8 +303,8 @@ def quantum_avg_computation(angles, G, Nrep, QM,
     for i in range(
             Nrep):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
         bitstring = ""
-        for j in range(len(output_state)):
-            bitstring += str(output_state[j][i])
+        for j in range(len(output_states)):
+            bitstring += str(output_states[j][i])
         counts[bitstring] += 1
 
     avr_C = 0
@@ -359,7 +369,7 @@ def result_optimization(G, Nrep, QM, real_device=False, optimizer='COBYLA', p_mi
             exp.append(-Opti_Result.fun)
             ratio.append(-Opti_Result.fun / MaxCut_value)
         else:
-            Opti_Result = minimize(fun=computation, x0=angles, args=(G, Nrep, QM, False), method=optimizer,
+            Opti_Result = minimize(fun=quantum_avg_computation, x0=angles, args=(G, Nrep, QM, False), method=optimizer,
                                    bounds=boundaries)
             opti_angles.append(Opti_Result.x)
             exp.append(-Opti_Result.fun)
@@ -371,3 +381,4 @@ def result_optimization(G, Nrep, QM, real_device=False, optimizer='COBYLA', p_mi
 
 # To finish the program and yield the solution, one might run a quantum_avg_computation once again with optimized angles,
 # and retrieve most frequent bitstrings, one of them should correspond to the optimal solution of the problem
+quantum_avg_computation(test_angles, G, 1,qm1)

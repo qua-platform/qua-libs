@@ -22,15 +22,11 @@ from scipy.optimize import minimize, differential_evolution, brute
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
-get_ipython().run_line_magic('config', "InlineBackend.figure_format = 'svg' # Makes the images look nice")
-
-# Others
-# get_ipython().run_line_magic('matplotlib', 'inline')
-# useful additional packages
+from matplotlib import rc
 
 # import math tools
-qm1 = QuantumMachinesManager("3.122.60.129")
+π = np.pi
+qm1 = QuantumMachinesManager()
 # QM configuration based on IBM Quantum Computer :
 # Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
 
@@ -101,12 +97,18 @@ def Hadamard(tgt):
 
 
 def U2(tgt, 𝜙=0, 𝜆=0):
-    z_rot(-𝜆, tgt)
-    play("DragPulse_I", tgt, duration=83)
+    Rz(𝜆, tgt)
+    Y90(tgt)
+    Rz(𝜙, tgt)
 
 
 def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
-    return None
+    Rz(𝜆-π/2, tgt)
+    X90(tgt)
+    Rz(π-𝜃, tgt)
+    X90(tgt)
+    Rz(𝜙-π/2)
+
 
 
 def CNOT(ctrl, tgt):  # To be defined
@@ -118,13 +120,21 @@ def Rz(𝜆, tgt):
 
 
 def CU1(𝜆, ctrl, tgt):
+    Rz(𝜆 / 2., ctrl)
+    CNOT(ctrl, tgt)
+    Rz(-𝜆 / 2., tgt)
     CNOT(ctrl, tgt)
     Rz(𝜆 / 2., tgt)
-    CNOT(ctrl, tgt)
 
 
 def Rx(𝜆, tgt):
     U3(𝜆, -π / 2, π / 2)
+
+def X90(tgt):
+    play('Drag_Op_I', tgt)
+
+def Y90(tgt):
+    play('Drag_Op_Q', tgt)
 
 
 def measurement(RR, I, Q):  # Simple measurement command, could be changed/generalized
@@ -382,14 +392,14 @@ with program() as QAOA:
 job = QM.execute(QAOA)
 
 #Try out the QAOA for the problem defined by the Maxcut for graph G
-p, ratio, exp, opti_angles = result_optimization(p_min=1,p_max=3)
-
+p, ratio, exp, opti_angles = result_optimization(p_min=1, p_max=1)
+print(ratio, opti_angles)
 #Plot out performance of QAOA in terms of number of adiabatic evolution blocks
 rc('font',**{'family':'sans-serif','sans-serif':['Futura']})
 ## for Palatino and other serif fonts use:
 #rc('font',**{'family':'serif','serif':['Palatino']})
 rc('text', usetex=True)
 fig1, ax=plt.subplots()
-ax.plot(p,ratio,'x r')
+ax.plot(p, ratio,  'x r')
 ax.set(xlabel='\# of blocks p',ylabel='$F_p/C_{max}$',title='Best expectation value obtained after optimization of angles')
 ax.grid()

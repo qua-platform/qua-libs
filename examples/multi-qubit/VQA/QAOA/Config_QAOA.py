@@ -1,11 +1,32 @@
 import numpy as np
 
-π = np.pi
-t = np.linspace(-3, 3, 1000)
-gauss = 0.4 * np.exp(-t ** 2 / 2)
-lmda = 0.5
-alpha = -1
-d_gauss = lmda * (-t) * gauss / alpha
+
+
+
+def gauss(amplitude, mu, sigma, delf, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
+    gauss_wave = gauss_wave*np.exp(2*np.pi*delf*t)
+    return [float(x) for x in gauss_wave]
+
+def gauss_der(amplitude, mu, sigma, delf, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_der_wave = amplitude * (-2*(t-mu))*np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
+    gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
+    return [float(x) for x in gauss_der_wave]
+
+
+x90amp=0.4
+x90std=0
+x90mean=0
+x90duration=1000
+detuning=0
+gauss_wave = gauss(x90amp, x90mean, x90std, detuning, x90duration )  #Assume you have calibration for a X90 pulse
+lmda = 0.5  #Define scaling parameter for Drag Scheme
+alpha = -1  #Define anharmonicity parameter
+d_gauss = gauss_der(x90amp,x90mean,x90std, detuning, x90duration)
 
 IBMconfig = {
     'version': 1,
@@ -65,8 +86,8 @@ IBMconfig = {
         },
         "CPW0": {
             'mixInputs': {
-                'I': ('con2', 1),
-                'Q': ('con2', 2),
+                'I': ('con1', 3),
+                'Q': ('con1', 4),
                 'lo_frequency': 6.00e7,
                 'mixer': 'mixer_res'
             },
@@ -83,8 +104,8 @@ IBMconfig = {
         },
         "qubit1": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
                 'lo_frequency': 5.10e7,
                 'mixer': 'mixer_qubit'
             },
@@ -97,8 +118,8 @@ IBMconfig = {
         },
         "CPW1": {
             'mixInputs': {
-                'I': ('con2', 3),
-                'Q': ('con2', 4),
+                'I': ('con1', 7),
+                'Q': ('con1', 8),
                 'lo_frequency': 6.00e7,
                 'mixer': 'mixer_res'
             },
@@ -116,8 +137,8 @@ IBMconfig = {
 
         "qubit2": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
                 'lo_frequency': 5.10e7,
                 'mixer': 'mixer_qubit'
             },
@@ -130,8 +151,8 @@ IBMconfig = {
         },
         "CPW2": {
             'mixInputs': {
-                'I': ('con2', 5),
-                'Q': ('con2', 6),
+                'I': ('con2', 3),
+                'Q': ('con2', 4),
                 'lo_frequency': 6.00e7,
                 'mixer': 'mixer_res'
             },
@@ -148,8 +169,8 @@ IBMconfig = {
         },
         "qubit3": {
             "mixInputs": {
-                "I": ("con1", 7),
-                "Q": ("con1", 8),
+                "I": ("con2", 5),
+                "Q": ("con2", 6),
                 'lo_frequency': 5.10e7,
                 'mixer': 'mixer_qubit'
             },
@@ -270,7 +291,7 @@ IBMconfig = {
         },
         'gauss_wf': {
             'type': 'arbitrary',
-            'samples': gauss
+            'samples': gauss_wave
         },
         'd_gauss_wf': {
             'type': 'arbitrary',
