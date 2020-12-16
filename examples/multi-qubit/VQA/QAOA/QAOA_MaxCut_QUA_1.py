@@ -97,7 +97,7 @@ def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
     X90(tgt)
     Rz(π-𝜃, tgt)
     X90(tgt)
-    Rz(𝜙-π/2)
+    Rz(𝜙-π/2, tgt)
 
 
 
@@ -118,13 +118,16 @@ def CU1(𝜆, ctrl, tgt):
 
 
 def Rx(𝜆, tgt):
-    U3(𝜆, -π / 2, π / 2)
+    U3(tgt, 𝜆, -π / 2, π / 2)
 
 def X90(tgt):
-    play('Drag_Op_I', tgt)
+    play('X90', tgt)
 
 def Y90(tgt):
-    play('Drag_Op_Q', tgt)
+    play('Y90', tgt)
+
+def Y180(tgt):
+    play('Y180', tgt)
 
 
 
@@ -381,4 +384,5 @@ def result_optimization(G, Nrep, QM, real_device=False, optimizer='COBYLA', p_mi
 
 # To finish the program and yield the solution, one might run a quantum_avg_computation once again with optimized angles,
 # and retrieve most frequent bitstrings, one of them should correspond to the optimal solution of the problem
-quantum_avg_computation(test_angles, G, 1,qm1)
+test_angles=[1.5, 2.3]
+print(quantum_avg_computation(test_angles, G, 1,qm1))

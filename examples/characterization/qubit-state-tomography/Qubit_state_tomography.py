@@ -179,7 +179,7 @@ config = {
 }
 qmManager = QuantumMachinesManager("3.122.60.129")  # Reach OPX's IP address
 my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
-
+N_shots=10
 
 def Arbitrary_state_generation(tgt):  # QUA macro for generating input state we want to sample out
     play('Arbitrary_Op', tgt)
@@ -189,10 +189,15 @@ def Hadamard(tgt):  # QUA macro for applying a Hadamard gate
     play('Hadamard_Op', tgt)
 
 
-def state_estimation(I, Q):  # State discrimination based on the the value obtained on I-Q plane
-    # Here would be defined the process for state discrimination
-    # For the sake of simplicity, we simply return 0 or 1 at random for each I-Q point received in input
-    return np.random.choice([0, 1], size=len(I), replace=True)
+def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol in QUA, and save the associated state
+    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
+    a = declare(fixed, value=1.)
+    b = declare(fixed, value=1.)
+    with if_(Q - a * I - b > 0):
+        assign(state_estimate, 1)
+    with else_():
+        assign(state_estimate, 0)
+    save(state_estimate, stream)
 
 
 def do_tomography():
@@ -203,16 +208,22 @@ def do_tomography():
         stream_Qy = declare_stream()
         stream_Iz = declare_stream()
         stream_Qz = declare_stream()
+        stream_Z = declare_stream()
+        stream_Y = declare_stream()
+        stream_X = declare_stream()
 
         j = declare(int)  # Define necessary QUA variables to store the result of the experiments
         Iz = declare(fixed)
         Qz = declare(fixed)
+        Z = declare(fixed)
         Ix = declare(fixed)
         Qx = declare(fixed)
+        X = declare(fixed)
         Iy = declare(fixed)
         Qy = declare(fixed)
+        Y = declare(fixed)
         t1 = declare(int, value=10)  # Assume we know the value of the relaxation time allowing to return to 0 state
-        with for_(j, 0, j < 10, j + 1):
+        with for_(j, 0, j < N_shots, j + 1):
             # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
             Arbitrary_state_generation('qubit')
             # Begin tomography_process
@@ -220,6 +231,7 @@ def do_tomography():
             measure('meas_pulse', 'RR', None, ('integW1', Iz), ('integW2', Qz))
             save(Iz, stream_Iz)  # Save the results
             save(Qz, stream_Qz)
+            state_saving(Iz, Qz, Z, stream_Z)
             wait(t1,
                  'qubit')  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
 
@@ -232,6 +244,7 @@ def do_tomography():
             measure('meas_pulse', 'RR', 'samples', ('integW1', Ix), ('integW2', Qx))
             save(Ix, stream_Ix)  # Save the results
             save(Qx, stream_Qx)
+            state_saving(Ix,Qx,X,stream_X)
             wait(t1,
                  'qubit')  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
             # Could also do active reset
@@ -242,19 +255,23 @@ def do_tomography():
             # Begin tomography_process
             # Determine here Pauli Y-expectation value, which corresponds to applying a Hadamard gate then S-gate before measurement (unitary transformation)
             Hadamard('qubit')
-            z_rot(np.pi / 2, 'qubit')  # S-gate
+            frame_rotation(np.pi / 2, 'qubit')  # S-gate
             measure('meas_pulse', 'RR', 'samples', ('integW1', Iy), ('integW2', Qy))
             save(Iy, stream_Iy)  # Save the results
             save(Qy, stream_Qy)
+            state_saving(Iy, Qy, Y, stream_Y)
             wait(t1,
                  'qubit')  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
         with stream_processing():
             stream_Iz.save_all('Iz_raw')
             stream_Qz.save_all('Qz_raw')
+            stream_Z.save_all('Z')
             stream_Ix.save_all('Ix_raw')
             stream_Qx.save_all('Qx_raw')
+            stream_X.save_all('X')
             stream_Iy.save_all('Iy_raw')
             stream_Qy.save_all('Qy_raw')
+            stream_Y.save_all('Y')
 
     my_job = my_qm.simulate(tomography,
                             SimulationConfig(int(50000), simulation_interface=LoopbackInterface(
@@ -269,18 +286,15 @@ my_tomography_results = do_tomography().result_handles
 
 Ix = my_tomography_results.Ix_raw.fetch_all()['value']
 Qx = my_tomography_results.Qx_raw.fetch_all()['value']
-
-X = state_estimation(Ix, Qx)  # Deduce the measured state based on the input I-Q values
+X =  my_tomography_results.X.fetch_all()['value']
 
 Iy = my_tomography_results.Iy_raw.fetch_all()['value']
 Qy = my_tomography_results.Qy_raw.fetch_all()['value']
-
-Y = state_estimation(Iy, Qy)
+Y =  my_tomography_results.Y.fetch_all()['value']
 
 Iz = my_tomography_results.Iz_raw.fetch_all()['value']
 Qz = my_tomography_results.Qz_raw.fetch_all()['value']
-
-Z = state_estimation(Iz, Qz)
+Z =  my_tomography_results.Z.fetch_all()['value']
 
 total_counts = [len(X), len(Y), len(Z)]
 counts_1 = [np.count_nonzero(X), np.count_nonzero(Y),
@@ -308,7 +322,9 @@ def norm(R):
 print('The reconstructed Bloch vector using direct inversion is ', R_dir_inv)
 print('Is the associated quantum state valid?', is_physical(R_dir_inv), '. Norm: ', norm(R_dir_inv))
 
-
+rho_div_inv=0.5*(np.array(([1., 0.],[0., 1]))+ R_dir_inv[0]*np.array(([0., 1.],[1., 0.])) + R_dir_inv[1]*np.array(([0., -1j],[1j, 0.]))+ R_dir_inv[2]*np.array(([1., 0.],[0., -1.])))
+print(' Reconstructed density matrix using direct inversion : ', rho_div_inv)
+print('Trace: ', np.trace(rho_div_inv))
 # Might be False when considering direct inversion method.
 
 
@@ -374,3 +390,6 @@ print("Efficiency: ", accepted / niters)
 r_BME = rs.mean(axis=0)
 print('The reconstructed Bloch vector using Bayesian Mean Estimate is ', r_BME)
 print("Is the associated quantum state valid?", is_physical(r_BME), '. Norm: ', norm(r_BME))
+rho_BME=0.5*(np.array(([1., 0.],[0., 1]))+ r_BME[0]*np.array(([0., 1.],[1., 0.])) + r_BME[1]*np.array(([0., -1j],[1j, 0.]))+ r_BME[2]*np.array(([1., 0.],[0., -1.])))
+print(' Reconstructed density matrix using direct inversion : ', rho_BME )
+print('Trace: ', np.trace(rho_BME))
