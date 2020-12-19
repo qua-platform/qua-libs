@@ -305,10 +305,10 @@ counts_0 = [total_counts[0] - counts_1[0], total_counts[1] - counts_1[1], total_
 
 R_dir_inv = [0, 0, 0]  # Bloch vector reconstruction
 for i in range(3):
-    R_dir_inv[i] = (counts_0[i] - counts_1[i]) / total_counts[i]
+    R_dir_inv[i] = (counts_1[i] - counts_0[i]) / total_counts[i]
 
 
-def is_physical(R):  # Check if the reconstructed density matrix is physically viable or not.
+def is_physical(R):  # Check if the reconstructed density matrix is physically valid or not.
     if np.linalg.norm(R) <= 1:
         return True
     else:
@@ -337,23 +337,23 @@ def C(r):
     return np.where(np.linalg.norm(r, axis=0) < 1, 1, 0)
 
 
-def P(x, y, z, Nx0, Nx1, Ny0, Ny1, Nz0, Nz1):
+def P(x, y, z, Nx1, Nx0, Ny1, Ny0, Nz1, Nz0):
     '''
     Fill in here the probability of measuring the results Nxu, Nxd, Nyu, Nyd, Nzu, Nzd given a density matrix defined
     by the Bloch vector r = (x, y, z), which is a Binomial law for each axis
     '''
-    px = comb(Nx0 + Nx1, Nx0) * ((1 + x) * 0.5) ** Nx0 * ((1 - x) * 0.5) ** Nx1
-    py = comb(Ny0 + Ny1, Ny0) * ((1 + y) * 0.5) ** Ny0 * ((1 - y) * 0.5) ** Ny1
-    pz = comb(Nz0 + Nz1, Nz0) * ((1 + z) * 0.5) ** Nz0 * ((1 - z) * 0.5) ** Nz1
+    px = comb(Nx0 + Nx1, Nx1) * ((1 + x) * 0.5) ** Nx1 * ((1 - x) * 0.5) ** Nx0
+    py = comb(Ny0 + Ny1, Ny1) * ((1 + y) * 0.5) ** Ny1 * ((1 - y) * 0.5) ** Ny0
+    pz = comb(Nz0 + Nz1, Nz1) * ((1 + z) * 0.5) ** Nz1 * ((1 - z) * 0.5) ** Nz0
 
     return px * py * pz
 
 
-def L(x, y, z, Nx0, Nx1, Ny0, Ny1, Nz0, Nz1):
+def L(x, y, z, Nx1, Nx0, Ny1, Ny0, Nz1, Nz0):
     '''
     Implement here the likelihood
     '''
-    return C([x, y, z]) * P(x, y, z, Nx0, Nx1, Ny0, Ny1, Nz0, Nz1)
+    return C([x, y, z]) * P(x, y, z, Nx1, Nx0, Ny1, Ny0, Nz1, Nz0)
 
 
 '''
