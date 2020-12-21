@@ -140,6 +140,8 @@ def CNOT(ctrl, tgt):  # To be defined
 def Rz(𝜆, tgt):
     frame_rotation(-𝜆, tgt)
 
+def Ry(𝜆, tgt):
+    U3(tgt, 𝜆, 0, 0)
 
 def CU1(𝜆, ctrl, tgt):
     Rz(𝜆 / 2., ctrl)
@@ -251,7 +253,7 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
     # to get the maximum value one takes the absolute value of the yielded result of  optimization
 
 
-def QUA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimization scheme, source : https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF
+def SPSA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimization scheme, source : https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF
 
     a, c, A, alpha, gamma = SPSA_calibration()
     angles = init_angles
@@ -305,7 +307,7 @@ def result_optimization():
     for i in range(2 * p):  # Generate boundaries for each variable during optimization
         boundaries.append((min_bound[i], max_bound[i]))
 
-    opti_angle, expectation_value = QUA_optimize(angles, boundaries, max_iter)
+    opti_angle, expectation_value = SPSA_optimize(angles, boundaries, max_iter)
 
     ratio = expectation_value / MaxCut_value
 

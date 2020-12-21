@@ -111,6 +111,7 @@ There are few global variables introduced in the main script that uses full OPX'
 - $$n$$, the number of nodes in $$G$$, aka the number of qubits in our configuration
 - MaxCut_value, the maximum cut of the graph $$G$$
 - $$N_{rep}$$, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
+- $$p$$, number of adiabatic blocks (parameter dependent) in the quantum circuit
 - $$qm1$$, the QuantumMachinesManager() instance
 - $$QM$$, the Quantum Machine instance
 - job, the job instance executing the QUA program 
@@ -133,10 +134,10 @@ Each iteration within this loop is a run of $$N_{rep}$$ QAOA quantum circuits, t
 Between two iterations, the QUA program is paused, waiting for the client PC to call the Python function "encode_angles_in_IO()", which sends to the Quantum Machine instance the parameter set to be used to run the next quantum circuit sequence, using the IO1 and IO2 features of the Quantum Machine. It is in this function that the job is resumed, so that the program can compute the quantum circuit and stream the results of the measurement.
 
 ### 3.5 Main organs 
-The QAOA outline is embedded in the call of one general Python function named result_optimization(), which has two inputs : $$p_{min}$$ & $$p_{max}$$. Those two inputs define the number of adiabatic evolution blocks we want to incorporate in the QAOA algorithm (i.e the number of parameters to be optimized classically). 
-This function returns lists of optimized_angles, approximation ratios, and final expectation values for each value of $$p$$ between $$p_{min}$$ & $$p_{max}$$.
+The QAOA outline is embedded in the call of one general Python function named result_optimization().
+This function returns lists of optimized_angles, approximation ratios, and final expectation values for the provided parameters provided as global variables in the script.
 
-This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to the function QUA_optimize.
+This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to the function SPSA_optimize.
 
 The latter function implements the SPSA algorithm for classical optimization loop (https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF), and uses the Python function quantum_avg_computation() to retrieve the result of the evaluation of the expectation value (which is the cost function to be maximized by the optimizer).
 
