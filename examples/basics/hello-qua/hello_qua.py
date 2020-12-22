@@ -14,7 +14,6 @@ config = {
     'version': 1,
 
     'controllers': {
-
         "con1": {
             'type': 'opx1',
             'analog_outputs': {
@@ -24,7 +23,6 @@ config = {
     },
 
     'elements': {
-
         "qe1": {
             "singleInput": {
                 "port": ("con1", 1)
@@ -39,7 +37,7 @@ config = {
     "pulses": {
         "constPulse": {
             'operation': 'control',
-            'length': 1000,
+            'length': 1000,  # in ns
             'waveforms': {
                 'single': 'const_wf'
             }
@@ -60,7 +58,7 @@ with program() as prog:
 
 QM1 = QMm.open_qm(config)
 job = QM1.simulate(prog,
-                   SimulationConfig(int(1000)))
+                   SimulationConfig(int(1000)))  # in clock cycles, 4 ns
 
 samples = job.get_simulated_samples()
 samples.con1.plot()
