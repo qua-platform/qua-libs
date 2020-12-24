@@ -21,13 +21,13 @@ a frequency of 5 MHz and an amplitude of 0.4V (peak-to-peak).
 
 The QUA program simply calls the play command.
 
-We run the program on the simulator for 1000 clock cycles (4000 nS). 
+We run the program on the simulator for 1000 clock cycles (4000 ns). 
 
 ## Post processing
 
-We plot the simulated samples to observe a single cycle of the waveform (1 MHz for 1 micro-second).   
-Note the delay (of approx 200nS) between the simulation start and the start of the pulse play.
-This delay is faithful to that produced by executing on real hardware. 
+We plot the simulated samples to observe a single cycle of the waveform (5 MHz for 1 micro-second).   
+Note the delay (of approx 200ns) between the start of simulation and the start of the pulse.
+This delay is faithful to the one produced by executing on real hardware.
 
 ## Sample output
 

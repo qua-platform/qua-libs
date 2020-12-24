@@ -1,5 +1,5 @@
 """
-raw_adc_intro.py: Demonstrate recording raw analog input
+intro_to_saving.py: Demonstrate saving and data processing
 Author: Gal Winer - Quantum Machines
 Created: 7/11/2020
 Created on QUA version: 0.5.138
@@ -10,9 +10,8 @@ from qm.qua import *
 from qm.qua import math
 from qm import LoopbackInterface
 from qm import SimulationConfig
-import numpy as np
-import matplotlib.pyplot as plt
-pulse_len=1000
+
+pulse_len = 1000
 config = {
 
     'version': 1,
@@ -92,10 +91,9 @@ config = {
 QMm = QuantumMachinesManager()
 
 # Create a quantum machine based on the configuration.
-
 QM1 = QMm.open_qm(config)
 
-#1. Assigning values to variables and saving variables to tags
+# 1. Assigning values to variables and saving variables to tags
 with program() as saving_a_var:
     a = declare(int, value=5)
     b = declare(fixed, value=0.23)
@@ -121,7 +119,7 @@ print(f"b={b}")
 print("##################")
 
 
-#2. Saving variables to streams and using stream processing
+# 2. Saving variables to streams and using stream processing
 with program() as streamProg:
     out_str = declare_stream()
     a = declare(int)
@@ -129,6 +127,7 @@ with program() as streamProg:
         save(a, out_str)
 
     with stream_processing():
+        # Average all of the data and save only the last value into "out".
         out_str.average().save('out')
 
 job = QM1.simulate(streamProg,
@@ -143,8 +142,7 @@ print(f"out={out}")
 print("##################")
 
 
-#3. Using the buffer operator in stream processing
-
+# 3. Using the buffer operator in stream processing
 with program() as streamProg_buffer:
     out_str = declare_stream()
 
@@ -153,6 +151,13 @@ with program() as streamProg_buffer:
         save(a, out_str)
 
     with stream_processing():
+        # Group output into vectors of length 3. Since only full buffers are used,
+        # the last 2 data points [99 100] are discarded.
+        # Perform a running average over the data, in group of 3:
+        # The first vector is [0 1 2] and it averages only with itself.
+        # The second vector is [3 4 5] and it averages with the 1st vector, giving [1.5 2.5 3.5].
+        # etc...
+        # This time 'save_all' is used, so all of the data is saved ('save' would have only saved [48 49 50])
         out_str.buffer(3).average().save_all('out')
 
 job = QM1.simulate(streamProg_buffer,
@@ -170,16 +175,16 @@ print("##################")
 with program() as multiple_tags:
     out_str1 = declare_stream()
 
-
     a = declare(int)
     with for_(a, 0, a <= 100, a + 1):
         save(a, out_str1)
 
-
     with stream_processing():
+        # Two separate streams (or pipes) are used on the data:
+        # 1. Put the data into vectors of length 1, average and save only the last one
+        # 2. Save all of the raw data directly
         out_str1.buffer(1).average().save('out_avg')
         out_str1.save_all('out_raw')
-
 
 job = QM1.simulate(multiple_tags,
                    SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))

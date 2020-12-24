@@ -62,3 +62,4 @@ job = QM1.simulate(prog,
 
 samples = job.get_simulated_samples()
 samples.con1.plot()
+# In Pycharm, the plot will only show if the execution is "Run with Python Console"
