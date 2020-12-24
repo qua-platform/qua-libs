@@ -91,7 +91,7 @@ with program() as reset_ph:
     # play('X', 'qubit')
 
 job = QM1.simulate(reset_ph,
-                   SimulationConfig(int(2250), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                   SimulationConfig(int(2250)))
 
 samples = job.get_simulated_samples()
 samples.con1.plot()

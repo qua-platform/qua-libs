@@ -131,7 +131,7 @@ with program() as streamProg:
         out_str.average().save('out')
 
 job = QM1.simulate(streamProg,
-                   SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                   SimulationConfig(500))
 
 res = job.result_handles
 out = res.out.fetch_all()
@@ -161,7 +161,7 @@ with program() as streamProg_buffer:
         out_str.buffer(3).average().save_all('out')
 
 job = QM1.simulate(streamProg_buffer,
-                   SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                   SimulationConfig(500))
 
 res = job.result_handles
 out = res.out.fetch_all()['value']
@@ -187,7 +187,7 @@ with program() as multiple_tags:
         out_str1.save_all('out_raw')
 
 job = QM1.simulate(multiple_tags,
-                   SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                   SimulationConfig(500))
 
 res = job.result_handles
 out_avg = res.out_avg.fetch_all()
