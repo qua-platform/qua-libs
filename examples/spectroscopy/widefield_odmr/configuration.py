@@ -21,7 +21,7 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-gauss_pulse = gauss(0.2, 0, 12, pulse_len)
+gauss_pulse = gauss(0.2, 0, 15, pulse_len)
 
 config = {
 
@@ -56,7 +56,7 @@ config = {
             'outputs': {
                 'output1': ('con1', 1)
             },
-            'intermediate_frequency': 0,
+            'intermediate_frequency': 80e6,
             'operations': {
                 'SAT': "SAT_PULSE",
             },

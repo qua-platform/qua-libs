@@ -22,20 +22,24 @@ N = 5
 f_start = int(1e6)
 f_end = int(10e6)
 f_step = int((f_end - f_start) / N)
-T1 = 10 * 1e3  # in nS
-flash_time = 20 * 1e3
+T1 = 10 * 1e2  # in nS
+flash_time = 20 * 1e2
 
-cam = cam_mock()
+cam = cam_mock() #create the camera object
+cam.allocate_buffer(1)  # allocate new space in camera
+cam.arm() #trigger arm for the first time
 
 result_array = []
 with program() as ODMR:
     freq = declare(int)
     with for_(freq, f_start, freq <= f_end, freq + f_step):
         update_frequency('qubit', freq)
-        pause()
-        play('SAT', 'qubit', duration=10 * T1)
+        play('readout', 'readout_el', duration=24)  # init
         align('qubit', 'readout_el')
-        play('readout', 'readout_el', duration=flash_time)
+        play('SAT', 'qubit') #MW : TODO put timing in config, not dynamic, wider gaussian
+        align('qubit', 'readout_el')
+        play('readout', 'readout_el', duration=flash_time) #readout. take first 300 ns as signal and rest as ref.
+        pause()
 
 job = QM1.execute(ODMR)
 # job = QM1.simulate(ODMR, SimulationConfig(10000))
@@ -46,9 +50,9 @@ for ind in range(0, N):
 
     result_array.append(cam.get_image())  # collect previous image
     cam.allocate_buffer(1)  # allocate new space in camera
-    cam.arm()
+    cam.arm() #trigger arm
     job.resume()
-
+#
 # res=job.result_handles
 # samples = job.get_simulated_samples()
 # samples.con1.plot()
