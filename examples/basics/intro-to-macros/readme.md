@@ -6,10 +6,10 @@ id: index
 ---
 
 It is possible to use python functions inside QUA programs. This technique where one 
-programming language is used to write another is called _mataprogramming_ and is a great way 
+programming language is used to write another is called _metaprogramming_ and is a great way 
 to write more powerful and readable QUA code. 
 
-The program defined in `intro-to-macros.py` showcases basic usage of macros. 
+The program defined in `intro-to-macros.py` showcase basic usage of macros. 
 A declaration of variables is first done in a macro. In this case, it the variables must 
 be explicitly returned to the main program for them to be in its scope. 
 This program also returns an array of output streams, with default size =1. 
