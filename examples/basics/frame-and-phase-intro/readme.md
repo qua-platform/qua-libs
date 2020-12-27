@@ -5,7 +5,7 @@ sidebar_label: Frame&Phase
 slug: ./
 ---
 
-This simple script is designed to showcase how phase and frame work in QUA.
+This simple script is designed to showcase how phase and framework in QUA.
 
 ## Basics of phase in QAU
 
@@ -30,12 +30,18 @@ I\\Q
 \end{pmatrix}
 $$
 
-This program includes several sets of pulse, where in some of the sequences a frame rotation has
-been applied and in others it has been reset. When a frame rotation has been reset, 
-the pulse plays as if it were accumulating phase without rotation from the beginning of the script. 
-The phase reset acts to "zero the clock", setting the phase as if the program has restarted. 
+## Script
 
-## Script 
+This scripts plays a 5MHz pulse followed by a 10MHz pulse in 4 cases:
+1. No phase change between them.
+2. A pi rotation is applied to the 10MHz pulse.
+3. A phase reset is applied to the 10MHz pulse.
+4. A phase reset, and a pi rotation are applied to the 10MHz pulse.
+
+A fit to the 10MHz pulse is done in order for the difference to be easily visualized.
+In the 1st case, it is clear that the phase is maintained because the peaks of the 10MHz fit coincide with the peaks of the 5Mhz pulse.
+In the 2nd case, the phase is maintained but with an extra Pi phase.
+In the 3rd case, the phase is being reset, this causes a small delay before the 2nd pulse, and the phase is being reset to an arbitrary phase calculated from the start of the program.
 
 [download script](reset_phase_demo.py)
  

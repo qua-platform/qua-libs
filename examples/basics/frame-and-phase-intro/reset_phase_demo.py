@@ -8,9 +8,9 @@ Created on QUA version: 0.5.138
 import matplotlib.pyplot as plt
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import leastsq
 
 config = {
 
@@ -60,42 +60,94 @@ QMm = QuantumMachinesManager()
 
 QM1 = QMm.open_qm(config)
 
+with program() as no_reset_ph:
+    play('const', 'qubit')  # Plays a 5 MHz sin wave for 1 us (defined in config).
+    update_frequency('qubit', int(10e6))  # Change to 10 MHz and play it
+    play('const', 'qubit')
+
+with program() as no_reset_ph_and_rotate:
+    play('const', 'qubit')  # Plays a 5 MHz sin wave for 1 us (defined in config).
+    update_frequency('qubit', int(10e6))  # Change to 10 MHz, rotate by pi, and play it
+    frame_rotation(np.pi, 'qubit')
+    play('const', 'qubit')
+
+
 with program() as reset_ph:
-    # reset_phase('qubit')
-
-    play('const', 'qubit')
-    play('const', 'qubit')
-    update_frequency('qubit', int(10e6))
+    play('const', 'qubit')  # Plays a 5 MHz sin wave for 1 us (defined in config).
+    update_frequency('qubit', int(10e6))  # Change to 10 MHz, reset phase, and play it
     reset_phase('qubit')
     play('const', 'qubit')
 
-    update_frequency('qubit', int(20e6))
+
+with program() as reset_ph_and_rotate:
+    play('const', 'qubit')  # Plays a 5 MHz sin wave for 1 us (defined in config).
+    update_frequency('qubit', int(10e6))  # Change to 10 MHz, reset phase, rotate by pi, and play it
     reset_phase('qubit')
+    frame_rotation(np.pi, 'qubit')
     play('const', 'qubit')
 
-    update_frequency('qubit', int(10e6))
-    play('const', 'qubit')
 
-    update_frequency('qubit', int(20e6))
-    play('const', 'qubit')
+job = QM1.simulate(no_reset_ph,
+                   SimulationConfig(int(800)))
+samples = job.get_simulated_samples()
+ax1 = plt.subplot(411)
+samples.con1.plot()
+plt.title('No phase reset')
 
-    update_frequency('qubit', int(20e6))
-    reset_phase('qubit')
-    frame_rotation(np.pi/2, 'qubit')
-    play('const', 'qubit')
+t = np.arange(1500, 2000)
+data = samples.con1.analog['1'][1500:2000]
+fit_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) - data
+est_amp, est_freq, est_phase = leastsq(fit_func, [0.2, 2*np.pi*10e-3, 0])[0]
+t2 = np.arange(750, 2000)
+plt.plot(t2, est_amp*np.sin(est_freq*t2 + est_phase))
+plt.legend(('Output', '10MHz Fit'))
 
-    update_frequency('qubit', int(10e6))
-    reset_frame('qubit')
-    play('const', 'qubit')
+job = QM1.simulate(no_reset_ph_and_rotate,
+                   SimulationConfig(int(800)))
+samples = job.get_simulated_samples()
+plt.subplot(412, sharex=ax1)
+samples.con1.plot()
+plt.title('Pi rotation for 10 MHz')
 
-    # play('X', 'qubit')
+t = np.arange(1500, 2000)
+data = samples.con1.analog['1'][1500:2000]
+fit_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) - data
+est_amp, est_freq, est_phase = leastsq(fit_func, [0.2, 2*np.pi*10e-3, 0])[0]
+t2 = np.arange(750, 2000)
+plt.plot(t2, est_amp*np.sin(est_freq*t2 + est_phase))
+plt.legend(('Output', '10MHz Fit'))
 
 job = QM1.simulate(reset_ph,
-                   SimulationConfig(int(2250)))
-
+                   SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
+plt.subplot(413, sharex=ax1)
 samples.con1.plot()
+plt.title('With phase reset')
 
-# plt.figure()
-# plt.plot(samples.con1.analog['1']/np.max(samples.con1.analog['1']))
-# plt.plot(np.arange(230,2550+230),np.sin(2*np.pi*10e-3*np.arange(0,2550)))
+t = np.arange(1500, 2000)
+data = samples.con1.analog['1'][1500:2000]
+fit_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) - data
+est_amp, est_freq, est_phase = leastsq(fit_func, [0.2, 2*np.pi*10e-3, 0])[0]
+t2 = np.arange(750, 2000)
+plt.plot(t2, est_amp*np.sin(est_freq*t2 + est_phase))
+plt.legend(('Output', '10MHz Fit'))
+
+
+job = QM1.simulate(reset_ph_and_rotate,
+                   SimulationConfig(int(800)))
+samples = job.get_simulated_samples()
+plt.subplot(414, sharex=ax1)
+samples.con1.plot()
+plt.title('With phase reset and pi rotation for 10 MHz')
+
+t = np.arange(1500, 2000)
+data = samples.con1.analog['1'][1500:2000]
+fit_func = lambda x: x[0]*np.sin(x[1]*t+x[2]) - data
+est_amp, est_freq, est_phase = leastsq(fit_func, [0.2, 2*np.pi*10e-3, 0])[0]
+t2 = np.arange(750, 2000)
+plt.plot(t2, est_amp*np.sin(est_freq*t2 + est_phase))
+plt.legend(('Output', '10MHz Fit'))
+
+plt.xlabel('time [ns]')
+plt.tight_layout()
+plt.show()

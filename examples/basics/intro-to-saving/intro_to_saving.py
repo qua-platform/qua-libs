@@ -8,7 +8,6 @@ Created on QUA version: 0.5.138
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm.qua import math
-from qm import LoopbackInterface
 from qm import SimulationConfig
 
 pulse_len = 1000
