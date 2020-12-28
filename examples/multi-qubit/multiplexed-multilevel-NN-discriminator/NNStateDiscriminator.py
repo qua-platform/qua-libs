@@ -77,7 +77,7 @@ class NNStateDiscriminator:
             except FileNotFoundError:
                 pass
 
-    def _training_program(self, prepare_qubits,readout_op, avg_n, states, wait_time):
+    def _training_program(self, prepare_qubits, readout_op, avg_n, states, wait_time):
         with program() as train:
             n = declare(int)
             raw = [declare_stream(adc_trace=True) for i in range(self.rr_num)]
@@ -109,7 +109,8 @@ class NNStateDiscriminator:
 
         return train
 
-    def generate_training_data(self, prepare_qubits, readout_op, avg_n: int, states: list, wait_time: int, calibrate_dc_offset=True,
+    def generate_training_data(self, prepare_qubits, readout_op, avg_n: int, states: list, wait_time: int,
+                               calibrate_dc_offset=True,
                                **execute_args):
         """
 
@@ -147,7 +148,7 @@ class NNStateDiscriminator:
         """
 
         if calibrate_dc_offset:
-            self._calibrate_dc_offset()
+            self._calibrate_dc_offset(**execute_args)
 
         QM = self.qmm.open_qm(self.config)
         if len(states) > self.MAX_STATES:
@@ -162,8 +163,9 @@ class NNStateDiscriminator:
                     idx = [i * self.MAX_STATES, (i + 1) * self.MAX_STATES]
 
                 print(f"Generating data file {i}...")
-                job = QM.execute(self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time),
-                                 **execute_args)
+                job = QM.execute(
+                    self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time),
+                    **execute_args)
                 job.result_handles.wait_for_all_values()
 
                 print("Writing raw data to file...")
@@ -181,7 +183,7 @@ class NNStateDiscriminator:
             self._save_data(file, job, states, avg_n)
             self.number_of_raw_data_files = 1
 
-    def _calibrate_dc_offset(self):
+    def _calibrate_dc_offset(self, **execute_args):
         already_calibrated = set()
         for element in self.calibrate_with:
             if self.config["elements"][element].get("outputs", False):
@@ -190,7 +192,8 @@ class NNStateDiscriminator:
                     already_calibrated.add(con_name)
                     dc_offsets = DCoffsetCalibrator.calibrate(self.qmm,
                                                               self.config,
-                                                              element
+                                                              element,
+                                                              **execute_args
                                                               )
                     self.config['controllers'][con_name]['analog_inputs'][1]['offset'] = dc_offsets[con_name][0]
                     self.config['controllers'][con_name]['analog_inputs'][2]['offset'] = dc_offsets[con_name][1]
@@ -211,7 +214,7 @@ class NNStateDiscriminator:
 
     def _calibrate_time_diff(self, calibrate_dc_offset, **execute_args):
         if calibrate_dc_offset:
-            self._calibrate_dc_offset()
+            self._calibrate_dc_offset(**execute_args)
         time_diff = {}
         for element in self.calibrate_with:
             if self.config["elements"][element].get("outputs", False):
@@ -226,8 +229,8 @@ class NNStateDiscriminator:
                       f"'{element}' but no outputs were defined on that element.")
         for element in time_diff.keys():
             assert time_diff[self.calibrate_with[0]] == time_diff[element], \
-                f"ATTENTION: there's a difference in the time delays between '{self.calibrate_with[0]}' and '{element}' " \
-                f"\nMake sure the DC offsets are calibrated."
+                f"ATTENTION: there's a difference in the time delays between '{self.calibrate_with[0]}' and '{element}'"
+            f"\nMake sure the DC offsets are calibrated."
 
         self.time_diff = time_diff[self.calibrate_with[0]]
 
@@ -249,15 +252,6 @@ class NNStateDiscriminator:
         """
 
         :param data_files_idx: Indexes of the data files to train with, i.e [0,1,22,51]
-
-        :param ports:   Contains the controllers and their output IQ port.
-                        Assuming that the first port is connected to the first input, and the second output to the
-                        second input. And the I and Q ports will be connected to input ports 1 and 2, respectively, for
-                        consistency.
-                        i.e {"con1":(5,1),"con2":(8,3)} means that output port 5 of con1 is connected to input 1, and
-                        output port 1 is connected to input 2, for con2 output port 8 is connected to input 1 and output
-                        port 3 is connected to input 2. Then, output port 5 and input port 1 of con1 correspond the I
-                        component and output port 1 and input port 2 of con1 correspond to the Q component.
 
         :param epochs:              Number of training epochs. Could be larger for a better outcome
 
@@ -332,7 +326,7 @@ class NNStateDiscriminator:
 
             inputs = tf.keras.layers.concatenate([in1add, in2add])
 
-            final = tf.keras.layers.Dense(self.num_of_states, name="final",activation="softmax")(inputs)
+            final = tf.keras.layers.Dense(self.num_of_states, name="final", activation="softmax")(inputs)
             model = tf.keras.models.Model(inputs=[in1cos, in1sin, in2cos, in2sin], outputs=final)
             loss_fn = tf.keras.losses.categorical_crossentropy
             model.compile(optimizer='adam',

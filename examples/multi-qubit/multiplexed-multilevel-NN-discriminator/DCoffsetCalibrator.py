@@ -33,7 +33,7 @@ class DCoffsetCalibrator:
         return config
 
     @staticmethod
-    def calibrate(qmm, config, qe):
+    def calibrate(qmm, config, qe, **execute_args):
         """
 
         :param qmm: the QuantumMachineManager to execute the program on
@@ -46,7 +46,7 @@ class DCoffsetCalibrator:
         freq = 1.33e4
         offsets = {}
         qm = qmm.open_qm(DCoffsetCalibrator._update_config(config, qe, freq))
-        job = qm.execute(cal_dc)
+        job = qm.execute(cal_dc, **execute_args)
         job.result_handles.wait_for_all_values()
         adc1 = np.mean(job.result_handles.adc_input1.fetch_all()['value'])
         adc2 = np.mean(job.result_handles.adc_input2.fetch_all()['value'])
