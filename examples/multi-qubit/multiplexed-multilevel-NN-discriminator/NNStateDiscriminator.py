@@ -436,3 +436,4 @@ class NNStateDiscriminator:
                        + self.final_weights[i][1][j] * (2 ** -12))
             assign(temp, Math.argmax(res))
             save(temp, result)
+        align(*self.resonators)
