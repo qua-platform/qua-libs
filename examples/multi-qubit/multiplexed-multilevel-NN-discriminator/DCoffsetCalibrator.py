@@ -1,5 +1,6 @@
 import numpy as np
 from qm.qua import *
+from copy import deepcopy
 
 
 class DCoffsetCalibrator:
@@ -38,11 +39,10 @@ class DCoffsetCalibrator:
         :param qmm: the QuantumMachineManager to execute the program on
         :return:
         """
-
+        config = deepcopy(config)
         with program() as cal_dc:
             reset_phase(qe)
             measure('dc_offset_readout', qe, 'adc')
-
         freq = 1.33e4
         offsets = {}
         qm = qmm.open_qm(DCoffsetCalibrator._update_config(config, qe, freq))

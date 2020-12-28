@@ -20,7 +20,7 @@ simulation_config = SimulationConfig(
 qmm = QuantumMachinesManager.QuantumMachinesManager()
 resonators = ["test_rr" + str(i) for i in range(rr_num)]
 qubits = ["test_qb" + str(i) for i in range(rr_num)]
-path = "try35"
+path = "try39"
 calibrate_with = ["test_rr1", "test_qb1", "test_rr0"]
 discriminator = NNStateDiscriminator.NNStateDiscriminator(qmm, config, resonators, qubits, calibrate_with, path)
 
@@ -61,7 +61,7 @@ def test(states):
 
 
 results = []
-jump = 1
+jump = 2
 states2 = [random.choices([i for i in range(discriminator.num_of_states)], k=discriminator.rr_num) for j in range(10)]
 for i in range(0, 10, jump):
     # job1 = qmm.simulate(config, test(states2[i:i + jump]), simulation_config)

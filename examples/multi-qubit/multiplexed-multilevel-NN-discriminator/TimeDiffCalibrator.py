@@ -2,6 +2,7 @@ from qm import SimulationConfig, LoopbackInterface
 
 from qm.qua import *
 import numpy as np
+from copy import deepcopy
 
 
 class TimeDiffCalibrator:
@@ -50,6 +51,7 @@ class TimeDiffCalibrator:
 
     @staticmethod
     def calibrate(qmm, config, qe, **execute_args):
+        config = deepcopy(config)
         with program() as cal_phase:
             I1 = declare(fixed)
             Q1 = declare(fixed)
@@ -73,7 +75,6 @@ class TimeDiffCalibrator:
             with stream_processing():
                 adc.input1().save_all("adc_input1")
                 adc.input2().save_all("adc_input2")
-            #
         freq = 8.78e3
         qm = qmm.open_qm(TimeDiffCalibrator._update_config(freq, config, qe))
         job = qm.execute(cal_phase, **execute_args)

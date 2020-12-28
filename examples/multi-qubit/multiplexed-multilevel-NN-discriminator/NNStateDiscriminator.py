@@ -332,9 +332,9 @@ class NNStateDiscriminator:
 
             inputs = tf.keras.layers.concatenate([in1add, in2add])
 
-            final = tf.keras.layers.Dense(self.num_of_states, name="final")(inputs)
+            final = tf.keras.layers.Dense(self.num_of_states, name="final",activation="softmax")(inputs)
             model = tf.keras.models.Model(inputs=[in1cos, in1sin, in2cos, in2sin], outputs=final)
-            loss_fn = tf.keras.losses.mean_squared_error
+            loss_fn = tf.keras.losses.categorical_crossentropy
             model.compile(optimizer='adam',
                           loss=loss_fn,
                           metrics=['accuracy'])
@@ -363,12 +363,11 @@ class NNStateDiscriminator:
                                    cos2_weights.T * raw2cos + sin2_weights.T * raw2sin,
                                    cos2_weights.T * raw2cos + sin2_weights.T * raw2sin
                                    ]))
-            if scale >= 2:
-                cos1_weights = cos1_weights / scale
-                sin1_weights = sin1_weights / scale
-                cos2_weights = cos2_weights / scale
-                sin2_weights = sin2_weights / scale
-                current_final_weights = current_final_weights / scale
+            cos1_weights = cos1_weights / scale
+            sin1_weights = sin1_weights / scale
+            cos2_weights = cos2_weights / scale
+            sin2_weights = sin2_weights / scale
+            current_final_weights = np.array(current_final_weights) / scale
 
             ######################################
             # update config with optimal weights #
