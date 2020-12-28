@@ -32,16 +32,17 @@ $$
 
 ## Script
 
-This scripts plays a 5MHz pulse followed by a 10MHz pulse in 4 cases:
-1. No phase change between them.
-2. A pi rotation is applied to the 10MHz pulse.
-3. A phase reset is applied to the 10MHz pulse.
-4. A phase reset, and a pi rotation are applied to the 10MHz pulse.
+This script plays two pulses, with 200ns delay between them, in 4 cases:
+1. No phase reset between them.
+2. A phase reset ia applied before the 2nd pulse.
+3. A phase reset & pi/2 rotation is applied to the 2nd pulse. 
+4. A phase reset is applied to the 1st pulse, and a phase reset & pi/2 rotation is applied to the 2nd pulse.
 
-A fit to the 10MHz pulse is done in order for the difference to be easily visualized.
-In the 1st case, it is clear that the phase is maintained because the peaks of the 10MHz fit coincide with the peaks of the 5Mhz pulse.
-In the 2nd case, the phase is maintained but with an extra Pi phase.
-In the 3rd case, the phase is being reset, this causes a small delay before the 2nd pulse, and the phase is being reset to an arbitrary phase calculated from the start of the program.
+A reference sine wave is plotted in all the figures. The sine wave is phase matched to the 1st case.
+In the 1st case, it is clear that the phase is maintained between the pulses.
+In the 2nd case, the 2nd pulse is being phase reset, which causes it to start as a cosine.
+In the 3rd case, an additional pi/2 rotation is applied to the 2nd pulse, which causes it to start as a sine.
+In the 4th case, the 1st pulse also has its phase reset, making it start as a cosine.
 
 [download script](reset_phase_demo.py)
  

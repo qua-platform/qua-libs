@@ -45,20 +45,26 @@ def qua_function_calls(el):
 
 with program() as prog:
     [t, b, c_streams] = declare_vars()
-    save(b, c_streams[0])
-    play('playOp' * amp(b), 'qe1', duration=t)  # Plays pulse with amplitude of 0.2 (from config) * b=0.2 (from declare_vars) for duration t=100ns (from declare_vars)
+
+    # Plays pulse with amplitude of 0.2 (from config) * b=0.2 (from declare_vars) for t=100ns (from declare_vars)
+    save(b, c_streams[0])  # Saves b into stream for printing at the end
+    play('playOp' * amp(b), 'qe1', duration=t)
+
+    # Plays pulse with amplitude of 0.2 (from config) * b=0.5 (after modify_var) for t=100ns (from declare_vars)
     modify_var()
-    save(b, c_streams[0])
-    play('playOp' * amp(b), 'qe1', duration=t)  # Plays pulse with amplitude of 0.2 (from config) * b=0.5 (after modify_var) for duration t=100ns (from declare_vars)
-    qua_function_calls('qe1')   # Plays pulse twice, first with amplitude 0.2 (from config) for duration 300ns (from qua_function_calls).
-                                # Second with with 0.2 (from config) * b=0.5 (after modify_var) for duration 300ns (from qua_function_calls).
+    save(b, c_streams[0])  # Saves b into stream for printing at the end
+    play('playOp' * amp(b), 'qe1', duration=t)
+
+    # Plays pulse twice, first with amplitude 0.2 (from config) for duration 300ns (from qua_function_calls).
+    # Second with with 0.2 (from config) * b=0.5 (after modify_var) for duration 300ns (from qua_function_calls).
+    qua_function_calls('qe1')
 
     with stream_processing():
         c_streams[0].save_all('out_stream')
 
 QM1 = QMm.open_qm(config)
 job = QM1.simulate(prog,
-                   SimulationConfig(int(1000)))
+                   SimulationConfig(int(1500)))
 res = job.result_handles
 out_str = res.out_stream.fetch_all()
 samples = job.get_simulated_samples()
@@ -66,5 +72,5 @@ samples.con1.plot()
 
 print("##################")
 print("b is saved twice, once before the call to modify_var and once afterwards")
-print(f"out={out_str}")
+print(f"Before:{out_str[0]}, After:{out_str[1]}")
 print("##################")

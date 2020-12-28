@@ -10,7 +10,7 @@ programming language is used to write another is called _metaprogramming_ and is
 to write more powerful and readable QUA code. 
 
 The program defined in `intro-to-macros.py` showcase basic usage of macros. 
-A declaration of variables is first done in a macro. In this case, it the variables must 
+A declaration of variables is first done in a macro. In this case, the variables must 
 be explicitly returned to the main program for them to be in its scope. 
 This program also returns an array of output streams, with default size =1. 
 
