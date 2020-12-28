@@ -69,7 +69,7 @@ The strategy of QAOA is to find an ansatz state $$|\psi_p(\vec{\gamma},\vec{\bet
 The QAOA trial state is introduced as : 
 $$|\psi_p(\vec{\gamma},\vec{\beta})\rangle=\hat{U}_B(\beta_p)\hat{U}_C(\gamma_p)...\hat{U}_B(\beta_1)\hat{U}_C({\gamma_1})|+\rangle^{\otimes n}$$
 with $$|+\rangle=\hat{H}|0\rangle=\frac{1}{\sqrt{2}}(|0\rangle+|1\rangle)$$, $$\hat{H}$$ being the Hadamard gate.
-![](/QAOA_circuit.png)
+![](QAOA_Circuit.png)
 
 Recalling that $$\hat{H}_C=\sum_{\mathbf{x}\in \{0,1\}^n}C(\mathbf{x})|\mathbf{x}\rangle\langle \mathbf{x}|$$, the expectation value is written :
 
@@ -79,7 +79,7 @@ This implies that retrieving this expectation value can be done easily by sampli
 
 Once this computation is done, one performs a classical optimization of the parameters $$(\vec{\gamma},\vec{\beta})$$ in order to maximize the value of $$F_p$$.
 The outline of QAOA is outlined in the layout found in the paper (https://doi.org/10.1038/s41598-019-43176-9).
-![](/QAOA_outline.png)
+![](QAOA_outline.png)
 
 
 
@@ -158,4 +158,3 @@ Second part of the QUA deals with the measurement of each qubit and the saving o
 
 
 
- 

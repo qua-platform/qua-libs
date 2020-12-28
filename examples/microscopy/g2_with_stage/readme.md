@@ -21,7 +21,7 @@ N/A
 
 ## Script
 
-[Download randomized benchmark script](RB_1qb.py)
+[Download randomized benchmark script](g2_with_stage.py)
 
 ## References
 

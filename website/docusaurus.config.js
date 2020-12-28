@@ -6,7 +6,7 @@ module.exports = {
   title: "QUA Libraries",
   tagline: "",
   url: "https://your-docusaurus-test-site.com",
-  baseUrl: "/",
+  baseUrl: "/libs/",
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
   organizationName: "qua-platform",
