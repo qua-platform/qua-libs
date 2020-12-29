@@ -1,5 +1,5 @@
 """
-intro-to-macros.py: Your first QUA script
+intro-to-macros.py: An intro to usage of macros in QUA
 Author: Gal Winer - Quantum Machines
 Created: 26/12/2020
 Created on QUA version: 0.6.393
