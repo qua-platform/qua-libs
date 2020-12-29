@@ -15,6 +15,13 @@ module.exports = [
     },
     {
         "type": "category",
+        "label": "advanced-topics",
+        "items": [
+            "advanced-topics/ssb/index",
+        ]
+    },
+    {
+        "type": "category",
         "label": "Characterization",
         "items": [
             "characterization/T1/index",

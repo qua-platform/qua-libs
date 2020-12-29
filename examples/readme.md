@@ -12,11 +12,11 @@ slug: /
 ### [Frame&Phase](basics/frame-and-phase-intro/)
 
 ## Characterization
-### [T1](characterization/T1/)
-### [T2](characterization/T2/)
-### [Rabi sweeps](characterization/rabi-sweeps/)
+### [T1](calibration/T1/)
+### [T2](calibration/T2/)
+### [Rabi sweeps](calibration/rabi-sweeps/)
 ### [Active reset](characterization/active-reset/)
-### [Hahn echo](characterization/hahn-echo/)
+### [Hahn echo](calibration/hahn-echo/)
 
 ## Dynamical Decoupling Protocols
 ### [XY-n](dynamical-decoupling-protocols/XY-n/)
