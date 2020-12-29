@@ -1,5 +1,3 @@
-from qm import SimulationConfig, LoopbackInterface
-
 from qm.qua import *
 import numpy as np
 from copy import deepcopy
@@ -78,16 +76,6 @@ class TimeDiffCalibrator:
         freq = 8.78e3
         qm = qmm.open_qm(TimeDiffCalibrator._update_config(freq, config, qe))
         job = qm.execute(cal_phase, **execute_args)
-        #
-        # qm = qmm.open_qm(TimeDiffCalibrator._default_config(freq, con_name, time_of_flight, ports, offsets, mixer_correction))
-        # job = qm.simulate(cal_phase,
-        #                   SimulationConfig(1000, simulation_interface=LoopbackInterface(
-        #                       [("con1", ports["con1"][0], "con1", 1), ("con1", ports["con1"][1], "con1", 2),
-        #                        ("con2", ports["con2"][0], "con1", 1), ("con2", ports["con2"][1], "con1", 2),
-        #                        ("con2", ports["con2"][0], "con2", 1), ("con2", ports["con2"][1], "con2", 2),
-        #                        ("con1", ports["con1"][0], "con2", 1), ("con1", ports["con1"][1], "con2", 2)
-        #                        ]
-        #                       , latency=192)))
 
         job.result_handles.wait_for_all_values()
         adc1 = np.mean(job.result_handles.adc_input1.fetch_all()['value'], axis=0)

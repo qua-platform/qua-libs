@@ -148,7 +148,7 @@ config = {
 }
 
 for i in range(rr_num):
-    config['elements']['test_rr' + str(i)] = \
+    config['elements']['rr' + str(i)] = \
         {
             'mixInputs': {
                 'I': ('con1', i_port),
@@ -159,9 +159,6 @@ for i in range(rr_num):
             'intermediate_frequency': freqs[i],
             'operations': {
                 'readout': 'readout_pulse_' + str(i),
-                'test_readout_pulse_0': 'test_readout_pulse_0',
-                'test_readout_pulse_1': 'test_readout_pulse_1',
-                'test_readout_pulse_2': 'test_readout_pulse_2',
             },
             'outputs': {
                 'out1': ('con1', 1),
@@ -187,7 +184,7 @@ for i in range(rr_num):
         'type': 'constant',
         'sample': 0.2
     }
-    config['elements']['test_qb' + str(i)] = \
+    config['elements']['qb' + str(i)] = \
         {
             'mixInputs': {
                 'I': ('con2', 2 * i + 1),
@@ -226,18 +223,7 @@ for i in range(num_of_states):
             },
             'digital_marker': 'ON'
         }
-    config['pulses']['test_readout_pulse_' + str(i)] = \
-        {
-            'operation': 'measurement',
-            'length': readout_len,
-            'waveforms': {
-                'I': 'I_wf_' + str(i),
-                'Q': 'Q_wf_' + str(i)
-            },
-            'integration_weights': {
-            },
-            'digital_marker': 'ON'
-        }
+    # need to create the desired waveforms for the preparation pulses
     config['waveforms']['I_wf_' + str(i)] = {
         'type': 'arbitrary',
         'samples': [float(arg / divide_signal_factor) for arg in I_[i]]

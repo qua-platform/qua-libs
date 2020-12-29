@@ -43,9 +43,9 @@ class NNStateDiscriminator:
         self.calibrate_with = calibrate_with
         self._create_dir()
         self.time_diff = 0
-        self.MAX_STATES = 300  # TODO ATTENTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.MAX_STATES = 300  # Max number of states for the training program - due to memory limitation
         self.number_of_raw_data_files = None
-        self.final_weights = None
+        self.final_weights = None  # Contains the final layer for the classification of demodulation results
         self.load_config_from_file = True
         self._load_file()
 
@@ -89,10 +89,7 @@ class NNStateDiscriminator:
                     align(*self.resonators)
                     for i in range(self.rr_num):
                         reset_phase(self.resonators[i])
-
-                        measure("test_readout_pulse_" + str(state[i]), self.resonators[i], raw[i])
-                        # TODO - ATTENTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        # measure(readout_op, self.resonator[i], raw[i])
+                        measure(readout_op, self.resonators[i], raw[i])
 
                     # wait on all elements to relax
                     wait(wait_time, *self.resonators, *self.qubits)
@@ -168,7 +165,8 @@ class NNStateDiscriminator:
 
             print(f"Generating data file {i}...")
             job = QM.execute(
-                self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time, with_timestamps),
+                self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time,
+                                       with_timestamps),
                 **execute_args)
             job.result_handles.wait_for_all_values()
 
@@ -258,7 +256,7 @@ class NNStateDiscriminator:
 
         :param data_files_idx: Indexes of the data files to train with, i.e [0,1,22,51]
 
-        :param epochs:              Number of training epochs. Could be larger for a better outcome
+        :param epochs:              Number of training epochs. Increase for a better classification
 
         :param kernel_initializer:  Initial demodulation weights. One can randomize using the default 'glorot_uniform'
                                     distribution. Another possibility which might work better in some cases is to start
@@ -334,8 +332,10 @@ class NNStateDiscriminator:
             model.compile(optimizer='adam',
                           loss=loss_fn,
                           metrics=['accuracy'])
+
             # optional plotting of the model
             # tf.keras.utils.plot_model(model, to_file="model.png", show_shapes=True)
+
             model.fit(
                 {"in1sin": raw1sin, "in1cos": raw1cos, "in2sin": raw2sin, "in2cos": raw2cos},
                 {"final": labels},
@@ -388,13 +388,6 @@ class NNStateDiscriminator:
 
             final_weights.append(current_final_weights)
 
-            # TODO: ATTENTION !!!!!!!!!!!!!!!!!! For testing ONLY - REMOVE when done
-            for i in range(self.num_of_states):
-                self.config['pulses']['test_readout_pulse_' + str(i)]['integration_weights'][
-                    'optimal_w1_' + str(j)] = 'optimal_w1_' + str(j)
-                self.config['pulses']['test_readout_pulse_' + str(i)]['integration_weights'][
-                    'optimal_w2_' + str(j)] = 'optimal_w2_' + str(j)
-
         for f in raw_data_files:
             f.close()
         self.final_weights = final_weights
@@ -403,11 +396,11 @@ class NNStateDiscriminator:
         pickle.dump(data, file)
         file.close()
 
-    def measure_state(self, state, result, out1, out2, res, temp, adc=None):
+    def measure_state(self, readout_op, result, out1, out2, res, temp, adc=None):
         """
         This procedure generates a macro of QUA commands for measuring the readout resonator and discriminating between
         the states of the qubit.
-        :param readout_op: A string with the readout operation name for all resonators. TODO !!!!!!!!!!!!!!!!!!!!!!!
+        :param readout_op: A string with the readout operation name for all resonators.
         :param out1: A QUA variable declared as: declare(fixed, size=rr_num)
         :param out2: A QUA variable declared as: declare(fixed, size=rr_num)
         :param res: A QUA variable declared as: declare(fixed, size=num_of_states)
@@ -420,9 +413,7 @@ class NNStateDiscriminator:
         align(*self.resonators)
         for i in range(self.rr_num):
             reset_phase(self.resonators[i])
-            # measure(readout_op, self.resonators[i], adc,
-            # TODO: ATTENTION for testing only !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            measure("test_readout_pulse_" + str(state[i]), self.resonators[i], adc,
+            measure(readout_op, self.resonators[i], adc,
                     demod.full("optimal_w1_" + str(i), out1[i], "out1"),
                     demod.full("optimal_w2_" + str(i), out2[i], "out2")
                     )
