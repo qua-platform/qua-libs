@@ -7,7 +7,10 @@ module.exports = [
             "basics/hello-qua/index",
             "basics/intro-to-saving/index",
             "basics/raw-adc-measurement/index",
-            "basics/frame-and-phase-intro/index"
+            "basics/frame-and-phase-intro/index",
+            "basics/waveform-compression/index",
+            "basics/intro-to-macros/index"
+
         ]
     },
     {
