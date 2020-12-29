@@ -1,6 +1,6 @@
-#Multiplexed Readout of Multi-state Qubits Using a Neural Network
+# Multiplexed Readout of Multi-state Qubits Using a Neural Network
 
-#Overview
+# Overview
 This program allows for a multiplexed readout of up to 5 qubits using 2 OPXs (a multiplexed readout of 10 qubits with 2 
 OPXs is available from QUA version 0.8 thanks to internal resources optimization). 
 The basic idea is to use a neural network per each resonator to learn the optimal weights 
@@ -22,7 +22,7 @@ The program is divided into 3 main stages:
   - we use a small 2 by 3 matrix which is the final layer in our neural network and 
     perform a multiplication in QUA to implement that layer for a final state classification
     
-##Configuration
+## Configuration
 
 The configuration consists of 4 main parts: the readout resonators elements, the qubits elements, 
 the readout pulses, and the preparation pulses.
@@ -78,8 +78,8 @@ the readout pulses, and the preparation pulses.
       will prepare qubit 1 in the 'e' state.
       
 
-##Program
-###NNStateDiscriminator class
+## Program
+### NNStateDiscriminator class
 The program begins with creating an instance of the class NNStateDiscriminator. 
 This creates a discriminator object that eventually will be used for the state estimation.
 To create a new discriminator we need the following components:  
