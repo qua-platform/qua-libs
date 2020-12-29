@@ -1,32 +1,38 @@
 import numpy as np
 
 
-
-
 def gauss(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    gauss_wave = gauss_wave*np.exp(2*np.pi*delf*t)
+    gauss_wave = gauss_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_wave]
+
 
 def gauss_der(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_der_wave = amplitude * (-2*(t-mu))*np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_der_wave]
 
 
-x90amp=0.4
-x90std=0
-x90mean=0
-x90duration=1000
-detuning=0
-gauss_wave = gauss(x90amp, x90mean, x90std, detuning, x90duration )  #Assume you have calibration for a X90 pulse
-lmda = 0.5  #Define scaling parameter for Drag Scheme
-alpha = -1  #Define anharmonicity parameter
-d_gauss = gauss_der(x90amp,x90mean,x90std, detuning, x90duration)
+# X90 definition
+
+x90amp = 0.4
+x90std = 0.2
+x90mean = 0
+x90duration = 1000
+x90detuning = 0
+x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration)  # Assume you have calibration for a X90 pulse
+lmda = 0.5  # Define scaling parameter for Drag Scheme
+alpha = -1  # Define anharmonicity parameter
+x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
+
+# Y180 definition
+y180waveform = gauss(2 * x90amp, x90mean, x90std, x90detuning,
+                     x90duration)  # Assume you have calibration for a X90 pulse
+y180der_waveform = gauss_der(2 * x90amp, x90mean, x90std, x90detuning, x90duration)
 
 IBMconfig = {
     'version': 1,
@@ -69,7 +75,6 @@ IBMconfig = {
         }
     },
 
-
     'elements': {
         "qubit0": {
             "mixInputs": {
@@ -80,8 +85,9 @@ IBMconfig = {
             },
             'intermediate_frequency': 0,  # 5.2723e9,
             'operations': {
-                'DragOp_I': "DragPulse_I",
-                'DragOp_Q': "DragPulse_Q",
+                'X90': "X90_pulse",
+                'Y90': "Y90_pulse",
+                'Y180': "Y180_pulse"
             },
         },
         "CPW0": {
@@ -111,8 +117,9 @@ IBMconfig = {
             },
             'intermediate_frequency': 0,  # 5.2122e9,
             'operations': {
-                'DragOp_I': "DragPulse_I",
-                'DragOp_Q': "DragPulse_Q",
+                'X90': "X90_pulse",
+                'Y90': "Y90_pulse",
+                'Y180': "Y180_pulse"
             },
 
         },
@@ -144,8 +151,9 @@ IBMconfig = {
             },
             'intermediate_frequency': 0,  # 5.0154e9,
             'operations': {
-                'DragOp_I': "DragPulse_I",
-                'DragOp_Q': "DragPulse_Q",
+                'X90': "X90_pulse",
+                'Y90': "Y90_pulse",
+                'Y180': "Y180_pulse"
             },
 
         },
@@ -176,8 +184,9 @@ IBMconfig = {
             },
             'intermediate_frequency': 0,  # 5.2805e9,
             'operations': {
-                'DragOp_I': "DragPulse_I",
-                'DragOp_Q': "DragPulse_Q",
+                'X90': "X90_pulse",
+                'Y90': "Y90_pulse",
+                'Y180': "Y180_pulse"
             },
         },
 
@@ -199,24 +208,6 @@ IBMconfig = {
             }
         },
 
-        # "CPW012": {
-        #     "singleInput": {
-        #         "port": ("con2", 1)
-        #     },
-        #     'intermediate_frequency': 0,  # 7e9,
-        #     'operations': {
-        #         'playOp': "constPulse",
-        #     },
-        # },
-        # "CPW234": {
-        #     "singleInput": {
-        #         "port": ("con2", 2)
-        #     },
-        #     'intermediate_frequency': 0,  # 6.6e9,
-        #     'operations': {
-        #         'playOp': "constPulse",
-        #     },
-        # },
     },
     "pulses": {
         'meas_pulse_in': {  # Readout pulse
@@ -232,53 +223,32 @@ IBMconfig = {
             },
             'digital_marker': 'marker1'
         },
-        "mixedConst": {
+
+        "X90_pulse": {
             'operation': 'control',
             'length': 1000,
             'waveforms': {
-                'I': 'const_wf',
-                'Q': 'const_wf'
+                'I': 'x90_wf',
+                'Q': 'x90_der_wf'
             }
         },
-        "mixedGauss": {
+        "Y90_pulse": {
             'operation': 'control',
             'length': 1000,
             'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'zero_wf'
-            },
-        },
-        "constPulse": {
-            'operation': 'control',
-            'length': 1000,
-            'waveforms': {
-                'single': 'const_wf'
+                'I': 'x90_der_wf',
+                'Q': 'x90_wf'
             }
         },
-        "DragPulse_I": {
+        "Y180_pulse": {
             'operation': 'control',
             'length': 1000,
             'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'd_gauss_wf'
-            }
-        },
-        "DragPulse_Q": {
-            'operation': 'control',
-            'length': 1000,
-            'waveforms': {
-                'I': 'd_gauss_wf',
-                'Q': 'gauss_wf'
+                'I': 'y180_der_wf',
+                'Q': 'y180_wf'
             }
         },
 
-        "gaussianPulse": {
-            'operation': 'control',
-            'length': 1000,
-            'waveforms': {
-                'single': 'gauss_wf'
-            }
-        },
     },
     "waveforms": {
         'const_wf': {
@@ -289,13 +259,22 @@ IBMconfig = {
             'type': 'constant',
             'sample': 0.
         },
-        'gauss_wf': {
+        'x90_wf': {
             'type': 'arbitrary',
-            'samples': gauss_wave
+            'samples': x90waveform
         },
-        'd_gauss_wf': {
+        'x90_der_wf': {
             'type': 'arbitrary',
-            'samples': d_gauss
+            'samples': x90der_waveform
+        },
+
+        'y180_wf': {
+            'type': 'arbitrary',
+            'samples': y180waveform
+        },
+        'y180_der_wf': {
+            'type': 'arbitrary',
+            'samples': y180der_waveform
         },
         'exc_wf': {
             'type': 'constant',

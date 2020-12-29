@@ -1,7 +1,7 @@
 """QAOA_MaxCut_QUA_IO_usage.py: Implementing QAOA using QUA to perform quantum computation and IO values for optimization
 Author: Arthur Strauss - Quantum Machines
 Created: 25/11/2020
-Created on QUA version: 0.5.138
+This script must run on QUA 0.7 or higher
 """
 
 # QM imports
@@ -15,6 +15,7 @@ from qm.qua import *
 import random as rand
 import math
 import numpy as np
+import time
 # We import the tools to handle general Graphs
 import networkx as nx
 from scipy.optimize import minimize, differential_evolution, brute
@@ -52,7 +53,7 @@ MaxCut_value = 5.  # Value of the ideal MaxCut
 # pos = nx.spring_layout(G)
 #
 # nx.draw_networkx(G, node_color=colors, node_size=600, alpha=1, ax=default_axes, pos=pos)
-p = 2 #Define the depth of the quantum circuit, aka number of adiabatic evolution blocks
+p = 1 #Define the depth of the quantum circuit, aka number of adiabatic evolution blocks
 Nrep = 1  # Define number of shots necessary to compute expectation value of cost Hamiltonian
 
 # Initialize angles to random to launch the program
@@ -126,9 +127,7 @@ def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
     Rz(𝜙-π/2, tgt)
 
 def CR(ctrl, tgt): #gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
-    frame_rotation(π/2,tgt)
-    Y180(tgt)
-    X90(ctrl)
+    return None
 
 
 def CNOT(ctrl, tgt):  # To be defined
@@ -195,7 +194,7 @@ def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol 
 
 def encode_angles_in_IO(γ, β):  # Insert angles values using IO1 by keeping track of where we are in the QUA program
     if len(γ) != len(β):
-        raise Error
+        raise IndexError
     for i in range(len(γ)):
         while not (job.is_paused()):
             time.sleep(0.01)
@@ -232,8 +231,8 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
 
     for i in range(Nrep):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
         bitstring = ""
-        for j in range(len(output_state)):
-            bitstring += str(output_state[j][i])
+        for j in range(len(output_states)):
+            bitstring += str(output_states[j][i])
         counts[bitstring] += 1
 
     avr_C = 0
@@ -284,7 +283,7 @@ def SPSA_calibration():
 
 
 # Run the QAOA procedure from here, for various adiabatic evolution block numbers
-def result_optimization():
+def result_optimization(max_iter=100):
 
     if p == 1:
         print("Optimization for", p, "block")
@@ -358,7 +357,7 @@ with program() as QAOA:
                 q = 'qubit' + str(k)
                 Hadamard(q)
 
-            with for_each_((γ,β),(γ_set,β_set)):
+            with for_each_((γ,β),(γ_set, β_set)):
                 #  Cost Hamiltonian evolution
                 for edge in G.edges():  # Iterate over the whole connectivity of Graph G
                     i = edge[0]
@@ -388,7 +387,7 @@ with program() as QAOA:
                 state_saving(I, Q, state_estimate, state_streams[k])  # Do state discrimination based on each IQ point and save it in a variable called state0,1,..
 
                 wait(t, RR)  # Reset qubit state by waiting for relaxation
-                wait(t, q)
+                wait(t, q)  #Replace by conditional X pulse (True reset after measurement)
         assign(timing, timing + 1)
         save(timing, "timing")
     with stream_processing():

@@ -15,6 +15,7 @@ from qm.qua import *
 import random as rand
 import math
 import numpy as np
+import time
 # We import the tools to handle general Graphs
 import networkx as nx
 from scipy.optimize import minimize, differential_evolution, brute
@@ -183,7 +184,7 @@ def cost_function_C(x,
 
 def encode_angles_in_IO(γ, β):  # Insert angles values using IO1 by keeping track of where we are in the QUA program
     if len(γ) != len(β):
-        raise Error
+        raise IndexError
     for i in range(len(γ)):
         while not (job.is_paused()):
             time.sleep(0.1)
@@ -223,8 +224,8 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
     for i in range(
             Nrep):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
         bitstring = ""
-        for j in range(len(output_state)):
-            bitstring += str(output_state[j][i])
+        for j in range(len(output_states)):
+            bitstring += str(output_states[j][i])
         counts[bitstring] += 1
 
     avr_C = 0
@@ -244,7 +245,7 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
     # to get the maximum value one takes the absolute value of the yielded result of  optimization
 
 
-def QUA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimization scheme, source : https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF
+def SPSA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimization scheme, source : https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF
 
     a, c, A, alpha, gamma = SPSA_calibration()
     angles = init_angles
@@ -275,7 +276,7 @@ def SPSA_calibration():
 
 
 # Run the QAOA procedure from here, for various adiabatic evolution block numbers
-def result_optimization(p_min=1, p_max=5):
+def result_optimization(p_min=1, p_max=5, max_iter=100):
     p = []
     opti_angles = []
     ratio = []
@@ -304,7 +305,7 @@ def result_optimization(p_min=1, p_max=5):
         for i in range(2 * j):  # Generate boundaries for each variable during optimization
             boundaries.append((min_bound[i], max_bound[i]))
 
-        opti_angle, expectation_value = QUA_optimize(angles, boundaries, max_iter)
+        opti_angle, expectation_value = SPSA_optimize(angles, boundaries, max_iter)
         opti_angles.append(opti_angle)
         exp.append(expectation_value)
         ratio.append(expectation_value / MaxCut_value)
