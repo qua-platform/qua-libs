@@ -1,3 +1,10 @@
+"""
+example_multiplexed_multistate_NN_discriminator.py: Single qubit active reset
+Author: Ilan Mitnikov - Quantum Machines
+Created: 29/12/2020
+Created on QUA version: 0.6.433
+"""
+
 import NNStateDiscriminator
 from example_configuration import config, rr_num
 from qm import QuantumMachinesManager
