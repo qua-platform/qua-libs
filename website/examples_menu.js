@@ -17,18 +17,27 @@ module.exports = [
         "type": "category",
         "label": "advanced-topics",
         "items": [
-            "advanced-topics/ssb/index",
+            "advanced-topics/single-sideband-modulation/index",
         ]
     },
     {
         "type": "category",
         "label": "Characterization",
         "items": [
-            "characterization/T1/index",
-            "characterization/T2/index",
-            "characterization/rabi-sweeps/index",
             "characterization/active-reset/index",
-            "characterization/hahn-echo/index",
+            "characterization/qubit-state-tomography/index",
+            "characterization/qubit-process-tomography/index",
+            "characterization/wigner-tomography/index",
+        ]
+    },
+    {
+        "type": "category",
+        "label": "calibrations",
+        "items": [
+            "calibration/T1/index",
+            "calibration/T2/index",
+            "calibration/rabi-sweeps/index",
+            "calibration/hahn-echo/index",
         ]
     },
     {
@@ -52,7 +61,7 @@ module.exports = [
         "type": "category",
         "label": "Microscopy",
         "items": [
-            "microscopy/g2-with-sage/index",
+            "microscopy/g2-with-stage/index",
         ]
     },
     {

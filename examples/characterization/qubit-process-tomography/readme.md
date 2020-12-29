@@ -1,3 +1,10 @@
+---
+id: index
+title: Process tomography
+sidebar_label: Process tomography
+slug: ./
+---
+
 # Reconstructing a single qubit process using samples from a QUA program
 This program showcases the possibility to use a QUA program and the OPX to perform a process tomography experiment for a single qubit.
 
