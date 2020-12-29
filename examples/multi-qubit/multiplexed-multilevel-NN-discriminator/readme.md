@@ -119,9 +119,42 @@ The training can also have 3 main arguments:
 - kernel_initializer - the weights from which to start the training, i.e. random or constant. Some may be better in 
 different scenarios. One needs to check which works the best.  
 
-Another possible arguments is to whether to calibrate the time difference (more details below).  
+Another possible arguments is to whether to calibrate the time difference - if the setup has changed (i.e. wires of
+different length) a new calibration is needed.  
 After the training is done the optimal demodulation weights are put into the config and save to a file named 
 "optimal_params.pkl". The file contains the configuration with the demodulation weights, and a matrix which describes 
 the final layer of the neural network for state classification.
 
 ### Measurement
+After we have the discriminator with the optimal weights we can use the QUA macro NNStateDiscriminator.measure_state()
+to measure the state of all qubits. The estimated state of all qubits is saved into one stream in the order defined in
+the list that contains the names of the qubits (NNStateDiscriminator.qubits).  
+The measurement function gets a few arguments:
+- The readout operation name
+- Name of the result stream
+- And some qua variables used for the state estimation (can be found in the docstring).  
+
+The measure_state command could be used in any QUA program when a multiplexed readout of all qubits is desired.
+
+### Calibrations
+
+There are two calibrations throughout the program which are done automatically: time calibration and DC offset 
+calibration. All calibrations need to be given quantum elements by which to calibrate (calibrate_with parameter). 
+For example, given "rr0" the 0'th readout resonator the corresponding controller ('con1') will be calibrated for DC
+offset and time difference and the configuration will be updated accordingly. It is recommended to calibrate with a 
+group of elements which cover all the controllers, i.e. I would give "rr0" and "rr10" if those use 'con1' and 'con2'.
+- NOTE: elements with no defined outputs cannot be calibrated. Also, if more than one element is associated with the 
+  same controller the DC offset calibration will happen only for the first one.
+#### Time difference calibration
+It's used for the training stage in which we want to accurately mimic the OPX's demodulation using a neural network. 
+The timings of the demodulation depend on the specific setup, therefore there's a need to calibrate the time difference
+between the physical system and the computationl model. This stage is done automatically and the value is stored in the 
+NNStateDiscriminator object. 
+-  NOTE: one needs to pay attention how the IQ compenets from the mixer after downconversion connect to the ADCs of the 
+OPX. The demodulation done in the TimeDiffCalibrator class must match the demodulation done throughout the program
+   (with respect to 'out1/2' and IQ components). 
+- The way the time calibrator is written now assumes that the component with the phase ahead goes into 'out1'.
+  
+#### DC offset calibration
+There's a DC component in different setups. We need to take that into account in our programs. The DCoffsetCalibrator
+class does that automatically.
