@@ -1,6 +1,6 @@
 ---
 title: Waveform compression
-sidebar_label: RAW ADC Measurement
+sidebar_label: Waveform compression
 slug: ./
 id: index
 ---
