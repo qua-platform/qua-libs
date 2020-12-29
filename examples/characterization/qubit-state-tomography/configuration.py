@@ -1,40 +1,39 @@
 import numpy as np
 
 
+
+
 def gauss(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    gauss_wave = gauss_wave * np.exp(2 * np.pi * delf * t)
+    gauss_wave = gauss_wave*np.exp(2*np.pi*delf*t)
     return [float(x) for x in gauss_wave]
-
 
 def gauss_der(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_der_wave = amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = amplitude * (-2*(t-mu))*np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_der_wave]
 
+#X90 definition
+x90amp=0.4
+x90std=0.2
+x90mean=0
+x90duration=1000
+x90detuning=0
+x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
+lmda = 0.5  #Define scaling parameter for Drag Scheme
+alpha = -1  #Define anharmonicity parameter
+x90der_waveform = gauss_der(x90amp,x90mean,x90std, x90detuning, x90duration)
 
-# X90 definition
 
-x90amp = 0.4
-x90std = 0.2
-x90mean = 0
-x90duration = 1000
-x90detuning = 0
-x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration)  # Assume you have calibration for a X90 pulse
-lmda = 0.5  # Define scaling parameter for Drag Scheme
-alpha = -1  # Define anharmonicity parameter
-x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
+#Y180 definition
+y180waveform = gauss(2*x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
+y180der_waveform = gauss_der(2*x90amp, x90mean,x90std, x90detuning, x90duration)
 
-# Y180 definition
-y180waveform = gauss(2 * x90amp, x90mean, x90std, x90detuning,
-                     x90duration)  # Assume you have calibration for a X90 pulse
-y180der_waveform = gauss_der(2 * x90amp, x90mean, x90std, x90detuning, x90duration)
-
-IBMconfig = {
+config = {  #Config taken according to an IBM superconducting quantum processor
     'version': 1,
     'controllers': {
         "con1": {
@@ -75,8 +74,9 @@ IBMconfig = {
         }
     },
 
+
     'elements': {
-        "qubit0": {
+        "qubit": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
@@ -90,7 +90,7 @@ IBMconfig = {
                 'Y180': "Y180_pulse"
             },
         },
-        "CPW0": {
+        "RR": {
             'mixInputs': {
                 'I': ('con1', 3),
                 'Q': ('con1', 4),
@@ -108,105 +108,9 @@ IBMconfig = {
             }
 
         },
-        "qubit1": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
-                'lo_frequency': 5.10e7,
-                'mixer': 'mixer_qubit'
-            },
-            'intermediate_frequency': 0,  # 5.2122e9,
-            'operations': {
-                'X90': "X90_pulse",
-                'Y90': "Y90_pulse",
-                'Y180': "Y180_pulse"
-            },
 
-        },
-        "CPW1": {
-            'mixInputs': {
-                'I': ('con1', 7),
-                'Q': ('con1', 8),
-                'lo_frequency': 6.00e7,
-                'mixer': 'mixer_res'
-            },
-            'intermediate_frequency': 0,  # 6.12e7,
-            'operations': {
-                'meas_pulse': 'meas_pulse_in',
-            },
-            'time_of_flight': 180,  # Measurement parameters
-            'smearing': 0,
-            'outputs': {
-                'out1': ('con1', 2)
-            }
 
-        },
 
-        "qubit2": {
-            "mixInputs": {
-                "I": ("con2", 1),
-                "Q": ("con2", 2),
-                'lo_frequency': 5.10e7,
-                'mixer': 'mixer_qubit'
-            },
-            'intermediate_frequency': 0,  # 5.0154e9,
-            'operations': {
-                'X90': "X90_pulse",
-                'Y90': "Y90_pulse",
-                'Y180': "Y180_pulse"
-            },
-
-        },
-        "CPW2": {
-            'mixInputs': {
-                'I': ('con2', 3),
-                'Q': ('con2', 4),
-                'lo_frequency': 6.00e7,
-                'mixer': 'mixer_res'
-            },
-            'intermediate_frequency': 0,  # 6.12e7,
-            'operations': {
-                'meas_pulse': 'meas_pulse_in',
-            },
-            'time_of_flight': 180,  # Measurement parameters
-            'smearing': 0,
-            'outputs': {
-                'out1': ('con2', 1)
-            }
-
-        },
-        "qubit3": {
-            "mixInputs": {
-                "I": ("con2", 5),
-                "Q": ("con2", 6),
-                'lo_frequency': 5.10e7,
-                'mixer': 'mixer_qubit'
-            },
-            'intermediate_frequency': 0,  # 5.2805e9,
-            'operations': {
-                'X90': "X90_pulse",
-                'Y90': "Y90_pulse",
-                'Y180': "Y180_pulse"
-            },
-        },
-
-        "CPW3": {
-            'mixInputs': {
-                'I': ('con2', 7),
-                'Q': ('con2', 8),
-                'lo_frequency': 6.00e7,
-                'mixer': 'mixer_res'
-            },
-            'intermediate_frequency': 0,  # 6.12e7,
-            'operations': {
-                'meas_pulse': 'meas_pulse_in',
-            },
-            'time_of_flight': 180,  # Measurement parameters
-            'smearing': 0,
-            'outputs': {
-                'out1': ('con2', 2)
-            }
-        },
 
     },
     "pulses": {
@@ -318,3 +222,4 @@ IBMconfig = {
         ],
     }
 }
+

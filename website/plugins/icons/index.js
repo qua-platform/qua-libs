@@ -1,11 +1,12 @@
 const FaviconsWebpackPlugin = require("favicons-webpack-plugin");
-console.log("s")
+const path = require("path")
+
 module.exports = function (context, options) {
   return {
     name: "qua-libs-icon-plugin",
     configureWebpack(config, isServer, utils) {
       return {
-        plugins: [new FaviconsWebpackPlugin("src/qua-logo.svg")],
+        plugins: [new FaviconsWebpackPlugin(path.resolve("src/qua-logo.svg"))],
       };
     },
   };

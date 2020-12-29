@@ -69,7 +69,7 @@ The strategy of QAOA is to find an ansatz state $$|\psi_p(\vec{\gamma},\vec{\bet
 The QAOA trial state is introduced as : 
 $$|\psi_p(\vec{\gamma},\vec{\beta})\rangle=\hat{U}_B(\beta_p)\hat{U}_C(\gamma_p)...\hat{U}_B(\beta_1)\hat{U}_C({\gamma_1})|+\rangle^{\otimes n}$$
 with $$|+\rangle=\hat{H}|0\rangle=\frac{1}{\sqrt{2}}(|0\rangle+|1\rangle)$$, $$\hat{H}$$ being the Hadamard gate.
-![](/QAOA_circuit.png)
+![](QAOA_Circuit.png)
 
 Recalling that $$\hat{H}_C=\sum_{\mathbf{x}\in \{0,1\}^n}C(\mathbf{x})|\mathbf{x}\rangle\langle \mathbf{x}|$$, the expectation value is written :
 
@@ -79,70 +79,77 @@ This implies that retrieving this expectation value can be done easily by sampli
 
 Once this computation is done, one performs a classical optimization of the parameters $$(\vec{\gamma},\vec{\beta})$$ in order to maximize the value of $$F_p$$.
 The outline of QAOA is outlined in the layout found in the paper (https://doi.org/10.1038/s41598-019-43176-9).
-![](/QAOA_outline.png)
+![](QAOA_outline.png)
 
 
 
 
 
-# 4. The script
-### 4.1 The configuration file
+# 3. The script
+### 3.1 The configuration file
 
-The configuration file is designed to represent the configuration of a superconducting circuit. We have the following items :
+The configuration file is designed to represent the configuration of a superconducting circuit of 4 qubits, connected to 2 OPXs. We have the following items :
 
 - controllers :
-We define the outputs and inputs of the OPXs devices (2 controllers), which will be of use for the experiment. In this case, we have two analog outputs for each qubit, and two others for their coupled readout resonator. We add for each of the readout resonators an analog input which is the channel where will be sampled out the analog results of the readout operation.
+We define the outputs and inputs of the OPXs devices (2 controllers), which will be of use for the experiment. In this case, we have two analog outputs for each qubit, and two others for their coupled readout resonator. We add for each readout resonator an analog input which is the channel where will be sampled out the analog results of the qubit measurement.
 - elements :
-This defines the set of essential components of the quantum system interacting with the OPX. In this case, we have 4 qubits, and 4 coplanar waveguides being used as readout resonators.
-Here are specified the main characteristics of the element, such as its resonant frequency, its associated operations (i.e the operations the OPX can apply on the element). We define the Drag_Op opérations which allow a single qubit rotation for each qubit around the X or Y axis (Drag_Op_I and Drag_Op_Q respectively)
+This defines the set of essential components of the quantum system interacting with the OPX. In this case, we have 4 qubits, and 4 coplanar waveguides (called CPW in the code) being used as readout resonators.
+Here are specified the main characteristics of the element, such as its resonant frequency, its associated available operations (i.e the operations the OPX can apply on the element). We define the Drag_Op operations which perform a $$\pi/2$$ single qubit rotation for each qubit around the X or Y axis (Drag_Op_I and Drag_Op_Q respectively).
+Those operations are supposed to be calibrated prior to running this experiment (using a Rabi experiment for example).
+
 - pulses : 
-A description of the doable pulses introduced in the elements. Here is provided a description of the default pulse duration (length parameter), the associated waveform (which can be taken from an arbitrary array), the type of operation (e.g control or measurement)
+A description of the doable pulses used to perform operations defined in the elements. Here is provided a description of the default pulse duration (length parameter), the associated waveform (which can be taken from an arbitrary array), the type of operation (e.g control or measurement)
+
 - waveforms : 
 Specification of the pulse shape based on pre-built arrays (either by the user in case the shape is arbitrary, or constant pulse otherwise). In our case, we use Gaussian shaped pulses, assumed to be calibrated by a Rabi experiment prior to the execution of the program.
 - Integration weights :
 Describe the demodulation process of the data 
 
-### 4.2 Global variables of the Python code
-There are few global variables introduced in the main script, callable in every function defined to run QAOA: 
+### 3.2 Global variables of the Python code
+There are few global variables introduced in the main script that uses full OPX's abilities (named QAOA_MaxCut_QUA_IO_usage.py), callable in every function defined to run QAOA: 
 - $$G$$, the graph instance (generated with the Python package networkx)
 - $$n$$, the number of nodes in $$G$$, aka the number of qubits in our configuration
 - MaxCut_value, the maximum cut of the graph $$G$$
 - $$N_{rep}$$, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
+- $$p$$, number of adiabatic blocks (parameter dependent) in the quantum circuit
 - $$qm1$$, the QuantumMachinesManager() instance
 - $$QM$$, the Quantum Machine instance
 - job, the job instance executing the QUA program 
-### 4.3 The usual structure of QAOA
+
+### 3.3 The usual structure of QAOA
 
 As we mentioned earlier, the QAOA consists in a big classical loop scheme, orchestrated by a classical optimization algorithm which successively calls the quantum computer to retrieve the evaluation of the cost function we are trying to optimize. Each call to the quantum computer is supposedly done with a fixed set of parameters, and once the quantum computer returns the associated cost value, the optimizer intends to produce a new parameter set designed to obtain another cost value, closer to the maximum one.
 
-Usually, one would initialize a classical optimizer and make successive calls to a QUA program that would run the designed quantum circuit (according to the fixed parameters) to the hardware. 
+Usually, one would initialize a classical optimizer and make successive calls to a QUA program that would run the designed quantum circuit (according to the fixed parameters) to the hardware. This is what is being done in the script named QAOA_MaxCut_QUA_1, where the QUA program serves as the executioner of the trial state preparation for a particular angle set. This QUA program is embedded into a Python function called Launch_QAOA(), which takes angles sets $$\gamma$$ & $$\beta$$, as well as the graph $$G$$ to prepare the ansatz state according to the connectivity of the latter.
+
 This solution, despite being relatively simple, is not efficient in terms of communications between the OPXs and the servers. 
 
-To avoid the launch of a different QUA program each time we need to call the quantum computer, we use a slightly different protocol, which consists in defining a single QUA program, interacting continuously with the classical computations necessary to produce the final result of QAOA.
+To avoid the launch of a different QUA program each time we need to call the quantum computer, we use a slightly different protocol, which consists in defining a single QUA program, interacting continuously with the classical computations necessary to produce the final result of QAOA. This is the improved and specific version of QAOA implemented in the script QAOA_MaxCut_QUA_IO_usage.py.
 
-### 4.4 Using the continuous feedback loop
+### 3.4 Using the continuous feedback loop
 
 The QUA program consists in an infinite_loop, running the same sequence over and over again. 
 Each iteration within this loop is a run of $$N_{rep}$$ QAOA quantum circuits, that are associated to one particular parameter set. The user defined $$N_{rep}$$ parameter indicates the number of samples we want to get in order to estimate statistics 
 
 Between two iterations, the QUA program is paused, waiting for the client PC to call the Python function "encode_angles_in_IO()", which sends to the Quantum Machine instance the parameter set to be used to run the next quantum circuit sequence, using the IO1 and IO2 features of the Quantum Machine. It is in this function that the job is resumed, so that the program can compute the quantum circuit and stream the results of the measurement.
 
-### 4.5 Main organs 
-The QAOA outline is embedded in the call of one general Python function named result_optimization(), which has two inputs : $$p_{min}$$ & $$p_{max}$$. Those two inputs define the number of adiabatic evolution blocks we want to incorporate in the QAOA algorithm (i.e the number of parameters to be optimized classically). 
-This function returns lists of optimized_angles, approximation ratios, and final expectation values for each value of $$p$$ between $$p_{min}$$ & $$p_{max}$$.
+### 3.5 Main organs 
+The QAOA outline is embedded in the call of one general Python function named result_optimization().
+This function returns lists of optimized_angles, approximation ratios, and final expectation values for the provided parameters provided as global variables in the script.
 
-This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to the function QUA_optimize.
+This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to the function SPSA_optimize.
 
 The latter function implements the SPSA algorithm for classical optimization loop (https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF), and uses the Python function quantum_avg_computation() to retrieve the result of the evaluation of the expectation value (which is the cost function to be maximized by the optimizer).
 
 The function quantum_avg_computation() takes as input a set of angles, and plugs in the QUA program those angles (using IO values of the QM). Once this is done, this function generates the result_handles associated to job, and retrieves the measurement results to calculate explicitly the estimation of the desired cost hamiltonian expectation value. The output of the program is simply the estimated expectation value (called Mp in the function) with a minus sign (since minimizing -Mp corresponds to getting the maximum of Mp once absolute value is applied).
 
-### 4.6 The QUA program
+### 3.6 The QUA program
 
-The angular part of the whole script is the QUA program, which is, as mentioned before, an infinite_loop running a pulse sequence dependent of the angle parameters initialized using the IO values of the Quantum Machine.
+The heart of the whole script is the QUA program, which is, as mentioned before, an infinite_loop running a pulse sequence dependent of the angle parameters initialized using the IO values of the Quantum Machine.
 
-Within the infinite_loop stands a for_ loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state $$N_{rep}$$ times. 
-To make the code clearer for the user, a series of gates (QUA macros) such as Hadamard(), CU1(), Rz(),...  are used and consist in a pulse sequence associated to the physical realization of those gates on a superconducting hardware.
+Within the infinite_loop stands a for_ loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state $$N_{rep}$$ times (the higher is $$N_{rep}$$, the more accurate will be the computed expectation value).
+
+To make the code clearer for the user, a series of gates (QUA macros) such as Hadamard(), CU1(), Rz(),...  are used and consist in a pulse sequence associated to the physical realization of those gates on a superconducting hardware. The compilation of those gates is used according to what is usually done on an IBM machine.
 
 Second part of the QUA deals with the measurement of each qubit and the saving of the associated result (after having performed state estimation based on IQ values obtained) in QUA stream variables, that are handled generically using standardized bitstrings callable easily in the result handles for classical data processing.
 
@@ -151,4 +158,3 @@ Second part of the QUA deals with the measurement of each qubit and the saving o
 
 
 
- 
