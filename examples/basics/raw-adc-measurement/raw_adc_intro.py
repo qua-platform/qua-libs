@@ -42,7 +42,7 @@ config = {
                 'readoutOp': 'readoutPulse',
 
             },
-            'time_of_flight': 28,
+            'time_of_flight': 184,
             'smearing': 0
         },
     },
@@ -81,8 +81,10 @@ QM1 = QMm.open_qm(config)
 with program() as raw_adc_prog:
     measure('readoutOp', 'qe1', "raw_adc")
 
+# In the OPX, the analog signal starts 184 after the play command. In order to simulate it, we added the same latency
+# here, and this is the time_of_flight in the configuration file
 job = QM1.simulate(raw_adc_prog,
-                   SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                   SimulationConfig(500, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)], latency=184)))
 
 samples = job.get_simulated_samples()
 res = job.result_handles
