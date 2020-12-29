@@ -3,6 +3,7 @@ from TimeDiffCalibrator import TimeDiffCalibrator
 
 from qm.qua import *
 
+import h5py
 import pickle
 import numpy as np
 import os
@@ -13,7 +14,7 @@ from tensorflow.keras.constraints import max_norm
 class NNStateDiscriminator:
     """
     The state discriminator is a class that generates optimized measure procedure for state discrimination
-    of a multi-level qubit.
+    of a multiplexed multi-level qubit system.
     .. note:
         Currently only 3-states discrimination is supported. The setup assumed here includes IQ mixer both in the up-
         and down-conversion of the readout pulse.
@@ -24,30 +25,25 @@ class NNStateDiscriminator:
         Constructor for the state discriminator class.
         :param qmm: A QuantumMachineManager object
         :param config:  A quantum machine configuration dictionary with the readout resonators and qubits elements.
-                        The RRs and Qubits must be mixed input elements defined in the following way:
-                        - all the readout resonators elements should be named "rr0","rr1",...
-                        - all the qubits elements should be named "qb0","qb1",...
-                        - the index number should go up to rr_num-1
-                        - all of the above should be mixedInput elements
-
-        :param resonators: list of the readout resonators elements - list of strings for their names
-        :param calibrate_with: list of Quantum elements to use for the calibration of the time delay and the DC offset
+        :param resonators: list of names of the readout resonators elements
+        :param qubits: list of names of the qubits quantum elements
+        :param calibrate_with: list of Quantum elements to use for the calibration of the time delay and the DC offset.
+                                It's recommended to use a group of readout resonators which cover all used controllers.
         :param path: A folder to save the raw data, training parameters, optimized weights
         """
 
         self.qmm = qmm
         self.config = config
         self.rr_num = len(resonators)
-        self.num_of_states = 3
+        self.num_of_states = 3  # for 'g','e','f'
         self.path = path
         self.resonators = resonators
         self.qubits = qubits
         assert len(self.resonators) == len(self.qubits), 'The number of resonators must equal to the number of qubits'
         self.calibrate_with = calibrate_with
         self._create_dir()
-        self.saved_data = None
-        self.time_diff = None
-        self.MAX_STATES = 300
+        self.time_diff = 0
+        self.MAX_STATES = 300  # TODO ATTENTION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         self.number_of_raw_data_files = None
         self.final_weights = None
         self.load_config_from_file = True
@@ -77,7 +73,7 @@ class NNStateDiscriminator:
             except FileNotFoundError:
                 pass
 
-    def _training_program(self, prepare_qubits, readout_op, avg_n, states, wait_time):
+    def _training_program(self, prepare_qubits, readout_op, avg_n, states, wait_time, with_timestamps):
         with program() as train:
             n = declare(int)
             raw = [declare_stream(adc_trace=True) for i in range(self.rr_num)]
@@ -86,7 +82,7 @@ class NNStateDiscriminator:
                     # prepare the qubits in the given state
                     prepare_qubits(state, self.qubits)
 
-                    # align all elements
+                    # make sure preparation of qubits is done
                     align(*self.qubits)
 
                     # measure the state of all readout resonators SIMULTANEOUSLY using reset phase
@@ -103,14 +99,19 @@ class NNStateDiscriminator:
 
             with stream_processing():
                 # save the incoming raw waveform
-                for i in range(self.rr_num):
-                    raw[i].input1().with_timestamps().save_all('raw1_' + str(i))
-                    raw[i].input2().with_timestamps().save_all('raw2_' + str(i))
+                if with_timestamps:
+                    for i in range(self.rr_num):
+                        raw[i].input1().with_timestamps().save_all('raw1_' + str(i))
+                        raw[i].input2().with_timestamps().save_all('raw2_' + str(i))
+                else:
+                    for i in range(self.rr_num):
+                        raw[i].input1().save_all('raw1_' + str(i))
+                        raw[i].input2().save_all('raw2_' + str(i))
 
         return train
 
-    def generate_training_data(self, prepare_qubits, readout_op, avg_n: int, states: list, wait_time: int,
-                               calibrate_dc_offset=True,
+    def generate_training_data(self, prepare_qubits, readout_op, avg_n: int, states, wait_time: int,
+                               calibrate_dc_offset=True, with_timestamps=False,
                                **execute_args):
         """
 
@@ -130,19 +131,21 @@ class NNStateDiscriminator:
                             resonator. Th operation should have the same name for all resonators.
         :param avg_n: Number of measurement to average, for a larger noise a large averaging number is required
 
-        :param states:  The different combinations of states. A list of lists where each inner list decribes the state
-                        of the qubits, i.e,   [[0,2,1,0,2],
-                                               [1,0,0,1,2],
-                                               [0,1,1,1,2]]
+        :param states:  The different combinations of states. A 2D numpy.array or list of lists where each inner list
+                        describes the state of the qubits, i.e,   [[0,2,1,0,2],
+                                                                   [1,0,0,1,2],
+                                                                   [0,1,1,1,2]]
                         The first inner list corresponds to qubit 0 being prepared in state 0(g), qubit 1 being prepared
                         in state 2(f), qubit 2 being prepared in state 1(e), etc.
                         For a large number of qubits the states should be randomized.
 
         :param wait_time:   The wait time between the preparation and measurement of a certain state of qubits to the
                             next one. The longer it takes for the qubit and for the resonators to relax the longer the
-                            wait time should be. wait_time=1 (1 clock cycle) corresponds to a wait time of 4ns.
+                            wait time should be. wait_time=1 (1 clock cycle) corresponds to a time of 4ns.
 
         :param calibrate_dc_offset: whether to calibrate the DC offset on analog inputs
+        :param with_timestamps: whether to save timestamps with the raw ADC data. Saving timestamps increases the
+                                memory used and the processing time.
         :param execute_args: optional QuantumMachine additional execution arguments
         :return:
         """
@@ -151,37 +154,26 @@ class NNStateDiscriminator:
             self._calibrate_dc_offset(**execute_args)
 
         QM = self.qmm.open_qm(self.config)
+        self.number_of_raw_data_files = len(states) // self.MAX_STATES + 1 - (len(states) % self.MAX_STATES == 0)
         if len(states) > self.MAX_STATES:
             # divide the data and states into chunks of size at most MAX_STATES
-            print("ATTENTION: Due to a larger number of states than MAX_STATES the data will be divided into multiple "
-                  "files")
-            for i in range(len(states) // self.MAX_STATES + 1):
+            print(f"ATTENTION: Due to a larger number of states than MAX_STATES ({self.MAX_STATES}) the data will be "
+                  f"divided into multiple files")
 
-                if i == len(states) // self.MAX_STATES:
-                    idx = [i * self.MAX_STATES, len(states)]
-                else:
-                    idx = [i * self.MAX_STATES, (i + 1) * self.MAX_STATES]
+        for i in range(self.number_of_raw_data_files):
+            if i == self.number_of_raw_data_files-1:
+                idx = [i * self.MAX_STATES, len(states)]
+            else:
+                idx = [i * self.MAX_STATES, (i + 1) * self.MAX_STATES]
 
-                print(f"Generating data file {i}...")
-                job = QM.execute(
-                    self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time),
-                    **execute_args)
-                job.result_handles.wait_for_all_values()
-
-                print("Writing raw data to file...")
-                file = open(self.path + "\\" + f"data_{i}.pkl", 'wb')
-                self._save_data(file, job, states[idx[0]:idx[1]], avg_n)
-            self.number_of_raw_data_files = len(states) // self.MAX_STATES + 1
-        else:
-            print("Generating data file 0...")
-            job = QM.execute(self._training_program(prepare_qubits, readout_op, avg_n, states, wait_time),
-                             **execute_args)
+            print(f"Generating data file {i}...")
+            job = QM.execute(
+                self._training_program(prepare_qubits, readout_op, avg_n, states[idx[0]:idx[1]], wait_time, with_timestamps),
+                **execute_args)
             job.result_handles.wait_for_all_values()
 
             print("Writing raw data to file...")
-            file = open(self.path + "\\" + f"data_0.pkl", 'wb')
-            self._save_data(file, job, states, avg_n)
-            self.number_of_raw_data_files = 1
+            self._save_data(i, job, states[idx[0]:idx[1]], avg_n, with_timestamps)
 
     def _calibrate_dc_offset(self, **execute_args):
         already_calibrated = set()
@@ -202,15 +194,21 @@ class NNStateDiscriminator:
                 print(f"ATTENTION: Probably tried to calibrate DC offset of '{con_name}' using element '{element}' "
                       f"but no outputs were defined on that element.")
 
-    def _save_data(self, file, job, states, avg_n):
-        data = {"raw1_" + str(j): job.result_handles.get("raw1_" + str(j)).fetch_all() for j in range(self.rr_num)}
-        data.update(
-            {"raw2_" + str(j): job.result_handles.get("raw2_" + str(j)).fetch_all() for j in range(self.rr_num)})
-        data.update({"config": self.config})
-        data.update({"states": states})
-        data.update({"N": avg_n})
-        pickle.dump(data, file)
-        file.close()
+    def _save_data(self, idx, job, states, avg_n, with_timestamps):
+        raw_data = h5py.File(self.path + "\\" + f"raw_data_{idx}.hdf5", 'w')
+        if with_timestamps:
+            raw_data.create_dataset("with_timestamps", data=np.array([1]))
+        else:
+            raw_data.create_dataset("with_timestamps", data=np.array([0]))
+        for j in range(self.rr_num):
+            raw_data.create_dataset("raw1_" + str(j),
+                                    data=job.result_handles.get("raw1_" + str(j)).fetch_all()['value'])
+            raw_data.create_dataset("raw2_" + str(j),
+                                    data=job.result_handles.get("raw2_" + str(j)).fetch_all()['value'])
+
+        raw_data.create_dataset("states", data=np.array(states))
+        raw_data.create_dataset("N", data=np.array([avg_n]))
+        raw_data.close()
 
     def _calibrate_time_diff(self, calibrate_dc_offset, **execute_args):
         if calibrate_dc_offset:
@@ -246,8 +244,15 @@ class NNStateDiscriminator:
     def _down_sin(freq, time_diff, readout_len):
         return np.sin(2 * np.pi * freq * 1e-9 * np.linspace(0 - time_diff, readout_len - 1 - time_diff, readout_len))
 
-    def train(self, calibrate_dc_offset=True,
-              data_files_idx=None, epochs=1000, kernel_initializer='glorot_uniform', **execute_args
+    @staticmethod
+    def _reshape_and_average_raw_data(raw, N, with_timestamps):
+        if with_timestamps:
+            return np.mean(np.reshape(raw['value'], (N, -1, raw['value'].shape[1])), axis=0)
+        else:
+            return np.mean(np.reshape(raw, (N, -1, raw.shape[1])), axis=0)
+
+    def train(self, data_files_idx=None, epochs=1000, kernel_initializer='glorot_uniform',
+              calibrate_time_diff=True, calibrate_dc_offset=True, **execute_args
               ):
         """
 
@@ -256,22 +261,21 @@ class NNStateDiscriminator:
         :param epochs:              Number of training epochs. Could be larger for a better outcome
 
         :param kernel_initializer:  Initial demodulation weights. One can randomize using the default 'glorot_uniform'
-                                    distribution. Another possibility which might work better is to start from a
-                                    constant value using tf.keras.initializers.Constant(1)
+                                    distribution. Another possibility which might work better in some cases is to start
+                                    from a constant value using tf.keras.initializers.Constant(1)
 
-        :param calibrate_dc_offset: Whether to calibrate the DC offset during the training
+        :param calibrate_time_diff: Whether to calibrate the time difference before the training
+        :param calibrate_dc_offset: Whether to calibrate the DC offset when calibrating the time difference
         :return:
         """
         if not data_files_idx:
             if not self.number_of_raw_data_files:
                 self.number_of_raw_data_files = 1
             data_files_idx = np.arange(self.number_of_raw_data_files)
+        if calibrate_time_diff:
+            self._calibrate_time_diff(calibrate_dc_offset, **execute_args)
+        raw_data_files = [h5py.File(self.path + "\\" + f"raw_data_{i}.hdf5", 'r') for i in data_files_idx]
 
-        self._calibrate_time_diff(calibrate_dc_offset, **execute_args)
-        files = [open(self.path + "\\" + f"data_{i}.pkl", 'rb') for i in data_files_idx]
-        raws = [pickle.load(a) for a in files]
-        for f in files:
-            f.close()
         final_weights = []
         models = []
 
@@ -282,16 +286,14 @@ class NNStateDiscriminator:
             # - combine the data from all the generated files #
             ###################################################
             readout_len = self.config["pulses"]["readout_pulse_" + str(j)]["length"]
-            raw1 = np.vstack([np.mean(np.reshape(raw["raw1_" + str(j)]['value']['value'],
-                                                 (raw["N"], -1, raw["raw1_" + str(j)]['value']['value'].shape[1])),
-                                      axis=0)
-                              for raw in raws])
-            raw2 = np.vstack([np.mean(np.reshape(raw["raw2_" + str(j)]['value']['value'],
-                                                 (raw["N"], -1, raw["raw2_" + str(j)]['value']['value'].shape[1])),
-                                      axis=0)
-                              for raw in raws])
 
-            labels = np.vstack([[tf.one_hot(s[j], self.num_of_states) for s in raw["states"]] for raw in raws])
+            raw1 = np.vstack([self._reshape_and_average_raw_data(raw["raw1_" + str(j)], raw["N"][0],
+                                                                 raw["with_timestamps"][0]) for raw in raw_data_files])
+            raw2 = np.vstack([self._reshape_and_average_raw_data(raw["raw2_" + str(j)], raw["N"][0],
+                                                                 raw["with_timestamps"][0]) for raw in raw_data_files])
+
+            labels = np.vstack(
+                [[tf.one_hot(s[j], self.num_of_states) for s in raw["states"]] for raw in raw_data_files])
             labels = labels[:raw1.shape[0], :]
             freq = self.config["elements"][self.resonators[j]]["intermediate_frequency"]
 
@@ -312,7 +314,7 @@ class NNStateDiscriminator:
             in1cos_dense = tf.keras.layers.Dense(1, name="in1cosdense", bias_constraint=max_norm(0),
                                                  kernel_initializer=kernel_initializer
                                                  )(in1cos)
-            in1add = tf.keras.layers.Add()([in1cos_dense, in1sin_dense])
+            in1add = in1cos_dense + in1sin_dense
 
             in2sin = tf.keras.Input(shape=(int(readout_len / 4),), name='in2sin')
             in2sin_dense = tf.keras.layers.Dense(1, name="in2sindense", bias_constraint=max_norm(0),
@@ -322,7 +324,7 @@ class NNStateDiscriminator:
             in2cos_dense = tf.keras.layers.Dense(1, name="in2cosdense", bias_constraint=max_norm(0),
                                                  kernel_initializer=kernel_initializer
                                                  )(in2cos)
-            in2add = tf.keras.layers.Add()([in2cos_dense, in2sin_dense])
+            in2add = in2cos_dense + in2sin_dense
 
             inputs = tf.keras.layers.concatenate([in1add, in2add])
 
@@ -332,7 +334,8 @@ class NNStateDiscriminator:
             model.compile(optimizer='adam',
                           loss=loss_fn,
                           metrics=['accuracy'])
-            tf.keras.utils.plot_model(model, to_file="model.png", show_shapes=True)
+            # optional plotting of the model
+            # tf.keras.utils.plot_model(model, to_file="model.png", show_shapes=True)
             model.fit(
                 {"in1sin": raw1sin, "in1cos": raw1cos, "in2sin": raw2sin, "in2cos": raw2cos},
                 {"final": labels},
@@ -392,6 +395,8 @@ class NNStateDiscriminator:
                 self.config['pulses']['test_readout_pulse_' + str(i)]['integration_weights'][
                     'optimal_w2_' + str(j)] = 'optimal_w2_' + str(j)
 
+        for f in raw_data_files:
+            f.close()
         self.final_weights = final_weights
         data = {"config": self.config, "final_weights": final_weights}
         file = open(self.path + "\\" + f"optimal_params.pkl", 'wb')
@@ -402,7 +407,7 @@ class NNStateDiscriminator:
         """
         This procedure generates a macro of QUA commands for measuring the readout resonator and discriminating between
         the states of the qubit.
-        :param readout_op: A string with the readout operation name for all resonators.
+        :param readout_op: A string with the readout operation name for all resonators. TODO !!!!!!!!!!!!!!!!!!!!!!!
         :param out1: A QUA variable declared as: declare(fixed, size=rr_num)
         :param out2: A QUA variable declared as: declare(fixed, size=rr_num)
         :param res: A QUA variable declared as: declare(fixed, size=num_of_states)
@@ -411,7 +416,6 @@ class NNStateDiscriminator:
         :param adc: (optional) the stream variable which the raw ADC data will be saved and will appear in result
         analysis scope.
         """
-
         # readout measurement
         align(*self.resonators)
         for i in range(self.rr_num):
