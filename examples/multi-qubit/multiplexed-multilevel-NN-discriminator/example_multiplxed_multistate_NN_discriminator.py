@@ -21,7 +21,7 @@ def prepare_qubits(state, qubits):
 num_of_combinations = 243
 states = np.random.randint(0, discriminator.num_of_states, (num_of_combinations, discriminator.rr_num))
 wait_time = 100  # wait time between measurement and next state preparation
-n_avg = 15  # repeat the measurement n_avg times and average the result
+n_avg = 15  # repeat the measurement n_avg times and average the result in the training
 
 discriminator.generate_training_data(prepare_qubits, "readout", n_avg, states, wait_time)
 
@@ -36,8 +36,10 @@ def test(state):
         res = declare(fixed, size=discriminator.num_of_states)
         temp = declare(int)
 
+        # prepare qubits in a certain state
         prepare_qubits(state, discriminator.qubits)
         align(*discriminator.qubits, *discriminator.resonators)
+
         # measure the state of the qubits with one statement
         discriminator.measure_state('readout', "result", out1, out2, res, temp)
 
