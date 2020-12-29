@@ -117,29 +117,33 @@ class TimeDiffCalibrator:
             Q2 = declare(fixed)
             I = declare(fixed)
             Q = declare(fixed)
-
-            measure('readout', 'rr', 'adc',
-                    demod.full('integW1', I1, 'out1'),
-                    demod.full('integW2', Q1, 'out1'),
-                    demod.full('integW1', I2, 'out2'),
-                    demod.full('integW2', Q2, 'out2'))
-            assign(I, I1 + Q2)
-            assign(Q, -Q1 + I2)
-            save(I, 'I')
-            save(Q, 'Q')
-
-        freq = 1.4567e6
+            n=declare(int)
+            adc = declare_stream(adc_trace=True)
+            with for_(n, 1, n < 1e4, n + 1):
+                measure('readout', 'rr', 'adc',
+                        demod.full('integW1', I1, 'out1'),
+                        demod.full('integW2', Q1, 'out1'),
+                        demod.full('integW1', I2, 'out2'),
+                        demod.full('integW2', Q2, 'out2'))
+                assign(I, I1 + Q2)
+                assign(Q, -Q1 + I2)
+                save(I, 'I')
+                save(Q, 'Q')
+            with stream_processing():
+                adc.input1().save_all("adc_input1")
+                adc.input2().save_all("adc_input2")
+        freq = 8.4567e3
         qm = qmm.open_qm(TimeDiffCalibrator._default_config(freq, con_name))
         job = qm.simulate(cal_phase,
                           SimulationConfig(500, simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1),
                                                                                         ('con2', 2, 'con2', 2)])))
 
-        adc1 = job.result_handles.adc_input1.fetch_all()['value']
-        adc2 = job.result_handles.adc_input2.fetch_all()['value']
+        adc1 = np.mean(job.result_handles.adc_input1.fetch_all()['value'], axis=0)
+        adc2 = np.mean(job.result_handles.adc_input2.fetch_all()['value'], axis=0)
         adc_ts = job.result_handles.adc_input1.fetch_all()['timestamp']
 
-        I = job.result_handles.get("I").fetch_all()['value'][0]
-        Q = job.result_handles.get("Q").fetch_all()['value'][0]
+        I = np.mean(job.result_handles.get("I").fetch_all()['value'])
+        Q = np.mean(job.result_handles.get("Q").fetch_all()['value'])
 
         sig = (adc1 + 1j * adc2) * np.exp(-1j * 2 * np.pi * freq * 1e-9 * adc_ts)
         d = np.sum(sig)
