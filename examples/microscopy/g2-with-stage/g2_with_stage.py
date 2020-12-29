@@ -1,5 +1,5 @@
 """
-g2_with_stage.py: Single NVs confocal microscopy: Intensity autocorrelation g2 as a function of stage position
+g2-with-stage.py: Single NVs confocal microscopy: Intensity autocorrelation g2 as a function of stage position
 Author: Gal Winer - Quantum Machines
 Created: 13/12/2020
 Created on QUA version: 0.6.393

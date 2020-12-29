@@ -41,7 +41,13 @@ module.exports = [
             "multi-qubit/multiplexed-readout/index"
         ]
     },
-
+    {
+        "type": "category",
+        "label": "Microscopy",
+        "items": [
+            "microscopy/g2-with-sage/index",
+        ]
+    },
     {
         "type": "category",
         "label": "Randomized Benchmark",
