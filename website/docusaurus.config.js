@@ -26,6 +26,12 @@ module.exports = {
           position: "left",
         },
         {
+          to: "contributing",
+          activeBasePath: "contributing",
+          label: "Contributing",
+          position: "left",
+        },
+        {
           href: "https://github.com/qua-platform/qua-libs",
           label: "GitHub",
           position: "right",
