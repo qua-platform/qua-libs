@@ -4,37 +4,16 @@ title: QUA Libs Examples
 sidebar_label: Index
 slug: /
 ---
+## QUA Examples
+This collection of example scripts has tools to get you from basic interaction with a QUA machines, 
+running simple code and all the way to advanced hybrid algorithms like QAOA, VQE and others. 
 
-## Basics
-### [Hello QUA](basics/hello-qua/)
-### [Intro to saving](basics/intro-to-saving/)
-### [RAW ADC Measurement](basics/raw-adc-measurement/)
-### [Frame&Phase](basics/frame-and-phase-intro/)
+Usage is free and open. If you are interested in contributing to this collection (which we hope you are!), 
+you can find details on the [contributing](../CONTRIBUTING.md) page.
 
-## Characterization
-### [T1](calibration/T1/)
-### [T2](calibration/T2/)
-### [Rabi sweeps](calibration/rabi-sweeps/)
-### [Active reset](characterization/active-reset/)
-### [Hahn echo](calibration/hahn-echo/)
+# What to do first? 
 
-## Dynamical Decoupling Protocols
-### [XY-n](dynamical-decoupling-protocols/XY-n/)
-### [CPMG](dynamical-decoupling-protocols/CPMG/)
+If you're brand new, you can check out [hello-qua](/examples/basics/hello-qua) to get your first glimpse. 
+Some more advanced usage in a "real world" scenario can be found in the [calibration](/examples/calibration) section
+where [T1](/examples/calibration/T1), [T2](/examples/calibration/T2) and [Hahn-Echo](calibration/hahn-echo) examples can be found. 
 
-## Multi Qubit
-### [Flux tuneable coupler](multi-qubit/flux-tuneable-coupler/)
-### [Multilevel discriminator](multi-qubit/multilevel-discriminator/)
-### [Multiplexed readout](multi-qubit/multiplexed-readout/)
-
-## Randomized Benchmark
-### [RB](randomized-benchmark/one-qubit-rb/)
-### [DRAG RB](randomized-benchmark/DRAG-optimization/)
-
-## Spectroscopy
-### [Qubit spectroscopy](spectroscopy/qubit-spectroscopy/)
-### [Resonator spectroscopy](spectroscopy/resonator-spectroscopy/)
-
-## Tomography
-### [State tomography](characterization/qubit-state-tomography/)
-### [Wigner tomography](characterization/wigner-tomography/)
