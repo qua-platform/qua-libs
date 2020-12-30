@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import pi
 from scipy import signal
-nSamples = 1000
-samplingRate = 1e8
+nSamples = 100
+samplingRate = 10e6
 pulseDuration = nSamples / samplingRate
 pulseDuration_ns = pulseDuration / 1e-9
 t = np.linspace(0, pulseDuration, nSamples)
 
-freqs = np.linspace(0,5,20).tolist()
+freqs = np.linspace(1,4,5).tolist()
 phases = np.zeros_like(freqs).tolist()
 amps =np.ones_like(phases).tolist()
 m = np.sum(list(map(lambda a: a[2] * np.sin(2 * pi * a[0] * 1e6 * t + a[1]), zip(freqs, phases, amps))), 0)
@@ -47,7 +47,12 @@ out_vector=samples.con1.analog['1']
 f, Pxx_den=signal.periodogram(out_vector,1e9)
 
 plt.figure()
+[plt.axvline(x=f+50,color='k',linestyle='--') for f in freqs]
 plt.semilogy(f/1e6, Pxx_den)
 plt.xlabel('Freq [MHz]')
-plt.title('signal')
+plt.ylim([1e-15,1e-8])
+plt.xlim([40,60])
+
+plt.title('Single-sideband modulated signal')
+plt.grid(True,which='both')
 plt.show()
