@@ -120,6 +120,7 @@ class TimeDiffCalibrator:
             n=declare(int)
             adc = declare_stream(adc_trace=True)
             with for_(n, 1, n < 1e4, n + 1):
+                reset_phase('rr')
                 measure('readout', 'rr', 'adc',
                         demod.full('integW1', I1, 'out1'),
                         demod.full('integW2', Q1, 'out1'),
@@ -140,8 +141,8 @@ class TimeDiffCalibrator:
 
         adc1 = np.mean(job.result_handles.adc_input1.fetch_all()['value'], axis=0)
         adc2 = np.mean(job.result_handles.adc_input2.fetch_all()['value'], axis=0)
-        adc_ts = job.result_handles.adc_input1.fetch_all()['timestamp']
-
+        # adc_ts = job.result_handles.adc_input1.fetch_all()['timestamp']
+        adc_ts = np.arange(0, len(adc1))
         I = np.mean(job.result_handles.get("I").fetch_all()['value'])
         Q = np.mean(job.result_handles.get("Q").fetch_all()['value'])
 
