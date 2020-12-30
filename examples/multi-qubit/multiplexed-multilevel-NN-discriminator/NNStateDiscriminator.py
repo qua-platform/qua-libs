@@ -82,17 +82,16 @@ class NNStateDiscriminator:
                     # prepare the qubits in the given state
                     prepare_qubits(state, self.qubits)
 
-                    # make sure preparation of qubits is done
-                    align(*self.qubits)
+                    # align all elements
+                    align(*self.qubits, *self.resonators)
 
-                    # measure the state of all readout resonators SIMULTANEOUSLY using reset phase
-                    align(*self.resonators)
                     for i in range(self.rr_num):
                         reset_phase(self.resonators[i])
                         measure(readout_op, self.resonators[i], raw[i])
 
                     # wait on all elements to relax
                     wait(wait_time, *self.resonators, *self.qubits)
+                    align(*self.qubits, *self.resonators)
 
             with stream_processing():
                 # save the incoming raw waveform
@@ -158,7 +157,7 @@ class NNStateDiscriminator:
                   f"divided into multiple files")
 
         for i in range(self.number_of_raw_data_files):
-            if i == self.number_of_raw_data_files-1:
+            if i == self.number_of_raw_data_files - 1:
                 idx = [i * self.MAX_STATES, len(states)]
             else:
                 idx = [i * self.MAX_STATES, (i + 1) * self.MAX_STATES]
