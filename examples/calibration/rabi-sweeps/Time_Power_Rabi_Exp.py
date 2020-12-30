@@ -7,188 +7,69 @@ from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from configuration import *
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
-## Definition of the sample for Gaussian pulse
-gauss_pulse_len = 20 # nsec
-Amp=0.2     #Pulse Amplitude
-gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
-gauss_wf = np.exp(-gauss_arg**2/2)
-gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
-t_max = 0.500 #Maximum pulse duration
-dt = 0.001 #timestep
-N_t = int(t_max / dt) #Number of timesteps
-N_max=3
-a_max = 0.500 #Maximum amplitude
-da = 0.001 #amplitude sweeping step
-N_a = int(a_max / da) #Number of steps
+t_max = 5  # Maximum pulse duration (in clock cycles, 1 clock cycle =4 ns)
+dt = 1  # timestep
+N_t = int(np.round(t_max / dt))  # Number of timesteps
+N_max = 2
+a_max = 0.3  # Maximum amplitude
+da = 0.05  # amplitude sweeping step
+N_a = int(np.round(a_max / da))  # Number of steps
 
-## Setting up the configuration of the experimental setup
-## Embedded in a Python dictionary
-config = {
-    'version': 1,
+qmManager = QuantumMachinesManager("3.122.60.129")  # Reach OPX's IP address
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
-    'controllers': {  # Define the QM device and its outputs, in this case:
-        'con1': {  # 2 analog outputs for the in-phase and out-of phase components
-            'type': 'opx1',  # of the qubit (I & Q), and 2 other analog outputs for the coupled readout resonator
-            'analog_outputs': {
-                1: {'offset': 0.032},
-                2: {'offset': 0.041},
-                3: {'offset': -0.024},
-                4: {'offset': 0.115},
-            },
-            'analog_inputs' : {
-                1: {'offset': +0.0},
-
-            }
-
-        }
-    },
-
-    'elements': {  # Define the elements composing the quantum system, i.e the qubit+ readout resonator (RR)
-        'qubit': {
-            'mixInputs': {
-                'I': ('con1', 1),  # Connect the component to one output of the OPX
-                'Q': ('con1', 2),
-                'lo_frequency': 5.10e7,
-                'mixer': 'mixer_qubit'  ##Associate a mixer entity to control the IQ mixing process
-            },
-            'intermediate_frequency': 5.15e3,  # Resonant frequency of the qubit
-            'operations': {  # Define the set of operations doable on the qubit, each operation is related
-                'gauss_pulse': 'gauss_pulse_in'  # to a pulse
-            },
-        },
-        'RR': {
-            'mixInputs': {
-                'I': ('con1', 3),
-                'Q': ('con1', 4),
-                'lo_frequency': 6.00e7,
-                'mixer': 'mixer_res'
-            },
-            'intermediate_frequency': 6.12e3,
-            'operations': {
-                'meas_pulse': 'meas_pulse_in',
-            },
-            'time_of_flight': 28,  # Measurement parameters
-            'smearing': 0,
-            'outputs': {
-                'out1': ('con1', 1)
-            }
-
-        },
-    },
-
-    'pulses': {  # Pulse definition
-        'meas_pulse_in': {
-            'operation': 'measurement',
-            'length': 20,
-            'waveforms': {
-                'I': 'exc_wf',
-                'Q': 'zero_wf'
-            },
-            'integration_weights': {
-                'integW1': 'integW1',
-                'integW2': 'integW2',
-            },
-            'digital_marker': 'marker1'
-        },
-        'gauss_pulse_in': {
-            'operation': 'control',
-            'length': 20,
-            'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'zero_wf'
-            },
-        }
-    },
-
-    'waveforms': {
-        'zero_wf': {
-            'type': 'constant',
-            'sample': 0.0
-        },
-        'exc_wf': {
-                'type': 'constant',
-                'sample': 0.479
-        },
-
-        'gauss_wf': {
-                'type': 'arbitrary',
-                'samples': gauss_wf.tolist()
-        }
-
-    },
-
-    'digital_waveforms': {
-        'marker1': {
-            'samples': [(1, 4), (0, 2), (1, 1), (1, 0)]
-        }
-    },
-
-    'integration_weights': {#Define integration weights for measurement demodulation
-        'integW1': {
-            'cosine': [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                       4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                       4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                       4.0, 4.0, 4.0, 4.0, 4.0, 4.0],
-            'sine': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        },
-        'integW2': {
-            'cosine': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            'sine': [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                     4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                     4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
-                     4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
-        }
-    },
-
-    'mixers': {  #Potential corrections to be brought related to the IQ mixing scheme
-        'mixer_res': [
-            {'intermediate_frequency': 6.12e3, 'lo_frequency': 6.00e7, 'correction': [1.0, 0.0, 0.0, 1.0]}
-        ],
-        'mixer_qubit': [
-            {'intermediate_frequency': 5.15e3, 'lo_frequency': 5.10e7, 'correction': [1.0, 0.0, 0.0, 1.0]}
-        ],
-    }
-}
-qmManager = QuantumMachinesManager("3.122.60.129") # Reach OPX's IP address
-my_qm = qmManager.open_qm(config)  #Generate a Quantum Machine based on the configuration described above
-
-with program() as time_powerRabiProg:  #Mix up of the power and time Rabi QUA program
-    I = declare(fixed)      #QUA variables declaration
+with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA program
+    I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
-    t = declare(fixed) #Sweeping parameter over the set of durations
-    a = declare(fixed) #Sweeping parameter over the set of amplitudes
-    Nrep = declare(int)  #Number of repetitions of the experiment
+    t = declare(int)  # Sweeping parameter over the set of durations
+    a = declare(fixed)  # Sweeping parameter over the set of amplitudes
+    I_stream = declare_stream()  # Declare streams to store I and Q components
+    Q_stream = declare_stream()
+    time_stream = declare_stream()
+    amp_stream = declare_stream()
+    Nrep = declare(int)  # Number of repetitions of the experiment
 
-
-    with for_(a, 0.00, a <= a_max, a + da): #Sweep for varying amplitudes
-        with for_(t, 0.00, t <= t_max, t + dt):  # Sweep from 0 to 50 *4 ns the pulse duration
+    with for_(a, 0., a < a_max, a + da):  # Sweep for varying amplitudes
+        with for_(t, 0, t < t_max, t + dt):  # Sweep from 0 to t_max *4 ns the pulse duration
             with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
-                play('gauss_pulse'*amp(a), 'qubit',duration=t)
+                play('gauss_pulse' * amp(a), 'qubit', duration=t)
                 align("qubit", "RR")
                 measure('meas_pulse', 'RR', 'samples', ('integW1', I), ('integW2', Q))
-                save(I, 'I')
-                save(Q, 'Q')
-            save(t, 't')
-        save(a, 'a')
-
-
+                save(I, I_stream)
+                save(Q, Q_stream)
+            save(t, time_stream)
+        save(a, amp_stream)
+    with stream_processing():
+        I_stream.buffer(N_max).save_all('I')  #Use stream_processing to retrieve shaped data to perform easy post processing
+        Q_stream.buffer(N_max).save_all('Q')
+        amp_stream.save_all('a')
+        time_stream.buffer(N_t).save_all('t')
 
 my_job = my_qm.simulate(time_powerRabiProg,
-                   SimulationConfig(int(4000),simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+                        SimulationConfig(int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
 time.sleep(1.0)
 my_timeRabi_results = my_job.result_handles
-I1=my_timeRabi_results.I.fetch_all()['value']
-Q1=my_timeRabi_results.Q.fetch_all()['value']
-t1=my_timeRabi_results.t.fetch_all()['value']
-a1=my_timeRabi_results.a.fetch_all()['value']
+I1 = my_timeRabi_results.I.fetch_all()['value'] #Retrieve raw data
+Q1 = my_timeRabi_results.Q.fetch_all()['value']
+t1 = my_timeRabi_results.t.fetch_all()['value'][0] #Retrieve only once the set of pulse durations
+a1 = my_timeRabi_results.a.fetch_all()['value'] #Retrieve set of amplitudes swept
 samples = my_job.get_simulated_samples()
-samples.con1.plot()
-#plt.plot(dat['timestamp'],dat['value'])
-#plt.show()
+# samples.con1.plot()
+I_avg = []
+for i in range(len(I1)): #Average out number of shots for each amplitude/duration couple
+    I_avg.append(np.mean(I1[i]))
+I = np.reshape(I_avg, (N_a, N_t))
+
+
+fig = plt.figure()
+
+# Plot the surface.
+plt.pcolormesh(t1, a1, I, shading='nearest')
+plt.xlabel('Pulse duration [ns]')
+plt.ylabel('Amplitude [a.u]')
+plt.colorbar()
+plt.title('I component expressed for varying pulse amplitude and duration')

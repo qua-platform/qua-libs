@@ -2,69 +2,164 @@
 hahn_echo.py: hahn echo experiment
 Author: Arthur Strauss - Quantum Machines
 Created: 16/11/2020
-Created on QUA version: 0.5.138
+Created on QUA version: 0.6.393
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from configuration import *
 from qm.qua import math
 from qm import LoopbackInterface
 from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from scipy.optimize import curve_fit
+qmm = QuantumMachinesManager("3.122.60.129")
+qm = qmm.open_qm(config)
+π = np.pi
 
-def hahn_echo(meas_len = 2000, t_len = 81, t_stop = 407, rep_num = 500000, f = 10e6, pi_time = 100):
-    t_vec = [int(t_) for t_ in np.linspace(7, t_stop, t_len)]
-    with program() as hahn_echo:
-        update_frequency("qubit", int(f))
-        n = declare(int)
-        m = declare(int)
-        t = declare(int)
-        result1 = declare(int, size=int(meas_len / 500))
-        resultLen1 = declare(int)
-        result2 = declare(int, size=int(meas_len / 500))
-        resultLen2 = declare(int)
-        rabi_vec = declare(int, size=t_len)
-        rabi_vec2 = declare(int, size=t_len)
-        t_ind = declare(int)
-        play('rabi', 'laser', duration=3000 // 4)
-        with for_(n, 0, n < rep_num, n + 1):
-            assign(t_ind, 0)
-            with for_each_(t, t_vec):
-                z_rotation(np.pi, 'qubit')  #Moving into the rotating frame of the qubit
-                play('rabi', 'qubit', duration=((pi_time // 2) // 4)) #Initial π/2 pulse of echo sequence, divided by 4 at each time because of clock cycle duration (4 ns)
-                wait(t, 'qubit')  #Wait time
-                play('rabi', 'qubit', duration=(pi_time // 4)) # π-pulse
-                wait(t, 'qubit') #Wait again
-                play('rabi', 'qubit', duration=((pi_time // 2) // 4))  ## Play again a π/2 pulse to return at the top of the Bloch sphere, allowing deduction of T1 time
-                align('qubit', 'readout1', 'readout2', "laser")  #Wait for all the elements to be ready for readout
-                readout_QUA(result1, result2, resultLen1, resultLen2, meas_len, rabi_vec, t_ind, m) #Proceed to readout
-                # Repeat sequence
-                play('rabi', 'qubit', duration=((pi_time // 2) // 4))
-                wait(t, 'qubit')
-                play('rabi', 'qubit', duration=(pi_time // 4))
-                wait(t, 'qubit')
-                z_rotation(np.pi, 'qubit')
-                play('rabi', 'qubit', duration=((pi_time // 2) // 4))
-                align('qubit', 'readout1', 'readout2', "laser")
-                readout_QUA(result1, result2, resultLen1, resultLen2, meas_len, rabi_vec2, t_ind, m)
-                assign(t_ind, t_ind + 1)
-        #Save all the results
-        with for_(t_ind, 0, t_ind < rabi_vec.length(), t_ind + 1):
-            save(rabi_vec[t_ind], "rabi")
-        with for_(t_ind, 0, t_ind < rabi_vec2.length(), t_ind + 1):
-            save(rabi_vec2[t_ind], "rabi2")
-    # job = qm.simulate(hahn_echo, SimulationConfig(20000))
-    # res = job.get_simulated_samples()
-    job = qm.execute(hahn_echo, duration_limit=0, data_limit=0, force_execution=True)
-    job.wait_for_all_results()
-    res = job.get_results()
-    plt.figure()
-    plt.plot(np.linspace(7, t_stop, t_len) * 4, res.variable_results.rabi.values)
-    plt.plot(np.linspace(7, t_stop, t_len) * 4, res.variable_results.rabi2.values)
-    plt.figure()
-    plt.plot(np.linspace(7, t_stop, t_len) * 4, res.variable_results.rabi.values - res.variable_results.rabi2.values)
-    plt.plot(np.linspace(7, t_stop, t_len) * 4, res.variable_results.rabi.values - res.variable_results.rabi2.values, 'o')
-    return res
+def Hadamard(tgt):
+    U2(tgt, 0, π)
 
+
+def U2(tgt, 𝜙=0, 𝜆=0):
+    Rz(𝜆, tgt)
+    Y90(tgt)
+    Rz(𝜙, tgt)
+
+
+def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
+    Rz(𝜆-π/2, tgt)
+    X90(tgt)
+    Rz(π-𝜃, tgt)
+    X90(tgt)
+    Rz(𝜙-π/2, tgt)
+
+def Rz(𝜆, tgt):
+    frame_rotation(-𝜆, tgt)
+
+def Ry(𝜆, tgt):
+    U3(tgt, 𝜆, 0, 0)
+
+def Rx(𝜆, tgt):
+    U3(tgt, 𝜆, -π / 2, π / 2)
+
+def X90(tgt):
+    play('X90', tgt)
+
+def Y90(tgt):
+    play('Y90', tgt)
+
+def Y180(tgt):
+    play('Y180', tgt)
+
+def measure_and_save_state(tgt): #Perform measurement, and state discrimination, here done for a SC circuit with IQ values
+    measure('meas_pulse', tgt, None, demod.full('integW1', I), demod.full('integW2', Q))
+    save(I, I_res)
+    save(Q, Q_res)
+    #State discrimination : assume that the separation in IQ plane has been determined using the defined threshold th
+    assign(state, I > th)
+    save(state, state_res)
+taumax = 300
+dtau = 5
+NAVG = 30
+recovery_delay = 16  # wait to return to ground
+N_tau = taumax // dtau
+
+with program() as hahn_echo:
+    I = declare(fixed)
+    Q = declare(fixed)
+    n = declare(int)
+    tau = declare(int)
+    th = declare(fixed, value=3.2)
+    state = declare(bool)
+
+    tau_vec = declare_stream()
+    I_res = declare_stream()
+    Q_res = declare_stream()
+    state_res = declare_stream()
+    with for_(tau, 4, tau < taumax, tau + dtau):
+        with for_(n, 0, n < NAVG, n + 1):
+            Hadamard('qubit')
+            wait(tau, 'qubit')
+            Rx(π,'qubit')
+            wait(tau, 'qubit')
+            Hadamard('qubit')
+            align('rr', 'qubit')
+            measure_and_save_state('rr')
+            wait(recovery_delay // 4, 'qubit')
+        save(tau, tau_vec)
+
+    with stream_processing():
+        tau_vec.save_all('tau_vec')
+        I_res.buffer(NAVG).save_all('I_res')
+        Q_res.buffer(NAVG).save_all('Q_res')
+        state_res.buffer(NAVG).save_all('state_res')
+
+job = qm.simulate(hahn_echo,
+                   SimulationConfig(int(300000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+
+# samples = job.get_simulated_samples()
+job.result_handles.wait_for_all_values()
+res = job.result_handles
+I = res.I_res.fetch_all()['value']
+Q = res.Q_res.fetch_all()['value']
+state = res.state_res.fetch_all()['value']
+tau_vec = res.tau_vec.fetch_all()['value']
+
+#What we would do if we had real experimental data : Determine experimental probability of measuring 1 for each tau
+def decay(t, a, b):
+    return a * np.exp(-t / b)
+"""P_1 = []
+counts=0
+for i in range(len(tau_vec)):
+    for j in range(NAVG):
+        if state[i][j]:
+            counts += 1
+    P_1.append(counts / NAVG)
+    counts = 0
+param0 = [1, 10]
+popt, pcov = curve_fit(decay, tau_vec, np.mean(P_1), param0, sigma=np.std(P_1))
+
+plt.figure()
+plt.errorbar(tau_vec, np.mean(P_1), yerr=np.std(P_1), label='measurement')
+plt.plot(tau_vec, decay(tau_vec, *popt), '-r', label='fit')
+plt.legend()
+plt.title(f'T2 measurement T2={popt[1]:.1f} [ns]')
+plt.xlabel('tau[ns]')
+plt.ylabel('P(|1>)')
+plt.show()"""
+
+# What we simulate by knowing the theoretical law governing decoherence process
+def estimate_state(v):
+    t = v
+    t2 = 40
+    pr = np.exp(-t / t2)
+    return np.random.choice([0, 1], p=[1 - pr, pr])
+
+
+state_th = np.empty_like(state)
+for i in range(len(tau_vec)):
+    for j in range(NAVG):
+        state_th[i][j] = estimate_state(tau_vec[i])
+
+
+state_value_mean = state_th.mean(axis=1)
+state_value_var = state_th.var(axis=1)
+
+
+
+
+
+param0 = [1, 10]
+popt, pcov = curve_fit(decay, tau_vec, state_value_mean, param0, sigma=state_value_var)
+
+plt.figure()
+plt.plot(tau_vec, state_value_mean, '.', label='measurement')
+plt.plot(tau_vec, decay(tau_vec, *popt), '-r', label='fit')
+plt.legend()
+plt.title(f'T2 measurement T2={popt[1]:.1f} [ns]')
+plt.xlabel('tau[ns]')
+plt.ylabel('P(|1>)')
+plt.show()
