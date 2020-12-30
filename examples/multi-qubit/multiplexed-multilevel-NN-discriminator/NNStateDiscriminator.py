@@ -43,7 +43,7 @@ class NNStateDiscriminator:
         self.calibrate_with = calibrate_with
         self._create_dir()
         self.time_diff = 0
-        self.MAX_STATES = 300  # Max number of states for the training program - due to memory limitation
+        self.MAX_STATES = 200  # Max number of states for the training program - due to memory limitation
         self.number_of_raw_data_files = None
         self.final_weights = None  # Contains the final layer for the classification of demodulation results
         self.load_config_from_file = True
