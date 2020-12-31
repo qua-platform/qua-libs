@@ -98,10 +98,10 @@ QMm = QuantumMachinesManager()
 # Create a quantum machine based on the configuration.
 QM1 = QMm.open_qm(config)
 
-with program() as raw_adc_prog:
-    data_vec = declare_stream(adc_trace=True)
+with program() as filter_sp:
+    data_stream = declare_stream(adc_trace=True)
     play('readoutOp', 'qe2')  # Plays a 15MHz frequency waveform
-    measure('readoutOp', 'qe1', data_vec)  # Plays a 5.5MHz frequency waveform and readout the data
+    measure('readoutOp', 'qe1', data_stream)  # Plays a 5.5MHz frequency waveform and readout the data
 
     # Creates a 5th order Butterworth LPF filter at 7.5MHz.
     # For other filters, see https://docs.scipy.org/doc/scipy/reference/signal.html or any other source
@@ -116,13 +116,13 @@ with program() as raw_adc_prog:
     # y = unity
 
     with stream_processing():
-        data_vec.input1().save_all('raw_data')
-        data_vec.input1().fft().save_all('fft_raw_data')
-        data_vec.input1().convolution(y).save_all('filtered_data')
-        data_vec.input1().convolution(y).fft().save_all('fft_filter_data')
+        data_stream.input1().save_all('raw_data')
+        data_stream.input1().fft().save_all('fft_raw_data')
+        data_stream.input1().convolution(y).save_all('filtered_data')
+        data_stream.input1().convolution(y).fft().save_all('fft_filter_data')
 
 # Simulate the program with the feedback and the realistic 184ns latency.
-job = QM1.simulate(raw_adc_prog,
+job = QM1.simulate(filter_sp,
                    SimulationConfig(7500,
                                     simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)], latency=184)))
 
