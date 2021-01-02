@@ -12,6 +12,6 @@ very flexibly generate a multi-tone signal. In this example, we show how a very 
 100 point arbitrary waveform vector can be used to describe many frequencies 
 spaced at a narrow bandwidth around an intermediate frequency (IF). 
 
-![ssb_example](ssb.png)
+![ssb_example](SSB.png)
 
 See ipynb file for details
