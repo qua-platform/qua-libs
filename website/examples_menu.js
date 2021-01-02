@@ -6,11 +6,13 @@ module.exports = [
         "items": [
             "basics/hello-qua/index",
             "basics/intro-to-saving/index",
+            "basics/intro-to-streams/index",
             "basics/raw-adc-measurement/index",
             "basics/frame-and-phase-intro/index",
             "basics/waveform-compression/index",
-            "basics/intro-to-macros/index"
-
+            "basics/intro-to-macros/index",
+            "basics/intro-to-integration/index",
+            "basics/intro-to-demod/index",
         ]
     },
     {
