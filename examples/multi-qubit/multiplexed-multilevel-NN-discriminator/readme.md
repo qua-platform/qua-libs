@@ -1,8 +1,8 @@
 # Multiplexed Readout of Multi-state Qubits Using a Neural Network
 
 # Overview
-This program allows for a multiplexed readout of up to 5 qubits using 2 OPXs (a multiplexed readout of 10 qubits with 2 
-OPXs is available from QUA version 0.8 thanks to internal resources optimization). 
+This program allows for a multiplexed readout of up to 5 qubits using 2 OPXs (**a multiplexed readout of 10 qubits with 2 
+OPXs is available from QUA version 0.8 thanks to internal resources optimization**). 
 The basic idea is to use a neural network per each resonator to learn the optimal weights 
 for state classification of the corresponding qubit.
 The program is divided into 3 main stages: 
@@ -31,7 +31,7 @@ the readout pulses, and the preparation pulses.
     - One needs to define the quantum elements that correspond to the readout resonators
     - In our case all RR elements will be controlled using 'con1' - the measurement 
     operation will be done through 'con1'
-      - **For 10 RRs and qubits, the configuration uses 'con1' for the first 5 RRs and 'con2' for the last 2 RRs**
+      - **For 10 RRs and qubits, the configuration uses 'con1' for the first 5 RRs and 'con2' for the last 5 RRs**
     - **ATTENTION** : All elements **MUST** have the *outputs* section defined as follows:
         - 'outputs': {  
                 'out1': ('con1', 1),  
@@ -51,7 +51,7 @@ the readout pulses, and the preparation pulses.
     all 3 states - g,e,f
 - Both the RRs and the Qubits need to be **mixed input** since both require IQ components. 
 - **From QUA 0.8 each resonator and its corresponding qubit will be put in the same element group
-  (assigned the same resources)**
+  (assigned the same pulsers) since they are not controlled or measured at overlapping times**
 
 - Readout pulses:
     - The readout pulses should have the same length for all resonators
