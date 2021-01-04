@@ -31,7 +31,8 @@ QM1 = QMm.open_qm(config)
 # QM1.set_output_dc_offset_by_element('qubit', 'Q', 0.03)
 # QM1.set_mixer_correction('mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance_correction(0.15, 0.3))
 
-job = QM1.simulate(play_pulse_cont, SimulationConfig(1000))
+# job = QM1.simulate(play_pulse_cont, SimulationConfig(1000))
+job = QM1.execute(play_pulse_cont)
 
-samples = job.get_simulated_samples()
-samples.con1.plot()
+# samples = job.get_simulated_samples()
+# samples.con1.plot()

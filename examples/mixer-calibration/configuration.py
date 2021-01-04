@@ -2,7 +2,7 @@ import numpy as np
 
 pulse_len = 100
 qubit_IF = 50e6
-qubit_LO = 6.345e9
+qubit_LO = 2e9
 
 
 def IQ_imbalance_correction(g, phi):
