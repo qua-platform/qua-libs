@@ -1,4 +1,5 @@
 import numpy as np
+from qm.qua import *
 
 gauss_len = 52
 gaussian_amp = 0.2
@@ -59,7 +60,7 @@ config = {
             },
             'intermediate_frequency': qubit_IF,
             'operations': {
-                'H': 'HPulse', #Hadamard
+                'pi2': 'pi2Pulse',
             },
         },
         'rr': {
@@ -82,7 +83,7 @@ config = {
     },
 
     "pulses": {
-        "HPulse": { #Hadamard Pulse, assumed to have been calibrated by Rabi experiment
+        "pi2Pulse": {
             'operation': 'control',
             'length': gauss_len,
             'waveforms': {
@@ -149,3 +150,44 @@ config = {
     }
 
 }
+
+
+def measure_and_save_state(qe, I_stream, Q_stream, state_stream, th):
+    """
+    This function performs the measurement and state estimation. 
+    It is implemented for a superconducting qubit but acts as a placeholder for other qubit platforms.
+    """
+    I = declare(fixed)
+    Q = declare(fixed)
+    state = declare(bool)
+    measure('readout', qe, None, demod.full('integW1', I), demod.full('integW2', Q))
+    save(I, I_stream)
+    save(Q, Q_stream)
+    # State discrimination : assume that the separation in IQ plane has been determined using the defined threshold th
+    assign(state, I > th)
+    save(state, state_stream)
+
+
+def decay(t, a, b, c):
+    """
+    A function to model the T2* dephasing
+    :param t: time vector for evaluating the decay
+    :param a: amplitude of oscillations
+    :param b: oscillation frequency
+    :param c: decay time constant
+    :return:
+    """
+    return 0.5 + a * np.cos(b * t * 0.5) * np.exp(-t / c)
+
+
+
+def estimate_state(t):
+    """
+    A function to randomize state estimate according to T2 delay time
+    This is done to emulate the behavior of the quantum system
+    """
+    # t = v
+    t2 = 40
+    tp = t / t2
+    pr = 0.5 * (1 + np.cos(t) * np.exp(-tp))
+    return np.random.choice([0, 1], p=[1 - pr, pr])
