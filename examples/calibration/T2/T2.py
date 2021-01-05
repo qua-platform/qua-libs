@@ -57,7 +57,7 @@ with program() as T2:
         tau_vec.buffer(N_tau).save_all('tau_vec')
         I_res.buffer(N_tau).average().save_all('I_res')
         Q_res.buffer(N_tau).average().save_all('Q_res')
-        state_res.boolean_to_int().buffer(N_tau).save_all('state_res')
+        state_res.boolean_to_int().buffer(N_tau).average().save_all('state_res')
 
 job = QM1.simulate(T2,
                    SimulationConfig(int(500000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])))
