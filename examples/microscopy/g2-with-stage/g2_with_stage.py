@@ -12,7 +12,7 @@ from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 from configuration import config
-from examples.microscopy.g2_with_stage.stage_mock_lib import *
+from stage_mock_lib import *
 import time
 
 QMm = QuantumMachinesManager()

@@ -12,7 +12,7 @@ from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 from configuration import config
-from examples.spectroscopy.widefield_odmr.camera_mock_lib import *
+from camera_mock_lib import *
 import time
 
 QMm = QuantumMachinesManager()
