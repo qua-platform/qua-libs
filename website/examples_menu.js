@@ -20,6 +20,7 @@ module.exports = [
         "label": "advanced-topics",
         "items": [
             "advanced-topics/single-sideband-modulation/index",
+            "filters/index"
         ]
     },
     {
@@ -39,6 +40,7 @@ module.exports = [
             "calibration/T1/index",
             "calibration/T2/index",
             "calibration/rabi-sweeps/index",
+            "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
             "calibration/hahn-echo/index",
         ]
     },

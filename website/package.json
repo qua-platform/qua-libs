@@ -12,7 +12,7 @@
     "serve": "docusaurus serve",
     "prebuild": "npm run-script script:copy-pages",
     "script:examples-index-generator": "node scripts/examples-index-generator.js",
-    "script:copy-pages": "shx cp ../CONTRIBUTING.md src/pages/contributing.md",
+    "script:copy-pages": "node scripts/copy-pages",
     "scripts": "npm run script:examples-index-generator"
   },
   "dependencies": {
