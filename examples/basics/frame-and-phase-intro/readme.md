@@ -7,7 +7,7 @@ slug: ./
 
 This simple script is designed to showcase how phase and framework in QUA.
 
-## Basics of phase in QAU
+## Basics of phase in QUA
 
 The phase of a signal output by the OPX is dependent on two factors: 
 
