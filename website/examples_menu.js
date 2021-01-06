@@ -5,6 +5,7 @@ module.exports = [
         "label": "Basics",
         "items": [
             "basics/hello-qua/index",
+            "basics/basic-digital-output/index",
             "basics/intro-to-saving/index",
             "basics/intro-to-streams/index",
             "basics/raw-adc-measurement/index",
