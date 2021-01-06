@@ -1,6 +1,6 @@
 ---
-title: RAW ADC Measurement
-sidebar_label: RAW ADC Measurement
+title: Raw ADC Measurement
+sidebar_label: Raw ADC Measurement
 slug: ./
 id: index
 ---

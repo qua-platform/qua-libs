@@ -51,20 +51,20 @@ with program() as measureProg:
     with for_(ind, 0, ind < num_segments, ind + 1):
         save(sliced_integration_res[ind], int_stream)
 
-    reset_phase('qe1')
-    measure('readoutOp2', 'qe1', None, integration.accumulated('x', acc_integration_res, seg_length))
-    with for_(ind, 0, ind < num_segments, ind + 1):
-        save(acc_integration_res[ind], acc_int_stream)
+    # reset_phase('qe1')
+    # measure('readoutOp2', 'qe1', None, integration.accumulated('x', acc_integration_res, seg_length))
+    # with for_(ind, 0, ind < num_segments, ind + 1):
+    #     save(acc_integration_res[ind], acc_int_stream)
 
-    measure('readoutOp2', 'qe1', None, integration.moving_window('x', mov_integration_res, seg_length,num_windows))
-    with for_(ind, 0, ind < num_segments, ind + 1):
-        save(mov_integration_res[ind], mov_int_stream)
+    # measure('readoutOp2', 'qe1', None, integration.moving_window('x', mov_integration_res, seg_length,num_windows))
+    # with for_(ind, 0, ind < num_segments, ind + 1):
+    #     save(mov_integration_res[ind], mov_int_stream)
 
 
     with stream_processing():
         int_stream.save_all("int_sliced")
-        acc_int_stream.save_all("int_acc")
-        mov_int_stream.save_all("int_mov")
+        # acc_int_stream.save_all("int_acc")
+        # mov_int_stream.save_all("int_mov")
 
 job = QM1.simulate(measureProg,
                    SimulationConfig(4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))

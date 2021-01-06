@@ -1,6 +1,6 @@
 ---
 title: Intro to digital output
-sidebar_label: intro to dig out
+sidebar_label: Intro to dig output
 slug: ./
 id: index
 ---
