@@ -29,7 +29,7 @@ config = {
             'outputs': {
                 'output1': ('con1', 1)
             },
-            'intermediate_frequency': 0e6,
+            'intermediate_frequency': 100e6,
             'operations': {
                 'readoutOp': 'readoutPulse',
                 'readoutOp2': 'readoutPulse2',

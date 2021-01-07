@@ -22,9 +22,8 @@ num_segments = 25
 
 seg_length = pulse_len // (4 * num_segments)
 
-num_segments_per_window = 5
-window_seg_length = 25
-num_windows = 2
+samples_per_chunk = 25
+chunks_per_window = 3
 
 config['integration_weights']['xWeights']['cosine'] = [0.1] * num_segments * seg_length
 config['integration_weights']['yWeights']['sine'] = [0.0] * num_segments * seg_length
@@ -38,27 +37,27 @@ with program() as measureProg:
     acc_int_stream = declare_stream()
     mov_int_stream = declare_stream()
 
-    sliced_integration_res = declare(fixed, size=int(num_segments))
-    acc_integration_res = declare(fixed, size=int(num_segments))
-    mov_integration_res = declare(fixed, size=int(num_segments))
+    sliced_demod_res = declare(fixed, size=int(num_segments))
+    acc_demod_res = declare(fixed, size=int(num_segments))
+    mov_demod_res = declare(fixed, size=int(10))
     measure('readoutOp', 'qe1', 'raw', demod.full('x', I))
 
     save(I, 'full')
 
     reset_phase('qe1')
-    measure('readoutOp', 'qe1', None, demod.sliced('x', sliced_integration_res, seg_length))
+    measure('readoutOp', 'qe1', None, demod.sliced('x', sliced_demod_res, seg_length))
 
     with for_(ind, 0, ind < num_segments, ind + 1):
-        save(sliced_integration_res[ind], int_stream)
+        save(sliced_demod_res[ind], int_stream)
 
     reset_phase('qe1')
-    measure('readoutOp', 'qe1', None, demod.accumulated('x', acc_integration_res, seg_length))
+    measure('readoutOp', 'qe1', None, demod.accumulated('x', acc_demod_res, seg_length))
     with for_(ind, 0, ind < num_segments, ind + 1):
-        save(acc_integration_res[ind], acc_int_stream)
+        save(acc_demod_res[ind], acc_int_stream)
 
-    measure('readoutOp', 'qe1', None, demod.moving_window('x', mov_integration_res, seg_length,num_windows))
+    measure('readoutOp', 'qe1', None, demod.moving_window('x', mov_demod_res, samples_per_chunk,chunks_per_window))
     with for_(ind, 0, ind < num_segments, ind + 1):
-        save(mov_integration_res[ind], mov_int_stream)
+        save(mov_demod_res[ind], mov_int_stream)
 
 
     with stream_processing():
@@ -90,8 +89,7 @@ plt.xlabel('t[nS]')
 plt.ylabel('output [V]')
 plt.title('Raw output')
 
-# plt.figure()
-# plt.plot(res.demod_mov.fetch_all()['value']/2**12,'o')
-# plt.xlabel('t[nS]')
-# plt.ylabel('output [V]')
-# plt.title('Raw output')
+plt.figure()
+plt.plot(res.demod_mov.fetch_all()['value']/2**12,'o-')
+plt.xlabel('sample number')
+plt.title('moving windows')

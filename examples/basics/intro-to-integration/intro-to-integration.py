@@ -24,7 +24,7 @@ seg_length = pulse_len // (4 * num_segments)
 
 
 samples_per_chunk = 25
-chunks_per_window = 3
+chunks_per_window = 2
 
 config['integration_weights']['xWeights']['cosine'] = [0.1] * num_segments * seg_length
 config['integration_weights']['yWeights']['sine'] = [0.0] * num_segments * seg_length
