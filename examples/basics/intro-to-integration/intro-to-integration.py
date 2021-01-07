@@ -22,9 +22,9 @@ num_segments = 25
 
 seg_length = pulse_len // (4 * num_segments)
 
-num_segments_per_window = 5
-window_seg_length = 25
-num_windows = 2
+
+samples_per_chunk = 25
+chunks_per_window = 3
 
 config['integration_weights']['xWeights']['cosine'] = [0.1] * num_segments * seg_length
 config['integration_weights']['yWeights']['sine'] = [0.0] * num_segments * seg_length
@@ -40,7 +40,7 @@ with program() as measureProg:
 
     sliced_integration_res = declare(fixed, size=int(num_segments))
     acc_integration_res = declare(fixed, size=int(num_segments))
-    mov_integration_res = declare(fixed, size=int(num_segments))
+    mov_integration_res = declare(fixed, size=int(10))
     measure('readoutOp', 'qe1', 'raw', integration.full('x', I))
 
     save(I, 'full')
@@ -51,20 +51,20 @@ with program() as measureProg:
     with for_(ind, 0, ind < num_segments, ind + 1):
         save(sliced_integration_res[ind], int_stream)
 
-    # reset_phase('qe1')
-    # measure('readoutOp2', 'qe1', None, integration.accumulated('x', acc_integration_res, seg_length))
-    # with for_(ind, 0, ind < num_segments, ind + 1):
-    #     save(acc_integration_res[ind], acc_int_stream)
+    reset_phase('qe1')
+    measure('readoutOp', 'qe1', None, integration.accumulated('x', acc_integration_res, seg_length))
+    with for_(ind, 0, ind < num_segments, ind + 1):
+        save(acc_integration_res[ind], acc_int_stream)
 
-    # measure('readoutOp2', 'qe1', None, integration.moving_window('x', mov_integration_res, seg_length,num_windows))
-    # with for_(ind, 0, ind < num_segments, ind + 1):
-    #     save(mov_integration_res[ind], mov_int_stream)
+    measure('readoutOp', 'qe1', None, integration.moving_window('x', mov_integration_res, samples_per_chunk,chunks_per_window))
+    with for_(ind, 0, ind < num_segments, ind + 1):
+        save(mov_integration_res[ind], mov_int_stream)
 
 
     with stream_processing():
         int_stream.save_all("int_sliced")
-        # acc_int_stream.save_all("int_acc")
-        # mov_int_stream.save_all("int_mov")
+        acc_int_stream.save_all("int_acc")
+        mov_int_stream.save_all("int_mov")
 
 job = QM1.simulate(measureProg,
                    SimulationConfig(4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
@@ -91,7 +91,6 @@ plt.ylabel('output [V]')
 plt.title('Raw output')
 
 plt.figure()
-plt.plot(res.int_mov.fetch_all()['value']/2**12,'o')
-plt.xlabel('t[nS]')
-plt.ylabel('output [V]')
-plt.title('Raw output')
+plt.plot(res.int_mov.fetch_all()['value']/2**12,'o-')
+plt.xlabel('sample number')
+plt.title('moving windows')
