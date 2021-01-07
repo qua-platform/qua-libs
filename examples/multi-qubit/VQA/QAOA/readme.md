@@ -1,5 +1,16 @@
-# Using the OPX to run the Quantum Approximate Optimization Algorithm
-The script presented here aims to show how the OPX and QUA are suited to run efficiently variational quantum algorithms by demonstrating a concrete implementation of the QAOA algorithm introduced in 2014 by Edward Farhi, Jeffrey Goldstone and Sam Gutmann (http://arxiv.org/abs/1411.4028). The problem considered in this tutorial is a MaxCut problem on a graph containing 4 nodes.
+---
+id: index
+title: The Quantum Approximate Optimization Algorithm in QUA
+sidebar_label: QAOA
+slug: ./
+---
+
+In this example we show how QUA is used to efficiently run variational quantum algorithms
+by demonstrating a concrete implementation of the QAOA algorithm.
+This algorithm was introduced in 2014 by Edward Farhi, Jeffrey Goldstone and Sam Gutmann
+(http://arxiv.org/abs/1411.4028). 
+The problem considered here, is the traditional one for this algorithm: the MaxCut problem 
+on a graph containing 4 nodes.
 
 # Introduction
 Quantum computers bear promises of solving computational problems that are today known as intractable when trying to address them using classical computation. However, the development of such devices implies multiple technical challenges that currently limit the potentiality of what one can actually hope to solve with those machines.

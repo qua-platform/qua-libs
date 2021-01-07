@@ -1,7 +1,7 @@
 ---
 id: index
 title: A method to sweep the gaussian with high temporal resolution
-sidebar_label: Rabi sweeps
+sidebar_label: High res Rabi sweeps
 slug: ./
 ---
 

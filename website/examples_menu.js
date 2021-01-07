@@ -36,15 +36,20 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "calibrations",
+        "label": "Calibrations",
         "items": [
         {
           type: 'category',
           label: 'T1',
           items: ["calibration/T1/superconducting-qubits/index"]
           },
-//            "calibration/T1/index",
-            "calibration/T2/index",
+
+        {
+          type: 'category',
+          label: 'T2',
+          items: ["calibration/T2/superconducting-qubits/index"]
+          },
+//            "calibration/T2/index",
             "calibration/rabi-sweeps/index",
             "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
             "calibration/hahn-echo/index",
@@ -60,11 +65,21 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "Multi Qubit",
+        "label": "Multi level and multiplexed readout",
         "items": [
-            "multi-qubit/flux-tuneable-coupler/index",
+//            "multi-qubit/flux-tuneable-coupler/index",
             "multi-qubit/multilevel-discriminator/index",
+            "multi-qubit/multiplexed-multilevel-NN-discriminator/index",
             "multi-qubit/multiplexed-readout/index"
+        ]
+    },
+    {
+        "type": "category",
+        "label": "Advanced algorithms",
+        "items": [
+            "multi-qubit/VQA/QAOA/index",
+            "multi-qubit/QRAM/index",
+
         ]
     },
     {
