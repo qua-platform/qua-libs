@@ -160,5 +160,9 @@ OPX. The demodulation done in the TimeDiffCalibrator class must match the demodu
 - The way the time calibrator is written now assumes that the component with the phase ahead goes into 'out1'.
   
 #### DC offset calibration
-There's a DC component in different setups. We need to take that into account in our programs. The DCoffsetCalibrator
-class does that automatically.
+There's a DC component in different setups on the ADCs. We need to take that into account in our programs. The DCoffsetCalibrator
+class does that automatically. That means the DC offset on the analog inputs is measured automatically for each given 
+controller, and the configuration instance is updated accordingly. One has the option to choose whether to calibrate the 
+offset when running different parts of the program.
+- NOTE: the calibrator assumes that when nothing (zero amplitude pulse) is played the analog inputs (ADC values) should 
+  also be zero (up to noise)
