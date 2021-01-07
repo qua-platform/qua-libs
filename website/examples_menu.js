@@ -38,7 +38,12 @@ module.exports = [
         "type": "category",
         "label": "calibrations",
         "items": [
-            "calibration/T1/index",
+        {
+          type: 'category',
+          label: 'T1',
+          items: ["calibration/T1/superconducting-qubits/index"]
+          },
+//            "calibration/T1/index",
             "calibration/T2/index",
             "calibration/rabi-sweeps/index",
             "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
