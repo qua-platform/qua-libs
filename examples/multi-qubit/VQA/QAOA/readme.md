@@ -121,7 +121,7 @@ There are few global variables introduced in the main script that uses full OPX'
 - $$G$$, the graph instance (generated with the Python package networkx)
 - $$n$$, the number of nodes in $$G$$, aka the number of qubits in our configuration
 - MaxCut_value, the maximum cut of the graph $$G$$
-- $$N_{rep}$$, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
+- $$N_{shots}$$, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
 - $$p$$, number of adiabatic blocks (parameter dependent) in the quantum circuit
 - $$qm1$$, the QuantumMachinesManager() instance
 - $$QM$$, the Quantum Machine instance
@@ -140,7 +140,7 @@ To avoid the launch of a different QUA program each time we need to call the qua
 ### 3.4 Using the continuous feedback loop
 
 The QUA program consists in an infinite_loop, running the same sequence over and over again. 
-Each iteration within this loop is a run of $$N_{rep}$$ QAOA quantum circuits, that are associated to one particular parameter set. The user defined $$N_{rep}$$ parameter indicates the number of samples we want to get in order to estimate statistics 
+Each iteration within this loop is a run of $$N_{shots}$$ QAOA quantum circuits, that are associated to one particular parameter set. The user defined $$N_{shots}$$ parameter indicates the number of samples we want to get in order to estimate statistics 
 
 Between two iterations, the QUA program is paused, waiting for the client PC to call the Python function "encode_angles_in_IO()", which sends to the Quantum Machine instance the parameter set to be used to run the next quantum circuit sequence, using the IO1 and IO2 features of the Quantum Machine. It is in this function that the job is resumed, so that the program can compute the quantum circuit and stream the results of the measurement.
 
@@ -158,7 +158,7 @@ The function quantum_avg_computation() takes as input a set of angles, and plugs
 
 The heart of the whole script is the QUA program, which is, as mentioned before, an infinite_loop running a pulse sequence dependent of the angle parameters initialized using the IO values of the Quantum Machine.
 
-Within the infinite_loop stands a for_ loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state $$N_{rep}$$ times (the higher is $$N_{rep}$$, the more accurate will be the computed expectation value).
+Within the infinite_loop stands a for_ loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state $$N_{shots}$$ times (the higher is $$N_{shots}$$, the more accurate will be the computed expectation value).
 
 To make the code clearer for the user, a series of gates (QUA macros) such as Hadamard(), CU1(), Rz(),...  are used and consist in a pulse sequence associated to the physical realization of those gates on a superconducting hardware. The compilation of those gates is used according to what is usually done on an IBM machine.
 
