@@ -26,12 +26,12 @@ x90detuning=0
 x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
 lmda = 0.5  #Define scaling parameter for Drag Scheme
 alpha = -1  #Define anharmonicity parameter
-x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
+x90der_waveform = gauss_der(x90amp,x90mean,x90std, x90detuning, x90duration)
 
 
 #Y180 definition
 y180waveform = gauss(2*x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
-y180der_waveform = gauss_der(2*x90amp, x90mean, x90std, x90detuning, x90duration)
+y180der_waveform = gauss_der(2*x90amp, x90mean,x90std, x90detuning, x90duration)
 
 config = {
     'version': 1,
@@ -48,8 +48,9 @@ config = {
                 1: {'offset': +0.0},
 
             }
-        },
+        }
     },
+
 
     'elements': {
         "qubit": {
@@ -84,9 +85,6 @@ config = {
             }
 
         },
-
-
-
 
     },
     "pulses": {
