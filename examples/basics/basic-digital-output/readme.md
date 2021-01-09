@@ -5,9 +5,9 @@ slug: ./
 id: index
 ---
 
-The following example shows usage of a `digital_marker` to enable digital output in sync with
+The following example shows usage of a `digital_marker` to enable digital signal in sync with
 an analog signal. This is useful when, for example, you want to generate a trigger signal to 
-another device. 
+another device (e.g switch, camera, etc) every time an analog pulse is played. 
 
 This is done by configuring the quantum element as in the following snippet, from the configuration file used in this example:
 ```python
