@@ -6,7 +6,7 @@ id: index
 ---
 
 This is the most basic introduction script in QUA. 
-It plays a constant amplitude pulse to output 1 
+It plays a constant amplitude pulse to output #1 
 of the OPX and displays the waveform.
   
 ## Config
