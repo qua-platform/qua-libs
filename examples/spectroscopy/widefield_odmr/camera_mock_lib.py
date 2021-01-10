@@ -17,5 +17,5 @@ class cam_mock:
         print(f"allocated {self.num} in memory")
 
     def get_image(self):
-        print(f"got 1 image!")
-        return np.random.randint(0, 255, (480, 640))
+        print(f"got {self.num} images!")
+        return np.random.randint(0, 255, (480, 640, self.num))
