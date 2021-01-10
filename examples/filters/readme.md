@@ -1,12 +1,11 @@
 ---
 id: index
-title: Filtering
+title: Applying filters on the ADC
 sidebar_label: Filters
 slug: ./
 ---
 
-This folder contains various examples for applying filters on the data, both for real time processing and for saving the
-data.
+This folder contains various examples for applying filters on the input ADC data, both for real time processing and for saving the data.
 
 ## Filter on the Stream Processor
 ### filters_with_sp.py
