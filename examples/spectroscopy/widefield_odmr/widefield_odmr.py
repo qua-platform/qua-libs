@@ -18,41 +18,94 @@ import time
 QMm = QuantumMachinesManager()
 QM1 = QMm.open_qm(config)
 
-N = 5
-f_start = int(1e6)
-f_end = int(10e6)
+N = 101
+f_start = int(-100e6)
+f_end = int(100e6)
 f_step = int((f_end - f_start) / N)
-T1 = 10 * 1e2  # in nS
-flash_time = 20 * 1e2
 
-cam = cam_mock() #create the camera object
-cam.allocate_buffer(1)  # allocate new space in camera
-cam.arm() #trigger arm for the first time
+simulate = True
+case = 1  # 1 for fast, 2 for normal, 3 for external
 
-result_array = []
+# Phantom camera has 1MHz FPS, can trigger for a 10us readout, no need for reference.
+with program() as FAST_ODMR:
+    freq = declare(int)
+    with for_(freq, f_start, freq <= f_end, freq + f_step):
+        update_frequency('NV', freq)
+        play('init', 'laser', duration=10e3//4)  # init
+        play('CW', 'NV', duration=10e3//4)  # MW
+        play('trigger', 'camera', duration=10e3//4)  # camera
+        wait(1000//4, 'NV')
+
+
+# Readout is being done for 10ms with MW and 10ms without MW. Camera is programmed in the beginning so can run without
+# pausing.
 with program() as ODMR:
     freq = declare(int)
     with for_(freq, f_start, freq <= f_end, freq + f_step):
-        update_frequency('qubit', freq)
-        play('readout', 'readout_el', duration=24)  # init
-        align('qubit', 'readout_el')
-        play('SAT', 'qubit') #MW : TODO put timing in config, not dynamic, wider gaussian
-        align('qubit', 'readout_el')
-        play('readout', 'readout_el', duration=flash_time) #readout. take first 300 ns as signal and rest as ref.
+        update_frequency('NV', freq)
+        play('init', 'laser', duration=10e4//4)  # init
+        play('CW', 'NV', duration=10e4//4)  # MW
+        play('trigger', 'camera', duration=10e3//4)  # camera
+        wait(10000//4, 'laser')
+        align('laser', 'camera')
+        play('init', 'laser', duration=10e4//4)  # init
+        play('trigger', 'camera', duration=10e3//4)  # camera
+        wait(10000//4, 'laser')
+
+
+# Readout is being done for 10ms with MW and 10ms without MW. Camera output is extracted after each freq.
+with program() as ODMR_EXT:
+    freq = declare(int)
+    with for_(freq, f_start, freq <= f_end, freq + f_step):
+        update_frequency('NV', freq)
+        play('init', 'laser', duration=10e6//4)  # init
+        play('CW', 'NV', duration=10e6//4)  # MW
+        play('trigger', 'camera', duration=10e3//4)  # camera
+        wait(10000//4, 'laser')
+        align('laser', 'camera')
+        play('init', 'laser', duration=10e6//4)  # init
+        play('trigger', 'camera', duration=10e3//4)  # camera
+        wait(10000//4, 'laser')
         pause()
 
-job = QM1.execute(ODMR)
-# job = QM1.simulate(ODMR, SimulationConfig(10000))
+if simulate:
+    job = QM1.simulate(FAST_ODMR, SimulationConfig(60000))
+    res = job.result_handles
+    samples = job.get_simulated_samples()
+    samples.con1.plot()
+else:
+    if case == 1:
+        job = QM1.execute(FAST_ODMR)
+        cam = cam_mock()  # create the camera object
+        cam.allocate_buffer(N)  # allocate new space in camera
+        cam.arm()  # trigger arm for the first time
 
-for ind in range(0, N):
-    while not job.is_paused():
-        time.sleep(0.001)
+        result_array = []
 
-    result_array.append(cam.get_image())  # collect previous image
-    cam.allocate_buffer(1)  # allocate new space in camera
-    cam.arm() #trigger arm
-    job.resume()
-#
-# res=job.result_handles
-# samples = job.get_simulated_samples()
-# samples.con1.plot()
+        for ind in range(0, N):
+            while not job.is_paused():
+                time.sleep(0.001)
+
+            result_array.append(cam.get_image())  # collect previous image
+            cam.allocate_buffer(1)  # allocate new space in camera
+            cam.arm()  # trigger arm
+            job.resume()
+    elif case == 3:
+        
+    elif case == 3:
+        job = QM1.execute(FAST_ODMR)
+        cam = cam_mock()  # create the camera object
+        cam.allocate_buffer(2)   # allocate new space in camera
+        cam.arm()  # trigger arm for the first time
+
+        result_array = []
+
+        for ind in range(0, N):
+            while not job.is_paused():
+                time.sleep(0.001)
+
+            result_array.append(cam.get_image())  # collect previous image
+            cam.allocate_buffer(1)  # allocate new space in camera
+            cam.arm() #trigger arm
+            job.resume()
+
