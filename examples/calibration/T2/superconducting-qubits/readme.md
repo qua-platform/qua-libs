@@ -1,7 +1,7 @@
 ---
 id: index
-title: T2 measurement
-sidebar_label: T2
+title: T2 measurement in superconducting qubits
+sidebar_label: SC T2
 slug: ./
 ---
 
