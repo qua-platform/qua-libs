@@ -1,8 +1,7 @@
-import numpy as np
-
 init_time = 10e3
-readout_len = 400
+pi_time = 48
 NV_LO = 2.87e9
+AOM_RF = 80e6
 
 config = {
 
@@ -21,6 +20,8 @@ config = {
                 1: {},  # Camera Trigger
             },
             'analog_inputs': {
+                1: {'offset': +0.0},  # SPCM 1
+                2: {'offset': +0.0},  # SPCM 2
             }
         }
     },
@@ -35,14 +36,15 @@ config = {
             },
             'intermediate_frequency': 1e6,
             'operations': {
-                'CW': "CW_PULSE",
+                'CW': "CWPulse",
+                'pi': "piPulse",
             },
         },
-        "laser": {
+        "AOM": {
             "singleInput": {
                 "port": ("con1", 3)
             },
-            'intermediate_frequency': 80e6,  # AOM Freq
+            'intermediate_frequency': AOM_RF,  # AOM Freq
             'operations': {
                 'init': "initPulse",
             },
@@ -58,13 +60,59 @@ config = {
             'operations': {
                 'trigger': "triggerPulse",
             },
-        }
+        },
+        "spcm1": {
+            "singleInput": {
+                "port": ("con1", 3)
+            },
+            'operations': {
+                'readout': "readoutPulse",
+            },
+            "outputs": {
+                'out1': ('con1', 1)
+            },
+            'time_of_flight': 28,
+            'smearing': 0,
+            'outputPulseParameters': {
+                'signalThreshold': 500,
+                'signalPolarity': 'Ascending',
+                'derivativeThreshold': 100,
+                'derivativePolarity': 'Ascending'
+            },
+        },
+        "spcm2": {
+            "singleInput": {
+                "port": ("con1", 3)
+            },
+            'operations': {
+                'readout': "readoutPulse",
+            },
+            "outputs": {
+                'out1': ('con1', 2)
+            },
+            'time_of_flight': 28,
+            'smearing': 0,
+            'outputPulseParameters': {
+                'signalThreshold': 500,
+                'signalPolarity': 'Ascending',
+                'derivativeThreshold': 100,
+                'derivativePolarity': 'Ascending'
+            },
+        },
     },
 
     "pulses": {
-        "CW_PULSE": {
+        "CWPulse": {
             'operation': 'control',
             'length': init_time,
+            'waveforms': {
+                'I': 'const_wf',
+                'Q': 'zero_wf'
+            }
+        },
+        "piPulse": {
+            'operation': 'control',
+            'length': pi_time,
             'waveforms': {
                 'I': 'const_wf',
                 'Q': 'zero_wf'
@@ -82,11 +130,17 @@ config = {
             'length': init_time,
             'digital_marker': 'triggerWF'
         },
-
+        "readoutPulse": {
+            'operation': 'control',
+            'length': init_time,
+            'waveforms': {
+                'single': 'zero_wf'
+            },
+        },
     },
     'digital_waveforms': {
         'triggerWF': {
-            'samples': [(1, 10000), (0, 0)]
+            'samples': [(1, 0)]
         },
     },
 
