@@ -40,9 +40,8 @@ config = {
     "pulses": {
         'readout_pulse': {
             'operation': 'measurement',
-            'length': 400,
+            'length': 500,
             'waveforms': {
-                # 'I': 'const_wf',
                 'single': 'const_wf'
             },
             'integration_weights': {
