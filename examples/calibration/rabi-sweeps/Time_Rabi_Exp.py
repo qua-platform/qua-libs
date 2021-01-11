@@ -15,7 +15,7 @@ dt = 1 #timestep
 N_t = int(t_max / dt) #Number of timesteps
 N_max=3
 
-qmManager = QuantumMachinesManager("3.122.60.129") # Reach OPX's IP address
+qmManager = QuantumMachinesManager() # Reach OPX's IP address
 my_qm = qmManager.open_qm(config)  #Generate a Quantum Machine based on the configuration described above
 
 with program() as timeRabiProg:  #Time Rabi QUA program

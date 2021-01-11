@@ -19,7 +19,7 @@ a_max = 0.3  # Maximum amplitude
 da = 0.05  # amplitude sweeping step
 N_a = int(np.round(a_max / da))  # Number of steps
 
-qmManager = QuantumMachinesManager("3.122.60.129")  # Reach OPX's IP address
+qmManager = QuantumMachinesManager()  # Reach OPX's IP address
 my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA program

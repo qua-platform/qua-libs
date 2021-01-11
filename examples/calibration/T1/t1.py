@@ -13,7 +13,7 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 from scipy.optimize import curve_fit
 
-QMm = QuantumMachinesManager("3.122.60.129")
+QMm = QuantumMachinesManager()
 
 
 # Create a quantum machine based on the configuration.
