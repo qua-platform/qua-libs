@@ -35,6 +35,8 @@ The used intermediate frequency as a function of time can be shown here:
 While the magnitude stays constant (value at the minima of the Lorentzian) up to some noise, as can be shown here:
 ![magnitude as a function of time](response_magnitude.png "magnitude as a function of time")
 
+The Lorentz function (1-0.5/(1+(n-50)**2)) is approximated using the following array (minima at (50, 0.5)):
+![Lorentzian array](lorentzian_array.png "Lorentzian array")
 
 ## Post Processing
 No post processing provided. 
