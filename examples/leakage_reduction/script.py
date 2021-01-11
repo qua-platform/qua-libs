@@ -20,15 +20,18 @@ def DRAG_Q(B, mu, sigma):
 
 def get_DRAG_pulse(gate: str, params: list, t: float):
     ## params [A, B, freq, a0, a1, a2, .... an-1, b0, b1 .....bn-1]
-    _ts = np.linspace(0.0, t, n_params//2)
-    if np.sum(params[3:]) == 0:
+    _n_params = (len(params) - 3)//2
+    _ts = np.linspace(0.0, t, _n_params)
+    if np.sum(params[3:]) == 0.0:
         an_func = lambda x:0
         bn_func = lambda x:0
     else:
-        an_func = interp1d(params[3:n_params//2+3], _ts)
-        bn_func = interp1d(params[n_params//2+3:], _ts)
+        an_func = interp1d(params[3:_n_params+3], _ts, fill_value="extrapolate")
+        bn_func = interp1d(params[_n_params+3:], _ts, fill_value="extrapolate")
     ns = int(t)
     ts = np.linspace(0.0, t, ns)
+    ts[-1] -= 0.01
+    ts[0] += 0.01
     I_t = DRAG_I(params[0], t/2, t)
     Q_t = DRAG_Q(params[1], t/2, t)
     I = [(I_t(_t) + an_func(_t)) for _t in ts]
@@ -92,7 +95,7 @@ def get_program(config, params, t, N_avg, d):
             ## compute the recovery operation
             recovery_op = recovery_clifford(state)[0]
             if recovery_op == 'I':
-                wait(gauss_len, 'element')
+                wait(gauss_len, 'qubit')
             else:
                 play(recovery_op, 'qubit')
             assign(F, get_simulated_fidelity(op_list, err=e))
@@ -143,10 +146,13 @@ config["waveforms"]["DRAG_gauss_wf"]["samples"] = [DRAG_I(1.0, 2.0*gauss_len, 4.
 config["waveforms"]["DRAG_gauss_der_wf"]["samples"] = [DRAG_Q(1.0, 2.0*gauss_len, 4.0*gauss_len)(t) for t in ts]
 
 ##optimize DRAG
+np.random.seed(3)
 es1 = cma.CMAEvolutionStrategy(np.random.rand(3), 0.5)
 es1.optimize(cost_DRAG)
-    
+es1.result_pretty()
 #optimize pulse
 ## use A, B, freq as initial guess for the full optimization
-es2 = cma.CMAEvolutionStrategy((3 + 2*int(pulse_duration)) * [0], 0.5)
+init = list(es1.result.xbest) + list(np.random.rand(n_params)) 
+es2 = cma.CMAEvolutionStrategy(init, 0.5)
 es2.optimize(cost_optimal_pulse)
+es2.result_pretty()
