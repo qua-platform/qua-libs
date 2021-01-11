@@ -19,26 +19,21 @@ def track_frequency(qe, pulse, current_w, w_step):
     update_frequency(qe, current_w)
 
 
-def main():
-    qmm = QuantumMachinesManager(host='127.0.0.1')
+qmm = QuantumMachinesManager(host='127.0.0.1')
 
-    with program() as w_if_tracking:
-        qe = "qe1"
-        pulse = "readout_pulse"
-        current_w = declare(int, value=int(10e6))
-        calibration_step = declare(int, value=int(1e6))
+with program() as w_if_tracking:
+    qe = "qe1"
+    pulse = "readout_pulse"
+    current_w = declare(int, value=int(10e6))
+    calibration_step = declare(int, value=int(1e6))
 
-        N = declare(int)
-        with for_(N, 0, N < 100, N + 1):
-            track_frequency(qe, pulse, current_w, calibration_step)
-            #####################
-            # rest of code here #
-            #####################
+    N = declare(int)
+    with for_(N, 0, N < 100, N + 1):
+        track_frequency(qe, pulse, current_w, calibration_step)
+        #####################
+        # rest of code here #
+        #####################
 
-    job = qmm.simulate(config, w_if_tracking, SimulationConfig(
-        duration=1000,  # duration of simulation in units of 4ns
-    ))
-
-
-if __name__ == '__main__':
-    main()
+job = qmm.simulate(config, w_if_tracking, SimulationConfig(
+    duration=1000,  # duration of simulation in units of 4ns
+))
