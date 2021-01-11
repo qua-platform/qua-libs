@@ -33,42 +33,40 @@ with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA p
     amp_stream = declare_stream()
     Nrep = declare(int)  # Number of repetitions of the experiment
 
-    with for_(a, 0., a < a_max, a + da):  # Sweep for varying amplitudes
-        with for_(t, 0, t < t_max, t + dt):  # Sweep from 0 to t_max *4 ns the pulse duration
-            with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
+    with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
+        with for_(a, 0., a < a_max, a + da):  # Sweep for varying amplitudes
+            with for_(t, 0, t < t_max, t + dt):  # Sweep from 0 to t_max *4 ns the pulse duration
+
                 play('gauss_pulse' * amp(a), 'qubit', duration=t)
                 align("qubit", "RR")
                 measure('meas_pulse', 'RR', 'samples', ('integW1', I), ('integW2', Q))
                 save(I, I_stream)
                 save(Q, Q_stream)
-            save(t, time_stream)
-        save(a, amp_stream)
+                save(t, time_stream)
+            save(a, amp_stream)
     with stream_processing():
-        I_stream.buffer(N_max).save_all('I')  #Use stream_processing to retrieve shaped data to perform easy post processing
-        Q_stream.buffer(N_max).save_all('Q')
-        amp_stream.save_all('a')
-        time_stream.buffer(N_t).save_all('t')
+        I_stream.buffer(N_a, N_t).average().save('I')  #Use stream_processing to retrieve shaped data to perform easy post processing
+        Q_stream.buffer(N_a, N_t).average().save('Q')
+        amp_stream.buffer(N_a).save('a')
+        time_stream.buffer(N_t).save('t')
 
 my_job = my_qm.simulate(time_powerRabiProg,
                         SimulationConfig(int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
 time.sleep(1.0)
 my_timeRabi_results = my_job.result_handles
-I1 = my_timeRabi_results.I.fetch_all()['value'] #Retrieve raw data
-Q1 = my_timeRabi_results.Q.fetch_all()['value']
-t1 = my_timeRabi_results.t.fetch_all()['value'][0] #Retrieve only once the set of pulse durations
-a1 = my_timeRabi_results.a.fetch_all()['value'] #Retrieve set of amplitudes swept
+I1 = my_timeRabi_results.I.fetch_all() #Retrieve raw data
+Q1 = my_timeRabi_results.Q.fetch_all()
+t1 = my_timeRabi_results.t.fetch_all() #Retrieve only once the set of pulse durations
+a1 = my_timeRabi_results.a.fetch_all() #Retrieve set of amplitudes swept
 samples = my_job.get_simulated_samples()
 # samples.con1.plot()
-I_avg = []
-for i in range(len(I1)): #Average out number of shots for each amplitude/duration couple
-    I_avg.append(np.mean(I1[i]))
-I = np.reshape(I_avg, (N_a, N_t))
+
 
 
 fig = plt.figure()
 
 # Plot the surface.
-plt.pcolormesh(t1, a1, I, shading='nearest')
+plt.pcolormesh(t1, a1, I1, shading='nearest')
 plt.xlabel('Pulse duration [ns]')
 plt.ylabel('Amplitude [a.u]')
 plt.colorbar()

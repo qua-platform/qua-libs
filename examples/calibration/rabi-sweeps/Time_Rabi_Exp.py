@@ -25,28 +25,28 @@ with program() as timeRabiProg:  #Time Rabi QUA program
     Nrep = declare(int)  #Number of repetitions of the experiment
     I_stream = declare_stream()  # Declare streams to store I and Q components
     Q_stream = declare_stream()
-
-    with for_(t, 0, t <= t_max, t + dt):  # Sweep from 0 to 50 *4 ns the pulse duration
-        with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
+    t_stream = declare_stream()
+    with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
+        with for_(t, 0, t <= t_max, t + dt):  # Sweep from 0 to 50 *4 ns the pulse duration
 
             play('gauss_pulse', 'qubit',duration=t)
             align("qubit", "RR")
             measure('meas_pulse', 'RR', 'samples', ('integW1', I), ('integW2', Q))
             save(I, I_stream)
             save(Q, Q_stream)
-
-        save(t, 't')
+            save(t, t_stream)
     with stream_processing():
-        I_stream.buffer(N_max).save_all('I')
-        Q_stream.buffer(N_max).save_all('Q')
+        I_stream.buffer(N_t).average().save('I')
+        Q_stream.buffer(N_t).average().save('Q')
+        t_stream.buffer(N_t).save('t')
 
 my_job = my_qm.simulate(timeRabiProg,
                    SimulationConfig(int(100000),simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)]))) ##Use Loopback interface for simulation of the output of the resonator readout
 time.sleep(1.0)
 my_timeRabi_results = my_job.result_handles
-I1=my_timeRabi_results.I.fetch_all()['value']
-Q1=my_timeRabi_results.Q.fetch_all()['value']
-t1=my_timeRabi_results.t.fetch_all()['value']
+I1 = my_timeRabi_results.I.fetch_all()
+Q1 = my_timeRabi_results.Q.fetch_all()
+t1 = my_timeRabi_results.t.fetch_all()
 
 samples = my_job.get_simulated_samples()
 
@@ -58,26 +58,20 @@ def fit_function(x_values, y_values, function, init_params):
     return fitparams, y_fit
 
 
-I_avg=[]
-Q_avg=[]
-for i in range(len(I1)):
-    I_avg.append((np.mean(I1[i])))
-    Q_avg.append((np.mean(Q1[i])))
-
 #Build a fitting tool for finding the right amplitude
 # #(initial parameters to be adapted according to qubit and RR frequencies)
 I_params, I_fit = fit_function(t1,
-                                 I_avg,
+                                 I1,
                                  lambda x, A, drive_period, phi: (A*np.cos(2*np.pi*x/drive_period - phi)),
-                                 [0.0035, 41, 0.1])
+                                 [0.0015, 80, 0.1])
 Q_params, Q_fit = fit_function(t1,
-                                 Q_avg,
+                                 Q1,
                                  lambda x, A, drive_period, phi: (A*np.cos(2*np.pi*x/drive_period - phi)),
-                                 [0.003, 41, 0])
+                                 [0.0015, 80, 0])
 
 plt.figure()
-plt.plot(t1,I_avg,marker='x',color='blue',label='I')
-plt.plot(t1,Q_avg,marker='o',color='green',label='Q')
+plt.plot(t1,I1,marker='x',color='blue',label='I')
+plt.plot(t1,Q1,marker='o',color='green',label='Q')
 plt.plot(t1,I_fit,color='red',label='Sinusoidal fit')
 plt.plot(t1,Q_fit,color='black',label='Sinusoidal fit')
 plt.xlabel('Pulse duration [clock cycles]')
