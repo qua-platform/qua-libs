@@ -3,7 +3,15 @@ from qm import SimulationConfig
 from qm.qua import *
 from config import config
 
+'''
+This method fixes the quantum element intermediate frequency using a basic tracking algorithm
 
+The algorithm assumes the previous frequency is given, and that it changed a little bit.
+It also assumes the element responses less at it's intermediate frequency, as some of the energy will be absorbed.
+
+And so, the algorithm will measure the response at the previous frequency and at a step lower and higher.
+Then the frequency with the least response will be chosen, and the element's frequency will be updated accordingly. 
+'''
 def track_frequency(qe, pulse, current_w, w_step):
     res_w = declare(fixed)
     res_w_bigger = declare(fixed)
@@ -29,10 +37,12 @@ with program() as w_if_tracking:
 
     N = declare(int)
     with for_(N, 0, N < 100, N + 1):
+        # This example function will fix the quantum element intermediate frequency using a basic calibration algorithm
         track_frequency(qe, pulse, current_w, calibration_step)
-        #####################
-        # rest of code here #
-        #####################
+
+        ################################
+        # rest of experiment code here #
+        ################################
 
 job = qmm.simulate(config, w_if_tracking, SimulationConfig(
     duration=1000,  # duration of simulation in units of 4ns
