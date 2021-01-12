@@ -17,7 +17,7 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "advanced-topics",
+        "label": "Advanced Topics",
         "items": [
             "advanced-topics/single-sideband-modulation/index",
             "filters/index"
@@ -35,13 +35,20 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "calibrations",
+        "label": "Calibrations",
         "items": [
             "calibration/T1/index",
             "calibration/T2/index",
             "calibration/rabi-sweeps/index",
             "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
             "calibration/hahn-echo/index",
+        ]
+    },
+    {
+        "type": "category",
+        "label": "Mixer Calibration",
+        "items": [
+            "mixer-calibration/index"
         ]
     },
     {
@@ -70,7 +77,7 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "Randomized Benchmark",
+        "label": "Randomized Benchmarking",
         "items": [
             "randomized-benchmark/one-qubit-rb/index",
             "randomized-benchmark/DRAG-optimization/index"

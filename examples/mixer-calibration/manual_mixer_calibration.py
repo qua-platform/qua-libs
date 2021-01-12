@@ -1,5 +1,5 @@
 """
-mixer_calibration.py: Calibration for mixer imperfections
+manual_mixer_calibration.py: Calibration for mixer imperfections
 Author: Yoav Romach - Quantum Machines
 Created: 22/12/2020
 Created on QUA version: 0.7.411
