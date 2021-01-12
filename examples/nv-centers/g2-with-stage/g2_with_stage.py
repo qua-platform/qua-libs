@@ -51,6 +51,7 @@ with program() as confocal_g2:
     result2 = declare(int, size=int(meas_len / 500))
     g2 = declare(int, size=int(2 * correlation_width))
     g2_stream = declare_stream()
+    counts = declare(int)
 
     #########################
     # looping over position #
@@ -65,6 +66,9 @@ with program() as confocal_g2:
         with for_(p, 0, p < g2.length(), p + 1):
             assign(g2[p], 0)
 
+        # Total number of counts
+        assign(counts, 0)
+
         ##########################
         # perform g2 measurement #
         ##########################
@@ -76,8 +80,7 @@ with program() as confocal_g2:
                     time_tagging.raw(result2, meas_len, resultLen2))
             assign(n, 0)
             assign(k, 0)
-            # with for_(k, 0, k < resultLen2, k + 1):
-            #     with if_(n < resultLen1):
+            assign(counts, counts + resultLen2 + resultLen1)  # Total number of counts.
             with while_(k < resultLen2):
                 with while_(n < resultLen1):
                     assign(diff, result1[n] - result2[k])
@@ -102,6 +105,7 @@ with program() as confocal_g2:
         ####################
         with for_(p, 0, p < g2.length(), p + 1):
             save(g2[p], g2_stream)
+        save(counts, 'counts')
 
     with stream_processing():
         g2_stream.buffer(2 * correlation_width).save_all('g2')  # Take g2 vector per position.
@@ -111,7 +115,8 @@ job = QM1.execute(confocal_g2)
 res = job.result_handles
 x_vec = np.arange(x_start, x_end, x_step)
 y_vec = np.arange(y_start, y_end, y_step)
-g2_data = np.zeros([len(x_vec), len(y_vec)])
+g2_data = np.zeros([len(x_vec), len(y_vec)], correlation_width)
+counts_data = np.zeros([len(x_vec), len(y_vec)])
 
 
 ##############
@@ -124,3 +129,4 @@ for x_i in range(len(x_vec)):
         while not job.is_paused():
             time.sleep(0.001)
         g2_data[x_i, y_i] = res.g2_stream.fetch_all()
+        counts_data = res.counts.fetch_all()['value']
