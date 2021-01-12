@@ -26,14 +26,14 @@ x90detuning=0
 x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
 lmda = 0.5  #Define scaling parameter for Drag Scheme
 alpha = -1  #Define anharmonicity parameter
-x90der_waveform = gauss_der(x90amp,x90mean,x90std, x90detuning, x90duration)
+x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
 
 
 #Y180 definition
 y180waveform = gauss(2*x90amp, x90mean, x90std, x90detuning, x90duration )  #Assume you have calibration for a X90 pulse
-y180der_waveform = gauss_der(2*x90amp, x90mean,x90std, x90detuning, x90duration)
+y180der_waveform = gauss_der(2*x90amp, x90mean, x90std, x90detuning, x90duration)
 
-config = {  #Config taken according to an IBM superconducting quantum processor
+config = {
     'version': 1,
     'controllers': {
         "con1": {
@@ -43,37 +43,13 @@ config = {  #Config taken according to an IBM superconducting quantum processor
                 2: {'offset': +0.0},
                 3: {'offset': +0.0},
                 4: {'offset': +0.0},
-                5: {'offset': +0.0},
-                6: {'offset': +0.0},
-                7: {'offset': +0.0},
-                8: {'offset': +0.0},
             },
             'analog_inputs': {
                 1: {'offset': +0.0},
-                2: {'offset': +0.0},
 
             }
         },
-        "con2": {
-            'type': 'opx1',
-            'analog_outputs': {
-                1: {'offset': +0.0},
-                2: {'offset': +0.0},
-                3: {'offset': +0.0},
-                4: {'offset': +0.0},
-                5: {'offset': +0.0},
-                6: {'offset': +0.0},
-                7: {'offset': +0.0},
-                8: {'offset': +0.0},
-            },
-            'analog_inputs': {
-                1: {'offset': +0.0},
-                2: {'offset': +0.0},
-
-            }
-        }
     },
-
 
     'elements': {
         "qubit": {

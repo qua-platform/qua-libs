@@ -19,7 +19,7 @@ import scipy.stats as stats
 from configuration import *
 
 π = np.pi
-qmManager = QuantumMachinesManager("3.122.60.129")  # Reach OPX's IP address
+qmManager = QuantumMachinesManager()  # Reach OPX's IP address
 qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 N_shots=1 #Number of shots fixed to determine operator expectation values
 

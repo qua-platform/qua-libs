@@ -1,27 +1,7 @@
-import numpy as np
-
-pulse_len = 100
-readout_len = 400
-qubit_IF = 50e6
-rr_IF = 50e6
-qubit_LO = 6.345e9
-qb_LO = 4.755e9
-
-
-def gauss(amplitude, mu, sigma, length):
-    t = np.linspace(-length / 2, length / 2, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-    return [float(x) for x in gauss_wave]
-
-
-def IQ_imbalance(g, phi):
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
-gauss_pulse = gauss(0.2, 0, 15, pulse_len)
+init_time = 10e3
+pi_time = 48
+NV_LO = 2.87e9
+AOM_RF = 80e6
 
 config = {
 
@@ -37,92 +17,129 @@ config = {
                 3: {'offset': +0.0},  # Fluorescence AOM
             },
             'digital_outputs': {
-                1: {},
+                1: {},  # Camera Trigger
             },
             'analog_inputs': {
-                1: {'offset': +0.0},
+                1: {'offset': +0.0},  # SPCM 1
+                2: {'offset': +0.0},  # SPCM 2
             }
         }
     },
 
     'elements': {
-
-        "qubit": {
+        "NV": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
-                'lo_frequency': qb_LO,
+                'lo_frequency': NV_LO,
+                "mixer": "mixer_NV",
             },
-            'outputs': {
-                'output1': ('con1', 1)
-            },
-            'intermediate_frequency': 80e6,
+            'intermediate_frequency': 1e6,
             'operations': {
-                'SAT': "SAT_PULSE",
+                'CW': "CWPulse",
+                'pi': "piPulse",
             },
-            'time_of_flight': 180,
-            'smearing': 0
         },
-        "readout_el": {
+        "AOM": {
             "singleInput": {
                 "port": ("con1", 3)
             },
-            'intermediate_frequency': 80e6,
+            'intermediate_frequency': AOM_RF,  # AOM Freq
+            'operations': {
+                'init': "initPulse",
+            },
+        },
+        "camera": {
+            'digitalInputs': {
+                "TrigIn": {
+                    "port": ("con1", 1),
+                    "delay": 0,
+                    "buffer": 0,
+                }
+            },
+            'operations': {
+                'trigger': "triggerPulse",
+            },
+        },
+        "spcm1": {
+            "singleInput": {
+                "port": ("con1", 3)
+            },
             'operations': {
                 'readout': "readoutPulse",
             },
-            'digitalInputs': {
-                'digital_input1': {
-                    'port': ("con1", 1),
-                    'delay': 0,
-                    'buffer': 0,
-                },
-            }
+            "outputs": {
+                'out1': ('con1', 1)
+            },
+            'time_of_flight': 28,
+            'smearing': 0,
+            'outputPulseParameters': {
+                'signalThreshold': 500,
+                'signalPolarity': 'Ascending',
+                'derivativeThreshold': 100,
+                'derivativePolarity': 'Ascending'
+            },
+        },
+        "spcm2": {
+            "singleInput": {
+                "port": ("con1", 3)
+            },
+            'operations': {
+                'readout': "readoutPulse",
+            },
+            "outputs": {
+                'out1': ('con1', 2)
+            },
+            'time_of_flight': 28,
+            'smearing': 0,
+            'outputPulseParameters': {
+                'signalThreshold': 500,
+                'signalPolarity': 'Ascending',
+                'derivativeThreshold': 100,
+                'derivativePolarity': 'Ascending'
+            },
         },
     },
 
     "pulses": {
-        "constPulse": {
+        "CWPulse": {
             'operation': 'control',
-            'length': pulse_len,
+            'length': init_time,
             'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'gauss_wf'
+                'I': 'const_wf',
+                'Q': 'zero_wf'
             }
         },
-        "readoutPulse": {
+        "piPulse": {
             'operation': 'control',
-            'length': pulse_len,
+            'length': pi_time,
+            'waveforms': {
+                'I': 'const_wf',
+                'Q': 'zero_wf'
+            }
+        },
+        "initPulse": {
+            'operation': 'control',
+            'length': init_time,
             'waveforms': {
                 'single': 'const_wf'
             },
-            'digital_marker': 'ON'
         },
-        "SAT_PULSE": {
+        "triggerPulse": {
             'operation': 'control',
-            'length': pulse_len,
-            'waveforms': {
-                'I': 'pi_wf',
-                'Q': 'zero_wf'
-            }
+            'length': init_time,
+            'digital_marker': 'triggerWF'
         },
-        'readout_pulse': {
-            'operation': 'measurement',
-            'length': readout_len,
+        "readoutPulse": {
+            'operation': 'control',
+            'length': init_time,
             'waveforms': {
-                'I': 'readout_wf',
-                'Q': 'zero_wf'
+                'single': 'zero_wf'
             },
-            'integration_weights': {
-                'integW1': 'integW1',
-                'integW2': 'integW2',
-            },
-            'digital_marker': 'ON'
         },
-
     },
     'digital_waveforms': {
-        'ON': {
+        'triggerWF': {
             'samples': [(1, 0)]
         },
     },
@@ -132,58 +149,32 @@ config = {
             'type': 'constant',
             'sample': 0.2
         },
-        'gauss_wf': {
-            'type': 'arbitrary',
-            'samples': gauss_pulse
-        },
-        'pi_wf': {
-            'type': 'arbitrary',
-            'samples': gauss(0.2, 0, 12, pulse_len)
-        },
-        '-pi/2_wf': {
-            'type': 'arbitrary',
-            'samples': gauss(-0.1, 0, 12, pulse_len)
-        },
-        'pi/2_wf': {
-            'type': 'arbitrary',
-            'samples': gauss(0.1, 0, 12, pulse_len)
-        },
-
+        # 'gauss_wf': {
+        #     'type': 'arbitrary',
+        #     'samples': gauss_pulse
+        # },
+        # 'pi_wf': {
+        #     'type': 'arbitrary',
+        #     'samples': gauss(0.2, 0, 12, pulse_len)
+        # },
+        # '-pi/2_wf': {
+        #     'type': 'arbitrary',
+        #     'samples': gauss(-0.1, 0, 12, pulse_len)
+        # },
+        # 'pi/2_wf': {
+        #     'type': 'arbitrary',
+        #     'samples': gauss(0.1, 0, 12, pulse_len)
+        # },
         'zero_wf': {
             'type': 'constant',
             'sample': 0
         },
-        'readout_wf': {
-            'type': 'constant',
-            'sample': 0.3
-        }
     },
-    'digital_waveforms': {
-        'ON': {
-            'samples': [(1, 0)]
-        },
-    },
-    'integration_weights': {
 
-        'integW1': {
-            'cosine': [1.0] * int(readout_len / 4),
-            'sine': [0.0] * int(readout_len / 4),
-        },
-
-        'integW2': {
-            'cosine': [0.0] * int(readout_len / 4),
-            'sine': [1.0] * int(readout_len / 4),
-        },
-
-    },
     'mixers': {
-        'mixer_qubit': [
-            {'intermediate_frequency': qubit_IF, 'lo_frequency': qubit_LO,
-             'correction': IQ_imbalance(0.0, 0.0)}
-        ],
-        'mixer_RR': [
-            {'intermediate_frequency': rr_IF, 'lo_frequency': qb_LO,
-             'correction': IQ_imbalance(0.0, 0.0)}
+        'mixer_NV': [
+            {'intermediate_frequency': 1e6, 'lo_frequency': NV_LO,
+             'correction': [1, 0, 0, 1]}
         ],
     }
 }

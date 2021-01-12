@@ -1,4 +1,9 @@
-# Multiplexed Readout of Multi-state Qubits Using a Neural Network
+---
+id: index
+title: Multiplexed Readout of Multi-state Qubits Using a Neural Network
+sidebar_label: Multilevel discriminator with NN
+slug: ./
+---
 
 # Overview
 This program allows for a multiplexed readout of up to 5 qubits using 2 OPXs (**a multiplexed readout of 10 qubits with 2 
@@ -33,13 +38,15 @@ the readout pulses, and the preparation pulses.
     operation will be done through 'con1'
       - **For 10 RRs and qubits, the configuration uses 'con1' for the first 5 RRs and 'con2' for the last 5 RRs**
     - **ATTENTION** : All elements **MUST** have the *outputs* section defined as follows:
-        - 'outputs': {  
+```python
+      'outputs': {  
                 'out1': ('con1', 1),  
                 'out2': ('con1', 2)  
             }
-          
-    - Furthermore, each RR needs to define an operation, and a pulse which correspond to the readout
-        - **ATTENTION** : All elements **MUST** have the same *readout pulse length*, and the same name for the *operation*.
+ ```
+    
+- Furthermore, each RR needs to define an operation, and a pulse which correspond to the readout
+- **ATTENTION** : All elements **MUST** have the same *readout pulse length*, and the same name for the *operation*.
 - **ATTENTION** : one must make sure that the component that has a phase $\pi/2$ ahead of the other, 
   will be directed towards 'out1' (ADC 1 on con1). 
   Otherwise, there's a need to change TimeDiffCalibrator (which will be discussed below).    
@@ -57,29 +64,34 @@ the readout pulses, and the preparation pulses.
     - The readout pulses should have the same length for all resonators
     - All pulses should be associated to an operation which has the same name for all resonators,
     i.e. if both "rr1" and "rr2" have an operation "readout_op" it will look something as follows:  
-      "rr1":{  
+```python      
+"rr1":{  
       "operations":{   
       "readout_op" : "readout_pulse_1"  
       }}  
        "rr2":{  
       "operations":{   
       "readout_op" : "readout_pulse_2"  
-      }}  
-      where "readout_pulse_1/2" are the calibrated pulses for a readout.
+      }} 
+``` 
+
+where "readout_pulse_1/2" are the calibrated pulses for a readout.
 
 - Preparation pulses:
     - The preparation pulses should define the calibrated pulses used
     for preparing the different qubits in the different states
     - All qubits need to define the operation something as follows,
       let "qb1" be the qubit 1 quantum element, then:  
+```python
       "qb1":{  
       "operations":{  
       "prepare0" : "prepare_pulse_qb1_0"  
       "prepare1" : "prepare_pulse_qb1_1"  
       "prepare2" : "prepare_pulse_qb1_2"  
       }}  
-      where there could be different pulses associated with different qubits. Therefore, applying "prepare1" to "qb1" 
-      will prepare qubit 1 in the 'e' state.
+```
+where there could be different pulses associated with different qubits. Therefore, applying "prepare1" to "qb1" 
+will prepare qubit 1 in the 'e' state.
       
 
 ## Program
@@ -160,5 +172,9 @@ OPX. The demodulation done in the TimeDiffCalibrator class must match the demodu
 - The way the time calibrator is written now assumes that the component with the phase ahead goes into 'out1'.
   
 #### DC offset calibration
-There's a DC component in different setups. We need to take that into account in our programs. The DCoffsetCalibrator
-class does that automatically.
+There's a DC component in different setups on the ADCs. We need to take that into account in our programs. The DCoffsetCalibrator
+class does that automatically. That means the DC offset on the analog inputs is measured automatically for each given 
+controller, and the configuration instance is updated accordingly. One has the option to choose whether to calibrate the 
+offset when running different parts of the program.
+- NOTE: the calibrator assumes that when nothing (zero amplitude pulse) is played the analog inputs (ADC values) should 
+  also be zero (up to noise)

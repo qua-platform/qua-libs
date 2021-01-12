@@ -8,9 +8,8 @@ This script must run on QUA 0.7 or higher
 from Config_QAOA import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import QuantumMachine
-from qm import SimulationConfig
-from qm import LoopbackInterface
 from qm.qua import *
+
 
 import random as rand
 import math
@@ -25,15 +24,12 @@ from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 from matplotlib import rc
 
-# import math tools
 π = np.pi
-qm1 = QuantumMachinesManager("3.122.60.129")
+
 # QM configuration based on IBM Quantum Computer :
 # Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
-
+qm1 = QuantumMachinesManager("192.168.116.129")
 QM = qm1.open_qm(IBMconfig)
-sim_args = {
-    'simulate': SimulationConfig(int(5e3))}  # Run on simulation interface
 
 # ## MaxCut problem definition for QAOA
 
@@ -48,13 +44,13 @@ G.add_weighted_edges_from(E)
 MaxCut_value = 5.  # Value of the ideal MaxCut
 
 # Drawing the Graph G
-# colors = ['b' for node in G.nodes()]
-# default_axes = plt.axes(frameon=True)
-# pos = nx.spring_layout(G)
-#
-# nx.draw_networkx(G, node_color=colors, node_size=600, alpha=1, ax=default_axes, pos=pos)
+"""colors = ['b' for node in G.nodes()]
+default_axes = plt.axes(frameon=True)
+pos = nx.spring_layout(G)
+
+nx.draw_networkx(G, node_color=colors, node_size=600, alpha=1, ax=default_axes, pos=pos)"""
 p = 1 #Define the depth of the quantum circuit, aka number of adiabatic evolution blocks
-Nrep = 1  # Define number of shots necessary to compute expectation value of cost Hamiltonian
+Nshots = 10  # Define number of shots necessary to compute expectation value of cost Hamiltonian
 
 # Initialize angles to random to launch the program
 QM.set_io1_value(π)
@@ -64,7 +60,7 @@ QM.set_io2_value(1)
 We use here multiple global variables, callable in every function : 
 - G the graph instance modelling the MaxCut problem we're solving
 - n the number of nodes in the graph, which is also the number of qubits in the config (named "qubit0", ..,"qubit(n-1)"
-- Nrep, number of shots desired for one expectation value evaluation on the QC (number of times you do the sampling of the QC)
+- Nshots, number of shots desired for one expectation value evaluation on the QC (number of times you do the sampling of the QC)
 - QM, the Quantum Machine instance opened with a specific hardware configuration
 - p, the number of blocks of adiabatic evolution, i.e defines the depth of the quantum circuit preparing QAOA ansatz state 
 This script relies on built in functions.
@@ -72,7 +68,7 @@ By order of calling when using the full algorithm we have the following tree:
 1. result_optimization, main organ of whole QAOA outline, returns the result of the algorithm
 
 2. quantum_avg_computation, returns the expectation value of cost Hamiltonian
-      for a fixed parametrized quantum circuit ((γ,β) angles fixed), measurement sampling for statistics given by parameter Nrep)
+      for a fixed parametrized quantum circuit ((γ,β) angles fixed), measurement sampling for statistics given by parameter Nshots)
     In this function, processing of data obtained from QUA program is done to return the value to be fed back in the classical optimizer
 
 3. QAOA, the QUA program applying the quantum circuit on the hardware,
@@ -197,7 +193,7 @@ def encode_angles_in_IO(γ, β):  # Insert angles values using IO1 by keeping tr
         raise IndexError
     for i in range(len(γ)):
         while not (job.is_paused()):
-            time.sleep(0.01)
+            time.sleep(0.01 )
         QM.set_io1_value(γ[i])
         QM.set_io2_value(β[i])
         job.resume()
@@ -205,7 +201,6 @@ def encode_angles_in_IO(γ, β):  # Insert angles values using IO1 by keeping tr
 
 
 def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value (cost function to optimize)
-
 
     γ = angles[0:2*p:2]
     β = angles[1:2*p:2]
@@ -216,20 +211,22 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
     # Implement routine here to set IO values and resume the program, and adapt prior part (or remove it)
 
     while not (job.is_paused()):
-        time.sleep(0.2)
-    time.sleep(0.4)
+        time.sleep(0.0001)
     results = job.result_handles
+    #time.sleep()
     output_states = []
     # Those commands do retrieve the results in generic variables called state#i with #i being a number between 0 and n-1
     # Those results are then stored in a bigger array called output_states
-    list(map(exec, [f"state{d}=results.state{d}.fetch_all()['value']" for d in range(n)]))
-    list(map(exec, [f"output_states.append(state{d})" for d in range(n)]))
+    timing=results.timing.fetch_all()['value']
+    print(timing[-1])
+    for d in range(n):
+        output_states.append(results.get("state"+str(d)).fetch_all())
 
     counts = {}  # Dictionary containing statistics of measurement of each bitstring obtained
     for i in range(2**n):
         counts[generate_binary(n)[i]] = 0
 
-    for i in range(Nrep):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
+    for i in range(Nshots):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
         bitstring = ""
         for j in range(len(output_states)):
             bitstring += str(output_states[j][i])
@@ -246,7 +243,7 @@ def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value 
         # compute the expectation value and energy distribution
         avr_C = avr_C + counts[bitstr] * tmp_eng
 
-    Mp_sampled = avr_C / Nrep
+    Mp_sampled = avr_C / Nshots
 
     return -Mp_sampled  # minus sign because optimizer will minimize the function,
     # to get the maximum value one takes the absolute value of the yielded result of  optimization
@@ -257,10 +254,10 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimizati
     a, c, A, alpha, gamma = SPSA_calibration()
     angles = init_angles
 
-    for k in range(max_iter):
+    for k in range(1,max_iter):
         a_k = a / (k + A) ** alpha
         c_k = c / k ** gamma
-        delta_k = 2 * np.round(np.random.uniform(0, 1, max_iter)) - 1  # Vector of random variables issued from a Bernouilli distribution +1,-1, could be something else
+        delta_k = 2 * np.round(np.random.uniform(0, 1, 2*p)) - 1  # Vector of random variables issued from a Bernouilli distribution +1,-1, could be something else
         angles_plus = angles + c_k * delta_k
         angles_minus = angles - c_k * delta_k
         cost_plus = quantum_avg_computation(angles_plus)
@@ -272,10 +269,6 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):  # Use SPSA optimizati
             angles[i] = max(angles[i], boundaries[i][0])
 
     return angles, -quantum_avg_computation(angles)  # return optimized angles and associated expectation value
-
-
-# Worth it to define new version of quantum_avg to return also
-# most probable bistring
 
 
 def SPSA_calibration():
@@ -306,9 +299,12 @@ def result_optimization(max_iter=100):
     for i in range(2 * p):  # Generate boundaries for each variable during optimization
         boundaries.append((min_bound[i], max_bound[i]))
 
-    opti_angle, expectation_value = SPSA_optimize(angles, boundaries, max_iter)
+    opti_angle, expectation_value = SPSA_optimize(np.array(angles), boundaries, max_iter)
 
     ratio = expectation_value / MaxCut_value
+    print('Approximation ratio : ', ratio)
+    print('Average cost value obtained: ', expectation_value)
+    print('Optimized angles set: ', opti_angle)
 
     return ratio, expectation_value, opti_angle  # Returns costs, optimized angles, associated approximation ratio.
 
@@ -350,7 +346,7 @@ with program() as QAOA:
             assign(γ_set[block], IO1)
             assign(β_set[block], IO2)
 
-        with for_(rep, init=0, cond=rep <= Nrep, update=rep + 1):  # Do Nrep times the same quantum circuit
+        with for_(rep, init=0, cond=rep <= Nshots, update=rep + 1):  # Do Nshots times the same quantum circuit
 
             # Apply Hadamard on each qubit
             for k in range(n):  # Run what's inside for qubit0, qubit1, ..., qubit4
@@ -362,17 +358,19 @@ with program() as QAOA:
                 for edge in G.edges():  # Iterate over the whole connectivity of Graph G
                     i = edge[0]
                     j = edge[1]
-                    node1 = 'qubit' + str(i)  # Define string corresponding to targeted quantum element in the config
-                    node2 = 'qubit' + str(j)
-                    CU1(2 * γ, node1, node2)
-                    Rz(-γ, node1)
-                    Rz(-γ, node2)
+                    qc = 'qubit' + str(i)  # Define string corresponding to targeted quantum element in the config
+                    qt = 'qubit' + str(j)
+                    CU1(2 * γ, qc, qt)
+                    Rz(-γ, qc)
+                    Rz(-γ, qt)
 
                     # Mixing Hamiltonian evolution
 
                 for k in range(n):  # Apply X(β) rotation on each qubit
                     q = 'qubit' + str(k)
                     Rx(-2 * β, q)
+                save(γ,"gamma")
+                save(β, "beta")
 
             # Measurement and state determination
 
@@ -382,23 +380,29 @@ with program() as QAOA:
                 q = 'qubit' + str(k)
                 measurement(RR, I, Q)
 
+                state_saving(I, Q, state_estimate, state_streams[k])  # Do state discrimination based on each IQ point and save it in a variable called state0,1,..
+                #Active reset, flip the qubit is measured state is 1
+                with if_(state_estimate==1):
+                    Rx(π, q)
+
                 raw_saving(I, Q, I_streams[k], Q_streams[k])  # Save I & Q variables, if deemed necessary by the user
 
-                state_saving(I, Q, state_estimate, state_streams[k])  # Do state discrimination based on each IQ point and save it in a variable called state0,1,..
 
-                wait(t, RR)  # Reset qubit state by waiting for relaxation
-                wait(t, q)  #Replace by conditional X pulse (True reset after measurement)
+
+
         assign(timing, timing + 1)
         save(timing, "timing")
     with stream_processing():
         for i in range(n):
-            state_streams[i].buffer(Nrep).save(state_strings[i])
-            I_streams[i].buffer(Nrep).save(I_strings[i])
-            Q_streams[i].buffer(Nrep).save(Q_strings[i])
+            state_streams[i].buffer(Nshots).save(state_strings[i])
+            I_streams[i].buffer(Nshots).save(I_strings[i])
+            Q_streams[i].buffer(Nshots).save(Q_strings[i])
+
 
 job = QM.execute(QAOA)
 
 #Try out the QAOA for the problem defined by the Maxcut for graph G
 ratio, exp, opti_angles = result_optimization()
-print(ratio, opti_angles)
+
+
 job.halt()

@@ -2,7 +2,7 @@ class stage_mock:
     def __init__(self):
         self.name = 'stage1'
         self.x = 0
-        self.y=0
+        self.y = 0
 
     def __repr__(self):
         return f"{self.name} at {self.x}/{self.y}"
@@ -13,5 +13,4 @@ class stage_mock:
         print(f"set pos to {self.x}/{self.y}")
 
     def get_pos(self):
-        return (self.x,self.y)
-
+        return self.x, self.y

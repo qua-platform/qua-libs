@@ -35,7 +35,8 @@ class DCoffsetCalibrator:
     @staticmethod
     def calibrate(qmm, config, qe, **execute_args):
         """
-
+        Returns the offset that should be applied for the analog inputs of each controller.
+        Assumes that when nothing is played there should be zero incoming signal.
         :param qmm: the QuantumMachineManager to execute the program on
         :return:
         """

@@ -1,13 +1,13 @@
 ---
 id: index
 title: Frame rotation and phase reset - An introduction 
-sidebar_label: Frame&Phase
+sidebar_label: Intro to frame & phase
 slug: ./
 ---
 
 This simple script is designed to showcase how phase and framework in QUA.
 
-## Basics of phase in QAU
+## Basics of phase in QUA
 
 The phase of a signal output by the OPX is dependent on two factors: 
 
@@ -43,6 +43,8 @@ In the 1st case, it is clear that the phase is maintained between the pulses.
 In the 2nd case, the 2nd pulse is being phase reset, which causes it to start as a cosine.
 In the 3rd case, an additional pi/2 rotation is applied to the 2nd pulse, which causes it to start as a sine.
 In the 4th case, the 1st pulse also has its phase reset, making it start as a cosine.
+
+![frame_and_phase](frame_and_phase.png "frame_and_phase")
 
 [download script](reset_phase_demo.py)
  

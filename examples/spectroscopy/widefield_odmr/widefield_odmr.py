@@ -5,54 +5,181 @@ Created: 13/12/2020
 Created on QUA version: 0.6.393
 """
 
-from random import randint
+import matplotlib.pyplot as plt
+from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig
-import numpy as np
-import matplotlib.pyplot as plt
-from configuration import config
-from examples.spectroscopy.widefield_odmr.camera_mock_lib import *
-import time
+
+from camera_mock_lib import *
+from configuration import *
 
 QMm = QuantumMachinesManager()
 QM1 = QMm.open_qm(config)
 
-N = 5
-f_start = int(1e6)
-f_end = int(10e6)
+##############
+# parameters #
+##############
+N = 101
+f_start = int(-100e6)
+f_end = int(100e6)
 f_step = int((f_end - f_start) / N)
-T1 = 10 * 1e2  # in nS
-flash_time = 20 * 1e2
 
-cam = cam_mock() #create the camera object
-cam.allocate_buffer(1)  # allocate new space in camera
-cam.arm() #trigger arm for the first time
+totalTime = 10e6  # 10 ms
+fastReadout = 10e3  # 10 micro seconds
+normalReadout = 100e3  # should be 10ms, but set at 100us for clarity
+nAverages = int(totalTime / fastReadout)
 
-result_array = []
-with program() as ODMR:
+simulate = True
+case = 1  # 1 for faster CW, 2 for normal CW, 3 for pulsed
+
+###########
+# CW ODMR #
+###########
+# Readout is being done for 10ms with MW and 10ms without MW.
+
+with program() as CW_ODMR:
     freq = declare(int)
+
     with for_(freq, f_start, freq <= f_end, freq + f_step):
-        update_frequency('qubit', freq)
-        play('readout', 'readout_el', duration=24)  # init
-        align('qubit', 'readout_el')
-        play('SAT', 'qubit') #MW : TODO put timing in config, not dynamic, wider gaussian
-        align('qubit', 'readout_el')
-        play('readout', 'readout_el', duration=flash_time) #readout. take first 300 ns as signal and rest as ref.
-        pause()
+        update_frequency('NV', freq)
 
-job = QM1.execute(ODMR)
-# job = QM1.simulate(ODMR, SimulationConfig(10000))
+        # Meas with MW
+        play('init', 'AOM', duration=normalReadout // 4)  # init
+        play('CW', 'NV', duration=normalReadout // 4)  # MW
+        play('trigger', 'camera', duration=normalReadout // 4)  # camera
+        wait(1000 // 4, 'camera')  # camera rearming (can be removed if camera will be configured
+        # to take 200 frames from a single trigger)
 
-for ind in range(0, N):
-    while not job.is_paused():
-        time.sleep(0.001)
+        # Reference without MW
+        align('AOM', 'camera')
+        play('init', 'AOM', duration=normalReadout // 4)  # init
+        play('trigger', 'camera', duration=normalReadout // 4)  # camera
+        wait(1000 // 4, 'camera')  # camera rearming (can be removed if camera will be configured
+        # to take 200 frames from a single trigger)
 
-    result_array.append(cam.get_image())  # collect previous image
-    cam.allocate_buffer(1)  # allocate new space in camera
-    cam.arm() #trigger arm
-    job.resume()
-#
-# res=job.result_handles
-# samples = job.get_simulated_samples()
-# samples.con1.plot()
+################
+# fast readout #
+################
+# Phantom camera has 1MHz FPS
+# can trigger for a 10us readout
+# no need for reference
+
+with program() as CW_ODMR_fast_readout:
+    freq = declare(int)
+    i = declare(int)
+
+    with for_(i, 0, i < nAverages, i + 1):
+        ###
+        with for_(freq, f_start, freq <= f_end, freq + f_step):
+            update_frequency('NV', freq)
+
+            play('init', 'AOM', duration=fastReadout // 4)  # init
+            play('CW', 'NV', duration=fastReadout // 4)  # MW
+            play('trigger', 'camera', duration=fastReadout * 200 // 4)
+            wait(1000 // 4, 'camera')
+
+###############
+# pulsed ODMR #
+###############
+# Phantom camera has 1MHz FPS
+# Can trigger for a 10us readout and compare 1st 1us and last 1us.
+
+with program() as PULSED_ODMR:
+    freq = declare(int)
+    play('init', 'AOM')  # init
+    wait(1000 // 4, 'AOM')  # For clarity
+
+    with for_(freq, f_start, freq <= f_end, freq + f_step):
+        update_frequency('NV', freq)
+
+        play('pi', 'NV')  # MW
+        align('NV', 'AOM', 'camera')  # Wait for pi pulse to end
+        play('init', 'AOM')  # readout
+        play('trigger', 'camera')  # camera
+        wait(1000 // 4, 'AOM')  # For camera rearming & clarity
+
+if simulate:
+
+    # Case 1
+    job = QM1.simulate(CW_ODMR, SimulationConfig(60000))
+    res = job.result_handles
+    samples = job.get_simulated_samples()
+    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    # MW = np.sqrt((samples.con1.analog['1']) ** 2 + (samples.con1.analog['2']) ** 2) / 0.2 - 2
+    camera = samples.con1.digital['1'] - 4
+
+    plt.figure()
+    plt.plot(AOM)
+    # plt.plot(MW)
+    plt.plot(MW_I)
+    plt.plot(MW_Q)
+    plt.plot(camera)
+    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
+    plt.xlabel('t [ns]')
+    plt.title('CW ODMR')
+
+    # Case 2
+    job = QM1.simulate(CW_ODMR_fast_readout, SimulationConfig(6000))
+    samples = job.get_simulated_samples()
+    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    # MW = np.sqrt((samples.con1.analog['1'])**2+(samples.con1.analog['2'])**2)/0.2 - 2
+    camera = samples.con1.digital['1'] - 4
+
+    plt.figure()
+    plt.plot(AOM)
+    # plt.plot(MW)
+    plt.plot(MW_I)
+    plt.plot(MW_Q)
+    plt.plot(camera)
+    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
+    plt.xlabel('t [ns]')
+    plt.title('CW ODMR - fast readout')
+
+    # Case 3
+    job = QM1.simulate(PULSED_ODMR, SimulationConfig(10000))
+    samples = job.get_simulated_samples()
+    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    # MW = np.sqrt((samples.con1.analog['1']) ** 2 + (samples.con1.analog['2']) ** 2) / 0.2 - 2
+    camera = samples.con1.digital['1'] - 4
+
+    plt.figure()
+    plt.plot(AOM)
+    # plt.plot(MW)
+    plt.plot(MW_I)
+    plt.plot(MW_Q)
+    plt.plot(camera)
+    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
+    plt.xlabel('t [ns]')
+    plt.title('Pulsed ODMR')
+
+    plt.show()
+else:
+    if case == 1:  # Fast
+        cam = cam_mock()  # create the camera object
+        cam.allocate_buffer(N * nAverages)  # allocate new space in camera
+        cam.arm()  # trigger arm
+        job = QM1.execute(CW_ODMR_fast_readout)
+
+        result_array = cam.get_image()
+
+    elif case == 2:  # Normal
+        cam = cam_mock()  # create the camera object
+        cam.allocate_buffer(2 * N)  # allocate new space in camera
+        cam.arm()  # trigger arm
+        job = QM1.execute(CW_ODMR)
+
+        result_array = cam.get_image()
+
+    elif case == 3:  # Pulsed
+        cam = cam_mock()  # create the camera object
+        cam.allocate_buffer(N * nAverages)  # allocate new space in camera
+        cam.arm()  # trigger arm
+        job = QM1.execute(PULSED_ODMR)
+
+        result_array = cam.get_image()

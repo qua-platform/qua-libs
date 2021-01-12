@@ -5,14 +5,11 @@ Created: 13/12/2020
 Created on QUA version: 0.6.393
 """
 
-from random import randint
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig
 import numpy as np
-import matplotlib.pyplot as plt
 from configuration import config
-from examples.microscopy.g2_with_stage.stage_mock_lib import *
+from stage_mock_lib import *
 import time
 
 QMm = QuantumMachinesManager()
@@ -27,68 +24,103 @@ Ny = 10
 x_step = int((x_end - x_start) / Nx)
 y_step = int((y_end - y_start) / Ny)
 
-T1 = 10 * 1e3  # in nS
-flash_time = 20 * 1e3
-N_avg = 2
-
 stage = stage_mock()
 correlation_width = 200
-meas_len = 2000
+meas_len = 2000  # 2us
+N_avg = 1e6  # total measurement time will be: meas_len*N_avg
 result_array = []
 
 
+###############
+# confocal g2 #
+###############
 with program() as confocal_g2:
-    x = declare(int)
-    y = declare(int)
+
+    i = declare(int)
     n = declare(int)
     n_avg = declare(int)
     k = declare(int)
     p = declare(int)
-    g2 = declare(int, size=int(2 * correlation_width))
     diff = declare(int)
+    diff_index = declare(int)
     resultLen1 = declare(int)
     resultLen2 = declare(int)
+    # For a 2us readout, this limits the number of photons at 4, which corresponds to 2MHz counts.
+    # This can be increased if needed.
     result1 = declare(int, size=int(meas_len / 500))
     result2 = declare(int, size=int(meas_len / 500))
-    g2_stream=declare_stream()
-    with for_(x, x_start, x <= x_end, x + x_step):
-        with for_(y, y_start, y <= y_end, y + y_step):
-            assign(IO1, x)
-            assign(IO2, y)
-            pause()
-            with for_(n_avg, 0, n_avg <= N_avg, n_avg + 1):
-                play('SAT', 'qubit', duration=10 * T1)
+    g2 = declare(int, size=int(2 * correlation_width))
+    g2_stream = declare_stream()
 
-                measure("readout", "readout_el1", None,
-                        time_tagging.raw(result1, meas_len, targetLen=resultLen1))  # 1ns
-                measure("readout", "readout_el2", None,
-                        time_tagging.raw(result2, meas_len, targetLen=resultLen2))  # 1ns
-                assign(n, 0)
-                with for_(k, 0, k < resultLen2, k + 1):
-                    with if_(n < resultLen1):
-                        assign(diff, result1[n] - result2[k])
+    #########################
+    # looping over position #
+    #########################
+    with for_(i, 0, i < Nx * Ny, i+1):
 
-                        with if_((diff < correlation_width) & (diff > -correlation_width)):
-                            assign(diff, diff + correlation_width)
-                            assign(g2[diff], g2[diff] + 1)
-                            assign(n, n + 1)
+        pause()
 
+        ########################
+        # initialize g2 vector #
+        ########################
+        with for_(p, 0, p < g2.length(), p + 1):
+            assign(g2[p], 0)
+
+        ##########################
+        # perform g2 measurement #
+        ##########################
+        with for_(n_avg, 0, n_avg <= N_avg, n_avg + 1):
+            play('readout', 'AOM')
+            measure("readout", "spcm1", None,
+                    time_tagging.raw(result1, meas_len, resultLen1))
+            measure("readout", "spcm2", None,
+                    time_tagging.raw(result2, meas_len, resultLen2))
+            assign(n, 0)
+            assign(k, 0)
+            # with for_(k, 0, k < resultLen2, k + 1):
+            #     with if_(n < resultLen1):
+            with while_(k < resultLen2):
+                with while_(n < resultLen1):
+                    assign(diff, result1[n] - result2[k])
+
+                    with if_((diff < correlation_width) & (diff > -correlation_width)):
+                        assign(diff_index, diff + correlation_width)
+                        assign(g2[diff_index], g2[diff_index] + 1)
+                        assign(n, n + 1)
+                        assign(k, k + 1)
+
+                    with if_(diff >= correlation_width):
+                        pass
+
+                    with if_(diff <= correlation_width):
+                        assign(n, n + 1)
+
+                assign(k, k + 1)
+
+
+        ####################
+        # stream g2 vector #
+        ####################
         with for_(p, 0, p < g2.length(), p + 1):
             save(g2[p], g2_stream)
 
     with stream_processing():
-        g2_stream.buffer(2 * correlation_width).average().save_all('g2') #take g2 vector per position. (buffer shape is wrong)
+        g2_stream.buffer(2 * correlation_width).save_all('g2')  # Take g2 vector per position.
+
 
 job = QM1.execute(confocal_g2)
-
 res = job.result_handles
-for ind in range(0, Nx * Ny):
-    while not job.is_paused():
-        time.sleep(0.001)
-    (x_pos, y_pos) = QM1.get_io_values()
-    stage.go_to(pos=(x_pos['int_value'], y_pos['int_value']))
-    job.resume()
+x_vec = np.arange(x_start, x_end, x_step)
+y_vec = np.arange(y_start, y_end, y_step)
+g2_data = np.zeros([len(x_vec), len(y_vec)])
 
-# res=job.result_handles
-# samples = job.get_simulated_samples()
-# samples.con1.plot()
+
+##############
+# move stage #
+##############
+for x_i in range(len(x_vec)):
+    for y_i in range(len(x_vec)):
+        stage.go_to(pos=(x_vec[x_i], y_vec[y_i]))
+        job.resume()
+        while not job.is_paused():
+            time.sleep(0.001)
+        g2_data[x_i, y_i] = res.g2_stream.fetch_all()

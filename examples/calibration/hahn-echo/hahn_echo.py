@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from scipy.optimize import curve_fit
-qmm = QuantumMachinesManager("3.122.60.129")
+qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 π = np.pi
 

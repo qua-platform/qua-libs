@@ -54,20 +54,20 @@ with program() as T2:
             save(tau, tau_vec)
 
     with stream_processing():
-        tau_vec.buffer(N_tau).save_all('tau_vec')
-        I_res.buffer(N_tau).average().save_all('I_res')
-        Q_res.buffer(N_tau).average().save_all('Q_res')
-        state_res.boolean_to_int().buffer(N_tau).save_all('state_res')
+        tau_vec.buffer(N_tau).save('tau_vec')
+        I_res.buffer(N_tau).average().save('I_res')
+        Q_res.buffer(N_tau).average().save('Q_res')
+        state_res.boolean_to_int().buffer(N_tau).average().save('state_res')
 
 job = QM1.simulate(T2,
                    SimulationConfig(int(500000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])))
 
 job.result_handles.wait_for_all_values()
 res = job.result_handles
-I = res.I_res.fetch_all()['value']
-Q = res.Q_res.fetch_all()['value']
-state = res.state_res.fetch_all()['value']
-tau_vec = res.tau_vec.fetch_all()['value']
+I = res.I_res.fetch_all()
+Q = res.Q_res.fetch_all()
+state = res.state_res.fetch_all()
+t = res.tau_vec.fetch_all()
 
 
 
@@ -82,7 +82,6 @@ state_value_mean = state_th.mean(axis=0)
 state_value_var = state_th.var(axis=0)
 
 
-t=tau_vec[0,:]
 
 param0 = [1, 10, 40]
 popt, pcov = curve_fit(decay, t, state_value_mean, param0)

@@ -35,10 +35,10 @@ config = {
         "con1": {
             'type': 'opx1',
             'analog_outputs': {
-                1: {'offset': +0.0},  # qubit 1-I
-                2: {'offset': +0.0},  # qubit 1-Q
-                3: {'offset': +0.0},  # Readout resonator
-                4: {'offset': +0.0},  # Readout resonator
+                1: {'offset': 0.05},
+                2: {'offset': 0.05},
+                3: {'offset': -0.024},
+                4: {'offset': 0.115},  # Readout resonator
             },
             'digital_outputs': {
                 1: {},
