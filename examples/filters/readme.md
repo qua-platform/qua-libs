@@ -31,16 +31,20 @@ This method is very efficient and can be used for realtime data processing and f
 In this example we showcase how to use the builtin 'integration.moving_window' filter in order to apply a rectangular window (also known as the boxcar or Dirichlet window) directly on the incoming data.
 A moving window filter with constant weights can be described as the following function operating on the signal $S_j$:
 
-$d[i] = \sum_{j=4C \cdot i}^{4C \cdot (i+1)} S_j = \sum_{j=4C \cdot i}^{4C \cdot (i+1)} a_i \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right)$
+$$
+d[i] = \sum_{j=4C \cdot i}^{4C \cdot (i+1)} S_i = \sum_{j=4C \cdot i}^{4C \cdot (i+1)} a_i \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right)
+$$
 
 With C being the chunk\_size (in units of $\frac{1}{f_s}$), the signal $S_j$ is assumed to be a cosine with frequency $f_{IF}$, $f_s$ is the sampling frequency, and $a_i$ is assumed to vary slowly.
 If the length of the integration, $$4C$$, is small such that we can assume that the cosine is constant, then we get:
 
-$2 \pi \frac{f_{IF}}{f_s} 4C \ll 2 \pi$
+$$
+2 \pi \frac{f_{IF}}{f_s} 4C \ll 2 \pi \\
 
-$f_{IF} \ll \frac{f_s}{4C}$
+f_{IF} \ll \frac{f_s}{4C} \\
 
-$d[i] = 4C \, a_i \, \text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} 4C (i+0.5) \right)$
+d[i] = 4C \, a_i \, \text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} 4C (i+0.5) \right)
+$$
 
 On the other hand, if $$4C$$ is large compared to the period of the cosine, then the summation will average out, and we will get 0.
 This puts the cutoff frequency at: $$f_{cutoff} = \frac{f_s}{4C}$$.
@@ -60,17 +64,23 @@ In the case of the 'demod.moving_window', the signal is first multiplied by a co
 We will demonstrate how this can be used as a Digital Down Converter.
 For simplicity, we will assume that our signal is composed of two close frequencies:
 
-$$S_j = b \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) + c \,\text{cos}\left( 2 \pi \frac{f_{IF}+\delta }{f_s} j\right)$$
+$$
+S_j = b \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) + c \,\text{cos}\left( 2 \pi \frac{f_{IF}+\delta }{f_s} j\right)
+$$
 
 We will multiply our signal by a sine at the first frequency and look what happens to each of the terms:
 
-$b \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) \,\text{sin}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) = \frac{b}{2} \,\text{sin}\left( 4 \pi \frac{f_{IF}}{f_s} j\right)$
+$$
+b \,\text{cos}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) \,\text{sin}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) = \frac{b}{2} \,\text{sin}\left( 4 \pi \frac{f_{IF}}{f_s} j\right) \\
 
-$c \,\text{cos}\left( 2 \pi \frac{f_{IF}+\delta }{f_s} j\right) \,\text{sin}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) = \frac{c}{2} \left(\,\text{sin}\left( 2 \pi \frac{2f_{IF} + \delta }{f_s} j\right) - \,\text{sin}\left( 2 \pi \frac{\delta}{f_s} j\right)\right)$
+c \,\text{cos}\left( 2 \pi \frac{f_{IF}+\delta }{f_s} j\right) \,\text{sin}\left( 2 \pi \frac{f_{IF}}{f_s} j\right) = \frac{c}{2} \left(\,\text{sin}\left( 2 \pi \frac{2f_{IF} + \delta }{f_s} j\right) - \,\text{sin}\left( 2 \pi \frac{\delta}{f_s} j\right)\right)
+$$
 
 We can now apply the same consideration as above, if our cutoff frequency is picked such that $$\delta \ll f_{cutoff} \ll 2 f_{IF}$$ then we will end up with:
 
-$d[i] = -4C \, \frac{b}{2} \,\text{sin} \left(2 \pi \frac{\delta}{f_s} 4C (i+0.5) \right)$
+$$
+d[i] = -4C \, \frac{c}{2} \,\text{sin} \left(2 \pi \frac{\delta}{f_s} 4C (i+0.5) \right)
+$$
 
 To summarize - using "demod.moving_window" can be used for extracting the baseband from an incoming modulated RF.
 The signal is multiplied by a cosine and/or a sine before applying the LPF filter.

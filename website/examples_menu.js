@@ -18,7 +18,7 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "advanced-topics",
+        "label": "Advanced Topics",
         "items": [
             "advanced-topics/single-sideband-modulation/index",
             "filters/index"
@@ -57,6 +57,13 @@ module.exports = [
     },
     {
         "type": "category",
+        "label": "Mixer Calibration",
+        "items": [
+            "mixer-calibration/index"
+        ]
+    },
+    {
+        "type": "category",
         "label": "Dynamical Decoupling Protocols",
         "items": [
             "dynamical-decoupling-protocols/XY-n/index",
@@ -84,7 +91,7 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "Randomized Benchmark",
+        "label": "Randomized Benchmarking",
         "items": [
             "randomized-benchmark/one-qubit-rb/index",
             "randomized-benchmark/DRAG-optimization/index"
