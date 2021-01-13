@@ -91,13 +91,6 @@ module.exports = [
     },
     {
         "type": "category",
-        "label": "Microscopy",
-        "items": [
-            "microscopy/g2-with-stage/index",
-        ]
-    },
-    {
-        "type": "category",
         "label": "Randomized Benchmarking",
         "items": [
             "randomized-benchmark/one-qubit-rb/index",
@@ -119,5 +112,14 @@ module.exports = [
             "characterization/qubit-state-tomography/index",
             "characterization/wigner-tomography/index",
         ]
-    }
+    },
+    {
+        "type": "category",
+        "label": "NV Centers",
+        "items": [
+            "nv-centers/syncing-opx-with-external-devices/index",
+//            "nv-centers/g2-with-stage/index",  Need to finished readme
+//            "nv-centers/widefield-odmr/index",  Need to finished readme
+        ]
+    },
 ]
