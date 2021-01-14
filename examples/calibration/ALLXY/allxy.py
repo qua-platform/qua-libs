@@ -99,8 +99,8 @@ def all_xy(amplitude):
                     "meas_op_res",
                     "res",
                     None,
-                    demod.full("integ_w_c", I),
-                    demod.full("integ_w_s", Q),
+                    demod.full("integ_w_c", I),  # cos integration weights for I
+                    demod.full("integ_w_s", Q),  # sin integration weights for Q
                 )
 
                 save(I, "I")
