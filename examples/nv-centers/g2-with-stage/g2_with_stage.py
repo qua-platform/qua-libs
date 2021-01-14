@@ -56,7 +56,7 @@ with program() as confocal_g2:
     #########################
     # looping over position #
     #########################
-    with for_(i, 0, i < Nx * Ny, i+1):
+    with for_(i, 0, i < Nx * Ny, i + 1):
 
         pause()
 
@@ -73,11 +73,19 @@ with program() as confocal_g2:
         # perform g2 measurement #
         ##########################
         with for_(n_avg, 0, n_avg <= N_avg, n_avg + 1):
-            play('readout', 'AOM')
-            measure("readout", "spcm1", None,
-                    time_tagging.raw(result1, meas_len, resultLen1))
-            measure("readout", "spcm2", None,
-                    time_tagging.raw(result2, meas_len, resultLen2))
+            play("readout", "AOM")
+            measure(
+                "readout",
+                "spcm1",
+                None,
+                time_tagging.raw(result1, meas_len, resultLen1),
+            )
+            measure(
+                "readout",
+                "spcm2",
+                None,
+                time_tagging.raw(result2, meas_len, resultLen2),
+            )
             assign(n, 0)
             assign(k, 0)
             assign(counts, counts + resultLen2 + resultLen1)  # Total number of counts.
@@ -99,16 +107,17 @@ with program() as confocal_g2:
 
                 assign(k, k + 1)
 
-
         ####################
         # stream g2 vector #
         ####################
         with for_(p, 0, p < g2.length(), p + 1):
             save(g2[p], g2_stream)
-        save(counts, 'counts')
+        save(counts, "counts")
 
     with stream_processing():
-        g2_stream.buffer(2 * correlation_width).save_all('g2')  # Take g2 vector per position.
+        g2_stream.buffer(2 * correlation_width).save_all(
+            "g2"
+        )  # Take g2 vector per position.
 
 
 job = QM1.execute(confocal_g2)
@@ -129,4 +138,4 @@ for x_i in range(len(x_vec)):
         while not job.is_paused():
             time.sleep(0.001)
         g2_data[x_i, y_i] = res.g2_stream.fetch_all()
-        counts_data = res.counts.fetch_all()['value']
+        counts_data = res.counts.fetch_all()["value"]

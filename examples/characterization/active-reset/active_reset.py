@@ -25,16 +25,18 @@ with program() as active_reset:
     Q = declare(fixed)
     Q_stream = declare_stream()
 
-    measure('readout', 'rr', None, demod.full('integW1', I))
+    measure("readout", "rr", None, demod.full("integW1", I))
 
     with for_(n, 0, n < 1000, n + 1):
 
-            play("pi", "qubit", condition=I > th)
-            align('qubit', 'rr')
-            measure('readout', 'rr', None, demod.full('integW1', I), demod.full('integW2', Q))
+        play("pi", "qubit", condition=I > th)
+        align("qubit", "rr")
+        measure(
+            "readout", "rr", None, demod.full("integW1", I), demod.full("integW2", Q)
+        )
 
-            save(I, I_stream)
-            save(Q, Q_stream)
+        save(I, I_stream)
+        save(Q, Q_stream)
 
     with stream_processing():
 
@@ -46,10 +48,10 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.simulate(active_reset, SimulationConfig(2000))
 samps = job.get_simulated_samples()
-I_q1 = samps.con1.analog.get('1')
-Q_q1= samps.con1.analog.get('2')
-I_rr1 = samps.con1.analog.get('3')
-Q_rr1 = samps.con1.analog.get('4')
+I_q1 = samps.con1.analog.get("1")
+Q_q1 = samps.con1.analog.get("2")
+I_rr1 = samps.con1.analog.get("3")
+Q_rr1 = samps.con1.analog.get("4")
 plt.plot(I_q1)
 plt.plot(Q_q1)
 plt.plot(I_rr1)

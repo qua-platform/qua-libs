@@ -8,12 +8,12 @@ import numpy as np
 a_min = 0.2
 a_max = 1.0
 da = 0.1
-a_vec = [float(arg) for arg in np.arange(a_min, a_max+da/2, da)]
+a_vec = [float(arg) for arg in np.arange(a_min, a_max + da / 2, da)]
 
 f_min = int(48e6)
 f_max = int(52e6)
 df = 1e6
-f_vec = [int(arg) for arg in np.arange(f_min, f_max + df/2, df)]
+f_vec = [int(arg) for arg in np.arange(f_min, f_max + df / 2, df)]
 
 
 with program() as res_spec_vs_ro_power_cw:
@@ -31,16 +31,21 @@ with program() as res_spec_vs_ro_power_cw:
     I_stream = declare_stream()
     Q_stream = declare_stream()
 
-    with for_(f, f_min, f < f_max + df/2, f + df):
+    with for_(f, f_min, f < f_max + df / 2, f + df):
 
         update_frequency("RR_1", f)
 
-        with for_(a, a_min, a < a_max + da/2, a + da):
+        with for_(a, a_min, a < a_max + da / 2, a + da):
 
-            measure('cw_readout'*amp(a), 'RR_1', None, demod.full('cw_integW_cos', I1, 'out1'),
-                                                       demod.full('cw_integW_sin', Q1, 'out1'),
-                                                       demod.full('cw_integW_cos', I2, 'out2'),
-                                                       demod.full('cw_integW_sin', Q2, 'out2'))
+            measure(
+                "cw_readout" * amp(a),
+                "RR_1",
+                None,
+                demod.full("cw_integW_cos", I1, "out1"),
+                demod.full("cw_integW_sin", Q1, "out1"),
+                demod.full("cw_integW_cos", I2, "out2"),
+                demod.full("cw_integW_sin", Q2, "out2"),
+            )
             assign(I, I1 + Q2)
             assign(Q, Q1 - I2)
             save(I, I_stream)

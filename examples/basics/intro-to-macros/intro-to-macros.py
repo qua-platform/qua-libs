@@ -30,7 +30,7 @@ def modify_var(addition=0.3):
     A macro to modify a QUA variable. In this case, the variable does not
     need to be returned.
     """
-    assign(b, b+addition)
+    assign(b, b + addition)
 
 
 def qua_function_calls(el):
@@ -39,8 +39,8 @@ def qua_function_calls(el):
     :param el: The quantum element used by the QUA statements
     :return:
     """
-    play('playOp', el, duration=300)
-    play('playOp'*amp(b), el, duration=300)
+    play("playOp", el, duration=300)
+    play("playOp" * amp(b), el, duration=300)
 
 
 with program() as prog:
@@ -48,23 +48,22 @@ with program() as prog:
 
     # Plays pulse with amplitude of 0.2 (from config) * b=0.2 (from declare_vars) for t=100ns (from declare_vars)
     save(b, c_streams[0])  # Saves b into stream for printing at the end
-    play('playOp' * amp(b), 'qe1', duration=t)
+    play("playOp" * amp(b), "qe1", duration=t)
 
     # Plays pulse with amplitude of 0.2 (from config) * b=0.5 (after modify_var) for t=100ns (from declare_vars)
     modify_var()
     save(b, c_streams[0])  # Saves b into stream for printing at the end
-    play('playOp' * amp(b), 'qe1', duration=t)
+    play("playOp" * amp(b), "qe1", duration=t)
 
     # Plays pulse twice, first with amplitude 0.2 (from config) for duration 300ns (from qua_function_calls).
     # Second with with 0.2 (from config) * b=0.5 (after modify_var) for duration 300ns (from qua_function_calls).
-    qua_function_calls('qe1')
+    qua_function_calls("qe1")
 
     with stream_processing():
-        c_streams[0].save_all('out_stream')
+        c_streams[0].save_all("out_stream")
 
 QM1 = QMm.open_qm(config)
-job = QM1.simulate(prog,
-                   SimulationConfig(int(1500)))
+job = QM1.simulate(prog, SimulationConfig(int(1500)))
 res = job.result_handles
 out_str = res.out_stream.fetch_all()
 samples = job.get_simulated_samples()

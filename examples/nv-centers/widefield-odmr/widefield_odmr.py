@@ -41,20 +41,24 @@ with program() as CW_ODMR:
     freq = declare(int)
 
     with for_(freq, f_start, freq <= f_end, freq + f_step):
-        update_frequency('NV', freq)
+        update_frequency("NV", freq)
 
         # Meas with MW
-        play('init', 'AOM', duration=normalReadout // 4)  # init
-        play('CW', 'NV', duration=normalReadout // 4)  # MW
-        play('trigger', 'camera', duration=normalReadout // 4)  # camera
-        wait(1000 // 4, 'camera')  # camera rearming (can be removed if camera will be configured
+        play("init", "AOM", duration=normalReadout // 4)  # init
+        play("CW", "NV", duration=normalReadout // 4)  # MW
+        play("trigger", "camera", duration=normalReadout // 4)  # camera
+        wait(
+            1000 // 4, "camera"
+        )  # camera rearming (can be removed if camera will be configured
         # to take 200 frames from a single trigger)
 
         # Reference without MW
-        align('AOM', 'camera')
-        play('init', 'AOM', duration=normalReadout // 4)  # init
-        play('trigger', 'camera', duration=normalReadout // 4)  # camera
-        wait(1000 // 4, 'camera')  # camera rearming (can be removed if camera will be configured
+        align("AOM", "camera")
+        play("init", "AOM", duration=normalReadout // 4)  # init
+        play("trigger", "camera", duration=normalReadout // 4)  # camera
+        wait(
+            1000 // 4, "camera"
+        )  # camera rearming (can be removed if camera will be configured
         # to take 200 frames from a single trigger)
 
 ################
@@ -71,12 +75,12 @@ with program() as CW_ODMR_fast_readout:
     with for_(i, 0, i < nAverages, i + 1):
         ###
         with for_(freq, f_start, freq <= f_end, freq + f_step):
-            update_frequency('NV', freq)
+            update_frequency("NV", freq)
 
-            play('init', 'AOM', duration=fastReadout // 4)  # init
-            play('CW', 'NV', duration=fastReadout // 4)  # MW
-            play('trigger', 'camera', duration=fastReadout * 200 // 4)
-            wait(1000 // 4, 'camera')
+            play("init", "AOM", duration=fastReadout // 4)  # init
+            play("CW", "NV", duration=fastReadout // 4)  # MW
+            play("trigger", "camera", duration=fastReadout * 200 // 4)
+            wait(1000 // 4, "camera")
 
 ###############
 # pulsed ODMR #
@@ -86,17 +90,17 @@ with program() as CW_ODMR_fast_readout:
 
 with program() as PULSED_ODMR:
     freq = declare(int)
-    play('init', 'AOM')  # init
-    wait(1000 // 4, 'AOM')  # For clarity
+    play("init", "AOM")  # init
+    wait(1000 // 4, "AOM")  # For clarity
 
     with for_(freq, f_start, freq <= f_end, freq + f_step):
-        update_frequency('NV', freq)
+        update_frequency("NV", freq)
 
-        play('pi', 'NV')  # MW
-        align('NV', 'AOM', 'camera')  # Wait for pi pulse to end
-        play('init', 'AOM')  # readout
-        play('trigger', 'camera')  # camera
-        wait(1000 // 4, 'AOM')  # For camera rearming & clarity
+        play("pi", "NV")  # MW
+        align("NV", "AOM", "camera")  # Wait for pi pulse to end
+        play("init", "AOM")  # readout
+        play("trigger", "camera")  # camera
+        wait(1000 // 4, "AOM")  # For camera rearming & clarity
 
 if simulate:
 
@@ -104,11 +108,11 @@ if simulate:
     job = QM1.simulate(CW_ODMR, SimulationConfig(60000))
     res = job.result_handles
     samples = job.get_simulated_samples()
-    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
-    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
-    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    AOM = samples.con1.analog["3"] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog["1"] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog["2"] / 0.2 / 2 - 1.5
     # MW = np.sqrt((samples.con1.analog['1']) ** 2 + (samples.con1.analog['2']) ** 2) / 0.2 - 2
-    camera = samples.con1.digital['1'] - 4
+    camera = samples.con1.digital["1"] - 4
 
     plt.figure()
     plt.plot(AOM)
@@ -116,18 +120,20 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
-    plt.xlabel('t [ns]')
-    plt.title('CW ODMR')
+    plt.yticks(
+        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
+    )
+    plt.xlabel("t [ns]")
+    plt.title("CW ODMR")
 
     # Case 2
     job = QM1.simulate(CW_ODMR_fast_readout, SimulationConfig(6000))
     samples = job.get_simulated_samples()
-    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
-    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
-    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    AOM = samples.con1.analog["3"] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog["1"] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog["2"] / 0.2 / 2 - 1.5
     # MW = np.sqrt((samples.con1.analog['1'])**2+(samples.con1.analog['2'])**2)/0.2 - 2
-    camera = samples.con1.digital['1'] - 4
+    camera = samples.con1.digital["1"] - 4
 
     plt.figure()
     plt.plot(AOM)
@@ -135,18 +141,20 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
-    plt.xlabel('t [ns]')
-    plt.title('CW ODMR - fast readout')
+    plt.yticks(
+        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
+    )
+    plt.xlabel("t [ns]")
+    plt.title("CW ODMR - fast readout")
 
     # Case 3
     job = QM1.simulate(PULSED_ODMR, SimulationConfig(10000))
     samples = job.get_simulated_samples()
-    AOM = samples.con1.analog['3'] / 0.2 / 2 + 0.5
-    MW_I = samples.con1.analog['1'] / 0.2 / 2 - 1.5
-    MW_Q = samples.con1.analog['2'] / 0.2 / 2 - 1.5
+    AOM = samples.con1.analog["3"] / 0.2 / 2 + 0.5
+    MW_I = samples.con1.analog["1"] / 0.2 / 2 - 1.5
+    MW_Q = samples.con1.analog["2"] / 0.2 / 2 - 1.5
     # MW = np.sqrt((samples.con1.analog['1']) ** 2 + (samples.con1.analog['2']) ** 2) / 0.2 - 2
-    camera = samples.con1.digital['1'] - 4
+    camera = samples.con1.digital["1"] - 4
 
     plt.figure()
     plt.plot(AOM)
@@ -154,9 +162,11 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks([-3.5, -1.5, 0.5], ['Camera', 'MW', 'AOM'], rotation='vertical', va='center')
-    plt.xlabel('t [ns]')
-    plt.title('Pulsed ODMR')
+    plt.yticks(
+        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
+    )
+    plt.xlabel("t [ns]")
+    plt.title("Pulsed ODMR")
 
     plt.show()
 else:

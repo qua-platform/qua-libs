@@ -3,7 +3,7 @@ import numpy as np
 
 class cam_mock:
     def __init__(self):
-        self.name = 'camera1'
+        self.name = "camera1"
         self.num = 0
 
     def __repr__(self):

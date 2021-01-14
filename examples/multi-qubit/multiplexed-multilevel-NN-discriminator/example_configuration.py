@@ -22,7 +22,9 @@ def simulate_pulse(IF_freq, chi, k, Ts, Td, power):
     Q = np.array(Q)
     t = np.arange(len(I))
 
-    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(2 * np.pi * IF_freq * t * 1e-9)
+    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(
+        2 * np.pi * IF_freq * t * 1e-9
+    )
 
     return t, I, Q, S
 
@@ -67,168 +69,129 @@ divide_signal_factor = 60  # scale to get the signal within -0.5,0.5 range
 ############################
 
 config = {
-
-    'version': 1,
-
-    'controllers': {
-
-        'con1': {
-            'type': 'opx1',
-            'analog_outputs': {
-                i_port: {'offset': 0},
-                q_port: {'offset': 0},
+    "version": 1,
+    "controllers": {
+        "con1": {
+            "type": "opx1",
+            "analog_outputs": {
+                i_port: {"offset": 0},
+                q_port: {"offset": 0},
             },
-            'digital_outputs': {
+            "digital_outputs": {
                 1: {},
             },
-            'analog_inputs': {
-                1: {'offset': 0},
-                2: {'offset': 0},
-            }
+            "analog_inputs": {
+                1: {"offset": 0},
+                2: {"offset": 0},
+            },
         },
-        'con2': {
-            'type': 'opx1',
-            'analog_outputs': {i: {'offset': 0} for i in range(1, 11)},
-            'digital_outputs': {
+        "con2": {
+            "type": "opx1",
+            "analog_outputs": {i: {"offset": 0} for i in range(1, 11)},
+            "digital_outputs": {
                 1: {},
             },
-            'analog_inputs': {
-                1: {'offset': 0},
-                2: {'offset': 0},
-            }
-        },
-    },
-
-    'elements': {
-
-    },
-
-    'pulses': {
-        'readout_pulse': {
-            'operation': 'measurement',
-            'length': readout_len,
-            'waveforms': {
-                'I': 'zero_wf',
-                'Q': 'const_wf'
+            "analog_inputs": {
+                1: {"offset": 0},
+                2: {"offset": 0},
             },
-            'integration_weights': {
-                'integW_cos': 'integW_cos',
-                'integW_sin': 'integW_sin'
+        },
+    },
+    "elements": {},
+    "pulses": {
+        "readout_pulse": {
+            "operation": "measurement",
+            "length": readout_len,
+            "waveforms": {"I": "zero_wf", "Q": "const_wf"},
+            "integration_weights": {
+                "integW_cos": "integW_cos",
+                "integW_sin": "integW_sin",
             },
-            'digital_marker': 'ON'
+            "digital_marker": "ON",
         },
     },
-
-    'waveforms': {
-
-        'zero_wf': {
-            'type': 'constant',
-            'sample': 0.0
-        },
-
-        'const_wf': {
-            'type': 'constant',
-            'sample': 0.1
-        }
+    "waveforms": {
+        "zero_wf": {"type": "constant", "sample": 0.0},
+        "const_wf": {"type": "constant", "sample": 0.1},
     },
-
-    'digital_waveforms': {
-
-        'ON': {
-            'samples': [(1, 0)]
-        }
-    },
-
-    'integration_weights': {
-
-    },
-
-    'mixers': {
-    }
+    "digital_waveforms": {"ON": {"samples": [(1, 0)]}},
+    "integration_weights": {},
+    "mixers": {},
 }
 
 for i in range(rr_num):
-    config['elements']['rr' + str(i)] = \
-        {
-            'mixInputs': {
-                'I': ('con1', i_port),
-                'Q': ('con1', q_port),
-                'lo_frequency': lo_freq,
-                'mixer': 'mixer_rr' + str(i),
-            },
-            'intermediate_frequency': freqs[i],
-            'operations': {
-                'readout': 'readout_pulse_' + str(i),
-            },
-            'outputs': {
-                'out1': ('con1', 1),
-                'out2': ('con1', 2),
-            },
-            'time_of_flight': time_of_flight,
-            'smearing': 0,
-        }
-
-    config['pulses']['readout_pulse_' + str(i)] = \
-        {
-            'operation': 'measurement',
-            'length': readout_len,
-            'waveforms': {
-                'I': 'const_wf',
-                'Q': 'const_wf'
-            },
-            'integration_weights': {
-            },
-            'digital_marker': 'ON'
-        }
-    config['waveforms']['const_wf'] = {
-        'type': 'constant',
-        'sample': 0.2
+    config["elements"]["rr" + str(i)] = {
+        "mixInputs": {
+            "I": ("con1", i_port),
+            "Q": ("con1", q_port),
+            "lo_frequency": lo_freq,
+            "mixer": "mixer_rr" + str(i),
+        },
+        "intermediate_frequency": freqs[i],
+        "operations": {
+            "readout": "readout_pulse_" + str(i),
+        },
+        "outputs": {
+            "out1": ("con1", 1),
+            "out2": ("con1", 2),
+        },
+        "time_of_flight": time_of_flight,
+        "smearing": 0,
     }
-    config['elements']['qb' + str(i)] = \
+
+    config["pulses"]["readout_pulse_" + str(i)] = {
+        "operation": "measurement",
+        "length": readout_len,
+        "waveforms": {"I": "const_wf", "Q": "const_wf"},
+        "integration_weights": {},
+        "digital_marker": "ON",
+    }
+    config["waveforms"]["const_wf"] = {"type": "constant", "sample": 0.2}
+    config["elements"]["qb" + str(i)] = {
+        "mixInputs": {
+            "I": ("con2", 2 * i + 1),
+            "Q": ("con2", 2 * i + 2),
+            "lo_frequency": lo_freq_qb,
+            "mixer": "mixer_qb" + str(i),
+        },
+        "intermediate_frequency": qb_freqs[i],
+        "operations": {
+            "prepare0": "prepare_pulse_0",
+            "prepare1": "prepare_pulse_1",
+            "prepare2": "prepare_pulse_2",
+        },
+        "time_of_flight": time_of_flight,
+        "smearing": 0,
+    }
+    config["mixers"]["mixer_rr" + str(i)] = [
         {
-            'mixInputs': {
-                'I': ('con2', 2 * i + 1),
-                'Q': ('con2', 2 * i + 2),
-                'lo_frequency': lo_freq_qb,
-                'mixer': 'mixer_qb' + str(i),
-            },
-            'intermediate_frequency': qb_freqs[i],
-            'operations': {
-                'prepare0': 'prepare_pulse_0',
-                'prepare1': 'prepare_pulse_1',
-                'prepare2': 'prepare_pulse_2',
-            },
-            'time_of_flight': time_of_flight,
-            'smearing': 0,
-        }
-    config['mixers']['mixer_rr' + str(i)] = \
-        [
-            {'intermediate_frequency': freqs[i], 'lo_frequency': lo_freq, 'correction': [1, 0, 0, 1]},
-        ]
-    config['mixers']['mixer_qb' + str(i)] = \
-        [
-            {'intermediate_frequency': qb_freqs[i], 'lo_frequency': lo_freq_qb, 'correction': [1, 0, 0, 1]},
-        ]
+            "intermediate_frequency": freqs[i],
+            "lo_frequency": lo_freq,
+            "correction": [1, 0, 0, 1],
+        },
+    ]
+    config["mixers"]["mixer_qb" + str(i)] = [
+        {
+            "intermediate_frequency": qb_freqs[i],
+            "lo_frequency": lo_freq_qb,
+            "correction": [1, 0, 0, 1],
+        },
+    ]
 
 for i in range(num_of_states):
-    config['pulses']['prepare_pulse_' + str(i)] = \
-        {
-            'operation': 'measurement',
-            'length': readout_len,
-            'waveforms': {
-                'I': 'I_wf_' + str(i),
-                'Q': 'Q_wf_' + str(i)
-            },
-            'integration_weights': {
-            },
-            'digital_marker': 'ON'
-        }
-    # need to create the desired waveforms for the preparation pulses
-    config['waveforms']['I_wf_' + str(i)] = {
-        'type': 'arbitrary',
-        'samples': [float(arg / divide_signal_factor) for arg in I_[i]]
+    config["pulses"]["prepare_pulse_" + str(i)] = {
+        "operation": "measurement",
+        "length": readout_len,
+        "waveforms": {"I": "I_wf_" + str(i), "Q": "Q_wf_" + str(i)},
+        "integration_weights": {},
+        "digital_marker": "ON",
     }
-    config['waveforms']['Q_wf_' + str(i)] = {
-        'type': 'arbitrary',
-        'samples': [float(arg / divide_signal_factor) for arg in Q_[i]]
+    # need to create the desired waveforms for the preparation pulses
+    config["waveforms"]["I_wf_" + str(i)] = {
+        "type": "arbitrary",
+        "samples": [float(arg / divide_signal_factor) for arg in I_[i]],
+    }
+    config["waveforms"]["Q_wf_" + str(i)] = {
+        "type": "arbitrary",
+        "samples": [float(arg / divide_signal_factor) for arg in Q_[i]],
     }

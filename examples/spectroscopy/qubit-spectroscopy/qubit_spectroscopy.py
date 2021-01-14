@@ -27,8 +27,8 @@ with program() as qubit_spectroscopy:
     # declare real-time variables:
     ##############################
 
-    n = declare(int)        # Averaging
-    f = declare(int)        # Frequencies
+    n = declare(int)  # Averaging
+    f = declare(int)  # Frequencies
     I = declare(fixed)
     Q = declare(fixed)
 
@@ -44,8 +44,13 @@ with program() as qubit_spectroscopy:
             play("saturation", "qubit")
 
             align("qubit", "rr")
-            measure("readout", "rr", None, demod.full("integW1", I),
-                                           demod.full("integW2", Q))
+            measure(
+                "readout",
+                "rr",
+                None,
+                demod.full("integW1", I),
+                demod.full("integW2", Q),
+            )
 
             save(I, "I")
             save(Q, "Q")

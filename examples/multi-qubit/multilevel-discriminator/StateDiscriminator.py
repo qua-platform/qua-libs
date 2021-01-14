@@ -43,7 +43,7 @@ class StateDiscriminator:
             self._update_config()
 
     def _get_qe_freq(self, qe):
-        return self.config['elements'][qe]['intermediate_frequency']
+        return self.config["elements"][qe]["intermediate_frequency"]
 
     def _downconvert(self, qe, x, ts):
         """
@@ -54,12 +54,14 @@ class StateDiscriminator:
         :return:
         """
         if self.time_diff is None:
-            '''
+            """
             There's a time difference between the reception of the analog input signal,
             and the moment that the signal is written to memory (when the timestamps are created).
-            This time difference needs to be accounted for in order to digitally down-convert correctly 
-            '''
-            self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config['controllers'].keys())[0])
+            This time difference needs to be accounted for in order to digitally down-convert correctly
+            """
+            self.time_diff = TimeDiffCalibrator.calibrate(
+                self.qmm, list(self.config["controllers"].keys())[0]
+            )
         rr_freq = self._get_qe_freq(qe)
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig
@@ -74,16 +76,25 @@ class StateDiscriminator:
         :param use_hann_filter:
         :return:
         """
-        traces = np.array([np.median(np.real(sig[seq0[i]:seq0[i + 1], :]), axis=0)
-                           + 1j * np.median(np.imag(sig[seq0[i]:seq0[i + 1], :]), axis=0)
-                           for i in range(self.num_of_states)])
+        traces = np.array(
+            [
+                np.median(np.real(sig[seq0[i] : seq0[i + 1], :]), axis=0)
+                + 1j * np.median(np.imag(sig[seq0[i] : seq0[i + 1], :]), axis=0)
+                for i in range(self.num_of_states)
+            ]
+        )
 
         if use_hann_filter:
             rr_freq = self._get_qe_freq(qe)
             period_ns = int(1 / rr_freq * 1e9)
             hann = signal.hann(period_ns * 2, sym=True)
             hann = hann / np.sum(hann)
-            traces = np.array([np.convolve(traces[i, :], hann, 'same') for i in range(self.num_of_states)])
+            traces = np.array(
+                [
+                    np.convolve(traces[i, :], hann, "same")
+                    for i in range(self.num_of_states)
+                ]
+            )
         return traces
 
     @staticmethod
@@ -104,15 +115,15 @@ class StateDiscriminator:
         job = qm.execute(program, duration_limit=0, data_limit=0, **execute_args)
         res_handles = job.result_handles
         res_handles.wait_for_all_values()
-        I_res = res_handles.get("I").fetch_all()['value']
-        Q_res = res_handles.get("Q").fetch_all()['value']
+        I_res = res_handles.get("I").fetch_all()["value"]
+        Q_res = res_handles.get("Q").fetch_all()["value"]
 
         if I_res.shape != Q_res.shape:
             raise RuntimeError("")
 
-        ts = res_handles.adc_input1.fetch_all()['timestamp'].reshape((len(I_res), -1))
-        in1 = res_handles.adc_input1.fetch_all()['value'].reshape((len(I_res), -1))
-        in2 = res_handles.adc_input2.fetch_all()['value'].reshape((len(I_res), -1))
+        ts = res_handles.adc_input1.fetch_all()["timestamp"].reshape((len(I_res), -1))
+        in1 = res_handles.adc_input1.fetch_all()["value"].reshape((len(I_res), -1))
+        in2 = res_handles.adc_input2.fetch_all()["value"].reshape((len(I_res), -1))
         return I_res, Q_res, ts, in1 + 1j * in2
 
     def train(self, program, use_hann_filter=True, plot=False, **execute_args):
@@ -149,26 +160,26 @@ class StateDiscriminator:
         weights = self._quantize_traces(traces)
         norm = np.max(np.abs(weights))
 
-        '''
+        """
         The weights and biases are calculated in order to optimally perform the Maximum Likelihood estimation of
         the qubit state
-        '''
+        """
         weights = weights / norm
         bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
 
         np.savez(self.path, weights=weights, bias=bias)
-        self.saved_data = {'weights': weights, 'bias': bias}
+        self.saved_data = {"weights": weights, "bias": bias}
         self._update_config()
 
         if plot:
             plt.figure()
             for i in range(self.num_of_states):
-                I_ = I_res[seq0[i]:seq0[i + 1]]
-                Q_ = Q_res[seq0[i]:seq0[i + 1]]
-                plt.plot(I_, Q_, '.', label=f'state {i}')
-                plt.axis('equal')
-            plt.xlabel('I')
-            plt.ylabel('Q')
+                I_ = I_res[seq0[i] : seq0[i + 1]]
+                Q_ = Q_res[seq0[i] : seq0[i + 1]]
+                plt.plot(I_, Q_, ".", label=f"state {i}")
+                plt.axis("equal")
+            plt.xlabel("I")
+            plt.ylabel("Q")
             plt.legend()
 
             plt.figure()
@@ -178,24 +189,24 @@ class StateDiscriminator:
                 plt.plot(np.imag(weights[i, :]))
 
     def _add_iw_to_all_pulses(self, iw):
-        for pulse in self.config['pulses'].values():
-            if 'integration_weights' not in pulse:
-                pulse['integration_weights'] = {}
-            pulse['integration_weights'][iw] = iw
+        for pulse in self.config["pulses"].values():
+            if "integration_weights" not in pulse:
+                pulse["integration_weights"] = {}
+            pulse["integration_weights"][iw] = iw
 
     def _update_config(self):
-        weights = self.saved_data['weights']
+        weights = self.saved_data["weights"]
         for i in range(self.num_of_states):
-            self.config['integration_weights'][f'state_{i}_in1'] = {
-                'cosine': np.real(weights[i, :]).tolist(),
-                'sine': (-np.imag(weights[i, :])).tolist()
+            self.config["integration_weights"][f"state_{i}_in1"] = {
+                "cosine": np.real(weights[i, :]).tolist(),
+                "sine": (-np.imag(weights[i, :])).tolist(),
             }
-            self._add_iw_to_all_pulses(f'state_{i}_in1')
-            self.config['integration_weights'][f'state_{i}_in2'] = {
-                'cosine': np.imag(weights[i, :]).tolist(),
-                'sine': np.real(weights[i, :]).tolist()
+            self._add_iw_to_all_pulses(f"state_{i}_in1")
+            self.config["integration_weights"][f"state_{i}_in2"] = {
+                "cosine": np.imag(weights[i, :]).tolist(),
+                "sine": np.real(weights[i, :]).tolist(),
             }
-            self._add_iw_to_all_pulses(f'state_{i}_in2')
+            self._add_iw_to_all_pulses(f"state_{i}_in2")
 
     def measure_state(self, pulse, out1, out2, res, adc=None):
         """
@@ -210,17 +221,26 @@ class StateDiscriminator:
         :param adc: (optional) the stream variable which the raw ADC data will be saved and will appear in result
         analysis scope.
         """
-        bias = self.saved_data['bias']
+        bias = self.saved_data["bias"]
 
         d1_st = declare(fixed, size=self.num_of_states)
         d2_st = declare(fixed, size=self.num_of_states)
 
         st = declare(fixed, size=self.num_of_states)
 
-        measure(pulse, self.rr_qe, adc,
-                *[demod.full(f'state_{str(i)}_in1', d1_st[i], out1) for i in range(self.num_of_states)],
-                *[demod.full(f'state_{str(i)}_in2', d2_st[i], out2) for i in range(self.num_of_states)]
-                )
+        measure(
+            pulse,
+            self.rr_qe,
+            adc,
+            *[
+                demod.full(f"state_{str(i)}_in1", d1_st[i], out1)
+                for i in range(self.num_of_states)
+            ],
+            *[
+                demod.full(f"state_{str(i)}_in2", d2_st[i], out2)
+                for i in range(self.num_of_states)
+            ],
+        )
 
         for i in range(self.num_of_states):
             assign(st[i], d1_st[i] + d2_st[i] - bias[i])

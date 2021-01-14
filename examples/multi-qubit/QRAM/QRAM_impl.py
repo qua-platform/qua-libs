@@ -150,11 +150,29 @@ class QRAM:
 
 transmon = Transmon("transmon", 3e6)
 pointer = CavityMode("pointer", 15.3e6, transmon)
-memory = [CavityMode("reg" + str(i), freq, transmon) for i, freq in enumerate([1.3e6, 2.3e6, 3.3e6, 4.3e6])]
-a = QuantumRouter(*[CavityMode("a" + str(i), freq, transmon) for i, freq in enumerate([5.3e6, 6.3e6, 7.3e6, 8.3e6])])
-b = QuantumRouter(*[CavityMode("b" + str(i), freq, transmon) for i, freq in enumerate([7.3e6, 9.3e6, 10.3e6, 11.3e6])])
+memory = [
+    CavityMode("reg" + str(i), freq, transmon)
+    for i, freq in enumerate([1.3e6, 2.3e6, 3.3e6, 4.3e6])
+]
+a = QuantumRouter(
+    *[
+        CavityMode("a" + str(i), freq, transmon)
+        for i, freq in enumerate([5.3e6, 6.3e6, 7.3e6, 8.3e6])
+    ]
+)
+b = QuantumRouter(
+    *[
+        CavityMode("b" + str(i), freq, transmon)
+        for i, freq in enumerate([7.3e6, 9.3e6, 10.3e6, 11.3e6])
+    ]
+)
 b.top = a.left
-c = QuantumRouter(*[CavityMode("c" + str(i), freq, transmon) for i, freq in enumerate([8.3e6, 12.3e6, 13.3e6, 14.3e6])])
+c = QuantumRouter(
+    *[
+        CavityMode("c" + str(i), freq, transmon)
+        for i, freq in enumerate([8.3e6, 12.3e6, 13.3e6, 14.3e6])
+    ]
+)
 c.top = a.right
 graph = [[a], [b, c]]  # routers of the graph grouped by levels
 q = QRAM(graph, pointer, memory)
