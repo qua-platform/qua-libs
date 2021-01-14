@@ -16,7 +16,9 @@ resonators = ["rr" + str(i) for i in range(rr_num)]
 qubits = ["qb" + str(i) for i in range(rr_num)]
 path = "folder_name"
 calibrate_with = ["rr0"]
-discriminator = NNStateDiscriminator.NNStateDiscriminator(qmm, config, resonators, qubits, calibrate_with, path)
+discriminator = NNStateDiscriminator.NNStateDiscriminator(
+    qmm, config, resonators, qubits, calibrate_with, path
+)
 
 
 def prepare_qubits(state, qubits):
@@ -26,11 +28,15 @@ def prepare_qubits(state, qubits):
 
 
 num_of_combinations = 243
-states = np.random.randint(0, discriminator.num_of_states, (num_of_combinations, discriminator.rr_num))
+states = np.random.randint(
+    0, discriminator.num_of_states, (num_of_combinations, discriminator.rr_num)
+)
 wait_time = 100  # wait time between measurement and next state preparation
 n_avg = 15  # repeat the measurement n_avg times and average the result in the training
 
-discriminator.generate_training_data(prepare_qubits, "readout", n_avg, states, wait_time)
+discriminator.generate_training_data(
+    prepare_qubits, "readout", n_avg, states, wait_time
+)
 
 discriminator.train()
 
@@ -48,7 +54,7 @@ def test(state):
         align(*discriminator.qubits, *discriminator.resonators)
 
         # measure the state of the qubits with one statement
-        discriminator.measure_state('readout', "result", out1, out2, res, temp)
+        discriminator.measure_state("readout", "result", out1, out2, res, temp)
 
     return multi_read
 
@@ -60,7 +66,7 @@ for state in states2:
     job1 = qm.execute(test(state))
 
     job1.result_handles.wait_for_all_values()
-    res = job1.result_handles.get("result").fetch_all()['value']
+    res = job1.result_handles.get("result").fetch_all()["value"]
     results.extend(res.reshape((-1, discriminator.rr_num)))
 
     print("prediction")

@@ -27,16 +27,17 @@ with program() as RBprog:
         for depth in circuit_depth_vec:
             final_state = randomize_and_play_circuit(depth)
             play_clifford(recovery_clifford(final_state), final_state)
-            align('rr', 'qe1')
-            measure_state(state,I)
+            align("rr", "qe1")
+            measure_state(state, I)
             save(state, out_str)
-            wait(10 * t1, 'qe1')
+            wait(10 * t1, "qe1")
 
     with stream_processing():
-        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save('out_stream')
+        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save(
+            "out_stream"
+        )
 
-job = QM1.simulate(RBprog,
-                   SimulationConfig(int(100000)))
+job = QM1.simulate(RBprog, SimulationConfig(int(100000)))
 res = job.result_handles
 avg_state = res.out_stream.fetch_all()
 

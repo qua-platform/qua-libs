@@ -25,12 +25,18 @@ with program() as resonator_spectroscopy:
     A = declare_stream()
     with for_(n, 0, n < 1000, n + 1):
         with for_(f, 1e6, f < 100.5e6, f + 1e6):
-            wait(100, "rr")  # wait 100 clock cycles (4microS) for letting resonator relax to vacuum
+            wait(
+                100, "rr"
+            )  # wait 100 clock cycles (4microS) for letting resonator relax to vacuum
 
-            update_frequency('rr', f)
-            measure('long_readout', 'rr', None,
-                    demod.full('long_integW1', I, 'out1'),
-                    demod.full('long_integW2', Q, 'out1'))
+            update_frequency("rr", f)
+            measure(
+                "long_readout",
+                "rr",
+                None,
+                demod.full("long_integW1", I, "out1"),
+                demod.full("long_integW2", Q, "out1"),
+            )
 
             save(I, I_stream)
             save(Q, Q_stream)
@@ -40,11 +46,15 @@ with program() as resonator_spectroscopy:
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 # need to run the simulation for a sufficiently long time, because the buffer outputs results only when full
-job = qm.simulate(resonator_spectroscopy,
-                  SimulationConfig(int(1e6), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])))
+job = qm.simulate(
+    resonator_spectroscopy,
+    SimulationConfig(
+        int(1e6), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
+    ),
+)
 res_handle = job.result_handles
 Q_handle = res_handle.get("Q")
 I_handle = res_handle.get("I")
 Q = Q_handle.fetch_all()
 I = I_handle.fetch_all()
-plt.plot(I**2+Q**2)
+plt.plot(I ** 2 + Q ** 2)

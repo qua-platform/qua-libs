@@ -15,7 +15,7 @@ QMm = QuantumMachinesManager()
 simulate = False
 with program() as play_pulse_cont:
     with infinite_loop_():
-        play('test_pulse', 'qubit')
+        play("test_pulse", "qubit")
 
 QM1 = QMm.open_qm(config)
 
