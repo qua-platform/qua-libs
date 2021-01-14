@@ -53,6 +53,7 @@ module.exports = [
             "calibration/rabi-sweeps/index",
             "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
             "calibration/hahn-echo/index",
+            "calibration/ALLXY/index",
         ]
     },
     {

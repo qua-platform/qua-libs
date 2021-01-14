@@ -1,3 +1,10 @@
+---
+title: ALLXY
+sidebar_label: ALLXY
+slug: ./
+id: index
+---
+
 # ALLXY Calibration sequence
 
 This script presents an ALLXY calibration sequence for Pi pulses which is more robust than the usual power Rabi or Ramsey
