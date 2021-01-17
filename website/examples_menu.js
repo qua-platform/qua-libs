@@ -10,6 +10,7 @@ module.exports = [
             "basics/intro-to-streams/index",
             "basics/raw-adc-measurement/index",
             "basics/frame-and-phase-intro/index",
+            "basics/chirp/index",
             "basics/waveform-compression/index",
             "basics/intro-to-macros/index",
             "basics/intro-to-integration/index",
