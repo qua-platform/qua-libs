@@ -190,15 +190,30 @@ def update_randomized_waveform(params: list, d: int, config: dict, t: float):
 
 
 def get_error_dep_fidelity(err,op):
+    '''
+    Function to emulate increasing performance with decreasing optimization cost
+    (For a single clifford operation)
+    :param err:
+    :param op:
+    :return:
+    '''
     return clifford_fidelity[op]*np.exp(-err/10)
 
 def get_simulated_fidelity(ops_list,err=0):
+    '''
+    Function to emulate increasing performance with decreasing optimization cost
+    (For a single a full circuit)
+    :param ops_list:
+    :param err:
+    :return:
+    '''
     fidelity=1
     for op in ops_list:
         fidelity=fidelity*get_error_dep_fidelity(err,op)
     return fidelity
 
 #globals
+
 clifford_fidelity = {'I': 1, 'X/2': 0.99, 'X': 0.99, '-X/2': 0.99, 'Y/2': 0.99, 'Y': 0.99, '-Y/2': 0.99}
 pulse_duration = 4.19
 n_params = 20
