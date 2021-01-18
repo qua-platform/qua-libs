@@ -55,7 +55,7 @@ def get_result(prog, duration):
     :return:
     """
     # host = '3.122.60.129'
-    QMm = QuantumMachinesManager(host="3.122.60.129")
+    QMm = QuantumMachinesManager()
     QM = QMm.open_qm(config)
     job = QM.simulate(prog, SimulationConfig(duration))
     res = job.result_handles
