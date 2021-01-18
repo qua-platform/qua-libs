@@ -1,6 +1,3 @@
-import time
-
-import cma
 from configuration import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
@@ -12,18 +9,19 @@ from scipy.interpolate import interp1d
 def get_program(config, params, t, N_avg, d):
     """
     A function to generate the QUA program
-    :param config:
-    :param params:
-    :param t:
-    :param N_avg:
-    :param d:
+    :param config: the QM config dictionary
+    :param params: parameter list for optimization
+    :param t: duration of DRAG pulses in ns
+    :param N_avg: number of runs per RB circuit realization
+    :param d: depth of the randomized circuit
     :return:
     """
-
+    th = 0
     state, op_list = update_waveforms(params, d, config, t)
     with program() as drag_RB_prog:
         N = declare(int)
         I = declare(fixed)
+        state_estimate = declare(bool)
         out_str = declare_stream()
         F = declare(fixed)
         F_str = declare_stream()
@@ -40,7 +38,8 @@ def get_program(config, params, t, N_avg, d):
             save(F, F_str)
             align("rr", "qubit")
             measure("readout", "rr", None, integration.full("integW1", I))
-            save(I, out_str)
+            assign(state_estimate, I > th)
+            save(state_estimate, out_str)
             wait(500, "qubit")
         with stream_processing():
             out_str.save_all("out_stream")
@@ -48,29 +47,31 @@ def get_program(config, params, t, N_avg, d):
     return drag_RB_prog
 
 
-def get_result(prog, duration):
+def get_result(prog, duration, K=10):
     """
     Upload the waveforms to the configuration and re-open the QM
 
-    :param prog:
-    :param duration:
+    :param prog: QUA program
+    :param duration: simulation duration
     :return:
     """
-    # host = '3.122.60.129'
-    QMm = QuantumMachinesManager(host="3.122.60.129")
+
+    QMm = QuantumMachinesManager()
     QM = QMm.open_qm(config)
-    job = QM.simulate(prog, SimulationConfig(duration))
-    res = job.result_handles
-    F = res.F_stream.fetch_all()["value"]
-    F_avg = F.mean(axis=0)
-    err = 1 - F_avg
+    F_avg = []
+    for _ in range(K):
+        job = QM.simulate(prog, SimulationConfig(duration))
+        res = job.result_handles
+        F = res.F_stream.fetch_all()["value"]
+        F_avg.append(F.mean(axis=0))
+    err = 1 - np.array(F_avg).mean()
     return err
 
 
 def cost_DRAG(params):
     """
     Get the cost of an unmodified DRAG pulse
-    :param params:
+    :param params: parameter list for optimization
     :return:
     """
 
@@ -82,7 +83,7 @@ def cost_DRAG(params):
 def cost_optimal_pulse(params):
     """
     Get the cost of the modified DRAG pulse
-    :param params:
+    :param params: parameter list for optimization
     :return:
     """
     prog = get_program(config, params, pulse_duration, N_avg, depth)
@@ -119,17 +120,16 @@ def DRAG_Q(B, mu, sigma):
     return f
 
 
-def manual_ssb(IQ_pair,IF,time_stamp):
-    IQ_pair=np.array(IQ_pair)
-    upconverted_IQ=np.zeros_like(IQ_pair)
-    for idx,pair in enumerate([IQ_pair[:, x] for x in range(IQ_pair.shape[1])]):
-        theta = IF * (time_stamp+idx)
+def manual_ssb(IQ_pair, IF, time_stamp):
+    IQ_pair = np.array(IQ_pair)
+    upconverted_IQ = np.zeros_like(IQ_pair)
+    for idx, pair in enumerate([IQ_pair[:, x] for x in range(IQ_pair.shape[1])]):
+        theta = IF * (time_stamp + idx)
         c, s = np.cos(theta), np.sin(theta)
         R = np.array(((c, -s), (s, c)))
-        upconverted_IQ[:,idx] = np.matmul(R, pair)
+        upconverted_IQ[:, idx] = np.matmul(R, pair)
 
     return (upconverted_IQ[0, :].tolist(), upconverted_IQ[1, :].tolist())
-
 
 
 def get_DRAG_pulse(gate: str, params: list, t: float):
@@ -148,8 +148,8 @@ def get_DRAG_pulse(gate: str, params: list, t: float):
         an_func = lambda x: 0
         bn_func = lambda x: 0
     else:
-        an_func = interp1d(params[3 : _n_params + 3], _ts, fill_value="extrapolate")
-        bn_func = interp1d(params[_n_params + 3 :], _ts, fill_value="extrapolate")
+        an_func = interp1d(params[3: _n_params + 3], _ts, fill_value="extrapolate")
+        bn_func = interp1d(params[_n_params + 3:], _ts, fill_value="extrapolate")
     ns = int(t)
     ts = np.linspace(0.0, t, ns)
     ts[-1] -= 0.01
@@ -289,7 +289,7 @@ def update_waveforms(params: list, d: int, config: dict, t: float):
         I_Q = get_DRAG_pulse(c, params, t)
 
         if use_manual_ssb:
-            I_Q =manual_ssb(I_Q,manual_ssb_IF,gate_num*t)
+            I_Q = manual_ssb(I_Q, manual_ssb_IF, gate_num * t)
 
         I += I_Q[0]
         Q += I_Q[1]
@@ -347,7 +347,7 @@ clifford_fidelity = {
 }
 pulse_duration = 4.19
 n_params = 20
-N_avg = 10
+N_avg = 1
 depth = 1000
 
 x_the = np.array([1, 2.3, 100e6])
@@ -357,9 +357,3 @@ ts = np.linspace(0.0, readout_len, readout_len)
 config["waveforms"]["readout_wf"]["samples"] = [
     DRAG_I(1.0, 0.5 * readout_len, readout_len)(t) for t in ts
 ]
-
-if __name__ == '__main__':
-    start = time.time()
-    manual_ssb(get_DRAG_pulse('x', [1, 2, 3], 1e5), 1e6, 0)
-    end = time.time()
-    print(end - start)
