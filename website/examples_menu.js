@@ -94,7 +94,8 @@ module.exports = [
         "label": "Randomized Benchmark",
         "items": [
             "randomized-benchmark/one-qubit-rb/index",
-            "randomized-benchmark/DRAG-optimization/index"
+            "randomized-benchmark/DRAG-optimization/index",
+            "randomized-benchmark/leakage-reduction/index"
         ]
     },
     {

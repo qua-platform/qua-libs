@@ -1,3 +1,10 @@
+"""
+leakage-reduction.py: A drag pulse optimization procedure described in arXiv:2003.05952
+Author: Satya Bade - Quantum Machines
+Created: 18/01/2021
+Created on QUA version: 0.8.477
+"""
+
 from lr_lib import *
 import numpy as np
 import matplotlib.pyplot as plt
