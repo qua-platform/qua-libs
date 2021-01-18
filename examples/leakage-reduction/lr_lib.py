@@ -18,7 +18,7 @@ def get_program(config, params, t, N_avg, d):
     :return:
     """
 
-    state, op_list = update_randomized_waveform(params, d, config, t)
+    state, op_list = update_waveforms(params, d, config, t)
     with program() as drag_RB_prog:
         N = declare(int)
         I = declare(fixed)
@@ -55,7 +55,7 @@ def get_result(prog, duration):
     :return:
     """
     # host = '3.122.60.129'
-    QMm = QuantumMachinesManager()
+    QMm = QuantumMachinesManager(host="3.122.60.129")
     QM = QMm.open_qm(config)
     job = QM.simulate(prog, SimulationConfig(duration))
     res = job.result_handles
@@ -139,11 +139,34 @@ def get_DRAG_pulse(gate: str, params: list, t: float):
     ts = np.linspace(0.0, t, ns)
     ts[-1] -= 0.01
     ts[0] += 0.01
-    I_t = DRAG_I(params[0], t / 2, t)
+    I_t = DRAG_I(
+        params[0], t / 2, t
+    )  # we suppose that we optimize the I,Q quadratures for X/2 gate
     Q_t = DRAG_Q(params[1], t / 2, t)
-    I = [(I_t(_t) + an_func(_t)) for _t in ts]
-    Q = [(Q_t(_t) + bn_func(_t)) for _t in ts]
-    return (I, Q)
+    if gate == "X/2":
+        I = [(I_t(_t) + an_func(_t)) for _t in ts]
+        Q = [(Q_t(_t) + bn_func(_t)) for _t in ts]
+        return (I, Q)
+    elif gate == "-X/2":
+        I = [(-I_t(_t) - an_func(_t)) for _t in ts]
+        Q = [(Q_t(t - _t) + bn_func(t - _t)) for _t in ts]
+        return (I, Q)
+    elif gate == "Y/2":
+        I = [(Q_t(_t) + bn_func(_t)) for _t in ts]
+        Q = [(-I_t(_t) - an_func(_t)) for _t in ts]
+        return (I, Q)
+    elif gate == "-Y/2":
+        I = [(-Q_t(_t) - bn_func(_t)) for _t in ts]
+        Q = [(I_t(t - _t) + an_func(t - _t)) for _t in ts]
+        return (I, Q)
+    elif gate == "X":
+        I = [(I_t(_t) + an_func(_t)) for _t in ts] * 2
+        Q = [(Q_t(_t) + bn_func(_t)) for _t in ts] * 2
+        return (I, Q)
+    elif gate == "Y":
+        I = [(I_t(_t) + an_func(_t)) for _t in ts] * 2
+        Q = [(Q_t(_t) + bn_func(_t)) for _t in ts] * 2
+        return (I, Q)
 
 
 def recovery_clifford(state):
@@ -230,7 +253,7 @@ def transform_state(input_state: str, transformation: str):
     return transformations[input_state][transformation]
 
 
-def update_randomized_waveform(params: list, d: int, config: dict, t: float):
+def update_waveforms(params: list, d: int, config: dict, t: float):
     """
     Randomize the circuit and update configuration with the waveforms
     :param params:
@@ -254,14 +277,16 @@ def update_randomized_waveform(params: list, d: int, config: dict, t: float):
         config["pulses"]["random_sequence"]["length"] += len(I_Q[0])
     config["waveforms"]["random_I"]["samples"] = I
     config["waveforms"]["random_Q"]["samples"] = Q
-    I = np.zeros(16)
-    Q = np.zeros(16)  # 16ns is the minimum duration of a play statement
-    Ir, Qr = get_DRAG_pulse("", params, t)
-    I[: len(Ir)] = Ir
-    Q[: len(Qr)] = Qr
-    config["pulses"]["DRAG_PULSE"]["length"] = 16
-    config["waveforms"]["DRAG_gauss_wf"]["samples"] = I
-    config["waveforms"]["DRAG_gauss_der_wf"]["samples"] = Q
+
+    for gate in cliffords + ["X", "Y"]:
+        I = np.zeros(16)
+        Q = np.zeros(16)  # 16ns is the minimum duration of a play statement
+        Ir, Qr = get_DRAG_pulse(gate, params, t)
+        I[: len(Ir)] = Ir
+        Q[: len(Qr)] = Qr
+        config["pulses"]["DRAG_PULSE_" + gate]["length"] = len(I)
+        config["waveforms"]["DRAG_gauss_wf_" + gate]["samples"] = I
+        config["waveforms"]["DRAG_gauss_der_wf_" + gate]["samples"] = Q
     return state, op_list
 
 
