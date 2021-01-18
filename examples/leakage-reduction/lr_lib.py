@@ -1,3 +1,5 @@
+import time
+
 import cma
 from configuration import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -115,6 +117,19 @@ def DRAG_Q(B, mu, sigma):
         return B * (-2.0 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2.0 * sigma ** 2))
 
     return f
+
+
+def manual_ssb(IQ_pair,IF,time_stamp):
+    IQ_pair=np.array(IQ_pair)
+    upconverted_IQ=np.zeros_like(IQ_pair)
+    for idx,pair in enumerate([IQ_pair[:, x] for x in range(IQ_pair.shape[1])]):
+        theta = IF * (time_stamp+idx)
+        c, s = np.cos(theta), np.sin(theta)
+        R = np.array(((c, -s), (s, c)))
+        upconverted_IQ[:,idx] = np.matmul(R, pair)
+
+    return (upconverted_IQ[0, :].tolist(), upconverted_IQ[1, :].tolist())
+
 
 
 def get_DRAG_pulse(gate: str, params: list, t: float):
@@ -267,11 +282,15 @@ def update_waveforms(params: list, d: int, config: dict, t: float):
     op_list = []
     I, Q = [], []
     config["pulses"]["random_sequence"]["length"] = 0
-    for _ in range(d):
+    for gate_num in range(d):
         c = cliffords[np.random.randint(4)]
         op_list.append(c)
         state = transform_state(state, c)
         I_Q = get_DRAG_pulse(c, params, t)
+
+        if use_manual_ssb:
+            I_Q =manual_ssb(I_Q,manual_ssb_IF,gate_num*t)
+
         I += I_Q[0]
         Q += I_Q[1]
         config["pulses"]["random_sequence"]["length"] += len(I_Q[0])
@@ -329,7 +348,7 @@ clifford_fidelity = {
 pulse_duration = 4.19
 n_params = 20
 N_avg = 10
-depth = 20
+depth = 1000
 
 x_the = np.array([1, 2.3, 100e6])
 x_0 = np.array([1.2, 2.2, 110e6])
@@ -338,3 +357,9 @@ ts = np.linspace(0.0, readout_len, readout_len)
 config["waveforms"]["readout_wf"]["samples"] = [
     DRAG_I(1.0, 0.5 * readout_len, readout_len)(t) for t in ts
 ]
+
+if __name__ == '__main__':
+    start = time.time()
+    manual_ssb(get_DRAG_pulse('x', [1, 2, 3], 1e5), 1e6, 0)
+    end = time.time()
+    print(end - start)

@@ -12,6 +12,9 @@ def IQ_imbalance(g, phi):
 
 readout_len = 400
 qubit_IF = 100e6
+manual_ssb_IF = 100e6
+use_manual_ssb=False
+
 rr_IF = 0
 qubit_LO = 5117.22e6
 rr_LO = 5117.22e6
