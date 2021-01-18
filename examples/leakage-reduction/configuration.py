@@ -46,12 +46,12 @@ config = {
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
-                "X/2": "DRAG_PULSE",
-                "-X/2": "DRAG_PULSE",
-                "Y/2": "DRAG_PULSE",
-                "-Y/2": "DRAG_PULSE",
-                "X": "DRAG_PULSE",
-                "Y": "DRAG_PULSE",
+                "X/2": "DRAG_PULSE_X/2",
+                "-X/2": "DRAG_PULSE_-X/2",
+                "Y/2": "DRAG_PULSE_Y/2",
+                "-Y/2": "DRAG_PULSE_-Y/2",
+                "X": "DRAG_PULSE_X",
+                "Y": "DRAG_PULSE_Y",
                 "random_clifford_seq": "random_sequence",
             },
         },
@@ -72,10 +72,35 @@ config = {
         },
     },
     "pulses": {
-        "DRAG_PULSE": {
+        "DRAG_PULSE_X/2": {
             "operation": "control",
             "length": None,
-            "waveforms": {"I": "DRAG_gauss_wf", "Q": "DRAG_gauss_der_wf"},
+            "waveforms": {"I": "DRAG_gauss_wf_X/2", "Q": "DRAG_gauss_der_wf_X/2"},
+        },
+        "DRAG_PULSE_Y/2": {
+            "operation": "control",
+            "length": None,
+            "waveforms": {"I": "DRAG_gauss_wf_Y/2", "Q": "DRAG_gauss_der_wf_Y/2"},
+        },
+        "DRAG_PULSE_-X/2": {
+            "operation": "control",
+            "length": None,
+            "waveforms": {"I": "DRAG_gauss_wf_-X/2", "Q": "DRAG_gauss_der_wf_-X/2"},
+        },
+        "DRAG_PULSE_-Y/2": {
+            "operation": "control",
+            "length": None,
+            "waveforms": {"I": "DRAG_gauss_wf_-Y/2", "Q": "DRAG_gauss_der_wf_-Y/2"},
+        },
+        "DRAG_PULSE_X": {
+            "operation": "control",
+            "length": None,
+            "waveforms": {"I": "DRAG_gauss_wf_X", "Q": "DRAG_gauss_der_wf_X"},
+        },
+        "DRAG_PULSE_Y": {
+            "operation": "control",
+            "length": None,
+            "waveforms": {"I": "DRAG_gauss_wf_Y", "Q": "DRAG_gauss_der_wf_Y"},
         },
         "random_sequence": {
             "operation": "control",
@@ -95,8 +120,18 @@ config = {
     },
     "waveforms": {
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "DRAG_gauss_wf": {"type": "arbitrary", "samples": []},
-        "DRAG_gauss_der_wf": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_X": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_X": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_Y": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_Y": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_X/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_X/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_-X/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_-X/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_Y/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_Y/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_wf_-Y/2": {"type": "arbitrary", "samples": []},
+        "DRAG_gauss_der_wf_-Y/2": {"type": "arbitrary", "samples": []},
         "readout_wf": {"type": "arbitrary", "samples": []},
         "random_I": {
             "type": "arbitrary",

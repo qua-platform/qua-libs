@@ -16,6 +16,6 @@ es2.optimize(cost_optimal_pulse)
 es2.result_pretty()
 
 # We can now draw the optimal pulse
-opt_pulse = np.array(get_DRAG_pulse("x", es2.result.xbest, 40))
+opt_pulse = np.array(get_DRAG_pulse("X/2", es2.result.xbest, pulse_duration))
 plt.plot(opt_pulse[0, :])
 plt.plot(opt_pulse[1, :])
