@@ -6,16 +6,18 @@ slug: ./
 ---
 
 
-We implement work publishe in ref [[1]](#1). The device used in this paper has three elements:  A superconducting qubit connected to a control line and a readout resonator, 
+We implement work published in ref [[1]](#1). The device used in this paper has three elements:  A superconducting qubit connected to a control line and a readout resonator, 
 a second transmon which is not connected to such lines and is therefore _hidden_ and a tunable coupling element, controlling the 
 interaction of these two qubits. 
 
 In the paper, it is explained how single qubit roations (on the _visible_ qubit) alongside two qubit 
 operations enabled by the coupler allow to effectively perform any rotation on the _hidden_ qubit as well. 
 To prove this ability, full tomography of several processes is performed. 
-We implement this procedure using QUA in this [script](hidden_qubit_tomography.py). The operations,
-initialization steps and tomography operation set are defined in dictionaries in [configuration.py](configuration.py).
+We implement this procedure using QUA in this [script](hidden_qubit_tomography.py).
+The operations, initialization steps and tomography operation set are defined in dictionaries in the configuration file. 
+
 The code for this procedure is quite succinctly implemented with just a few `for` loops:
+
 
 ```python
 
