@@ -30,9 +30,6 @@ module.exports = [
         "label": "Characterization",
         "items": [
             "characterization/active-reset/index",
-            "characterization/qubit-state-tomography/index",
-            "characterization/qubit-process-tomography/index",
-            "characterization/wigner-tomography/index",
         ]
     },
     {
@@ -114,6 +111,7 @@ module.exports = [
         "items": [
             "characterization/qubit-state-tomography/index",
             "characterization/wigner-tomography/index",
+            "characterization/hidden-qubit/index",
         ]
     },
     {
