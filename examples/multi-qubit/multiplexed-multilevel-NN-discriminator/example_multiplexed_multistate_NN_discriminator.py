@@ -44,17 +44,14 @@ discriminator.train()
 # Testing program
 def test(state):
     with program() as multi_read:
-        out1 = declare(fixed, size=discriminator.rr_num)
-        out2 = declare(fixed, size=discriminator.rr_num)
-        res = declare(fixed, size=discriminator.num_of_states)
-        temp = declare(int)
+        qua_vars = discriminator.initialize_qua()
 
         # prepare qubits in a certain state
         prepare_qubits(state, discriminator.qubits)
         align(*discriminator.qubits, *discriminator.resonators)
 
         # measure the state of the qubits with one statement
-        discriminator.measure_state("readout", "result", out1, out2, res, temp)
+        discriminator.measure_state("readout", "result", qua_vars)
 
     return multi_read
 
