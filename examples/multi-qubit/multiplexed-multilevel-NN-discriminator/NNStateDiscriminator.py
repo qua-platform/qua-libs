@@ -518,11 +518,18 @@ class NNStateDiscriminator:
         qua_vars["temp"] = declare(int)
         qua_vars["i"] = declare(int)
         qua_vars["j"] = declare(int)
-        qua_vars["w"] = declare(fixed, value=np.vstack(
-            [self.final_weights[i][0].T for i in range(self.rr_num)]).flatten().tolist())
-        qua_vars["b"] = declare(fixed,
-                                value=np.hstack(
-                                    [self.final_weights[i][1] * (2 ** -12) for i in range(self.rr_num)]).tolist())
+        qua_vars["w"] = declare(
+            fixed,
+            value=np.vstack([self.final_weights[i][0].T for i in range(self.rr_num)])
+            .flatten()
+            .tolist(),
+        )
+        qua_vars["b"] = declare(
+            fixed,
+            value=np.hstack(
+                [self.final_weights[i][1] * (2 ** -12) for i in range(self.rr_num)]
+            ).tolist(),
+        )
         return qua_vars
 
     def measure_state(self, readout_op, result, qua_vars, adc=None):
@@ -544,18 +551,25 @@ class NNStateDiscriminator:
                 self.resonators[k],
                 adc,
                 demod.full("optimal_w1_" + str(k), qua_vars["out1"][k], "out1"),
-                demod.full("optimal_w2_" + str(k), qua_vars["out2"][k], "out2")
+                demod.full("optimal_w2_" + str(k), qua_vars["out2"][k], "out2"),
             )
         # state assignment
         with for_(qua_vars["i"], 0, qua_vars["i"] < self.rr_num, qua_vars["i"] + 1):
-            with for_(qua_vars["j"], 0, qua_vars["j"] < self.num_of_states, qua_vars["j"] + 1):
-                assign(qua_vars["res"][qua_vars["j"]],
-                       qua_vars["w"][qua_vars["i"] * 2 * self.num_of_states + 2 * qua_vars["j"]] * qua_vars["out1"][
-                           qua_vars["i"]]
-                       + qua_vars["w"][qua_vars["i"] * 2 * self.num_of_states + 2 * qua_vars["j"] + 1] *
-                       qua_vars["out2"][qua_vars["i"]]
-                       + qua_vars["b"][qua_vars["i"] * self.num_of_states + qua_vars["j"]]
-                       )
+            with for_(
+                qua_vars["j"], 0, qua_vars["j"] < self.num_of_states, qua_vars["j"] + 1
+            ):
+                assign(
+                    qua_vars["res"][qua_vars["j"]],
+                    qua_vars["w"][
+                        qua_vars["i"] * 2 * self.num_of_states + 2 * qua_vars["j"]
+                    ]
+                    * qua_vars["out1"][qua_vars["i"]]
+                    + qua_vars["w"][
+                        qua_vars["i"] * 2 * self.num_of_states + 2 * qua_vars["j"] + 1
+                    ]
+                    * qua_vars["out2"][qua_vars["i"]]
+                    + qua_vars["b"][qua_vars["i"] * self.num_of_states + qua_vars["j"]],
+                )
             assign(qua_vars["temp"], Math.argmax(qua_vars["res"]))
             save(qua_vars["temp"], result)
         align(*self.resonators)
