@@ -7,10 +7,9 @@ QUA version used : 0.8.439
 # QM imports
 from configuration import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import QuantumMachine
 from qm import LoopbackInterface
 from qm import SimulationConfig
-
+from qm.qua import *
 
 qm1 = QuantumMachinesManager()
 QM = qm1.open_qm(config)
