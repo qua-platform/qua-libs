@@ -167,6 +167,13 @@ class Baking:
         self._local_config.update(pulse)
         self._local_config.update(waveform)
 
+    def bake(self):
+        '''
+        update the configuration with the arbitrary baked waveforms
+        :return:
+        '''
+        self._config.update(self._local_config)
+
     def run(self) -> None:
         '''
         Plays the baked waveform
@@ -176,11 +183,16 @@ class Baking:
         # number of QEs: if >1 we need an align between all of them. if =1, no align
         if len(self._qe_set) == 1:
 
-            print(self._seq)
+            for qe in self._qe_set:
+                print(f'play(arb_{qe},{qe})')
+
         else:
             self.align(*self._get_qe_set())
             print('aligns!')
-            print(self._seq)
+            qeset = list(self._qe_set)
+            print(f"align(*{qeset})")
+            for qe in self._qe_set:
+                print(f'play(arb_{qe},{qe})')
         # qua.play on arb pulse per QE in the qe list
         # print(self._get_qe_set())
 
