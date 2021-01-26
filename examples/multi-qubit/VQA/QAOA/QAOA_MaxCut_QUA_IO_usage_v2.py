@@ -30,7 +30,7 @@ from matplotlib import rc
 
 # QM configuration based on IBM Quantum Computer :
 # Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
-qm1 = QuantumMachinesManager("192.168.116.129")
+qm1 = QuantumMachinesManager()
 QM = qm1.open_qm(IBMconfig)
 
 # ## MaxCut problem definition for QAOA

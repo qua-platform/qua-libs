@@ -8,13 +8,11 @@ Created on QUA version: 0.8.439
 # Importing the necessary from qm
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm.qua import math
 from qm import LoopbackInterface
 from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from scipy.optimize import curve_fit
 from configuration import *
 
 I_c = 130e-6  # 130 µA
@@ -29,7 +27,7 @@ t_max = int(500 / 4)
 dt = 1
 N_t = t_max // dt
 
-qmManager = QuantumMachinesManager("3.122.60.129")
+qmManager = QuantumMachinesManager()
 QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as bias_current_sweeping:  #
@@ -41,23 +39,26 @@ with program() as bias_current_sweeping:  #
     V_b = declare(fixed)  # Sweeping parameter over the set of amplitudes
     I_b = declare(fixed)
     Nrep = declare(int)  # Variable looping for repetitions of experiments
+    tau = declare(fixed, value=1.0)
     I_b_stream = declare_stream()
     state_stream = declare_stream()
     t_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(V_b, V_min, V_b < V_c, V_b + dV):  # Sweep from 0 to V_c the bias voltage
-            with for_(t, 0.00, t < t_max, t + dt):
-                play("playOp" * amp(V_b), "SFQ_driver")
-                play("gauss_pulse", 'qubit', duration=t)
-                align("qubit", "RR")
+        with for_(V_b, 0., V_b < 0.5, V_b + 0.05):  # Sweep from 0 to V_c the bias voltage
+            with for_(t, 16, t < t_max, t + dt):
+                play("playOp" * amp(V_b), "SFQ_bias")
+                play("const_pulse", 'SFQ_trigger', duration=t)
+                align("qubit_control", "RR", "SFQ_trigger")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
-                play("pi_pulse", 'qubit', condition=I > th)
                 assign(state, I > th)
+                with while_(I > th):  # Active reset
+                    play("pi_pulse", 'SFQ_trigger')
+                    measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 save(state, state_stream)
                 save(t, t_stream)
 
-            assign(I_b, V_b / R)
+            assign(I_b, V_b)
             save(I_b, I_b_stream)
     with stream_processing():
         I_b_stream.buffer(N_V).save("I_b")
@@ -65,7 +66,7 @@ with program() as bias_current_sweeping:  #
         state_stream.boolean_to_int().buffer(N_V, N_t).average().save("state")
 
 job = qmManager.simulate(config, bias_current_sweeping,
-                         SimulationConfig(int(50000),
+                         SimulationConfig(int(100000),
                                           simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
                                           )
                          )  # Use LoopbackInterface to simulate the response of the qubit
