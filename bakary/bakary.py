@@ -26,6 +26,7 @@ class Baking:
         # self._config = config
         self._local_config = {}
         self._local_config.update(config)
+        self._qe_time_dict = {}  # a dictionary to hold the latest play time per QE
         self._seq = []
         self._qe_set = set()
         self._samples_dict = {}
@@ -69,8 +70,12 @@ class Baking:
         try:
             if pulse in self._local_config['pulses'].keys():
                 self._seq.append(PlayBop(pulse, qe))
-                self._samples_dict[qe] = self._get_samples(pulse)
-                self._qe_set = self._get_qe_set()
+                samples = self._get_samples(pulse)
+                self._samples_dict[qe] = samples
+                self._update_qe_time(qe, len(samples))
+                print(self._samples_dict)
+                print(self._qe_time_dict)
+                self._update_qe_set()
         except KeyError:
             raise KeyError(f'Pulse:"{pulse}" does not exist in configuration and not manually added (use add_pulse)')
 
@@ -78,9 +83,18 @@ class Baking:
         Baking._ctr = Baking._ctr + 1
         return f"b_wf_{Baking._ctr}"
 
+    def _update_qe_set(self):
+        self._qe_set = self._get_qe_set()
+
     def _get_qe_set(self) -> Set[str]:
 
         return set(flatten([el.qe for el in self._seq]))
+
+    def _update_qe_time(self, qe: str, dt: int):
+        if qe in self._qe_time_dict.keys():
+            self._qe_time_dict[qe] = self._qe_time_dict[qe] + dt
+        else:
+            self._qe_time_dict[qe] = dt
 
     def _get_samples(self, pulse: str) -> Union[List[float], List[List]]:
         '''
@@ -104,10 +118,32 @@ class Baking:
 
     def wait(self, duration: int, qe: str):
         self._seq.append(WaitBop(duration, qe))
+        if qe in self._samples_dict.keys():
+            self._samples_dict[qe] = self._samples_dict[qe] + [0] * duration
+        else:
+            self._qe_set.add(qe)
+
+        self._update_qe_time(qe, duration)
+        print(self._samples_dict)
+        print(self._qe_time_dict)
         self._qe_set = self._get_qe_set()
 
     def align(self, *qe_set: Set[str]):
         self._seq.append(AlignBop(qe_set))
+        last_qe = ''
+        last_t = 0
+        for qe in qe_set:
+            qe_t = self._qe_time_dict[qe]
+
+            if qe_t > last_t:
+                last_qe = qe
+                last_t = qe_t
+
+        for qe in qe_set:
+            qe_t = self._qe_time_dict[qe]
+            if qe != last_qe:
+                self.wait(last_t-qe_t,qe)
+
         self._qe_set = self._get_qe_set()
 
     def add_pulse(self, name: str, samples: list):
@@ -172,13 +208,14 @@ class AlignBop(BOp):
 if __name__ == '__main__':
     conf = {}
     with baking(config=conf) as b:
-        s = (np.random.random_sample(103) - 0.5).tolist()
+        s = (np.random.random_sample(50) - 0.5).tolist()
         b.add_pulse('my_pulse', s)
         # b.add_pulse('my_pulse', [1])
         b.play('my_pulse', 'that')
-        b.play('my_pulse', 'this')
-        # b.wait(100, 'qe1')
+        # b.play('my_pulse', 'this')
+        b.wait(20, 'that')
+        b.wait(100, 'this')
         # b.add_pulse('my_pulse2', [1])
         # b.play('my_pulse2', 'that')
-        # b.align('a', 'b')
+        b.align('this', 'that')
         b.run()
