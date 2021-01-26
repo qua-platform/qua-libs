@@ -23,7 +23,7 @@ class Baking:
     _ctr = 0  # unique name counter
 
     def __init__(self, config):
-        # self._config = config
+        self._config = config
         self._local_config = {}
         self._local_config.update(config)
         self._qe_time_dict = {}  # a dictionary to hold the latest play time per QE
@@ -231,4 +231,5 @@ if __name__ == '__main__':
         # b.add_pulse('my_pulse2', [1])
         # b.play('my_pulse2', 'that')
         b.align('this', 'that')
+        b.bake()
         b.run()
