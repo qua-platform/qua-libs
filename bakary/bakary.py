@@ -178,6 +178,7 @@ class Baking:
 
             print(self._seq)
         else:
+            self.align(*self._get_qe_set())
             print('aligns!')
             print(self._seq)
         # qua.play on arb pulse per QE in the qe list
