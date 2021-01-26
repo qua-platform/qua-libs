@@ -1,10 +1,35 @@
+from abc import ABC
+
+from dataclasses import dataclass
+from typing import Set, List, Union
 import numpy as np
+from typing import Iterable
 
 
-class baking:
+def flatten(items):
+    """Yield items from any nested iterable"""
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            yield from flatten(x)
+        else:
+            yield x
+
+
+def baking(config):
+    return Baking(config)
+
+
+class Baking:
+    _ctr = 0  # unique name counter
+
     def __init__(self, config):
-        self._config = config
+        # self._config = config
+        self._local_config = {}
+        self._local_config.update(config)
         self._seq = []
+        self._qe_set = set()
+        self._samples_dict = {}
+
         print('started bake')
 
     def __enter__(self):
@@ -15,16 +40,23 @@ class baking:
         '''
         Updates the configuration dictionary upon exit
         '''
-        waveform = {'waveforms':
-                        {'arb_qe1':
-                             {'type':
-                                  'arbitrary',
-                              'samples': (np.random.random_sample(100) - 0.5).tolist()
-                              }
-                         }
-                    }
-        self._config.update(waveform)
-        print(self._config)
+        if exc_type:
+            return
+
+        # my goal here is to build arb wf per qe
+
+        # collect QEs (make a list of QE) -> done while building the seq
+
+        # dictionary of lists of samples per QE
+
+        # align (not trivial) need to figure out how many zeros to pad and where
+
+        # add samples to each QE to make a multiple of 4
+
+        # update config with uniquely named baked waveforms
+
+        # remember pulse name per QE: which pulse name is played per QE
+
         print('entered exit')
 
     def play(self, pulse: str, qe: str) -> None:
@@ -34,19 +66,58 @@ class baking:
         :param qe: Quantum element to play to
         :return:
         '''
+        try:
+            if pulse in self._local_config['pulses'].keys():
+                self._seq.append(PlayBop(pulse, qe))
+                self._samples_dict[qe] = self._get_samples(pulse)
+                self._qe_set = self._get_qe_set()
+        except KeyError:
+            raise KeyError(f'Pulse:"{pulse}" does not exist in configuration and not manually added (use add_pulse)')
 
-        if pulse in self._config['pulses'].keys():
-            self._seq.append((pulse, qe))
-        else:
-            raise KeyError(f'Pulse:"{pulse}" does not exist in configuration')
+    def _gen_pulse_name(self) -> str:
+        Baking._ctr = Baking._ctr + 1
+        return f"b_wf_{Baking._ctr}"
+
+    def _get_qe_set(self) -> Set[str]:
+
+        return set(flatten([el.qe for el in self._seq]))
+
+    def _get_samples(self, pulse: str) -> Union[List[float], List[List]]:
+        '''
+        returns samples associated with a pulse
+        :param pulse:
+        :return:
+        '''
+        try:
+            if 'single' in self._local_config['pulses'][pulse]['waveforms'].keys():
+                wf = self._local_config['pulses'][pulse]['waveforms']['single']
+                return self._local_config['waveforms'][wf]['samples']
+            elif 'I' in self._local_config['pulses'][pulse]['waveforms'].keys():
+                wf_I = self._local_config['pulses'][pulse]['waveforms']['I']
+                wf_Q = self._local_config['pulses'][pulse]['waveforms']['Q']
+                samples_I = self._local_config['waveforms'][wf_I]['samples']
+                samples_Q = self._local_config['waveforms'][wf_Q]['samples']
+                return [samples_I, samples_Q]
+
+        except KeyError:
+            raise KeyError(f'No waveforms found for pulse {pulse}')
+
+    def wait(self, duration: int, qe: str):
+        self._seq.append(WaitBop(duration, qe))
+        self._qe_set = self._get_qe_set()
+
+    def align(self, *qe_set: Set[str]):
+        self._seq.append(AlignBop(qe_set))
+        self._qe_set = self._get_qe_set()
 
     def add_pulse(self, name: str, samples: list):
-        pulse = {'pulses':{name:
-                     {"operation": "control",
-                      "length": len(samples),
-                      "waveforms": {"single": f"{name}_wf"}
-                      }
-                           }
+
+        pulse = {'pulses': {name:
+                                {"operation": "control",
+                                 "length": len(samples),
+                                 "waveforms": {"single": f"{name}_wf"}
+                                 }
+                            }
                  }
 
         waveform = {'waveforms':
@@ -57,21 +128,57 @@ class baking:
                               }
                          }
                     }
-        self._config.update(pulse)
-        self._config.update(waveform)
+        self._local_config.update(pulse)
+        self._local_config.update(waveform)
 
     def run(self) -> None:
         '''
         Plays the baked waveform
         :return: None
         '''
-        print(self._seq)
+
+        # number of QEs: if >1 we need an align between all of them. if =1, no align
+        if len(self._qe_set) == 1:
+
+            print(self._seq)
+        else:
+            print('aligns!')
+            print(self._seq)
+        # qua.play on arb pulse per QE in the qe list
+        # print(self._get_qe_set())
+
+
+class BOp(ABC):
+    pass
+
+
+@dataclass
+class PlayBop(BOp):
+    pulse: str
+    qe: str
+
+
+@dataclass
+class WaitBop(BOp):
+    dur: int
+    qe: str
+
+
+@dataclass
+class AlignBop(BOp):
+    qe: Set[str]
 
 
 if __name__ == '__main__':
-    config = {}
-    with baking(config=config) as b:
-        s = (np.random.random_sample(100) - 0.5).tolist()
-        b.add_pulse('my_pulse',s)
+    conf = {}
+    with baking(config=conf) as b:
+        s = (np.random.random_sample(103) - 0.5).tolist()
+        b.add_pulse('my_pulse', s)
+        # b.add_pulse('my_pulse', [1])
         b.play('my_pulse', 'that')
-    # b.run()
+        b.play('my_pulse', 'this')
+        # b.wait(100, 'qe1')
+        # b.add_pulse('my_pulse2', [1])
+        # b.play('my_pulse2', 'that')
+        # b.align('a', 'b')
+        b.run()
