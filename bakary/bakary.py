@@ -54,6 +54,16 @@ class Baking:
 
         # add samples to each QE to make a multiple of 4
 
+        for qe in self._get_qe_set():
+            if not self._qe_time_dict[qe] % 4 == 0:
+                self.wait(4 - self._qe_time_dict[qe] % 4, qe)
+
+        for qe in self._samples_dict.keys():
+            qe_samps = self._samples_dict[qe]
+            self._config['waveforms'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
+            # TODO: update pulse
+        # TODO: update ops for each QE
+
         # update config with uniquely named baked waveforms
 
         # remember pulse name per QE: which pulse name is played per QE
@@ -71,11 +81,11 @@ class Baking:
             if pulse in self._local_config['pulses'].keys():
                 self._seq.append(PlayBop(pulse, qe))
                 samples = self._get_samples(pulse)
-                self._samples_dict[qe] = samples
+                self._samples_dict[qe] = samples #TODO: concatenate samples
                 self._update_qe_time(qe, len(samples))
                 print(self._samples_dict)
                 print(self._qe_time_dict)
-                self._update_qe_set()
+                self._update_qe_set() #TODO: do i need this on every play?
         except KeyError:
             raise KeyError(f'Pulse:"{pulse}" does not exist in configuration and not manually added (use add_pulse)')
 
@@ -167,12 +177,28 @@ class Baking:
         self._local_config.update(pulse)
         self._local_config.update(waveform)
 
-    def bake(self):
-        '''
-        update the configuration with the arbitrary baked waveforms
-        :return:
-        '''
-        self._config.update(self._local_config)
+    # def bake(self):
+    #     '''
+    #     update the configuration with the arbitrary baked waveforms
+    #     :return:
+    #     '''
+    #     for qe in self._get_qe_set():
+    #         if not self._qe_time_dict[qe] % 4 ==0:
+    #             self.wait(4-self._qe_time_dict[qe] % 4,qe)
+    #
+    #     for qe in self._samples_dict.keys():
+    #         qe_samps = self._samples_dict[qe]
+    #         self._config['waveforms'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
+    #         # TODO: update pulse
+    #     # TODO: update ops for each QE
+    #
+    #
+    #     # for wf in self._local_config['waveforms'].keys():
+    #     #     wfl = len(self._samples_dict[wf]['samples'])
+    #     #     print(f"{wf}: {wfl}")
+    #
+    #     # self._config.update(self._local_config)
+
 
     def run(self) -> None:
         '''
@@ -187,7 +213,6 @@ class Baking:
                 print(f'play(arb_{qe},{qe})')
 
         else:
-            self.align(*self._get_qe_set())
             print('aligns!')
             qeset = list(self._qe_set)
             print(f"align(*{qeset})")
@@ -219,17 +244,17 @@ class AlignBop(BOp):
 
 
 if __name__ == '__main__':
-    conf = {}
+    conf = {'elements':{},'waveforms':{},'pulses':{}}
     with baking(config=conf) as b:
-        s = (np.random.random_sample(50) - 0.5).tolist()
+        s = (np.random.random_sample(53) - 0.5).tolist()
         b.add_pulse('my_pulse', s)
         # b.add_pulse('my_pulse', [1])
         b.play('my_pulse', 'that')
-        # b.play('my_pulse', 'this')
+        b.play('my_pulse', 'this')
         b.wait(20, 'that')
         b.wait(100, 'this')
         # b.add_pulse('my_pulse2', [1])
         # b.play('my_pulse2', 'that')
         b.align('this', 'that')
-        b.bake()
-        b.run()
+        # b.bake()
+    b.run()
