@@ -9,7 +9,6 @@ Created on QUA version: 0.8.439
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm.qua import math
-from qm import LoopbackInterface
 from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
@@ -73,10 +72,8 @@ with program() as bias_current_sweeping:  #
         state_stream.boolean_to_int().buffer(N_f, N_t).average().save("state")
 
 job = qmManager.simulate(config, bias_current_sweeping,
-                         SimulationConfig(int(50000),
-                                          simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-                                          )
-                         )  # Use LoopbackInterface to simulate the response of the qubit
+                         SimulationConfig(int(50000)))
+
 time.sleep(1.0)
 
 # Retrieving results of the experiments

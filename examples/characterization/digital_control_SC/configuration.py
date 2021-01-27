@@ -9,9 +9,7 @@ gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
 readout_pulse_len = 20
 omega_10 = 4.958e9
 omega_d = omega_10/3
-I_ref = 110e-6  # 130 µA
-R = 1e3  # 1 kΩ
-V_ref = R * I_ref  # 130 mV
+
 config = {
     "version": 1,
     "controllers": {
@@ -136,7 +134,7 @@ config = {
         },
     },
     "waveforms": {
-        "const_wf": {"type": "constant", "sample": V_ref},
+        "const_wf": {"type": "constant", "sample": 0.2},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "exc_wf": {"type": "constant", "sample": 0.479},
