@@ -5,10 +5,11 @@ qubit_IF = 50e6
 RR_IF = 50e6
 RR_LO = 1e9
 qubit_LO = 2e9
-const_pulse_len=1000
-pulse_len=1000
-readout_len=pulse_len
-step_num=300
+const_pulse_len = 1000
+pulse_len = 1000
+readout_len = pulse_len
+step_num = 300
+
 
 def IQ_imbalance_correction(g, phi):
     c = np.cos(phi)
@@ -57,7 +58,7 @@ config = {
                 "lo_frequency": RR_LO,
                 "mixer": "mixer_RR",
             },
-             "outputs": {"out1": ("con1", 1)},
+            "outputs": {"out1": ("con1", 1)},
             "intermediate_frequency": RR_IF,
             "operations": {
                 "measure": "measurePulse",
