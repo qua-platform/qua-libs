@@ -10,7 +10,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import LoopbackInterface
 from qm import SimulationConfig
-import numpy as np
 import matplotlib.pyplot as plt
 import time
 from configuration import *
@@ -43,6 +42,8 @@ with program() as bias_current_sweeping:  #
     I_b_stream = declare_stream()
     state_stream = declare_stream()
     t_stream = declare_stream()
+    I_stream = declare_stream()
+    Q_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
         with for_(V_b, 0., V_b < 0.5, V_b + 0.05):  # Sweep from 0 to V_c the bias voltage
@@ -52,6 +53,8 @@ with program() as bias_current_sweeping:  #
                 align("qubit_control", "RR", "SFQ_trigger")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)
+                save(I, I_stream)
+                save(Q, Q_stream)
                 with while_(I > th):  # Active reset
                     play("pi_pulse", 'SFQ_trigger')
                     measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
@@ -61,6 +64,8 @@ with program() as bias_current_sweeping:  #
             assign(I_b, V_b)
             save(I_b, I_b_stream)
     with stream_processing():
+        I_stream.save_all("I")
+        Q_stream.save_all("Q")
         I_b_stream.buffer(N_V).save("I_b")
         t_stream.buffer(N_t).save('t')
         state_stream.boolean_to_int().buffer(N_V, N_t).average().save("state")
@@ -77,7 +82,8 @@ results = job.result_handles
 I_b = results.I_b.fetch_all()
 t = results.t.fetch_all()
 state = results.state.fetch_all()
-
+I = results.I.fetch_all()["value"]
+Q = results.Q.fetch_all()["value"]
 fig = plt.figure()
 
 # Plot the surface.
