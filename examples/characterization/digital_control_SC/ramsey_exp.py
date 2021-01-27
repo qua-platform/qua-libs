@@ -40,6 +40,8 @@ with program() as bias_current_sweeping:  #
     f_stream = declare_stream()
     state_stream = declare_stream()
     t_stream = declare_stream()
+    I_stream = declare_stream()
+    Q_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
         with for_(f, f_min, f < f_max, f + df):  # Sweep from 0 to V_c the bias voltage
@@ -52,6 +54,8 @@ with program() as bias_current_sweeping:  #
                 align("qubit", "RR", "SFQ_trigger")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)
+                save(I, I_stream)
+                save(Q, Q_stream)
                 with while_(I > th):  # Active reset
                     play("pi_pulse", 'SFQ_trigger', condition=I > th)
                     measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
@@ -60,6 +64,8 @@ with program() as bias_current_sweeping:  #
 
             save(f, f_stream)
     with stream_processing():
+        I_stream.save_all("I")
+        Q_stream.save_all("Q")
         f_stream.buffer(N_f).save("f")
         t_stream.buffer(N_t).save('t')
         state_stream.boolean_to_int().buffer(N_f, N_t).average().save("state")
@@ -76,6 +82,8 @@ results = job.result_handles
 f = results.f.fetch_all()
 t = results.t.fetch_all()
 state = results.state.fetch_all()
+I = results.I.fetch_all()["value"]
+Q = results.Q.fetch_all()["value"]
 
 fig = plt.figure()
 

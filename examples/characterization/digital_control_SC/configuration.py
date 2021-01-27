@@ -7,8 +7,8 @@ gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
 gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
 gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
 readout_pulse_len = 20
-ω_10 = 4.958e9
-ω_d = ω_10/3
+omega_10 = 4.958e9
+omega_d = omega_10/3
 I_ref = 110e-6  # 130 µA
 R = 1e3  # 1 kΩ
 V_ref = R * I_ref  # 130 mV
@@ -78,7 +78,7 @@ config = {
                 "lo_frequency": 6.00e9,
                 "mixer": "mixer_res",
             },
-            "intermediate_frequency": 0,  # 6.15e9,
+            "intermediate_frequency": 50e6,  # 6.15e9,
             "operations": {
                 "meas_pulse": "meas_pulse_in",
             },
@@ -104,7 +104,7 @@ config = {
     "pulses": {
         "meas_pulse_in": {  # Readout pulse
             "operation": "measurement",
-            "length": 200,
+            "length": readout_pulse_len,
             "waveforms": {
                 "I": "exc_wf",  # Decide what pulse to apply for each component
                 "Q": "zero_wf",
@@ -113,13 +113,11 @@ config = {
                 "integW1": "integW1",
                 "integW2": "integW2",
             },
-            "digital_marker": "marker1",
         },
         "constPulse": {
             "operation": "control",
             "length": const_pulse_len,  # in ns
-            "waveforms": {"single": "const_wf"},
-            "digital_marker": "marker1",
+            "waveforms": {"single": "const_wf"}
         },
         "gauss_pulse_in": {
             "operation": "control",
@@ -143,22 +141,21 @@ config = {
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "exc_wf": {"type": "constant", "sample": 0.479},
     },
-    "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},
     "integration_weights": {  # Define integration weights for measurement demodulation
         "integW1": {
-            "cosine": [4.0] * 28,
+            "cosine": [4.0] * readout_pulse_len,
 
-            "sine": [0.0] * 28
+            "sine": [0.0] * readout_pulse_len
         },
         "integW2": {
-            "cosine": [0.0] * 28,
-            "sine": [4.0] * 28
+            "cosine": [0.0] * readout_pulse_len,
+            "sine": [4.0] * readout_pulse_len
         },
     },
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme
         "mixer_res": [
             {
-                "intermediate_frequency": 0,  # 6.15e9,
+                "intermediate_frequency": 50e6,  # 6.15e9,
                 "lo_frequency": 6.00e9,
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
