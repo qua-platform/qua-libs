@@ -19,7 +19,7 @@ It is currently an open question in the theory of quantum control for supercondu
 qubits whether analog (usual microwave control encountered in many implementations) or digital
 control will allow the best performances regarding scalability and fault tolerance. 
 
-The objective of the paper mentioned above is to demonstrate the ability of digitalizing the control of a flux tunable transmon qubit 
+The objective of the paper mentioned above is to demonstrate the ability of digitizing the control of a flux tunable transmon qubit 
 by using what is called the SFQ digital logic family.
 
 In this framework, "classical bits of information are encoded in fluxons, propagating voltage pulses whose time integral 
