@@ -123,4 +123,11 @@ module.exports = [
 //            "nv-centers/widefield-odmr/index",  Need to finished readme
         ]
     },
+        {
+        "type": "category",
+        "label": "Papers",
+        "items": [
+            "Papers/digital-control-SC/index",
+        ]
+    },
 ]

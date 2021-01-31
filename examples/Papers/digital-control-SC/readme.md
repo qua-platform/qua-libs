@@ -1,3 +1,10 @@
+---
+title: Digital coherent control for superconducting qubits
+sidebar_label: Digital control
+slug: ./
+id: index
+---
+
 Scripts in this folder demonstrate usage of QUA to implement measurements published in the paper 
 "Digital coherent control for superconducting qubits"  https://arxiv.org/pdf/1806.07930.pdf
 The device measured in this paper is a superconducting qubit which is interfaced to a DC-SFQ element which 
