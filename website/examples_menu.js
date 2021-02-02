@@ -128,6 +128,7 @@ module.exports = [
         "label": "Papers",
         "items": [
             "Papers/digital-control-SC/index",
+            "Papers/coupling-qubit-left-handed-metamaterial/index",
         ]
     },
 ]
