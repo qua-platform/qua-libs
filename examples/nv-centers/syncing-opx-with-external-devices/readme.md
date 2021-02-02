@@ -1,6 +1,6 @@
 ---
-title: NV Experiments with the OPX
-sidebar_label: NV Experiments with the OPX
+title: G2 Scanning & Widefield ODMR with the OPX
+sidebar_label: G2 Scanning & Widefield ODMR with the OPX
 slug: ./
 id: index
 ---
