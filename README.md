@@ -1,5 +1,7 @@
 # qua-libs
 
+![discord](https://img.shields.io/discord/806244683403100171?label=QUA&logo=Discord&style=plastic)
+
 Hey! Glad to see you there!
  
 Welcome to the QUA libraries repository. Your one-stop-shop for 
