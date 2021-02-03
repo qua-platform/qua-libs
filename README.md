@@ -1,6 +1,6 @@
 # qua-libs
 
-![discord](https://img.shields.io/discord/806244683403100171?label=QUA&logo=Discord&style=plastic)
+[![discord](https://img.shields.io/discord/806244683403100171?label=QUA&logo=Discord&style=plastic)](https://discord.gg/7FfhhpswbP)
 
 Hey! Glad to see you there!
  
