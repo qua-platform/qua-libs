@@ -8,7 +8,7 @@ gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
 gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
 readout_pulse_len = 20
 omega_10 = 4.958e9
-omega_d = omega_10/3
+omega_d = omega_10 / 3
 
 config = {
     "version": 1,
@@ -38,7 +38,7 @@ config = {
             "intermediate_frequency": 0,  # ω_d,
             "operations": {
                 "gauss_pulse": "gauss_pulse_in",  # to a pulse
-                "pi_pulse": "pi_pulse_in"
+                "pi_pulse": "pi_pulse_in",
             },
         },
         "SFQ_trigger": {
@@ -51,7 +51,7 @@ config = {
             "intermediate_frequency": 0,  # ω_d,
             "operations": {
                 "const_pulse": "const_pulse_in",  # to a pulse
-                "pi_pulse": "pi_pulse_in"
+                "pi_pulse": "pi_pulse_in",
             },
         },
         "qubit_flux_bias": {
@@ -68,7 +68,6 @@ config = {
                 "playOp": "constPulse",
             },
         },
-
         "RR": {
             "mixInputs": {
                 "I": ("con1", 3),
@@ -97,7 +96,7 @@ config = {
             "operations": {
                 "playOp": "constPulse",
             },
-        }
+        },
     },
     "pulses": {
         "meas_pulse_in": {  # Readout pulse
@@ -115,7 +114,7 @@ config = {
         "constPulse": {
             "operation": "control",
             "length": const_pulse_len,  # in ns
-            "waveforms": {"single": "const_wf"}
+            "waveforms": {"single": "const_wf"},
         },
         "gauss_pulse_in": {
             "operation": "control",
@@ -142,12 +141,11 @@ config = {
     "integration_weights": {  # Define integration weights for measurement demodulation
         "integW1": {
             "cosine": [4.0] * readout_pulse_len,
-
-            "sine": [0.0] * readout_pulse_len
+            "sine": [0.0] * readout_pulse_len,
         },
         "integW2": {
             "cosine": [0.0] * readout_pulse_len,
-            "sine": [4.0] * readout_pulse_len
+            "sine": [4.0] * readout_pulse_len,
         },
     },
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme

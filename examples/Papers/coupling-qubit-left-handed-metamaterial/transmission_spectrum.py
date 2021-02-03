@@ -32,11 +32,17 @@ with program() as t_spectrum:
         assign(running, IO2)
 
         with for_(f, 0, f <= 500e6, f + 1e6):
-            update_frequency("RR", f, units='Hz')
-            measure('measure', 'RR', None, demod.full('integW1', I), demod.full('integW2', Q))
+            update_frequency("RR", f, units="Hz")
+            measure(
+                "measure",
+                "RR",
+                None,
+                demod.full("integW1", I),
+                demod.full("integW2", Q),
+            )
             save(I, I_stream)
             save(Q, Q_stream)
-            save(f+LO_freq, f_stream)
+            save(f + LO_freq, f_stream)
 
     with stream_processing():
         I_stream.save_all("I")
@@ -48,7 +54,7 @@ job = QM.execute(t_spectrum)
 LO_source = mock_LO_source()
 
 for freq in freq_range:
-    while not(job.is_paused()):
+    while not (job.is_paused()):
         time.sleep(0.001)
     LO_source.set_LO_frequency(freq)
     QM.set_io1_value(freq)
@@ -60,12 +66,9 @@ results = job.result_handles
 I = results.I.fetch_all()["value"]
 Q = results.Q.fetch_all()["value"]
 f = results.f.fetch_all()["value"]
-f_GHZ = f/1e9
-S_21 = np.sqrt(I**2+Q**2)
+f_GHZ = f / 1e9
+S_21 = np.sqrt(I ** 2 + Q ** 2)
 plt.figure()
 plt.plot(f, S_21)
 plt.xlabel("Frequency [GHz]")
 plt.ylabel("S_21 [dB]")
-
-
-

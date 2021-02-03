@@ -82,17 +82,8 @@ config = {
     },
     "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},
     "integration_weights": {  # Define integration weights for measurement demodulation
-        "integW1": {
-            "cosine": [4.0]*27,
-            "sine": [0.0]*27
-
-        },
-        "integW2": {
-            "cosine": [0.0]*27,
-
-            "sine": [4.0]*27
-
-        },
+        "integW1": {"cosine": [4.0] * 27, "sine": [0.0] * 27},
+        "integW2": {"cosine": [0.0] * 27, "sine": [4.0] * 27},
     },
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme
         "mixer_res": [

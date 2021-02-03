@@ -21,10 +21,12 @@ N_t = t_max // dt
 f_max = 60e6
 f_min = 20e6
 df = 1e6
-N_f = int((f_max-f_min)/df)
+N_f = int((f_max - f_min) / df)
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(
+    config
+)  # Generate a Quantum Machine based on the configuration described above
 LO_source = mock_LO_source(9.2e9)
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
@@ -55,11 +57,10 @@ with program() as bias_current_sweeping:  #
         I_stream.buffer(N_f, N_t).average().save("I")
         Q_stream.buffer(N_f, N_t).average().save("Q")
         f_stream.buffer(N_f).save("f")
-        t_stream.buffer(N_t).save('t')
+        t_stream.buffer(N_t).save("t")
 
 
-job = qmManager.simulate(config, bias_current_sweeping,
-                         SimulationConfig(int(50000)))
+job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(50000)))
 
 time.sleep(1.0)
 

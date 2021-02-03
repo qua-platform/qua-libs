@@ -42,15 +42,25 @@ with program() as hidden_qubit_tomography:
                         play_pulse(op)
 
                     align("RR", "control", "TC")
-                    measure_and_reset_state("RR", I, Q, state_c, state_h, stream_c, stream_h)
+                    measure_and_reset_state(
+                        "RR", I, Q, state_c, state_h, stream_c, stream_h
+                    )
 
     with stream_processing():
-        stream_c.boolean_to_int().buffer(nb_processes, nb_basis_states, nb_Pauli_op).average().save("state_c")
-        stream_h.boolean_to_int().buffer(nb_processes, nb_basis_states, nb_Pauli_op).average().save("state_h")
+        stream_c.boolean_to_int().buffer(
+            nb_processes, nb_basis_states, nb_Pauli_op
+        ).average().save("state_c")
+        stream_h.boolean_to_int().buffer(
+            nb_processes, nb_basis_states, nb_Pauli_op
+        ).average().save("state_h")
 
-job = qm1.simulate(config, hidden_qubit_tomography,
-                   SimulationConfig(int(50000), simulation_interface=LoopbackInterface(
-                       [("con1", 1, "con1", 1)])))  # Use LoopbackInterface to simulate the response of the qubit
+job = qm1.simulate(
+    config,
+    hidden_qubit_tomography,
+    SimulationConfig(
+        int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
+    ),
+)  # Use LoopbackInterface to simulate the response of the qubit
 
 results = job.result_handles
 
@@ -72,66 +82,66 @@ for process in processes.keys():  # 4 #Initialize all the dictionaries
         expectation_values[process][input_state] = {}
         ρ[process][input_state] = {}
         for readout_operator in tomography_set.keys():
-            counts[process][input_state][readout_operator] = {"00": 0,
-                                                              "01": 0,
-                                                              "10": 0,
-                                                              "11": 0}
-            frequencies[process][input_state][readout_operator] = {"00": 0,
-                                                                   "01": 0,
-                                                                   "10": 0,
-                                                                   "11": 0}
+            counts[process][input_state][readout_operator] = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0,
+            }
+            frequencies[process][input_state][readout_operator] = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0,
+            }
             expectation_values[process][input_state][readout_operator] = 0
 i = 0
 j = 0
 k = 0
 
-#Add here in appropriate dictionaries results retrieved from stream_processing
+# Add here in appropriate dictionaries results retrieved from stream_processing
 for process in processes.keys():
     for input_state in state_prep.keys():
         for readout_operator in tomography_set.keys():
             state = str(control[i][j][k]) + str(hidden[i][j][k])
             counts[process][input_state][readout_operator][state] += 1
-            #frequencies[process][input_state][readout_operator][state] += 1. / N_shots
+            # frequencies[process][input_state][readout_operator][state] += 1. / N_shots
             if (state == "00") or (state == "01"):
-                expectation_values[process][input_state][readout_operator] += 1./N_shots
+                expectation_values[process][input_state][readout_operator] += (
+                    1.0 / N_shots
+                )
             else:
-                expectation_values[process][input_state][readout_operator] -= 1. / N_shots
+                expectation_values[process][input_state][readout_operator] -= (
+                    1.0 / N_shots
+                )
             k += 1
         j += 1
     i += 1
 
-ID = np.array([[1, 0],
-               [0, 1]])
-σ_x = np.array([[0, 1],
-                [1, 0]])
-σ_y = np.array([[0, -1j],
-                [1j, 0]])
-σ_z = np.array([[1, 0],
-                [0, -1]])
+ID = np.array([[1, 0], [0, 1]])
+σ_x = np.array([[0, 1], [1, 0]])
+σ_y = np.array([[0, -1j], [1j, 0]])
+σ_z = np.array([[1, 0], [0, -1]])
 Pauli_matrices = [ID, σ_x, σ_y, σ_z]
 
 Pauli_basis = {
-    #"ID__ID": np.kron(ID, ID),
+    # "ID__ID": np.kron(ID, ID),
     "ID__σ_x": np.kron(ID, σ_x),
     "ID__σ_y": np.kron(ID, σ_y),
     "ID__σ_z": np.kron(ID, σ_z),
-
     "σ_z__ID": np.kron(σ_z, ID),
     "σ_z__σ_x": np.kron(σ_z, σ_x),
     "σ_z__σ_y": np.kron(σ_z, σ_y),
     "σ_z__σ_z": np.kron(σ_z, σ_z),
-
     "σ_y__ID": np.kron(σ_y, ID),
     "σ_y__σ_x": np.kron(σ_y, σ_x),
     "σ_y__σ_y": np.kron(σ_y, σ_y),
     "σ_y__σ_z": np.kron(σ_y, σ_z),
-
     "σ_x__ID": np.kron(σ_x, ID),
     "σ_x__σ_x": np.kron(σ_x, σ_x),
     "σ_x__σ_y": np.kron(σ_x, σ_y),
     "σ_x__σ_z": np.kron(σ_x, σ_z),
 }
 
-#Choose here the state tomography method to be used, then the process tomography scheme
+# Choose here the state tomography method to be used, then the process tomography scheme
 #:
-
