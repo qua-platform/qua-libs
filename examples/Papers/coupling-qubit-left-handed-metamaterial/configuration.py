@@ -29,7 +29,6 @@ config = {
                 3: {"offset": +0.0},  # Irr
                 4: {"offset": +0.0},  # Qrr
                 5: {"offset": -0.4},  # flux line
-                
             },
             "analog_inputs": {
                 1: {"offset": +0.0},
@@ -63,14 +62,13 @@ config = {
             "operations": {
                 "measure": "measurePulse",
             },
-            
             "time_of_flight": 180,
             "smearing": 0,
         },
         "flux_line": {
-            "singleInput":{"port": ("con1", 5)},
+            "singleInput": {"port": ("con1", 5)},
             "intermediate_frequency": 0,
-            'hold_offset':{'duration': 1000},
+            "hold_offset": {"duration": 1000},
             "operations": {
                 "tune": "constPulse",
             },
@@ -100,8 +98,8 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
-        "const_wf2": {"type": "constant", "sample": 0.8/300},
-        "flux_tune_wf": {"type": "constant", "sample": 1/step_num},
+        "const_wf2": {"type": "constant", "sample": 0.8 / 300},
+        "flux_tune_wf": {"type": "constant", "sample": 1 / step_num},
     },
     "integration_weights": {
         "integW1": {

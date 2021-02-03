@@ -94,7 +94,7 @@ with program() as xy8:
             xy8_n(repsN)
             frame_rotation(np.pi, "qubit")
             play("pi_half", "qubit")
-            reset_frame('qubit')  # Such that next tau would start in x.
+            reset_frame("qubit")  # Such that next tau would start in x.
             measure("readout", "qubit", None, time_tagging.raw(times, 300, counts_ref))
             # Time tagging done here, in real time
 
@@ -113,9 +113,9 @@ if simulate:
     job = qm.simulate(xy8, SimulationConfig(20000))
     # job = qmm.simulate(config, xy8, SimulationConfig(20000, include_analog_waveforms=True))
     samps = job.get_simulated_samples()
-    an1 = samps.con1.analog['1'].tolist()
-    an2 = samps.con1.analog['2'].tolist()
-    dig1 = samps.con1.digital['1']
+    an1 = samps.con1.analog["1"].tolist()
+    an2 = samps.con1.analog["2"].tolist()
+    dig1 = samps.con1.digital["1"]
     plt.plot(an1)
     plt.plot(an2)
     plt.plot(dig1)

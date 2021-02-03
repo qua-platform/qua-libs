@@ -22,17 +22,21 @@ dt = 1
 N_t = t_max // dt
 f_max = 1.66e9
 f_min = 1.64e9
-df = 1.e8
-N_f = int((f_max-f_min)/df)
+df = 1.0e8
+N_f = int((f_max - f_min) / df)
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(
+    config
+)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
     state = declare(bool)
-    th = declare(fixed, value=2.0)  # Threshold assumed to have been calibrated by state discrimination exp
+    th = declare(
+        fixed, value=2.0
+    )  # Threshold assumed to have been calibrated by state discrimination exp
     t = declare(int)
     f = declare(fixed)
     Nrep = declare(int)  # Variable looping for repetitions of experiments
@@ -57,8 +61,10 @@ with program() as bias_current_sweeping:  #
                 save(I, I_stream)
                 save(Q, Q_stream)
                 with while_(I > th):  # Active reset
-                    play("pi_pulse", 'SFQ_trigger', condition=I > th)
-                    measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
+                    play("pi_pulse", "SFQ_trigger", condition=I > th)
+                    measure(
+                        "meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q)
+                    )
 
                 save(state, state_stream)
                 save(t, t_stream)
@@ -68,11 +74,10 @@ with program() as bias_current_sweeping:  #
         I_stream.save_all("I")
         Q_stream.save_all("Q")
         f_stream.buffer(N_f).save("f")
-        t_stream.buffer(N_t).save('t')
+        t_stream.buffer(N_t).save("t")
         state_stream.boolean_to_int().buffer(N_f, N_t).average().save("state")
 
-job = qmManager.simulate(config, bias_current_sweeping,
-                         SimulationConfig(int(50000)))
+job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(50000)))
 
 time.sleep(1.0)
 
