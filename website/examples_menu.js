@@ -118,9 +118,12 @@ module.exports = [
         "type": "category",
         "label": "NV Centers",
         "items": [
+            "nv-centers/xy8/index",
+            "nv-centers/nmr-with-nuclear-memory/index",
+            "nv-centers/quantum-fourier-transform/index",
             "nv-centers/syncing-opx-with-external-devices/index",
-//            "nv-centers/g2-with-stage/index",  Need to finished readme
-//            "nv-centers/widefield-odmr/index",  Need to finished readme
+//            "nv-centers/g2-with-stage/index",  Need to finish readme
+//            "nv-centers/widefield-odmr/index",  Need to finish readme
         ]
     },
         {
