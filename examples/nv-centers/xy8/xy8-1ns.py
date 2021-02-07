@@ -28,7 +28,7 @@ def xy8_n(n, extra_wait):
     xy8_block(extra_wait)
 
     with for_(i, 0, i < n - 1, i + 1):
-        wait(2 * t, "qubit")
+        wait(tt, "qubit")
         xy8_block(extra_wait)
 
     wait(t, "qubit")
@@ -47,30 +47,30 @@ def xy8_block(extra_wait):
         pulse_name = "pi_plus_6ns_wait"
 
     play(pulse_name, "qubit")  # 1 X
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     frame_rotation(np.pi / 2, "qubit")
     play(pulse_name, "qubit")  # 2 Y
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     reset_frame("qubit")
     play(pulse_name, "qubit")  # 3 X
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     frame_rotation(np.pi / 2, "qubit")
     play(pulse_name, "qubit")  # 4 Y
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     play(pulse_name, "qubit")  # 5 Y
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     reset_frame("qubit")
     play(pulse_name, "qubit")  # 6 X
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     frame_rotation(np.pi / 2, "qubit")
     play(pulse_name, "qubit")  # 7 Y
-    wait(2 * t, "qubit")
+    wait(tt, "qubit")
 
     reset_frame("qubit")
     play(pulse_name, "qubit")  # 8 X
@@ -81,6 +81,7 @@ with program() as xy8:
     a = declare(int)  # For averages
     i = declare(int)  # For XY8-N
     t = declare(int)  # For tau
+    tt = declare(int)  # For 2 tau
     times = declare(int, size=100)  # Time-Tagging
     counts = declare(int)  # Counts
     counts_ref = declare(int)
@@ -93,6 +94,7 @@ with program() as xy8:
         play("laser", "qubit")
 
         with for_(t, t_min, t <= t_max, t + dt):  # Implicit Align
+            assign(tt, 2 * t)  # This calculate the multiplication only once, which is more efficient.
             for j in range(4):
                 # Play meas (pi/2 pulse at x)
                 play("pi_half", "qubit")
