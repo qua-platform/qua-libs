@@ -129,6 +129,7 @@ module.exports = [
         "items": [
             "Papers/digital-control-SC/index",
             "Papers/coupling-qubit-left-handed-metamaterial/index",
+            "Papers/suppressing-qubit-dephasing-using-real-time/index"
         ]
     },
 ]

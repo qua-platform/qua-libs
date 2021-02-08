@@ -42,14 +42,14 @@ To make this work, you must also declare the digital output you will be using in
         }
 ```
 
-####delay and buffer
+#### delay and buffer
 
 Note the `delay` and `buffer` keywords in the output configuration. They are explained in more detail in the 
 QUA docs, but in this program the action of `delay` is demonstrated by first playing to `qe1` where `delay=144` 
 and then to `qe2` where `delay=0`. The digital signal is aligned with the analog signal in the second case but is 
 offset by the value of the `delay` parameter in the second. 
 
-####Specifying the digital waveform
+#### Specifying the digital waveform
 
 The first two signals in the examples use the `ON` digital signal which is defined in the 
 `digital_wavforms` section of the configuration. This signal is simply set to be on for the duration 
