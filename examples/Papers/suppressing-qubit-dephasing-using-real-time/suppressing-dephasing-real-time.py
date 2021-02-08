@@ -5,7 +5,6 @@ Created: 02/02/2021
 Created on QUA version: 0.8.439
 """
 
-# Importing the necessary from qm
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -14,78 +13,138 @@ import matplotlib.pyplot as plt
 import time
 from configuration import *
 
-
-N_max = 3
-t_max = int(500 / 4)
-dt = 1
-N_t = t_max // dt
-f_max = 1.658e9
-f_min = 1.648e9
-df = 1.e8
-N_f = int((f_max-f_min)/df)
-
 qmManager = QuantumMachinesManager()
 QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
-with program() as bias_current_sweeping:  #
-    I = declare(fixed)  # QUA variables declaration
-    Q = declare(fixed)
-    state = declare(bool)
-    th = declare(fixed, value=2.0)  # Threshold assumed to have been calibrated by state discrimination exp
-    t = declare(int)
-    f = declare(fixed)
-    Nrep = declare(int)  # Variable looping for repetitions of experiments
-    tau = declare(fixed, value=1.0)
-    f_stream = declare_stream()
-    state_stream = declare_stream()
-    t_stream = declare_stream()
-    I_stream = declare_stream()
-    Q_stream = declare_stream()
+N = 3  # 120
+t_samp = 12 // 4
+th = 0
+fB_min = 50
+fB_max = 70
+Nf = 2  # 256
+N_avg = 2
+fB_vec = np.linspace(fB_min, fB_max, Nf)
+dfB = np.diff(fB_vec)[0]
+alpha = 0.25
+beta = 0.67
+elements=['DET','D1','D2','RF-QPC','DET_RF']
 
-    with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(f, f_min, f < f_max, f + df):  # Sweep from 0 to V_c the bias voltage
-            with for_(t, 0.00, t < t_max, t + dt):
-                update_frequency("qubit", f)
-                play("playOp", "SFQ_bias")
-                play("pi_pulse" * amp(0.5), 'SFQ_trigger', duration=t)  # π/2 pulse
-                wait(t, "SFQ_trigger")
-                play("pi_pulse" * amp(0.5), 'SFQ_trigger', duration=t)  # π/2 pulse
-                align("qubit", "RR", "SFQ_trigger")
-                measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
-                assign(state, I > th)
-                save(I, I_stream)
-                save(Q, Q_stream)
-                with while_(I > th):  # Active reset
-                    play("pi_pulse", 'SFQ_trigger', condition=I > th)
-                    measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
-                save(state, state_stream)
-                save(t, t_stream)
+def prep_stage():
+    play('prep', 'D1')
+    play('prep', 'D2')
+    play('ramp_down_evolve', 'D1')
+    play('ramp_up_evolve', 'D2')
 
-            save(f, f_stream)
+def readout_stage():
+    play('ramp_up_read', 'D1')
+    play('ramp_down_read', 'D2')
+
+    wait(t_samp * k + prep_len // 4 + 2 * ramp_len // 4, 'RF-QPC')
+    play('readout', 'D1')
+    play('readout', 'D2')
+    measure('measure', 'RF-QPC', None, demod.full('integW1', I))
+
+
+with program() as dephasingProg:
+    N_avg = declare(int)
+    k = declare(int)
+    I = declare(fixed)
+    fB = declare(fixed)
+
+    state = declare(bool, size=N)
+    state_str = declare_stream()
+    rabi_state = declare(bool)
+    rabi_state_str = declare_stream()
+
+    ind1 = declare(int, value=0)
+    Pf = declare(fixed, value=[1 / len(fB_vec)] * int(len(fB_vec)))
+    rk = declare(fixed)
+    C = declare(fixed)
+    norm = declare(fixed)
+
+
+    #########################
+    # Feedback and Estimate #
+    #########################
+    update_frequency('DET', 0)
+
+    with for_(k, 2, k <= N, k + 1):
+
+        play('prep','D1')
+        play('prep', 'D2')
+        play('evolve', 'D1', duration=t_samp * k)
+        play('evolve', 'D2', duration=t_samp * k)
+        play('readout', 'D1')
+        play('readout', 'D2')
+        wait(t_samp*k+prep_len//4,'RF-QPC')
+
+        measure('measure', 'RF-QPC', None, demod.full('integW1', I))
+        assign(state[k - 1], I > 0)
+        save(state[k - 1], state_str)
+        assign(rk, Cast.to_fixed(state[k - 1]) - 0.5)
+        assign(ind1,0)
+        with for_(fB, fB_min, fB < fB_max, fB + dfB):
+            assign(C, Math.cos2pi(Cast.mul_fixed_by_int(fB, t_samp * k)))
+            assign(Pf[ind1], (0.5 + rk * (alpha + beta * C)) * Pf[ind1])
+            assign(ind1, ind1 + 1)
+
+        assign(norm, 1 / Math.sum(Pf))
+        with for_(ind1, 0, ind1 < Pf.length(), ind1 + 1):
+            assign(Pf[ind1], Pf[ind1] * norm)
+
+    update_frequency('D1_RF', 1e6 * (fB_min + dfB * Math.argmax(Pf)))
+    update_frequency('D2_RF', 1e6 * (fB_min + dfB * Math.argmax(Pf)))
+
+    #########
+    #Operate#
+    #########
+
+    with for_(k, 2, k <= N, k + 1):
+        prep_stage()
+        wait(prep_len//4+ramp_len//4,'D1_RF')
+        wait(prep_len // 4 + ramp_len // 4, 'D2_RF')
+        play('const' * amp(0.05), 'D1_RF', duration=t_samp * k)
+        play('const' * amp(0.05), 'D2_RF', duration=t_samp * k)
+        play('evolve','D1',duration=t_samp * k)
+        play('evolve', 'D2', duration=t_samp * k)
+        readout_stage()
+        assign(rabi_state, I > 0)
+        save(rabi_state, rabi_state_str)
+
     with stream_processing():
-        I_stream.save_all("I")
-        Q_stream.save_all("Q")
-        f_stream.buffer(N_f).save("f")
-        t_stream.buffer(N_t).save('t')
-        state_stream.boolean_to_int().buffer(N_f, N_t).average().save("state")
+        state_str.save_all('state_str')
+        rabi_state_str.save_all('rabi_state_str')
 
-job = qmManager.simulate(config, bias_current_sweeping,
-                         SimulationConfig(int(50000)))  # Use LoopbackInterface to simulate the response of the qubit
-time.sleep(1.0)
+job = qmManager.simulate(config, dephasingProg,
+                         SimulationConfig(int(5000)))
+# res = job.result_handles
+# states = res.state_str.fetch_all()['value']
+samples = job.get_simulated_samples()
+samples.con1.plot()
 
-# Retrieving results of the experiments
-results = job.result_handles
-f = results.f.fetch_all()
-t = results.t.fetch_all()
-state = results.state.fetch_all()
-I = results.I.fetch_all()["value"]
-Q = results.Q.fetch_all()["value"]
-
-fig = plt.figure()
-
-# Plot the surface.
-plt.pcolormesh(f, t, state, shading="nearest")
-plt.xlabel("ω_d/2π [GHz]")
-plt.ylabel("wait time [ns]")
-plt.colorbar()
-plt.title("Ramsey experiment")
+plt.figure()
+G1=samples.con1.analog['1'][270:550]
+G2=samples.con1.analog['2'][270:550]
+ax1=plt.subplot(311)
+plt.plot(G1)
+plt.setp(ax1.get_xticklabels(), visible=False)
+plt.ylabel('D1[V]')
+plt.yticks(np.linspace(-0.1,0.2,5))
+plt.grid()
+ax2=plt.subplot(312,sharex=ax1)
+plt.plot(G2)
+plt.xlabel('time [ns]')
+plt.ylabel('D2[V]')
+plt.setp(ax2.get_xticklabels(), visible=False)
+plt.yticks(np.linspace(-0.2,0.1,5))
+plt.grid()
+ax3=plt.subplot(313,sharex=ax1)
+plt.plot(G1-G2)
+plt.xlabel('time [ns]')
+plt.ylabel('$\epsilon [V]$')
+plt.ylim([-0.3,0.6])
+plt.yticks(np.linspace(-0.1,0.5,5))
+plt.text(40,0.2,'Preparation stage')
+plt.text(170,0.2,'Readout stage')
+plt.grid()
+plt.show()

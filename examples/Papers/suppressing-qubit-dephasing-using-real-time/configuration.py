@@ -6,9 +6,26 @@ Amp = 0.2  # Pulse Amplitude
 gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
 gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
 gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
-readout_pulse_len = 20
-omega_10 = 4.958e9
-omega_d = omega_10/3
+readout_time = 100
+# omega_10 = 4.958e9
+# omega_d = omega_10 / 3
+
+pump_len = 100
+prep_len = 100
+ramp_len = 20
+ramp_max = 0.1
+
+v_prep_top=0.2
+v_prep_bot=-0.2
+v_readout_top=0.2
+v_readout_bot=-0.2
+v_evolve_top=0.1
+v_evolve_bot=-0.1
+
+ramp_down_prep=np.linspace(v_prep_top,v_evolve_bot,ramp_len).tolist()
+ramp_up_prep=np.linspace(v_prep_bot,v_evolve_top,ramp_len).tolist()
+ramp_up_readout=np.linspace(v_evolve_bot,v_readout_top,ramp_len).tolist()
+ramp_down_readout=np.linspace(v_evolve_top,v_readout_bot,ramp_len).tolist()
 
 config = {
     "version": 1,
@@ -16,111 +33,173 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0},
-                2: {"offset": +0.0},
-                3: {"offset": +0.0},
-                4: {"offset": +0.0},
-                5: {"offset": +0.0},
+                1: {"offset": +0.0},  # Vr
+                2: {"offset": +0.0},  # Vl
+                3: {"offset": +0.0},  # RF-QPC-Out
             },
             "analog_inputs": {
-                1: {"offset": +0.0},
+                1: {"offset": +0.0},  # RF-QPC-in
             },
         },
     },
     "elements": {
-        "qubit_control": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": 5.10e9,
-                "mixer": "mixer_qubit",
-            },
-            "intermediate_frequency": 0,  # ω_d,
+        "DET": {
+            "singleInput": {"port": ("con1", 1)},
+            "intermediate_frequency": 0e6,
             "operations": {
-                "gauss_pulse": "gauss_pulse_in",  # to a pulse
-                "pi_pulse": "pi_pulse_in"
-            },
-        },
-        "SFQ_trigger": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": 5.10e9,
-                "mixer": "mixer_qubit",
-            },
-            "intermediate_frequency": 0,  # ω_d,
-            "operations": {
-                "const_pulse": "const_pulse_in",  # to a pulse
-                "pi_pulse": "pi_pulse_in"
-            },
-        },
-        "qubit_flux_bias": {
-            "singleInput": {"port": ("con1", 5)},
-            "digitalInputs": {
-                "digital_input1": {
-                    "port": ("con1", 1),
-                    "delay": 0,
-                    "buffer": 0,
-                },
-            },
-            "intermediate_frequency": 5e6,
-            "operations": {
-                "playOp": "constPulse",
+                "evolve": "constPulse",  # to a pulse
             },
         },
 
-        "RR": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": 6.00e9,
-                "mixer": "mixer_res",
-            },
-            "intermediate_frequency": 50e6,  # 6.15e9,
+        "D1": {
+            "singleInput": {"port": ("con1", 1)},
+            "intermediate_frequency": 0e6,
+            # 'hold_offset':{'duration': 100},
             "operations": {
-                "meas_pulse": "meas_pulse_in",
+                "const" : "constPulse",
+                "prep" : "prepPosPulse",  # to a pulse
+                "pump" : "constPulse",
+                # "prep_neg": "constNegPulse",  # to a pulse
+                "evolve": "evolveD1Pulse",  # to a pulse
+                "readout": "readoutPosPulse",  # to a pulse
+                "ramp_down_evolve": "rampDownD1Pulse",
+                "ramp_up_read": "rampUpD1Pulse"
+            },
+        },
+        "D2": {
+            "singleInput": {"port": ("con1", 2)},
+            "intermediate_frequency": 0e6,
+            "operations": {
+                # "prep_pos": "constPosPulse",  # to a pulse
+                "prep": "prepNegPulse",  # to a pulse
+                "evolve": "evolveD2Pulse",  # to a pulse
+                "pump": "constPulse",
+                "readout": "readoutNegPulse",  # to a pulse
+                "ramp_down_read": "rampDownD2Pulse",
+                "ramp_up_evolve": "rampUpD2Pulse"
+            },
+        },
+        "D1_RF": {
+            "singleInput": {"port": ("con1", 1)},
+            "intermediate_frequency": 0e6,
+            "operations": {
+                "const":"constPulse",
+                # "prep": "prepPulse",  # to a pulse
+                # "readout": "readoutPulse",
+                # "s-pump": "pumpPulse",  # to a pulse
+                # "pi_pulse": "pi_pulse_in"
+            },
+        },
+        "D2_RF": {
+            "singleInput": {"port": ("con1", 2)},
+            "intermediate_frequency": 0e6,
+            "operations": {
+                "const":"constPulse",
+                # "prep": "prepPulse",  # to a pulse
+                # "readout": "readoutPulse",
+                # "s-pump": "pumpPulse",  # to a pulse
+                # "pi_pulse": "pi_pulse_in"
+            },
+        },
+
+        "RF-QPC": {
+            "singleInput": {"port": ("con1", 3)},
+            "intermediate_frequency": 200e6,
+            "operations": {
+                "measure": "measure_pulse",
             },
             "time_of_flight": 180,  # Measurement parameters
             "smearing": 0,
             "outputs": {"out1": ("con1", 1)},
         },
-        "SFQ_bias": {
-            "singleInput": {"port": ("con1", 5)},
-            "digitalInputs": {
-                "digital_input1": {
-                    "port": ("con1", 1),
-                    "delay": 0,
-                    "buffer": 0,
-                },
-            },
-            "intermediate_frequency": 5e6,
-            "operations": {
-                "playOp": "constPulse",
-            },
-        }
+
     },
     "pulses": {
-        "meas_pulse_in": {  # Readout pulse
+        "measure_pulse": {  # Readout pulse
             "operation": "measurement",
-            "length": readout_pulse_len,
+            "length": readout_time,
             "waveforms": {
-                "I": "exc_wf",  # Decide what pulse to apply for each component
-                "Q": "zero_wf",
+                "single": "const_wf",
             },
             "integration_weights": {
                 "integW1": "integW1",
                 "integW2": "integW2",
             },
         },
+
         "constPulse": {
             "operation": "control",
             "length": const_pulse_len,  # in ns
             "waveforms": {"single": "const_wf"}
         },
-        "gauss_pulse_in": {
+
+        "rampDownD1Pulse": {
             "operation": "control",
-            "length": gauss_pulse_len,
-            "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
+            "length": ramp_len,  # in ns
+            "waveforms": {"single": "ramp_down_d1_wf"}
+        },
+
+        "rampUpD1Pulse": {
+            "operation": "control",
+            "length": ramp_len,  # in ns
+            "waveforms": {"single": "ramp_up_d1_wf"}
+        },
+        "rampDownD2Pulse": {
+            "operation": "control",
+            "length": ramp_len,  # in ns
+            "waveforms": {"single": "ramp_down_d2_wf"}
+        },
+
+        "rampUpD2Pulse": {
+            "operation": "control",
+            "length": ramp_len,  # in ns
+            "waveforms": {"single": "ramp_up_d2_wf"}
+        },
+        "readoutPosPulse": {
+            "operation": "control",
+            "length": readout_time,  # in ns
+            "waveforms": {"single": "readout_pos_wf"}
+        },
+        "readoutNegPulse": {
+            "operation": "control",
+            "length": readout_time,  # in ns
+            "waveforms": {"single": "readout_neg_wf"}
+        },
+        "evolveD2Pulse": {
+            "operation": "control",
+            "length": const_pulse_len,  # in ns
+            "waveforms": {"single": "evolve_pos_wf"}
+        },
+        "evolveD1Pulse": {
+            "operation": "control",
+            "length": const_pulse_len,  # in ns
+            "waveforms": {"single": "evolve_neg_wf"}
+        },
+        "prepPosPulse": {
+            "operation": "control",
+            "length": const_pulse_len,  # in ns
+            "waveforms": {"single": "prep_pos_wf"}
+        },
+        "prepNegPulse": {
+            "operation": "control",
+            "length": const_pulse_len,  # in ns
+            "waveforms": {"single": "const_neg_wf"}
+        },
+
+        "prepPulse": {
+            "operation": "control",
+            "length": prep_len,
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
+        },
+        "readoutPulse": {
+            "operation": "control",
+            "length": readout_time,
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
+        },
+        "pumpPulse": {
+            "operation": "control",
+            "length": pump_len,
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
         },
         "pi_pulse_in": {  # Assumed to be calibrated
             "operation": "control",
@@ -134,20 +213,34 @@ config = {
         },
     },
     "waveforms": {
-        "const_wf": {"type": "constant", "sample": 0.2},
+        "const_wf": {"type": "constant", "sample": 0.1},
+        "prep_pos_wf": {"type": "constant", "sample": v_prep_top},
+        "prep_neg_wf": {"type": "constant", "sample": v_prep_bot},
+        "evolve_pos_wf": {"type": "constant", "sample": v_evolve_top},
+        "evolve_neg_wf": {"type": "constant", "sample": v_evolve_bot},
+        "readout_pos_wf": {"type": "constant", "sample": v_readout_top},
+        "readout_neg_wf": {"type": "constant", "sample": v_readout_bot},
+        "const_neg_wf": {"type": "constant", "sample": -0.2},
+        "ev_d1_wf": {"type": "constant", "sample": -0.2},
+        "ev_d2_wf": {"type": "constant", "sample": 0.1},
         "zero_wf": {"type": "constant", "sample": 0.0},
+        "ramp_down_d1_wf": {"type": "arbitrary", "samples": ramp_down_prep},
+        "ramp_up_d1_wf": {"type": "arbitrary", "samples": ramp_up_readout},
+        "ramp_down_d2_wf": {"type": "arbitrary", "samples": ramp_down_readout},
+        "ramp_up_d2_wf": {"type": "arbitrary", "samples": ramp_up_prep},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "exc_wf": {"type": "constant", "sample": 0.479},
+        "ramp_wf": {"type": "arbitrary", "samples": np.linspace(0, ramp_max, pump_len).tolist()},
     },
     "integration_weights": {  # Define integration weights for measurement demodulation
         "integW1": {
-            "cosine": [4.0] * readout_pulse_len,
+            "cosine": [4.0] * readout_time,
 
-            "sine": [0.0] * readout_pulse_len
+            "sine": [0.0] * readout_time
         },
         "integW2": {
-            "cosine": [0.0] * readout_pulse_len,
-            "sine": [4.0] * readout_pulse_len
+            "cosine": [0.0] * readout_time,
+            "sine": [4.0] * readout_time
         },
     },
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme
