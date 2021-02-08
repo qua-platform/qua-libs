@@ -13,8 +13,8 @@ Random access quantum information processors using multimode circuit quantum ele
 The system is composed of a transmon qubit coupled to a multimode cavity. The transmon 
 serves as a non-linear element allowing for energy to be exchanged between cavity modes. 
 
-The [script](ram_multimode.py) implements the measurement performed in the paper by defining 
-three quantum elements in the [configuration file](configuration.py): a `charge_line`, a `flux_line` 
+The script `ram_multimode.py` implements the measurement performed in the paper by defining 
+three quantum elements in the configuration file `configuration.py`: a `charge_line`, a `flux_line` 
 and a `readout_resonator` each is a mixed-input element driving a mixer. The charge line provides the XY control
 for the qubit. The flux line is modulated as to generate sidebands which can be made resonant with the different cavity modes, 
 providing the coupling between these modes.
