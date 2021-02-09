@@ -31,10 +31,9 @@ class Baking:
         self._qe_set = set()
         self._samples_dict = {}
 
-        print('started bake')
+        print('started bake object')
 
     def __enter__(self):
-        print('entered start')
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -61,6 +60,7 @@ class Baking:
         for qe in self._samples_dict.keys():
             qe_samps = self._samples_dict[qe]
             self._config['waveforms'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
+            self._config['pulses'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
             # TODO: update pulse
         # TODO: update ops for each QE
 
