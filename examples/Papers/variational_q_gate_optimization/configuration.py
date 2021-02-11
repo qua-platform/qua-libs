@@ -61,7 +61,7 @@ config = {
         }
     },
     "elements": {
-        "qubit0": {
+        "q0": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
@@ -75,7 +75,7 @@ config = {
                 "Y180": "Y180_pulse",
             },
         },
-        "CPW0": {
+        "RR0": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
@@ -90,7 +90,7 @@ config = {
             "smearing": 0,
             "outputs": {"out1": ("con1", 1)},
         },
-        "qubit1": {
+        "q1": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
@@ -104,7 +104,7 @@ config = {
                 "Y180": "Y180_pulse",
             },
         },
-        "CPW1": {
+        "RR1": {
             "mixInputs": {
                 "I": ("con1", 7),
                 "Q": ("con1", 8),
@@ -119,7 +119,7 @@ config = {
             "smearing": 0,
             "outputs": {"out1": ("con1", 2)},
         },
-        "coupler01": {
+        "C01": {
             "singleInput": {"port": ("con1", 5)},
             "digitalInputs": {
                 "digital_input1": {
@@ -210,6 +210,127 @@ config = {
     },
 }
 
+U_source = ["CR", "CR"]
+
+state_prep = {
+    "00": [],
+    "01": ["X2"],
+    "0+": ["H2"],
+    "0-": ["H2, S2"],
+    "10": ["X1"],
+    "11": ["X1", "X2"],
+    "1+": ["X1, H2"],
+    "1-": ["X1", "H2", "S2"],
+    "+0": ["H1"],
+    "+1": ["H1", "X1"],
+    "++": ["H1", "H2"],
+    "+-": ["H1", "H2", "S2"],
+    "-0": ["H1", "S1"],
+    "-1": ["H1", "S1", "X2"],
+    "-+": ["H1", "S1", "H2"],
+    "--": ["H1", "S1", "H2", "S2"]
+}
+
+
+def prepare_state(state):
+    for op in state_prep[state]:
+        qubit = "q" + op[-1]
+        if op[0] == "X":
+            Rx(π, qubit)
+        elif op[0] == "H":
+            Hadamard(qubit)
+        elif op[0] == "S":
+            frame_rotation(π/2, qubit)
+
+
+def Hadamard(qubit):
+    frame_rotation(π, qubit)
+    Ry(π/2, qubit)
+
+
+def change_basis(operator):
+    for op in tomography_set[operator]["Op"]:
+        qubit = "q" + op[-1]
+        if op[0] == "Y":
+            Ry(-π/2, qubit)
+        elif op[0] == "X":
+            Rx(-π/2, qubit)
+
+
+tomography_set = {
+    "ID__σ_x": {
+        "Op": ["Y2"],
+        "Ref": "ID__σ_z"
+    },
+    "ID__σ_y": {
+        "Op": ["X2"],
+        "Ref": "ID__σ_z"
+    },
+    "ID__σ_z": {
+        "Op": [],
+        "Ref": "ID__σ_z"
+    },
+
+    "σ_z__ID": {
+        "Op": [],
+        "Ref": "σ_z__ID",
+    },
+    "σ_z__σ_x": {
+        "Op": ["Y2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_z__σ_y": {
+        "Op": ["X2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_z__σ_z": {
+        "Op": [],
+        "Ref": "σ_z__σ_z"
+    },
+
+    "σ_y__ID": {
+        "Op": ["X1"],
+        "Ref": "σ_z__ID"
+    },
+    "σ_y__σ_x": {
+        "Op": ["X1", "Y2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_y__σ_y": {
+        "Op": ["X1", "X2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_y__σ_z": {
+        "Op": ["X1"],
+        "Ref": "σ_z__σ_z"
+    },
+
+    "σ_x__ID": {
+        "Op": ["Y1"],
+        "Ref": "σ_z__ID"
+    },
+    "σ_x__σ_x": {
+        "Op": ["Y1", "Y2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_x__σ_y": {
+        "Op": ["Y1", "X2"],
+        "Ref": "σ_z__σ_z"
+    },
+    "σ_x__σ_z": {
+        "Op": ["Y1"],
+        "Ref": "σ_z__σ_z"
+    }
+}
+
+
+def play_source_gate(source, params = 0):
+    if source == "CR":
+        CR(params)
+
+def generate_random_set(target_gate):
+    return state_prep, tomography_set
+
 def generate_binary(n):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
 
     # 2^(n-1)  2^n - 1 inclusive
@@ -241,8 +362,9 @@ def cost_function_C(x, G):  # Cost function for MaxCut problem, needs to be adap
 
 # QUA macros (pulse definition of quantum gates)
 
-def CR(ctrl, tgt):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
-    return None
+def CR(omega, ctrl="q0", tgt="q1"):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
+    if ctrl[-1]==0 and tgt[-1] ==1:
+        play("CR_Op"*amp(omega), "C01")
 
 
 def Rz(𝜆, tgt):
@@ -254,8 +376,7 @@ def Ry(𝜆, tgt):
 
 
 def Rx(𝜆, tgt):
-    play("X90"*amp(𝜆/(π/2)),tgt)
-
+    play("X90"*amp(𝜆/(π/2)), tgt)
 
 
 def measurement(RR, I, Q):  # Simple measurement command, could be changed/generalized
@@ -269,83 +390,13 @@ def raw_saving(I, Q, I_stream, Q_stream):
     save(Q, Q_stream)
 
 
-def state_saving(
-        I, Q, state_estimate, stream
-):  # Do state estimation protocol in QUA, and save the associated state
+def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol in QUA, and save the associated state
     # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
-    a = declare(fixed, value=1.0)
-    b = declare(fixed, value=1.0)
-    with if_(Q - a * I - b > 0):
-        assign(state_estimate, 1)
-    with else_():
-        assign(state_estimate, 0)
+    th = 0.2
+    assign(state_estimate, I > th)
     save(state_estimate, stream)
 
 
 # Main Python functions for launching QAOA algorithm
 
 
-def encode_angles_in_IO(γ, β):  # Insert angles values using IO1 by keeping track of where we are in the QUA program
-    if len(γ) != len(β):
-        raise IndexError
-    for i in range(len(γ)):
-        while not (job.is_paused()):
-            time.sleep(0.01)
-        QM.set_io1_value(γ[i])
-        QM.set_io2_value(β[i])
-        job.resume()
-
-
-def quantum_avg_computation(angles):  # Calculate Hamiltonian expectation value (cost function to optimize)
-
-    γ = angles[0: 2 * p: 2]
-    β = angles[1: 2 * p: 2]
-    job.resume()
-
-    encode_angles_in_IO(γ, β)
-
-    # Implement routine here to set IO values and resume the program, and adapt prior part (or remove it)
-
-    while not (job.is_paused()):
-        time.sleep(0.0001)
-    results = job.result_handles
-    # time.sleep()
-    output_states = []
-    # Those commands do retrieve the results in generic variables called state#i with #i being a number between 0 and n-1
-    # Those results are then stored in a bigger array called output_states
-    timing = results.timing.fetch_all()["value"]
-    print(timing[-1])
-    for d in range(n):
-        output_states.append(results.get("state" + str(d)).fetch_all())
-
-    counts = (
-        {}
-    )  # Dictionary containing statistics of measurement of each bitstring obtained
-    for i in range(2 ** n):
-        counts[generate_binary(n)[i]] = 0
-
-    for i in range(
-            N_shots
-    ):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
-        bitstring = ""
-        for j in range(len(output_states)):
-            bitstring += str(output_states[j][i])
-        counts[bitstring] += 1
-
-    avr_C = 0
-
-    for bitstr in list(
-            counts.keys()
-    ):  # Computation of expectation value according to simulation results
-
-        # use sampled bit string x to compute C(x)
-        x = [int(num) for num in list(bitstr)]
-        tmp_eng = cost_function_C(x)
-
-        # compute the expectation value and energy distribution
-        avr_C = avr_C + counts[bitstr] * tmp_eng
-
-    Mp_sampled = avr_C / N_shots
-
-    return -Mp_sampled  # minus sign because optimizer will minimize the function,
-    # to get the maximum value one takes the absolute value of the yielded result of  optimization
