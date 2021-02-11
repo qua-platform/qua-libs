@@ -6,7 +6,8 @@ slug: ./
 ---
 
 ## IQ Mixer mathematical model
-
+tl;dr - At the bottom of this page you can find scripts for calibrating a mixer for imbalances. The mathmatical model explaining the IQ imbalances that can be found here is mostly based on:
+[Calibration of mixer amplitude and phase imbalance in superconducting circuits][https://aip.scitation.org/doi/full/10.1063/5.0025836]
 ### Up-conversation
 
 #### Ideal Mixer
@@ -66,9 +67,10 @@ z^*[\omega-\Omega]
 \end{pmatrix}
 $$
 
-When we defined $A_{RF}[\omega] = a[\omega] + a^*[-\omega]$.
-Note that generally speaking, this creates two sidebands at the two sides of $\Omega$. 
+Where $A_{RF}[\omega] = a[\omega] + a^*[-\omega]$.
+Note that generally speaking, this creates two sidebands at the two sides of $\Omega$.
 We will treat the upper sideband as the signal, and the lower as the image, which can be removed by a proper choice of $z(t)$.
+Note that $a[\omega]$ represent the signal while $a^*[-\omega]$ represents the image.
 
 ------------------------------------------------------------
 > **_Example:_** : 
@@ -99,15 +101,15 @@ The math we described above arise from the mixing of two branches:
 In an ideal mixer, it is assumed that these two branches are identical both in amplitude and in phase. When the mixer is not ideal this can be modeled as:
 
 $$
-A_{RF}(t) = \text{Re}\left\{z(t) A_0 \left[\text{cos}(\Omega t) + i r \text{sin}(\Omega t+\phi) \right] \right\}
+A_{RF}(t) = \text{Re}\left\{z(t) A_0 \left[\text{cos}(\Omega t) + i r_{up} \text{sin}(\Omega t+\phi_{up}) \right] \right\}
 $$
 
-Where $r$ and $\phi$ are the relative amplitude and phase mismatch between the two branches. Note that $r=1$ and $\phi=0$ restore the ideal mixer equation.
+Where $r_{up}$ and $\phi_{up}$ are the relative amplitude and phase mismatch between the two branches. Note that $r_{up}=1$ and $\phi_{up}=0$ restore the ideal mixer equation.
 
 In addition to the branches' imbalance, non-ideal mixers also have LO leakage which can be modeled as:
 
 $$
-A_{RF}(t) = \text{Re}\left\{z(t) A_0 \left[\text{cos}(\Omega t) + i r \text{sin}(\Omega t+\phi) \right] + \epsilon A_0 e^{i \Omega t} \right\}
+A_{RF}(t) = \text{Re}\left\{z(t) A_0 \left[\text{cos}(\Omega t) + i r_{up} \text{sin}(\Omega t+\phi_{up}) \right] + \epsilon A_0 e^{i \Omega t} \right\}
 $$
 
 In the frequency domain, this takes the form of:
@@ -120,8 +122,8 @@ a^*[-\omega]
 =
 \frac{1}{4}
 \begin{pmatrix}
-d^* & o \\
-o^* & d 
+J_{up}^* & K_{up} \\
+K_{up}^* & J_{up} 
 \end{pmatrix}
 \begin{pmatrix}
 z[\omega+\Omega] \\
@@ -135,7 +137,7 @@ z^*[\omega-\Omega]
 \end{pmatrix}
 $$
 
-With $d = 1 + r e^ {-i \phi}$ and $o = 1 - r e^ {i \phi}$.
+With $J_{up}  = 1 + r e^ {-i \phi}$ and $K_{up} = 1 - r_{up} e^ {i \phi_{up}}$.
 
 Note that the non-ideal mixer will have leakage terms at $\Omega$ and at the image sideband. 
 Adding a constant term to $z(t)$ can cancel the LO leakage term.
@@ -186,78 +188,56 @@ $$
 Where 'LPF' indicates a Low Pass Filter. The imbalance comes similarly:
 
 $$
-\tilde{z}(t) = \tilde{z}_I(t) + i \tilde{z}_Q(t) = \text{LPF}\left\{A_{RF}(t) \left[2 (1+\varepsilon_a)\text{cos}(\Omega t-\varepsilon_\phi) + 2 i (1-\varepsilon_a) \text{sin}(\Omega t+\varepsilon_\phi) \right] \right\}
+\tilde{z}(t) = \tilde{z}_I(t) + i \tilde{z}_Q(t) = \text{LPF}\left\{A_{RF}(t) \left[\text{cos}(\Omega t) + i r_{down} \text{sin}(\Omega t+\phi_{down}) \right] \right\}
 $$
 
-The transformation from $z$ to $\tilde{z}$ can be represented by the following imbalance matrix:
+Looking again in the frequency domain, we can write:
 
 $$
 \begin{pmatrix}
-\tilde{z}_I(t) \\
-\tilde{z}_Q(t)
-\end{pmatrix}
+z[\omega] \\
+z^*[-\omega] 
+\end{pmatrix} 
 =
+\frac{1}{4}
 \begin{pmatrix}
-(1+\varepsilon_a) \text{cos}(\varepsilon_\phi) & (1+\varepsilon_a) \text{sin}(\varepsilon_\phi) \\
-- (1-\varepsilon_a) \text{sin}(\varepsilon_\phi) & - (1-\varepsilon_a) \text{cos}(\varepsilon_\phi)
+J_{down} & K_{down} \\
+K_{down}^* & J_{down}^* 
 \end{pmatrix}
 \begin{pmatrix}
-z_I(t) \\
-z_Q(t)
+A[\omega + \Omega] \\
+A^*[\omega - \Omega] 
 \end{pmatrix}
 $$
+
+With $J_{down}  = 1 + r e^ {-i \phi}$ and $K_{down} = 1 - r_{down} e^ {i \phi_{down}}$.
+Where $A_{RF}[\omega] = A[\omega + \Omega] + A^*[\omega - \Omega]$.
+$A[\omega + \Omega]$ is the contribution from the signal which, in an ideal mixer, would have gone strictly to $z[\omega]$.
+$A^*[\omega - \Omega]$ is the contribution from the image which, in an ideal mixer, would have gone strictly to $z^*[\omega]$.
   
-Which can be further decomposed as:
+The matrix above can be further decomposed as:
 
 $$
 \begin{pmatrix}
-(1+\varepsilon_a) \text{cos}(\varepsilon_\phi) & (1+\varepsilon_a) \text{sin}(\varepsilon_\phi) \\
-- (1-\varepsilon_a) \text{sin}(\varepsilon_\phi) & - (1-\varepsilon_a) \text{cos}(\varepsilon_\phi)
+J_{down} & K_{down} \\
+K_{down}^* & J_{down}^*
 \end{pmatrix}
 =
+2
 \underbrace{\begin{pmatrix}
-1 & \text{tan}(\varepsilon_\phi) \\
-\text{tan}(\varepsilon_\phi) & 1
+1 * & k \\
+k^* & 1 
 \end{pmatrix}}_{\text{Leakage}}
 \underbrace{\begin{pmatrix}
-(1+\varepsilon_a) \text{cos}(\varepsilon_\phi) & 0 \\
-0 & - (1-\varepsilon_a) \text{cos}(\varepsilon_\phi)
+J_{down} & 0 \\
+0 & J_{down}^*
 \end{pmatrix}}_{\text{Scaling}}
 $$
-  
-We can see that the matrix can be decomposed into two terms: The 1st which causes the leakage between the sidebands and a 2nd which only scales the results.
-We can ignore the 2nd term as the scaling is not important for practical applications. Furthermore, we note that the leakage term only depends on a single parameter $\text{tan}(\varepsilon_\phi)$.
-The inverse leakage matrix is given by:
 
-$$
-\begin{pmatrix}
--1 & \text{tan}(\varepsilon_\phi) \\
-\text{tan}(\varepsilon_\phi) & -1
-\end{pmatrix}
-$$
+With $k = \frac{K_{down}}{J_{down}} = \frac{1 - r_{down} e^ {i \phi_{down}}}{1 + r_{down} e^ {i \phi_{down}}}
 
-The normalization by the determinant was also ignored as it only scales the data.
-
-In order to correct the down-conversation we only need to multiply $\tilde{z}$ by the inverse matrix:
-
- $$
-\begin{pmatrix}
-z_I(t) \\
-z_Q(t)
-\end{pmatrix}
-=
-N
-\begin{pmatrix}
--1 & \text{tan}(\varepsilon_\phi) \\
-\text{tan}(\varepsilon_\phi) & -1
-\end{pmatrix}
-\begin{pmatrix}
-\tilde{z}_I(t) \\
-\tilde{z}_Q(t)
-\end{pmatrix}
-$$
-
-Where $N$ is a diagonal matrix which we ignore.
+We can see that the matrix can be decomposed into two terms: The 1st which causes the leakage between the sidebands and the 2nd which only scales the results.
+We can ignore the 2nd term as the scaling is not important for practical applications. Furthermore, we note that the leakage term only depends on a single parameter $k$.
 
 ## Scripts for mixer calibration
 
