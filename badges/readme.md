@@ -1,0 +1,7 @@
+![SC](badges/SC.png)
+![NV](badges/nv.png)
+![qd](badges/qd.png)
+![ions](badges/ions.png)
+![feature](badges/feature.png)
+![sanctioned](badges/sanctioned.png)
+![community](badges/community.png)
