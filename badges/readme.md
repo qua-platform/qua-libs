@@ -1,3 +1,7 @@
+# Badges 
+
+We have created a set of badged you can use to annotate scripts
+
 ![SC](SC.png)
 ![NV](nv.png)
 ![qd](qd.png)
