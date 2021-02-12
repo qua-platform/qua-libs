@@ -344,22 +344,6 @@ def generate_binary(n):  # Define a function to generate a list of binary string
     return bin_arr
 
 
-def cost_function_C(x, G):  # Cost function for MaxCut problem, needs to be adapted to the considered optimization problem
-
-    E = G.edges()
-    if len(x) != len(G.nodes()):
-        return np.nan
-
-    C = 0
-    for edge in E:
-        e1 = edge[0]
-        e2 = edge[1]
-        w = G[e1][e2]["weight"]
-        C = C + w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
-
-    return C
-
-
 # QUA macros (pulse definition of quantum gates)
 
 def CR(omega, ctrl="q0", tgt="q1"):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
