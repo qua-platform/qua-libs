@@ -14,7 +14,7 @@ n = 2  # number of qubits
 d = 1  # depth of the quantum circuit
 N_shots = 10  # Define number of shots necessary to compute exp
 optimizer = "COBYLA"
-qm1 = QuantumMachinesManager()
+qm1 = QuantumMachinesManager("3.122.60.129")
 QM = qm1.open_qm(config)
 
 target_gate = np.array([[1, 0, 0, 0],  # CNOT gate
@@ -46,7 +46,7 @@ with program() as VQGO:
                                        ["RR" + str(i) for i in range(n)]
 
     rotation_angles = [[declare(fixed, size=3)] * n] * (d + 1)
-    source_params = [[declare(fixed, size=n - 1)] * (d + 1)]
+    source_params = [declare(fixed, size=n - 1)] * (d + 1)
 
     """Beginning of the experiment, infinite_loop is used. Each iteration consists in a new call in the
     Python of the evaluation of the cost function"""
@@ -127,7 +127,7 @@ def encode_params_in_IO(rot_angles, s_params):
 def AGI(params):  # Calculate cost function
 
     job.resume()
-    rot_angles = params[0:3 * n * (d + 1)]
+    rot_angles = params[0: 3 * n * (d + 1)]
     s_params = params[3 * n * (d + 1):]
 
     encode_params_in_IO(rot_angles, s_params)
@@ -155,26 +155,26 @@ def AGI(params):  # Calculate cost function
                 expectation_values[st][ope] = {}
                 for l in range(len(output_states)):
                     bitstring += str(output_states[l][i][s][r])
-                    if bitstring in counts[st][ope]:
-                        counts[st][ope][bitstring] = 0
-                        expectation_values[st][ope][bitstring] = 0
-                    else:
-                        counts[st][ope][bitstring] += 1
-                        if tomography_set[ope]["Ref"] == "ID__σ_z":
-                            if bitstring == "00" or bitstring == "10":
-                                expectation_values[st][ope][bitstring] += 1 / N_shots
-                            elif bitstring == "01" or bitstring == "11":
-                                expectation_values[st][ope][bitstring] -= 1 / N_shots
-                        if tomography_set[ope]["Ref"] == "σ_z__σ_z":
-                            if bitstring == "00" or bitstring == "11":
-                                expectation_values[st][ope][bitstring] += 1 / N_shots
-                            elif bitstring == "10" or bitstring == "01":
-                                expectation_values[st][ope][bitstring] -= 1 / N_shots
-                        if tomography_set[ope]["Ref"] == "σ_z__ID":
-                            if bitstring == "00" or bitstring == "01":
-                                expectation_values[st][ope][bitstring] += 1 / N_shots
-                            elif bitstring == "10" or bitstring == "11":
-                                expectation_values[st][ope][bitstring] -= 1 / N_shots
+                if not(bitstring in counts[st][ope]):
+                    counts[st][ope][bitstring] = 0
+                    expectation_values[st][ope][bitstring] = 0
+                else:
+                    counts[st][ope][bitstring] += 1
+                    if tomography_set[ope]["Ref"] == "ID__σ_z":
+                        if bitstring == "00" or bitstring == "10":
+                            expectation_values[st][ope][bitstring] += 1 / N_shots
+                        elif bitstring == "01" or bitstring == "11":
+                            expectation_values[st][ope][bitstring] -= 1 / N_shots
+                    if tomography_set[ope]["Ref"] == "σ_z__σ_z":
+                        if bitstring == "00" or bitstring == "11":
+                            expectation_values[st][ope][bitstring] += 1 / N_shots
+                        elif bitstring == "10" or bitstring == "01":
+                            expectation_values[st][ope][bitstring] -= 1 / N_shots
+                    if tomography_set[ope]["Ref"] == "σ_z__ID":
+                        if bitstring == "00" or bitstring == "01":
+                            expectation_values[st][ope][bitstring] += 1 / N_shots
+                        elif bitstring == "10" or bitstring == "11":
+                            expectation_values[st][ope][bitstring] -= 1 / N_shots
 
     cost = 0
     return cost

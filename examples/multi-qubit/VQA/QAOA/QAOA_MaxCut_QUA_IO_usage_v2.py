@@ -113,7 +113,8 @@ def cost_function_C(
 
 # QUA macros (pulse definition of quantum gates)
 def Hadamard(tgt):
-    U2(tgt, 0, π)
+    Rz(π, tgt)
+    Y90(tgt)
 
 
 def U2(tgt, 𝜙=0, 𝜆=0):

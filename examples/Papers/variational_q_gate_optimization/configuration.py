@@ -42,6 +42,16 @@ y180waveform = gauss(
 )  # Assume you have calibration for a X90 pulse
 y180der_waveform = gauss_der(2 * x90amp, x90mean, x90std, x90detuning, x90duration)
 
+# CR pulse
+CR_amp = 0.4
+CR_std = 0.2
+CR_mean = 0
+CR_duration = 1000
+CR_detuning = 0
+CR_waveform = gauss(CR_amp, CR_mean, CR_std, CR_detuning, CR_duration)
+CR_der = gauss_der(CR_amp, CR_mean, CR_std, CR_detuning, CR_duration)
+omega_c = 1e6
+omega_t = 2e6
 config = {
     "version": 1,
     "controllers": {
@@ -53,6 +63,9 @@ config = {
                 3: {"offset": +0.0},
                 4: {"offset": +0.0},
                 5: {"offset": +0.0},
+                6: {"offset": +0.0},
+                7: {"offset": +0.0},
+                8: {"offset": +0.0},
             },
             "analog_inputs": {
                 1: {"offset": +0.0},
@@ -66,13 +79,14 @@ config = {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
                 "lo_frequency": 5.10e7,
-                "mixer": "mixer_qubit",
+                "mixer": "mixer_q0",
             },
-            "intermediate_frequency": 0,  # 5.2723e9,
+            "intermediate_frequency": omega_c,  # 5.2723e9,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR": "CR_pulse"
             },
         },
         "RR0": {
@@ -95,13 +109,14 @@ config = {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
                 "lo_frequency": 5.10e7,
-                "mixer": "mixer_qubit",
+                "mixer": "mixer_q1",
             },
-            "intermediate_frequency": 0,  # 5.2122e9,
+            "intermediate_frequency": omega_t,  # 5.2122e9,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR": "CR_pulse"
             },
         },
         "RR1": {
@@ -167,6 +182,11 @@ config = {
             "operation": "control",
             "length": 1000,
             "waveforms": {"single": "const_wf"}
+        },
+        "CR_pulse": {
+            "operation": "control",
+            "length": 1000,
+            "waveforms": {"I": "CR_wf", "Q": "CR_der_wf"},
         }
     },
     "waveforms": {
@@ -177,6 +197,8 @@ config = {
         "y180_wf": {"type": "arbitrary", "samples": y180waveform},
         "y180_der_wf": {"type": "arbitrary", "samples": y180der_waveform},
         "exc_wf": {"type": "constant", "sample": 0.479},
+        "CR_wf" : {"type": "arbitrary", "samples": CR_waveform},
+        "CR_der_wf" : {"type": "arbitrary", "samples": CR_der},
     },
     "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},
     "integration_weights": {  # Define integration weights for measurement demodulation
@@ -200,9 +222,16 @@ config = {
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
-        "mixer_qubit": [
+        "mixer_q0": [
             {
-                "intermediate_frequency": 0,
+                "intermediate_frequency": omega_c,
+                "lo_frequency": 5.10e7,
+                "correction": [1.0, 0.0, 0.0, 1.0],
+            }
+        ],
+        "mixer_q1": [
+            {
+                "intermediate_frequency": omega_t,
                 "lo_frequency": 5.10e7,
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
@@ -214,21 +243,21 @@ U_source = ["CR", "CR"]
 
 state_prep = {
     "00": [],
-    "01": ["X2"],
-    "0+": ["H2"],
-    "0-": ["H2, S2"],
-    "10": ["X1"],
-    "11": ["X1", "X2"],
-    "1+": ["X1, H2"],
-    "1-": ["X1", "H2", "S2"],
-    "+0": ["H1"],
-    "+1": ["H1", "X1"],
-    "++": ["H1", "H2"],
-    "+-": ["H1", "H2", "S2"],
-    "-0": ["H1", "S1"],
-    "-1": ["H1", "S1", "X2"],
-    "-+": ["H1", "S1", "H2"],
-    "--": ["H1", "S1", "H2", "S2"]
+    "01": ["X1"],
+    "0+": ["H1"],
+    "0-": ["H1, S1"],
+    "10": ["X0"],
+    "11": ["X0", "X1"],
+    "1+": ["X0, H1"],
+    "1-": ["X0", "H1", "S1"],
+    "+0": ["H0"],
+    "+1": ["H0", "X0"],
+    "++": ["H0", "H1"],
+    "+-": ["H0", "H1", "S1"],
+    "-0": ["H0", "S0"],
+    "-1": ["H0", "S0", "X1"],
+    "-+": ["H0", "S0", "H1"],
+    "--": ["H0", "S0", "H1", "S1"]
 }
 
 
@@ -244,8 +273,8 @@ def prepare_state(state):
 
 
 def Hadamard(qubit):
-    frame_rotation(π, qubit)
-    Ry(π/2, qubit)
+    frame_rotation(-π, qubit)
+    play("Y90", qubit)
 
 
 def change_basis(operator):
@@ -259,11 +288,11 @@ def change_basis(operator):
 
 tomography_set = {
     "ID__σ_x": {
-        "Op": ["Y2"],
+        "Op": ["Y1"],
         "Ref": "ID__σ_z"
     },
     "ID__σ_y": {
-        "Op": ["X2"],
+        "Op": ["X1"],
         "Ref": "ID__σ_z"
     },
     "ID__σ_z": {
@@ -276,11 +305,11 @@ tomography_set = {
         "Ref": "σ_z__ID",
     },
     "σ_z__σ_x": {
-        "Op": ["Y2"],
+        "Op": ["Y1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_z__σ_y": {
-        "Op": ["X2"],
+        "Op": ["X1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_z__σ_z": {
@@ -289,36 +318,36 @@ tomography_set = {
     },
 
     "σ_y__ID": {
-        "Op": ["X1"],
+        "Op": ["X0"],
         "Ref": "σ_z__ID"
     },
     "σ_y__σ_x": {
-        "Op": ["X1", "Y2"],
+        "Op": ["X0", "Y1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_y__σ_y": {
-        "Op": ["X1", "X2"],
+        "Op": ["X0", "X1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_y__σ_z": {
-        "Op": ["X1"],
+        "Op": ["X0"],
         "Ref": "σ_z__σ_z"
     },
 
     "σ_x__ID": {
-        "Op": ["Y1"],
+        "Op": ["Y0"],
         "Ref": "σ_z__ID"
     },
     "σ_x__σ_x": {
-        "Op": ["Y1", "Y2"],
+        "Op": ["Y0", "Y1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_x__σ_y": {
-        "Op": ["Y1", "X2"],
+        "Op": ["Y0", "X1"],
         "Ref": "σ_z__σ_z"
     },
     "σ_x__σ_z": {
-        "Op": ["Y1"],
+        "Op": ["Y0"],
         "Ref": "σ_z__σ_z"
     }
 }
@@ -328,8 +357,10 @@ def play_source_gate(source, params = 0):
     if source == "CR":
         CR(params)
 
+
 def generate_random_set(target_gate):
     return state_prep, tomography_set
+
 
 def generate_binary(n):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
 
@@ -346,9 +377,11 @@ def generate_binary(n):  # Define a function to generate a list of binary string
 
 # QUA macros (pulse definition of quantum gates)
 
-def CR(omega, ctrl="q0", tgt="q1"):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
-    if ctrl[-1]==0 and tgt[-1] ==1:
-        play("CR_Op"*amp(omega), "C01")
+def CR(Omega, ctrl="q0", tgt="q1"):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
+    if ctrl[-1] == 0 and tgt[-1] == 1:
+        update_frequency("ctrl", omega_t)
+        play("CR"*amp(Omega), "ctrl")
+        update_frequency("ctrl", omega_c)
 
 
 def Rz(𝜆, tgt):
@@ -375,12 +408,11 @@ def raw_saving(I, Q, I_stream, Q_stream):
 
 
 def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol in QUA, and save the associated state
-    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
+    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane
+    # (calibration required), here a & b are arbitrary
     th = 0.2
     assign(state_estimate, I > th)
     save(state_estimate, stream)
 
-
-# Main Python functions for launching QAOA algorithm
 
 
