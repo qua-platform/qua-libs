@@ -30,13 +30,7 @@ module.exports = [
         "label": "Characterization",
         "items": [
             "characterization/active-reset/index",
-        ]
-    },
-    {
-        "type": "category",
-        "label": "Calibrations",
-        "items": [
-        {
+            {
           type: 'category',
           label: 'T1',
           items: ["calibration/T1/superconducting-qubits/index"]
@@ -47,6 +41,13 @@ module.exports = [
           label: 'T2',
           items: ["calibration/T2/superconducting-qubits/index"]
           },
+        ]
+    },
+    {
+        "type": "category",
+        "label": "Calibrations",
+        "items": [
+
 //            "calibration/T2/index",
             "calibration/rabi-sweeps/index",
             "calibration/rabi-sweeps/helper-for-high-res-time-rabi/index",
