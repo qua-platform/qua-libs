@@ -33,13 +33,13 @@ module.exports = [
             {
           type: 'category',
           label: 'T1',
-          items: ["calibration/T1/superconducting-qubits/index"]
+          items: ["characterization/T1/superconducting-qubits/index"]
           },
 
         {
           type: 'category',
           label: 'T2',
-          items: ["calibration/T2/superconducting-qubits/index"]
+          items: ["characterization/T2/superconducting-qubits/index"]
           },
         ]
     },
