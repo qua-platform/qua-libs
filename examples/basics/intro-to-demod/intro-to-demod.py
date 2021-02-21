@@ -15,8 +15,7 @@ import matplotlib.pyplot as plt
 # Open communication with the server.
 QMm = QuantumMachinesManager()
 
-# Create a quantum machine based on the configuration.
-QM1 = QMm.open_qm(config)
+
 
 num_segments = 25
 
@@ -28,6 +27,8 @@ chunks_per_window = 3
 config["integration_weights"]["xWeights"]["cosine"] = [0.1] * num_segments * seg_length
 config["integration_weights"]["yWeights"]["sine"] = [0.0] * num_segments * seg_length
 
+# Create a quantum machine based on the configuration.
+QM1 = QMm.open_qm(config)
 
 with program() as measureProg:
     ind = declare(int)
