@@ -19,17 +19,39 @@ def baking(config):
     return Baking(config)
 
 
+def get_baking_index(config: dict):
+    index = 0
+    for pulse in list(config["pulses"].keys()):
+        if pulse.find("baked") != -1:  # Check if pulse comes from a previous baking
+            index += 1
+    return index
+
+
+def generate_samples_dict(config: dict):
+    sample_dict = {}
+    for qe in config["elements"].keys():
+        if "mixInputs" in config["elements"][qe]:
+            sample_dict[qe] = {"I": [],
+                               "Q": []}
+        elif "singleInput" in config["elements"][qe]:
+            sample_dict[qe] = []
+    return sample_dict
+
+
 class Baking:
-    _ctr = 0  # unique name counter
 
     def __init__(self, config):
         self._config = config
         self._local_config = {}
         self._local_config.update(config)
-        self._qe_time_dict = {}  # a dictionary to hold the latest play time per QE
+        self._qe_dict = {qe: {"time": 0,
+                              "phase": 0
+                              } for qe in self._local_config["elements"].keys()
+                         }
         self._seq = []
-        self._qe_set = set()
-        self._samples_dict = {}
+        # self._qe_set = set()
+        self._samples_dict = generate_samples_dict(self._local_config)
+        self._ctr = get_baking_index(self._local_config)  # unique name counter
 
         print('started bake object')
 
@@ -53,16 +75,57 @@ class Baking:
 
         # add samples to each QE to make a multiple of 4
 
-        for qe in self._get_qe_set():
-            if not self._qe_time_dict[qe] % 4 == 0:
-                self.wait(4 - self._qe_time_dict[qe] % 4, qe)
+        for qe in self._local_config["elements"].keys():
+            if not self._qe_dict[qe]["time"] % 4 == 0:
+                self.wait(4 - self._qe_dict[qe]["time"] % 4, qe)
 
         for qe in self._samples_dict.keys():
-            qe_samps = self._samples_dict[qe]
-            self._config['waveforms'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
-            self._config['pulses'][f"{qe}_arb_{Baking._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
+            qe_samples = self._samples_dict[qe]
+            if len(qe_samples) > 0:
+                self._config["elements"][qe]["operations"][f"baked_Op_{self._ctr}"] = f"{qe}_baked_pulse_{self._ctr}"
+                if "I" in qe_samples:
+                    self._config["pulses"][f"{qe}_baked_pulse_{self._ctr}"] = {'operation': 'control',
+                                                                               'length': len(qe_samples["I"]),
+                                                                               'waveforms': {
+                                                                                    'I': f"{qe}_baked_wf_I_{self._ctr}",
+                                                                                    'Q': f"{qe}_baked_wf_Q_{self._ctr}"
+                                                                                }
+                                                                               }
+                    self._config["waveforms"][f"{qe}_baked_wf_I_{self._ctr}"] = {
+                        "type": "arbitrary",
+                        "samples": qe_samples["I"]
+                    }
+                    self._config["waveforms"][f"{qe}_baked_wf_Q_{self._ctr}"] = {
+                        "type": "arbitrary",
+                        "samples": qe_samples["Q"]
+                    }
+
+                elif type(qe_samples) == list:
+                    self._config["pulses"][f"{qe}_baked_pulse_{self._ctr}"] = {'operation': 'control',
+                                                                               'length': len(qe_samples["I"]),
+                                                                               'waveforms': {
+                                                                                   'single': f"{qe}_baked_wf_{self._ctr}"
+                                                                                }
+                                                                               }
+                    self._config["waveforms"][f"{qe}_baked_wf_{self._ctr}"] = {
+                        "type": "arbitrary",
+                        "samples": qe_samples
+                    }
+
+
+            # if "mixInputs" in self._local_config["elements"][qe].keys():
+            #     self._config['waveforms'][f"{qe}_arb_{self._ctr}"] = {"type": "arbitrary", "samples": qe_samps}
+            #     self._config['pulses'][f"{qe}_baked_{self._ctr}"] = {
+            #     'operation': 'control',
+            #     'length': len(qe_samps),
+            #     'waveforms': {
+            #         'I': 'x90_wf',
+            #         'Q': 'x90_der_wf'
+            #     }
+            # },
             # TODO: update pulse
         # TODO: update ops for each QE
+
 
         # update config with uniquely named baked waveforms
 
@@ -71,47 +134,78 @@ class Baking:
         print('entered exit')
 
     def play(self, pulse: str, qe: str) -> None:
-        '''
+        """
         Add a pulse to the bake sequence
         :param pulse: pulse to play
         :param qe: Quantum element to play to
         :return:
-        '''
+        """
         try:
             if pulse in self._local_config['pulses'].keys():
-                self._seq.append(PlayBop(pulse, qe))
+                # self._seq.append(PlayBop(pulse, qe))
                 samples = self._get_samples(pulse)
-                self._samples_dict[qe] = samples #TODO: concatenate samples
-                self._update_qe_time(qe, len(samples))
-                print(self._samples_dict)
-                print(self._qe_time_dict)
-                self._update_qe_set() #TODO: do i need this on every play?
+                phi = self._qe_dict[qe]["phase"]
+                if "mixInputs" in self._local_config["elements"][qe].keys():
+                    if type(samples[0]) != list:
+                        print(f"Error : samples given do not correspond to mixInputs for element {qe} ")
+                    I = samples[0]
+                    Q = samples[1]
+                    I2 = [None] * len(I)
+                    Q2 = [None] * len(Q)
+
+                    for i in range(len(I)):
+                        I2[i] = np.cos(phi)*I[i] - np.sin(phi)*Q[i]
+                        Q2[i] = np.sin(phi)*I[i] + np.cos(phi)*Q[i]
+                        self._samples_dict[qe]["I"].append(I2[i])
+                        self._samples_dict[qe]["Q"].append(Q2[i])
+
+                    self._update_qe_time(qe, len(I))
+
+                elif "singleInput" in self._local_config["elements"][qe].keys():
+                    for sample in samples:
+                        self._samples_dict[qe].append(np.cos(phi)*sample)
+                    self._update_qe_time(qe, len(samples))
+
+
+
+                # print(self._samples_dict)
+                # print(self._qe_time_dict)
+                # self._update_qe_set() #TODO: do i need this on every play?
         except KeyError:
             raise KeyError(f'Pulse:"{pulse}" does not exist in configuration and not manually added (use add_pulse)')
 
-    def _gen_pulse_name(self) -> str:
-        Baking._ctr = Baking._ctr + 1
-        return f"b_wf_{Baking._ctr}"
+    def frame_rotation(self, angle, qe):
+        """
+        Shift the phase of the oscillator associated with a quantum element by the given angle.
+        This is typically used for virtual z-rotations.
+        """
+        self._update_qe_phase(qe, angle)
 
-    def _update_qe_set(self):
-        self._qe_set = self._get_qe_set()
+    def reset_frame(self, qe):
+        self._update_qe_phase(qe, 0.)
 
-    def _get_qe_set(self) -> Set[str]:
+    # def _gen_pulse_name(self) -> str:
+    #     return f"b_wf_{self._ctr}"
 
-        return set(flatten([el.qe for el in self._seq]))
+    # def _update_qe_set(self):
+    #     self._qe_set = self._get_qe_set()
+
+    # def _get_qe_set(self) -> Set[str]:
+    #
+    #     return set(flatten([el.qe for el in self._seq]))
 
     def _update_qe_time(self, qe: str, dt: int):
-        if qe in self._qe_time_dict.keys():
-            self._qe_time_dict[qe] = self._qe_time_dict[qe] + dt
-        else:
-            self._qe_time_dict[qe] = dt
+        self._qe_dict[qe]["time"] += dt
+
+    def _update_qe_phase(self, qe: str, phi: float):
+        self._qe_dict[qe]["phase"] = phi
 
     def _get_samples(self, pulse: str) -> Union[List[float], List[List]]:
-        '''
-        returns samples associated with a pulse
+        """
+        Returns samples associated with a pulse
         :param pulse:
-        :return:
-        '''
+        :returns: Python list containing samples, [samples_I, samples_Q] in case of mixInputs
+        """
         try:
             if 'single' in self._local_config['pulses'][pulse]['waveforms'].keys():
                 wf = self._local_config['pulses'][pulse]['waveforms']['single']
@@ -127,55 +221,107 @@ class Baking:
             raise KeyError(f'No waveforms found for pulse {pulse}')
 
     def wait(self, duration: int, qe: str):
-        self._seq.append(WaitBop(duration, qe))
+        """
+        Wait for the given duration on all provided elements.
+        During the wait command the OPX will output 0.0 to the elements.
+
+        :param duration: waiting duration
+        :param qe: quantum element
+
+        """
+        # self._seq.append(WaitBop(duration, qe))
         if qe in self._samples_dict.keys():
-            self._samples_dict[qe] = self._samples_dict[qe] + [0] * duration
-        else:
+            if "mixInputs" in self._local_config["elements"][qe].keys():
+                self._samples_dict[qe]["I"] = self._samples_dict[qe]["I"] + [0] * duration
+                self._samples_dict[qe]["Q"] = self._samples_dict[qe]["Q"] + [0] * duration
+
+            elif "singleInput" in self._local_config["elements"][qe].keys():
+                self._samples_dict[qe] = self._samples_dict[qe] + [0] * duration
+
             self._qe_set.add(qe)
 
         self._update_qe_time(qe, duration)
-        print(self._samples_dict)
-        print(self._qe_time_dict)
-        self._qe_set = self._get_qe_set()
+        # print(self._samples_dict)
+        # print(self._qe_dict["time"])
+        # self._qe_set = self._get_qe_set()
 
     def align(self, *qe_set: Set[str]):
-        self._seq.append(AlignBop(qe_set))
+        """
+        Align several quantum elements together.
+        All of the quantum elements referenced in *elements will wait for all
+        the others to finish their currently running statement.
+
+        Args: *qe_set : set of quantum elements to be aligned altogether
+        """
+        # self._seq.append(AlignBop(qe_set))
         last_qe = ''
         last_t = 0
         for qe in qe_set:
-            qe_t = self._qe_time_dict[qe]
+            qe_t = self._qe_dict[qe]["time"]
 
             if qe_t > last_t:
                 last_qe = qe
                 last_t = qe_t
 
         for qe in qe_set:
-            qe_t = self._qe_time_dict[qe]
+            qe_t = self._qe_dict[qe]["time"]
             if qe != last_qe:
-                self.wait(last_t-qe_t,qe)
+                self.wait(last_t-qe_t, qe)
 
-        self._qe_set = self._get_qe_set()
+        # self._qe_set = self._get_qe_set()
 
-    def add_pulse(self, name: str, samples: list):
+    def add_pulse(self, input_type: bool, samples: list):
+        """
+        Adds in the configuration file a pulse element.
+        Args : input_type: Set as True if pulse is to be applied on mixInputs,
+            False for singleInput
+            name: pulse name
+            samples: list of arbitrary waveforms to be inserted into pulse defintion
+        """
 
-        pulse = {'pulses': {name:
-                                {"operation": "control",
-                                 "length": len(samples),
-                                 "waveforms": {"single": f"{name}_wf"}
-                                 }
-                            }
-                 }
-
-        waveform = {'waveforms':
-                        {f"{name}_wf":
-                             {'type':
-                                  'arbitrary',
-                              'samples': samples
-                              }
-                         }
+        if input_type:
+            pulse = {
+                    f"baked_{self._ctr}": {
+                        "operation": "control",
+                        "length": len(samples),
+                        "waveforms": {"I": f"baked_{self._ctr}_wf_I",
+                                      "Q": f"baked_{self._ctr}_wf_Q"}
                     }
-        self._local_config.update(pulse)
-        self._local_config.update(waveform)
+                }
+
+            waveform = {
+                    f"baked_{self._ctr}_wf_I": {
+                        'type':
+                            'arbitrary',
+                        'samples': samples[0]
+                    },
+                    f"baked_{self._ctr}_wf_Q": {
+                        'type':
+                            'arbitrary',
+                        'samples': samples[1]
+                    }
+                }
+
+        else:
+            pulse = {
+                    f"baked_{self._ctr}": {
+                            "operation": "control",
+                            "length": len(samples),
+                            "waveforms": {"single": f"baked_{self._ctr}_wf"}
+                          }
+                          }
+
+            waveform = {
+
+                            f"baked_{self._ctr}_wf": {
+                                'type':
+                                    'arbitrary',
+                                'samples': samples
+                             }
+                            }
+
+        self._local_config["pulses"].update(pulse)
+        self._local_config["waveforms"].update(waveform)
 
     # def bake(self):
     #     '''
@@ -199,12 +345,11 @@ class Baking:
     #
     #     # self._config.update(self._local_config)
 
-
     def run(self) -> None:
-        '''
+        """
         Plays the baked waveform
         :return: None
-        '''
+        """
 
         # number of QEs: if >1 we need an align between all of them. if =1, no align
         if len(self._qe_set) == 1:
@@ -222,27 +367,6 @@ class Baking:
         # print(self._get_qe_set())
 
 
-class BOp(ABC):
-    pass
-
-
-@dataclass
-class PlayBop(BOp):
-    pulse: str
-    qe: str
-
-
-@dataclass
-class WaitBop(BOp):
-    dur: int
-    qe: str
-
-
-@dataclass
-class AlignBop(BOp):
-    qe: Set[str]
-
-
 if __name__ == '__main__':
     conf = {'elements':{},'waveforms':{},'pulses':{}}
     with baking(config=conf) as b:
@@ -258,3 +382,4 @@ if __name__ == '__main__':
         b.align('this', 'that')
         # b.bake()
     b.run()
+
