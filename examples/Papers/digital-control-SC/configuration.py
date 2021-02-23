@@ -1,7 +1,7 @@
 import numpy as np
 
 gauss_pulse_len = 20  # ns
-const_pulse_len = 100
+const_pulse_len = 500
 Amp = 0.2  # Pulse Amplitude
 gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
 gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
@@ -9,18 +9,25 @@ gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
 readout_pulse_len = 20
 omega_10 = 4.958e9
 omega_d = omega_10 / 3
-
+SFQ_IF = 50e6
+SFQ_LO = 5.10e9
+qubit_IF=200e6
+qubit_LO = 5.10e9
+pi_pulse_len=32
 config = {
     "version": 1,
     "controllers": {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0},
-                2: {"offset": +0.0},
-                3: {"offset": +0.0},
-                4: {"offset": +0.0},
-                5: {"offset": +0.0},
+                1: {"offset": +0.0}, #qubitI
+                2: {"offset": +0.0}, #qubitQ
+                3: {"offset": +0.0}, #RR I
+                4: {"offset": +0.0}, #RR Q
+                5: {"offset": +0.0}, #SFQ_bias
+                6: {"offset": +0.0}, #SFQ_trig_I
+                7: {"offset": +0.0}, #SFQ_trig_Q
+                8: {"offset": +0.0}, #qubit_bias
             },
             "analog_inputs": {
                 1: {"offset": +0.0},
@@ -32,10 +39,10 @@ config = {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
-                "lo_frequency": 5.10e9,
+                "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
-            "intermediate_frequency": 0,  # ω_d,
+            "intermediate_frequency": qubit_IF,  # ω_d,
             "operations": {
                 "gauss_pulse": "gauss_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
@@ -43,19 +50,19 @@ config = {
         },
         "SFQ_trigger": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": 5.10e9,
-                "mixer": "mixer_qubit",
+                "I": ("con1", 6),
+                "Q": ("con1", 7),
+                "lo_frequency": SFQ_LO,
+                "mixer": "mixer_SFQ",
             },
-            "intermediate_frequency": 0,  # ω_d,
+            "intermediate_frequency": SFQ_IF,  # ω_d,
             "operations": {
                 "const_pulse": "const_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
             },
         },
         "qubit_flux_bias": {
-            "singleInput": {"port": ("con1", 5)},
+            "singleInput": {"port": ("con1", 8)},
             "digitalInputs": {
                 "digital_input1": {
                     "port": ("con1", 1),
@@ -63,7 +70,7 @@ config = {
                     "buffer": 0,
                 },
             },
-            "intermediate_frequency": 5e6,
+            "intermediate_frequency": 0,
             "operations": {
                 "playOp": "constPulse",
             },
@@ -92,9 +99,10 @@ config = {
                     "buffer": 0,
                 },
             },
-            "intermediate_frequency": 5e6,
+            "intermediate_frequency": 0,
             "operations": {
                 "playOp": "constPulse",
+                "pi_pulse":'pi_pulse'
             },
         },
     },
@@ -121,9 +129,15 @@ config = {
             "length": gauss_pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
         },
+
+        "pi_pulse": {
+            "operation": "control",
+            "length": pi_pulse_len,  # in ns
+            "waveforms": {"single": "const_wf"},
+        },
         "pi_pulse_in": {  # Assumed to be calibrated
             "operation": "control",
-            "length": const_pulse_len,
+            "length": pi_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
         "const_pulse_in": {  # Assumed to be calibrated
@@ -158,8 +172,15 @@ config = {
         ],
         "mixer_qubit": [
             {
-                "intermediate_frequency": 0,  # ω_d,
-                "lo_frequency": 5.10e9,
+                "intermediate_frequency": qubit_IF,  # ω_d,
+                "lo_frequency": qubit_LO,
+                "correction": [1.0, 0.0, 0.0, 1.0],
+            }
+        ],
+        "mixer_SFQ": [
+            {
+                "intermediate_frequency": SFQ_IF,  # ω_d,
+                "lo_frequency": SFQ_LO,
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],

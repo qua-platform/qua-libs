@@ -29,7 +29,9 @@ qmManager = QuantumMachinesManager()
 QM = qmManager.open_qm(
     config
 )  # Generate a Quantum Machine based on the configuration described above
-
+Vb_min=0.1
+Vb_max=0.5
+dVb = 0.01
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
@@ -49,22 +51,18 @@ with program() as bias_current_sweeping:  #
     Q_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(
-            V_b, 0.0, V_b < 0.5, V_b + 0.05
-        ):  # Sweep from 0 to V_c the bias voltage
+        with for_(V_b, Vb_min, V_b < Vb_max, V_b + dVb):  # Sweep from 0 to V_c the bias voltage
             with for_(t, 16, t < t_max, t + dt):
-                play("playOp" * amp(V_b), "SFQ_bias")
+                play("playOp" * amp(V_b), "SFQ_bias",duration=t)
                 play("const_pulse", "SFQ_trigger", duration=t)
-                align("qubit_control", "RR", "SFQ_trigger")
+                wait(t,'RR')
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)
                 save(I, I_stream)
                 save(Q, Q_stream)
                 with while_(I > th):  # Active reset
                     play("pi_pulse", "SFQ_trigger")
-                    measure(
-                        "meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q)
-                    )
+                    measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 save(state, state_stream)
                 save(t, t_stream)
 
@@ -77,24 +75,27 @@ with program() as bias_current_sweeping:  #
         t_stream.buffer(N_t).save("t")
         state_stream.boolean_to_int().buffer(N_V, N_t).average().save("state")
 
-job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(100000)))
+job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(1000)))
 
-time.sleep(1.0)
+samples= job.get_simulated_samples()
+samples.con1.plot()
+
+
 
 # Retrieving results of the experiments
-results = job.result_handles
-I_b = results.I_b.fetch_all()
-t = results.t.fetch_all()
-state = results.state.fetch_all()
-I = results.I.fetch_all()["value"]
-Q = results.Q.fetch_all()["value"]
-fig = plt.figure()
-
-# Plot the surface.
-plt.pcolormesh(I_b, t, state, shading="nearest")
-plt.xlabel("Bias current I_b [µA]")
-plt.ylabel("Pulse duration [ns]")
-plt.colorbar()
-plt.title(
-    "SFQ-based Rabi oscillations as a function of bias current to SFQ driver circuit"
-)
+# results = job.result_handles
+# I_b = results.I_b.fetch_all()
+# t = results.t.fetch_all()
+# state = results.state.fetch_all()
+# I = results.I.fetch_all()["value"]
+# Q = results.Q.fetch_all()["value"]
+# fig = plt.figure()
+#
+# # Plot the surface.
+# plt.pcolormesh(I_b, t, state, shading="nearest")
+# plt.xlabel("Bias current I_b [µA]")
+# plt.ylabel("Pulse duration [ns]")
+# plt.colorbar()
+# plt.title(
+#     "SFQ-based Rabi oscillations as a function of bias current to SFQ driver circuit"
+# )

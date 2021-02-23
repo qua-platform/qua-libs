@@ -123,18 +123,20 @@ samples = job.get_simulated_samples()
 samples.con1.plot()
 
 plt.figure()
-G1=samples.con1.analog['1'][270:550]
-G2=samples.con1.analog['2'][270:550]
+# G1=samples.con1.analog['1'][270:550]
+# G2=samples.con1.analog['2'][270:550]
+G1=samples.con1.analog['1'][1050:1300]
+G2=samples.con1.analog['2'][1050:1300]
 ax1=plt.subplot(311)
 plt.plot(G1)
 plt.setp(ax1.get_xticklabels(), visible=False)
-plt.ylabel('D1[V]')
+plt.ylabel('G1[V]')
 plt.yticks(np.linspace(-0.1,0.2,5))
 plt.grid()
 ax2=plt.subplot(312,sharex=ax1)
 plt.plot(G2)
 plt.xlabel('time [ns]')
-plt.ylabel('D2[V]')
+plt.ylabel('G2[V]')
 plt.setp(ax2.get_xticklabels(), visible=False)
 plt.yticks(np.linspace(-0.2,0.1,5))
 plt.grid()
