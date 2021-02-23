@@ -10,21 +10,20 @@ from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
 
-QMm = QuantumMachinesManager()
+qmm = QuantumMachinesManager()
+qm1 = qmm.open_qm(config)
 
 simulate = False
 with program() as play_pulse_cont:
     with infinite_loop_():
         play("test_pulse", "qubit")
 
-QM1 = QMm.open_qm(config)
-
 if simulate:
-    job = QM1.simulate(play_pulse_cont, SimulationConfig(1000))
+    job = qm1.simulate(play_pulse_cont, SimulationConfig(1000))
     samples = job.get_simulated_samples()
     samples.con1.plot()
 else:
-    job = QM1.execute(play_pulse_cont)
+    job = qm1.execute(play_pulse_cont)
 
     # When done, the halt command can be called and the offsets can be written directly into the config file.
     # job.halt
@@ -38,6 +37,6 @@ else:
 # found using an optimization method such as Nelder-Mead:
 # https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html
 
-# QM1.set_output_dc_offset_by_element('qubit', 'I', -0.05)
-# QM1.set_output_dc_offset_by_element('qubit', 'Q', 0.03)
-# QM1.set_mixer_correction('mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance_correction(0.15, 0.3))
+# qm1.set_output_dc_offset_by_element('qubit', 'I', -0.05)
+# qm1.set_output_dc_offset_by_element('qubit', 'Q', 0.03)
+# qm1.set_mixer_correction('mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance_correction(0.15, 0.3))
