@@ -29,7 +29,7 @@ with program() as hidden_qubit_tomography:
     stream_c = declare_stream()
     stream_h = declare_stream()
     with for_(var=N, init=0, cond=N < N_shots, update=N + 1):
-        for process in processes.keys():  # 1/4
+        for process in processes.keys():  # 4
             for input_state in state_prep.keys():  # 16
                 for readout_operator in tomography_set.keys():  # 15
                     align("RR", "control", "TC")
