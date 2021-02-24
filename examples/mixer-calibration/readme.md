@@ -234,7 +234,7 @@ J_{down} & 0 \\
 \end{pmatrix}}_{\text{Scaling}}
 $$
 
-With $k = \frac{K_{down}}{J_{down}} = \frac{1 - r_{down} e^ {i \phi_{down}}}{1 + r_{down} e^ {i \phi_{down}}}
+With $k = \frac{K_{down}}{J_{down}} = \frac{1 - r_{down} e^ {i \phi_{down}}}{1 + r_{down} e^ {i \phi_{down}}}$.
 
 We can see that the matrix can be decomposed into two terms: The 1st which causes the leakage between the sidebands and the 2nd which only scales the results.
 We can ignore the 2nd term as the scaling is not important for practical applications. Furthermore, we note that the leakage term only depends on a single parameter $k$.
