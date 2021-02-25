@@ -11,7 +11,7 @@ from qm import SimulationConfig
 import numpy as np
 import matplotlib.pyplot as plt
 
-pulse_duration = 1e5
+pulse_duration = 4e5
 
 config = {
     "version": 1,
@@ -73,7 +73,7 @@ plt.ylabel("f[MHz]")
 config["pulses"]["constPulse"]["length"] = 5e5
 f_start = 1e6
 f_end = 4e8
-n_segs = 4
+n_segs = 40
 dt = pulse_duration / n_segs
 
 a = (f_end - f_start) / (pulse_duration) ** 2

@@ -46,6 +46,7 @@ config = {
             "operations": {
                 "gauss_pulse": "gauss_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
+
             },
         },
         "SFQ_trigger": {
@@ -59,6 +60,7 @@ config = {
             "operations": {
                 "const_pulse": "const_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
+                "pi2_pulse":"pi2_pulse_in"
             },
         },
         "qubit_flux_bias": {
@@ -102,7 +104,8 @@ config = {
             "intermediate_frequency": 0,
             "operations": {
                 "playOp": "constPulse",
-                "pi_pulse":'pi_pulse'
+                "pi_pulse":'pi_pulse',
+                "pi2_pulse":'pi_pulse'
             },
         },
     },
@@ -136,6 +139,11 @@ config = {
             "waveforms": {"single": "const_wf"},
         },
         "pi_pulse_in": {  # Assumed to be calibrated
+            "operation": "control",
+            "length": pi_pulse_len,
+            "waveforms": {"I": "const_wf", "Q": "zero_wf"},
+        },
+        "pi2_pulse_in": {  # Assumed to be calibrated
             "operation": "control",
             "length": pi_pulse_len,
             "waveforms": {"I": "const_wf", "Q": "zero_wf"},

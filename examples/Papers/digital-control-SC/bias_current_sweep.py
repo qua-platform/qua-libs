@@ -60,9 +60,6 @@ with program() as bias_current_sweeping:  #
                 assign(state, I > th)
                 save(I, I_stream)
                 save(Q, Q_stream)
-                with while_(I > th):  # Active reset
-                    play("pi_pulse", "SFQ_trigger")
-                    measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 save(state, state_stream)
                 save(t, t_stream)
 

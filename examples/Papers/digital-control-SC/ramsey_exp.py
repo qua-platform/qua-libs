@@ -51,12 +51,12 @@ with program() as bias_current_sweeping:  #
         with for_(f, f_min, f < f_max, f + df):  # Sweep from 0 to V_c the bias voltage
             update_frequency("SFQ_trigger", f)
             with for_(t, t_min, t < t_max, t + dt):
-                play("pi_pulse", "SFQ_bias")
-                play("pi_pulse" * amp(0.5), "SFQ_trigger")  # π/2 pulse
+                play("pi2_pulse", "SFQ_bias")
+                play("pi2_pulse", "SFQ_trigger")  # π/2 pulse
                 wait(t, "SFQ_trigger")
                 wait(t, "SFQ_bias")
-                play("pi_pulse", "SFQ_bias")
-                play("pi_pulse" * amp(0.5), "SFQ_trigger")  # π/2 pulse
+                play("pi2_pulse", "SFQ_bias")
+                play("pi2_pulse", "SFQ_trigger")  # π/2 pulse
                 wait(t+2*pi_pulse_len//4, "RR")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)

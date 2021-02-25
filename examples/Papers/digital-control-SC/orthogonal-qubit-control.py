@@ -55,12 +55,12 @@ with program() as bias_current_sweeping:  #
         with for_(theta,0,theta<=1,theta+dtheta):
             frame_rotation_2pi(theta,"SFQ_trigger")
             with for_(t, t_min, t < t_max, t + dt):
-                play("pi_pulse", "SFQ_bias")
-                play("pi_pulse" * amp(0.5), "SFQ_trigger")  # π/2 pulse
+                play("pi2_pulse", "SFQ_bias")
+                play("pi2_pulse", "SFQ_trigger")  # π/2 pulse
                 play("playOp", "SFQ_bias",duration=t)
                 play("const_pulse", "SFQ_trigger",duration=t)
-                play("pi_pulse", "SFQ_bias")
-                play("pi_pulse" * amp(0.5), "SFQ_trigger")  # π/2 pulse
+                play("pi2_pulse", "SFQ_bias")
+                play("pi2_pulse", "SFQ_trigger")  # π/2 pulse
                 # wait(t+2*pi_pulse_len//4, "RR")
                 align("RR","SFQ_trigger")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
