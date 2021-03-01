@@ -175,7 +175,7 @@ $$
 While the matrix has four elements, it is only dependent on the two imbalance parameters. 
 There is a function named 'IQ_imbalance_correction' which takes these two parameters and calculates the above matrix.
 
-### Down-conversation
+### Down-conversion
 
 The ideal behavior of an IQ mixer used for down-conversion is:
 
