@@ -36,15 +36,23 @@ def get_baking_index(config: dict):
     return max_index
 
 
-def generate_samples_dict(config: dict):
+def init_dict(config: dict):
     sample_dict = {}
+    qe_dict = {}
     for qe in config["elements"].keys():
         if "mixInputs" in config["elements"][qe]:
             sample_dict[qe] = {"I": [],
                                "Q": []}
+            qe_dict[qe] = {"time": 0,
+                           "phase": 0,
+                           "time_track": 0,
+                           "phase_track": [0]
+                           }
         elif "singleInput" in config["elements"][qe]:
             sample_dict[qe] = []
-    return sample_dict
+            qe_dict[qe] = {"time": 0,
+                           "time_track": 0}
+    return sample_dict, qe_dict
 
 
 class Baking:
@@ -53,11 +61,7 @@ class Baking:
         self._config = config
         self._padding_method = padding_method
         self._local_config = copy.deepcopy(config)
-        self._qe_dict = {qe: {"time": 0,
-                              "phase": 0
-                              } for qe in self._local_config["elements"].keys()
-                         }
-        self._samples_dict = generate_samples_dict(self._local_config)
+        self._samples_dict, self._qe_dict = init_dict(self._local_config)
         self._ctr = get_baking_index(self._config)  # unique name counter
 
     def __enter__(self):
@@ -77,8 +81,8 @@ class Baking:
 
             if self._qe_dict[qe]["time"] > 0:  # Check if a sample was added to the quantum element
                 # otherwise we do not add any Op
-                if not self._qe_dict[qe]["time"] % 4 == 0:  # Sample length must be a multiple of 4
-                    wait_duration += 4 - self._qe_dict[qe]["time"]
+                if not(self._qe_dict[qe]["time"] % 4 == 0):  # Sample length must be a multiple of 4
+                    wait_duration += 4 - self._qe_dict[qe]["time"] % 4
                     self.wait(4 - self._qe_dict[qe]["time"] % 4, qe)
 
                 if self._qe_dict[qe]["time"] < 16:  # Sample length must be at least 16 ns long
@@ -149,6 +153,13 @@ class Baking:
         except KeyError:
             raise KeyError(f'No waveforms found for pulse {pulse}')
 
+    def _get_pulse_index(self, qe):
+        index = 0
+        for pulse in self._local_config["pulses"]:
+            if pulse.find(f"{qe}_baked_pulse_b{self._ctr}") != -1:
+                index += 1
+        return index
+
     def add_Op(self, name: str, qe: str, samples: list, digital_marker: str = None):
         """
         Adds in the configuration file a pulse element.
@@ -157,26 +168,27 @@ class Baking:
         :param  samples: arbitrary waveform to be inserted into pulse definition
         :param digital_marker: name of the digital marker sample associated to the generated pulse (assumed to be in the original config)
         """
-        Op = {name: f"{qe}_baked_pulse_{self._ctr}"}
+        index = self._get_pulse_index(qe)
+        Op = {name: f"{qe}_baked_pulse_b{self._ctr}_{index}"}
         if "mixInputs" in self._local_config["elements"][qe]:
             pulse = {
-                    f"{qe}_baked_pulse_{self._ctr}": {
+                    f"{qe}_baked_pulse_b{self._ctr}_{index}": {
                         "operation": "control",
                         "length": len(samples),
-                        "waveforms": {"I": f"{qe}_baked_{self._ctr}_wf_I",
-                                      "Q": f"{qe}_baked_{self._ctr}_wf_Q"}
+                        "waveforms": {"I": f"{qe}_baked_b{self._ctr}_{index}_wf_I",
+                                      "Q": f"{qe}_baked_b{self._ctr}_{index}_wf_Q"}
                     }
                 }
             if digital_marker is not None:
-                pulse[f"{qe}_baked_pulse_{self._ctr}"]["digital_marker"] = digital_marker
+                pulse[f"{qe}_baked_pulse_b{self._ctr}_{index}"]["digital_marker"] = digital_marker
 
             waveform = {
-                    f"{qe}_baked_{self._ctr}_wf_I": {
+                    f"{qe}_baked_b{self._ctr}_{index}_wf_I": {
                         'type':
                             'arbitrary',
                         'samples': samples[0]
                     },
-                    f"{qe}_baked_{self._ctr}_wf_Q": {
+                    f"{qe}_baked_b{self._ctr}_{index}_wf_Q": {
                         'type':
                             'arbitrary',
                         'samples': samples[1]
@@ -185,18 +197,18 @@ class Baking:
 
         elif "singleInput" in self._local_config["elements"][qe]:
             pulse = {
-                    f"{qe}_baked_pulse_{self._ctr}": {
+                    f"{qe}_baked_pulse_b{self._ctr}_{index}": {
                             "operation": "control",
                             "length": len(samples),
-                            "waveforms": {"single": f"{qe}_baked_{self._ctr}_wf"}
+                            "waveforms": {"single": f"{qe}_baked_b{self._ctr}_{index}_wf"}
                           }
                           }
 
             if digital_marker is not None:
-                pulse[f"{qe}_baked_pulse_{self._ctr}"]["digital_marker"] = digital_marker
+                pulse[f"{qe}_baked_pulse_b{self._ctr}_{index}"]["digital_marker"] = digital_marker
             waveform = {
 
-                            f"{qe}_baked_{self._ctr}_wf": {
+                            f"{qe}_baked_b{self._ctr}_{index}_wf": {
                                 'type':
                                     'arbitrary',
                                 'samples': samples
@@ -211,39 +223,111 @@ class Baking:
         """
         Add a pulse to the bake sequence
         :param Op: operation to play to quantum element
-        :param qe: Quantum element to play to
+        :param qe: targeted quantum element
         :return:
         """
         try:
 
-            pulse = self._local_config["elements"][qe]["operations"][Op]
-            samples = self._get_samples(pulse)
-            phi = self._qe_dict[qe]["phase"]
-            if "mixInputs" in self._local_config["elements"][qe]:
-                if (type(samples[0]) != list) or (type(samples[1]) != list):
-                    raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe} ")
-                I = samples[0]
-                Q = samples[1]
-                I2 = [None] * len(I)
-                Q2 = [None] * len(Q)
+            if self._qe_dict[qe]["time_track"] == 0:
+                pulse = self._local_config["elements"][qe]["operations"][Op]
+                samples = self._get_samples(pulse)
+                if "mixInputs" in self._local_config["elements"][qe]:
+                    if (type(samples[0]) != list) or (type(samples[1]) != list):
+                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe} ")
+                    I = samples[0]
+                    Q = samples[1]
+                    I2 = [None] * len(I)
+                    Q2 = [None] * len(Q)
+                    phi = self._qe_dict[qe]["phase"]
 
-                for i in range(len(I)):
-                    I2[i] = np.cos(phi)*I[i] - np.sin(phi)*Q[i]
-                    Q2[i] = np.sin(phi)*I[i] + np.cos(phi)*Q[i]
-                    self._samples_dict[qe]["I"].append(I2[i])
-                    self._samples_dict[qe]["Q"].append(Q2[i])
+                    for i in range(len(I)):
+                        I2[i] = np.cos(phi)*I[i] - np.sin(phi)*Q[i]
+                        Q2[i] = np.sin(phi)*I[i] + np.cos(phi)*Q[i]
+                        self._samples_dict[qe]["I"].append(I2[i])
+                        self._samples_dict[qe]["Q"].append(Q2[i])
+                        self._qe_dict[qe]["phase_track"].append(phi)
 
-                self._update_qe_time(qe, len(I))
+                    self._update_qe_time(qe, len(I))
 
-            elif "singleInput" in self._local_config["elements"][qe]:
-                if type(samples[0]) == list:
-                    raise TypeError(f"Error : samples given do not correspond to singleInput for element {qe} ")
-                for sample in samples:
-                    self._samples_dict[qe].append(sample)
-                self._update_qe_time(qe, len(samples))
+                elif "singleInput" in self._local_config["elements"][qe]:
+                    if type(samples[0]) == list:
+                        raise TypeError(f"Error : samples given do not correspond to singleInput for element {qe} ")
+                    for sample in samples:
+                        self._samples_dict[qe].append(sample)
+                    self._update_qe_time(qe, len(samples))
+            else:
+                self.play_at(Op, qe, self._qe_dict[qe]["time_track"])
+                self._qe_dict[qe]["time_track"] = 0
 
         except KeyError:
             raise KeyError(f'Op:"{Op}" does not exist in configuration and not manually added (use add_pulse)')
+
+    def play_at(self, Op: str, qe: str, t: int) -> None:
+        """
+        Add a waveform to the sequence at a specified time.
+        If indicated time is higher than the pulse duration for the specified quantum element,
+        a wait command followed by the given waveform at indicated time (in ns) occurs.
+        Otherwise, waveform is added (addition of samples) to the pre-existing sequence.
+        Note that the phase played for the newly formed sample is the one that was set before adding the new waveform
+        :param Op: operation to play to quantum element
+        :param qe: targeted quantum element
+        :param t: Time tag in ns where the pulse should be added
+        :return:
+        """
+        if type(t) != int:
+            if type(t) == float:
+                t = int(t)
+            else:
+                raise TypeError("Provided time is not an integer")
+
+        if t > self._qe_dict[qe]["time"]:
+            self.wait(t-self._qe_dict[qe]["time"], qe)
+            self.play(Op, qe)
+        else:
+            try:
+                pulse = self._local_config["elements"][qe]["operations"][Op]
+                samples = self._get_samples(pulse)
+                new_samples = 0
+                if "mixInputs" in self._local_config["elements"][qe]:
+                    if (type(samples[0]) != list) or (type(samples[1]) != list):
+                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe} ")
+                    elif len(samples[0]) != len(samples[1]):
+                        raise IndexError("Error : samples provided for I and Q do not have the same length")
+                    I = samples[0]
+                    Q = samples[1]
+                    I2 = [None] * len(I)
+                    Q2 = [None] * len(Q)
+                    phi = self._qe_dict[qe]["phase_track"]
+
+                    for i in range(len(I)):
+                        if t+i < len(self._samples_dict[qe]["I"]):
+                            I2[i] = np.cos(phi[t+i]) * I[i] - np.sin(phi[t+i]) * Q[i]
+                            Q2[i] = np.sin(phi[t+i]) * I[i] + np.cos(phi[t+i]) * Q[i]
+                            self._samples_dict[qe]["I"][t+i] += I2[i]
+                            self._samples_dict[qe]["Q"][t+i] += Q2[i]
+                        else:
+                            phi = self._qe_dict[qe]["phase"]
+                            I2[i] = np.cos(phi) * I[i] - np.sin(phi) * Q[i]
+                            Q2[i] = np.sin(phi) * I[i] + np.cos(phi) * Q[i]
+                            self._samples_dict[qe]["I"].append(I2[i])
+                            self._samples_dict[qe]["Q"].append(Q2[i])
+                            self._qe_dict[qe]["phase_track"].append(phi)
+                            new_samples += 1
+
+                elif "singleInput" in self._local_config["elements"][qe]:
+                    if type(samples[0]) == list:
+                        raise TypeError(f"Error : samples given do not correspond to singleInput for element {qe} ")
+                    for i in range(len(samples)):
+                        if t+i < len(self._samples_dict[qe]):
+                            self._samples_dict[qe][t+i] += samples[i]
+                        else:
+                            self._samples_dict[qe].append(samples[i])
+                            new_samples += 1
+
+                self._update_qe_time(qe, new_samples)
+
+            except KeyError:
+                raise KeyError(f'Op:"{Op}" does not exist in configuration and not manually added (use add_pulse)')
 
     def frame_rotation(self, angle: float, qe: str):
         """
@@ -310,16 +394,22 @@ class Baking:
         :param qe_set: set of quantum elements
 
         """
-        for qe in qe_set:
-            if qe in self._samples_dict.keys():
-                if "mixInputs" in self._local_config["elements"][qe].keys():
-                    self._samples_dict[qe]["I"] = self._samples_dict[qe]["I"] + [0] * duration
-                    self._samples_dict[qe]["Q"] = self._samples_dict[qe]["Q"] + [0] * duration
+        if duration >= 0:
+            for qe in qe_set:
+                if qe in self._samples_dict.keys():
+                    if "mixInputs" in self._local_config["elements"][qe].keys():
+                        self._samples_dict[qe]["I"] = self._samples_dict[qe]["I"] + [0] * duration
+                        self._samples_dict[qe]["Q"] = self._samples_dict[qe]["Q"] + [0] * duration
+                        self._qe_dict[qe]["phase_track"] += [self._qe_dict[qe]["phase"]] * duration
 
-                elif "singleInput" in self._local_config["elements"][qe].keys():
-                    self._samples_dict[qe] = self._samples_dict[qe] + [0] * duration
+                    elif "singleInput" in self._local_config["elements"][qe].keys():
+                        self._samples_dict[qe] = self._samples_dict[qe] + [0] * duration
 
-            self._update_qe_time(qe, duration)
+                self._update_qe_time(qe, duration)
+        else:
+            for qe in qe_set:
+                # Duration is negative so just add to substraction
+                self._qe_dict[qe]["time_track"] = self._qe_dict[qe]["time"] + duration
 
     def align(self, *qe_set: Set[str]):
         """
