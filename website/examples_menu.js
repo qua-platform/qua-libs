@@ -137,4 +137,11 @@ module.exports = [
             "Papers/RAM-multimode-CQED/index"
         ]
     },
+      {
+        "type": "category",
+        "label": "Integrations",
+        "items": [
+            "external-frameworks/labber/index"
+        ]
+    },
 ]
