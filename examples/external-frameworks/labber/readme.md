@@ -17,9 +17,9 @@ conda install pip numpy scipy h5py pycrypto future scikit-learn dill
 pip install pyvisa qtpy scikit-optimize
 ```
 
-In addition, install the qm python package should be installed.
+In addition, the qm python package should be installed.
 
-When the environment is set you, point the `Python distribution` field (under preferencees->advanced)
+When the environment is set, point the `Python distribution` field (under preferencees->advanced)
 in Labber to your environment's `pythonw.exe` (on windows) or 'python.exe'
 file. More details are found on Labber's documentation. 
 
