@@ -8,7 +8,7 @@ slug: ./
 ## IQ Mixer mathematical model
 tl;dr - At the bottom of this page you can find scripts for calibrating a mixer for imbalances. The mathmatical model explaining the IQ imbalances that can be found here is mostly based on:
 [Calibration of mixer amplitude and phase imbalance in superconducting circuits][https://aip.scitation.org/doi/full/10.1063/5.0025836]
-### Up-conversation
+### Up-conversion
 
 #### Ideal Mixer
 
@@ -241,5 +241,5 @@ We can ignore the 2nd term as the scaling is not important for practical applica
 
 ## Scripts for mixer calibration
 
-[Manual Up-conversation Calibration](manual_mixer_calibration.py) - This scripts shows the basic commands used to calibrate the IQ mixer.
+[Manual Up-conversion Calibration](manual_mixer_calibration.py) - This scripts shows the basic commands used to calibrate the IQ mixer.
 The calibration should be done by connecting the output of the mixer to a spectrum analyzer and minimizing the LO leakage term at $\Omega$ and image term at $\Omega-\omega_{IF}$.
