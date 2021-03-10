@@ -156,13 +156,13 @@ with baking(config=config, padding_method="symmetric_r") as b:
     b.add_Op("Op3", "qe1", [Op3, Op4])
     b.play("const_Op2", "qe1")
     print("wait")
-    # b.play_at("Op3", "qe1", t=2)
-    b.wait(-3, "qe1")
-    b.play("Op3", "qe1")
-    b.play("Op3", "qe1")
+    b.play_at("Op3", "qe1", t=8)
+    #b.wait(-3, "qe1")
+    #b.play("Op3", "qe1")
+    #b.play("Op3", "qe1")
 
-    b.ramp(0.2, 6, "fluxline")
-    b.align("qe1", "fluxline")
+    #b.ramp(0.2, 6, "fluxline")
+    #b.align("qe1", "fluxline")
 
 # with baking(config=config, padding_method="symmetric_r") as b2:
 #     # gaussianOp = gauss(100, 0.4, 3, 1, 8)
@@ -175,8 +175,6 @@ with baking(config=config, padding_method="symmetric_r") as b:
 #     b2.play("const_Op2", "qe1")
 #     b2.ramp(0.2, 6, "fluxline")
 #     b2.align("qe1", "fluxline")
-
-
 
 qmm = QuantumMachinesManager("3.122.60.129")
 QM = qmm.open_qm(config)

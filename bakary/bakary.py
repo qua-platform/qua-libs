@@ -81,16 +81,21 @@ class Baking:
 
             if self._qe_dict[qe]["time"] > 0:  # Check if a sample was added to the quantum element
                 # otherwise we do not add any Op
-                if not(self._qe_dict[qe]["time"] % 4 == 0):  # Sample length must be a multiple of 4
-                    wait_duration += 4 - self._qe_dict[qe]["time"] % 4
-                    self.wait(4 - self._qe_dict[qe]["time"] % 4, qe)
 
                 if self._qe_dict[qe]["time"] < 16:  # Sample length must be at least 16 ns long
                     wait_duration += 16 - self._qe_dict[qe]["time"]
                     self.wait(16-self._qe_dict[qe]["time"], qe)
+                if not(self._qe_dict[qe]["time"] % 4 == 0):  # Sample length must be a multiple of 4
+                    wait_duration += 4 - self._qe_dict[qe]["time"] % 4
+                    self.wait(4 - self._qe_dict[qe]["time"] % 4, qe)
 
                 qe_samples = self._samples_dict[qe]
-
+                end_samples = 0
+                if "mixInputs" in elements[qe]:
+                    end_samples = len(qe_samples["I"])-wait_duration
+                elif "singleInput" in elements[qe]:
+                    end_samples = len(qe_samples)-wait_duration
+                print(qe_samples)
                 # Padding done according to desired method, can be either right, left, symmetric left or symmetric right
 
                 if self._padding_method == "left":
@@ -102,18 +107,18 @@ class Baking:
 
                 elif self._padding_method == "symmetric_l":
                     if "mixInputs" in elements[qe]:
-                        qe_samples["I"] = qe_samples["I"][3 * wait_duration // 2:] + qe_samples["I"][0:3 * wait_duration // 2]
-                        qe_samples["Q"] = qe_samples["Q"][3 * wait_duration // 2:] + qe_samples["Q"][0:3 * wait_duration // 2]
+                        qe_samples["I"] = qe_samples["I"][end_samples + wait_duration // 2:] + qe_samples["I"][0: end_samples + wait_duration // 2]
+                        qe_samples["Q"] = qe_samples["Q"][end_samples + wait_duration // 2:] + qe_samples["Q"][0: end_samples + wait_duration // 2]
                     elif "singleInput" in elements[qe]:
-                        qe_samples = qe_samples[3 * wait_duration // 2:] + qe_samples[0:3 * wait_duration // 2]
+                        qe_samples = qe_samples[end_samples + wait_duration // 2:] + qe_samples[0:end_samples + wait_duration // 2]
 
                 elif self._padding_method == "symmetric_r":
                     if "mixInputs" in elements[qe]:
-                        qe_samples["I"] = qe_samples["I"][3 * wait_duration // 2 + 1:] + qe_samples["I"][0:3 * wait_duration // 2 + 1]
-                        qe_samples["Q"] = qe_samples["Q"][3 * wait_duration // 2 + 1:] + qe_samples["Q"][0:3 * wait_duration // 2 + 1]
+                        qe_samples["I"] = qe_samples["I"][end_samples + wait_duration // 2 + 1:] + qe_samples["I"][0:end_samples + wait_duration // 2 + 1]
+                        qe_samples["Q"] = qe_samples["Q"][end_samples + wait_duration // 2 + 1:] + qe_samples["Q"][0:end_samples + wait_duration // 2 + 1]
                     elif "singleInput" in elements[qe]:
-                        qe_samples = qe_samples[3 * wait_duration // 2 + 1:] + qe_samples[0:3 * wait_duration // 2 + 1]
-
+                        qe_samples = qe_samples[end_samples + wait_duration // 2 + 1:] + qe_samples[0:end_samples + wait_duration // 2 + 1]
+                print(qe_samples)
                 # Generates new Op, pulse, and waveform for each qe to be added in the original config file
 
                 self._config["elements"][qe]["operations"][f"baked_Op_{self._ctr}"] = f"{qe}_baked_pulse_{self._ctr}"
@@ -219,11 +224,12 @@ class Baking:
         self._local_config["waveforms"].update(waveform)
         self._local_config["elements"][qe]["operations"].update(Op)
 
-    def play(self, Op: str, qe: str) -> None:
+    def play(self, Op: str, qe: str, amp: float = 1.) -> None:
         """
         Add a pulse to the bake sequence
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
+        :param amp: amplitude of the pulse (replaces amp(a)*'pulse' in QUA)
         :return:
         """
         try:
@@ -243,8 +249,8 @@ class Baking:
                     for i in range(len(I)):
                         I2[i] = np.cos(phi)*I[i] - np.sin(phi)*Q[i]
                         Q2[i] = np.sin(phi)*I[i] + np.cos(phi)*Q[i]
-                        self._samples_dict[qe]["I"].append(I2[i])
-                        self._samples_dict[qe]["Q"].append(Q2[i])
+                        self._samples_dict[qe]["I"].append(amp*I2[i])
+                        self._samples_dict[qe]["Q"].append(amp*Q2[i])
                         self._qe_dict[qe]["phase_track"].append(phi)
 
                     self._update_qe_time(qe, len(I))
@@ -253,7 +259,7 @@ class Baking:
                     if type(samples[0]) == list:
                         raise TypeError(f"Error : samples given do not correspond to singleInput for element {qe} ")
                     for sample in samples:
-                        self._samples_dict[qe].append(sample)
+                        self._samples_dict[qe].append(amp*sample)
                     self._update_qe_time(qe, len(samples))
             else:
                 self.play_at(Op, qe, self._qe_dict[qe]["time_track"])
@@ -262,7 +268,7 @@ class Baking:
         except KeyError:
             raise KeyError(f'Op:"{Op}" does not exist in configuration and not manually added (use add_pulse)')
 
-    def play_at(self, Op: str, qe: str, t: int) -> None:
+    def play_at(self, Op: str, qe: str, t: int, amp: float = 1.) -> None:
         """
         Add a waveform to the sequence at a specified time.
         If indicated time is higher than the pulse duration for the specified quantum element,
@@ -272,6 +278,7 @@ class Baking:
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
         :param t: Time tag in ns where the pulse should be added
+        :param amp: amplitude of the pulse (replaces amp(a)*'pulse' in QUA)
         :return:
         """
         if type(t) != int:
@@ -279,7 +286,8 @@ class Baking:
                 t = int(t)
             else:
                 raise TypeError("Provided time is not an integer")
-
+        if t < 0:
+            raise TypeError("Index provided is negative")
         if t > self._qe_dict[qe]["time"]:
             self.wait(t-self._qe_dict[qe]["time"], qe)
             self.play(Op, qe)
@@ -303,14 +311,14 @@ class Baking:
                         if t+i < len(self._samples_dict[qe]["I"]):
                             I2[i] = np.cos(phi[t+i]) * I[i] - np.sin(phi[t+i]) * Q[i]
                             Q2[i] = np.sin(phi[t+i]) * I[i] + np.cos(phi[t+i]) * Q[i]
-                            self._samples_dict[qe]["I"][t+i] += I2[i]
-                            self._samples_dict[qe]["Q"][t+i] += Q2[i]
+                            self._samples_dict[qe]["I"][t+i] += amp * I2[i]
+                            self._samples_dict[qe]["Q"][t+i] += amp * Q2[i]
                         else:
                             phi = self._qe_dict[qe]["phase"]
                             I2[i] = np.cos(phi) * I[i] - np.sin(phi) * Q[i]
                             Q2[i] = np.sin(phi) * I[i] + np.cos(phi) * Q[i]
-                            self._samples_dict[qe]["I"].append(I2[i])
-                            self._samples_dict[qe]["Q"].append(Q2[i])
+                            self._samples_dict[qe]["I"].append(amp * I2[i])
+                            self._samples_dict[qe]["Q"].append(amp * Q2[i])
                             self._qe_dict[qe]["phase_track"].append(phi)
                             new_samples += 1
 
@@ -319,9 +327,9 @@ class Baking:
                         raise TypeError(f"Error : samples given do not correspond to singleInput for element {qe} ")
                     for i in range(len(samples)):
                         if t+i < len(self._samples_dict[qe]):
-                            self._samples_dict[qe][t+i] += samples[i]
+                            self._samples_dict[qe][t+i] += amp * samples[i]
                         else:
-                            self._samples_dict[qe].append(samples[i])
+                            self._samples_dict[qe].append(amp * samples[i])
                             new_samples += 1
 
                 self._update_qe_time(qe, new_samples)
