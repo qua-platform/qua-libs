@@ -1,58 +1,16 @@
-"""bakary.py: Generating shorter arbitrary waveforms to be inserted into QUA program
+"""bakary.py: Framework to generate arbitrary waveforms to be played into QUA program
 Author: Arthur Strauss - Quantum Machines
 Created: 23/02/2021
 """
 
 from typing import Set, List, Union
 import numpy as np
-from typing import Iterable
 from qm import qua
 import copy
 
 
-def flatten(items):
-    """Yield items from any nested iterable"""
-    for x in items:
-        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
-            yield from flatten(x)
-        else:
-            yield x
-
-
 def baking(config, padding_method="right"):
     return Baking(config, padding_method)
-
-
-def get_baking_index(config: dict):
-    index = 0
-    max_index = 0
-    for qe in config["elements"].keys():
-        for op in config["elements"][qe]["operations"]:
-            if op.find("baked") != -1:
-                index += 1
-        if max_index < index:
-            max_index = index
-            index = 0
-    return max_index
-
-
-def init_dict(config: dict):
-    sample_dict = {}
-    qe_dict = {}
-    for qe in config["elements"].keys():
-        if "mixInputs" in config["elements"][qe]:
-            sample_dict[qe] = {"I": [],
-                               "Q": []}
-            qe_dict[qe] = {"time": 0,
-                           "phase": 0,
-                           "time_track": 0,
-                           "phase_track": [0]
-                           }
-        elif "singleInput" in config["elements"][qe]:
-            sample_dict[qe] = []
-            qe_dict[qe] = {"time": 0,
-                           "time_track": 0}
-    return sample_dict, qe_dict
 
 
 class Baking:
@@ -61,11 +19,41 @@ class Baking:
         self._config = config
         self._padding_method = padding_method
         self._local_config = copy.deepcopy(config)
-        self._samples_dict, self._qe_dict = init_dict(self._local_config)
-        self._ctr = get_baking_index(self._config)  # unique name counter
+        self._samples_dict, self._qe_dict = self._init_dict()
+        self._ctr = self._get_baking_index()  # unique name counter
 
     def __enter__(self):
         return self
+
+    def _get_baking_index(self):
+        index = 0
+        max_index = 0
+        for qe in self._config["elements"].keys():
+            for op in self._config["elements"][qe]["operations"]:
+                if op.find("baked") != -1:
+                    index += 1
+            if max_index < index:
+                max_index = index
+                index = 0
+        return max_index
+
+    def _init_dict(self):
+        sample_dict = {}
+        qe_dict = {}
+        for qe in self._config["elements"].keys():
+            if "mixInputs" in self._local_config["elements"][qe]:
+                sample_dict[qe] = {"I": [],
+                                   "Q": []}
+                qe_dict[qe] = {"time": 0,
+                               "phase": 0,
+                               "time_track": 0,
+                               "phase_track": [0]
+                               }
+            elif "singleInput" in self._local_config["elements"][qe]:
+                sample_dict[qe] = []
+                qe_dict[qe] = {"time": 0,
+                               "time_track": 0}
+        return sample_dict, qe_dict
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """
@@ -298,7 +286,8 @@ class Baking:
                 new_samples = 0
                 if "mixInputs" in self._local_config["elements"][qe]:
                     if (type(samples[0]) != list) or (type(samples[1]) != list):
-                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe} ")
+                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe}"
+                                        f" (Python lists must be provided for both I and Q)")
                     elif len(samples[0]) != len(samples[1]):
                         raise IndexError("Error : samples provided for I and Q do not have the same length")
                     I = samples[0]
@@ -463,6 +452,43 @@ class Baking:
                 qua.play(f"baked_Op_{self._ctr}", qe)
 
 
+def deterministic_run(baking_list: list):  # Not yet functioning
+    depth = int(np.ceil(np.log2(len(baking_list))))
+    l = 0
+    h = len(baking_list)-1
+    #for i in range(h + 1, 2 ** depth):
+      #  baked_list.append(dummy_baked)
 
+    def QUA_deterministic_tree(j, low: int = l, high: int = h, count: int = 1):
 
+        mid = (high + low) // 2
+        print("mid", mid)
+        print("count", count)
+        if high >= low:
+            if count == depth:
+                if mid+1 > high:
+                    baking_list[mid].run()
 
+                else:
+                    with qua.if_(j > mid):
+                        baking_list[mid + 1].run()
+                    with qua.else_():
+                        baking_list[mid].run()
+
+            else:
+                print("here")
+                with qua.if_(j > mid):
+                    QUA_deterministic_tree(j, mid + 1, high, count+1)
+                with qua.else_():
+                    QUA_deterministic_tree(j, low, mid - 1, count+1)
+
+    return QUA_deterministic_tree
+
+#from typing import Iterable
+# def flatten(items):
+#     """Yield items from any nested iterable"""
+#     for x in items:
+#         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+#             yield from flatten(x)
+#         else:
+#             yield x
