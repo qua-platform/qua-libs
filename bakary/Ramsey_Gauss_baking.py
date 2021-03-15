@@ -57,7 +57,6 @@ for i in range(16):
         gauss_drive_Q = [0] * Drive_gauss_pulse_length
         b.add_Op("gauss_drive", "Drive", [gauss_drive_I, gauss_drive_Q])
 
-
         b.frame_rotation(dephasingStep, 'Drive')
         b.wait(init_delay, 'Drive')  # This is to compensate for the extra delay the Resonator is experiencing.
 
@@ -136,7 +135,7 @@ simulate = True
 qmm = QuantumMachinesManager("3.122.60.129")
 qm = qmm.open_qm(configRamseyGauss)
 
-if simulate :
+if simulate:
     job = qm.simulate(RamseyGauss,
                       SimulationConfig(32 * (wait_time_cc + Readout_pulse_length + Fastload_length + drive_cc)))
     samps = job.get_simulated_samples()

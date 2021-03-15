@@ -83,8 +83,7 @@ class Baking:
                     end_samples = len(qe_samples["I"])-wait_duration
                 elif "singleInput" in elements[qe]:
                     end_samples = len(qe_samples)-wait_duration
-                print(qe_samples)
-                print(end_samples, wait_duration)
+
                 # Padding done according to desired method, can be either right, left, symmetric left or symmetric right
 
                 if self._padding_method == "left":
@@ -464,6 +463,7 @@ def deterministic_run(baking_list: list):  # Not yet functioning
     def QUA_deterministic_tree(j, low: int = l, high: int = h, count: int = 1):
 
         mid = (high + low) // 2
+        print(low, high)
         print("mid", mid)
         print("count", count)
         if high >= low:
@@ -483,7 +483,7 @@ def deterministic_run(baking_list: list):  # Not yet functioning
                     QUA_deterministic_tree(j, mid + 1, high, count+1)
                 with qua.else_():
                     QUA_deterministic_tree(j, low, mid - 1, count+1)
-
+        print('cut')
     return QUA_deterministic_tree
 
 #from typing import Iterable
