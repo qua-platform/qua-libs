@@ -84,16 +84,17 @@ class Baking:
                 elif "singleInput" in elements[qe]:
                     end_samples = len(qe_samples)-wait_duration
                 print(qe_samples)
+                print(end_samples, wait_duration)
                 # Padding done according to desired method, can be either right, left, symmetric left or symmetric right
 
                 if self._padding_method == "left":
                     if "mixInputs" in elements[qe]:
-                        qe_samples["I"] = qe_samples["I"][wait_duration:] + qe_samples["I"][0:wait_duration]
-                        qe_samples["Q"] = qe_samples["Q"][wait_duration:] + qe_samples["Q"][0:wait_duration]
+                        qe_samples["I"] = qe_samples["I"][end_samples:] + qe_samples["I"][0:end_samples]
+                        qe_samples["Q"] = qe_samples["Q"][end_samples:] + qe_samples["Q"][0:end_samples]
                     elif "singleInput" in elements[qe]:
-                        qe_samples = qe_samples[wait_duration:] + qe_samples[0:wait_duration]
+                        qe_samples = qe_samples[end_samples:] + qe_samples[0:end_samples]
 
-                elif self._padding_method == "symmetric_l":
+                elif (self._padding_method == "symmetric_l") or (wait_duration % 2 == 0):
                     if "mixInputs" in elements[qe]:
                         qe_samples["I"] = qe_samples["I"][end_samples + wait_duration // 2:] + qe_samples["I"][0: end_samples + wait_duration // 2]
                         qe_samples["Q"] = qe_samples["Q"][end_samples + wait_duration // 2:] + qe_samples["Q"][0: end_samples + wait_duration // 2]
@@ -250,7 +251,7 @@ class Baking:
                         self._samples_dict[qe].append(amp*sample)
                     self._update_qe_time(qe, len(samples))
             else:
-                self.play_at(Op, qe, self._qe_dict[qe]["time_track"])
+                self.play_at(Op, qe, self._qe_dict[qe]["time_track"], amp)
                 self._qe_dict[qe]["time_track"] = 0
 
         except KeyError:
@@ -274,11 +275,12 @@ class Baking:
                 t = int(t)
             else:
                 raise TypeError("Provided time is not an integer")
-        if t < 0:
-            raise TypeError("Index provided is negative")
-        if t > self._qe_dict[qe]["time"]:
+        elif t < 0:
+            self.wait(t, qe)  # Negative wait
+            self.play(Op, qe, amp)
+        elif t > self._qe_dict[qe]["time"]:
             self.wait(t-self._qe_dict[qe]["time"], qe)
-            self.play(Op, qe)
+            self.play(Op, qe, amp)
         else:
             try:
                 pulse = self._local_config["elements"][qe]["operations"][Op]
@@ -405,7 +407,7 @@ class Baking:
                 self._update_qe_time(qe, duration)
         else:
             for qe in qe_set:
-                # Duration is negative so just add to substraction
+                # Duration is negative so just add for substraction
                 self._qe_dict[qe]["time_track"] = self._qe_dict[qe]["time"] + duration
 
     def align(self, *qe_set: Set[str]):
