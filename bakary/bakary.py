@@ -214,7 +214,7 @@ class Baking:
 
     def play(self, Op: str, qe: str, amp: float = 1.) -> None:
         """
-        Add a pulse to the bake sequence
+        Add a pulse to the baked sequence
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
         :param amp: amplitude of the pulse (replaces amp(a)*'pulse' in QUA)
@@ -258,10 +258,11 @@ class Baking:
 
     def play_at(self, Op: str, qe: str, t: int, amp: float = 1.) -> None:
         """
-        Add a waveform to the sequence at a specified time.
+        Add a waveform to the sequence at the specified time index.
         If indicated time is higher than the pulse duration for the specified quantum element,
         a wait command followed by the given waveform at indicated time (in ns) occurs.
         Otherwise, waveform is added (addition of samples) to the pre-existing sequence.
+        Finally, providing a negative index starts adding the sample with a prior negative wait of t
         Note that the phase played for the newly formed sample is the one that was set before adding the new waveform
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
@@ -386,7 +387,7 @@ class Baking:
     def wait(self, duration: int, *qe_set: Set[str]):
         """
         Wait for the given duration on all provided elements.
-        During the wait command the OPX will output 0.0 to the elements.
+        Here, the wait is simply adding 0 to the existing sample for a given duration.
 
         :param duration: waiting duration
         :param qe_set: set of quantum elements
