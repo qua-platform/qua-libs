@@ -71,10 +71,13 @@ exp = load_or_create_experiment(experiment_name='my experiment',
                                 sample_name="this sample")
 
 meas = Measurement(exp=exp, station=station)
+
 idp=Parameter(name='idp',set_cmd=lambda x:x )
 dp=Parameter(name='dp',get_cmd=None)
+
 meas.register_parameter(idp)  # register the first independent parameter
 meas.register_parameter(dp,setpoints=(idp,))  # now register the dependent oone
+
 with meas.run() as datasaver:
     for n in range(8):
         opx.simulate_prog(get_prog())
