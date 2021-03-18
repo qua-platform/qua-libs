@@ -21,6 +21,7 @@ class Baking:
         self._local_config = copy.deepcopy(config)
         self._samples_dict, self._qe_dict = self._init_dict()
         self._ctr = self._get_baking_index()  # unique name counter
+        self._qe_set = set()
 
     def __enter__(self):
         return self
@@ -69,7 +70,7 @@ class Baking:
 
             if self._qe_dict[qe]["time"] > 0:  # Check if a sample was added to the quantum element
                 # otherwise we do not add any Op
-
+                self._qe_set.add(qe)
                 if self._qe_dict[qe]["time"] < 16:  # Sample length must be at least 16 ns long
                     wait_duration += 16 - self._qe_dict[qe]["time"]
                     self.wait(16-self._qe_dict[qe]["time"], qe)
@@ -106,7 +107,7 @@ class Baking:
                         qe_samples["Q"] = qe_samples["Q"][end_samples + wait_duration // 2 + 1:] + qe_samples["Q"][0:end_samples + wait_duration // 2 + 1]
                     elif "singleInput" in elements[qe]:
                         qe_samples = qe_samples[end_samples + wait_duration // 2 + 1:] + qe_samples[0:end_samples + wait_duration // 2 + 1]
-                print(qe_samples)
+
                 # Generates new Op, pulse, and waveform for each qe to be added in the original config file
 
                 self._config["elements"][qe]["operations"][f"baked_Op_{self._ctr}"] = f"{qe}_baked_pulse_{self._ctr}"
@@ -153,6 +154,9 @@ class Baking:
                 index += 1
         return index
 
+    def get_qe_set(self):
+        return self._qe_set
+
     def add_Op(self, name: str, qe: str, samples: list, digital_marker: str = None):
         """
         Adds in the configuration file a pulse element.
@@ -161,6 +165,7 @@ class Baking:
         :param  samples: arbitrary waveform to be inserted into pulse definition
         :param digital_marker: name of the digital marker sample associated to the generated pulse (assumed to be in the original config)
         """
+
         index = self._get_pulse_index(qe)
         Op = {name: f"{qe}_baked_pulse_b{self._ctr}_{index}"}
         if "mixInputs" in self._local_config["elements"][qe]:
@@ -438,11 +443,7 @@ class Baking:
         This method should be used within a QUA program
         :return None
         """
-        qe_set = set()
-        for qe in self._qe_dict.keys():
-            # number of QEs: if >1 we need an align between all of them. if =1, no align
-            if self._qe_dict[qe]["time"] > 0:
-                qe_set.add(qe)
+        qe_set = self.get_qe_set()
 
         if len(qe_set) == 1:
             for qe in qe_set:
@@ -454,37 +455,43 @@ class Baking:
                 qua.play(f"baked_Op_{self._ctr}", qe)
 
 
-def deterministic_run(baking_list: list):  # Not yet functioning
+def deterministic_run(baking_list: list):
     depth = int(np.ceil(np.log2(len(baking_list))))
     l = 0
     h = len(baking_list)-1
-    #for i in range(h + 1, 2 ** depth):
-      #  baked_list.append(dummy_baked)
 
     def QUA_deterministic_tree(j, low: int = l, high: int = h, count: int = 1):
 
         mid = (high + low) // 2
-        print(low, high)
-        print("mid", mid)
-        print("count", count)
-        if high >= low:
-            if count == depth:
-                if mid+1 > high:
-                    baking_list[mid].run()
 
-                else:
-                    with qua.if_(j > mid):
-                        baking_list[mid + 1].run()
-                    with qua.else_():
-                        baking_list[mid].run()
-
-            else:
-                print("here")
+        if count == depth:
+            if mid+1 <= h:
+            #     qua.wait(4, *baking_list[mid].get_qe_set())
+            #     baking_list[mid].run()
+            #
+            # else:
                 with qua.if_(j > mid):
-                    QUA_deterministic_tree(j, mid + 1, high, count+1)
+                    qua.wait(4, *baking_list[mid+1].get_qe_set())
+                    baking_list[mid + 1].run()
+                    qua.save(j, "j")
                 with qua.else_():
-                    QUA_deterministic_tree(j, low, mid - 1, count+1)
-        print('cut')
+                    qua.wait(4, *baking_list[mid].get_qe_set())
+                    baking_list[mid].run()
+                    qua.save(j, "j")
+            else:
+                baking_list[mid].run()
+                qua.save(j, 'where')
+
+        else:
+
+            with qua.if_(j > mid):
+                qua.save(j, "j_h_m")
+                QUA_deterministic_tree(j, mid + 1, high, count+1)
+
+            with qua.else_():
+                qua.save(j, "j_l_m")
+                QUA_deterministic_tree(j, low, mid, count+1)
+
     return QUA_deterministic_tree
 
 #from typing import Iterable

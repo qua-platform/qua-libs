@@ -69,7 +69,7 @@ for i in range(16): # Create 16 different baked sequences
 # index of the waveform (replace the "15" below by a number between 0 and 15)
 baked_pulse = configRamseyGauss["waveforms"]["Drive_baked_wf_I_15"]["samples"]
 t = np.arange(0, len(baked_pulse), 1)
-# plt.plot(t, baked_pulse)
+plt.plot(t, baked_pulse)
 
 with program() as RamseyGauss:  # to measure Rabi flops every 1ns starting from 0ns
 
