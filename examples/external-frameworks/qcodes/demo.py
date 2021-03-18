@@ -51,31 +51,36 @@ config = {
     },
 }
 
+def get_prog():
+    with program() as prog:
+        r = Random()
+        a= declare(fixed)
+        assign(a,r.rand_fixed())
+        result_str = declare_stream()
+        play("playOp", "qe1")
+        save(a,result_str)
+        with stream_processing():
+            result_str.save_all('result')
 
-with program() as prog:
-    r = Random()
-    a= declare(fixed)
-    assign(a,r.rand_fixed())
-    result_str = declare_stream()
-    play("playOp", "qe1")
-    save(a,result_str)
-    with stream_processing():
-        result_str.save_all('result')
-
+    return prog
 
 opx = OPX(config)
 station = qc.Station()
 station.add_component(opx)
-exp = load_or_create_experiment(experiment_name='dataset_context_manager',
-                                sample_name="no sample1")
+exp = load_or_create_experiment(experiment_name='my experiment',
+                                sample_name="this sample")
 
 meas = Measurement(exp=exp, station=station)
-idp=Parameter(name='idp',set_cmd=None)
+idp=Parameter(name='idp',set_cmd=lambda x:x )
 dp=Parameter(name='dp',get_cmd=None)
 meas.register_parameter(idp)  # register the first independent parameter
-meas.register_parameter(dp)  # now register the dependent oone
+meas.register_parameter(dp,setpoints=(idp,))  # now register the dependent oone
 with meas.run() as datasaver:
-    for n in range(3):
-        opx.simulate_prog(prog)
+    for n in range(8):
+        opx.simulate_prog(get_prog())
+        print(opx.get_res())
+        idp.set(n)
         datasaver.add_result((dp,opx.get_res()),(idp,n))
     dataset = datasaver.dataset
+
+plot_dataset(dataset)
