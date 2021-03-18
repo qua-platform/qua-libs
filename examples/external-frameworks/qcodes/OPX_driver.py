@@ -46,10 +46,6 @@ class OPX(Instrument):
     def execute_prog(self, prog):
         self.job =self.qm1.execute(prog)
         self.result_handels=self.job.result_handles
-    def execute_prog(self, prog):
-        self.job =self.qm1.execute(prog)
-        self.result_handels = self.job.result_handles
-
 
     def simulate_prog(self, prog, duration=1000):
         self.job=self.qm1.simulate(prog, SimulationConfig(duration))
@@ -71,48 +67,8 @@ class OPX(Instrument):
         print(con_msg)
         self.log.info(f"Connected to instrument: {idn}")
 
-    # def .add_parameter()
 
 
 
 
-if __name__ == '__main__':
-    config = {
-        "version": 1,
-        "controllers": {
-            "con1": {
-                "type": "opx1",
-                "analog_outputs": {
-                    1: {"offset": +0.0},
-                },
-            }
-        },
-        "elements": {
-            "qe1": {
-                "singleInput": {"port": ("con1", 1)},
-                "intermediate_frequency": 5e6,
-                "operations": {
-                    "playOp": "constPulse",
-                },
-            },
-        },
-        "pulses": {
-            "constPulse": {
-                "operation": "control",
-                "length": 1000,  # in ns
-                "waveforms": {"single": "const_wf"},
-            },
-        },
-        "waveforms": {
-            "const_wf": {"type": "constant", "sample": 0.2},
-        },
-    }
 
-
-    with program() as prog:
-        play("playOp", "qe1")
-
-
-    opx = OPX(config)
-    opx.simulate_prog(prog)
-    # prog = QUA_Program('this')
