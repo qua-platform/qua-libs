@@ -136,12 +136,24 @@ class Baking:
         try:
             if 'single' in self._local_config['pulses'][pulse]['waveforms']:
                 wf = self._local_config['pulses'][pulse]['waveforms']['single']
-                return self._local_config['waveforms'][wf]['samples']
+                if self._local_config['waveforms'][wf]['type'] == 'constant':
+                    return [self._local_config['waveforms'][wf]['sample']] * \
+                           self._local_config['pulses'][pulse]["length"]
+                else:
+                    return self._local_config['waveforms'][wf]['samples']
             elif 'I' in self._local_config['pulses'][pulse]['waveforms']:
                 wf_I = self._local_config['pulses'][pulse]['waveforms']['I']
                 wf_Q = self._local_config['pulses'][pulse]['waveforms']['Q']
-                samples_I = self._local_config['waveforms'][wf_I]['samples']
-                samples_Q = self._local_config['waveforms'][wf_Q]['samples']
+                if self._local_config['waveforms'][wf_I]['type'] == 'constant':
+                    samples_I = [self._local_config['waveforms'][wf_I]['sample']] *\
+                                self._local_config['pulses'][pulse]["length"]
+                else:
+                    samples_I = self._local_config['waveforms'][wf_I]['samples']
+                if self._local_config['waveforms'][wf_Q]['type'] == 'constant':
+                    samples_Q = [self._local_config['waveforms'][wf_Q]['sample']] *\
+                                self._local_config['pulses'][pulse]["length"]
+                else:
+                    samples_Q = self._local_config['waveforms'][wf_Q]['samples']
                 return [samples_I, samples_Q]
 
         except KeyError:
