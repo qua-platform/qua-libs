@@ -33,23 +33,22 @@ class OPX(Instrument):
 
         self.set_config(config=config)
         self._connect()
-        self.result_handles=None
+        self.result_handles = None
         # self.add_parameter('job')
 
-
         self.add_parameter('results',
-                       label='results',
-                       get_cmd=self.result_handles)
+                           label='results',
+                           get_cmd=self.result_handles)
+
     def get_res(self):
         return self.job.result_handles.result.fetch_all()['value']
 
     def execute_prog(self, prog):
-        self.job =self.qm1.execute(prog)
-        self.result_handels=self.job.result_handles
+        self.job = self.qm1.execute(prog)
+        self.result_handels = self.job.result_handles
 
     def simulate_prog(self, prog, duration=1000):
-        self.job=self.qm1.simulate(prog, SimulationConfig(duration))
-
+        self.job = self.qm1.simulate(prog, SimulationConfig(duration))
 
     def set_config(self, config):
         self.config = config
@@ -66,9 +65,3 @@ class OPX(Instrument):
                    'in {t:.2f}s'.format(t=t, **idn))
         print(con_msg)
         self.log.info(f"Connected to instrument: {idn}")
-
-
-
-
-
-
