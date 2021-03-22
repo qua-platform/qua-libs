@@ -5,148 +5,12 @@ from qm import SimulationConfig
 from bakary import *
 from qm.qua import *
 import matplotlib.pyplot as plt
-
-π = np.pi
-t = np.linspace(-3, 3, 16)
-sigma= 1
-gauss = 0.1*np.exp(-t ** 2 / (2*sigma**2))
-lmda = 0.5
-alpha = -1
-d_gauss = lmda * (-t) * gauss / alpha
-config = {
-
-    'version': 1,
-
-    'controllers': {
-
-        "con1": {
-            'type': 'opx1',
-            'analog_outputs': {
-                1: {'offset': +0.0},  # qubit 1 I
-                2: {'offset': +0.0},  # qubit 1 Q
-                3: {'offset': +0.0},  # flux line
-            },
-            'analog_inputs': {
-                1: {'offset': +0.0},
-            }
-        },
-
-    },
-
-    'elements': {
-
-        "qe1": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-            },
-            'intermediate_frequency': 0,
-            'operations': {
-                'playOp': "mixedConst",
-                'playOp2': "mixedConst2",
-                'gaussOp': "mixedGauss",
-                'dragOp': "DragPulse",
-
-            },
-        },
-        "fluxline": {
-            'singleInput': {
-                "port": ("con1", 3),
-            },
-            'intermediate_frequency': 0,
-            'hold_offset': {'duration': 100},
-            'operations': {
-                'iSWAP': "constPulse",
-
-            },
-        }
-
-    },
-
-    "pulses": {
-        "mixedConst": {
-            'operation': 'control',
-            'length': 100,
-            'waveforms': {
-                'I': 'zero_wf',
-                'Q': 'const_wf'
-            }
-        },
-        "mixedConst2": {
-            'operation': 'control',
-            'length': 100,
-            'waveforms': {
-                'I': 'const_wf',
-                'Q': 'zero_wf'
-            }
-        },
-        "mixedGauss": {
-            'operation': 'control',
-            'length': len(gauss),
-            'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'zero_wf'
-            }
-        },
-
-        "constPulse": {
-            'operation': 'control',
-            'length': 100,
-            'waveforms': {
-                'single': 'const_wf'
-            }
-        },
-        "DragPulse": {
-            'operation': 'control',
-            'length': len(gauss),
-            'waveforms': {
-                'I': 'gauss_wf',
-                'Q': 'd_gauss_wf'
-            }
-
-        },
-        "gaussianPulse": {
-            'operation': 'control',
-            'length': len(gauss),
-            'waveforms': {
-                'single': 'gauss_wf'
-            }
-        },
-
-    },
-
-    "waveforms": {
-        'zero_wf': {
-            'type': 'constant',
-            'sample': 0.0
-        },
-        'const_wf': {
-            'type': 'constant',
-            'sample': 0.1
-        },
-        'gauss_wf': {
-            'type': 'arbitrary',
-            'samples': gauss
-        },
-        'd_gauss_wf': {
-            'type': 'arbitrary',
-            'samples': d_gauss
-        },
-
-    },
-}
-
-# def gauss(amplitude, mu, sigma, length):
-#     t = np.linspace(-length / 2, length / 2, length)
-#     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-#     return [float(x) for x in gauss_wave]
-# return [amplitude for x in t]
+from deterministic_configuration import *
 
 b_list = []
 for i in range(16):
     with baking(config=config, padding_method="left") as b:
-        b.add_Op("Gaussian_pulse", "qe1", [list(gauss), [0]*len(gauss)])
-        b.play("Gaussian_pulse", "qe1", amp=0.01 * (i+1))
+        b.play("gaussOp", "qe1", amp=0.01 * (i+1))
     b_list.append(b)
 
 
@@ -156,7 +20,7 @@ baked_pulse = [config["waveforms"][f"qe1_baked_wf_I_{i}"]["samples"] for i in ra
 #     plt.plot(t, baked_pulse[i])
 #print(baked_pulse)
 
-s = deterministic_run(b_list)
+QUA_baking_tree = deterministic_run(b_list)
 qmm = QuantumMachinesManager("3.122.60.129")
 QM = qmm.open_qm(config)
 mid = 4
@@ -240,7 +104,7 @@ with program() as prog:
     with for_(j, 0, j < 16, j+1):
 
         wait(4, 'qe1')
-        s(j)
+        QUA_baking_tree(j)
         #play_ramsey_tree()
         play("playOp", "qe1")
 

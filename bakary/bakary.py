@@ -140,7 +140,7 @@ class Baking:
                     return [self._local_config['waveforms'][wf]['sample']] * \
                            self._local_config['pulses'][pulse]["length"]
                 else:
-                    return self._local_config['waveforms'][wf]['samples']
+                    return list(self._local_config['waveforms'][wf]['samples'])
             elif 'I' in self._local_config['pulses'][pulse]['waveforms']:
                 wf_I = self._local_config['pulses'][pulse]['waveforms']['I']
                 wf_Q = self._local_config['pulses'][pulse]['waveforms']['Q']
@@ -148,12 +148,12 @@ class Baking:
                     samples_I = [self._local_config['waveforms'][wf_I]['sample']] *\
                                 self._local_config['pulses'][pulse]["length"]
                 else:
-                    samples_I = self._local_config['waveforms'][wf_I]['samples']
+                    samples_I = list(self._local_config['waveforms'][wf_I]['samples'])
                 if self._local_config['waveforms'][wf_Q]['type'] == 'constant':
                     samples_Q = [self._local_config['waveforms'][wf_Q]['sample']] *\
                                 self._local_config['pulses'][pulse]["length"]
                 else:
-                    samples_Q = self._local_config['waveforms'][wf_Q]['samples']
+                    samples_Q = list(self._local_config['waveforms'][wf_Q]['samples'])
                 return [samples_I, samples_Q]
 
         except KeyError:
@@ -238,13 +238,17 @@ class Baking:
         :return:
         """
         try:
-
             if self._qe_dict[qe]["time_track"] == 0:
                 pulse = self._local_config["elements"][qe]["operations"][Op]
                 samples = self._get_samples(pulse)
+
                 if "mixInputs" in self._local_config["elements"][qe]:
                     if (type(samples[0]) != list) or (type(samples[1]) != list):
                         raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe} ")
+
+                    elif len(samples[0]) != len(samples[1]):
+                        raise IndexError("Error : samples provided for I and Q do not have the same length")
+
                     I = samples[0]
                     Q = samples[1]
                     I2 = [None] * len(I)
@@ -305,8 +309,7 @@ class Baking:
                 new_samples = 0
                 if "mixInputs" in self._local_config["elements"][qe]:
                     if (type(samples[0]) != list) or (type(samples[1]) != list):
-                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe}"
-                                        f" (Python lists must be provided for both I and Q)")
+                        raise TypeError(f"Error : samples given do not correspond to mixInputs for element {qe}")
                     elif len(samples[0]) != len(samples[1]):
                         raise IndexError("Error : samples provided for I and Q do not have the same length")
                     I = samples[0]
