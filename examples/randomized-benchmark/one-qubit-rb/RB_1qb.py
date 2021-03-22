@@ -8,7 +8,7 @@ from configuration import config
 from rb_lib import *
 
 # Open communication with the server.
-QMm = QuantumMachinesManager()
+QMm = QuantumMachinesManager("3.122.60.129")
 QM1 = QMm.open_qm(config)
 
 N_avg = 10

@@ -2,12 +2,8 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from bakary import *
-import matplotlib.pyplot as plt
 
-import numpy as np
-from importlib import reload
-
-from Configuration_Maker_RamseyGauss import *
+from RamseyGauss_configuration import *
 
 from time import sleep
 from matplotlib import pyplot as plt
@@ -37,28 +33,19 @@ gauss_drive_sigma = Drive_gauss_pulse_length / 6
 Inverse_Readout_pulse_length = 1e9 / Readout_pulse_length
 drive_cc = int(Tpihalf / 4) + 4  # 12cc = 48ns for Tpihalf=32
 
-configRamseyGauss = configMakerRamseyGauss(Resonator_TOF=Resonator_TOF, Readout_pulse_length=Readout_pulse_length,
-                                           Load_pulse_length=Fastload_length, Resonator_freq=FreqCW * 1e9,
-                                           Drive_freq=freq * 1e9, Tpihalf=Tpihalf)
-
 dmax = int(npts / 4)
 period_IF = 31.25e6
 
 baking_list = []  # Stores the baking objects
 for i in range(16): # Create 16 different baked sequences
-    with baking(configRamseyGauss, padding_method="left") as b:
+    with baking(config, padding_method="left") as b:
         init_delay = 19  # Put initial delay to ensure synchronicity between
         # the end of the pulse and the trigger of the resonator
-
-        # Create and add gaussian sample to be added for Ramsey experiment
-        gauss_drive_I = gauss(gauss_drive_amp, gauss_drive_mu, gauss_drive_sigma, Drive_gauss_pulse_length)
-        gauss_drive_Q = [0] * Drive_gauss_pulse_length
-        b.add_Op("gauss_drive", "Drive", [gauss_drive_I, gauss_drive_Q])
 
         b.frame_rotation(dephasingStep, 'Drive')
         b.wait(init_delay, 'Drive')  # This is to compensate for the extra delay the Resonator is experiencing.
 
-        # Play uploads the sample in the original config file
+        # Play uploads the sample in the original config file (here we use an existing pulse in the config)
         b.play("gauss_drive", 'Drive', amp=1)  # duration Tpihalf+16
         b.play_at('gauss_drive', 'Drive', init_delay - i)  # duration Tpihalf #Add error for negative values
 
@@ -67,7 +54,7 @@ for i in range(16): # Create 16 different baked sequences
 
 # You can retrieve and see the pulse you built for each baking object by modifying
 # index of the waveform (replace the "15" below by a number between 0 and 15)
-baked_pulse = configRamseyGauss["waveforms"]["Drive_baked_wf_I_15"]["samples"]
+baked_pulse = config["waveforms"]["Drive_baked_wf_I_15"]["samples"]
 t = np.arange(0, len(baked_pulse), 1)
 plt.plot(t, baked_pulse)
 
@@ -117,7 +104,7 @@ with program() as RamseyGauss:  # to measure Rabi flops every 1ns starting from 
                 save(Q, Q_stream)
                 save(pw, param_stream)
                 save(dephasing, phase_stream)  # dephasing of the 2nd gauss pulse wrt 1st one
-        reset_frame('Drive', 'Drive2')
+        reset_frame('Drive')
 
     with stream_processing():
         I_stream.buffer(1000, npts).save('Iall')
@@ -130,7 +117,7 @@ with program() as RamseyGauss:  # to measure Rabi flops every 1ns starting from 
 simulate = True
 
 qmm = QuantumMachinesManager("3.122.60.129")
-qm = qmm.open_qm(configRamseyGauss)
+qm = qmm.open_qm(config)
 
 if simulate:
     job = qm.simulate(RamseyGauss,
@@ -144,7 +131,6 @@ if simulate:
     plt.figure()
     plt.plot(an1)
     plt.plot(an3)
-    # plt.axis(xmin = 16500, xmax = 20000, ymin=-0.011, ymax=0.011)
 
     print('End prog')
     plt.show()
@@ -152,32 +138,3 @@ else:
     job = qm.execute(RamseyGauss)
     res = job.result_handles
     sleep(2)
-
-# I = np.array(res.I.fetch_all()) * Inverse_Readout_pulse_length
-# Q = np.array(res.Q.fetch_all()) * Inverse_Readout_pulse_length
-# time = np.array(res.param.fetch_all())  # in ns
-
-"""
-plt.ion()
-fig, ax = plt.subplots(2,1)
-I_plot, = ax[0].plot(dur, I_vs_dur)
-Q_plot, = ax[1].plot(dur, Q_vs_dur)
-ax[0].grid()
-ax[1].grid()
-plt.show()
-
-ax[0].set_title("Rabi 1ns", fontsize=18)
-ax[1].set_xlabel("drive duration (ns)", fontsize=14)
-ax[0].set_ylabel("I", fontsize=14)
-ax[1].set_ylabel("Q", fontsize=14)
-while True:
-    print("tic")
-    I_vs_dur = np.array(res.I.fetch_all()) * Inverse_Readout_pulse_length
-    Q_vs_dur = np.array(res.Q.fetch_all()) * Inverse_Readout_pulse_length
-    dur = np.array(res.param.fetch_all())  # in ns
-    I_plot.set_ydata(I_vs_dur)
-    Q_plot.set_ydata(Q_vs_dur)
-    fig.canvas.draw()
-    fig.canvas.flush_events()
-    sleep(2)
-"""
