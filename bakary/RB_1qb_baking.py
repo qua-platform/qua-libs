@@ -6,20 +6,19 @@ from qm import SimulationConfig
 import numpy as np
 from RB_1qb_configuration import *
 
-N_avg = 10
-circuit_depth_vec = list(range(1, 10, 1))
+N_avg = 1
+circuit_depth_vec = list(range(1, 10, 2))
 # circuit_depth_vec=list(set(np.logspace(0,2,10).astype(int).tolist()))
 t1 = 10
 b_list = []
 
 for depth in circuit_depth_vec:
     with baking(config, padding_method="right") as b:
+        generate_cliffords(b, "qe1", pulse_length=16)
         final_state = randomize_and_play_circuit(depth, b)
         play_clifford(recovery_clifford(final_state), final_state, b)
 
     b_list.append(b)
-
-
 
 # Open communication with the server.
 QMm = QuantumMachinesManager("3.122.60.129")

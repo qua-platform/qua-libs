@@ -470,41 +470,44 @@ class Baking:
                 qua.play(f"baked_Op_{self._ctr}", qe)
 
 
-def deterministic_run(baking_list: list):
+def deterministic_run(baking_list: list[Baking]):
+    """
+    Generates a QUA macro for a binary tree ensuring a synchronized play of operations
+    listed in the various baking objects
+    :param baking_list: Python list of Baking objects
+    """
     depth = int(np.ceil(np.log2(len(baking_list))))
     l = 0
     h = len(baking_list)-1
 
     def QUA_deterministic_tree(j, low: int = l, high: int = h, count: int = 1):
+        """
+        QUA macro to be used in a QUA program
+        :param j: QUA int indicating which element of the baking list should be accessed
+        :param low: index indicating start of the list
+        :param high: index indicating the end of the list
+        :param count: counts the number of iterations, which should be the same for each accessed element
+        """
 
         mid = (high + low) // 2
 
         if count == depth:
             if mid+1 <= h:
-            #     qua.wait(4, *baking_list[mid].get_qe_set())
-            #     baking_list[mid].run()
-            #
-            # else:
                 with qua.if_(j > mid):
                     qua.wait(4, *baking_list[mid+1].get_qe_set())
                     baking_list[mid + 1].run()
-                    qua.save(j, "j")
                 with qua.else_():
                     qua.wait(4, *baking_list[mid].get_qe_set())
                     baking_list[mid].run()
-                    qua.save(j, "j")
             else:
                 baking_list[mid].run()
-                qua.save(j, 'where')
 
         else:
 
             with qua.if_(j > mid):
-                qua.save(j, "j_h_m")
                 QUA_deterministic_tree(j, mid + 1, high, count+1)
 
             with qua.else_():
-                qua.save(j, "j_l_m")
                 QUA_deterministic_tree(j, low, mid, count+1)
 
     return QUA_deterministic_tree

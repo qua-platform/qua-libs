@@ -32,14 +32,14 @@ def play_ramsey_tree():
             with if_(j > 13):
                 with if_(j > 14):
                     wait(4, 'qe1')
-                    play("playOp2", "qe1")  # duration Tpihalf+16
+                    play("gaussOp", "qe1")  # duration Tpihalf+16
                 with else_():
                     wait(4, 'qe1')
-                    play("playOp2", "qe1")   # duration Tpihalf+16
+                    play('gaussOp', "qe1")   # duration Tpihalf+16
             with else_():
                 with if_(j > 12):
                     wait(4, 'qe1')
-                    play("playOp2", "qe1")   # duration Tpihalf+16
+                    play('gaussOp', "qe1")   # duration Tpihalf+16
                 with else_():
                     wait(4, 'qe1')
                     play("playOp2", "qe1")   # duration Tpihalf+16
@@ -96,16 +96,13 @@ with program() as prog:
     I = declare(fixed)
     Q = declare(fixed)
     with for_(j, 0, j < 16, j+1):
-
         wait(4, 'qe1')
-        # s(j)
         play_ramsey_tree()
         play("playOp", "qe1")
     with for_(j, 0, j < 16, j+1):
 
         wait(4, 'qe1')
         QUA_baking_tree(j)
-        #play_ramsey_tree()
         play("playOp", "qe1")
 
 
@@ -125,9 +122,7 @@ plt.figure()
 samples.con1.plot()
 
 results = job.result_handles
-j = results.j.fetch_all()
-j_h_m = results.j_h_m.fetch_all()
-j_l_m = results.j_l_m.fetch_all()
+
 #where = results.where.fetch_all()
 
 delay = []
