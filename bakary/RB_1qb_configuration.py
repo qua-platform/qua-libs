@@ -192,16 +192,7 @@ cliffords = [
     ["X/2", "Y/2", "X/2"],
     ["-X/2", "Y/2", "-X/2"],
 ]
-
-
-def recovery_clifford(state: str):
-    """
-    Returns the required clifford to return to the ground state based on the position on the bloch sphere
-    :param state: The current position on the Bloch sphere
-    :return: A string representing the recovery clifford
-    """
-    # operations = {'x': ['I'], '-x': ['Y'], 'y': ['X/2', '-Y/2'], '-y': ['-X/2', '-Y/2'], 'z': ['-Y/2'], '-z': ['Y/2']}
-    operations = {
+operations = {
         "z": ["I"],
         "-x": ["-Y/2"],
         "y": ["X/2"],
@@ -209,8 +200,6 @@ def recovery_clifford(state: str):
         "x": ["Y/2"],
         "-z": ["X"],
     }
-    return operations[state]
-
 
 transformations = {
         "x": {
@@ -268,6 +257,17 @@ transformations = {
             "-Y/2": "-x",
         },
     }
+
+
+def recovery_clifford(state: str):
+    """
+    Returns the required clifford to return to the ground state based on the position on the bloch sphere
+    :param state: The current position on the Bloch sphere
+    :return: A string representing the recovery clifford
+    """
+    # operations = {'x': ['I'], '-x': ['Y'], 'y': ['X/2', '-Y/2'], '-y': ['-X/2', '-Y/2'], 'z': ['-Y/2'], '-z': ['Y/2']}
+
+    return operations[state]
 
 
 def transform_state(input_state: str, transformation: str):
@@ -342,3 +342,17 @@ def active_reset(state):
     with if_(state):
         play("X", "qe1")
 
+
+def generate_cliffords(b: Baking, qe: str, pulse_length: int):
+
+    short_pi = gauss(0.2, 0, 12, pulse_length)
+    short_pi_2 = gauss(0.1, 0., 12, pulse_length)
+    short_minus_pi_2 = gauss(-0.1, 0., 12, pulse_length)
+    short_0 = [0.] * pulse_length
+
+    b.add_Op("X", qe, [short_pi, short_0])
+    b.add_Op("Y", qe, [short_0, short_pi])
+    b.add_Op("X/2", qe, [short_pi_2, short_0])
+    b.add_Op("Y/2", qe, [short_0, short_pi_2])
+    b.add_Op("-X/2", qe, [short_minus_pi_2, short_0])
+    b.add_Op("-Y/2", qe, [short_0, short_minus_pi_2])
