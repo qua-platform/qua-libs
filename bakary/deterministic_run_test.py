@@ -21,7 +21,7 @@ baked_pulse = [config["waveforms"][f"qe1_baked_wf_I_{i}"]["samples"] for i in ra
 #print(baked_pulse)
 
 QUA_baking_tree = deterministic_run(b_list)
-qmm = QuantumMachinesManager("3.122.60.129")
+qmm = QuantumMachinesManager()
 QM = qmm.open_qm(config)
 mid = 4
 

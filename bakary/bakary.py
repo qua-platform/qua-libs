@@ -470,7 +470,7 @@ class Baking:
                 qua.play(f"baked_Op_{self._ctr}", qe)
 
 
-def deterministic_run(baking_list: list[Baking]):
+def deterministic_run(baking_list):
     """
     Generates a QUA macro for a binary tree ensuring a synchronized play of operations
     listed in the various baking objects
