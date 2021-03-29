@@ -33,6 +33,7 @@ with program() as RBprog:
 
     with for_(N, 0, N < N_avg, N + 1):
         for i in range(len(circuit_depth_vec)):
+            align("rr", "qe1")
             b_list[i].run()
             align("rr", "qe1")
             measure_state(state, I)
