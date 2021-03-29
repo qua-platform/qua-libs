@@ -13,3 +13,5 @@ examples/multi-qubit/multiplexed-multilevel-NN-discriminator/model.png
 examples/multi-qubit/multiplexed-multilevel-NN-discriminator/try7/
 examples/leakage-reduction/outcmaes/
 /examples/randomized-benchmark/leakage-reduction/outcmaes/
+
+*.npy
