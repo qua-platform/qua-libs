@@ -116,7 +116,7 @@ with program() as RamseyGauss:  # to measure Rabi flops every 1ns starting from 
 
 simulate = True
 
-qmm = QuantumMachinesManager("3.122.60.129")
+qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
 if simulate:

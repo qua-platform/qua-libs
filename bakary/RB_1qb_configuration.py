@@ -345,9 +345,9 @@ def active_reset(state):
 
 def generate_cliffords(b: Baking, qe: str, pulse_length: int):
 
-    short_pi = gauss(0.2, 0, 12, pulse_length)
-    short_pi_2 = gauss(0.1, 0., 12, pulse_length)
-    short_minus_pi_2 = gauss(-0.1, 0., 12, pulse_length)
+    short_pi = gauss(0.2, 0, 1, pulse_length)
+    short_pi_2 = gauss(0.1, 0., 1, pulse_length)
+    short_minus_pi_2 = gauss(-0.1, 0., 1, pulse_length)
     short_0 = [0.] * pulse_length
 
     b.add_Op("X", qe, [short_pi, short_0])

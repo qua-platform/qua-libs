@@ -14,15 +14,15 @@ b_list = []
 
 for depth in circuit_depth_vec:
     with baking(config, padding_method="right") as b:
-        generate_cliffords(b, "qe1", pulse_length=16)
+        generate_cliffords(b, "qe1", pulse_length=10)
         final_state = randomize_and_play_circuit(depth, b)
         play_clifford(recovery_clifford(final_state), final_state, b)
 
     b_list.append(b)
 
 # Open communication with the server.
-QMm = QuantumMachinesManager("3.122.60.129")
-QM1 = QMm.open_qm(config)
+QMm = QuantumMachinesManager()
+QM1 = QMm.open_qm(config,close_other_machines=True)
 
 
 with program() as RBprog:
@@ -44,7 +44,7 @@ with program() as RBprog:
             "out_stream"
         )
 
-job = QM1.simulate(RBprog, SimulationConfig(int(100000)))
+job = QM1.simulate(RBprog, SimulationConfig(int(1000)))
 res = job.result_handles
 avg_state = res.out_stream.fetch_all()
 
