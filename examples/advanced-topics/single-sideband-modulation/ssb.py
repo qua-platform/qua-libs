@@ -15,7 +15,7 @@ pulseDuration = nSamples / samplingRate
 pulseDuration_ns = pulseDuration / 1e-9
 t = np.linspace(0, pulseDuration, nSamples)
 
-freqs = np.linspace(1, 4, 5).tolist()
+freqs = np.linspace(1, 4, 15).tolist()
 phases = np.zeros_like(freqs).tolist()
 amps = np.ones_like(phases).tolist()
 m = np.sum(
