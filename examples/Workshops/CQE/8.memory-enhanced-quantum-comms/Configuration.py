@@ -1,4 +1,4 @@
-# works with 0.4
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
