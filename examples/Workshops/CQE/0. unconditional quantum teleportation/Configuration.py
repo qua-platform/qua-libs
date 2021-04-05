@@ -4,19 +4,22 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0}, #a-reset
-                2: {"offset": +0.0}, #a-RO
-                3: {"offset": +0.0}, #a-init
-                4: {"offset": +0.0}, #a-espin manip I
-                5: {"offset": +0.0}, #a-espin manip Q
+                1: {"offset": +0.0}, #dummy
+                2: {"offset": +0.0}, #a-espin I
+                3: {"offset": +0.0}, #a-espin Q
+                4: {"offset": +0.0}, #b-espin I
+                5: {"offset": +0.0}, #b-espin Q
                 6: {"offset": +0.0}, #n-spin manip
-                7: {"offset": +0.0}, #b-RO
-                8: {"offset": +0.0}, #b-Reset
+               
                 
                 
 
             },
-            "digital_outputs": {1: {}, 2: {},3: {}, 4: {},5: {}, 6: {}},
+            "digital_outputs": {1: {}, 2: {},3: {}, 4: {},5: {}, 6: {},7: {},8: {},9: {},10: {}},
+            "analog_inputs": {
+                1: {"offset": +0.0},
+                2: {"offset": +0.0},
+            },
         }
     },
     "elements": {
@@ -36,9 +39,27 @@ config = {
         },
         "a-ro": {
         "singleInput": {"port": ("con1", 1)},
+        "outputs": {"output1": ("con1", 1)},
         "digitalInputs": {
             "digital_input1": {
                 "port": ("con1", 2),
+                "delay": 0,
+                "buffer": 0,
+            },
+        },
+        "time_of_flight": 180,
+        "smearing": 0,
+        "intermediate_frequency": 0,
+        "operations": {
+            "playOp": "constPulse",
+        
+        },   
+    },
+          "init": {
+        "singleInput": {"port": ("con1", 1)},
+        "digitalInputs": {
+            "digital_input1": {
+                "port": ("con1", 3),
                 "delay": 0,
                 "buffer": 0,
             },
@@ -48,8 +69,51 @@ config = {
             "playOp": "constPulse",
         
         },
-        
     },
+           "b-reset": {
+        "singleInput": {"port": ("con1", 1)},
+        "digitalInputs": {
+            "digital_input1": {
+                "port": ("con1", 4),
+                "delay": 0,
+                "buffer": 0,
+            },
+        },
+        "intermediate_frequency": 0,
+        "operations": {
+            "playOp": "constPulse",
+        
+        },
+    },
+       "b-ro": {
+        "singleInput": {"port": ("con1", 1)},
+        "outputs": {"output1": ("con1", 2)},
+
+        "digitalInputs": {
+            "digital_input1": {
+                "port": ("con1", 5),
+                "delay": 0,
+                "buffer": 0,
+            },
+        },
+        "time_of_flight": 180,
+        "smearing": 0,
+        "intermediate_frequency": 0,
+        "operations": {
+            "playOp": "constPulse",
+        
+        },
+    },
+        "a-espin": {
+        "mixInputs": {"I": ("con1", 2), "Q": ("con1", 3)},
+        "intermediate_frequency": 50e6,
+        "operations": {
+            "CNOT": "CNOT",
+        
+        },
+    },
+                              
+
     },
     "pulses": {
         "zeroPulse": {
@@ -64,17 +128,25 @@ config = {
             "waveforms": {"single": "const_wf"},
             "digital_marker": "ON",
         },
-        "constPulse_trig": {
+        "CNOT": {
             "operation": "control",
             "length": 1000,  # in ns
-            "waveforms": {"single": "const_wf"},
-            "digital_marker": "trig",
+             "waveforms": {"I": "const_wf", "Q": "const_wf"},
+            
         },
-        "constPulse_stutter": {
-            "operation": "control",
-            "length": 1000,  # in ns
-            "waveforms": {"single": "const_wf"},
-            "digital_marker": "stutter",
+       "readoutPulse": {
+            "operation": "measure",
+            "length": 52,
+            "waveforms": {"single": "zero_wf"},
+            "digital_marker": "ON",
+            "integration_weights": {"x": "xWeights", "y": "yWeights"},
+        },
+        "short_readoutPulse": {
+            "operation": "measure",
+            "length": 16,
+            "waveforms": {"single": "zero_wf"},
+            "digital_marker": "ON",
+            "integration_weights": {"x": "xWeights", "y": "yWeights"},
         },
     },
     "waveforms": {
@@ -83,7 +155,16 @@ config = {
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
-        "trig": {"samples": [(1, 100)]},
-        "stutter": {"samples": [(1, 100), (0, 200), (1, 76), (0, 10), (1, 0)]},
+      },
+        "integration_weights": {
+        "xWeights": {
+            "cosine": [1.0] * 52,
+            "sine": [0.0] * 52,
+        },
+       
+        "yWeights": {
+            "cosine": [0.0] * 52,
+            "sine": [1.0] * 52,
+        },
     },
 }
