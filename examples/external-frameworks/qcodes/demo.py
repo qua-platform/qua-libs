@@ -19,6 +19,7 @@ from qcodes.logger.logger import start_all_logging
 
 from OPX_driver import *
 
+pulse_len = 1000
 config = {
     "version": 1,
     "controllers": {
@@ -26,45 +27,80 @@ config = {
             "type": "opx1",
             "analog_outputs": {
                 1: {"offset": +0.0},
+                2: {"offset": +0.0},
+            },
+            "analog_inputs": {
+                1: {"offset": +0.0},
             },
         }
     },
     "elements": {
         "qe1": {
-            "singleInput": {"port": ("con1", 1)},
+            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2)},
+            "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": 5e6,
             "operations": {
                 "playOp": "constPulse",
             },
+            "time_of_flight": 180,
+            "smearing": 0,
         },
     },
     "pulses": {
         "constPulse": {
             "operation": "control",
-            "length": 1000,  # in ns
-            "waveforms": {"single": "const_wf"},
+            "length": pulse_len,  # in ns
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
+        },
+        "readoutPulse": {
+            "operation": "measure",
+            "length": pulse_len,
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
+            "digital_marker": "ON",
+            "integration_weights": {"x": "xWeights", "y": "yWeights"},
         },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
     },
+    "digital_waveforms": {
+        "ON": {"samples": [(1, 0)]},
+    },
+    "integration_weights": {
+        "xWeights": {
+            "cosine": [1.0] * (pulse_len // 4),
+            "sine": [0.0] * (pulse_len // 4),
+        },
+        "yWeights": {
+            "cosine": [0.0] * (pulse_len // 4),
+            "sine": [1.0] * (pulse_len // 4),
+        },
+    },
 }
 
 
-def get_prog():
+def get_prog(N_max=3,f_start=-100e6,f_stop=100e6,f_pts=100,voltage_pts=10):
+    df=(f_stop-f_start)/f_pts
     with program() as prog:
-        r = Random()
-        a = declare(fixed)
-        assign(a, r.rand_fixed())
+        vn=declare(int)
+        N = declare(int)
+        f = declare(int)
+        I = declare(fixed)
         result_str = declare_stream()
-        play("playOp", "qe1")
-        save(a, result_str)
+        # with for_(vn,0,vn<voltage_pts,vn+1):
+        with for_(f, f_start, f < f_stop, f + df):
+            update_frequency('qe1', f)
+            with for_(N, 0, N < N_max, N + 1):
+                measure('readoutPulse', 'qe1', None, demod.full('x', I))
+                save(I, result_str)
+
         with stream_processing():
-            result_str.save_all('result')
+            result_str.buffer(N_max).map(FUNCTIONS.average()).save_all('result')
 
     return prog
 
-
+f_pts=100
+voltage_range = np.linspace(0,10,10)
 opx = OPX(config)
 station = qc.Station()
 station.add_component(opx)
@@ -73,18 +109,19 @@ exp = load_or_create_experiment(experiment_name='my experiment',
 
 meas = Measurement(exp=exp, station=station)
 
-idp = Parameter(name='idp', set_cmd=lambda x: x)
-dp = Parameter(name='dp', get_cmd=None)
+v1 = Parameter(name='voltage', set_cmd=lambda x: x)
+spectrum = Parameter(name='spectrum', get_cmd=None, vals=Arrays(shape=(f_pts,)))
 
-meas.register_parameter(idp)  # register the first independent parameter
-meas.register_parameter(dp, setpoints=(idp,))  # now register the dependent oone
+meas.register_parameter(v1)  # register the first independent parameter
+meas.register_parameter(spectrum, setpoints=(v1,))  # now register the dependent oone
+
 
 with meas.run() as datasaver:
-    for n in range(8):
-        opx.simulate_prog(get_prog())
+    for v in voltage_range:
+        opx.simulate_prog(get_prog(f_pts=f_pts),duration=100000)
         print(opx.get_res())
-        idp.set(n)
-        datasaver.add_result((dp, opx.get_res()), (idp, n))
+        v1.set(v)
+        datasaver.add_result((spectrum, opx.get_res()), (v1, v))
     dataset = datasaver.dataset
 
 plot_dataset(dataset)

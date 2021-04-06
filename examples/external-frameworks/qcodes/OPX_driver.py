@@ -34,6 +34,7 @@ class OPX(Instrument):
         self.set_config(config=config)
         self._connect()
         self.result_handles = None
+        # self.simulation_duration=kwargs['simulation_duration']
         # self.add_parameter('job')
 
         self.add_parameter('results',
@@ -56,6 +57,7 @@ class OPX(Instrument):
     def _connect(self):
         begin_time = time.time()
         self.QMm = QuantumMachinesManager()
+        self.QMm.close_all_quantum_machines()
         self.qm1 = self.QMm.open_qm(self.config)
         idn = {'vendor': 'Quantum Machines', 'model': 'OPX'}
         idn.update(self.QMm.version())
