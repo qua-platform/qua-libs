@@ -18,8 +18,8 @@ def measure_spin(basis, threshold, state):
         play('pi2', 'spin_qubit')
     align('spin_qubit', 'readout', 'readout1', 'readout2')
     play('on', 'readout', duration=800)
-    measure('readout', 'readout1', None, time_tagging.raw(result1, meas_len, targetLen=resultLen1))
-    measure('readout', 'readout2', None, time_tagging.raw(result2, meas_len, targetLen=resultLen2))
+    measure('readout', 'readout1', None, time_tagging.analog(result1, meas_len, targetLen=resultLen1))
+    measure('readout', 'readout2', None, time_tagging.analog(result2, meas_len, targetLen=resultLen2))
     assign(counts, resultLen1+resultLen2)
     assign(state, counts>threshold)
 
