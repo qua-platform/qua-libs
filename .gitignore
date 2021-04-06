@@ -14,8 +14,6 @@ examples/multi-qubit/multiplexed-multilevel-NN-discriminator/try7/
 examples/leakage-reduction/outcmaes/
 /examples/randomized-benchmark/leakage-reduction/outcmaes/
 
-*.npy
-
 examples/Workshops/CQE/6. leakage-reduction/outcmaes/
 
 examples/Workshops/CQE/6. leakage-reduction/.ipynb_checkpoints/
