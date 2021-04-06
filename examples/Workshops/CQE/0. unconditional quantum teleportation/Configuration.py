@@ -112,7 +112,14 @@ config = {
         
         },
     },
-                              
+        "b-espin": {
+        "mixInputs": {"I": ("con1", 4), "Q": ("con1", 5)},
+        "intermediate_frequency": 50e6,
+        "operations": {
+            "CNOT": "CNOT",
+        
+        },
+    },                        
 
     },
     "pulses": {
