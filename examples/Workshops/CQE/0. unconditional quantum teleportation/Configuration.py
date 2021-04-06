@@ -55,11 +55,26 @@ config = {
         
         },   
     },
-          "init": {
+          "a-init": {
         "singleInput": {"port": ("con1", 1)},
         "digitalInputs": {
             "digital_input1": {
                 "port": ("con1", 3),
+                "delay": 0,
+                "buffer": 0,
+            },
+        },
+        "intermediate_frequency": 0,
+        "operations": {
+            "playOp": "constPulse",
+        
+        },
+    },
+                  "b-init": {
+        "singleInput": {"port": ("con1", 1)},
+        "digitalInputs": {
+            "digital_input1": {
+                "port": ("con1", 6),
                 "delay": 0,
                 "buffer": 0,
             },
@@ -109,7 +124,8 @@ config = {
         "intermediate_frequency": 50e6,
         "operations": {
             "CNOT": "CNOT",
-        
+            "PI":"PI",
+            "PI2":"PI2"
         },
     },
         "b-espin": {
@@ -117,9 +133,19 @@ config = {
         "intermediate_frequency": 50e6,
         "operations": {
             "CNOT": "CNOT",
+            "PI":"PI",
+            "PI2":"PI2"
         
         },
-    },                        
+    }, 
+          "nspin": {
+        "singleInput": {"port": ("con1", 6)},
+        "intermediate_frequency": 50e6,
+        "operations": {
+            "playOp": "constPulse",
+        
+        },
+    },
 
     },
     "pulses": {
@@ -138,6 +164,18 @@ config = {
         "CNOT": {
             "operation": "control",
             "length": 1000,  # in ns
+             "waveforms": {"I": "const_wf", "Q": "const_wf"},
+            
+        },
+        "PI": {
+            "operation": "control",
+            "length": 120,  # in ns
+             "waveforms": {"I": "const_wf", "Q": "const_wf"},
+            
+        },
+        "PI2": {
+            "operation": "control",
+            "length": 52,  # in ns
              "waveforms": {"I": "const_wf", "Q": "const_wf"},
             
         },
