@@ -41,6 +41,7 @@ config = {
             "intermediate_frequency": 5e6,
             "operations": {
                 "playOp": "constPulse",
+                "readout": "readoutPulse"
             },
             "time_of_flight": 180,
             "smearing": 0,
@@ -91,7 +92,7 @@ def get_prog(N_max=3,f_start=-100e6,f_stop=100e6,f_pts=100,voltage_pts=10):
         with for_(f, f_start, f < f_stop, f + df):
             update_frequency('qe1', f)
             with for_(N, 0, N < N_max, N + 1):
-                measure('readoutPulse', 'qe1', None, demod.full('x', I))
+                measure('readout', 'qe1', None, demod.full('x', I))
                 save(I, result_str)
 
         with stream_processing():
@@ -119,7 +120,7 @@ meas.register_parameter(spectrum, setpoints=(v1,))  # now register the dependent
 with meas.run() as datasaver:
     for v in voltage_range:
         opx.simulate_prog(get_prog(f_pts=f_pts),duration=100000)
-        print(opx.get_res())
+        # print(opx.get_res())
         v1.set(v)
         datasaver.add_result((spectrum, opx.get_res()), (v1, v))
     dataset = datasaver.dataset
