@@ -55,7 +55,7 @@ def get_result(prog, duration, K=10):
     :return:
     """
 
-    QMm = QuantumMachinesManager("3.129.60.118")
+    QMm = QuantumMachinesManager()
     QMm.close_all_quantum_machines()
     QM = QMm.open_qm(config)
     F_avg = []
