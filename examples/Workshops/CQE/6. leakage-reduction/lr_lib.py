@@ -5,13 +5,12 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 from scipy.interpolate import interp1d
 
-
 def get_program(config, params, t, N_avg, d):
     """
     A function to generate the QUA program
     :param config: the QM config dictionary
     :param params: parameter list for optimization
-    :param t: duration of DRAG pulses in ns
+    :param t: duration of DRAG pulses in ns.
     :param N_avg: number of runs per RB circuit realization
     :param d: depth of the randomized circuit
     :return:
@@ -56,7 +55,7 @@ def get_result(prog, duration, K=10):
     :return:
     """
 
-    QMm = QuantumMachinesManager()
+    QMm = QuantumMachinesManager("3.129.60.118")
     QMm.close_all_quantum_machines()
     QM = QMm.open_qm(config)
     F_avg = []
