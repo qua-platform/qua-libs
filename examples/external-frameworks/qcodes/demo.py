@@ -14,6 +14,8 @@ from qcodes import (
     new_experiment,
 )
 from qcodes.dataset.plotting import plot_dataset
+from qcodes.loops import Loop
+
 from qcodes.logger.logger import start_all_logging
 # from qcodes.tests.instrument_mocks import DummyInstrument, DummyInstrumentWithMeasurement
 
@@ -80,10 +82,10 @@ config = {
 }
 
 
-def get_prog(N_max=3,f_start=-100e6,f_stop=100e6,f_pts=100,voltage_pts=10):
-    df=(f_stop-f_start)/f_pts
+def get_prog(N_max=3, f_start=-100e6, f_stop=100e6, f_pts=100, voltage_pts=10):
+    df = (f_stop - f_start) / f_pts
     with program() as prog:
-        vn=declare(int)
+        vn = declare(int)
         N = declare(int)
         f = declare(int)
         I = declare(fixed)
@@ -100,8 +102,9 @@ def get_prog(N_max=3,f_start=-100e6,f_stop=100e6,f_pts=100,voltage_pts=10):
 
     return prog
 
-f_pts=100
-voltage_range = np.linspace(0,10,10)
+
+f_pts = 100
+voltage_range = np.linspace(0, 10, 10)
 opx = OPX(config)
 station = qc.Station()
 station.add_component(opx)
@@ -116,10 +119,9 @@ spectrum = Parameter(name='spectrum', get_cmd=None, vals=Arrays(shape=(f_pts,)))
 meas.register_parameter(v1)  # register the first independent parameter
 meas.register_parameter(spectrum, setpoints=(v1,))  # now register the dependent oone
 
-
 with meas.run() as datasaver:
     for v in voltage_range:
-        opx.simulate_prog(get_prog(f_pts=f_pts),duration=100000)
+        opx.simulate_prog(get_prog(f_pts=f_pts), duration=100000)
         # print(opx.get_res())
         v1.set(v)
         datasaver.add_result((spectrum, opx.get_res()), (v1, v))
