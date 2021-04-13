@@ -11,9 +11,10 @@ from qcodes import (
     load_experiment,
     load_last_experiment,
     load_or_create_experiment,
-    new_experiment,
+    new_experiment, ParameterWithSetpoints,
 )
 from qcodes.dataset.plotting import plot_dataset
+from qcodes.instrument_drivers.tektronix.keithley_7510 import GeneratedSetPoints
 from qcodes.loops import Loop
 
 from qcodes.logger.logger import start_all_logging
@@ -105,7 +106,13 @@ def get_prog(N_max=3, f_start=-100e6, f_stop=100e6, f_pts=100, voltage_pts=10):
 
 f_pts = 100
 voltage_range = np.linspace(0, 10, 10)
-opx = OPX(config)
+f_range = np.linspace(0, 100, f_pts)
+# opx = OPX(config)
+opx = OPX_SpectrumScan(config)
+opx.f_start(0)
+opx.f_stop(100)
+opx.sim_time(100000)
+opx.n_points(f_pts)
 station = qc.Station()
 station.add_component(opx)
 exp = load_or_create_experiment(experiment_name='my experiment',
@@ -113,18 +120,17 @@ exp = load_or_create_experiment(experiment_name='my experiment',
 
 meas = Measurement(exp=exp, station=station)
 
-v1 = Parameter(name='voltage', set_cmd=lambda x: x)
-spectrum = Parameter(name='spectrum', get_cmd=None, vals=Arrays(shape=(f_pts,)))
+meas.register_parameter(opx.ext_v) # register the independent parameter
+meas.register_parameter(opx.spectrum, setpoints=(opx.ext_v,))  # now register the dependent one
 
-meas.register_parameter(v1)  # register the first independent parameter
-meas.register_parameter(spectrum, setpoints=(v1,))  # now register the dependent oone
 
 with meas.run() as datasaver:
     for v in voltage_range:
-        opx.simulate_prog(get_prog(f_pts=f_pts), duration=100000)
-        # print(opx.get_res())
-        v1.set(v)
-        datasaver.add_result((spectrum, opx.get_res()), (v1, v))
+        opx.ext_v(v)
+        #interact with external device here
+        datasaver.add_result((opx.ext_v,v), (opx.spectrum, opx.spectrum()))
+
+
     dataset = datasaver.dataset
 
 plot_dataset(dataset)
