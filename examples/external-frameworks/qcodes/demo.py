@@ -82,28 +82,6 @@ config = {
     },
 }
 
-
-def get_prog(N_max=3, f_start=-100e6, f_stop=100e6, f_pts=100, voltage_pts=10):
-    df = (f_stop - f_start) / f_pts
-    with program() as prog:
-        vn = declare(int)
-        N = declare(int)
-        f = declare(int)
-        I = declare(fixed)
-        result_str = declare_stream()
-        # with for_(vn,0,vn<voltage_pts,vn+1):
-        with for_(f, f_start, f < f_stop, f + df):
-            update_frequency('qe1', f)
-            with for_(N, 0, N < N_max, N + 1):
-                measure('readout', 'qe1', None, demod.full('x', I))
-                save(I, result_str)
-
-        with stream_processing():
-            result_str.buffer(N_max).map(FUNCTIONS.average()).save_all('result')
-
-    return prog
-
-
 f_pts = 100
 voltage_range = np.linspace(0, 10, 10)
 f_range = np.linspace(0, 100, f_pts)
