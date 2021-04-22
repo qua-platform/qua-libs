@@ -34,7 +34,7 @@ def get_leakage(i0, q0):
     return amp_
 
 
-def get_sideband(g, p):
+def get_image(g, p):
     job.set_element_correction('qubit', IQ_imbalance_correction(g, p))
     amp_ = get_amp()
     return amp_
@@ -89,6 +89,20 @@ plt.ylabel("Amplitude (dBm)")
 plt.plot(freq_vec, amp)
 plt.show()
 
+# Get signal - change BW and start stop to be around image
+sa.write('SENS:BAND 1e1')
+sa.write(f"SENS:SWE:POIN 41")
+sa.write(f"SENS:FREQ:START {qubit_LO+qubit_IF-100}")
+sa.write(f"SENS:FREQ:STOP {qubit_LO+qubit_IF+100}")
+
+# Set marker
+sa.write("INIT:IMM;*OPC?")
+sa.read()
+sa.write('CALC:MARK1:ACT')
+sa.write(f'CALC:MARK1:X {qubit_LO + qubit_IF}')  # Signal
+
+signal = int(get_amp())
+
 # LO leakage optimize - change BW and start stop to be around LO leakage
 sa.write('SENS:BAND 1e1')
 sa.write(f"SENS:SWE:POIN 41")
@@ -96,16 +110,17 @@ sa.write(f"SENS:FREQ:START {qubit_LO-100}")
 sa.write(f"SENS:FREQ:STOP {qubit_LO+100}")
 
 # Set marker
+sa.write("INIT:IMM;*OPC?")
+sa.read()
 sa.write('CALC:MARK1:ACT')
 sa.write(f'CALC:MARK1:X {qubit_LO}')  # Leakage
-sa.write('CALC:MARK1:NOIS OFF')
 
 # Optimize LO leakage
 start_time = time.time()
 fun_leakage = lambda x: get_leakage(x[0], x[1])
-res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 2})
+res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3})
 print(f"LO --- I0 = {res_leakage.x[0]:.4f}, Q0 = {res_leakage.x[1]:.4f} --- "
-      f"{int(time.time() - start_time)} seconds --- {int(res_leakage.fun)} dB")
+      f"{int(time.time() - start_time)} seconds --- {signal - int(res_leakage.fun)} dBc")
 
 # Image optimize - change BW and start stop to be around image
 sa.write('SENS:BAND 1e1')
@@ -114,16 +129,17 @@ sa.write(f"SENS:FREQ:START {qubit_LO-qubit_IF-100}")
 sa.write(f"SENS:FREQ:STOP {qubit_LO-qubit_IF+100}")
 
 # Set marker
+sa.write("INIT:IMM;*OPC?")
+sa.read()
 sa.write('CALC:MARK1:ACT')
 sa.write(f'CALC:MARK1:X {qubit_LO - qubit_IF}')  # Leakage
-sa.write('CALC:MARK1:NOIS OFF')
 
 # Optimize LO leakage
 start_time = time.time()
-fun_image = lambda x: get_leakage(x[0], x[1])
-res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 2})
+fun_image = lambda x: get_image(x[0], x[1])
+res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3})
 print(f"Image --- g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} --- "
-      f"{int(time.time() - start_time)} seconds --- {int(res_image.fun)} dB")
+      f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc")
 
 # Set parameters back for a large sweep
 sa.write('SENS:BAND:VID:AUTO 1')
