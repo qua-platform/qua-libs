@@ -100,7 +100,6 @@ sa.write("INIT:IMM;*OPC?")
 sa.read()
 sa.write('CALC:MARK1:ACT')
 sa.write(f'CALC:MARK1:X {qubit_LO + qubit_IF}')  # Signal
-
 signal = int(get_amp())
 
 # LO leakage optimize - change BW and start stop to be around LO leakage
@@ -115,10 +114,16 @@ sa.read()
 sa.write('CALC:MARK1:ACT')
 sa.write(f'CALC:MARK1:X {qubit_LO}')  # Leakage
 
+# Initial simplex for Nelder-Mead
+initial_simplex = np.zeros([3, 2])
+initial_simplex[0, :] = [0, 0]
+initial_simplex[1, :] = [0, 0.1]
+initial_simplex[2, :] = [0.1, 0]
+
 # Optimize LO leakage
 start_time = time.time()
 fun_leakage = lambda x: get_leakage(x[0], x[1])
-res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3})
+res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3, 'initial_simplex': initial_simplex, 'maxiter': 50})
 print(f"LO --- I0 = {res_leakage.x[0]:.4f}, Q0 = {res_leakage.x[1]:.4f} --- "
       f"{int(time.time() - start_time)} seconds --- {signal - int(res_leakage.fun)} dBc")
 
@@ -137,7 +142,7 @@ sa.write(f'CALC:MARK1:X {qubit_LO - qubit_IF}')  # Leakage
 # Optimize LO leakage
 start_time = time.time()
 fun_image = lambda x: get_image(x[0], x[1])
-res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3})
+res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3, 'initial_simplex': initial_simplex, 'maxiter': 50})
 print(f"Image --- g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} --- "
       f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc")
 

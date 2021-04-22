@@ -239,7 +239,58 @@ With $k = \frac{K_{down}}{J_{down}} = \frac{1 - r_{down} e^ {i \phi_{down}}}{1 +
 We can see that the matrix can be decomposed into two terms: The 1st which causes the leakage between the sidebands and the 2nd which only scales the results.
 We can ignore the 2nd term as the scaling is not important for practical applications. Furthermore, we note that the leakage term only depends on a single parameter $k$.
 
-## Scripts for mixer calibration
-
+## Manual calibration script
 [Manual Up-conversion Calibration](manual_mixer_calibration.py) - This scripts shows the basic commands used to calibrate the IQ mixer.
+It plays a CW pulse in an infinite loop.
 The calibration should be done by connecting the output of the mixer to a spectrum analyzer and minimizing the LO leakage term at $\Omega$ and image term at $\Omega-\omega_{IF}$.
+
+## Automatic calibration script
+[Automatic Up-conversion Calibration For Keysight FieldFox](fieldfox_mixer_calibration.py) - This scripts shows an example
+for an automatic mixer calibration code, writen for a Keysight Fieldfox N9917A.
+It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
+and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
+
+### SA Commands used in the script:
+These commands are written here such that it'll be easy to adapt the code to another SA.
+
+* "SENS:BAND:VID:AUTO 1" - Sets the video bandwidth to be automatic (same as the regular bandwidth)
+* "SENS:BAND:AUTO 0" - Sets the bandwidth to be manual
+* "SENS:BAND ???'" - Sets the manual bandwidth to ???
+* "SENS:SWE:POIN ???" - Sets the number of points for the sweep to be ???
+* "SENS:FREQ:START ???" - Sets the starting frequency for the sweep to be ???
+* "SENS:FREQ:STOP ???" - Sets the end frequency for the sweep to be ???
+* "INIT:CONT OFF;*OPC?" - Sets the SA to single trigger (turn continuous off)
+* "INIT:CONT ON" - Sets the SA to continuous mode 
+* "INIT:IMM;*OPC?" - Perform a single sweep
+* "TRACE:DATA?" - Gets the full trace
+* "CALC:MARK1:ACT" - Activate marker #1
+* "CALC:MARK1:X ???" - Sets marker #1 to frequency ???
+* "CALC:MARK1:Y?" - Query marker #1
+
+### Detailed explanation of the code
+The code does not touch the Y scale of the SA, the number of averages, or the trigger settings. These have to be defined manually.
+
+The code starts with the definition of the QUA program, and three functions:
+* get_amp() - Gets the amplitude at the current marker location
+* get_leakage(i0, q0) - Sets the DC offsets to i0 & q0 and gets the amplitude using get_amp()
+* get_image(g, p) - Sets the gain and phase mismatch to g & p and gets the amplitude using get_amp()
+
+Afterwards, the program is executed, the SA object is being created and parameters are being set for a large sweep to see the initial spectrum.
+We set the bandwidth to 1 kHz and we sweep a bit more than twice the IF frequency, this is such that we'll be able to see spurs coming from higher harmonics (if they are not negligible, the IF & LO power need tuning)
+
+After getting the initial trace, we set the bandwidth to 10Hz to get a low noise floor, take only 41 points 100 Hz around the LO leakage,
+set the marker to the Lo leakage, and then run the Nelder-Mead algorithm to minimize the leakage.  
+
+It then repeats for the image minimization, and finally takes another large trace to see the final spectrum after the minimization.
+Shown below is a demo run of the algorithm, it took ~46 seconds for the LO, lowering it to -79 dBc (relative to the signal).
+The image rejection took ~49 seconds, lowering it to -88 dBc.
+
+The spurs at $\omega_{LO} \pm 2 \omega_{IF}$ are at around -50dBc, they can be reduced by decreasing the power arriving
+at the IQ ports.
+
+Note - In the image below the noise floor is at ~-60 dBc, but the optimization is done at a much lower bandwidth which
+sets the noise floor at ~80-90 dBc.
+
+![fieldfox_mixer_calibration](fieldfox_mixer_calibration.png)
+
+![fieldfox_mixer_calibration_summary](fieldfox_mixer_calibration_summary.png)
