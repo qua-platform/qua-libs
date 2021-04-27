@@ -1,4 +1,4 @@
-# Works on Keysight FieldFox, tested on N9917A
+# Tested on Keysight FieldFox N9917A
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *

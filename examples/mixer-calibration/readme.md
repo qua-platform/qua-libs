@@ -245,8 +245,8 @@ It plays a CW pulse in an infinite loop.
 The calibration should be done by connecting the output of the mixer to a spectrum analyzer and minimizing the LO leakage term at $\Omega$ and image term at $\Omega-\omega_{IF}$.
 
 ## Automatic calibration script
-[Automatic Up-conversion Calibration For Keysight FieldFox](fieldfox_mixer_calibration.py) - This scripts shows an example
-for an automatic mixer calibration code, writen for a Keysight Fieldfox N9917A.
+[Automatic Up-conversion Calibration](automatic_mixer_calibration.py) - This scripts shows an example
+for an automatic mixer calibration code on an external spectrum analyzer, tested for a Keysight Fieldfox N9917A.
 It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
 and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
 
