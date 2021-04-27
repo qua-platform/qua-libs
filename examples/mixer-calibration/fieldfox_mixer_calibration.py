@@ -9,6 +9,35 @@ import numpy as np
 import pyvisa as visa
 import scipy.optimize as opti
 
+##############
+# Parameters #
+##############
+
+# Parameters for Nelder-Mead
+initial_simplex = np.zeros([3, 2])
+initial_simplex[0, :] = [0, 0]
+initial_simplex[1, :] = [0, 0.1]
+initial_simplex[2, :] = [0.1, 0]
+xatol = 1e-4  # 1e-4 change in DC offset or gain/phase
+fatol = 3  # dB change tolerance
+maxiter = 50  # 50 iterations should be more then enough, but can be changed.
+
+# Parameters for SA - Measurement:
+measIBW = 1000  # Measurement integration bandwidth
+measNumPoints = 101
+
+# Parameters for SA - Sweep:
+bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
+fullNumPoints = 1201
+fullSpan = int(abs(qubit_IF * 4.1))  # Larger than 4 such that we'll see spurs
+startFreq = qubit_LO - fullSpan / 2
+stopFreq = qubit_LO + fullSpan / 2
+freq_vec = np.linspace(float(startFreq), float(stopFreq), int(fullNumPoints))
+
+# Open connection to SA
+rm = visa.ResourceManager()
+sa = rm.open_resource('TCPIP0::192.168.1.9::inst0::INSTR')
+sa.timeout = 100000
 
 #############
 # Functions #
@@ -20,10 +49,11 @@ with program() as mixer_cal:
 
 
 def get_amp():
-    sa.write("INIT:IMM;*OPC?")
-    sa.read()
-    sa.write(f'CALC:MARK1:Y?')
-    sig = float(sa.read())
+    sa.query("INIT:IMM;*OPC?")
+    sig = float(sa.query("CALC:MEAS:DATA?").split(",")[0])
+    # Data from the Fieldfox comes out as a string separated by ',':
+    # '-1.97854112E+01,-3.97854112E+01\n'
+    # The code above takes the first value and converts to float.
     return sig
 
 
@@ -49,125 +79,90 @@ qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 job = qm.execute(mixer_cal)
 
-# Configure the SA :
-numPoints = 1201
-span = int(abs(qubit_IF * 4.1))
-startFreq = qubit_LO-span/2
-stopFreq = qubit_LO+span/2
-freq_vec = np.linspace(float(startFreq), float(stopFreq), int(numPoints))
-
-rm = visa.ResourceManager()
-sa = rm.open_resource('TCPIP0::192.168.1.9::inst0::INSTR')
-sa.timeout = 100000
-# Set Bandwidth and start/stop freq of SA
+# Set video bandwidth to be automatic and bandwidth to be manual. Disable continuous mode
 sa.write('SENS:BAND:VID:AUTO 1')
 sa.write('SENS:BAND:AUTO 0')
-sa.write('SENS:BAND 1e3')
-sa.write("SENS:SWE:POIN " + str(numPoints))
-sa.write("SENS:FREQ:START " + str(startFreq))
-sa.write("SENS:FREQ:STOP " + str(stopFreq))
+sa.query("INIT:CONT OFF;*OPC?")
 
-time.sleep(2)
+if bDoSweeps:
+    # Set Bandwidth and start/stop freq of SA for a large sweep
+    sa.write('SENS:BAND 1e3')
+    sa.write("SENS:SWE:POIN " + str(fullNumPoints))
+    sa.write("SENS:FREQ:START " + str(startFreq))
+    sa.write("SENS:FREQ:STOP " + str(stopFreq))
 
-# Do a single read
-sa.write("INIT:CONT OFF;*OPC?")
-sa.read()
+    # Do a single read
+    sa.query("INIT:IMM;*OPC?")
 
-sa.write("INIT:IMM;*OPC?")
-sa.read()
+    # Query the FieldFox response data
+    sa.write("TRACE:DATA?")
+    ff_SA_Trace_Data = sa.read()
+    # Data from the Fieldfox comes out as a string separated by ',':
+    # '-1.97854112E+01,-3.97854112E+01,-2.97454112E+01,-4.92543112E+01,-5.17254112E+01,-1.91254112E+01...\n'
+    # The code below turns it into an a python list of floats
 
-# Query the FieldFox response data
-sa.write("TRACE:DATA?")
-ff_SA_Trace_Data = sa.read()
+    # Use split to turn long string to an array of values
+    ff_SA_Trace_Data_Array = ff_SA_Trace_Data.split(",")
+    amp = [float(i) for i in ff_SA_Trace_Data_Array]
 
-# Use split to turn long string to an array of values
-ff_SA_Trace_Data_Array = ff_SA_Trace_Data.split(",")
-amp = [float(i) for i in ff_SA_Trace_Data_Array]
-plt.figure('Full Spectrum')
-plt.xlabel("Frequency")
-plt.ylabel("Amplitude (dBm)")
-plt.plot(freq_vec, amp)
-plt.show()
+    plt.figure('Full Spectrum')
+    plt.xlabel("Frequency")
+    plt.ylabel("Amplitude (dBm)")
+    plt.plot(freq_vec, amp)
+    plt.show()
 
-# Get signal - change BW and start stop to be around image
-sa.write('SENS:BAND 1e1')
-sa.write(f"SENS:SWE:POIN 41")
-sa.write(f"SENS:FREQ:START {qubit_LO+qubit_IF-100}")
-sa.write(f"SENS:FREQ:STOP {qubit_LO+qubit_IF+100}")
+# Configure measure
+sa.write("SENS:MEAS:CHAN CHP")
+sa.write("SENS:SWE:POIN " + str(measNumPoints))
+sa.write("SENS:CME:RRCF 0")
+sa.write(f"SENS:CME:IBW {measIBW}")
+sa.write("SENS:CME:AVER:ENAB 0")
+sa.write(f"SENS:FREQ:SPAN {10 * measIBW}")
+sa.write(f'SENS:BAND {int(0.1 * measIBW)}')
 
-# Set marker
-sa.write("INIT:IMM;*OPC?")
-sa.read()
-sa.write('CALC:MARK1:ACT')
-sa.write(f'CALC:MARK1:X {qubit_LO + qubit_IF}')  # Signal
+# Get Signal
+sa.write(f"SENS:FREQ:CENT {qubit_LO + qubit_IF}")
 signal = int(get_amp())
 
-# LO leakage optimize - change BW and start stop to be around LO leakage
-sa.write('SENS:BAND 1e1')
-sa.write(f"SENS:SWE:POIN 41")
-sa.write(f"SENS:FREQ:START {qubit_LO-100}")
-sa.write(f"SENS:FREQ:STOP {qubit_LO+100}")
-
-# Set marker
-sa.write("INIT:IMM;*OPC?")
-sa.read()
-sa.write('CALC:MARK1:ACT')
-sa.write(f'CALC:MARK1:X {qubit_LO}')  # Leakage
-
-# Initial simplex for Nelder-Mead
-initial_simplex = np.zeros([3, 2])
-initial_simplex[0, :] = [0, 0]
-initial_simplex[1, :] = [0, 0.1]
-initial_simplex[2, :] = [0.1, 0]
-
 # Optimize LO leakage
+sa.write(f"SENS:FREQ:CENT {qubit_LO}")
 start_time = time.time()
 fun_leakage = lambda x: get_leakage(x[0], x[1])
-res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3, 'initial_simplex': initial_simplex, 'maxiter': 50})
-print(f"LO --- I0 = {res_leakage.x[0]:.4f}, Q0 = {res_leakage.x[1]:.4f} --- "
+res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead', options={'xatol': xatol, 'fatol': fatol, 'initial_simplex': initial_simplex, 'maxiter': maxiter})
+print(f"LO Leakage Results: Found a minimum of {int(res_leakage.fun)} dBm at I0 = {res_leakage.x[0]:.4f}, Q0 = {res_leakage.x[1]:.4f} in "
       f"{int(time.time() - start_time)} seconds --- {signal - int(res_leakage.fun)} dBc")
 
-# Image optimize - change BW and start stop to be around image
-sa.write('SENS:BAND 1e1')
-sa.write(f"SENS:SWE:POIN 41")
-sa.write(f"SENS:FREQ:START {qubit_LO-qubit_IF-100}")
-sa.write(f"SENS:FREQ:STOP {qubit_LO-qubit_IF+100}")
-
-# Set marker
-sa.write("INIT:IMM;*OPC?")
-sa.read()
-sa.write('CALC:MARK1:ACT')
-sa.write(f'CALC:MARK1:X {qubit_LO - qubit_IF}')  # Leakage
-
-# Optimize LO leakage
+# Optimize image
+sa.write(f"SENS:FREQ:CENT {qubit_LO - qubit_IF}")
 start_time = time.time()
 fun_image = lambda x: get_image(x[0], x[1])
-res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 3, 'initial_simplex': initial_simplex, 'maxiter': 50})
-print(f"Image --- g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} --- "
+res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': xatol, 'fatol': fatol, 'initial_simplex': initial_simplex, 'maxiter': maxiter})
+print(f"Image Results: Found a minimum of {int(res_image.fun)} dBm at g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} in "
       f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc")
 
+# Turn measurement off
+sa.write("SENS:MEAS:CHAN NONE")
+
 # Set parameters back for a large sweep
-sa.write('SENS:BAND:VID:AUTO 1')
-sa.write('SENS:BAND:AUTO 0')
-sa.write('SENS:BAND 1e3')
-sa.write("SENS:SWE:POIN " + str(numPoints))
-sa.write("SENS:FREQ:START " + str(startFreq))
-sa.write("SENS:FREQ:STOP " + str(stopFreq))
-sa.write("INIT:IMM;*OPC?")
-sa.read()
+if bDoSweeps:
+    sa.write('SENS:BAND 1e3')
+    sa.write("SENS:SWE:POIN " + str(fullNumPoints))
+    sa.write("SENS:FREQ:START " + str(startFreq))
+    sa.write("SENS:FREQ:STOP " + str(stopFreq))
+    sa.query("INIT:IMM;*OPC?")
 
-# Do a large sweep
-sa.write("TRACE:DATA?")
-ff_SA_Trace_Data = sa.read()
-ff_SA_Trace_Data_Array = ff_SA_Trace_Data.split(",")
-amp = [float(i) for i in ff_SA_Trace_Data_Array]
-plt.figure('Full Spectrum')
-plt.plot(freq_vec, amp)
+    # Do a large sweep
+    sa.write("TRACE:DATA?")
+    ff_SA_Trace_Data = sa.read()
+    ff_SA_Trace_Data_Array = ff_SA_Trace_Data.split(",")
+    amp = [float(i) for i in ff_SA_Trace_Data_Array]
+    plt.figure('Full Spectrum')
+    plt.plot(freq_vec, amp)
 
-plt.legend(['Before', 'After'])
-plt.show()
+    plt.legend(['Before', 'After'])
+    plt.show()
 
-# Return the FieldFox back to free run trigger mode
+# Return the FieldFox back to continuous mode
 sa.write("INIT:CONT ON")
 
 # On exit clean a few items up.

@@ -30,7 +30,7 @@ $$
 z(t) = z_I(t) + i z_Q(t)
 $$
 
-------------------------------------------------------------
+----------------------------------------------------------------
 > **_Example:_** : 
 > It is common have $z_I(t) = \text{cos} \left( \omega_{IF} t + \phi \right)$ and $z_Q(t) = \text{sin}\left(\omega_{IF}t + \phi \right)$.
 > This makes $z(t) = e^{i (\omega_{IF}t + \phi)}$ and:
@@ -72,7 +72,7 @@ Note that generally speaking, this creates two sidebands at the two sides of $\O
 We will treat the upper sideband as the signal, and the lower as the image, which can be removed by a proper choice of $z(t)$.
 Note that $a[\omega]$ represent the signal while $a^*[-\omega]$ represents the image.
 
-------------------------------------------------------------
+----------------------------------------------------------------
 > **_Example:_** : 
 > Looking back at the previous example (without the phase): 
 > 
@@ -250,8 +250,15 @@ for an automatic mixer calibration code, writen for a Keysight Fieldfox N9917A.
 It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
 and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
 
+----------------------------------------------------------------
+> **_Note:_** : 
+> It is important to have the LO source, the SA and the OPX locked to the same external reference clock.
+
+----------------------------------------------------------------
+
+
 ### SA Commands used in the script:
-These commands are written here such that it'll be easy to adapt the code to another SA.
+Most SA implement the same SCPI instrument commands. These commands are written here as reference.
 
 * "SENS:BAND:VID:AUTO 1" - Sets the video bandwidth to be automatic (same as the regular bandwidth)
 * "SENS:BAND:AUTO 0" - Sets the bandwidth to be manual
@@ -259,36 +266,43 @@ These commands are written here such that it'll be easy to adapt the code to ano
 * "SENS:SWE:POIN ???" - Sets the number of points for the sweep to be ???
 * "SENS:FREQ:START ???" - Sets the starting frequency for the sweep to be ???
 * "SENS:FREQ:STOP ???" - Sets the end frequency for the sweep to be ???
+* "SENS:FREQ:CENT ???" - Sets the center frequency to ???
+* "SENS:FREQ:SPAN ???" - Sets the frequency span to ???
 * "INIT:CONT OFF;*OPC?" - Sets the SA to single trigger (turn continuous off)
 * "INIT:CONT ON" - Sets the SA to continuous mode 
 * "INIT:IMM;*OPC?" - Perform a single sweep
 * "TRACE:DATA?" - Gets the full trace
-* "CALC:MARK1:ACT" - Activate marker #1
-* "CALC:MARK1:X ???" - Sets marker #1 to frequency ???
-* "CALC:MARK1:Y?" - Query marker #1
+* "SENS:MEAS:CHAN CHP" - Sets the measurement to Channel Power
+* "SENS:MEAS:CHAN None" - Disables the measurement
+* "SENS:CME:RRCF 0" - Turns of RRC Filter for the measurement
+* "SENS:CME:IBW ???" - Sets the integration bandwidth for the measurement to ???
+* "SENS:CME:AVER:ENAB 0" - Disables averaging for the measurement
 
 ### Detailed explanation of the code
-The code does not touch the Y scale of the SA, the number of averages, or the trigger settings. These have to be defined manually.
+The code does not touch the Y scale of the SA, or the trigger settings. These have to be defined manually if needed.
+All the parameters that may be modified are at the beginning of the file:
+* In most cases, only the connection to the SA needs to be modified.
+* The integration bandwidth, defined by the `measIBW`, can also be changed. There is always a tradeoff between speed and results, and it also depends on the model of the SA used.
+* `bDoSweeps` can be changed to `False` to disable the full sweeps before and after the optimizations.
 
 The code starts with the definition of the QUA program, and three functions:
-* get_amp() - Gets the amplitude at the current marker location
+* get_amp() - Gets the amplitude of the current measurement.
 * get_leakage(i0, q0) - Sets the DC offsets to i0 & q0 and gets the amplitude using get_amp()
 * get_image(g, p) - Sets the gain and phase mismatch to g & p and gets the amplitude using get_amp()
 
 Afterwards, the program is executed, the SA object is being created and parameters are being set for a large sweep to see the initial spectrum.
 We set the bandwidth to 1 kHz and we sweep a bit more than twice the IF frequency, this is such that we'll be able to see spurs coming from higher harmonics (if they are not negligible, the IF & LO power need tuning)
 
-After getting the initial trace, we set the bandwidth to 10Hz to get a low noise floor, take only 41 points 100 Hz around the LO leakage,
-set the marker to the Lo leakage, and then run the Nelder-Mead algorithm to minimize the leakage.  
+After getting the initial trace, we turn on the Channel Power measurement and configure it. 
+We then run the Nelder-Mead algorithm to minimize the leakage.  
 
 It then repeats for the image minimization, and finally takes another large trace to see the final spectrum after the minimization.
-Shown below is a demo run of the algorithm, it took ~46 seconds for the LO, lowering it to -79 dBc (relative to the signal).
-The image rejection took ~49 seconds, lowering it to -88 dBc.
+Shown below is a demo run of the algorithm, it took ~20 seconds each for the LO and image, lowering them to <-70 dBc (relative to the signal).
 
-The spurs at $\omega_{LO} \pm 2 \omega_{IF}$ are at around -50dBc, they can be reduced by decreasing the power arriving
+The spurs at $\omega_{LO} \pm 2 \omega_{IF}$ are at around -50 dBc, they can be reduced by decreasing the power arriving
 at the IQ ports.
 
-Note - In the image below the noise floor is at ~-60 dBc, but the optimization is done at a much lower bandwidth which
+Note - In the image below the noise floor is at ~-65 dBc, but the optimization is done at a much lower bandwidth which
 sets the noise floor at ~80-90 dBc.
 
 ![fieldfox_mixer_calibration](fieldfox_mixer_calibration.png)
