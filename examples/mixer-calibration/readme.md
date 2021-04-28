@@ -250,11 +250,14 @@ for an automatic mixer calibration code on an external spectrum analyzer, tested
 It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
 and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
 
-----------------------------------------------------------------
+[Automatic Up-conversion Calibration - Using Markers](automatic_mixer_calibration_method_2.py) - This script is similiar 
+to the one above, but it uses a marker to probe the power instead of a `channel power` measurement.
+
+-------------------------------------------------------------------------------------------------------
 > **_Note:_** : 
 > It is important to have the LO source, the SA and the OPX locked to the same external reference clock.
 
-----------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
 
 
 ### SA Commands used in the script:
@@ -271,6 +274,9 @@ Most SA implement the same SCPI instrument commands. These commands are written 
 * "INIT:CONT OFF;*OPC?" - Sets the SA to single trigger (turn continuous off)
 * "INIT:CONT ON" - Sets the SA to continuous mode 
 * "INIT:IMM;*OPC?" - Perform a single sweep
+* "CALC:MARK1:ACT" - Activate marker #1
+* "CALC:MARK1:X ???" - Sets marker #1 to frequency ???
+* "CALC:MARK1:Y?" - Query marker #1
 * "TRACE:DATA?" - Gets the full trace
 * "SENS:MEAS:CHAN CHP" - Sets the measurement to Channel Power
 * "SENS:MEAS:CHAN None" - Disables the measurement
@@ -278,12 +284,21 @@ Most SA implement the same SCPI instrument commands. These commands are written 
 * "SENS:CME:IBW ???" - Sets the integration bandwidth for the measurement to ???
 * "SENS:CME:AVER:ENAB 0" - Disables averaging for the measurement
 
+The code does not touch the Y scale of the SA, or the trigger settings. If needed, these have to be defined manually.
 ### Detailed explanation of the code
-The code does not touch the Y scale of the SA, or the trigger settings. These have to be defined manually if needed.
+There are two versions of the script, the first version uses a `channel power` measurement and is considered faster & more reliable.
+It integrates over a bandwidth which reduces noise for the same measurement time. In this code, it integrates over ten data points. 
+However, this command is implemented differently in different SA brands and would therefore require more adaptions between brands.
+
+The second method uses a marker to check the power at a specific frequency. It only looks at one data point and is therefore a bit less efficient. 
+Nevertheless, it produces similar results and is more easy to adapt between brands.
+
 All the parameters that may be modified are at the beginning of the file:
 * In most cases, only the connection to the SA needs to be modified.
-* The integration bandwidth, defined by the `measIBW`, can also be changed. There is always a tradeoff between speed and results, and it also depends on the model of the SA used.
+* The integration bandwidth, defined by the `measIBW` (`measBW` for the second method), can also be changed.
+  There is always a tradeoff between speed and results, and it also depends on the model of the SA used.
 * `bDoSweeps` can be changed to `False` to disable the full sweeps before and after the optimizations.
+  The command to query the full spectrum `TRACE:DATA?` might also not work in different brands.
 
 The code starts with the definition of the QUA program, and three functions:
 * get_amp() - Gets the amplitude of the current measurement.
@@ -293,7 +308,8 @@ The code starts with the definition of the QUA program, and three functions:
 Afterwards, the program is executed, the SA object is being created and parameters are being set for a large sweep to see the initial spectrum.
 We set the bandwidth to 1 kHz and we sweep a bit more than twice the IF frequency, this is such that we'll be able to see spurs coming from higher harmonics (if they are not negligible, the IF & LO power need tuning)
 
-After getting the initial trace, we turn on the Channel Power measurement and configure it. 
+After getting the initial trace, we turn on the Channel Power measurement and configure it to be around the LO frequency.
+In the second method, we activate a marker and put it on the LO frequency.
 We then run the Nelder-Mead algorithm to minimize the leakage.  
 
 It then repeats for the image minimization, and finally takes another large trace to see the final spectrum after the minimization.
