@@ -20,29 +20,37 @@ with program() as spin_qubit_spec:
 
     n = declare(int)
     f = declare(int)
-    result1 = declare(int, size=int(meas_len/500))
+    result1 = declare(int, size=int(meas_len / 500))
     resultLen1 = declare(int)
-    result2 = declare(int, size=int(meas_len/500))
+    result2 = declare(int, size=int(meas_len / 500))
     resultLen2 = declare(int)
     counts = declare(int)
-
 
     ###############
     # The sequence:
     ###############
 
     with for_(n, 0, n < rep_num, n + 1):
-        with for_(f, 4e6, f<14e6, f+4e6):
-            update_frequency('spin_qubit', f)
-            play('saturation', 'spin_qubit', duration=1000)
-            align('spin_qubit', 'readout', 'readout1', 'readout2')
-            play('on', 'readout', duration=1000)
-            measure('readout', 'readout1', 'adc', time_tagging.raw(result1, meas_len, targetLen=resultLen1))
-            measure('readout', 'readout2', None, time_tagging.raw(result2, meas_len, targetLen=resultLen2))
-            assign(counts, resultLen1+resultLen2)
+        with for_(f, 4e6, f < 14e6, f + 4e6):
+            update_frequency("spin_qubit", f)
+            play("saturation", "spin_qubit", duration=1000)
+            align("spin_qubit", "readout", "readout1", "readout2")
+            play("on", "readout", duration=1000)
+            measure(
+                "readout",
+                "readout1",
+                "adc",
+                time_tagging.raw(result1, meas_len, targetLen=resultLen1),
+            )
+            measure(
+                "readout",
+                "readout2",
+                None,
+                time_tagging.raw(result2, meas_len, targetLen=resultLen2),
+            )
+            assign(counts, resultLen1 + resultLen2)
 
-        save(counts, 'counts')
-
+        save(counts, "counts")
 
         # with for_(n, 0, n < resultLen1, n + 1):
         #     save(result1[n], "res1")
@@ -60,15 +68,15 @@ dig_pulses = job.simulated_digital_waveforms()
 
 plt.figure(1)
 ax1 = plt.subplot(311)
-plt.plot(sim.con1.analog['1'])
-plt.plot(sim.con1.analog['2'])
-plt.ylabel('spin_qubit')
+plt.plot(sim.con1.analog["1"])
+plt.plot(sim.con1.analog["2"])
+plt.ylabel("spin_qubit")
 
 plt.subplot(312)
-plt.plot(sim.con1.digital['1'])
-plt.ylabel('readout')
+plt.plot(sim.con1.digital["1"])
+plt.ylabel("readout")
 
 plt.subplot(313)
-plt.plot(sim.con1.digital['7'])
-plt.plot(sim.con1.digital['8'])
-plt.ylabel('counting')
+plt.plot(sim.con1.digital["7"])
+plt.plot(sim.con1.digital["8"])
+plt.ylabel("counting")

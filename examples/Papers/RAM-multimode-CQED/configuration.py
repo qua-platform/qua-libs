@@ -7,9 +7,11 @@ gaussian_amp = 0.2
 def square_gauss(amplitude, sigma, length):
     t = np.linspace(-10, 10, 20)
     gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
-    return [float(x) for x in gauss_wave[:10]] \
-           + [amplitude] * length \
-           + [float(x) for x in gauss_wave[10:]]
+    return (
+        [float(x) for x in gauss_wave[:10]]
+        + [amplitude] * length
+        + [float(x) for x in gauss_wave[10:]]
+    )
 
 
 def gauss(amplitude, mu, sigma, length):
@@ -73,7 +75,6 @@ config = {
                 "Y/2": "Y/2Pulse",
                 "-X/2": "-X/2Pulse",
                 "-Y/2": "-Y/2Pulse",
-
             },
         },
         "flux_line": {
@@ -112,10 +113,7 @@ config = {
         "iswapPulse": {
             "operation": "control",
             "length": gauss_len,
-            "waveforms": {
-                "I": "square_gauss_wf",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_gauss_wf", "Q": "zero_wf"},
         },
         "XPulse": {
             "operation": "control",

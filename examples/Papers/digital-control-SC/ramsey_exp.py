@@ -23,7 +23,7 @@ f_max = 200e6
 f_min = 100e6
 df = 1e6
 N_f = int((f_max - f_min) / df)
-t_min=16
+t_min = 16
 
 qmManager = QuantumMachinesManager()
 QM = qmManager.open_qm(
@@ -57,7 +57,7 @@ with program() as bias_current_sweeping:  #
                 wait(t, "SFQ_bias")
                 play("pi2_pulse", "SFQ_bias")
                 play("pi2_pulse", "SFQ_trigger")  # π/2 pulse
-                wait(t+2*pi_pulse_len//4, "RR")
+                wait(t + 2 * pi_pulse_len // 4, "RR")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)
                 save(I, I_stream)
@@ -74,9 +74,7 @@ with program() as bias_current_sweeping:  #
         t_stream.buffer(N_t).save("t")
         state_stream.boolean_to_int().buffer(N_f, N_t).average().save("state")
 
-job = qmManager.simulate(
-    config, bias_current_sweeping, SimulationConfig(int(1000))
-)
+job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(1000)))
 
 samples = job.get_simulated_samples()
 samples.con1.plot()

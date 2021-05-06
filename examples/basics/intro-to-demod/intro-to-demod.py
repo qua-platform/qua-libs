@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 QMm = QuantumMachinesManager()
 
 
-
 num_segments = 25
 
 seg_length = pulse_len // (4 * num_segments)

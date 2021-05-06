@@ -94,7 +94,9 @@ with program() as xy8:
         play("laser", "qubit")
 
         with for_(t, t_min, t <= t_max, t + dt):  # Implicit Align
-            assign(tt, 2 * t)  # This calculate the multiplication only once, which is more efficient.
+            assign(
+                tt, 2 * t
+            )  # This calculate the multiplication only once, which is more efficient.
             for j in range(4):
                 # Play meas (pi/2 pulse at x)
                 play("pi_half", "qubit")

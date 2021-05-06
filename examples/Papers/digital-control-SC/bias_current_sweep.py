@@ -29,8 +29,8 @@ qmManager = QuantumMachinesManager()
 QM = qmManager.open_qm(
     config
 )  # Generate a Quantum Machine based on the configuration described above
-Vb_min=0.1
-Vb_max=0.5
+Vb_min = 0.1
+Vb_max = 0.5
 dVb = 0.01
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
@@ -51,11 +51,13 @@ with program() as bias_current_sweeping:  #
     Q_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(V_b, Vb_min, V_b < Vb_max, V_b + dVb):  # Sweep from 0 to V_c the bias voltage
+        with for_(
+            V_b, Vb_min, V_b < Vb_max, V_b + dVb
+        ):  # Sweep from 0 to V_c the bias voltage
             with for_(t, 16, t < t_max, t + dt):
-                play("playOp" * amp(V_b), "SFQ_bias",duration=t)
+                play("playOp" * amp(V_b), "SFQ_bias", duration=t)
                 play("const_pulse", "SFQ_trigger", duration=t)
-                wait(t,'RR')
+                wait(t, "RR")
                 measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
                 assign(state, I > th)
                 save(I, I_stream)
@@ -74,9 +76,8 @@ with program() as bias_current_sweeping:  #
 
 job = qmManager.simulate(config, bias_current_sweeping, SimulationConfig(int(1000)))
 
-samples= job.get_simulated_samples()
+samples = job.get_simulated_samples()
 samples.con1.plot()
-
 
 
 # Retrieving results of the experiments

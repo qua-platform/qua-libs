@@ -148,8 +148,8 @@ def get_DRAG_pulse(gate: str, params: list, t: float):
         an_func = lambda x: 0
         bn_func = lambda x: 0
     else:
-        an_func = interp1d(params[3: _n_params + 3], _ts, fill_value="extrapolate")
-        bn_func = interp1d(params[_n_params + 3:], _ts, fill_value="extrapolate")
+        an_func = interp1d(params[3 : _n_params + 3], _ts, fill_value="extrapolate")
+        bn_func = interp1d(params[_n_params + 3 :], _ts, fill_value="extrapolate")
     ns = int(t)
     ts = np.linspace(0.0, t, ns)
     ts[-1] -= 0.01
