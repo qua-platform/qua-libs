@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "qua-libs"
+version = "0.1.0"
+description = "A collection of examples to be used with QUA language"
+authors = ["Tal Shani <tal@quantum-machines.co>"]
+license = "BSD"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+black = "^21.5b0"
+poethepoet = "^0.10.0"
+flake8 = "^3.9.1"
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+include = '(examples)/.+\.pyi?$'
+
+[tool.poe.tasks]
+format="black examples"
+check_format="black --check examples"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -5,6 +5,7 @@ from qm import SimulationConfig, LoopbackInterface
 import numpy as np
 from scipy.interpolate import interp1d
 
+
 def get_program(config, params, t, N_avg, d):
     """
     A function to generate the QUA program

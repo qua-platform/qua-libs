@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import time
 
 
-
 ##we then optimize a regular DRAG pulse
 np.random.seed(3)
 es1 = cma.CMAEvolutionStrategy(np.random.rand(3), 0.5)
@@ -23,7 +22,7 @@ es1.result_pretty()
 start = time.time()
 init = list(es1.result.xbest) + list(np.random.rand(n_params))
 sigma0 = 0.5
-es2 = cma.CMAEvolutionStrategy(init,sigma0,{'popsize':40})
+es2 = cma.CMAEvolutionStrategy(init, sigma0, {"popsize": 40})
 es2.optimize(cost_optimal_pulse)
 es2.result_pretty()
 end = time.time()

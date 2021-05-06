@@ -16,7 +16,7 @@ import time
 from configuration import *
 
 N_max = 3
-t_min=16
+t_min = 16
 t_max = int(500 / 4)
 dt = 1
 N_t = t_max // dt

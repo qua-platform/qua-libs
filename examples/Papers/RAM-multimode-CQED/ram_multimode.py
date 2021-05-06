@@ -1,7 +1,11 @@
 from configuration import *
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager, SimulationConfig, LoopbackInterface
+from qm.QuantumMachinesManager import (
+    QuantumMachinesManager,
+    SimulationConfig,
+    LoopbackInterface,
+)
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,7 +20,9 @@ def state_estimate(I, Q, state_var):
 def active_reset(I, Q):
     with while_(Q > 0):
         play("pi_g_e", "charge_line")
-        measure("readout", "readout_resonator", None, demod.full("integW_sin", Q, "out1"))
+        measure(
+            "readout", "readout_resonator", None, demod.full("integW_sin", Q, "out1")
+        )
 
 
 def prepare_e():
@@ -40,7 +46,9 @@ def extract_modes_times(population):
     :return:
     """
     # numerical values just for simulation
-    return 6.45 - 0.5 * np.cos(np.linspace(1, n_modes, n_modes) * np.pi / (n_modes + 1)), np.linspace(20, 100, n_modes)
+    return 6.45 - 0.5 * np.cos(
+        np.linspace(1, n_modes, n_modes) * np.pi / (n_modes + 1)
+    ), np.linspace(20, 100, n_modes)
 
 
 def time_freq_sweep(prepare, N, sb_freqs, t_init, t_final, step):
@@ -69,12 +77,15 @@ def time_freq_sweep(prepare, N, sb_freqs, t_init, t_final, step):
                     align("flux_line", "readout_resonator")
 
                     # measure the transmon state
-                    measure("readout", "readout_resonator", None,
-                            demod.full("integW_cos", I1, "out1"),
-                            demod.full("integW_sin", Q1, "out1"),
-                            demod.full("integW_cos", I2, "out2"),
-                            demod.full("integW_sin", Q2, "out2"),
-                            )
+                    measure(
+                        "readout",
+                        "readout_resonator",
+                        None,
+                        demod.full("integW_cos", I1, "out1"),
+                        demod.full("integW_sin", Q1, "out1"),
+                        demod.full("integW_cos", I2, "out2"),
+                        demod.full("integW_sin", Q2, "out2"),
+                    )
                     active_reset("charge_line", Q1)
                     assign(I, I1 + Q2)
                     assign(Q, -Q1 + I2)
@@ -84,16 +95,22 @@ def time_freq_sweep(prepare, N, sb_freqs, t_init, t_final, step):
                     save(state_var, state)
 
         with stream_processing():
-            state.buffer(len(sb_freqs), int((t_final - t_init) / step)).average().save("state")
+            state.buffer(len(sb_freqs), int((t_final - t_init) / step)).average().save(
+                "state"
+            )
         return prog
 
 
 qmm = QuantumMachinesManager()
-job = qmm.simulate(config, time_freq_sweep(prepare_e, 3, [1, 2, 3, 4], 32, 300, 20), simulate=SimulationConfig(10000))
+job = qmm.simulate(
+    config,
+    time_freq_sweep(prepare_e, 3, [1, 2, 3, 4], 32, 300, 20),
+    simulate=SimulationConfig(10000),
+)
 e_population = job.result_handles.state.fetch_all()
 
 sim = job.get_simulated_samples().con1
-plt.plot(sim.analog['3'])
+plt.plot(sim.analog["3"])
 # get the modes reachable using the g-e transition
 modes_ge, exchange_times_ge = extract_modes_times(e_population)
 
@@ -141,7 +158,11 @@ def apply_op(modes, times, k, rotation_op):
 
 
 #
-job = qmm.simulate(config, time_freq_sweep(prepare_f, 3, [1, 2, 3, 4], 32, 60, 4), simulate=SimulationConfig(10000))
+job = qmm.simulate(
+    config,
+    time_freq_sweep(prepare_f, 3, [1, 2, 3, 4], 32, 60, 4),
+    simulate=SimulationConfig(10000),
+)
 f_population = job.result_handles.state.fetch_all()
 # get the modes reachable using the e-f transition
 modes_ef, exchange_times_ef = extract_modes_times(f_population)

@@ -553,21 +553,34 @@ class NNStateDiscriminator:
                 demod.full("optimal_w2_" + str(k), self.qua_vars["out2"][k], "out2"),
             )
         # state assignment
-        with for_(self.qua_vars["i"], 0, self.qua_vars["i"] < self.rr_num, self.qua_vars["i"] + 1):
+        with for_(
+            self.qua_vars["i"],
+            0,
+            self.qua_vars["i"] < self.rr_num,
+            self.qua_vars["i"] + 1,
+        ):
             with for_(
-                self.qua_vars["j"], 0, self.qua_vars["j"] < self.num_of_states, self.qua_vars["j"] + 1
+                self.qua_vars["j"],
+                0,
+                self.qua_vars["j"] < self.num_of_states,
+                self.qua_vars["j"] + 1,
             ):
                 assign(
                     self.qua_vars["res"][self.qua_vars["j"]],
                     self.qua_vars["w"][
-                        self.qua_vars["i"] * 2 * self.num_of_states + 2 * self.qua_vars["j"]
+                        self.qua_vars["i"] * 2 * self.num_of_states
+                        + 2 * self.qua_vars["j"]
                     ]
                     * self.qua_vars["out1"][self.qua_vars["i"]]
                     + self.qua_vars["w"][
-                        self.qua_vars["i"] * 2 * self.num_of_states + 2 * self.qua_vars["j"] + 1
+                        self.qua_vars["i"] * 2 * self.num_of_states
+                        + 2 * self.qua_vars["j"]
+                        + 1
                     ]
                     * self.qua_vars["out2"][self.qua_vars["i"]]
-                    + self.qua_vars["b"][self.qua_vars["i"] * self.num_of_states + self.qua_vars["j"]],
+                    + self.qua_vars["b"][
+                        self.qua_vars["i"] * self.num_of_states + self.qua_vars["j"]
+                    ],
                 )
             assign(self.qua_vars["temp"], Math.argmax(self.qua_vars["res"]))
             save(self.qua_vars["temp"], result)

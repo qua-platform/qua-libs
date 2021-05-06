@@ -63,7 +63,7 @@ def iQFT():
 
 
 def SSR(qubit, state, N):
-    """ Determine the state of a nuclear spin using N repetitions """
+    """Determine the state of a nuclear spin using N repetitions"""
     with for_(ssr_i, 0, ssr_i < 3, ssr_i + 1):
         assign(ssr_count[ssr_i], 0)
 

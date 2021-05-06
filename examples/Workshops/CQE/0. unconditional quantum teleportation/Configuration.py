@@ -4,18 +4,25 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0}, #dummy
-                2: {"offset": +0.0}, #a-espin I
-                3: {"offset": +0.0}, #a-espin Q
-                4: {"offset": +0.0}, #b-espin I
-                5: {"offset": +0.0}, #b-espin Q
-                6: {"offset": +0.0}, #n-spin manip
-               
-                
-                
-
+                1: {"offset": +0.0},  # dummy
+                2: {"offset": +0.0},  # a-espin I
+                3: {"offset": +0.0},  # a-espin Q
+                4: {"offset": +0.0},  # b-espin I
+                5: {"offset": +0.0},  # b-espin Q
+                6: {"offset": +0.0},  # n-spin manip
             },
-            "digital_outputs": {1: {}, 2: {},3: {}, 4: {},5: {}, 6: {},7: {},8: {},9: {},10: {}},
+            "digital_outputs": {
+                1: {},
+                2: {},
+                3: {},
+                4: {},
+                5: {},
+                6: {},
+                7: {},
+                8: {},
+                9: {},
+                10: {},
+            },
             "analog_inputs": {
                 1: {"offset": +0.0},
                 2: {"offset": +0.0},
@@ -38,115 +45,98 @@ config = {
             },
         },
         "a-ro": {
-        "singleInput": {"port": ("con1", 1)},
-        "outputs": {"output1": ("con1", 1)},
-        "digitalInputs": {
-            "digital_input1": {
-                "port": ("con1", 2),
-                "delay": 0,
-                "buffer": 0,
+            "singleInput": {"port": ("con1", 1)},
+            "outputs": {"output1": ("con1", 1)},
+            "digitalInputs": {
+                "digital_input1": {
+                    "port": ("con1", 2),
+                    "delay": 0,
+                    "buffer": 0,
+                },
+            },
+            "time_of_flight": 180,
+            "smearing": 0,
+            "intermediate_frequency": 0,
+            "operations": {
+                "playOp": "constPulse",
             },
         },
-        "time_of_flight": 180,
-        "smearing": 0,
-        "intermediate_frequency": 0,
-        "operations": {
-            "playOp": "constPulse",
-        
-        },   
-    },
-          "a-init": {
-        "singleInput": {"port": ("con1", 1)},
-        "digitalInputs": {
-            "digital_input1": {
-                "port": ("con1", 3),
-                "delay": 0,
-                "buffer": 0,
+        "a-init": {
+            "singleInput": {"port": ("con1", 1)},
+            "digitalInputs": {
+                "digital_input1": {
+                    "port": ("con1", 3),
+                    "delay": 0,
+                    "buffer": 0,
+                },
+            },
+            "intermediate_frequency": 0,
+            "operations": {
+                "playOp": "constPulse",
             },
         },
-        "intermediate_frequency": 0,
-        "operations": {
-            "playOp": "constPulse",
-        
-        },
-    },
-                  "b-init": {
-        "singleInput": {"port": ("con1", 1)},
-        "digitalInputs": {
-            "digital_input1": {
-                "port": ("con1", 6),
-                "delay": 0,
-                "buffer": 0,
+        "b-init": {
+            "singleInput": {"port": ("con1", 1)},
+            "digitalInputs": {
+                "digital_input1": {
+                    "port": ("con1", 6),
+                    "delay": 0,
+                    "buffer": 0,
+                },
+            },
+            "intermediate_frequency": 0,
+            "operations": {
+                "playOp": "constPulse",
             },
         },
-        "intermediate_frequency": 0,
-        "operations": {
-            "playOp": "constPulse",
-        
-        },
-    },
-           "b-reset": {
-        "singleInput": {"port": ("con1", 1)},
-        "digitalInputs": {
-            "digital_input1": {
-                "port": ("con1", 4),
-                "delay": 0,
-                "buffer": 0,
+        "b-reset": {
+            "singleInput": {"port": ("con1", 1)},
+            "digitalInputs": {
+                "digital_input1": {
+                    "port": ("con1", 4),
+                    "delay": 0,
+                    "buffer": 0,
+                },
+            },
+            "intermediate_frequency": 0,
+            "operations": {
+                "playOp": "constPulse",
             },
         },
-        "intermediate_frequency": 0,
-        "operations": {
-            "playOp": "constPulse",
-        
-        },
-    },
-       "b-ro": {
-        "singleInput": {"port": ("con1", 1)},
-        "outputs": {"output1": ("con1", 2)},
-
-        "digitalInputs": {
-            "digital_input1": {
-                "port": ("con1", 5),
-                "delay": 0,
-                "buffer": 0,
+        "b-ro": {
+            "singleInput": {"port": ("con1", 1)},
+            "outputs": {"output1": ("con1", 2)},
+            "digitalInputs": {
+                "digital_input1": {
+                    "port": ("con1", 5),
+                    "delay": 0,
+                    "buffer": 0,
+                },
+            },
+            "time_of_flight": 180,
+            "smearing": 0,
+            "intermediate_frequency": 0,
+            "operations": {
+                "playOp": "constPulse",
             },
         },
-        "time_of_flight": 180,
-        "smearing": 0,
-        "intermediate_frequency": 0,
-        "operations": {
-            "playOp": "constPulse",
-        
-        },
-    },
         "a-espin": {
-        "mixInputs": {"I": ("con1", 2), "Q": ("con1", 3)},
-        "intermediate_frequency": 50e6,
-        "operations": {
-            "CNOT": "CNOT",
-            "PI":"PI",
-            "PI2":"PI2"
+            "mixInputs": {"I": ("con1", 2), "Q": ("con1", 3)},
+            "intermediate_frequency": 50e6,
+            "operations": {"CNOT": "CNOT", "PI": "PI", "PI2": "PI2"},
         },
-    },
         "b-espin": {
-        "mixInputs": {"I": ("con1", 4), "Q": ("con1", 5)},
-        "intermediate_frequency": 50e6,
-        "operations": {
-            "CNOT": "CNOT",
-            "PI":"PI",
-            "PI2":"PI2"
-        
+            "mixInputs": {"I": ("con1", 4), "Q": ("con1", 5)},
+            "intermediate_frequency": 50e6,
+            "operations": {"CNOT": "CNOT", "PI": "PI", "PI2": "PI2"},
         },
-    }, 
-          "nspin": {
-        "singleInput": {"port": ("con1", 6)},
-        "intermediate_frequency": 50e6,
-        "operations": {
-            "playOp": "constPulse",
-        
+        "nspin": {
+            "singleInput": {"port": ("con1", 6)},
+            "intermediate_frequency": 50e6,
+            "operations": {
+                "playOp": "constPulse",
+            },
         },
-    },
-
     },
     "pulses": {
         "zeroPulse": {
@@ -164,22 +154,19 @@ config = {
         "CNOT": {
             "operation": "control",
             "length": 1000,  # in ns
-             "waveforms": {"I": "const_wf", "Q": "const_wf"},
-            
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
         },
         "PI": {
             "operation": "control",
             "length": 120,  # in ns
-             "waveforms": {"I": "const_wf", "Q": "const_wf"},
-            
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
         },
         "PI2": {
             "operation": "control",
             "length": 52,  # in ns
-             "waveforms": {"I": "const_wf", "Q": "const_wf"},
-            
+            "waveforms": {"I": "const_wf", "Q": "const_wf"},
         },
-       "readoutPulse": {
+        "readoutPulse": {
             "operation": "measure",
             "length": 52,
             "waveforms": {"single": "zero_wf"},
@@ -200,13 +187,12 @@ config = {
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
-      },
-        "integration_weights": {
+    },
+    "integration_weights": {
         "xWeights": {
             "cosine": [1.0] * 52,
             "sine": [0.0] * 52,
         },
-       
         "yWeights": {
             "cosine": [0.0] * 52,
             "sine": [1.0] * 52,

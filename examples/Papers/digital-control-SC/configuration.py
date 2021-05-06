@@ -11,23 +11,23 @@ omega_10 = 4.958e9
 omega_d = omega_10 / 3
 SFQ_IF = 50e6
 SFQ_LO = 5.10e9
-qubit_IF=200e6
+qubit_IF = 200e6
 qubit_LO = 5.10e9
-pi_pulse_len=32
+pi_pulse_len = 32
 config = {
     "version": 1,
     "controllers": {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0}, #qubitI
-                2: {"offset": +0.0}, #qubitQ
-                3: {"offset": +0.0}, #RR I
-                4: {"offset": +0.0}, #RR Q
-                5: {"offset": +0.0}, #SFQ_bias
-                6: {"offset": +0.0}, #SFQ_trig_I
-                7: {"offset": +0.0}, #SFQ_trig_Q
-                8: {"offset": +0.0}, #qubit_bias
+                1: {"offset": +0.0},  # qubitI
+                2: {"offset": +0.0},  # qubitQ
+                3: {"offset": +0.0},  # RR I
+                4: {"offset": +0.0},  # RR Q
+                5: {"offset": +0.0},  # SFQ_bias
+                6: {"offset": +0.0},  # SFQ_trig_I
+                7: {"offset": +0.0},  # SFQ_trig_Q
+                8: {"offset": +0.0},  # qubit_bias
             },
             "analog_inputs": {
                 1: {"offset": +0.0},
@@ -46,7 +46,6 @@ config = {
             "operations": {
                 "gauss_pulse": "gauss_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
-
             },
         },
         "SFQ_trigger": {
@@ -60,7 +59,7 @@ config = {
             "operations": {
                 "const_pulse": "const_pulse_in",  # to a pulse
                 "pi_pulse": "pi_pulse_in",
-                "pi2_pulse":"pi2_pulse_in"
+                "pi2_pulse": "pi2_pulse_in",
             },
         },
         "qubit_flux_bias": {
@@ -104,8 +103,8 @@ config = {
             "intermediate_frequency": 0,
             "operations": {
                 "playOp": "constPulse",
-                "pi_pulse":'pi_pulse',
-                "pi2_pulse":'pi_pulse'
+                "pi_pulse": "pi_pulse",
+                "pi2_pulse": "pi_pulse",
             },
         },
     },
@@ -132,7 +131,6 @@ config = {
             "length": gauss_pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
         },
-
         "pi_pulse": {
             "operation": "control",
             "length": pi_pulse_len,  # in ns

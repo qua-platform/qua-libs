@@ -22,7 +22,7 @@ def init_nuclear_spin(target_state):
 
 
 def SSR(N, result):
-    """ Determine the state of the nuclear spin """
+    """Determine the state of the nuclear spin"""
     i = declare(int)
     res_length = declare(int, value=10)
     res_vec = declare(int, size=10)
