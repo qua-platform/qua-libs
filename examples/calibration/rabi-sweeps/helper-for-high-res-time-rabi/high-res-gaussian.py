@@ -8,7 +8,7 @@ from qm.qua import *
 
 from configuration import *
 
-resolution = 1  # In ns, can be 1,2 or 4.
+resolution = 2  # In ns, can be 1,2 or 4.
 # All of the numbers here are multiplied by the resolution above.
 # For example, if the resolution is 1ns, then the pulse will go from 4 ns to 10 ns in jumps of 1ns.
 # if the resolution is 2ns, then the pulse will go from 8 ns to 20 ns in jumps of 2ns.
@@ -33,7 +33,7 @@ with program() as timeRabiProg:  # Time Rabi QUA program
         with for_(
             t, t_start, t <= t_max, t + dt
         ):  # Sweep the pulse duration from t_start to t_max
-            play("gauss_pulse_1ns_res", "qubit", duration=t)
+            play(f"gauss_pulse_{resolution}ns_res", "qubit", duration=t)
 
 
 # job = my_qm.execute(timeRabiProg)
