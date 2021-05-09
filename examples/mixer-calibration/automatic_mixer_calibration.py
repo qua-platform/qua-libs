@@ -12,6 +12,10 @@ import scipy.optimize as opti
 ##############
 # Parameters #
 ##############
+# Important Parameters:
+address = 'TCPIP0::192.168.1.9::inst0::INSTR'  # The address for the SA, opened using visa.
+bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
+method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker
 
 # Parameters for Nelder-Mead
 initial_simplex = np.zeros([3, 2])
@@ -23,11 +27,11 @@ fatol = 3  # dB change tolerance
 maxiter = 50  # 50 iterations should be more then enough, but can be changed.
 
 # Parameters for SA - Measurement:
-measIBW = 1000  # Measurement integration bandwidth
+measBW = 1000  # Measurement bandwidth
 measNumPoints = 101
 
 # Parameters for SA - Sweep:
-bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
+sweepBW = 1e3
 fullNumPoints = 1201
 fullSpan = int(abs(qubit_IF * 4.1))  # Larger than 4 such that we'll see spurs
 startFreq = qubit_LO - fullSpan / 2
@@ -36,12 +40,19 @@ freq_vec = np.linspace(float(startFreq), float(stopFreq), int(fullNumPoints))
 
 # Open connection to SA
 rm = visa.ResourceManager()
-sa = rm.open_resource('TCPIP0::192.168.1.9::inst0::INSTR')
+sa = rm.open_resource(address)
 sa.timeout = 100000
 
 #############
 # Functions #
 #############
+
+def IQ_imbalance_correction(g, phi):
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+
 
 with program() as mixer_cal:
     with infinite_loop_():
@@ -49,11 +60,15 @@ with program() as mixer_cal:
 
 
 def get_amp():
-    sa.query("INIT:IMM;*OPC?")
-    sig = float(sa.query("CALC:MEAS:DATA?").split(",")[0])
-    # Data from the Fieldfox comes out as a string separated by ',':
-    # '-1.97854112E+01,-3.97854112E+01\n'
-    # The code above takes the first value and converts to float.
+    if method == 1:  # Channel power
+        sa.query("INIT:IMM;*OPC?")
+        sig = float(sa.query("CALC:MEAS:DATA?").split(",")[0])
+        # Data from the Fieldfox comes out as a string separated by ',':
+        # '-1.97854112E+01,-3.97854112E+01\n'
+        # The code above takes the first value and converts to float.
+    elif method == 2:  # Marker
+        sa.query("INIT:IMM;*OPC?")
+        sig = float(sa.query('CALC:MARK1:Y?'))
     return sig
 
 
@@ -86,10 +101,10 @@ sa.query("INIT:CONT OFF;*OPC?")
 
 if bDoSweeps:
     # Set Bandwidth and start/stop freq of SA for a large sweep
-    sa.write('SENS:BAND 1e3')
+    sa.write('SENS:BAND ' + str(sweepBW))
     sa.write("SENS:SWE:POIN " + str(fullNumPoints))
-    sa.write("SENS:FREQ:START " + str(startFreq))
-    sa.write("SENS:FREQ:STOP " + str(stopFreq))
+    sa.write(f"SENS:FREQ:CENT {qubit_LO}")
+    sa.write(f"SENS:FREQ:SPAN {fullSpan}")
 
     # Do a single read
     sa.query("INIT:IMM;*OPC?")
@@ -112,13 +127,19 @@ if bDoSweeps:
     plt.show()
 
 # Configure measure
-sa.write("SENS:MEAS:CHAN CHP")
 sa.write("SENS:SWE:POIN " + str(measNumPoints))
-sa.write("SENS:CME:RRCF 0")
-sa.write(f"SENS:CME:IBW {measIBW}")
-sa.write("SENS:CME:AVER:ENAB 0")
-sa.write(f"SENS:FREQ:SPAN {10 * measIBW}")
-sa.write(f'SENS:BAND {int(0.1 * measIBW)}')
+sa.write(f"SENS:FREQ:SPAN {10 * measBW}")
+if method == 1:  # Channel power
+    sa.write("SENS:MEAS:CHAN CHP")
+    sa.write(f"SENS:CME:IBW {measBW}")
+    sa.write("SENS:CME:AVER:ENAB 0")
+    sa.write(f'SENS:BAND {int(0.1 * measBW)}')
+elif method == 2:  # Marker
+    sa.write(f'SENS:BAND {int(measBW)}')
+    sa.query("INIT:IMM;*OPC?")
+    sa.write('CALC:MARK1:ACT')
+    sa.write(f'CALC:MARK1:X {qubit_LO}')  # Leakage
+
 
 # Get Signal
 sa.write(f"SENS:FREQ:CENT {qubit_LO + qubit_IF}")
@@ -141,14 +162,17 @@ print(f"Image Results: Found a minimum of {int(res_image.fun)} dBm at g = {res_i
       f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc")
 
 # Turn measurement off
-sa.write("SENS:MEAS:CHAN NONE")
+if method == 1:  # Channel power
+    sa.write("SENS:MEAS:CHAN NONE")
 
 # Set parameters back for a large sweep
 if bDoSweeps:
-    sa.write('SENS:BAND 1e3')
+    sa.write('SENS:BAND ' + str(sweepBW))
     sa.write("SENS:SWE:POIN " + str(fullNumPoints))
-    sa.write("SENS:FREQ:START " + str(startFreq))
-    sa.write("SENS:FREQ:STOP " + str(stopFreq))
+    sa.write(f"SENS:FREQ:CENT {qubit_LO}")
+    sa.write(f"SENS:FREQ:SPAN {fullSpan}")
+
+    # Do a single read
     sa.query("INIT:IMM;*OPC?")
 
     # Do a large sweep

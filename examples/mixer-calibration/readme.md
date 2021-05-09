@@ -267,8 +267,6 @@ Most SA implement the same SCPI instrument commands. These commands are written 
 * "SENS:BAND:AUTO 0" - Sets the bandwidth to be manual
 * "SENS:BAND ???'" - Sets the manual bandwidth to ???
 * "SENS:SWE:POIN ???" - Sets the number of points for the sweep to be ???
-* "SENS:FREQ:START ???" - Sets the starting frequency for the sweep to be ???
-* "SENS:FREQ:STOP ???" - Sets the end frequency for the sweep to be ???
 * "SENS:FREQ:CENT ???" - Sets the center frequency to ???
 * "SENS:FREQ:SPAN ???" - Sets the frequency span to ???
 * "INIT:CONT OFF;*OPC?" - Sets the SA to single trigger (turn continuous off)
@@ -283,6 +281,7 @@ Most SA implement the same SCPI instrument commands. These commands are written 
 * "SENS:CME:RRCF 0" - Turns of RRC Filter for the measurement
 * "SENS:CME:IBW ???" - Sets the integration bandwidth for the measurement to ???
 * "SENS:CME:AVER:ENAB 0" - Disables averaging for the measurement
+* "CALC:MEAS:DATA?" - Gets the data from the measurement
 
 The code does not touch the Y scale of the SA, or the trigger settings. If needed, these have to be defined manually.
 ### Detailed explanation of the code
