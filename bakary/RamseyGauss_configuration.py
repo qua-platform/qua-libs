@@ -15,19 +15,17 @@ def IQ_imbalance_corr(g, phi):
                                    (1 - g) * s, (1 + g) * c]]
 
 
-
 Resonator_TOF = 332
 Readout_pulse_length = 500
 Load_pulse_length = 172
-Resonator_freq = 6.6067e9
+Resonator_freq = 6.6e9
 Drive_freq = 5e9
 Tpihalf = 32
-flag_digital = 1  # set to 1 if use 'adc', 0 otherwise
 
 Resonator_IF = 50e6
 Resonator_LO = Resonator_freq-Resonator_IF
 
-Drive_IF = 31.25e6 * 0.5
+Drive_IF = 31.25e6
 Drive_LO = Drive_freq - Drive_IF
 
 Readout_Amp = 0.1  # meas pulse amplitude
@@ -39,21 +37,21 @@ gauss_drive_amp = 0.1
 gauss_drive_mu = 0
 gauss_drive_sigma = Drive_gauss_pulse_length/6
 
-Resonator_I0 = -0.01496987
-Resonator_Q0 = -0.0087747
-Resonator_g = 0.0321445
-Resonator_phi = -0.39511618  # parameters resonator at 6.6076 GHz
+Resonator_I0 = 0.0
+Resonator_Q0 = 0.0
+Resonator_g = 0.0
+Resonator_phi = 0.0
 
-Drive_I0 = 0  # parameters at 5 GHz with IF = 31.25MHz with VattDrive=0, gauss_drive_amp = 0.1 and the Agile amp after Vatt and after IQmixer.
-Drive_Q0 = 0
-Drive_g = 0
-Drive_phi = -np.pi/2
+Drive_I0 = 0.0
+Drive_Q0 = 0.0
+Drive_g = 0.0
+Drive_phi = 0.0
 
 Resonator_correction_matrix = IQ_imbalance_corr(Resonator_g, Resonator_phi)
 Drive_correction_matrix = IQ_imbalance_corr(Drive_g, Drive_phi)
 
-Input1_offset = 0.0910490302734375
-Input2_offset = 0.0786689296875
+Input1_offset = 0.0
+Input2_offset = 0.0
 
 config = {
     'version': 1,
@@ -97,7 +95,7 @@ config = {
             'digitalInputs': {
                 'switchR': {
                     'port': ('con1', 1),
-                    'delay': 144-12+5,
+                    'delay': 144,
                     'buffer': 0,
                 }
             },
@@ -119,7 +117,7 @@ config = {
             'digitalInputs': {
                 'switchE': {
                     'port': ('con1', 3),
-                    'delay': 144-12+5,
+                    'delay': 144,
                     'buffer': 0,
                 }
             },
@@ -199,7 +197,7 @@ config = {
     'digital_waveforms': {
 
         'ON': {
-            'samples': [(flag_digital, 0)]  # [(value, length)] 0: until the end of the pulse. Level has to be 1 if use 'adc' to acquire raw adc data acquisition
+            'samples': [(1, 0)]
         },
 
         'OFF': {
@@ -240,4 +238,3 @@ config = {
     },
 
 }
-
