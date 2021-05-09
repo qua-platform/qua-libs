@@ -8,7 +8,7 @@ from configuration import *
 import numpy as np
 import pyvisa as visa
 import scipy.optimize as opti
-from automatic_mixer_calibration_visa_SA import FieldFoxAutoCal
+from auto_mixer_tools_visa import FieldFoxAutoCal
 
 ##############
 # Parameters #
@@ -28,7 +28,7 @@ fatol = 3  # dB change tolerance
 maxiter = 50  # 50 iterations should be more then enough, but can be changed.
 
 # Parameters for SA - Measurement:
-measBW = 1000  # Measurement bandwidth
+measBW = 100  # Measurement bandwidth
 measNumPoints = 101
 
 # Parameters for SA - Sweep:
@@ -77,24 +77,26 @@ if bDoSweeps:
 # Configure measure
 calib.set_sweep_points(measNumPoints)
 calib.set_span(10 * measBW)
+calib.set_bandwidth(measBW)
 
 if method == 1:  # Channel power
     calib.enable_measurement()
-    calib.sets_measurement_integration_bw(measBW)
+    calib.sets_measurement_integration_bw(10 * measBW)
     calib.disables_measurement_averaging()
-    calib.set_bandwidth(int(0.1 * measBW))
 elif method == 2:  # Marker
-    calib.set_bandwidth(measBW)
     calib.get_single_trigger()
     calib.active_marker(1)
-    calib.set_marker_freq(qubit_LO)
 
 # Get Signal
 calib.set_center_freq(qubit_LO + qubit_IF)
+if method == 2:  # Marker
+    calib.set_marker_freq(1, qubit_LO + qubit_IF)
 signal = int(calib.get_amp())
 
 # Optimize LO leakage
 calib.set_center_freq(qubit_LO)
+if method == 2:  # Marker
+    calib.set_marker_freq(1, qubit_LO)
 start_time = time.time()
 fun_leakage = lambda x: calib.get_leakage(x[0], x[1])
 res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead',
@@ -106,6 +108,8 @@ print(
 
 # Optimize image
 calib.set_center_freq(qubit_LO - qubit_IF)
+if method == 2:  # Marker
+    calib.set_marker_freq(1, qubit_LO - qubit_IF)
 start_time = time.time()
 fun_image = lambda x: calib.get_image(x[0], x[1])
 res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead',
