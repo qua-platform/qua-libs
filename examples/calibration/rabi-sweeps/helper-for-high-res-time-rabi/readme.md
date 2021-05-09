@@ -13,8 +13,6 @@ Here, we define a 8ns long gaussian, and we pad it with zeros in order to extend
 In this case, each time we stretch the pulse by one clock cycle, we only stretch the gaussian by half a clock cycle, or by 2 ns.
 We also define a 4ns long gaussian, which gives us a 1ns resolution.
 
-We should note that 4ns gaussian will not be "as nice" as the usual 16ns one. Nevertheless, when looking at the real outputs from the OPX that results are quite nice.
-
 The example here only construct the pulses, plays them, and plots the simulated outputs. It does not perform the readout part which can be found in the normal Time Rabi example.
 
 ## Script

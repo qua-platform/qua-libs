@@ -19,7 +19,7 @@ from configuration import *
 
 a_max = 0.700  # Maximum amplitude
 da = 0.001  # amplitude sweeping step
-N_a = int(a_max / da)  # Number of steps
+N_a = len(np.arange(0.0, a_max, da))  # Number of steps
 N_max = 3
 
 
@@ -38,7 +38,7 @@ with program() as powerRabiProg:  # Power Rabi QUA program
     a_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do 10 times the experiment
-        with for_(a, 0.00, a < a_max, a + da):  # Sweep from 0 to 1 V the amplitude
+        with for_(a, 0.00, a < a_max - da/2, a + da):  # Sweep from 0 to 0.7 V the amplitude
             play(
                 "gauss_pulse" * amp(a), "qubit"
             )  # Modulate the Gaussian pulse with the varying amplitude a
@@ -47,7 +47,6 @@ with program() as powerRabiProg:  # Power Rabi QUA program
             save(I, I_stream)  # Save the results
             save(Q, Q_stream)
             save(a, a_stream)
-            save(a, "a2")
     with stream_processing():
         a_stream.buffer(N_a).save("a")
         I_stream.buffer(N_a).average().save("I")
@@ -66,7 +65,6 @@ my_powerRabi_results = my_job.result_handles
 I1 = my_powerRabi_results.I.fetch_all()
 Q1 = my_powerRabi_results.Q.fetch_all()
 a1 = my_powerRabi_results.a.fetch_all()
-a2 = my_powerRabi_results.a2.fetch_all()
 
 
 # Processing the data
@@ -100,14 +98,14 @@ plt.plot(a1, Q_fit, color="black", label="Sinusoidal fit")
 plt.xlabel("Amplitude [a.u]")
 plt.ylabel("Measured signal [a.u]")
 plt.axvline(I_params[1] / 2, color="red", linestyle="--")
-plt.axvline(I_params[1], color="red", linestyle="--")
+plt.axvline(0, color="red", linestyle="--")
 plt.annotate(
     "",
-    xy=(I_params[1], 0),
+    xy=(0, 0),
     xytext=(I_params[1] / 2, 0),
     arrowprops=dict(arrowstyle="<->", color="red"),
 )
-plt.annotate("$\pi$", xy=(I_params[1] / 2 - 0.03, 0.1), color="red")
+plt.annotate("$\pi$", xy=(I_params[1] / 4, 0.0001), color="red")
 plt.show()
 
 print("The amplitude required to perform a X gate is", I_params[1] / 2)
