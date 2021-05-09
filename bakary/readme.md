@@ -2,11 +2,11 @@
 This library introduces a new framework for creating arbitrary waveforms and storing them in a usual configuration file. 
 The idea is to simplify the writing of pulse samples that would usually be declared as incompatible with respect to QUA restrictions for uploading the samples to the OPX. A nice advantage of using this tool is to embed into one single waveform a series of instructions that allows program memory preservation.
 
-Waveform baking is embedded into a new context manager, declared prior to the QUA program, that takes two inputs : 
+Waveform baking is embedded into a new context manager, declared prior to the QUA program, that takes two inputs: 
 
 - the configuration dictionary (the same used to initialize a Quantum Machine instance),
 
-- a padding method : to be chosen between : “right”, “left”, “symmetric_l”, “symmetric_r”.  This string indicates how should the samples be filled up with 0s when they do not correspond to a usual sample (that is if sample length is not a multiple of 4 or if it is shorter than 16 ns). 
+- a padding method: to be chosen between: “right”, “left”, “symmetric_l”, “symmetric_r”.  This string indicates how should the samples be filled up with 0s when they do not correspond to a usual sample (that is if sample length is not a multiple of 4 or if it is shorter than 16 ns). 
 
     -  “right” setting is the default setting and pads 0s at the end of the baked sample to insert a QUA compatible version in the original configuration file
 
@@ -16,7 +16,7 @@ Waveform baking is embedded into a new context manager, declared prior to the QU
 
     - “symmetric_r' pads 0s symmetrically before and after the baked sample , putting one more 0 after it in case the baked sample length is odd
 
-Declaration is done before the QUA program as follows : 
+Declaration is done before the QUA program as follows: 
 
 ```
 with baking(config, padding_method = "symmetric_r") as b:
@@ -33,21 +33,21 @@ The logic behind the baking context manager is to stay as close as possible to t
 
 For playing custom operations, from an arbitrary shaped waveform the procedure goes as follows:
 
-1. You first have to write down the sample you want to use as a waveform (with arbitrary length, no matter if it does not match usual QUA criteria for saving a waveform in memory ) in the form of a Python list.
+1. You first have to write down the sample you want to use as a waveform (with arbitrary length, no matter if it does not match usual QUA criteria for saving a waveform in memory) in the form of a Python list.
     - If the sample is meant for a singleInput element, the list should contain the sample itself. 
     - Contrariwise, if it is intended for a mixInputs element, the list should contain two Python lists as [sample_I, sample_Q], where sample_I and sample_Q are themselves Python lists containing the samples.
 
-2. Add the sample to the local configuration, with method **add_Op**, which takes 4 inputs : 
-    - the name of the operation (name you will use only within the baking context manager in a play statement)
-    - the quantum element for which you want to add the operation
-    - the samples to store as waveforms
-    - the digital_marker name (supposedly already existing in the configuration) to attach to the pulse associated to the operation.
+2. Add the sample to the local configuration, with method **add_Op**, which takes 4 inputs: 
+    - The name of the operation (name you will use only within the baking context manager in a play statement)
+    - The quantum element for which you want to add the operation
+    - The samples to store as waveforms
+    - The digital_marker name (supposedly already existing in the configuration) to attach to the pulse associated to the operation.
 
-3. Use a baking **play** statement, specifying the operation name (which should correspond to the name introduced in the add_Op method) and the quantum element to play the operation on
+3. Use a baking ``play()`` statement, specifying the operation name (which should correspond to the name introduced in the add_Op method) and the quantum element to play the operation on
 
 All those commands concatenated altogether eventually build one single “big” waveform per quantum element involved in the baking that contains all the instructions specified in the baking environment. The exiting procedure of the baking ensures that the appropriate padding is done to ensure that QUA will be able to play this arbitrary waveform.
 
-Here is a code example : 
+Here is a basic code example that simply plays two pulses of short lengths: 
 
 
 ```
@@ -77,15 +77,15 @@ The baking object has a method called run, which takes no inputs and simply does
 with baking(config, "left"):
   #Create your baked waveform, cf snippet above
   
-#Open QUA program : 
+#Open QUA program: 
 with program() as QUA_prog:
   b.run()
 ```
 # **Additional features of the baking environment**
 
-The baking aims to be as versatile as possible in the way of editing samples. The idea is therefore to generate desired samples up to the precision of the nanosecond, without having to worry about its format and its insertion in the configuration file. It is even possible to generate a sample based on two previous samples (like a pulse superposition) by using two commands introduced in the baking : **play_at()** and **negative wait**.
+The baking aims to be as versatile as possible in the way of editing samples. The idea is therefore to generate desired samples up to the precision of the nanosecond, without having to worry about its format and its insertion in the configuration file. It is even possible to generate a sample based on two previous samples (like a pulse superposition) by using two commands introduced in the baking: ``play_at()`` and ``negative_wait()``.
 
-Let’s take a look at the code below to understand what these two features do : 
+Let’s take a look at the code below to understand what these two features do: 
 
 ```
 with baking(config=config, padding_method="symmetric_r") as b:
@@ -97,21 +97,21 @@ with baking(config=config, padding_method="symmetric_r") as b:
     b.add_Op("Op2", "qe1", [Op3, Op4])
     b.play("Op1", "qe1")   
     
-    # The baked waveform is at this point I : [0.3, 0.3, 0.3, 0.3, 0.3]
-    #                                     Q : [0.2, 0.2, 0.2, 0.3, 0.4]
+    # The baked waveform is at this point I: [0.3, 0.3, 0.3, 0.3, 0.3]
+    #                                     Q: [0.2, 0.2, 0.2, 0.3, 0.4]
     
     b.play_at("Op3", "qe1", t=2)
-    #t indicates the time index where this new sample should be added
-    # The baked waveform is now I : [0.3, 0.3, 1.3, 1.3, 1.3]
-    #                                     Q : [0.2, 0.2, 2.2, 2.3, 2.4]
+    # t indicates the time index where this new sample should be added
+    # The baked waveform is now I: [0.3, 0.3, 1.3, 1.3, 1.3]
+    #                           Q: [0.2, 0.2, 2.2, 2.3, 2.4]
     
-"""At the baking exit, the config will have an updated sample 
+At the baking exit, the config will have an updated sample 
 adapted for QUA compilation, according to the padding_method chosen, in this case:
-I : [0, 0, 0, 0, 0, 0.3, 0.3, 1.3, 1.3, 1.3, 0, 0, 0, 0, 0, 0], 
+I: [0, 0, 0, 0, 0, 0.3, 0.3, 1.3, 1.3, 1.3, 0, 0, 0, 0, 0, 0], 
 Q: [0, 0, 0, 0, 0, 0.2, 0.2, 2.2, 2.3, 2.4, 0, 0, 0, 0, 0, 0]
 ```
 If the time index t is positive, the sample will be added precisely at the index indicated in the existing sample.
-Contrariwise, if the provided index t is negative, we call here automatically the function **negative_wait**, which adds the sample at the provided index starting to count from the end of the existing sample : 
+Contrariwise, if the provided index t is negative, we call here automatically the function ``negative_wait()``, which adds the sample at the provided index starting to count from the end of the existing sample: 
 ```
 with baking(config=config, padding_method="symmetric_r") as b:
     const_Op = [0.3, 0.3, 0.3, 0.3, 0.3]
@@ -121,18 +121,18 @@ with baking(config=config, padding_method="symmetric_r") as b:
     Op4 = [2., 2., 2.]
     b.add_Op("Op2", "qe1", [Op3, Op4])
     b.play("Op1", "qe1")   
-    # The baked waveform is at this point I : [0.3, 0.3, 0.3, 0.3, 0.3]
-    #                                     Q : [0.2, 0.2, 0.2, 0.3, 0.4]
+    # The baked waveform is at this point I: [0.3, 0.3, 0.3, 0.3, 0.3]
+    #                                     Q: [0.2, 0.2, 0.2, 0.3, 0.4]
     b.play_at("Op3", "qe1", t=-2) #t indicates the time index where this new sample should be added
-    # The baked waveform is now I : [0.3, 0.3, 0.3, 1.3, 1.3, 1.0]
-    #                                     Q : [0.2, 0.2, 0.2, 2.3, 2.4, 2.0]
+    # The baked waveform is now I: [0.3, 0.3, 0.3, 1.3, 1.3, 1.0]
+    #                           Q: [0.2, 0.2, 0.2, 2.3, 2.4, 2.0]
     
-""" At the baking exit, the config will have an updated sample 
+At the baking exit, the config will have an updated sample 
 adapted for QUA compilation, according to the padding_method chosen, in this case: """
-I : [0, 0, 0, 0, 0, 0.3, 0.3, 0.3, 1.3, 1.3, 1.0, 0, 0, 0, 0, 0], 
+I: [0, 0, 0, 0, 0, 0.3, 0.3, 0.3, 1.3, 1.3, 1.0, 0, 0, 0, 0, 0], 
 Q:  [0, 0, 0, 0, 0, 0.2, 0.2, 0.2, 2.3, 2.4, 2.0, 0, 0, 0, 0, 0]
 ```
-The **play_at** command can also be used as a single play statement involving a wait time and a play statement. In fact, if the time index indicated in the function is actually out of the range of the existing sample, a wait command is automatically added until reaching this time index (recall that the index corresponds to the time in ns) and starts inserting the operation indicated at this time. See the example below : 
+The ``play_at()`` command can also be used as a single play statement involving a wait time and a play statement. In fact, if the time index indicated in the function is actually out of the range of the existing sample, a wait command is automatically added until reaching this time index (recall that the index corresponds to the time in ns) and starts inserting the operation indicated at this time. See the example below: 
 
 ```
 with baking(config=config, padding_method="symmetric_r") as b:
@@ -143,24 +143,23 @@ with baking(config=config, padding_method="symmetric_r") as b:
     Op4 = [2., 2., 2.]
     b.add_Op("Op2", "qe1", [Op3, Op4])
     b.play("Op1", "qe1")   
-    # The baked waveform is at this point I : [0.3, 0.3, 0.3, 0.3, 0.3]
-    #                                     Q : [0.2, 0.2, 0.2, 0.3, 0.4]
+    # The baked waveform is at this point I: [0.3, 0.3, 0.3, 0.3, 0.3]
+    #                                     Q: [0.2, 0.2, 0.2, 0.3, 0.4]
     b.play_at("Op3", "qe1", t=8) #t indicates the time index where this new sample should be added
     # The baked waveform is now 
-    # I : [0.3, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 1.0, 1.0, 1.0], 
-    # Q : [0.2, 0.2, 0.2, 0.3, 0.4, 0, 0, 0, 2.0, 2.0, 2.0]}
+    # I: [0.3, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 1.0, 1.0, 1.0], 
+    # Q: [0.2, 0.2, 0.2, 0.3, 0.4, 0, 0, 0, 2.0, 2.0, 2.0]}
     #                                    
     
-"""At the baking exit, the config will have an updated sample 
+At the baking exit, the config will have an updated sample 
 adapted for QUA compilation, according to the padding_method chosen, in this case:
-I : [0.3, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 1.0, 1.0, 1.0, 0, 0, 0, 0, 0], 
-Q : [0.2, 0.2, 0.2, 0.3, 0.4, 0, 0, 0, 2.0, 2.0, 2.0, 0, 0, 0, 0, 0]
-"""
+I: [0.3, 0.3, 0.3, 0.3, 0.3, 0, 0, 0, 1.0, 1.0, 1.0, 0, 0, 0, 0, 0], 
+Q: [0.2, 0.2, 0.2, 0.3, 0.4, 0, 0, 0, 2.0, 2.0, 2.0, 0, 0, 0, 0, 0]
 ```
 
 # The negative wait
 
-Negative wait is at the moment, just an equivalent way of writing the play_at statement.
+Negative wait is at the moment, just an equivalent way of writing the ``play_at()`` statement.
 
 The idea is to move backwards the time index at which the following play statement should start (wait[-3] means that the following waveform will be added on top of the existing sequence on the 3 last samples and will append the rest like a usual play statement.
 
@@ -174,5 +173,13 @@ and
 b.play_at('my_pulse', qe, t=-3)
 ```
 
+# **Examples**
 
+## Ramsey at short time scales
+[Ramsey](Ramsey_Gauss_baking.py) - In this baking example, we are creating pulses for a ramsey experiment in which the 
+pi-half pulses are made using gaussian with a width of 5 ns, and the distance between the two pulses changes from 0ns to 
+32ns. It is also possible to add change the phase of the second pulse using the *dephasingStep* parameter. The resulting
+pulses are plotted, it is important to remember that these pulses are in the baseband, and will be multiplied by the IF
+matrix (and later mixed with an LO).
 
+## Randomized 1qb benchmarking
