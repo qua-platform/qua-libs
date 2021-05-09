@@ -14,7 +14,7 @@ class VisaSA(ABC):
         super().__init__()
         rm = visa.ResourceManager()
         self.sa = rm.open_resource(address)
-        self.timeout = 100000
+        self.sa.timeout = 100000
 
         with program() as mixer_cal:
             with infinite_loop_():
@@ -146,7 +146,7 @@ class FieldFoxAutoCal(VisaSA):
             sig = self.get_measurement_data()
 
         elif self.method == 2:  # Marker
-            sig = self.query_marker()
+            sig = self.query_marker(1)
         return sig
 
     def set_automatic_video_bandwidth(self, state: int):
@@ -178,7 +178,7 @@ class FieldFoxAutoCal(VisaSA):
 
     def set_cont_on(self):
         # Sets continuous mode on
-        return self.sa.query("INIT:CONT ON")
+        self.sa.write("INIT:CONT ON")
 
     def get_single_trigger(self):
         # Performs a single sweep
@@ -190,6 +190,7 @@ class FieldFoxAutoCal(VisaSA):
 
     def set_marker_freq(self, marker: int, freq: int):
         # Sets the marker's frequency
+        self.get_single_trigger()
         self.sa.write(f'CALC:MARK{int(marker)}:X {int(freq)}')
 
     def query_marker(self, marker: int):
