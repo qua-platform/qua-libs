@@ -43,7 +43,7 @@ with program() as powerRabiProg:  # Power Rabi QUA program
                 "gauss_pulse" * amp(a), "qubit"
             )  # Modulate the Gaussian pulse with the varying amplitude a
             align("qubit", "RR")
-            measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
+            measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
             save(I, I_stream)  # Save the results
             save(Q, Q_stream)
             save(a, a_stream)
@@ -55,7 +55,7 @@ with program() as powerRabiProg:  # Power Rabi QUA program
 my_job = my_qm.simulate(
     powerRabiProg,
     SimulationConfig(
-        int(500000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
+        int(600000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
     ),
 )  # Use LoopbackInterface to simulate the response of the qubit
 time.sleep(1.0)

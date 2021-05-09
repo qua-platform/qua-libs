@@ -10,9 +10,10 @@ import time
 from scipy.optimize import curve_fit
 from configuration import *
 
+t_min = 10
 t_max = 100  # Maximum pulse duration (in clock cycles, 1 clock cycle =4 ns)
 dt = 1  # timestep
-N_t = len(np.arange(dt, t_max+dt, dt))  # Number of timesteps
+N_t = len(np.arange(t_min, t_max+dt, dt))  # Number of timesteps
 N_max = 3
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
@@ -32,12 +33,11 @@ with program() as timeRabiProg:  # Time Rabi QUA program
         Nrep, 0, Nrep < N_max, Nrep + 1
     ):  # Do a 100 times the experiment to obtain statistics
         with for_(
-            t, dt, t <= t_max, t + dt
-        ):  # Sweep from 0 to 50 *4 ns the pulse duration
-
+            t, t_min, t <= t_max, t + dt
+        ):  # Sweep from 0 to 100 *4 ns the pulse duration
             play("gauss_pulse", "qubit", duration=t)
             align("qubit", "RR")
-            measure("meas_pulse", "RR", "samples", ("integW1", I), ("integW2", Q))
+            measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
             save(I, I_stream)
             save(Q, Q_stream)
             save(t, t_stream)
@@ -49,7 +49,7 @@ with program() as timeRabiProg:  # Time Rabi QUA program
 my_job = my_qm.simulate(
     timeRabiProg,
     SimulationConfig(
-        int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
+        int(200000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
     ),
 )  ##Use Loopback interface for simulation of the output of the resonator readout
 time.sleep(1.0)
@@ -74,13 +74,13 @@ I_params, I_fit = fit_function(
     t1,
     I1,
     lambda x, A, drive_period, phi: (A * np.cos(2 * np.pi * x / drive_period - phi)),
-    [0.0015, 80, 0.1],
+    [0.004, 200, 1],
 )
 Q_params, Q_fit = fit_function(
     t1,
     Q1,
     lambda x, A, drive_period, phi: (A * np.cos(2 * np.pi * x / drive_period - phi)),
-    [0.0015, 80, 0],
+    [0.004, 200, 0.0],
 )
 
 plt.figure()
@@ -91,14 +91,14 @@ plt.plot(t1, Q_fit, color="black", label="Sinusoidal fit")
 plt.xlabel("Pulse duration [clock cycles]")
 plt.ylabel("Measured signal [a.u]")
 plt.axvline(I_params[1] / 2, color="red", linestyle="--")
-plt.axvline(I_params[1], color="red", linestyle="--")
+plt.axvline(0, color="red", linestyle="--")
 plt.annotate(
     "",
-    xy=(I_params[1], 0),
+    xy=(0, 0),
     xytext=(I_params[1] / 2, 0),
     arrowprops=dict(arrowstyle="<->", color="red"),
 )
-plt.annotate("$\pi$", xy=(I_params[1] / 2 - 0.03, 0.1), color="red")
+plt.annotate("$\pi$", xy=(I_params[1] / 4, 0.0001), color="red")
 plt.show()
 
-print("The duration required to perform a X gate is", I_params[1] / 2, "s")
+print("The duration required to perform a X gate is", I_params[1] / 2, "cycles")
