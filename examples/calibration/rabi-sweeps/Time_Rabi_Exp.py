@@ -12,7 +12,7 @@ from configuration import *
 
 t_max = 100  # Maximum pulse duration (in clock cycles, 1 clock cycle =4 ns)
 dt = 1  # timestep
-N_t = int(t_max / dt)  # Number of timesteps
+N_t = len(np.arange(dt, t_max+dt, dt))  # Number of timesteps
 N_max = 3
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
@@ -32,7 +32,7 @@ with program() as timeRabiProg:  # Time Rabi QUA program
         Nrep, 0, Nrep < N_max, Nrep + 1
     ):  # Do a 100 times the experiment to obtain statistics
         with for_(
-            t, 0, t <= t_max, t + dt
+            t, dt, t <= t_max, t + dt
         ):  # Sweep from 0 to 50 *4 ns the pulse duration
 
             play("gauss_pulse", "qubit", duration=t)
