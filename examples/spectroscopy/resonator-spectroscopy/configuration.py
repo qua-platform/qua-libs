@@ -16,7 +16,7 @@ def IQ_imbalance(g, phi):
 # CONFIGURATION:
 ################
 
-long_redout_len = 3600
+long_readout_len = 3600
 readout_len = 400
 
 qubit_IF = 50e6
@@ -58,7 +58,7 @@ config = {
     "pulses": {
         "long_readout_pulse": {
             "operation": "measurement",
-            "length": long_redout_len,
+            "length": long_readout_len,
             "waveforms": {"I": "long_readout_wf", "Q": "zero_wf"},
             "integration_weights": {
                 "long_integW1": "long_integW1",
@@ -76,12 +76,12 @@ config = {
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},
     "integration_weights": {
         "long_integW1": {
-            "cosine": [1.0] * int(long_redout_len / 4),
-            "sine": [0.0] * int(long_redout_len / 4),
+            "cosine": [1.0] * int(long_readout_len / 4),
+            "sine": [0.0] * int(long_readout_len / 4),
         },
         "long_integW2": {
-            "cosine": [0.0] * int(long_redout_len / 4),
-            "sine": [1.0] * int(long_redout_len / 4),
+            "cosine": [0.0] * int(long_readout_len / 4),
+            "sine": [1.0] * int(long_readout_len / 4),
         },
     },
     "mixers": {
