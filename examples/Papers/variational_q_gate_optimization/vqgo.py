@@ -176,6 +176,9 @@ def AGI(params):  # Calculate cost function
                         elif bitstring == "10" or bitstring == "11":
                             expectation_values[st][ope][bitstring] -= 1 / N_shots
 
+    # Here shall be implemented the calculation of the Average Gate Infidelity based on experimental results retrieved
+    # above. It would amount to building the PTM representation of the process described and perform the calculation
+    # indicated in original paper
     cost = 0
     return cost
 
