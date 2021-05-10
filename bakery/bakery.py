@@ -1,4 +1,4 @@
-"""bakary.py: Framework to generate arbitrary waveforms to be played into QUA program
+"""bakery.py: Framework to generate arbitrary waveforms to be played into QUA program
 Author: Arthur Strauss - Quantum Machines
 Created: 23/02/2021
 """
