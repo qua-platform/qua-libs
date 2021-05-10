@@ -1,17 +1,14 @@
-from random import randint
-from bakary import *
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm.qua import *
 from qm import SimulationConfig
-import numpy as np
 from RB_1qb_configuration import *
 
 N_avg = 1
 circuit_depth_vec = list(range(1, 10, 2))
-# circuit_depth_vec=list(set(np.logspace(0,2,10).astype(int).tolist()))
 t1 = 10
 b_list = []
 
+# Prepare baked waveforms, one baking for each circuit depth
 for depth in circuit_depth_vec:
     with baking(config, padding_method="right") as b:
         generate_cliffords(b, "qe1", pulse_length=10)
@@ -24,7 +21,7 @@ for depth in circuit_depth_vec:
 QMm = QuantumMachinesManager()
 QM1 = QMm.open_qm(config,close_other_machines=True)
 
-
+# QUA Program for 1 qubit RB:
 with program() as RBprog:
     N = declare(int)
     I = declare(fixed)
@@ -41,9 +38,7 @@ with program() as RBprog:
             active_reset(state)
 
     with stream_processing():
-        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save(
-            "out_stream"
-        )
+        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save("out_stream")
 
 job = QM1.simulate(RBprog, SimulationConfig(int(1000)))
 res = job.result_handles

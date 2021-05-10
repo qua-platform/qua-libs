@@ -1,4 +1,3 @@
-import numpy as np
 from qm.qua import *
 from bakary import *
 pulse_len = 100
