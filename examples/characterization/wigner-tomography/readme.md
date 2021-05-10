@@ -19,8 +19,8 @@ and represents a complex vector in the IQ plane.
 
 Using a qubit coupled to the cavity it's straightforward to extract the photon parity of the cavity form
 a repeated measurement of the qubit through an additional readout resonator. 
-The parity is related to the qubit state as such: $\langle P\rangle \propto P_e - P_g$m where $P_e$ and $P_g$ are the
-excited and ground state probabilities of the qubit, which can be extracted with repeated measurement.
+The parity is related to the qubit state as such: $\langle P\rangle \propto P_e - P_g$m where $P_e$ and $P_g$ are the probabilities of finding the qubit in the
+excited and ground state respectively, which can be extracted with repeated measurement.
 
 Notice: The example describes the tomography process assuming the cavity was encoded prior.
 
@@ -39,34 +39,34 @@ pulse. These were separated due to a needed 2d parameter sweep over the amplitud
 * For the `qubit` we define the `x_pi/2_pulse` which is simply a $\pi/2$ rotation around the x axis
 * For the `rr` we define the `readout_pulse` - the pulse used for measuring the resonator.
 
-The wavefroms used for the `displace_pulse` and `x_pi/2_pulse` are Gaussians with different parameters.
-Generally to displace a cavity one need to apply a pulse such that it integrates to the desired $\alpha$.
+The waveforms used for the `displace_pulse` and `x_pi/2_pulse` are Gaussians with different parameters.
+Generally to displace a cavity one needs to apply a pulse such that it integrates to the desired $\alpha$.
 
 
 ## Program
 
 We first calculate the revival time of the qubit coupled to the cavity. Then, we decide of the $\alpha$ range 
-we want to sample for constructing the Wigner function, and the spacing. Once we defined the require parameters
-we proceed to the Qua program.
+we want to sample for constructing the Wigner function, and the spacing. Once we defined the required parameters,
+we proceed to the QUA program.
 
-We first define the Qua fixed variable for the amplitude scaling required to shift the cavity by the desired $\alpha$
-We than create 2 Qua `for_` loops to iterate over the points of the IQ grid. The inner most `for_` loops is for repeated
+We first define the QUA fixed variable for the amplitude scaling required to shift the cavity by the desired $\alpha$
+We than create 2 QUA `for_` loops to iterate over the points of the IQ grid. The inner-most `for_` loop is for repeated
 measurement of the same point in the IQ plane.
 
 Then, in each cycle we perform the tomography procedure:
-* We align both the cavity components so they play simultaneously. We displace the I and Q components by the real and 
+* We align both cavity components in order to be played simultaneously. We displace the I and Q components by the real and 
 imaginary parts of $\alpha$, respectively, this is done using realtime amplitude modulation, by multiplying the pulse
 with the function `amp(x)`, where `x` is the scaling parameter.
-* Next, we align the cavity with the qubit to ensure the pulses to the qubit wait for the cavity to get to the desired state.
-On the qubit we apply and `x_pi/2` operation to bring it to the equator. We wait for the revival time, and then apply
+* Next, we align the cavity with the qubit to ensure the pulses meant for the qubit start after reaching the desired coherent state for the cavity.
+On the qubit we apply a `x_pi/2` operation to bring it to the equator, wait for the revival time, and eventually apply
 a second `x_pi/2` operation to project the qubit to the excited or ground state.
-* Finally, we measure the state using the readout resonator and demodulated the reflected signals to get the
+* Finally, we measure the state using the readout resonator and demodulate the reflected signals to get the
 qubits state on the IQ plane which can then determine its state.
 
 ## Post processing
 
-Having the I,Q results of repeated measurment of the qubit for different $\alpha$ we can extract the parity of the cavity
-at each point by counting the excited and ground state measurements. We can display the results using the a heatmap
+Having the I,Q results of repeated measurement of the qubit for different $\alpha$ we can extract the parity of the cavity
+at each point by counting the excited and ground state measurements. We can display the results using a heatmap
 which represents the IQ plane, with the axes being the real and imaginary parts of $\alpha$.    
 
 
