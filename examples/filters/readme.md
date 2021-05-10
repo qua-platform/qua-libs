@@ -10,10 +10,10 @@ This folder contains various examples for applying filters on the input ADC data
 ## Filter on the Stream Processor
 ### filters_with_sp.py
 
-Using the StreamProcessor one can apply any IIR or FIR filter by convoluting the data with the filter's impulse response.
+Using the StreamProcessing one can apply any IIR or FIR filter by convoluting the data with the filter's impulse response.
 
-In this example we are applying two RF sources at 5.5 MHz and 15 MHz to the input, and using a 5th order Butterworth LPF filter in order to filterout the 15 MHz signal.
-The filter is created using the scipy package in python, more filters can be found here:
+In this example we are applying two RF sources at 5.5 MHz and 15 MHz to the input, and using a 5th order Butterworth LPF filter in order to filter out the 15 MHz signal.
+The filter is created using the scipy package in Python, more filters can be found here:
 https://docs.scipy.org/doc/scipy/reference/signal.html
 
 Note that we specifically choose two frequencies at close frequencies in order showcase the strength of this approach.
@@ -28,7 +28,7 @@ We also use the built-in fft ability of the StreamProcessor in order to show the
 This method is very efficient and can be used for realtime data processing and feedback.
 
 #### Moving Window Integration 
-In this example we showcase how to use the builtin 'integration.moving_window' filter in order to apply a rectangular window (also known as the boxcar or Dirichlet window) directly on the incoming data.
+In this example we showcase how to use the built-in 'integration.moving_window' filter in order to apply a rectangular window (also known as the boxcar or Dirichlet window) directly on the incoming data.
 A moving window filter with constant weights can be described as the following function operating on the signal $S_j$:
 
 $$

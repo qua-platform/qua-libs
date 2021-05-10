@@ -1,15 +1,15 @@
 ---
 id: index
-title: T2 measurement in superconducting qubits
+title: $$T_2$$ measurement in superconducting qubits
 sidebar_label: SC T2
 slug: ./
 ---
 
-The is a T2 dephasing time measurement written specifically for the superconducting qubit case.
+$$T_2$$ is a characteristic time describing the decoherence rate of a qubit. This script aims to present the protocol to deduce it for the usecase of a transmon qubit.
 
-It plays a $\pi$ pulse to rotate the qubit into the excited state, then waits for a time, and then plays another $\pi$ pulse followed by an align operation and then reads out the state using the readout resonator.
+It consists in a $$\pi$$ pulse to rotate the qubit into the excited state, then waits for a given time, and then plays another $$\pi$$ pulse followed by an align operation and then reads out the state using the readout resonator.
 
-## config
+## Config
 
 The configuration dictionary is in the `configuration.py` file and is imported into the main program file `t2.py`.
 
@@ -23,15 +23,16 @@ The `rr` quantum element allows to measure the qubit state by measuring the reso
 
 > ⚠️Note that failing to declare a `digital_marker` will not fail program compilation, but will prevent data from being acquired.
 
-## program
+## Program
 
-The QUA program `T2` is built around two nested `for_` loops. The external loop is used for repeated averaging steps and the internal loop scans the parameter `tau`. The body of the loops plays the `X` operation to rotate the qubit into the `|1>` state. The `wait` statement is then used with a variable duration `tau`, followed by another `X` operation and then an align operation a measurement statement demodulating the readout into the `I` and `Q` variables. Each loop ends by a `wait` statement. The program ends by a `recovery_delay` period which is assumed to be sufficient to allow qubit to decay back in the ground state.
+The QUA program `T2` is built around two nested `for_` loops. The external loop is used for repeated averaging steps, and the internal loop scans the parameter `tau`. The body of the loops plays the `X` operation to rotate the qubit into the `|1>` state. The `wait` statement is then used with a variable duration `tau`, followed by another `X` operation and then an align operation a measurement statement demodulating the readout into the `I` and `Q` variables. Each loop ends by a `wait` statement. The program ends by a `recovery_delay` period which is assumed to be sufficient to allow qubit to decay back in the ground state.
 
 We run the program on the simulator for 500 clock cycles and take the simulated samples from the simulation job.
 
-The acquired ADC stream is taken from `result_handles`. Note the change of name of the raw ADC steam from the name we specified in the program (`raw_adc`) to the name we use to get the stream (`raw_adc_input1`). This is an idiosyncrasy of the raw ADC interface which doesn't not appear in other QUA data saving mechanisms.
+The acquired ADC stream is taken from `result_handles`. Note the change of name of the raw ADC steam from the name we specified in the program (`raw_adc`) to the name we use to get the stream (`raw_adc_input1`). This is an idiosyncrasy of the raw ADC interface which does
+not appear in other QUA data saving mechanisms.
 
-## post processing
+## Post-processing
 
 To get an estimate of the probability to be in the excited state as a function of delay duration, we need to reshape the output streams and calculate the statistics: mean and variance of the probability to be in the excited state.
 

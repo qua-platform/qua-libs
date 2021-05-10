@@ -22,7 +22,7 @@ def IQ_imbalance(g, phi):
 # CONFIGURATION:
 ################
 
-long_redout_len = 3600
+long_readout_len = 3600
 readout_len = 400
 
 qubit_IF = 50e6

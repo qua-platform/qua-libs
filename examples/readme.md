@@ -19,6 +19,6 @@ you can find details on the _contributing_ page.
 
 If you've never used QUA before, we recommend you start by running the hello-qua example and then follow
 the script in the _basic_ section. From there you can check out the _characterization_ and _calibration_ 
-sections for some more advacned (but still quite basic) scripts. 
+sections for some more advanced (but still quite basic) scripts. 
 
 
