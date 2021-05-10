@@ -176,10 +176,57 @@ b.play_at('my_pulse', qe, t=-3)
 # **Examples**
 
 ## Ramsey at short time scales
-[Ramsey](Ramsey_Gauss_baking.py) - In this baking example, we are creating pulses for a ramsey experiment in which the 
-pi-half pulses are made using gaussian with a width of 5 ns, and the distance between the two pulses changes from 0ns to 
-32ns. It is also possible to add change the phase of the second pulse using the *dephasingStep* parameter. The resulting
+[Ramsey](Ramsey_Gauss_baking.py) - In this baking example, we are creating pulses for a Ramsey experiment in which the 
+$$\pi/2$$ pulses are made using gaussian with a width of 5 ns, and the distance between the two pulses changes from 0 to 
+32 ns. It is also possible to change the phase of the second pulse using the *dephasingStep* parameter. The resulting
 pulses are plotted, it is important to remember that these pulses are in the baseband, and will be multiplied by the IF
 matrix (and later mixed with an LO).
 
-## Randomized 1qb benchmarking
+### Generating short Ramsey pulse sequences with waveform baking
+
+This tutorial presents a use case for the waveform baking tool, which facilitates the
+generation of pulse samples that are shorter than 16 ns, which would usually have to be manually
+modified to upload it to the OPX.
+
+Using the baking environment before launching the QUA program allows the pulse to be seamlessly 
+integrated in the configuration file, without having to account for the restrictions of pulse length 
+imposed by QUA.
+
+It also provides a simpler interface to generate one single waveform that can contain several
+play statements (preserving program memory).
+
+The experiment is as follows :
+
+We have a superconducting qubit (controlled using the quantum element 'Drive' in the configuration
+file) coupled to a readout resonator ('Resonator') with which we would like to apply sequences
+of two short Gaussian pulses spaced with a varying time duration, followed directly by a probe 
+coming from the resonator (the measurement procedure should start immediately after the second Gaussian 
+pulse was played by the Drive element).
+
+The baking environment is used here to synthesize without any effort a waveform resulting from delayed
+superposition of two Gaussian pulses (a simple *play* followed by a *play_at* with a varying delay).
+Note that we also use an initial delay to ensure that there is a perfect
+synchronization between the end of the Ramsey sequence, and the trigger of the resonator
+for probing the qubit state.
+
+Within the QUA program, what remains to do is simply launching the created baking objects within
+a Python for loop (using the *run* command) and use all appropriate commands related to the resonator to build your experiment. 
+
+
+
+# Randomized  benchmarking for 1 qubit with waveform baking
+
+Waveform baking is a tool to be used prior to running a QUA program to store waveforms and play them 
+easily within the QUA program without having to require a series of play statements.
+
+It turns out that this economy of statements can be particularly useful for saving program 
+memory when running long characterization experiments that do require lots of pulses to be played,
+such as tomography experiments (usually involving state preparation, process, and readout for each couple of input state  
+and readout observable to be sampled) or randomized benchmarking.
+Randomized benchmarking principles are reminded in another example done in QUA: https://docs.qualang.io/libs/examples/randomized-benchmark/one-qubit-rb/
+Here, the idea is to show the ease with which we can integrate tools associated to waveform baking to the example realized in the existing QUA script ,
+by taking the same elementary built-in functions to generate the entire quantum circuit necessary to run the random sequence. 
+With the use of the baking, we now have one single baked waveform randomly 
+synthesized.
+This helps to reduce the amount of instructions to be compiled and avoid potential issues related to saturation of program memory, which might be reached when more than 2000 instructions are sent to the program.
+
