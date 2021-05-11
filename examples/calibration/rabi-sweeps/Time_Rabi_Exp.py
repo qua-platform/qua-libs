@@ -13,7 +13,7 @@ from configuration import *
 t_min = 10
 t_max = 100  # Maximum pulse duration (in clock cycles, 1 clock cycle =4 ns)
 dt = 1  # timestep
-N_t = len(np.arange(t_min, t_max+dt, dt))  # Number of timesteps
+N_t = len(np.arange(t_min, t_max + dt, dt))  # Number of timesteps
 N_max = 3
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
