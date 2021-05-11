@@ -245,13 +245,10 @@ It plays a CW pulse in an infinite loop.
 The calibration should be done by connecting the output of the mixer to a spectrum analyzer and minimizing the LO leakage term at $\Omega$ and image term at $\Omega-\omega_{IF}$.
 
 ## Automatic calibration script
-[Automatic Up-conversion Calibration](automatic_mixer_calibration.py) - This scripts shows an example
+[Automatic Up-conversion Calibration](visa_automatic_mixer_calibration.py) - This scripts shows an example
 for an automatic mixer calibration code on an external spectrum analyzer, tested for a Keysight Fieldfox N9917A.
 It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
 and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
-
-[Automatic Up-conversion Calibration - Using Markers](automatic_mixer_calibration_method_2.py) - This script is similiar 
-to the one above, but it uses a marker to probe the power instead of a `channel power` measurement.
 
 -------------------------------------------------------------------------------------------------------
 > **_Note:_** : 
@@ -284,35 +281,54 @@ Most SA implement the same SCPI instrument commands. These commands are written 
 * "CALC:MEAS:DATA?" - Gets the data from the measurement
 
 The code does not touch the Y scale of the SA, or the trigger settings. If needed, these have to be defined manually.
-### Detailed explanation of the code
-There are two versions of the script, the first version uses a `channel power` measurement and is considered faster & more reliable.
-It integrates over a bandwidth which reduces noise for the same measurement time. In this code, it integrates over ten data points. 
-However, this command is implemented differently in different SA brands and would therefore require more adaptions between brands.
 
-The second method uses a marker to check the power at a specific frequency. It only looks at one data point and is therefore a bit less efficient. 
+### Adapting the code for more spectrum analyzers
+The code can easily be adapted to other spectrum analyzers which use the VISA interface by creating a class for them in 
+the [auto_mixer_tools_visa.py](auto_mixer_tools_visa.py) file. The class contains the commands above, which should be
+quite similar in other models and brands.
+
+### Detailed explanation of the code
+The code starts with three important variables:
+
+* `address` - The address for the SA, opened using visa.
+* `bDoSweeps` - If True, performs a large sweep before and after the optimization.
+* `method` - If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker.
+
+When method = 1, the script uses a `channel power` measurement and is considered faster & more reliable. It integrates
+over a bandwidth which reduces noise for the same measurement time. In this code, it integrates over ten data points.
+
+The second method uses a marker to check the power at a specific frequency. It only looks at one data point and is 
+therefore a bit more prone to noise. Due to fluctuations, it will report a better suppression then actually achieved.
 Nevertheless, it produces similar results and is more easy to adapt between brands.
 
-All the parameters that may be modified are at the beginning of the file:
-* In most cases, only the connection to the SA needs to be modified.
-* The integration bandwidth, defined by the `measIBW` (`measBW` for the second method), can also be changed.
+All the parameters that may be modified are at the beginning of the file, but most of them can just be kept as is:
+* In most cases, only the `address` to the SA needs to be modified.
+* The bandwidth, defined by the `measBW`, can also be changed. Lowering the `measBW` would give better suppression, but
+  it'll take longer.
   There is always a tradeoff between speed and results, and it also depends on the model of the SA used.
 * `bDoSweeps` can be changed to `False` to disable the full sweeps before and after the optimizations.
-  The command to query the full spectrum `TRACE:DATA?` might also not work in different brands.
 
-The code starts with the definition of the QUA program, and three functions:
+The code continues with the creation of the calibration object, using the command 
+`calib = KeysightFieldFox(address, qm)` and the method is then being set using `calib.method = method`.
+
+The calibration object defines the QUA program, and three functions:
 * get_amp() - Gets the amplitude of the current measurement.
 * get_leakage(i0, q0) - Sets the DC offsets to i0 & q0 and gets the amplitude using get_amp()
 * get_image(g, p) - Sets the gain and phase mismatch to g & p and gets the amplitude using get_amp()
 
-Afterwards, the program is executed, the SA object is being created and parameters are being set for a large sweep to see the initial spectrum.
-We set the bandwidth to 1 kHz and we sweep a bit more than twice the IF frequency, this is such that we'll be able to see spurs coming from higher harmonics (if they are not negligible, the IF & LO power need tuning)
+Afterwards, the program is executed and the SA object is created.
+The parameters are being set for a large sweep to see the initial spectrum.
+We set the bandwidth to 1 kHz and we sweep a bit more than twice the IF frequency, this is such that we'll be able to 
+see spurs coming from higher harmonics (if they are not negligible, the IF & LO power need tuning)
 
 After getting the initial trace, we turn on the Channel Power measurement and configure it to be around the LO frequency.
 In the second method, we activate a marker and put it on the LO frequency.
 We then run the Nelder-Mead algorithm to minimize the leakage.  
 
-It then repeats for the image minimization, and finally takes another large trace to see the final spectrum after the minimization.
-Shown below is a demo run of the algorithm, it took ~20 seconds each for the LO and image, lowering them to <-70 dBc (relative to the signal).
+It then repeats for the image minimization, and finally takes another large trace to see the final spectrum after the
+minimization.
+Shown below is a demo run of the algorithm, it took ~20 seconds each for the LO and image, lowering them to <-70 dBc 
+(relative to the signal).
 
 The spurs at $\omega_{LO} \pm 2 \omega_{IF}$ are at around -50 dBc, they can be reduced by decreasing the power arriving
 at the IQ ports.
