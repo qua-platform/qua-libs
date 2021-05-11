@@ -1,14 +1,12 @@
 # Tested on Keysight FieldFox N9917A
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm.qua import *
 import time
 import matplotlib.pyplot as plt
 from configuration import *
 import numpy as np
-import pyvisa as visa
 import scipy.optimize as opti
-from auto_mixer_tools_visa import FieldFoxAutoCal
+from auto_mixer_tools_visa import KeysightFieldFox
 
 ##############
 # Parameters #
@@ -16,19 +14,10 @@ from auto_mixer_tools_visa import FieldFoxAutoCal
 # Important Parameters:
 address = 'TCPIP0::192.168.1.9::inst0::INSTR'  # The address for the SA, opened using visa.
 bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
-method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker
-
-# Parameters for Nelder-Mead
-initial_simplex = np.zeros([3, 2])
-initial_simplex[0, :] = [0, 0]
-initial_simplex[1, :] = [0, 0.1]
-initial_simplex[2, :] = [0.1, 0]
-xatol = 1e-4  # 1e-4 change in DC offset or gain/phase
-fatol = 3  # dB change tolerance
-maxiter = 50  # 50 iterations should be more then enough, but can be changed.
+method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker.
 
 # Parameters for SA - Measurement:
-measBW = 100  # Measurement bandwidth
+measBW = 1000  # Measurement bandwidth
 measNumPoints = 101
 
 # Parameters for SA - Sweep:
@@ -39,6 +28,15 @@ startFreq = qubit_LO - fullSpan / 2
 stopFreq = qubit_LO + fullSpan / 2
 freq_vec = np.linspace(float(startFreq), float(stopFreq), int(fullNumPoints))
 
+# Parameters for Nelder-Mead
+initial_simplex = np.zeros([3, 2])
+initial_simplex[0, :] = [0, 0]
+initial_simplex[1, :] = [0, 0.1]
+initial_simplex[2, :] = [0.1, 0]
+xatol = 1e-4  # 1e-4 change in DC offset or gain/phase
+fatol = 3  # dB change tolerance
+maxiter = 50  # 50 iterations should be more then enough, but can be changed.
+
 ##########
 # Execute:
 ##########
@@ -47,7 +45,7 @@ freq_vec = np.linspace(float(startFreq), float(stopFreq), int(fullNumPoints))
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(config)
 
-calib = FieldFoxAutoCal(address, qm)
+calib = KeysightFieldFox(address, qm)
 calib.method = method
 
 # Set video bandwidth to be automatic and bandwidth to be manual. Disable continuous mode
@@ -75,10 +73,6 @@ if bDoSweeps:
     plt.show()
 
 # Configure measure
-calib.set_sweep_points(measNumPoints)
-calib.set_span(10 * measBW)
-calib.set_bandwidth(measBW)
-
 if method == 1:  # Channel power
     calib.enable_measurement()
     calib.sets_measurement_integration_bw(10 * measBW)
@@ -86,6 +80,9 @@ if method == 1:  # Channel power
 elif method == 2:  # Marker
     calib.get_single_trigger()
     calib.active_marker(1)
+calib.set_sweep_points(measNumPoints)
+calib.set_span(10 * measBW)
+calib.set_bandwidth(measBW)
 
 # Get Signal
 calib.set_center_freq(qubit_LO + qubit_IF)

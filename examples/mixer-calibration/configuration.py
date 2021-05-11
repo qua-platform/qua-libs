@@ -47,7 +47,10 @@ config = {
         },
     },
     "waveforms": {
-        "const_wf": {"type": "constant", "sample": 0.2},
+        "const_wf": {"type": "constant", "sample": 0.45},
+        # It is good practice to output from the OPX an amplitude which is close to the maximum, in order to have the
+        # maximum dynamic range. If the amplitude needs to be lower than 0.1 (in order to get rid of spurs), then it is
+        # better to add external attenuators and increase the amplitude.
     },
     "mixers": {
         "mixer_qubit": [

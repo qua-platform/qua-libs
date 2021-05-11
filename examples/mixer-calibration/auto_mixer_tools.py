@@ -1,6 +1,5 @@
 import time
 from abc import ABC, abstractmethod
-import numpy as np
 import pyvisa as visa
 import scipy.optimize as opti
 

@@ -1,10 +1,11 @@
-from qm.QuantumMachinesManager import QuantumMachinesManager
+# This file contains classes of spectrum analyzers using the VISA interface to communicate with the computers.
+# They should have almost uniform commands, making adaptions to new models/brands quite easy
+
 from qm.qua import *
 import time
 from abc import ABC, abstractmethod
 import numpy as np
 import pyvisa as visa
-import scipy.optimize as opti
 
 
 class VisaSA(ABC):
@@ -139,7 +140,7 @@ class VisaSA(ABC):
         pass
 
 
-class FieldFoxAutoCal(VisaSA):
+class KeysightFieldFox(VisaSA):
     def get_amp(self):
         self.get_single_trigger()
         if self.method == 1:  # Channel power
