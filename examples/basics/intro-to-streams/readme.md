@@ -1,5 +1,5 @@
 ---
-title: Intro to streams
+title: Introduction to streams
 sidebar_label: Intro to streams
 slug: ./
 id: index
