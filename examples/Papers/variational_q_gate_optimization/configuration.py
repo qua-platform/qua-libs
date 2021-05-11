@@ -2,8 +2,11 @@ import numpy as np
 from qm.qua import *
 import time
 import math
+
 readout_len = 200
 π = np.pi
+
+
 def gauss(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
@@ -70,7 +73,7 @@ config = {
             "analog_inputs": {
                 1: {"offset": +0.0},
                 2: {"offset": +0.0},
-            }
+            },
         }
     },
     "elements": {
@@ -86,7 +89,7 @@ config = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR": "CR_pulse"
+                "CR": "CR_pulse",
             },
         },
         "RR0": {
@@ -116,7 +119,7 @@ config = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR": "CR_pulse"
+                "CR": "CR_pulse",
             },
         },
         "RR1": {
@@ -147,7 +150,7 @@ config = {
             "operations": {
                 "CR_Op": "constPulse",
             },
-        }
+        },
     },
     "pulses": {
         "meas_pulse_in": {  # Readout pulse
@@ -181,13 +184,13 @@ config = {
         "constPulse": {
             "operation": "control",
             "length": 1000,
-            "waveforms": {"single": "const_wf"}
+            "waveforms": {"single": "const_wf"},
         },
         "CR_pulse": {
             "operation": "control",
             "length": 1000,
             "waveforms": {"I": "CR_wf", "Q": "CR_der_wf"},
-        }
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
@@ -197,22 +200,13 @@ config = {
         "y180_wf": {"type": "arbitrary", "samples": y180waveform},
         "y180_der_wf": {"type": "arbitrary", "samples": y180der_waveform},
         "exc_wf": {"type": "constant", "sample": 0.479},
-        "CR_wf" : {"type": "arbitrary", "samples": CR_waveform},
-        "CR_der_wf" : {"type": "arbitrary", "samples": CR_der},
+        "CR_wf": {"type": "arbitrary", "samples": CR_waveform},
+        "CR_der_wf": {"type": "arbitrary", "samples": CR_der},
     },
     "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},
     "integration_weights": {  # Define integration weights for measurement demodulation
-        "integW1": {
-            "cosine": [4.0] * readout_len,
-
-            "sine": [0.0] * readout_len
-
-        },
-        "integW2": {
-            "cosine": [0.0] * readout_len,
-            "sine": [4.0] * readout_len
-
-        },
+        "integW1": {"cosine": [4.0] * readout_len, "sine": [0.0] * readout_len},
+        "integW2": {"cosine": [0.0] * readout_len, "sine": [4.0] * readout_len},
     },
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme
         "mixer_res": [
@@ -257,7 +251,7 @@ state_prep = {
     "-0": ["H0", "S0"],
     "-1": ["H0", "S0", "X1"],
     "-+": ["H0", "S0", "H1"],
-    "--": ["H0", "S0", "H1", "S1"]
+    "--": ["H0", "S0", "H1", "S1"],
 }
 
 
@@ -269,7 +263,7 @@ def prepare_state(state):
         elif op[0] == "H":
             Hadamard(qubit)
         elif op[0] == "S":
-            frame_rotation(π/2, qubit)
+            frame_rotation(π / 2, qubit)
 
 
 def Hadamard(qubit):
@@ -281,79 +275,34 @@ def change_basis(operator):
     for op in tomography_set[operator]["Op"]:
         qubit = "q" + op[-1]
         if op[0] == "Y":
-            Ry(-π/2, qubit)
+            Ry(-π / 2, qubit)
         elif op[0] == "X":
-            Rx(-π/2, qubit)
+            Rx(-π / 2, qubit)
 
 
 tomography_set = {
-    "ID__σ_x": {
-        "Op": ["Y1"],
-        "Ref": "ID__σ_z"
-    },
-    "ID__σ_y": {
-        "Op": ["X1"],
-        "Ref": "ID__σ_z"
-    },
-    "ID__σ_z": {
-        "Op": [],
-        "Ref": "ID__σ_z"
-    },
-
+    "ID__σ_x": {"Op": ["Y1"], "Ref": "ID__σ_z"},
+    "ID__σ_y": {"Op": ["X1"], "Ref": "ID__σ_z"},
+    "ID__σ_z": {"Op": [], "Ref": "ID__σ_z"},
     "σ_z__ID": {
         "Op": [],
         "Ref": "σ_z__ID",
     },
-    "σ_z__σ_x": {
-        "Op": ["Y1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_z__σ_y": {
-        "Op": ["X1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_z__σ_z": {
-        "Op": [],
-        "Ref": "σ_z__σ_z"
-    },
-
-    "σ_y__ID": {
-        "Op": ["X0"],
-        "Ref": "σ_z__ID"
-    },
-    "σ_y__σ_x": {
-        "Op": ["X0", "Y1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_y__σ_y": {
-        "Op": ["X0", "X1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_y__σ_z": {
-        "Op": ["X0"],
-        "Ref": "σ_z__σ_z"
-    },
-
-    "σ_x__ID": {
-        "Op": ["Y0"],
-        "Ref": "σ_z__ID"
-    },
-    "σ_x__σ_x": {
-        "Op": ["Y0", "Y1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_x__σ_y": {
-        "Op": ["Y0", "X1"],
-        "Ref": "σ_z__σ_z"
-    },
-    "σ_x__σ_z": {
-        "Op": ["Y0"],
-        "Ref": "σ_z__σ_z"
-    }
+    "σ_z__σ_x": {"Op": ["Y1"], "Ref": "σ_z__σ_z"},
+    "σ_z__σ_y": {"Op": ["X1"], "Ref": "σ_z__σ_z"},
+    "σ_z__σ_z": {"Op": [], "Ref": "σ_z__σ_z"},
+    "σ_y__ID": {"Op": ["X0"], "Ref": "σ_z__ID"},
+    "σ_y__σ_x": {"Op": ["X0", "Y1"], "Ref": "σ_z__σ_z"},
+    "σ_y__σ_y": {"Op": ["X0", "X1"], "Ref": "σ_z__σ_z"},
+    "σ_y__σ_z": {"Op": ["X0"], "Ref": "σ_z__σ_z"},
+    "σ_x__ID": {"Op": ["Y0"], "Ref": "σ_z__ID"},
+    "σ_x__σ_x": {"Op": ["Y0", "Y1"], "Ref": "σ_z__σ_z"},
+    "σ_x__σ_y": {"Op": ["Y0", "X1"], "Ref": "σ_z__σ_z"},
+    "σ_x__σ_z": {"Op": ["Y0"], "Ref": "σ_z__σ_z"},
 }
 
 
-def play_source_gate(source, params = 0):
+def play_source_gate(source, params=0):
     if source == "CR":
         CR(params)
 
@@ -362,7 +311,9 @@ def generate_random_set(target_gate):
     return state_prep, tomography_set
 
 
-def generate_binary(n):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
+def generate_binary(
+    n,
+):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
 
     # 2^(n-1)  2^n - 1 inclusive
     bin_arr = range(0, int(math.pow(2, n)))
@@ -377,10 +328,13 @@ def generate_binary(n):  # Define a function to generate a list of binary string
 
 # QUA macros (pulse definition of quantum gates)
 
-def CR(Omega, ctrl="q0", tgt="q1"):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
+
+def CR(
+    Omega, ctrl="q0", tgt="q1"
+):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
     if ctrl[-1] == 0 and tgt[-1] == 1:
         update_frequency("ctrl", omega_t)
-        play("CR"*amp(Omega), "ctrl")
+        play("CR" * amp(Omega), "ctrl")
         update_frequency("ctrl", omega_c)
 
 
@@ -389,11 +343,11 @@ def Rz(𝜆, tgt):
 
 
 def Ry(𝜆, tgt):
-    play("Y90"*amp(𝜆/(π/2)),tgt)
+    play("Y90" * amp(𝜆 / (π / 2)), tgt)
 
 
 def Rx(𝜆, tgt):
-    play("X90"*amp(𝜆/(π/2)), tgt)
+    play("X90" * amp(𝜆 / (π / 2)), tgt)
 
 
 def measurement(RR, I, Q):  # Simple measurement command, could be changed/generalized
@@ -407,12 +361,11 @@ def raw_saving(I, Q, I_stream, Q_stream):
     save(Q, Q_stream)
 
 
-def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol in QUA, and save the associated state
+def state_saving(
+    I, Q, state_estimate, stream
+):  # Do state estimation protocol in QUA, and save the associated state
     # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane
     # (calibration required), here a & b are arbitrary
     th = 0.2
     assign(state_estimate, I > th)
     save(state_estimate, stream)
-
-
-

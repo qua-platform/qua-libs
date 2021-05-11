@@ -46,9 +46,10 @@ def extract_modes_times(population):
     :return:
     """
     # numerical values just for simulation
-    return 6.45 - 0.5 * np.cos(
-        np.linspace(1, n_modes, n_modes) * np.pi / (n_modes + 1)
-    ), np.linspace(20, 100, n_modes)
+    return (
+        6.45 - 0.5 * np.cos(np.linspace(1, n_modes, n_modes) * np.pi / (n_modes + 1)),
+        np.linspace(20, 100, n_modes),
+    )
 
 
 def time_freq_sweep(prepare, N, sb_freqs, t_init, t_final, step):

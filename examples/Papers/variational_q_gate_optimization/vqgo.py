@@ -17,11 +17,9 @@ optimizer = "COBYLA"
 qm1 = QuantumMachinesManager("3.122.60.129")
 QM = qm1.open_qm(config)
 
-target_gate = np.array([[1, 0, 0, 0],  # CNOT gate
-                        [0, 1, 0, 0],
-                        [0, 0, 0, 1],
-                        [0, 0, 1, 0]
-                        ])
+target_gate = np.array(
+    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]  # CNOT gate
+)
 states, readout_ops = generate_random_set(target_gate)
 # QUA program
 
@@ -35,15 +33,18 @@ with program() as VQGO:
     Q = declare(fixed)
     state_estimate = declare(bool)
 
-    state_streams, I_streams, Q_streams = [declare_stream()] * n, \
-                                          [declare_stream()] * n, \
-                                          [declare_stream()] * n
-    state_strings, I_strings, \
-    Q_strings, q_strings, RR_strings = ["state" + str(i) for i in range(n)], \
-                                       ["I" + str(i) for i in range(n)], \
-                                       ["Q" + str(i) for i in range(n)], \
-                                       ["q" + str(i) for i in range(n)], \
-                                       ["RR" + str(i) for i in range(n)]
+    state_streams, I_streams, Q_streams = (
+        [declare_stream()] * n,
+        [declare_stream()] * n,
+        [declare_stream()] * n,
+    )
+    state_strings, I_strings, Q_strings, q_strings, RR_strings = (
+        ["state" + str(i) for i in range(n)],
+        ["I" + str(i) for i in range(n)],
+        ["Q" + str(i) for i in range(n)],
+        ["q" + str(i) for i in range(n)],
+        ["RR" + str(i) for i in range(n)],
+    )
 
     rotation_angles = [[declare(fixed, size=3)] * n] * (d + 1)
     source_params = [declare(fixed, size=n - 1)] * (d + 1)
@@ -66,7 +67,9 @@ with program() as VQGO:
         # Generate random selection of input states & tomography operations
         # for direct fidelity estimation
 
-        with for_(rep, init=0, cond=rep <= N_shots, update=rep + 1):  # Do N_shots times the same quantum circuit
+        with for_(
+            rep, init=0, cond=rep <= N_shots, update=rep + 1
+        ):  # Do N_shots times the same quantum circuit
             # Run the computation for each input state and tomography operator the parametrized process
             for state in states.keys():
                 for op in readout_ops.keys():
@@ -100,10 +103,15 @@ with program() as VQGO:
 
     with stream_processing():
         for i in range(n):
-            state_streams[i].boolean_to_int().buffer(len(states.keys()), len(readout_ops.keys())).save_all(
-                state_strings[i])
-            I_streams[i].buffer(len(states.keys()), len(readout_ops.keys())).save_all(I_strings[i])
-            Q_streams[i].buffer(len(states.keys()), len(readout_ops.keys())).save_all(Q_strings[i])
+            state_streams[i].boolean_to_int().buffer(
+                len(states.keys()), len(readout_ops.keys())
+            ).save_all(state_strings[i])
+            I_streams[i].buffer(len(states.keys()), len(readout_ops.keys())).save_all(
+                I_strings[i]
+            )
+            Q_streams[i].buffer(len(states.keys()), len(readout_ops.keys())).save_all(
+                Q_strings[i]
+            )
 
 
 job = QM.execute(VQGO)
@@ -127,8 +135,8 @@ def encode_params_in_IO(rot_angles, s_params):
 def AGI(params):  # Calculate cost function
 
     job.resume()
-    rot_angles = params[0: 3 * n * (d + 1)]
-    s_params = params[3 * n * (d + 1):]
+    rot_angles = params[0 : 3 * n * (d + 1)]
+    s_params = params[3 * n * (d + 1) :]
 
     encode_params_in_IO(rot_angles, s_params)
 
@@ -142,7 +150,9 @@ def AGI(params):  # Calculate cost function
     for m in range(n):
         output_states.append(results.get("state" + str(m)).fetch_all()["value"])
 
-    counts = {}  # Dictionary containing statistics of measurement of each bitstring obtained
+    counts = (
+        {}
+    )  # Dictionary containing statistics of measurement of each bitstring obtained
     expectation_values = {}
 
     for i in range(N_shots):
@@ -155,7 +165,7 @@ def AGI(params):  # Calculate cost function
                 expectation_values[st][ope] = {}
                 for l in range(len(output_states)):
                     bitstring += str(output_states[l][i][s][r])
-                if not(bitstring in counts[st][ope]):
+                if not (bitstring in counts[st][ope]):
                     counts[st][ope][bitstring] = 0
                     expectation_values[st][ope][bitstring] = 0
                 else:
@@ -184,7 +194,7 @@ def AGI(params):  # Calculate cost function
 
 
 init_rotation_angles = np.random.uniform(0, 2 * π, 3 * n * (d + 1))
-init_source_params = np.random.uniform(0., 2., d)
+init_source_params = np.random.uniform(0.0, 2.0, d)
 init_angles = list(init_rotation_angles)
 for param in init_source_params:
     init_angles.append(param)

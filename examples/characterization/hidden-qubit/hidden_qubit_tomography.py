@@ -47,8 +47,12 @@ with program() as hidden_qubit_tomography:
                     )
 
     with stream_processing():
-        stream_c.boolean_to_int().buffer(N_shots, nb_processes, nb_basis_states, nb_Pauli_op).save_all("state_c")
-        stream_h.boolean_to_int().buffer(N_shots, nb_processes, nb_basis_states, nb_Pauli_op).save_all("state_h")
+        stream_c.boolean_to_int().buffer(
+            N_shots, nb_processes, nb_basis_states, nb_Pauli_op
+        ).save_all("state_c")
+        stream_h.boolean_to_int().buffer(
+            N_shots, nb_processes, nb_basis_states, nb_Pauli_op
+        ).save_all("state_h")
 
 job = qm1.simulate(
     config,
@@ -67,7 +71,9 @@ counts = {}
 frequencies = {}
 expectation_values = {}
 ρ = {}
-for i, process in list(enumerate(processes.keys())):  # 4 #Initialize all the dictionaries
+for i, process in list(
+    enumerate(processes.keys())
+):  # 4 #Initialize all the dictionaries
     counts[process] = {}
     frequencies[process] = {}
     expectation_values[process] = {}
@@ -80,32 +86,36 @@ for i, process in list(enumerate(processes.keys())):  # 4 #Initialize all the di
         for k, readout_operator in list(enumerate(tomography_set.keys())):
             state = str(control[i][j][k]) + str(hidden[i][j][k])
             if state in counts[process][input_state][readout_operator]:
-                counts[process][input_state][readout_operator] = {"00": 0,
-                                                                  "01": 0,
-                                                                  "10": 0,
-                                                                  "11": 0}
-                frequencies[process][input_state][readout_operator] = {"00": 0,
-                                                                       "01": 0,
-                                                                       "10": 0,
-                                                                       "11": 0}
+                counts[process][input_state][readout_operator] = {
+                    "00": 0,
+                    "01": 0,
+                    "10": 0,
+                    "11": 0,
+                }
+                frequencies[process][input_state][readout_operator] = {
+                    "00": 0,
+                    "01": 0,
+                    "10": 0,
+                    "11": 0,
+                }
                 expectation_values[process][input_state][readout_operator] = 0
             else:
                 counts[process][input_state][readout_operator][state] += 1
                 # frequencies[process][input_state][readout_operator][state] += 1. / N_shots
                 if (state == "00") or (state == "01"):
-                    expectation_values[process][input_state][readout_operator] += 1. / N_shots
+                    expectation_values[process][input_state][readout_operator] += (
+                        1.0 / N_shots
+                    )
                 else:
-                    expectation_values[process][input_state][readout_operator] -= 1. / N_shots
+                    expectation_values[process][input_state][readout_operator] -= (
+                        1.0 / N_shots
+                    )
 
 
-ID = np.array([[1, 0],
-               [0, 1]])
-σ_x = np.array([[0, 1],
-                [1, 0]])
-σ_y = np.array([[0, -1j],
-                [1j, 0]])
-σ_z = np.array([[1, 0],
-                [0, -1]])
+ID = np.array([[1, 0], [0, 1]])
+σ_x = np.array([[0, 1], [1, 0]])
+σ_y = np.array([[0, -1j], [1j, 0]])
+σ_z = np.array([[1, 0], [0, -1]])
 Pauli_matrices = [ID, σ_x, σ_y, σ_z]
 
 Pauli_basis = {
