@@ -5,7 +5,6 @@ import scipy.optimize as opti
 
 
 class AutoMixerCal(ABC):
-
     @abstractmethod
     def __init__(self):
         pass
@@ -23,9 +22,13 @@ class AutoMixerCal(ABC):
     def optimize(self):
         start_time = time.time()
         fun_image = lambda x: self.get_leakage(x[0], x[1])
-        res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead', options={'xatol': 1e-4, 'fatol': 2})
-        print(f"Image --- g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} --- "
-              f"{int(time.time() - start_time)} seconds --- {int(res_image.fun)} dB")
+        res_image = opti.minimize(
+            fun_image, [0, 0], method="Nelder-Mead", options={"xatol": 1e-4, "fatol": 2}
+        )
+        print(
+            f"Image --- g = {res_image.x[0]:.4f}, phi = {res_image.x[1]:.4f} --- "
+            f"{int(time.time() - start_time)} seconds --- {int(res_image.fun)} dB"
+        )
 
     @abstractmethod
     def prep_lo(self):
@@ -61,11 +64,10 @@ class AutoMixerCal(ABC):
 
 
 class FieldFoxAutoCal(AutoMixerCal):
-
     def __init__(self):
         super().__init__()
         rm = visa.ResourceManager()
-        self.conn = rm.open_resource('TCPIP0::192.168.1.9::inst0::INSTR')
+        self.conn = rm.open_resource("TCPIP0::192.168.1.9::inst0::INSTR")
         self.timeout = 100000
 
     # def optimize(self):
@@ -84,7 +86,7 @@ class FieldFoxAutoCal(AutoMixerCal):
     def get_amp(self):
         self.conn.write("INIT:IMM;*OPC?")
         self.conn.read()
-        self.conn.write(f'CALC:MARK1:Y?')
+        self.conn.write(f"CALC:MARK1:Y?")
         sig = float(self.conn.read())
         return sig
 

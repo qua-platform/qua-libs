@@ -12,7 +12,9 @@ from auto_mixer_tools_visa import KeysightFieldFox
 # Parameters #
 ##############
 # Important Parameters:
-address = 'TCPIP0::192.168.1.9::inst0::INSTR'  # The address for the SA, opened using visa.
+address = (
+    "TCPIP0::192.168.1.9::inst0::INSTR"  # The address for the SA, opened using visa.
+)
 bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
 method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker.
 
@@ -66,7 +68,7 @@ if bDoSweeps:
     # Query the FieldFox response data
     amp = calib.get_full_trace()
 
-    plt.figure('Full Spectrum')
+    plt.figure("Full Spectrum")
     plt.xlabel("Frequency")
     plt.ylabel("Amplitude (dBm)")
     plt.plot(freq_vec, amp)
@@ -96,12 +98,21 @@ if method == 2:  # Marker
     calib.set_marker_freq(1, qubit_LO)
 start_time = time.time()
 fun_leakage = lambda x: calib.get_leakage(x[0], x[1])
-res_leakage = opti.minimize(fun_leakage, [0, 0], method='Nelder-Mead',
-                            options={'xatol': xatol, 'fatol': fatol, 'initial_simplex': initial_simplex,
-                                     'maxiter': maxiter})
+res_leakage = opti.minimize(
+    fun_leakage,
+    [0, 0],
+    method="Nelder-Mead",
+    options={
+        "xatol": xatol,
+        "fatol": fatol,
+        "initial_simplex": initial_simplex,
+        "maxiter": maxiter,
+    },
+)
 print(
     f"LO Leakage Results: Found a minimum of {int(res_leakage.fun)} dBm at I0 = {res_leakage.x[0]:.5f}, Q0 = {res_leakage.x[1]:.5f} in "
-    f"{int(time.time() - start_time)} seconds --- {signal - int(res_leakage.fun)} dBc")
+    f"{int(time.time() - start_time)} seconds --- {signal - int(res_leakage.fun)} dBc"
+)
 
 # Optimize image
 calib.set_center_freq(qubit_LO - qubit_IF)
@@ -109,12 +120,21 @@ if method == 2:  # Marker
     calib.set_marker_freq(1, qubit_LO - qubit_IF)
 start_time = time.time()
 fun_image = lambda x: calib.get_image(x[0], x[1])
-res_image = opti.minimize(fun_image, [0, 0], method='Nelder-Mead',
-                            options={'xatol': xatol, 'fatol': fatol, 'initial_simplex': initial_simplex,
-                                     'maxiter': maxiter})
+res_image = opti.minimize(
+    fun_image,
+    [0, 0],
+    method="Nelder-Mead",
+    options={
+        "xatol": xatol,
+        "fatol": fatol,
+        "initial_simplex": initial_simplex,
+        "maxiter": maxiter,
+    },
+)
 print(
     f"Image Rejection Results: Found a minimum of {int(res_image.fun)} dBm at I0 = {res_image.x[0]:.5f}, Q0 = {res_image.x[1]:.5f} in "
-    f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc")
+    f"{int(time.time() - start_time)} seconds --- {signal - int(res_image.fun)} dBc"
+)
 
 # Turn measurement off
 if method == 1:  # Channel power
@@ -134,10 +154,10 @@ if bDoSweeps:
     # Query the FieldFox response data
     amp = calib.get_full_trace()
 
-    plt.figure('Full Spectrum')
+    plt.figure("Full Spectrum")
     plt.plot(freq_vec, amp)
 
-    plt.legend(['Before', 'After'])
+    plt.legend(["Before", "After"])
     plt.show()
 
 # Return the FieldFox back to continuous mode
