@@ -28,7 +28,9 @@ class VisaSA(ABC):
         c = np.cos(phi)
         s = np.sin(phi)
         N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
-        return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+        return [
+            float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]
+        ]
 
     def get_leakage(self, i0, q0):
         self.qm.set_dc_offset_by_qe("qubit", "I", i0)
@@ -37,7 +39,7 @@ class VisaSA(ABC):
         return amp_
 
     def get_image(self, g, p):
-        self.job.set_element_correction('qubit', self.IQ_imbalance_correction(g, p))
+        self.job.set_element_correction("qubit", self.IQ_imbalance_correction(g, p))
         amp_ = self.get_amp()
         return amp_
 
@@ -152,27 +154,27 @@ class KeysightFieldFox(VisaSA):
 
     def set_automatic_video_bandwidth(self, state: int):
         # State should be 1 or 0
-        self.sa.write(f'SENS:BAND:VID:AUTO {int(state)}')
+        self.sa.write(f"SENS:BAND:VID:AUTO {int(state)}")
 
     def set_automatic_bandwidth(self, state: int):
         # State should be 1 or 0
-        self.sa.write(f'SENS:BAND:AUTO {int(state)}')
+        self.sa.write(f"SENS:BAND:AUTO {int(state)}")
 
     def set_bandwidth(self, bw: int):
         # Sets the bandwidth
-        self.sa.write(f'SENS:BAND {int(bw)}')
+        self.sa.write(f"SENS:BAND {int(bw)}")
 
     def set_sweep_points(self, n_points: int):
         # Sets the number of points for a sweep
-        self.sa.write(f'SENS:SWE:POIN {int(n_points)}')
+        self.sa.write(f"SENS:SWE:POIN {int(n_points)}")
 
     def set_center_freq(self, freq: int):
         # Sets the central frequency
-        self.sa.write(f'SENS:FREQ:CENT {int(freq)}')
+        self.sa.write(f"SENS:FREQ:CENT {int(freq)}")
 
     def set_span(self, span: int):
         # Sets the span
-        self.sa.write(f'SENS:FREQ:SPAN {int(span)}')
+        self.sa.write(f"SENS:FREQ:SPAN {int(span)}")
 
     def set_cont_off(self):
         return self.sa.query("INIT:CONT OFF;*OPC?")
@@ -187,16 +189,16 @@ class KeysightFieldFox(VisaSA):
 
     def active_marker(self, marker: int):
         # Active the given marker
-        self.sa.write(f'CALC:MARK{int(marker)}:ACT')
+        self.sa.write(f"CALC:MARK{int(marker)}:ACT")
 
     def set_marker_freq(self, marker: int, freq: int):
         # Sets the marker's frequency
         self.get_single_trigger()
-        self.sa.write(f'CALC:MARK{int(marker)}:X {int(freq)}')
+        self.sa.write(f"CALC:MARK{int(marker)}:X {int(freq)}")
 
     def query_marker(self, marker: int):
         # Query the marker
-        return float(self.sa.query(f'CALC:MARK{int(marker)}:Y?'))
+        return float(self.sa.query(f"CALC:MARK{int(marker)}:Y?"))
 
     def get_full_trace(self):
         # Returns the full trace
@@ -212,11 +214,11 @@ class KeysightFieldFox(VisaSA):
 
     def enable_measurement(self):
         # Sets the measurement to channel power
-        self.sa.write('SENS:MEAS:CHAN CHP')
+        self.sa.write("SENS:MEAS:CHAN CHP")
 
     def disables_measurement(self):
         # Sets the measurement to none
-        self.sa.write('SENS:MEAS:CHAN NONE')
+        self.sa.write("SENS:MEAS:CHAN NONE")
 
     def sets_measurement_integration_bw(self, ibw: int):
         # Sets the measurement integration bandwidth
