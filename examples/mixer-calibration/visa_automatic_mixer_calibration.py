@@ -19,7 +19,7 @@ bDoSweeps = True  # If True, performs a large sweep before and after the optimiz
 method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker.
 
 # Parameters for SA - Measurement:
-measBW = 1000  # Measurement bandwidth
+measBW = 100  # Measurement bandwidth
 measNumPoints = 101
 
 # Parameters for SA - Sweep:

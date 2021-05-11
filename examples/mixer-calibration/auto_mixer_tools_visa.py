@@ -181,7 +181,7 @@ class KeysightFieldFox(VisaSA):
 
     def set_cont_on(self):
         # Sets continuous mode on
-        self.sa.write("INIT:CONT ON")
+        return self.sa.query("INIT:CONT ON;*OPC?")
 
     def get_single_trigger(self):
         # Performs a single sweep
