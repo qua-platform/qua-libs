@@ -1,7 +1,7 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from bakary import *
+from bakery import *
 
 from RamseyGauss_configuration import *
 
