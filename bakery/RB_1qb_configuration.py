@@ -1,5 +1,5 @@
 from qm.qua import *
-from bakary import *
+from bakery import *
 pulse_len = 100
 readout_len = 400
 qubit_IF = 50e6
