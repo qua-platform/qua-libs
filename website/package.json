@@ -11,7 +11,7 @@
     "deploy": "docusaurus deploy",
     "serve": "docusaurus serve",
     "prebuild": "npm run-script script:copy-pages",
-    "move-build": " shx mv build libs && shx mkdir -p build/libs && shx mv libs build/libs",
+    "move-build": "shx mv build libs && shx mkdir -p build && shx mv libs build/libs",
     "script:examples-index-generator": "node scripts/examples-index-generator.js",
     "script:copy-pages": "node scripts/copy-pages",
     "scripts": "npm run script:examples-index-generator"
