@@ -50,7 +50,16 @@ Each loop ends by a `wait` statement.
 The program ends by a `recovery_delay` period which is assumed to be sufficient 
 to allow qubit to decay back in the ground state.  
 
-
+```python
+with for_(tau, 4, tau < taumax, tau + dtau):
+   with for_(n, 0, n < NAVG, n + 1):
+       play("X", "qubit")
+       wait(tau, "qubit")
+       align("rr", "qubit")
+       measure_and_save_state("rr")
+       wait(recovery_delay // 4, "qubit")
+   save(tau, tau_vec)
+```
 We run the program on the simulator for 500 clock cycles and 
 take the simulated samples from the simulation job.
 
