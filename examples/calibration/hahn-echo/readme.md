@@ -48,6 +48,19 @@ Describe the demodulation process of the data
 ### The QUA program
 The goal of the program is to find the echo time for which the qubit's relaxation process is complete. We then perform a for_ iteration over a set of possible times (within an interval named as t_vec) and perform the Hahn echo sequence. We then retrieve the results using measurement features of QUA (here embedded into the function readout_QUA) and use plot tools to determine the echo time.
 
+```python
+with for_(tau, 4, tau < taumax, tau + dtau):
+        with for_(n, 0, n < NAVG, n + 1):
+            Hadamard("qubit")
+            wait(tau, "qubit")
+            Rx(π, "qubit")
+            wait(tau, "qubit")
+            Hadamard("qubit")
+            align("rr", "qubit")
+            measure_and_save_state("rr")
+            wait(recovery_delay // 4, "qubit")
+```
+
 ## Script 
 
 [download script](hahn_echo.py)
