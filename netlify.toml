@@ -1,0 +1,10 @@
+[build]
+    base = "website/"
+    publish = "build/"
+    command = "npm run build"
+
+[[redirects]]
+    from = "/"
+    to = "/libs/"
+    status = 307
+    force = true

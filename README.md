@@ -5,6 +5,8 @@
 [![discord](https://img.shields.io/discord/806244683403100171?label=QUA&logo=Discord&style=plastic)](https://discord.gg/7FfhhpswbP)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/26f051e2-235d-4f58-9b77-6d310efb6262/deploy-status)](https://app.netlify.com/sites/qua-libs/deploys)
+
 Hey! Glad to see you there!
  
 Welcome to the QUA libraries repository. Your one-stop-shop for 
@@ -21,7 +23,7 @@ Already have something cool that others could use? Open a pull request!
 Issue reporting and requests should be done via the GitHub issues system, that should give a transparent experience where all users can see what's coming 
 and which issues are already known. 
 
-Another, maybe nicer, way to view the content on this repo is through [the libraries website](https://docs.qualang.io/). It includes those scripts that were placed in it via the
+Another, maybe nicer, way to view the content on this repo is through [the libraries website (temporary location)](https://qua-libs.netlify.app/). It includes those scripts that were placed in it via the
 website config files (so possibly not everything currently on the repo). The site also has a blog where we will place technical posts that are of interest to the community. You can also suggest posts if you want. This is a nice way to showcase your work or ideas around QUA, and get full credit of course!
 
 We hope this repo becomes a useful resource, giving real contribution to the community and we'd love to see your ideas and contributions too!

@@ -6,11 +6,12 @@
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "scripts-start": "npm run-script prebuild && docusaurus start",
-    "build": "npm run-script prebuild && docusaurus build",
+    "build": "npm run-script prebuild && docusaurus build && npm run move-build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "serve": "docusaurus serve",
     "prebuild": "npm run-script script:copy-pages",
+    "move-build": "shx mv build libs && shx mkdir -p build && shx mv libs build/libs",
     "script:examples-index-generator": "node scripts/examples-index-generator.js",
     "script:copy-pages": "node scripts/copy-pages",
     "scripts": "npm run script:examples-index-generator"
