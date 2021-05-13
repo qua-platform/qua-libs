@@ -36,9 +36,31 @@ rest of the operations.
 - Pi/2 around Y, same as pi pulse but with 1/2 the amplitude  
 
 Now, all we do is play each pair of pulses in the sequence, and measure the qubits state through the readout resonator. 
+```python
+with for_each_(
+    (angle1, angle2, amp1, amp2),
+    (angle_array1, angle_array2, amp_array1, amp_array2),
+):
+    reset_qubit()
+
+    align("qubit", "res")
+    frame_rotation_2pi(angle1, "qubit")  # rotate by pi/2 (relative to X) to achieve Y rotation using pi pulse
+    play("pi_gauss_op_qubit" * amp(amp1 * amplitude), "qubit")
+    frame_rotation_2pi(-angle1 + angle2, "qubit")
+
+    play("pi_gauss_op_qubit" * amp(amp2 * amplitude), "qubit")
+    frame_rotation_2pi(-angle2, "qubit")
+
+    align("qubit", "res")
+    measure("meas_op_res","res",None,
+        demod.full("integ_w_c", I),  # cos integration weights for I
+        demod.full("integ_w_s", Q),  # sin integration weights for Q
+    )
+```
 Using the measurement, we assume we know the threshold value of the Q components to distinguish the excited and ground 
 states, we assign the Pauli Z value. We buffer and average the results for all pairs.  
 Note: One must use active reset to high fidelity between each pair of pulses in order to achieve good results.
+
 
 ## Optimization
 The program above is inserted into an optimization function, which calculates how far the measured expectation value is 
