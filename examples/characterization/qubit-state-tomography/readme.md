@@ -84,6 +84,44 @@ The program itself consists in doing 3 times (one for each axis of the Bloch sph
 - Save results in the stream variables defined in the beginning of the program
 - use a wait command to let the state reset to the $$|0\rangle$$ state for repeating the same experiment (we assume we know the relaxation time $$T_1$$)
 
+```python
+with for_(j, 0, j < N_shots, j + 1):
+         # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
+         Arbitrary_state_generation("qubit")
+         # Begin tomography_process
+         # Start with Pauli-Z expectation value determination : getting statistics of state measurement is enough to calculate it
+         measure("meas_pulse", "RR", None, ("integW1", Iz), ("integW2", Qz))
+         save(Iz, stream_Iz)  # Save the results
+         save(Qz, stream_Qz)
+         state_saving(Iz, Qz, Z, stream_Z)
+         wait(t1, "qubit")  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
+
+         # Repeat sequence for X axis
+         # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
+         Arbitrary_state_generation("qubit")
+         # Begin tomography_process
+         # Determine here Pauli X-expectation value, which corresponds to applying a Hadamard gate before measurement (unitary transformation)
+         Hadamard("qubit")
+         measure("meas_pulse", "RR", "samples", ("integW1", Ix), ("integW2", Qx))
+         save(Ix, stream_Ix)  # Save the results
+         save(Qx, stream_Qx)
+         state_saving(Ix, Qx, X, stream_X)
+         wait(t1, "qubit")  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
+         # Could also do active reset
+
+         # Repeat for Y axis
+         # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
+         Arbitrary_state_generation("qubit")
+         # Begin tomography_process
+         # Determine here Pauli Y-expectation value, which corresponds to applying a Hadamard gate then S-gate before measurement (unitary transformation)
+         Hadamard("qubit")
+         frame_rotation(np.pi / 2, "qubit")  # S-gate
+         measure("meas_pulse", "RR", "samples", ("integW1", Iy), ("integW2", Qy))
+         save(Iy, stream_Iy)  # Save the results
+         save(Qy, stream_Qy)
+         state_saving(Iy, Qy, Y, stream_Y)
+         wait(t1, "qubit")  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
+```
 Once this is done, the program is simulated using the LoopbackInterface and the retrieval of the data is possible.
 We then use the state discrimination function to decide what measurement we obtained based on the IQ values obtained.
 Finally, we reconstruct the Bloch vector using the two methods presented above.

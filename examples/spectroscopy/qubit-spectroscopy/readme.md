@@ -24,7 +24,24 @@ over those with a qua `for_` loop. In each cycle we update the qubit's frequency
 saturation pulse to the qubit. Then, we use the `align` command and wait for the saturation pulse to be done.
 Afterwards, we measure the readout resonator and save the IQ components.
 
+```python
+with for_(n, 0, n < 10, n + 1):
+    with for_(f, f_min, f < f_max, f + df):
+        update_frequency("qubit", f)
+        play("saturation", "qubit")
 
+        align("qubit", "rr")
+        measure(
+            "readout",
+            "rr",
+            None,
+            demod.full("integW1", I),
+            demod.full("integW2", Q),
+        )
+
+        save(I, "I")
+        save(Q, "Q")
+```
 ## Post Processing
 No post processing provided. 
 One needs to use the extracted I,Q values to determine the resonance frequency by the response spectrum.

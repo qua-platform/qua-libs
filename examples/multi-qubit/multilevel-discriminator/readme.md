@@ -37,7 +37,26 @@ There are two nested loops, the outer one loops over the states and the inner on
 Inside the nested loops of `training_program` each cycle consists of a `play` command that prepares the qubit in the desired state 
 and a `measure` command that measure the readout response, and demodulates the signal 4 times, twice for each OPX input,
 corresponding to the I and Q components.
+```python
 
+def prepare_state(state,qe):
+    if state==0:
+        pass # do nothing
+    if state==1:
+        play("pi",qe)
+        
+for state in states:
+    prepare_state(state,'qubit')
+    measure("readout", "rr", "adc", 
+          demod.full("integW_cos", I1, "out1"),
+          demod.full("integW_sin", Q1, "out1"),
+          demod.full("integW_cos", I2, "out2"),
+          demod.full("integW_sin", Q2, "out2"))
+    assign(I, I1 + Q2)
+    assign(Q, -Q1 + I2)
+    save(I, 'I')
+    save(Q, 'Q')
+```
 The `training_program` results are processed by the `train` function of the `StateDiscriminator` class.
 There we downconvert the reflected signal, extract the waveform and average it.
 Using that we update the integration weights to be used in future measurments, according to the maximum likelihood principle.

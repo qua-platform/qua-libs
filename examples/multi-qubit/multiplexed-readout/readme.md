@@ -33,6 +33,24 @@ Then, we `wait` on all elements and let the resonator/transmission line relax.
 Finally, we save the IQ components for each resonator to its corresponding variable, 
 i.e measurement from `rr2` is saved to variable `I2` and `Q2`.  
 
+```python
+with for_(n, 1, n < 500, n + 1):
+      align(*["rr" + str(i) for i in range(1, rr_num + 1)])
+      for i in range(rr_num):
+          measure("readout_pulse","rr" + str(i + 1),"adc",
+              demod.full("integW_cos", I1[i], "out1"),
+              demod.full("integW_sin", Q1[i], "out1"),
+              demod.full("integW_cos", I2[i], "out2"),
+              demod.full("integW_sin", Q2[i], "out2"),
+          )
+
+      wait(wait_time, *["rr" + str(i) for i in range(1, rr_num + 1)])
+      for i in range(rr_num):
+          assign(I[i], I1[i] + Q2[i])
+          assign(Q[i], -Q1[i] + I2[i])
+          save(I[i], "I" + str(i + 1))
+          save(Q[i], "Q" + str(i + 1))
+```
 ## Post Processing
 
 For illustration purposes, we fetch the results of each resonator and plot the IQ diagram.

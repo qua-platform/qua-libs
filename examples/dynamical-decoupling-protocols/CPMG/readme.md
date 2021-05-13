@@ -8,7 +8,15 @@ slug: ./
 The CPMG sequence is a dynamical decoupling scripts (see [[1]](#1)) . 
 
 We follow the pulse sequence outlined in [[2]](#2) and implement a macro for this pulse sequence. 
-
+```python
+def CPMG(tau):
+    half_tau = tau / 2
+    wait(half_tau, "qe1")
+    play("Y", "qe1")
+    wait(tau, "qe1")
+    play("Y", "qe1")
+    wait(half_tau, "qe1")
+```
 
 ## Config
 
@@ -17,7 +25,21 @@ The system implements one control quantum element `qe1` and one readout quantum 
 ## Program
 
 We nest an averaging loop and a delay loop which goes over `tau` values. 
-
+```python
+with for_(n, 0, n < NAVG, n + 1):
+    with for_each_(tau, tau_vec):
+        CPMG(tau)
+        align("qe1", "rr")
+        measure("readout","rr",None,
+            demod.full("integW1", I),
+            demod.full("integW2", Q))
+        save(I, out_str)
+        with if_(I > th):
+            save(s1, out_str)
+        with else_():
+            save(s0, out_str)
+        wait(10 * t1, "qe1")
+```
 ## Post processing
 
 None
