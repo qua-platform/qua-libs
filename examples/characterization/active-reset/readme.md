@@ -38,6 +38,15 @@ A more specific description of the configuration file for this setup can be foun
 The program is straightforward and is made of two commands, a conditional play statement, and a measurement. 
 This is repeated $$n$$ times for getting statistics. This allows an assessment of the two blobs that would be formed by the readout for the two computational basis states in the IQ plane.
 
+```python
+  with for_(n, 0, n < 1000, n + 1):
+        play("pi", "qubit", condition=I > th)
+        align("qubit", "rr")
+        measure(
+            "readout", "rr", None, demod.full("integW1", I), demod.full("integW2", Q)
+        )
+```
+
    
 ## Post-processing
 
