@@ -63,6 +63,40 @@ a second `x_pi/2` operation to project the qubit to the excited or ground state.
 * Finally, we measure the state using the readout resonator and demodulate the reflected signals to get the
 qubits state on the IQ plane which can then determine its state.
 
+```python
+amp_displace = list(-alpha / np.sqrt(2 * np.pi) / 4)
+amp_dis = declare(fixed, value=amp_displace)
+with for_(r, 0, r < points, r + 1):
+   with for_(i, 0, i < points, i + 1):
+       with for_(n, 0, n < shots, n + 1):
+           align("cavity_I", "cavity_Q")
+           play("displace_I" * amp(amp_dis[r]), "cavity_I")
+           play("displace_Q" * amp(amp_dis[i]), "cavity_Q")
+
+           align("cavity_I", "cavity_Q", "qubit")
+           play("x_pi/2", "qubit")
+           wait(revival_time, "qubit")
+           play("x_pi/2", "qubit")
+
+           align("qubit", "rr")
+           measure(
+               "readout",
+               "rr",
+               "raw",
+               demod.full("integW_cos", I1, "out1"),
+               demod.full("integW_sin", Q1, "out1"),
+               demod.full("integW_cos", I2, "out2"),
+               demod.full("integW_sin", Q2, "out2"),
+           )
+           assign(I, I1 + Q2)
+           assign(Q, -Q1 + I2)
+           save(I, "I")
+           save(Q, "Q")
+
+           wait(
+               10, "cavity_I", "cavity_Q", "qubit", "rr"
+           )  # wait and let all elements relax
+```                    
 ## Post processing
 
 Having the I,Q results of repeated measurement of the qubit for different $\alpha$ we can extract the parity of the cavity
