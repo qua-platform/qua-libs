@@ -32,6 +32,18 @@ We run the program on the simulator for 500 clock cycles and take the simulated 
 The acquired ADC stream is taken from `result_handles`. Note the change of name of the raw ADC steam from the name we specified in the program (`raw_adc`) to the name we use to get the stream (`raw_adc_input1`). This is an idiosyncrasy of the raw ADC interface which does
 not appear in other QUA data saving mechanisms.
 
+```python
+with for_(n, 0, n < NAVG, n + 1):
+    with for_(tau, 4, tau < taumax, tau + dtau):
+        play("pi2", "qubit")
+        wait(tau, "qubit")
+        play("pi2", "qubit")
+        align("rr", "qubit")
+        measure_and_save_state("rr", I_res, Q_res, state_res, th)
+        wait(recovery_delay // 4, "qubit")
+        save(tau, tau_vec)
+```
+
 ## Post-processing
 
 To get an estimate of the probability to be in the excited state as a function of delay duration, we need to reshape the output streams and calculate the statistics: mean and variance of the probability to be in the excited state.
