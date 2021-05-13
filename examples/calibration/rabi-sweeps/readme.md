@@ -46,11 +46,34 @@ $$|\psi\rangle=\cos(\theta_a)|0\rangle+\sin(\theta_a)e^{i\phi}|1\rangle$$
 This basic sequence is repeated in the program for a series of amplitudes (i.e., many values $$a$$), where for each amplitude, we do a sampling of N identical sequences. This measurement sampling is required due to the state collapse, inducing the need to obtain statistics representing the probability of measuring the state $$|1\rangle$$ which can be written as : 
 $$P_{|1\rangle(a)}=|\sin^2{\theta_a}|$$
 
+```python
+with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do 10 times the experiment
+    with for_(
+        a, 0.00, a < a_max - da / 2, a + da
+    ):  # Sweep from 0 to 0.7 V the amplitude
+        play(
+            "gauss_pulse" * amp(a), "qubit"
+        )  # Modulate the Gaussian pulse with the varying amplitude a
+        align("qubit", "RR")
+        measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
+```
+
 Once we obtain the results, we can plot the probability above in terms of the amplitude $$a$$, and find out for which amplitude this probability reaches one. This amplitude is the one allowing us to finally configure our NOT gate.
 
 ## Time-Rabi experiment
 This experiment is very similar to the previous one, but instead of sweeping the amplitudes to find the desired rotation angle, we set it at a fixed value and proceed a sweeping of the pulse duration.
 
+```python
+with for_(
+        Nrep, 0, Nrep < N_max, Nrep + 1
+    ):  # Do a 100 times the experiment to obtain statistics
+        with for_(
+            t, t_min, t <= t_max, t + dt
+        ):  # Sweep from 0 to 100 *4 ns the pulse duration
+            play("gauss_pulse", "qubit", duration=t)
+            align("qubit", "RR")
+            measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
+```
 
 We hence do reproduce the same experiment as before, but looking for the maximum probability of measuring the $$|1\rangle$$ in terms of the pulse duration $$\tau$$.
 
