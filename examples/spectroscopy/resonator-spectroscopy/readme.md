@@ -32,6 +32,19 @@ of the I,Q response at that frequency.
 > ⚠ Note that the buffer output anything only when full, 
 >i.e if the buffer of size 100 but one only saves 70 values it will be empty at the fetching stage.
 
+```python
+with for_(n, 0, n < 1000, n + 1):
+        with for_(f, 1e6, f < 100.5e6, f + 1e6):
+            wait(100, "rr")  # wait 100 clock cycles (4microS) for letting resonator relax to vacuum
+            update_frequency("rr", f)
+            measure(
+                "long_readout","rr",None,
+                demod.full("long_integW1", I, "out1"),
+                demod.full("long_integW2", Q, "out1"),
+            )
+            save(I, I_stream)
+            save(Q, Q_stream)
+```
 ## Post Processing
 No post processing provided. 
 One needs to use the extracted I,Q values to determine the resonance frequency by the response spectrum.
