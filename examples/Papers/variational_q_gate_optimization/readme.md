@@ -5,7 +5,7 @@ Reference : https://arxiv.org/pdf/1810.12745.pdf
 
 The paper proposes a routine inspired by variational quantum algorithms to increase the fidelity of multi-qubit gates. Like all those algorithms, a cost function (called Average Gate infidelity) is introduced and is chosen such that the resulting gate obtained gets as close as possible to the targeted multi-qubit unitary operation. 
 
-![Ansatz for circuit optimization](/Ansatz_image.png)
+![Ansatz for circuit optimization](Ansatz_image.png)
 
 Above is displayed the proposed ansatz for decomposing the targeted unitary into a series of layers of single qubit rotations (each $$\theta$$ in bold is a set of three angles allowing to rotate arbitrarily on the Bloch sphere associated to each). The “source” unitary is assumed to be easily implementable on the hardware and has an optimal fidelity.
 
