@@ -6,5 +6,5 @@
 [[redirects]]
     from = "/"
     to = "/libs/"
-    status = 307
+    status = 302
     force = true
