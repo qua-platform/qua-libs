@@ -17,12 +17,12 @@
     "scripts": "npm run script:examples-index-generator"
   },
   "dependencies": {
-    "@docusaurus/core": "2.0.0-alpha.66",
-    "@docusaurus/preset-classic": "2.0.0-alpha.66",
+    "@docusaurus/core": "^2.0.0-beta.0",
+    "@docusaurus/preset-classic": "^2.0.0-beta.0",
     "@mdx-js/react": "^1.6.22",
     "clsx": "^1.1.1",
-    "react": "^16.8.4",
-    "react-dom": "^16.8.4"
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
   },
   "browserslist": {
     "production": [
@@ -37,18 +37,19 @@
     ]
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^2.0.0-alpha.70",
+    "@docusaurus/module-type-aliases": "^2.0.0-beta.0",
     "@tsconfig/docusaurus": "^1.0.2",
-    "@types/react": "^16.14.2",
-    "@types/react-helmet": "^6.1.0",
-    "@types/react-router-dom": "^5.1.6",
-    "favicons-webpack-plugin": "^4.2.0",
-    "glob": "^7.1.6",
-    "prettier": "^2.2.1",
+    "@types/react": "^17.0.5",
+    "@types/react-helmet": "^6.1.1",
+    "@types/react-router-dom": "^5.1.7",
+    "favicons": "^6.2.2",
+    "favicons-webpack-plugin": "^5.0.2",
+    "glob": "^7.1.7",
+    "prettier": "^2.3.0",
     "rehype-katex": "^4.0.0",
     "remark-math": "^3.0.1",
     "shelljs": "^0.8.4",
     "shx": "^0.3.3",
-    "typescript": "^4.1.3"
+    "typescript": "^4.2.4"
   }
 }

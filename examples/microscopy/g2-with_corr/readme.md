@@ -1,9 +1,9 @@
 ---
 id: index
-title: Calculating g2 correlation on a beam splitter output
-sidebar_label:
 slug: ./
 ---
+
+# Calculating g2 correlation on a beam splitter output
 
 This folder contains files for simulation of g2 correlation calculation on an OPX system.
 The folder contains the .py simulation and config files, and plots of simulated results.
