@@ -35,10 +35,10 @@ with program() as xeb_concat:
     I1 = declare(fixed)
     I2 = declare(fixed)
     with for_(truncate, 10, truncate < m_max * 10, truncate + 10):
-        align(b.all_elements())
-        play(b.concat_op_name(), 'q1', truncate=truncate)
-        play(b.concat_op_name(), 'q2', truncate=truncate)
-        play(b.concat_op_name(), 'coupler', truncate=truncate)
+        align(b.get_qe_set())
+        play(b.get_Op_name('q1'), 'q1', truncate=truncate)
+        play(b.get_Op_name('q2'), 'q2', truncate=truncate)
+        play(b.get_Op_name('coupler'), 'coupler', truncate=truncate)
         align()
         measure('readout', 'rr1', None, demod.full('integW_cos', I1, 'out1'))
         save(I1, 'I1')
@@ -49,7 +49,7 @@ with program() as xeb_concat:
 # todo: if there are multipule baking environments, what is the correct way to merge the configs of each one?
 # (need to ask Tal/Guy)
 qmm = QuantumMachinesManager()
-job: QmJob = qmm.simulate(b.config,
+job: QmJob = qmm.simulate(config,
                           xeb_concat,
                           SimulationConfig(1500))
 

@@ -169,6 +169,16 @@ class Baking:
     def get_qe_set(self):
         return self._qe_set
 
+    def get_Op_name(self, qe: str):
+        """
+        Get the baked operation issued from the baking object for quantum element qe
+        :param qe: quantum element for which the baked operation is intended to be played on
+        """
+        if not(qe in self._qe_set):
+            raise KeyError(f"{qe} is not in the set of quantum elements of the baking object ")
+        else:
+            return f"baked_Op_{self._ctr}"
+
     def add_Op(self, name: str, qe: str, samples: list, digital_marker: str = None):
         """
         Adds in the configuration file a pulse element.
