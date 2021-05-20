@@ -39,14 +39,14 @@ with program() as xeb_concat:
         play(b.get_Op_name('q1'), 'q1', truncate=truncate)
         play(b.get_Op_name('q2'), 'q2', truncate=truncate)
         play(b.get_Op_name('coupler'), 'coupler', truncate=truncate)
-        align()
+        align(b.get_qe_set())
         measure('readout', 'rr1', None, demod.full('integW_cos', I1, 'out1'))
         save(I1, 'I1')
         measure('readout', 'rr2', None, demod.full('integW_cos', I2, 'out1'))
         save(I2, 'I2')
 
 
-# todo: if there are multipule baking environments, what is the correct way to merge the configs of each one?
+# todo: if there are multiple baking environments, what is the correct way to merge the configs of each one?
 # (need to ask Tal/Guy)
 qmm = QuantumMachinesManager()
 job: QmJob = qmm.simulate(config,
