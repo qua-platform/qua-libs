@@ -179,6 +179,19 @@ class Baking:
         else:
             return f"baked_Op_{self._ctr}"
 
+    def get_Op_length(self, qe: str):
+        """
+        Retrieve the length of the baked waveform associated to quantum element qe
+        :param qe: quantum element
+        """
+        if not(qe in self._qe_set):
+            raise KeyError(f"{qe} is not in the set of quantum elements of the baking object ")
+        else:
+            if "mixInputs" in self._config["elements"]:
+                return len(self._config["waveforms"][f"{qe}_baked_wf_I_{self._ctr}"]["samples"])
+            else:
+                return len(self._config["waveforms"][f"{qe}_baked_wf_{self._ctr}"]["samples"])
+
     def add_Op(self, name: str, qe: str, samples: list, digital_marker: str = None):
         """
         Adds in the configuration file a pulse element.

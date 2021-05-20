@@ -44,5 +44,5 @@ print(c1_table[12][13])
 # create inverses lists
 inverse_list = [np.nonzero(line == 0)[0][0] for line in c1_table]
 print(inverse_list)
-import qutip as qt
+#import qutip as qt
 
