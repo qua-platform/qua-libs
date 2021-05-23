@@ -329,6 +329,21 @@ def randomize_interleaved_circuit(interleave_op: list, d: int, init_state: str =
     return state
 
 
+def generate_cliffords(b: Baking, qe: str, pulse_length: int):
+
+    short_pi = gauss(0.2, 0, 1, pulse_length)
+    short_pi_2 = gauss(0.1, 0., 1, pulse_length)
+    short_minus_pi_2 = gauss(-0.1, 0., 1, pulse_length)
+    short_0 = [0.] * pulse_length
+
+    b.add_Op("X", qe, [short_pi, short_0])
+    b.add_Op("Y", qe, [short_0, short_pi])
+    b.add_Op("X/2", qe, [short_pi_2, short_0])
+    b.add_Op("Y/2", qe, [short_0, short_pi_2])
+    b.add_Op("-X/2", qe, [short_minus_pi_2, short_0])
+    b.add_Op("-Y/2", qe, [short_0, short_minus_pi_2])
+
+
 def measure_state(state, I):
     """
     A measurement function depending on the type of qubit.
@@ -346,27 +361,3 @@ def active_reset(state):
 
     with if_(state):
         play("X", "qe1")
-
-
-def generate_cliffords(b: Baking, qe: str, pulse_length: int):
-
-    short_pi = gauss(0.2, 0, 1, pulse_length)
-    short_pi_2 = gauss(0.1, 0., 1, pulse_length)
-    short_minus_pi_2 = gauss(-0.1, 0., 1, pulse_length)
-    short_0 = [0.] * pulse_length
-
-    b.add_Op("X", qe, [short_pi, short_0])
-    b.add_Op("Y", qe, [short_0, short_pi])
-    b.add_Op("X/2", qe, [short_pi_2, short_0])
-    b.add_Op("Y/2", qe, [short_0, short_pi_2])
-    b.add_Op("-X/2", qe, [short_minus_pi_2, short_0])
-    b.add_Op("-Y/2", qe, [short_0, short_minus_pi_2])
-
-
-def play_revert_op(index:int, baked_cliffords: list[Baking]):
-    with switch_(index):
-        for i in range (len(baked_cliffords)):
-            with case_(i):
-                baked_cliffords[i].run()
-
-

@@ -561,4 +561,4 @@ class BakingOperations:
         self._baking = b
 
     def __getitem__(self, qe: str):
-        self._baking.get_Op_name(qe)
+        return self._baking.get_Op_name(qe)
