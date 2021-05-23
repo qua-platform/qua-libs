@@ -51,6 +51,7 @@ config = {
             "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": 0,
             "operations": {
+                "I" : "IPulse",
                 "X/2": "X/2Pulse",
                 "X": "XPulse",
                 "-X/2": "-X/2Pulse",
@@ -82,6 +83,11 @@ config = {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "gauss_wf"},
+        },
+        "IPulse":{
+            "operation": "control",
+            "length": pulse_len,
+            "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
         },
         "XPulse": {
             "operation": "control",
@@ -355,3 +361,12 @@ def generate_cliffords(b: Baking, qe: str, pulse_length: int):
     b.add_Op("Y/2", qe, [short_0, short_pi_2])
     b.add_Op("-X/2", qe, [short_minus_pi_2, short_0])
     b.add_Op("-Y/2", qe, [short_0, short_minus_pi_2])
+
+
+def play_revert_op(index:int, baked_cliffords: list[Baking]):
+    with switch_(index):
+        for i in range (len(baked_cliffords)):
+            with case_(i):
+                baked_cliffords[i].run()
+
+

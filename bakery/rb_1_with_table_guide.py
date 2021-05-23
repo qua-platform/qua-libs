@@ -46,3 +46,8 @@ inverse_list = [np.nonzero(line == 0)[0][0] for line in c1_table]
 print(inverse_list)
 #import qutip as qt
 
+def find_revert_op(input_state_index):
+    """Looks in the Cayley table the operation needed to reset the state to ground state from input state_tracker"""
+    for i in range(len(c1_ops)):
+        if c1_table[input_state_index][i] == 0:
+            return i
