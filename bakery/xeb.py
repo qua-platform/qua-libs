@@ -29,17 +29,17 @@ with bakery.baking(config) as b:
 with program() as xeb_concat:
     update_frequency('q1', 0)
     update_frequency('q2', 0)
-    align()
+    align('q1','q2')
     truncate = declare(int)
 
     I1 = declare(fixed)
     I2 = declare(fixed)
     with for_(truncate, 10, truncate < m_max * 10, truncate + 10):
-        align(b.get_qe_set())
-        play(b.get_Op_name('q1'), 'q1', truncate=truncate)
-        play(b.get_Op_name('q2'), 'q2', truncate=truncate)
-        play(b.get_Op_name('coupler'), 'coupler', truncate=truncate)
-        align(b.get_qe_set())
+        align(b.elements)
+        play(b.operations["q1"], 'q1', truncate=truncate)
+        play(b.operations["q2"], 'q2', truncate=truncate)
+        play(b.operations["coupler"], 'coupler', truncate=truncate)
+        align(b.elements)
         measure('readout', 'rr1', None, demod.full('integW_cos', I1, 'out1'))
         save(I1, 'I1')
         measure('readout', 'rr2', None, demod.full('integW_cos', I2, 'out1'))

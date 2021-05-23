@@ -26,6 +26,24 @@ class Baking:
     def __enter__(self):
         return self
 
+    @property
+    def elements(self):
+        """
+        Return the set of quantum elements involved in the baking
+        """
+        return self._qe_set
+
+    @property
+    def operations(self):
+        """
+        Access operations defined by the baking environment
+        """
+        return BakingOperations(self)
+
+    @property
+    def config(self):
+        return self._config
+
     def _get_baking_index(self):
         index = 0
         max_index = 0
@@ -534,3 +552,13 @@ def deterministic_run(baking_list):
                 QUA_deterministic_tree(j, low, mid, count+1)
 
     return QUA_deterministic_tree
+
+
+class BakingOperations:
+
+    def __init__(self, b: Baking) -> None:
+        super().__init__()
+        self._baking = b
+
+    def __getitem__(self, qe: str):
+        self._baking.get_Op_name(qe)
