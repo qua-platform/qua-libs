@@ -205,7 +205,7 @@ class Baking:
         if not(qe in self._qe_set):
             raise KeyError(f"{qe} is not in the set of quantum elements of the baking object ")
         else:
-            if "mixInputs" in self._config["elements"]:
+            if "mixInputs" in self._config["elements"][qe]:
                 return len(self._config["waveforms"][f"{qe}_baked_wf_I_{self._ctr}"]["samples"])
             else:
                 return len(self._config["waveforms"][f"{qe}_baked_wf_{self._ctr}"]["samples"])
@@ -562,3 +562,6 @@ class BakingOperations:
 
     def __getitem__(self, qe: str):
         return self._baking.get_Op_name(qe)
+
+    def length(self, qe):
+        return self._baking.get_Op_length(qe)
