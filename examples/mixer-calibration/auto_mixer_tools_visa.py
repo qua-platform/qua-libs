@@ -208,6 +208,7 @@ class RohdeSchwarzFPC1000(VisaSA):
 
     def get_full_trace(self):
         # Returns the full trace. Implicit assumption that this is trace1 (there could be 1-4)
+        self.sa.write("FORM ASC")  # data format needs to be in ASCII
         ff_SA_Trace_Data = self.sa.query("TRAC:DATA? TRACE1")
         # Data from the FPC comes out as a string of 1183 values separated by ',':
         # '-1.97854112E+01,-3.97854112E+01,-2.97454112E+01,-4.92543112E+01,-5.17254112E+01,-1.91254112E+01...\n'
