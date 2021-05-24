@@ -172,7 +172,30 @@ and
 ```
 b.play_at('my_pulse', qe, t=-3)
 ```
+# Giving more freedom on the access of baked waveforms within QUA program
+As we have seen in the examples above, most of the baking usage is done prior to the running of the QUA program itself. In fact, accessing a set of baked waveforms (one for each quantum element involved in a specific Baking object) is summarized so far by playing them simultaneously within QUA using ```b.run()```.
 
+However, it may happen that we’d like to do real-time modulations of the baked waveform, for example tuning dynamically the amplitude, the duration, or the truncation of the pulse to be played.
+
+For this, one needs to access the operation defined with a generic name in the configuration that corresponds to the baked waveform for a specific targeted quantum element.
+
+This is possible using the ```b.operations``` command which return an access to all operations defined by the baking object ```b```. By all, we mean that you can access the operations that are uniquely defined for each quantum element that was involved within the baking context manager. 
+
+For example, the command ```b.operations[”qe1"]``` returns the name of the operation defined in the configuration dictionary for element ```qe1``` (you could check that this name is ```“Baked_Op_{i}”``` where i is the index of the baking object created). With this you can operate a usual play statement as follow:
+
+```
+with baking(config) as b:
+  play("Op1", "qe1")
+  
+with program() as prog:
+  a = declare(fixed)
+  t = declare(fixed)
+  with for_(a, 0, a < 1., a + 0.1):
+    with for_(t, 4, t < 30, t+4)
+      play(b.operations["qe1"],"qe1", amp = a, duration = t)
+      align(b.elements)
+```
+Note in the example above that you can also use a usual ```align``` in QUA  with all the elements involved into the baking object by calling b.elements which returns the set of quantum elements (strings) that were used in the baking.
 # **Examples**
 
 ## Ramsey at short time scales
@@ -229,4 +252,5 @@ by taking the same elementary built-in functions to generate the entire quantum 
 With the use of the baking, we now have one single baked waveform randomly 
 synthesized.
 This helps to reduce the amount of instructions to be compiled and avoid potential issues related to saturation of program memory, which might be reached when more than 2000 instructions are sent to the program.
+
 
