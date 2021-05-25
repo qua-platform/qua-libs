@@ -37,7 +37,7 @@ c1_table = pd.read_csv('c1_cayley_table.csv').to_numpy()[:, 1:]  # Cayley table 
 
 # create inverses lists
 inverse_list = [np.nonzero(line == 0)[0][0] for line in c1_table]
-print(inverse_list)
+# print(inverse_list)
 
 
 def find_revert_op(input_state_index):
