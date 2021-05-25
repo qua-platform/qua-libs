@@ -353,6 +353,7 @@ def measure_state(state, I):
     :return: none
     """
     th = 0
+    align("qe1", "rr")
     measure("readout", "rr", None, integration.full("integW1", I))
     assign(state, I > th)
 
