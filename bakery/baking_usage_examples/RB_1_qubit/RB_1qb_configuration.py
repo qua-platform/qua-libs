@@ -1,5 +1,5 @@
 import numpy as np
-pulse_len = 100
+pulse_len = 80
 readout_len = 400
 qubit_IF = 50e6
 rr_IF = 50e6
@@ -20,7 +20,7 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-gauss_pulse = gauss(0.2, 0, 12, pulse_len)
+gauss_pulse = gauss(0.2, 0, 20, pulse_len)
 
 config = {
     "version": 1,
