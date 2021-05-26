@@ -1,7 +1,7 @@
 # The list of 1 Qubit cliffords, X are pi rotations, X/2 are pi/2 rotations around the X axis (Y accordingly)
 from qm.qua import *
 from bakery.bakery import *
-from RB_1qb_configuration import gauss
+from rb_1qb_configuration import gauss
 
 
 cliffords = [
