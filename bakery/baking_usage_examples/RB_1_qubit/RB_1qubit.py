@@ -2,12 +2,12 @@ from qm import SimulationConfig
 from qm.qua import *
 from qm.QmJob import QmJob
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from rb_1qb_configuration import config, pulse_len, np
+from rb_1qb_configuration import config, pulse_len
 from rb_utils import RBOneQubit
 import matplotlib.pyplot as plt
 
 
-d_max = 500  # Maximum RB sequence length
+d_max = 300  # Maximum RB sequence length
 K = 1  # Number of RB sequences
 
 RB = RBOneQubit(config, d_max, K, "qe1")
@@ -39,7 +39,7 @@ with program() as RB_prog:
             align("qe1", "rr")
             wait(30, "qe1")
             play(RB_baked_sequences[k].operations["qe1"], 'qe1', truncate=truncate3)  # Truncate for RB seq of smaller lengths
-            RB_sequences[k].play_revert_op(inverse_op)
+            RB_sequences[k].play_revert_op2(inverse_op)
 
             align("qe1", "rr")
             # Measurement

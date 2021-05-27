@@ -48,7 +48,7 @@ class RBOneQubit:
         :param qubit Name of the quantum element designating the qubit
         """
 
-        self.sequences = [RBSequence(config, d_max, qubit)]* K
+        self.sequences = [RBSequence(config, d_max, qubit) for _ in range(K)]
         self.inverse_ops = [seq.revert_ops for seq in self.sequences]
         self.duration_trackers = [seq.duration_tracker for seq in self.sequences]
         self.baked_sequences = [seq.sequence for seq in self.sequences]
@@ -72,7 +72,7 @@ class RBSequence:
         self.state_init = 0
         self.revert_ops = [0] * d_max  # Keeps track of inverse op index associated to each sequence
         self.duration_tracker = [0] * d_max  # Keeps track of each Clifford's duration
-        self.baked_cliffords = self.generate_cliffords()  # List of baking objects for running Cliffords
+        # self.baked_cliffords = self.generate_cliffords()  # List of baking objects for running Cliffords
         self.sequence = self.generate_RB_sequence()  # Store the RB sequence
 
     def play_revert_op(self, index: int):
@@ -84,6 +84,79 @@ class RBSequence:
             for i in range(len(self.baked_cliffords)):
                 with case_(i):
                     self.baked_cliffords[i].run()
+
+    def play_revert_op2(self, index: int):
+
+        with switch_(index):
+            with case_(0):
+                play("I", self.qubit)
+            with case_(1):
+                play("X", self.qubit)
+            with case_(2):
+                play("Y", self.qubit)
+            with case_(3):
+                play("Y", self.qubit)
+                play("X", self.qubit)
+            with case_(4):
+                play("X/2", self.qubit)
+                play("Y/2", self.qubit)
+            with case_(5):
+                play("X/2", self.qubit)
+                play("-Y/2", self.qubit)
+            with case_(6):
+                play("-X/2", self.qubit)
+                play("Y/2", self.qubit)
+            with case_(7):
+                play("-X/2", self.qubit)
+                play("-Y/2", self.qubit)
+            with case_(8):
+                play("Y/2", self.qubit)
+                play("X/2", self.qubit)
+            with case_(9):
+                play("Y/2", self.qubit)
+                play("-X/2", self.qubit)
+            with case_(10):
+                play("-Y/2", self.qubit)
+                play("X/2", self.qubit)
+            with case_(11):
+                play("-Y/2", self.qubit)
+                play("-X/2", self.qubit)
+            with case_(12):
+                play("X/2", self.qubit)
+            with case_(13):
+                play("-X/2", self.qubit)
+            with case_(14):
+                play("Y/2", self.qubit)
+            with case_(15):
+                play("-Y/2", self.qubit)
+            with case_(16):
+                play("-X/2", self.qubit)
+                play("Y/2", self.qubit)
+                play("X/2", self.qubit)
+            with case_(17):
+                play("-X/2", self.qubit)
+                play("-Y/2", self.qubit)
+                play("X/2", self.qubit)
+            with case_(18):
+                play("X", self.qubit)
+                play("Y/2", self.qubit)
+            with case_(19):
+                play("X", self.qubit)
+                play("-Y/2", self.qubit)
+            with case_(20):
+                play("Y", self.qubit)
+                play("X/2", self.qubit)
+            with case_(21):
+                play("Y", self.qubit)
+                play("-X/2", self.qubit)
+            with case_(22):
+                play("X/2", self.qubit)
+                play("Y/2", self.qubit)
+                play("X/2", self.qubit)
+            with case_(23):
+                play("-X/2", self.qubit)
+                play("Y/2", self.qubit)
+                play("-X/2", self.qubit)
 
     def generate_cliffords(self):
 
