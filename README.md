@@ -24,7 +24,7 @@ Already have something cool that others could use? Open a pull request!
 Issue reporting and requests should be done via the GitHub issues system, that should give a transparent experience where all users can see what's coming 
 and which issues are already known. 
 
-Another, maybe nicer, way to view the content on this repo is through [the libraries website (temporary location)](https://qua-libs.netlify.app/). It includes those scripts that were placed in it via the
+Another, maybe nicer, way to view the content on this repo is through [the libraries website](https://docs.qualang.io/). It includes those scripts that were placed in it via the
 website config files (so possibly not everything currently on the repo). The site also has a blog where we will place technical posts that are of interest to the community. You can also suggest posts if you want. This is a nice way to showcase your work or ideas around QUA, and get full credit of course!
 
 We hope this repo becomes a useful resource, giving real contribution to the community and we'd love to see your ideas and contributions too!
