@@ -5,7 +5,7 @@ const path = require("path");
 module.exports = {
   title: "QUA Libraries",
   tagline: "",
-  url: "https://your-docusaurus-test-site.com",
+  url: "https://qua-platform.github.io",
   baseUrl: "/libs/",
   onBrokenLinks: "throw",
   favicon: "img/favicon.ico",
