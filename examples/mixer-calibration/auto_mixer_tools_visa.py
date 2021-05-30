@@ -2,7 +2,6 @@
 # They should have almost uniform commands, making adaptions to new models/brands quite easy
 
 from qm.qua import *
-import time
 from abc import ABC, abstractmethod
 import numpy as np
 import pyvisa as visa
@@ -128,7 +127,7 @@ class VisaSA(ABC):
         pass
 
     @abstractmethod
-    def sets_measurement_integration_bw(self):
+    def sets_measurement_integration_bw(self, ibw: int):
         # Sets the measurement integration bandwidth
         pass
 
@@ -148,9 +147,10 @@ class RohdeSchwarzFPC1000(VisaSA):
         self.get_single_trigger()
         if self.method == 1:  # Channel power
             sig = self.get_measurement_data()
-
         elif self.method == 2:  # Marker
             sig = self.query_marker(1)
+        else:
+            sig = float("NaN")
         return sig
 
     def set_automatic_video_bandwidth(self, state: int):
@@ -237,8 +237,6 @@ class RohdeSchwarzFPC1000(VisaSA):
 
     def get_measurement_data(self):
         # Returns the result of the measurement
-        # INIT:CONT OFF
-        # INIT;*WAI
         return self.sa.query(f"CALC:MARK:FUNC:POW:RES? CPOW")
 
 
@@ -247,9 +245,10 @@ class KeysightFieldFox(VisaSA):
         self.get_single_trigger()
         if self.method == 1:  # Channel power
             sig = self.get_measurement_data()
-
         elif self.method == 2:  # Marker
             sig = self.query_marker(1)
+        else:
+            sig = float("NaN")
         return sig
 
     def set_automatic_video_bandwidth(self, state: int):
@@ -341,9 +340,10 @@ class KeysightXSeries(VisaSA):
         self.get_single_trigger()
         if self.method == 1:  # Channel power
             sig = self.get_measurement_data()
-
         elif self.method == 2:  # Marker
             sig = self.query_marker(1)
+        else:
+            sig = float("NaN")
         return sig
 
     def set_automatic_video_bandwidth(self, state: int):
@@ -396,7 +396,7 @@ class KeysightXSeries(VisaSA):
 
     def get_full_trace(self):
         # Returns the full trace
-        ff_SA_Trace_Data = self.sa.query("TRACE:DATA?")
+        ff_SA_Trace_Data = self.sa.query("TRACE:DATA? TRACE1")
         # Data from the Keysight comes out as a string separated by ',':
         # '-1.97854112E+01,-3.97854112E+01,-2.97454112E+01,-4.92543112E+01,-5.17254112E+01,-1.91254112E+01...\n'
         # The code below turns it into an a python list of floats
@@ -408,23 +408,23 @@ class KeysightXSeries(VisaSA):
 
     def enable_measurement(self):
         # Sets the measurement to channel power
-        self.sa.write("SENS:MEAS:CHAN CHP")
+        self.sa.write(":CONF:CHP")
 
     def disables_measurement(self):
         # Sets the measurement to none
-        self.sa.write("SENS:MEAS:CHAN NONE")
+        self.sa.write(":CONF:CHP NONE")
 
     def sets_measurement_integration_bw(self, ibw: int):
         # Sets the measurement integration bandwidth
-        self.sa.write(f"SENS:CME:IBW {int(ibw)}")
+        self.sa.write(f"SENS:CHP:BAND:INT {int(ibw)}")
 
     def disables_measurement_averaging(self):
         # disables averaging in the measurement
-        self.sa.write("SENS:CME:AVER:ENAB 0")
+        self.sa.write("SENS:CHP:AVER 0")
 
     def get_measurement_data(self):
         # Returns the result of the measurement
-        return float(self.sa.query("CALC:MEAS:DATA?").split(",")[0])
-        # Data from the Fieldfox comes out as a string separated by ',':
+        return float(self.sa.query("READ:CHP?").split(",")[0])
+        # Data from the Keysight comes out as a string separated by ',':
         # '-1.97854112E+01,-3.97854112E+01\n'
         # The code above takes the first value and converts to float.
