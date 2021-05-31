@@ -28,7 +28,7 @@ from matplotlib import rc
 
 π = np.pi
 
-qm1 = QuantumMachinesManager("3.122.60.129")
+qm1 = QuantumMachinesManager()
 # QM configuration based on IBM Quantum Computer :
 # Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
 
@@ -69,106 +69,6 @@ By order of calling when using the full algorithm we have the following tree:
 4. Other smaller functions, which are QUA macros, meant to be modified according to specific hardware implementation """
 
 
-def generate_binary(
-    n,
-):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
-
-    # 2^(n-1)  2^n - 1 inclusive
-    bin_arr = range(0, int(math.pow(2, n)))
-    bin_arr = [bin(i)[2:] for i in bin_arr]
-
-    # Prepending 0's to binary strings
-    max_len = len(max(bin_arr, key=len))
-    bin_arr = [i.zfill(max_len) for i in bin_arr]
-
-    return bin_arr
-
-
-def Hadamard(tgt):
-    U2(tgt, 0, π)
-
-
-def U2(tgt, 𝜙=0, 𝜆=0):
-    Rz(𝜆, tgt)
-    Y90(tgt)
-    Rz(𝜙, tgt)
-
-
-def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
-    Rz(𝜆 - π / 2, tgt)
-    X90(tgt)
-    Rz(π - 𝜃, tgt)
-    X90(tgt)
-    Rz(𝜙 - π / 2, tgt)
-
-
-def CNOT(ctrl, tgt):  # To be defined
-    return None
-
-
-def Rz(𝜆, tgt):
-    frame_rotation(-𝜆, tgt)
-
-
-def CU1(𝜆, ctrl, tgt):
-    Rz(𝜆 / 2.0, ctrl)
-    CNOT(ctrl, tgt)
-    Rz(-𝜆 / 2.0, tgt)
-    CNOT(ctrl, tgt)
-    Rz(𝜆 / 2.0, tgt)
-
-
-def Rx(𝜆, tgt):
-    U3(tgt, 𝜆, -π / 2, π / 2)
-
-
-def X90(tgt):
-    play("X90", tgt)
-
-
-def Y90(tgt):
-    play("Y90", tgt)
-
-
-def Y180(tgt):
-    play("Y180", tgt)
-
-
-def measurement(
-    resonator, I, Q
-):  # Simple measurement command, could be changed/generalized
-    measure("meas_pulse", resonator, None, ("integW1", I), ("integW2", Q))
-
-
-def raw_saving(I, Q, k):
-    # Saving command
-    I_name = "I" + str(k)  # Variables I1,I2,I3, ...
-    Q_name = "Q" + str(k)
-    save(I, I_name)
-    save(Q, Q_name)
-
-
-def state_saving(
-    I, Q, state_estimate, k
-):  # Do state estimation protocol in QUA, and save the associated state
-    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
-    a = declare(fixed, value=1.0)
-    b = declare(fixed, value=1.0)
-    with if_(Q - a * I - b > 0):
-        assign(state_estimate, 1)
-    with else_():
-        assign(state_estimate, 0)
-    # Save the variable into a generic stream defined as state0,1,2 ...
-    state_name = "state" + str(k)
-    save(state_estimate, state_name)
-
-
-def SWAP(qubit1, qubit2):
-    CNOT(qubit1, qubit2)
-    CNOT(qubit2, qubit1)
-    CNOT(qubit1, qubit2)
-
-
 def Launch_QAOA(
     γ_set, β_set, G, N_rep
 ):  # γ,β are arrays containing angle values, G is a Graph embedding the connectivity of the MaxCut instance
@@ -176,7 +76,7 @@ def Launch_QAOA(
         list(G.nodes())
     )  # Number of qubits, equivalent to number of nodes in the Graph
     if len(γ_set) != len(β_set):
-        raise Error
+        raise IndexError("angles provided do not match length of the circuit")
     p = len(
         γ_set
     )  # Indicates the number of adiabatic blocks to be called, yields also the number of parameters to be optimized classically
@@ -268,24 +168,6 @@ def Launch_QAOA(
     return QAOA
 
 
-def cost_function_Max_Cut(
-    x, G
-):  # Cost function for MaxCut problem, needs to be adapted to the considered optimization problem
-
-    E = G.edges()
-    if len(x) != len(G.nodes()):
-        return np.nan
-
-    C = 0
-    for edge in E:
-        e1 = edge[0]
-        e2 = edge[1]
-        w = G[e1][e2]["weight"]
-        C = C + w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
-
-    return C
-
-
 γ_test = [2]
 β_test = [1.5]
 γ_test2 = [2.0, 3]
@@ -307,7 +189,7 @@ my_job = qm1.simulate(
 #                              1)])))
 
 
-def quantum_avg_computation(
+def quantum_avg_computation_classic(
     angles, G, Nrep, QM, real_device=False
 ):  # Calculate Hamiltonian expectation value (cost function to optimize)
     n = len(list(G.nodes()))
@@ -331,20 +213,19 @@ def quantum_avg_computation(
     output_states = []
     # Those commands do retrieve the results in generic variables called state#i with #i being a number between 0 and n-1
     # Those results are then stored in a bigger array called output_states
-    list(
-        map(exec, [f"state{d}=results.state{d}.fetch_all()['value']" for d in range(n)])
-    )
-    list(map(exec, [f"output_states.append(state{d})" for d in range(n)]))
+    for d in range(n):
+        output_states.append(results.get("state" + str(d)).fetch_all())
 
     counts = (
         {}
     )  # Dictionary containing statistics of measurement of each bitstring obtained
-    for i in range(len(generate_binary(n))):
+    for i in range(2 ** n):
         counts[generate_binary(n)[i]] = 0
 
     for i in range(
         Nrep
-    ):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
+    ):  # Here we build in the statistics by picking line by line the bistrings
+        # obtained in measurements
         bitstring = ""
         for j in range(len(output_states)):
             bitstring += str(output_states[j][i])
@@ -358,7 +239,7 @@ def quantum_avg_computation(
 
         # use sampled bit string x to compute C(x)
         x = [int(num) for num in list(sample)]
-        tmp_eng = cost_function_Max_Cut(x, G)
+        tmp_eng = cost_function_C(x, G)
 
         # compute the expectation value and energy distribution
         avr_C = avr_C + counts[sample] * tmp_eng
@@ -415,18 +296,17 @@ def result_optimization(
 
         if optimizer == "brute":  # Choose optimizer kind (derived from scipy)
             opti_angles1, expminus = brute(
-                func=quantum_avg_computation,
+                func=quantum_avg_computation_classic,
                 ranges=boundaries,
                 args=(G, Nrep, QM, False),
                 Ns=10,
-                finish=fmin,
             )
             exp.append(-expminus)
             ratio.append(-expminus / MaxCut_value)
             opti_angles.append(opti_angles1)
         elif optimizer == "differential_evolution":
             Opti_Result = differential_evolution(
-                quantum_avg_computation,
+                quantum_avg_computation_classic,
                 bounds=boundaries,
                 args=(G, Nrep, QM, False),
                 tol=0.1,
@@ -436,7 +316,7 @@ def result_optimization(
             ratio.append(-Opti_Result.fun / MaxCut_value)
         else:
             Opti_Result = minimize(
-                fun=quantum_avg_computation,
+                fun=quantum_avg_computation_classic,
                 x0=angles,
                 args=(G, Nrep, QM, False),
                 method=optimizer,
@@ -459,4 +339,4 @@ def result_optimization(
 # To finish the program and yield the solution, one might run a quantum_avg_computation once again with optimized angles,
 # and retrieve most frequent bitstrings, one of them should correspond to the optimal solution of the problem
 test_angles = [1.5, 2.3]
-print(quantum_avg_computation(test_angles, G, 1, qm1))
+print(quantum_avg_computation_classic(test_angles, G, 1, qm1))

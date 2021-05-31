@@ -1,4 +1,17 @@
 import numpy as np
+from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachine
+from qm.qua import *
+
+
+import random as rand
+import math
+import time
+
+# We import the tools to handle general Graphs
+
+
+π = np.pi
 
 
 def gauss(amplitude, mu, sigma, delf, length):
@@ -256,3 +269,129 @@ IBMconfig = {
         ],
     },
 }
+
+# Auxiliary Python functions
+def generate_binary(
+    n,
+):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
+
+    # 2^(n-1)  2^n - 1 inclusive
+    bin_arr = range(0, int(math.pow(2, n)))
+    bin_arr = [bin(i)[2:] for i in bin_arr]
+
+    # Prepending 0's to binary strings
+    max_len = len(max(bin_arr, key=len))
+    bin_arr = [i.zfill(max_len) for i in bin_arr]
+
+    return bin_arr
+
+
+def cost_function_C(
+    x, G
+):  # Cost function for MaxCut problem, needs to be adapted to the considered optimization problem
+
+    E = G.edges()
+    if len(x) != len(G.nodes()):
+        return np.nan
+
+    C = 0
+    for edge in E:
+        e1 = edge[0]
+        e2 = edge[1]
+        w = G[e1][e2]["weight"]
+        C = C + w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
+
+    return C
+
+
+# QUA macros (pulse definition of quantum gates)
+def Hadamard(tgt):
+    U2(tgt, 0, π)
+
+
+def U2(tgt, 𝜙=0, 𝜆=0):
+    Rz(𝜆, tgt)
+    Y90(tgt)
+    Rz(𝜙, tgt)
+
+
+def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
+    Rz(𝜆 - π / 2, tgt)
+    X90(tgt)
+    Rz(π - 𝜃, tgt)
+    X90(tgt)
+    Rz(𝜙 - π / 2, tgt)
+
+
+def CR(
+    ctrl, tgt
+):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
+    return None
+
+
+def CNOT(ctrl, tgt):  # To be defined
+    frame_rotation(π / 2, ctrl)
+    X90(tgt)
+    CR(tgt, ctrl)
+
+
+def Rz(𝜆, tgt):
+    frame_rotation(-𝜆, tgt)
+
+
+def Ry(𝜆, tgt):
+    U3(tgt, 𝜆, 0, 0)
+
+
+def CU1(𝜆, ctrl, tgt):
+    Rz(𝜆 / 2.0, ctrl)
+    CNOT(ctrl, tgt)
+    Rz(-𝜆 / 2.0, tgt)
+    CNOT(ctrl, tgt)
+    Rz(𝜆 / 2.0, tgt)
+
+
+def Rx(𝜆, tgt):
+    U3(tgt, 𝜆, -π / 2, π / 2)
+
+
+def X90(tgt):
+    play("X90", tgt)
+
+
+def Y90(tgt):
+    play("Y90", tgt)
+
+
+def Y180(tgt):
+    play("Y180", tgt)
+
+
+def SWAP(qubit1, qubit2):
+    CNOT(qubit1, qubit2)
+    CNOT(qubit2, qubit1)
+    CNOT(qubit1, qubit2)
+
+
+def measurement(RR, I, Q):  # Simple measurement command, could be changed/generalized
+    measure("meas_pulse", RR, None, ("integW1", I), ("integW2", Q))
+
+
+# Stream processing QUA macros
+def raw_saving(I, Q, I_stream, Q_stream):
+    # Saving command
+    save(I, I_stream)
+    save(Q, Q_stream)
+
+
+def state_saving(
+    I, Q, state_estimate, stream
+):  # Do state estimation protocol in QUA, and save the associated state
+    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
+    a = declare(fixed, value=1.0)
+    b = declare(fixed, value=1.0)
+    with if_(Q - a * I - b > 0):
+        assign(state_estimate, 1)
+    with else_():
+        assign(state_estimate, 0)
+    save(state_estimate, stream)
