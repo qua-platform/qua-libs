@@ -225,10 +225,8 @@ def quantum_avg_computation(
     output_states = []
     # Those commands do retrieve the results in generic variables called state#i with #i being a number between 0 and n-1
     # Those results are then stored in a bigger array called output_states
-    list(
-        map(exec, [f"state{d}=results.state{d}.fetch_all()['value']" for d in range(n)])
-    )
-    list(map(exec, [f"output_states.append(state{d})" for d in range(n)]))
+    for d in range(n):
+        output_states.append(results.get("state" + str(d)).fetch_all())
 
     counts = (
         {}
