@@ -1,3 +1,5 @@
+import copy
+
 import pandas as pd
 from bakery.bakery import *
 from qm.qua import *
@@ -47,6 +49,8 @@ class RBOneQubit:
         :param K Number of RB sequences
         :param qubit Name of the quantum element designating the qubit
         """
+        if not(qubit in config['elements']):
+            raise KeyError(f'Quantum element {qubit} is not in the config')
 
         self.sequences = [RBSequence(config, d_max, qubit) for _ in range(K)]
         self.inverse_ops = [seq.revert_ops for seq in self.sequences]
@@ -77,7 +81,7 @@ class RBSequence:
 
     def play_revert_op(self, index: int):
         """Plays an operation resetting qubit in its ground state based on the
-        transformation provided by the index in Cayley table
+        transformation provided by the index in Cayley table (switch using baked Cliffords)
         :param index index of the transformed qubit state"""
 
         with switch_(index):
@@ -86,94 +90,105 @@ class RBSequence:
                     self.baked_cliffords[i].run()
 
     def play_revert_op2(self, index: int):
+        """Plays an operation resetting qubit in its ground state based on the
+                transformation provided by the index in Cayley table (explicit switch case)
+                :param index index of the transformed qubit state"""
+        qubit = self.qubit
 
         with switch_(index):
             with case_(0):
-                play("I", self.qubit)
+                play("I", qubit)
             with case_(1):
-                play("X", self.qubit)
+                play("X", qubit)
             with case_(2):
-                play("Y", self.qubit)
+                play("Y", qubit)
             with case_(3):
-                play("Y", self.qubit)
-                play("X", self.qubit)
+                play("Y", qubit)
+                play("X", qubit)
             with case_(4):
-                play("X/2", self.qubit)
-                play("Y/2", self.qubit)
+                play("X/2", qubit)
+                play("Y/2", qubit)
             with case_(5):
-                play("X/2", self.qubit)
-                play("-Y/2", self.qubit)
+                play("X/2", qubit)
+                play("-Y/2", qubit)
             with case_(6):
-                play("-X/2", self.qubit)
-                play("Y/2", self.qubit)
+                play("-X/2", qubit)
+                play("Y/2", qubit)
             with case_(7):
-                play("-X/2", self.qubit)
-                play("-Y/2", self.qubit)
+                play("-X/2", qubit)
+                play("-Y/2", qubit)
             with case_(8):
-                play("Y/2", self.qubit)
-                play("X/2", self.qubit)
+                play("Y/2", qubit)
+                play("X/2", qubit)
             with case_(9):
-                play("Y/2", self.qubit)
-                play("-X/2", self.qubit)
+                play("Y/2", qubit)
+                play("-X/2", qubit)
             with case_(10):
-                play("-Y/2", self.qubit)
-                play("X/2", self.qubit)
+                play("-Y/2", qubit)
+                play("X/2", qubit)
             with case_(11):
-                play("-Y/2", self.qubit)
-                play("-X/2", self.qubit)
+                play("-Y/2", qubit)
+                play("-X/2", qubit)
             with case_(12):
-                play("X/2", self.qubit)
+                play("X/2", qubit)
             with case_(13):
-                play("-X/2", self.qubit)
+                play("-X/2", qubit)
             with case_(14):
-                play("Y/2", self.qubit)
+                play("Y/2", qubit)
             with case_(15):
-                play("-Y/2", self.qubit)
+                play("-Y/2", qubit)
             with case_(16):
-                play("-X/2", self.qubit)
-                play("Y/2", self.qubit)
-                play("X/2", self.qubit)
+                play("-X/2", qubit)
+                play("Y/2", qubit)
+                play("X/2", qubit)
             with case_(17):
-                play("-X/2", self.qubit)
-                play("-Y/2", self.qubit)
-                play("X/2", self.qubit)
+                play("-X/2", qubit)
+                play("-Y/2", qubit)
+                play("X/2", qubit)
             with case_(18):
-                play("X", self.qubit)
-                play("Y/2", self.qubit)
+                play("X", qubit)
+                play("Y/2", qubit)
             with case_(19):
-                play("X", self.qubit)
-                play("-Y/2", self.qubit)
+                play("X", qubit)
+                play("-Y/2", qubit)
             with case_(20):
-                play("Y", self.qubit)
-                play("X/2", self.qubit)
+                play("Y", qubit)
+                play("X/2", qubit)
             with case_(21):
-                play("Y", self.qubit)
-                play("-X/2", self.qubit)
+                play("Y", qubit)
+                play("-X/2", qubit)
             with case_(22):
-                play("X/2", self.qubit)
-                play("Y/2", self.qubit)
-                play("X/2", self.qubit)
+                play("X/2", qubit)
+                play("Y/2", qubit)
+                play("X/2", qubit)
             with case_(23):
-                play("-X/2", self.qubit)
-                play("Y/2", self.qubit)
-                play("-X/2", self.qubit)
+                play("-X/2", qubit)
+                play("Y/2", qubit)
+                play("-X/2", qubit)
 
     def generate_cliffords(self):
+        """
+        Returns a list of baking object giving access to baked Clifford waveforms
+        """
 
-        baked_clifford = []
+        baked_clifford = [None] * len(c1_ops)
         for i in range(len(c1_ops)):
             with baking(self.config) as b2:
                 for op in c1_ops[i]:
                     b2.play(op, self.qubit)
-            baked_clifford.append(b2)
+            baked_clifford[i] = b2
         return baked_clifford
 
     def generate_RB_sequence(self):
+        """
+        Creates a baking object generating a random Clifford sequence of length d_max
+        """
 
         with baking(self.config) as b:
             for d in range(self.d_max):
                 i = np.random.randint(0, len(c1_ops))
-                self.duration_tracker[d] = d + 1  # Set the duration to the value of the sequence step
+                if d > 0:
+                    self.duration_tracker[d] = self.duration_tracker[d-1]  # Set duration to value of the sequence step
 
                 # Play the random Clifford
                 random_clifford = c1_ops[i]

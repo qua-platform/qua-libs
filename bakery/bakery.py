@@ -177,6 +177,19 @@ class Baking:
         except KeyError:
             raise KeyError(f'No waveforms found for pulse {pulse}')
 
+    def get_current_length(self, qe: str):
+        """
+        Retrieve within the baking the current length of the waveform being created (within the baking)
+
+        :param qe quantum element
+        """
+        if "mixInputs" in self._local_config["elements"][qe]:
+            return len(self._samples_dict[qe]["I"])
+        elif "singleInput" in self._local_config["elements"][qe]:
+            return len(self._samples_dict[qe])
+        else:
+            raise KeyError("quantum element not in the config")
+
     def _get_pulse_index(self, qe):
         index = 0
         for pulse in self._local_config["pulses"]:
@@ -199,7 +212,7 @@ class Baking:
 
     def get_Op_length(self, qe: str):
         """
-        Retrieve the length of the baked waveform associated to quantum element qe
+        Retrieve the length of the finalized baked waveform associated to quantum element qe (outside the baking)
         :param qe: quantum element
         """
         if not(qe in self._qe_set):
