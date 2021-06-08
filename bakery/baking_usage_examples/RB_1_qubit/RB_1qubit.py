@@ -19,8 +19,6 @@ inverse_ops = RB.inverse_ops
 
 with program() as RB_prog:
     truncate = declare(int)
-    truncate2 = declare(int)
-    truncate3 = declare(int)
     inverse_op = declare(int)
 
     I = declare(fixed)
@@ -30,15 +28,14 @@ with program() as RB_prog:
     out_str = declare_stream()
 
     for k in range(K):
-        truncate_array = declare(int, value=duration_trackers[k])
-        truncate_array2 = declare(int, value=[x * pulse_len // 4 for x in duration_trackers[k]])
+        truncate_array = declare(int, value=[x * pulse_len // 4 for x in duration_trackers[k]])
 
         inverse_ops_QUA = declare(int, value=inverse_ops[k])
-        with for_each_((truncate, inverse_op, truncate3), (truncate_array, inverse_ops_QUA, truncate_array2)):
+        with for_each_((truncate, inverse_op), (truncate_array, inverse_ops_QUA)):
 
             align("qe1", "rr")
             wait(30, "qe1")
-            play(RB_baked_sequences[k].operations["qe1"], 'qe1', truncate=truncate3)  # Truncate for RB seq of smaller lengths
+            play(RB_baked_sequences[k].operations["qe1"], 'qe1', truncate=truncate)  # Truncate for RB seq of smaller lengths
             RB_sequences[k].play_revert_op2(inverse_op)
 
             align("qe1", "rr")
