@@ -221,7 +221,9 @@ class RohdeSchwarzFPC1000(VisaSA):
 
     def enable_measurement(self):
         # Sets the measurement to channel power
-        self.sa.write("CALC:MARK:FUNC:POW:SEL CPOW; CALC:MARK:FUNC:LEV:ONCE; CALC:MARK:FUNC:CPOW:UNIT DBM; CALC:MARK:FUNC:POW:RES:PHZ ON")
+        self.sa.write(
+            "CALC:MARK:FUNC:POW:SEL CPOW; CALC:MARK:FUNC:LEV:ONCE; CALC:MARK:FUNC:CPOW:UNIT DBM; CALC:MARK:FUNC:POW:RES:PHZ ON"
+        )
 
     def disables_measurement(self):
         # Sets the channel power measurement to none
