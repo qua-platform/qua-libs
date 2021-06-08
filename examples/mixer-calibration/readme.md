@@ -246,7 +246,8 @@ The calibration should be done by connecting the output of the mixer to a spectr
 
 ## Automatic calibration script
 [Automatic Up-conversion Calibration](visa_automatic_mixer_calibration.py) - This scripts shows an example
-for an automatic mixer calibration code on an external spectrum analyzer, tested for a Keysight Fieldfox N9917A.
+for an automatic mixer calibration code on an external spectrum analyzer, written for several models: Keysight Fieldfox, 
+Keysight N9001 and Rohde & Schwarz FPC. The script was tested with Keysight Fieldfox N9917A.
 It plays a CW pulse in an infinite loop, while probing the spectrum analyzer (SA) for the data, 
 and minimizes the LO leakage and image using SciPy minimize toolbox with a Nelder-Mead algorithem.
 
