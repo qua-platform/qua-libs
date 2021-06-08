@@ -5,6 +5,8 @@ qubit_IF = 50e6
 rr_IF = 50e6
 qubit_LO = 6.345e9
 rr_LO = 4.755e9
+coupler_IF = 50e6
+coupler_LO = 6e9
 
 
 def gauss(amplitude, mu, sigma, length):
@@ -28,10 +30,14 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0},  # qe-I
-                2: {"offset": +0.0},  # qe-Q
-                3: {"offset": +0.0},  # rr-I
-                4: {"offset": +0.0},  # rr-Q
+                1: {"offset": +0.0},  # q1-I
+                2: {"offset": +0.0},  # q1-Q
+                3: {"offset": +0.0},  # q2-I
+                4: {"offset": +0.0},  # q2-Q
+                5: {"offset": +0.0},  # coupler-I
+                6: {"offset": +0.0},  # coupler-Q
+                7: {"offset": +0.0},  # rr-I
+                8: {"offset": +0.0},  # rr-Q
             },
             "digital_outputs": {
                 1: {},
@@ -42,29 +48,49 @@ config = {
         }
     },
     "elements": {
-        "qe1": {
+        "q1": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
-            "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": qubit_IF,
             "operations": {
-                "I" : "IPulse",
-                "X/2": "X/2Pulse",
-                "X": "XPulse",
-                "-X/2": "-X/2Pulse",
-                "Y/2": "Y/2Pulse",
-                "Y": "YPulse",
-                "-Y/2": "-Y/2Pulse",
+                "sx": "sxPulse",
+                "sy": "syPulse",
+                "sw": "swPulse",
             },
         },
-        "rr": {
+        "q2": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
+                "lo_frequency": qubit_LO,
+                "mixer": "mixer_qubit",
+            },
+            "intermediate_frequency": qubit_IF,
+            "operations": {
+                "sx": "sxPulse",
+                "sy": "syPulse",
+                "sw": "swPulse",
+            },
+        },
+        "coupler": {
+            "mixInputs": {
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
+            },
+            "intermediate_frequency": 0,
+            "operations": {
+                "coupler_op": "couplerPulse",
+            },
+
+        },
+        "rr": {
+            "mixInputs": {
+                "I": ("con1", 7),
+                "Q": ("con1", 8),
                 "lo_frequency": rr_LO,
                 "mixer": "mixer_RR",
             },
@@ -83,40 +109,25 @@ config = {
             "length": pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "gauss_wf"},
         },
-        "IPulse":{
+        "sxPulse":{
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
         },
-        "XPulse": {
+        "syPulse": {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
         },
-        "X/2Pulse": {
+        "swPulse": {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "pi/2_wf", "Q": "zero_wf"},
         },
-        "-X/2Pulse": {
+        "couplerPulse": {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "-pi/2_wf", "Q": "zero_wf"},
-        },
-        "YPulse": {
-            "operation": "control",
-            "length": pulse_len,
-            "waveforms": {"I": "zero_wf", "Q": "pi_wf"},
-        },
-        "Y/2Pulse": {
-            "operation": "control",
-            "length": pulse_len,
-            "waveforms": {"I": "zero_wf", "Q": "pi/2_wf"},
-        },
-        "-Y/2Pulse": {
-            "operation": "control",
-            "length": pulse_len,
-            "waveforms": {"I": "zero_wf", "Q": "-pi/2_wf"},
         },
         "readout_pulse": {
             "operation": "measurement",
@@ -163,6 +174,13 @@ config = {
             {
                 "intermediate_frequency": rr_IF,
                 "lo_frequency": rr_LO,
+                "correction": IQ_imbalance(0.0, 0.0),
+            }
+        ],
+        "mixer_coupler": [
+            {
+                "intermediate_frequency": coupler_IF,
+                "lo_frequency": coupler_LO,
                 "correction": IQ_imbalance(0.0, 0.0),
             }
         ],
