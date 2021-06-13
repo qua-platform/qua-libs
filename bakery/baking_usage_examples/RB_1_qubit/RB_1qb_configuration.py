@@ -50,7 +50,6 @@ config = {
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
-            "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "I": "IPulse",

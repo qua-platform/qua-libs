@@ -2,8 +2,8 @@ from qm import SimulationConfig
 from qm.qua import *
 from qm.QmJob import QmJob
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from rb_1qb_configuration import config, pulse_len
-from rb_utils import RBOneQubit
+from RB_1qb_configuration import config, pulse_len
+from RB_utils import RBOneQubit
 import matplotlib.pyplot as plt
 
 
