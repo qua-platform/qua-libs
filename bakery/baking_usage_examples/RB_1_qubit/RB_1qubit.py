@@ -15,7 +15,8 @@ RB_sequences = RB.sequences
 RB_baked_sequences = RB.baked_sequences
 duration_trackers = RB.duration_trackers
 inverse_ops = RB.inverse_ops
-
+print(RB_sequences[0].operations_list)
+print(print(RB_sequences[0].inverse_op_string))
 
 with program() as RB_prog:
     truncate = declare(int)
