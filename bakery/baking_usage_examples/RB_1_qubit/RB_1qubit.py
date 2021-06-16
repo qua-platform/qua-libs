@@ -22,20 +22,24 @@ with program() as RB_prog:
     inverse_op = declare(int)
 
     I = declare(fixed)
-    th = declare(fixed, value=0.)
+    th = declare(fixed, value=0.0)
     state = declare(bool)
 
     out_str = declare_stream()
 
     for k in range(K):
-        truncate_array = declare(int, value=[x * pulse_len // 4 for x in duration_trackers[k]])
+        truncate_array = declare(
+            int, value=[x * pulse_len // 4 for x in duration_trackers[k]]
+        )
 
         inverse_ops_QUA = declare(int, value=inverse_ops[k])
         with for_each_((truncate, inverse_op), (truncate_array, inverse_ops_QUA)):
 
             align("qe1", "rr")
             wait(30, "qe1")
-            play(RB_baked_sequences[k].operations["qe1"], 'qe1', truncate=truncate)  # Truncate for RB seq of smaller lengths
+            play(
+                RB_baked_sequences[k].operations["qe1"], "qe1", truncate=truncate
+            )  # Truncate for RB seq of smaller lengths
             RB_sequences[k].play_revert_op2(inverse_op)
 
             align("qe1", "rr")
@@ -48,11 +52,11 @@ with program() as RB_prog:
             assign(state, I > th)
 
             save(state, out_str)
-            save(inverse_op, 'inv')
-            save(truncate, 'truncate')
+            save(inverse_op, "inv")
+            save(truncate, "truncate")
 
     with stream_processing():
-        out_str.boolean_to_int().buffer(K, d_max).average().save('out_stream')
+        out_str.boolean_to_int().buffer(K, d_max).average().save("out_stream")
 
 
 qmm = QuantumMachinesManager()

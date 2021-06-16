@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from RB_1qb_configuration import *
@@ -19,7 +18,7 @@ for depth in circuit_depth_vec:
 
 # Open communication with the server.
 QMm = QuantumMachinesManager()
-QM1 = QMm.open_qm(config,close_other_machines=True)
+QM1 = QMm.open_qm(config, close_other_machines=True)
 
 # QUA Program for 1 qubit RB:
 with program() as RBprog:
@@ -38,7 +37,9 @@ with program() as RBprog:
             active_reset(state)
 
     with stream_processing():
-        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save("out_stream")
+        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save(
+            "out_stream"
+        )
 
 job = QM1.simulate(RBprog, SimulationConfig(int(1000)))
 res = job.result_handles

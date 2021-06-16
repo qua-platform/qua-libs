@@ -1,15 +1,10 @@
 from bakery.bakery import *
 
 
-rnd_gate_map = {
-    0: 'sx',
-    1: 'sy',
-    2: 'sw'
-}
+rnd_gate_map = {0: "sx", 1: "sy", 2: "sw"}
 
 
 class XEB:
-
     def __init__(self, config: dict, m_max: int, qe_list: List[str]):
         """
         Class instance for cross-entropy benchmarking sequence generation.
@@ -38,10 +33,10 @@ class XEB:
                 b.play(rnd_gate_map[rnd1], q1)
                 b.play(rnd_gate_map[rnd2], q2)
                 b.align(q1, q2, coupler)
-                b.play('coupler_op', coupler)
+                b.play("coupler_op", coupler)
                 self.operations_list[q1].append(rnd_gate_map[rnd1])
                 self.operations_list[q2].append(rnd_gate_map[rnd2])
-                self.operations_list[q2].append('coupler_op')
+                self.operations_list[q2].append("coupler_op")
 
                 self.duration_tracker[i] = b.get_current_length(coupler)
                 i += 1

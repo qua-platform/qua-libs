@@ -1,4 +1,5 @@
 import numpy as np
+
 pulse_len = 80
 readout_len = 400
 qubit_IF = 50e6
@@ -52,7 +53,7 @@ config = {
             "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": qubit_IF,
             "operations": {
-                "I" : "IPulse",
+                "I": "IPulse",
                 "X/2": "X/2Pulse",
                 "X": "XPulse",
                 "-X/2": "-X/2Pulse",
@@ -83,7 +84,7 @@ config = {
             "length": pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "gauss_wf"},
         },
-        "IPulse":{
+        "IPulse": {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
@@ -168,5 +169,3 @@ config = {
         ],
     },
 }
-
-
