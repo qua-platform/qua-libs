@@ -19,6 +19,13 @@ module.exports = [
     },
     {
         "type": "category",
+        "label": "Intermediate",
+        "items": [
+            "intermediate/precompile/index",
+        ]
+    },
+    {
+        "type": "category",
         "label": "Advanced Topics",
         "items": [
             "advanced-topics/single-sideband-modulation/index",
