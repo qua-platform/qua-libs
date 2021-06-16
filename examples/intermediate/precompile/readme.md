@@ -9,6 +9,8 @@ id: index
 The precompile feature allows generating programs with waveforms you can modify without recompiling the program. 
 This saves both the recompilation time itself, and the need to reopen the quantum machine and upload the `config`. 
 
+| NOTE: This feature cannot be used in Simulator mode |
+| --- |
 The type of program where this works best is when you want to update a waveform between runs, but not the rest of the program.
 The modified waveform must be of a constant duration and be defined as overridable in the config. This is shown below:
 
