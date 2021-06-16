@@ -1,4 +1,5 @@
 import numpy as np
+
 pulse_len = 80
 readout_len = 400
 qubit_IF = 50e6
@@ -85,7 +86,6 @@ config = {
             "operations": {
                 "coupler_op": "couplerPulse",
             },
-
         },
         "rr": {
             "mixInputs": {
@@ -109,7 +109,7 @@ config = {
             "length": pulse_len,
             "waveforms": {"I": "gauss_wf", "Q": "gauss_wf"},
         },
-        "sxPulse":{
+        "sxPulse": {
             "operation": "control",
             "length": pulse_len,
             "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
@@ -186,5 +186,3 @@ config = {
         ],
     },
 }
-
-

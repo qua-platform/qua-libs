@@ -31,70 +31,70 @@ cliffords = [
     ["-X/2", "Y/2", "-X/2"],
 ]
 operations = {
-        "z": ["I"],
-        "-x": ["-Y/2"],
-        "y": ["X/2"],
-        "-y": ["-X/2"],
-        "x": ["Y/2"],
-        "-z": ["X"],
-    }
+    "z": ["I"],
+    "-x": ["-Y/2"],
+    "y": ["X/2"],
+    "-y": ["-X/2"],
+    "x": ["Y/2"],
+    "-z": ["X"],
+}
 
 transformations = {
-        "x": {
-            "I": "x",
-            "X/2": "x",
-            "X": "x",
-            "-X/2": "x",
-            "Y/2": "z",
-            "Y": "-x",
-            "-Y/2": "-z",
-        },
-        "-x": {
-            "I": "-x",
-            "X/2": "-x",
-            "X": "-x",
-            "-X/2": "-x",
-            "Y/2": "-z",
-            "Y": "x",
-            "-Y/2": "z",
-        },
-        "y": {
-            "I": "y",
-            "X/2": "z",
-            "X": "-y",
-            "-X/2": "-z",
-            "Y/2": "y",
-            "Y": "y",
-            "-Y/2": "y",
-        },
-        "-y": {
-            "I": "-y",
-            "X/2": "-z",
-            "X": "y",
-            "-X/2": "z",
-            "Y/2": "-y",
-            "Y": "-y",
-            "-Y/2": "-y",
-        },
-        "z": {
-            "I": "z",
-            "X/2": "-y",
-            "X": "-z",
-            "-X/2": "y",
-            "Y/2": "-x",
-            "Y": "-z",
-            "-Y/2": "x",
-        },
-        "-z": {
-            "I": "-z",
-            "X/2": "y",
-            "X": "z",
-            "-X/2": "-y",
-            "Y/2": "x",
-            "Y": "z",
-            "-Y/2": "-x",
-        },
-    }
+    "x": {
+        "I": "x",
+        "X/2": "x",
+        "X": "x",
+        "-X/2": "x",
+        "Y/2": "z",
+        "Y": "-x",
+        "-Y/2": "-z",
+    },
+    "-x": {
+        "I": "-x",
+        "X/2": "-x",
+        "X": "-x",
+        "-X/2": "-x",
+        "Y/2": "-z",
+        "Y": "x",
+        "-Y/2": "z",
+    },
+    "y": {
+        "I": "y",
+        "X/2": "z",
+        "X": "-y",
+        "-X/2": "-z",
+        "Y/2": "y",
+        "Y": "y",
+        "-Y/2": "y",
+    },
+    "-y": {
+        "I": "-y",
+        "X/2": "-z",
+        "X": "y",
+        "-X/2": "z",
+        "Y/2": "-y",
+        "Y": "-y",
+        "-Y/2": "-y",
+    },
+    "z": {
+        "I": "z",
+        "X/2": "-y",
+        "X": "-z",
+        "-X/2": "y",
+        "Y/2": "-x",
+        "Y": "-z",
+        "-Y/2": "x",
+    },
+    "-z": {
+        "I": "-z",
+        "X/2": "y",
+        "X": "z",
+        "-X/2": "-y",
+        "Y/2": "x",
+        "Y": "z",
+        "-Y/2": "-x",
+    },
+}
 
 
 def recovery_clifford(state: str):
@@ -165,9 +165,9 @@ def randomize_interleaved_circuit(interleave_op: list, d: int, init_state: str =
 def generate_cliffords(b: Baking, qe: str, pulse_length: int):
 
     short_pi = gauss(0.2, 0, 1, pulse_length)
-    short_pi_2 = gauss(0.1, 0., 1, pulse_length)
-    short_minus_pi_2 = gauss(-0.1, 0., 1, pulse_length)
-    short_0 = [0.] * pulse_length
+    short_pi_2 = gauss(0.1, 0.0, 1, pulse_length)
+    short_minus_pi_2 = gauss(-0.1, 0.0, 1, pulse_length)
+    short_0 = [0.0] * pulse_length
 
     b.add_Op("X", qe, [short_pi, short_0])
     b.add_Op("Y", qe, [short_0, short_pi])

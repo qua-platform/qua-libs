@@ -5,39 +5,35 @@ from bakery.bakery import *
 from qm.qua import *
 
 c1_ops = [  # Clifford operations
-    ('I',),
-    ('X',),
-    ('Y',),
-    ('Y', 'X'),
-
-    ('X/2', 'Y/2'),
-    ('X/2', '-Y/2'),
-    ('-X/2', 'Y/2'),
-    ('-X/2', '-Y/2'),
-    ('Y/2', 'X/2'),
-    ('Y/2', '-X/2'),
-    ('-Y/2', 'X/2'),
-    ('-Y/2', '-X/2'),
-
-    ('X/2',),
-    ('-X/2',),
-    ('Y/2',),
-    ('-Y/2',),
-    ('-X/2', 'Y/2', 'X/2'),
-    ('-X/2', '-Y/2', 'X/2'),
-
-    ('X', 'Y/2'),
-    ('X', '-Y/2'),
-    ('Y', 'X/2'),
-    ('Y', '-X/2'),
-    ('X/2', 'Y/2', 'X/2'),
-    ('-X/2', 'Y/2', '-X/2'),
-
+    ("I",),
+    ("X",),
+    ("Y",),
+    ("Y", "X"),
+    ("X/2", "Y/2"),
+    ("X/2", "-Y/2"),
+    ("-X/2", "Y/2"),
+    ("-X/2", "-Y/2"),
+    ("Y/2", "X/2"),
+    ("Y/2", "-X/2"),
+    ("-Y/2", "X/2"),
+    ("-Y/2", "-X/2"),
+    ("X/2",),
+    ("-X/2",),
+    ("Y/2",),
+    ("-Y/2",),
+    ("-X/2", "Y/2", "X/2"),
+    ("-X/2", "-Y/2", "X/2"),
+    ("X", "Y/2"),
+    ("X", "-Y/2"),
+    ("Y", "X/2"),
+    ("Y", "-X/2"),
+    ("X/2", "Y/2", "X/2"),
+    ("-X/2", "Y/2", "-X/2"),
 ]
 
 # Cayley table corresponding to above Clifford group structure
 
-c1_table = pd.read_csv('c1_cayley_table.csv').to_numpy()[:, 1:]
+c1_table = pd.read_csv("c1_cayley_table.csv").to_numpy()[:, 1:]
 
 
 class RBOneQubit:
@@ -49,8 +45,8 @@ class RBOneQubit:
         :param K Number of RB sequences
         :param qubit Name of the quantum element designating the qubit
         """
-        if not(qubit in config['elements']):
-            raise KeyError(f'Quantum element {qubit} is not in the config')
+        if not (qubit in config["elements"]):
+            raise KeyError(f"Quantum element {qubit} is not in the config")
 
         self.sequences = [RBSequence(config, d_max, qubit) for _ in range(K)]
         self.inverse_ops = [seq.revert_ops for seq in self.sequences]
@@ -72,9 +68,13 @@ class RBSequence:
         self.d_max = d_max
         self.config = config
         self.qubit = qubit
-        self.state_tracker = [0] * d_max  # Keeps track of all transformations done on qubit state
+        self.state_tracker = [
+            0
+        ] * d_max  # Keeps track of all transformations done on qubit state
         self.state_init = 0
-        self.revert_ops = [0] * d_max  # Keeps track of inverse op index associated to each sequence
+        self.revert_ops = [
+            0
+        ] * d_max  # Keeps track of inverse op index associated to each sequence
         self.duration_tracker = [0] * d_max  # Keeps track of each Clifford's duration
         # self.baked_cliffords = self.generate_cliffords()  # List of baking objects for running Cliffords
         self.sequence = self.generate_RB_sequence()  # Store the RB sequence
@@ -91,8 +91,8 @@ class RBSequence:
 
     def play_revert_op2(self, index: int):
         """Plays an operation resetting qubit in its ground state based on the
-                transformation provided by the index in Cayley table (explicit switch case)
-                :param index index of the transformed qubit state"""
+        transformation provided by the index in Cayley table (explicit switch case)
+        :param index index of the transformed qubit state"""
         qubit = self.qubit
 
         with switch_(index):
@@ -188,13 +188,17 @@ class RBSequence:
             for d in range(self.d_max):
                 i = np.random.randint(0, len(c1_ops))
                 if d > 0:
-                    self.duration_tracker[d] = self.duration_tracker[d-1]  # Set duration to value of the sequence step
+                    self.duration_tracker[d] = self.duration_tracker[
+                        d - 1
+                    ]  # Set duration to value of the sequence step
 
                 # Play the random Clifford
                 random_clifford = c1_ops[i]
                 for op in random_clifford:
                     b.play(op, self.qubit)
-                    self.duration_tracker[d] += 1  # Add additional duration for each pulse played to build Clifford
+                    self.duration_tracker[
+                        d
+                    ] += 1  # Add additional duration for each pulse played to build Clifford
 
                 if d == 0:  # Handle the case for qubit set to original/ground state
                     self.state_tracker[d] = c1_table[self.state_init][i]
