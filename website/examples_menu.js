@@ -93,6 +93,7 @@ module.exports = [
         "items": [
             "multi-qubit/VQA/QAOA/index",
             "multi-qubit/QRAM/index",
+            "Papers/variational-q-gate-optimization/index"
 
         ]
     },
