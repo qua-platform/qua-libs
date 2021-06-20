@@ -5,6 +5,7 @@ __pycache__
 tests/my_db.db
 
 .DS_Store
+examples/advanced-topics/IIR-FIR/outcmaes
 
 examples/multi-qubit/multiplexed-multilevel-NN-discriminator/try6/
 
