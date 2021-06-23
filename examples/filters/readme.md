@@ -1,7 +1,7 @@
 ---
 id: index
 title: Applying filters on the ADC
-sidebar_label: Filters
+sidebar_label: Input Filters
 slug: ./
 ---
 

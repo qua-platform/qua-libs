@@ -29,7 +29,8 @@ module.exports = [
         "label": "Advanced Topics",
         "items": [
             "advanced-topics/single-sideband-modulation/index",
-            "filters/index"
+            "advanced-topics/IIR-FIR/index",
+            "filters/index",
         ]
     },
     {
