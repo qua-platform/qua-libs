@@ -1,6 +1,11 @@
-# FIR & IIR filters
+---
+title: FIR & IIR Filters
+sidebar_label: Output Filters
+slug: ./
+id: index
+---
 
-This folder contains various examples for applying filters on the outputs
+This folder contains various examples for applying filters on the outputs of the OPX.
 
 ## Distortion compensation
 

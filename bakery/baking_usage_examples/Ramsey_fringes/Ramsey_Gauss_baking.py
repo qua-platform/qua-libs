@@ -8,6 +8,8 @@ from RamseyGauss_configuration import *
 from time import sleep
 from matplotlib import pyplot as plt
 
+from bakery.bakery import baking
+
 dephasingStep = 0
 number_of_pulses = 32
 
