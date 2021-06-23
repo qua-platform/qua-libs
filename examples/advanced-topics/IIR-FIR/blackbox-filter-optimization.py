@@ -16,32 +16,27 @@ with program() as filter_optimization:
         stream.input1().save("adc")
 
 pulse_len = 128
-tof = 252
+tof = 248
 
 waveform = [0.] * 30 + [0.2] * (pulse_len - 60) + [0.] * 30
-A = 1
 
 # We use an  arbitrarily selected filter for distorting the signal
-
 distorted_waveform = signal.lfilter(np.array([1]),
-                                    np.array([0.25, -0.15, 0.1]), waveform)
-# to keep waveform in DAC range
-distorted_waveform = distorted_waveform / np.max(np.abs(distorted_waveform)) / (max(distorted_waveform) / 3)
+                                    np.array([0.95, -0.15, 0.1]), waveform)
+
+plt.plot(waveform)
 plt.plot(distorted_waveform)
 
+plt.figure()
 
-# def cost(fb_params: List[float], ff_params:List[float], plot_intermediate: bool = False):
+
 def cost(params: List[float]):
     """
     params:
     """
-    M = 2  # number of feedback taps 0, 1, 2.
+    M = 0  # number of feedback taps 0, 1, 2.
     feedback_filter = np.array(params[:M])
-    # feedback_filter = np.array(fb_params)
     feedforward_filter = np.array(params[M:])
-    # feedforward_filter=np.array(ff_params)
-    feedforward_filter = (feedforward_filter / max(np.linalg.norm(feedforward_filter, 1),
-                                                   1)).tolist()  # normalize the gain for filter stability
     print("feedback:", feedback_filter)
     print("feedforward:", feedforward_filter)
     config = {
@@ -107,19 +102,22 @@ def cost(params: List[float]):
     if True:
         plt.plot(waveform)
         plt.plot(distorted_waveform)
-        plt.plot(corrected_signal, '--')
+        plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), '--')
         plt.legend(['Target waveform', 'Distorted waveform', 'Corrected signal'])
 
-    loss = 1 - np.max(plt.xcorr(np.array(corrected_signal), np.array(waveform), maxlags=3)[1])
-    # loss = np.linalg.norm(corrected_signal - np.array(waveform)) / len(waveform)
+    corr = np.correlate(corrected_signal, waveform, 'full') / \
+           (np.sqrt(np.correlate(corrected_signal, corrected_signal) * np.correlate(waveform, waveform)))
+    loss = 1 - np.max(corr)
+
     print("loss:", loss)
     return loss
 
-param_numebr=20
-iteration_number=5
 
-es = cma.CMAEvolutionStrategy(np.random.rand(param_numebr), 1, {'bounds': [-1, 1]})
-es.optimize(cost, iterations=iteration_number)
+param_number = 5
+iterations = 15
+
+es = cma.CMAEvolutionStrategy(np.random.rand(param_number), 1, {'bounds': [-1, 1]})
+es.optimize(cost, iterations=iterations)
 plt.figure()
-print(cost(es.result_pretty().xbest))
+cost(es.result_pretty().xbest)
 plt.show()
