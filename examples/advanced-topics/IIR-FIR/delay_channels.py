@@ -2,7 +2,12 @@ import scipy.signal as sig
 import numpy as np
 from qm.qua import *
 import matplotlib.pyplot as plt
-from qm.QuantumMachinesManager import SimulationConfig, QuantumMachinesManager, LoopbackInterface
+from qm.QuantumMachinesManager import (
+    SimulationConfig,
+    QuantumMachinesManager,
+    LoopbackInterface,
+)
+
 ntaps = 40
 delays = [0, 12, 12.25, 12.35]
 
@@ -47,7 +52,10 @@ def delay_gaussian(delay):
             },
         },
         "waveforms": {
-            "gaussian_wf": {"type": "arbitrary", "samples": 0.25 * sig.gaussian(pulse_len, 5)},
+            "gaussian_wf": {
+                "type": "arbitrary",
+                "samples": 0.25 * sig.gaussian(pulse_len, 5),
+            },
         },
         "digital_waveforms": {
             "ON": {"samples": [(1, 0)]},
@@ -64,7 +72,11 @@ def delay_gaussian(delay):
         },
     }
 
-    job = qmm.simulate(config, filter_delay, SimulationConfig(duration=150, include_analog_waveforms=True))
+    job = qmm.simulate(
+        config,
+        filter_delay,
+        SimulationConfig(duration=150, include_analog_waveforms=True),
+    )
     job.result_handles.wait_for_all_values()
     job.get_simulated_samples().con1.plot()
 

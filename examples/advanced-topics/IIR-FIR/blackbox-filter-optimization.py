@@ -2,7 +2,11 @@ from typing import List
 
 import matplotlib.pyplot as plt
 from qm.qua import *
-from qm.QuantumMachinesManager import SimulationConfig, QuantumMachinesManager, LoopbackInterface
+from qm.QuantumMachinesManager import (
+    SimulationConfig,
+    QuantumMachinesManager,
+    LoopbackInterface,
+)
 import numpy as np
 import scipy.signal as signal
 import cma
@@ -18,11 +22,12 @@ with program() as filter_optimization:
 pulse_len = 128
 tof = 248
 
-waveform = [0.] * 30 + [0.2] * (pulse_len - 60) + [0.] * 30
+waveform = [0.0] * 30 + [0.2] * (pulse_len - 60) + [0.0] * 30
 
 # We use an  arbitrarily selected filter for distorting the signal
-distorted_waveform = signal.lfilter(np.array([1]),
-                                    np.array([0.95, -0.15, 0.1]), waveform)
+distorted_waveform = signal.lfilter(
+    np.array([1]), np.array([0.95, -0.15, 0.1]), waveform
+)
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
@@ -45,7 +50,13 @@ def cost(params: List[float]):
             "con1": {
                 "type": "opx1",
                 "analog_outputs": {
-                    1: {"offset": +0.0, "filter": {"feedback": feedback_filter, "feedforward": feedforward_filter}},
+                    1: {
+                        "offset": +0.0,
+                        "filter": {
+                            "feedback": feedback_filter,
+                            "feedforward": feedforward_filter,
+                        },
+                    },
                 },
                 "analog_inputs": {
                     1: {"offset": +0.0},
@@ -91,22 +102,31 @@ def cost(params: List[float]):
         },
     }
 
-    job = qmm.simulate(config, filter_optimization,
-                       SimulationConfig(duration=150,
-                                        simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1)], latency=200)
-                                        )
-                       )
+    job = qmm.simulate(
+        config,
+        filter_optimization,
+        SimulationConfig(
+            duration=150,
+            simulation_interface=LoopbackInterface(
+                [("con1", 1, "con1", 1)], latency=200
+            ),
+        ),
+    )
     job.result_handles.wait_for_all_values()
     corrected_signal = -job.result_handles.adc.fetch_all() / 4096
 
     if True:
         plt.plot(waveform)
         plt.plot(distorted_waveform)
-        plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), '--')
-        plt.legend(['Target waveform', 'Distorted waveform', 'Corrected signal'])
+        plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), "--")
+        plt.legend(["Target waveform", "Distorted waveform", "Corrected signal"])
 
-    corr = np.correlate(corrected_signal, waveform, 'full') / \
-           (np.sqrt(np.correlate(corrected_signal, corrected_signal) * np.correlate(waveform, waveform)))
+    corr = np.correlate(corrected_signal, waveform, "full") / (
+        np.sqrt(
+            np.correlate(corrected_signal, corrected_signal)
+            * np.correlate(waveform, waveform)
+        )
+    )
     loss = 1 - np.max(corr)
 
     print("loss:", loss)
@@ -116,7 +136,7 @@ def cost(params: List[float]):
 param_number = 5
 iterations = 15
 
-es = cma.CMAEvolutionStrategy(np.random.rand(param_number), 1, {'bounds': [-1, 1]})
+es = cma.CMAEvolutionStrategy(np.random.rand(param_number), 1, {"bounds": [-1, 1]})
 es.optimize(cost, iterations=iterations)
 plt.figure()
 cost(es.result_pretty().xbest)
