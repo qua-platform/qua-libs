@@ -2,6 +2,7 @@ import scipy.signal as sig
 import numpy as np
 from qm.qua import *
 import matplotlib.pyplot as plt
+import warnings
 from qm.QuantumMachinesManager import (
     SimulationConfig,
     QuantumMachinesManager,
@@ -9,12 +10,23 @@ from qm.QuantumMachinesManager import (
 )
 
 ntaps = 40
-delays = [0, 12, 12.25, 12.35]
+delays = [0, 22, 22.25, 22.35]
 
 
-def delay_gaussian(delay):
-    def get_coefficents(delay):
-        return np.sinc(np.linspace(0, ntaps, ntaps + 1)[0:-1] - delay)
+def delay_gaussian(delay, ntaps):
+    def get_coefficents(delay, ntaps):
+        n_extra = 5
+        full_coeff = np.sinc(
+            np.linspace(0 - n_extra, ntaps + n_extra, ntaps + 1 + 2 * n_extra)[0:-1]
+            - delay
+        )
+        extra_coeff = np.abs(
+            np.concatenate((full_coeff[:n_extra], full_coeff[-n_extra:]))
+        )
+        if np.any(extra_coeff > 0.02):  # Contribution is more than 2%
+            warnings.warn("Contribution from missing coefficients is not negligible.")
+        coeff = full_coeff[n_extra:-n_extra]
+        return coeff
 
     qmm = QuantumMachinesManager()
 
@@ -23,7 +35,7 @@ def delay_gaussian(delay):
 
     pulse_len = 60
 
-    feedforward_filter = get_coefficents(delay)
+    feedforward_filter = get_coefficents(delay, ntaps)
     print("feedforward taps:", feedforward_filter)
     config = {
         "version": 1,
@@ -82,6 +94,7 @@ def delay_gaussian(delay):
 
 
 for delay in delays:
-    delay_gaussian(delay)
+    delay_gaussian(delay, ntaps)
+
 plt.legend(delays)
-plt.axis([270, 330, -0.01, 0.26])
+plt.axis([270, 340, -0.01, 0.26])

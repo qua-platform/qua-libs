@@ -1,5 +1,6 @@
 import scipy.signal as sig
 import numpy as np
+import matplotlib.pyplot as plt
 from qm.qua import *
 from qm.QuantumMachinesManager import (
     SimulationConfig,
@@ -10,7 +11,7 @@ qmm = QuantumMachinesManager()
 pulse_len = 60
 
 ntaps = 40  # max is 40
-delays = np.arange(0, 2, 0.25)
+delays = np.arange(20, 22, 0.25)
 
 for delay in delays:
     with program() as xyz_timing:
@@ -20,7 +21,7 @@ for delay in delays:
         Q = declare(fixed)
         Q_st = declare_stream()
         with for_(n, 0, n < 1, n + 1):
-            align()
+            wait(5, "q_z")  # 20ns offest
             play("const", "q_z")
             play("X", "q_xy")
             align()
@@ -31,7 +32,6 @@ for delay in delays:
                 dual_demod.full("integW_cos", "out1", "integW_sin", "out2", I),
                 dual_demod.full("integW_minus_sin", "out1", "integW_cos", "out2", Q),
             )
-            align()
             save(I, I_st)
             save(Q, Q_st)
         with stream_processing():
@@ -181,4 +181,7 @@ for delay in delays:
         SimulationConfig(duration=int(150), include_analog_waveforms=True),
     )
     job.result_handles.wait_for_all_values()
-    job.get_simulated_samples().con1.plot()
+    for i in ["1", "2", "5"]:
+        plt.plot(job.get_simulated_samples().con1.analog.get(i))
+
+plt.axis([290, 350, -0.15, 0.45])

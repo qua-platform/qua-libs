@@ -130,6 +130,7 @@ def cost(params: List[float]):
     loss = 1 - np.max(corr)
 
     print("loss:", loss)
+    print(f"delay ~ {np.argmax(corr)-len(waveform)+1}ns")
     return loss
 
 
@@ -141,3 +142,4 @@ es.optimize(cost, iterations=iterations)
 plt.figure()
 cost(es.result_pretty().xbest)
 plt.show()
+
