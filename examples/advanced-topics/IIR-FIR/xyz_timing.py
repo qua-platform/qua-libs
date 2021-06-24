@@ -24,10 +24,13 @@ for delay in delays:
             play("const", "q_z")
             play("X", "q_xy")
             align()
-            measure("readout", "rr", None,
-                    dual_demod.full("integW_cos", "out1", "integW_sin", "out2", I),
-                    dual_demod.full("integW_minus_sin", "out1", "integW_cos", "out2", Q)
-                    )
+            measure(
+                "readout",
+                "rr",
+                None,
+                dual_demod.full("integW_cos", "out1", "integW_sin", "out2", I),
+                dual_demod.full("integW_minus_sin", "out1", "integW_cos", "out2", Q),
+            )
             align()
             save(I, I_st)
             save(Q, Q_st)
@@ -44,8 +47,14 @@ for delay in delays:
             "con1": {
                 "type": "opx1",
                 "analog_outputs": {
-                    1: {"offset": +0.0, "filter": {"feedforward": feedforward_filter}},  # q_xy
-                    2: {"offset": +0.0, "filter": {"feedforward": feedforward_filter}},  # q_xy
+                    1: {
+                        "offset": +0.0,
+                        "filter": {"feedforward": feedforward_filter},
+                    },  # q_xy
+                    2: {
+                        "offset": +0.0,
+                        "filter": {"feedforward": feedforward_filter},
+                    },  # q_xy
                     3: {"offset": +0.0},  # rr
                     4: {"offset": +0.0},  # rr
                     5: {"offset": +0.0},  # flux
@@ -64,17 +73,17 @@ for delay in delays:
                     "const": "const_pulse",
                 },
             },
-            'rr': {
+            "rr": {
                 "mixInputs": {
-                    "I": ('con1', 3),
-                    "Q": ('con1', 4),
+                    "I": ("con1", 3),
+                    "Q": ("con1", 4),
                     "lo_frequency": 1e9,
                     "mixer": "mixer",
                 },
                 "intermediate_frequency": 50e6,
                 "outputs": {
-                    "out1": ('con1', 1),
-                    "out2": ('con1', 2),
+                    "out1": ("con1", 1),
+                    "out2": ("con1", 2),
                 },
                 "time_of_flight": 32,
                 "smearing": 0,
@@ -82,24 +91,24 @@ for delay in delays:
                     "readout": "readout_pulse",
                 },
             },
-            'q_xy': {
+            "q_xy": {
                 "mixInputs": {
-                    "I": ('con1', 1),
-                    "Q": ('con1', 2),
+                    "I": ("con1", 1),
+                    "Q": ("con1", 2),
                     "lo_frequency": 1e9,
                     "mixer": "mixer",
                 },
                 "intermediate_frequency": 50e6,
                 "outputs": {
-                    "out1": ('con1', 1),
-                    "out2": ('con1', 2),
+                    "out1": ("con1", 1),
+                    "out2": ("con1", 2),
                 },
                 "time_of_flight": 32,
                 "smearing": 0,
                 "operations": {
                     "X": "gaussian_pulse",
                 },
-            }
+            },
         },
         "pulses": {
             "gaussian_pulse": {
@@ -119,7 +128,7 @@ for delay in delays:
                 "integration_weights": {
                     "integW_cos": "integW_cos",
                     "integW_sin": "integW_sin",
-                    "integW_minus_sin": "integW_minus_sin"
+                    "integW_minus_sin": "integW_minus_sin",
                 },
                 "digital_marker": "ON",
             },
@@ -163,7 +172,7 @@ for delay in delays:
                     "correction": [1, 0, 0, 1],
                 }
             ]
-        }
+        },
     }
 
     job = qmm.simulate(
