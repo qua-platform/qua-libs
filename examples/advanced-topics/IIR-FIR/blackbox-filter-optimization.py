@@ -142,4 +142,3 @@ es.optimize(cost, iterations=iterations)
 plt.figure()
 cost(es.result_pretty().xbest)
 plt.show()
-
