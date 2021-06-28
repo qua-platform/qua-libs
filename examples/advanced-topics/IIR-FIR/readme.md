@@ -12,24 +12,47 @@ This folder contains various examples for applying filters on the outputs of the
 The filters can be used to compensate for distortions caused by electrical components.
 This example is similar to what is used in: https://arxiv.org/pdf/1907.04818.pdf
 
-In this example, we deliberately play a distorted waveform through the OPX output, which 
+In these examples, we deliberately play a distorted waveform through the OPX output, which 
 is looped back into the OPX input. We sample the raw ADC input, and then run an optimization
-algorithm to try to improve the output, using the built-in filters. This is different from the paper, in which they measured and optimized the response of 
+algorithm to try to improve the result, using the built-in filters.
+This is different from the paper, in which they measured and optimized the response of 
 the detuning of the qubit.
 Because using filters can change the delay between the pulses, we need to take that into account in some way.
-In this example we compute the correlation between the original waveform and the distorted waveform. The maximum of the
-normalized correlation should be equal to exactly 1 when they are identical, even if they are shifted. 
-Therefore, The loss function is defined as “1 - max(corr)”. However, there is a small caveat: using correlation can
-produce an identical waveform, with a different amplitude! So this has to be checked and corrected manually.
-This is being done in the plotting part
-
-Of course, the parameters and optimization strategy will have to be adapted in other scenarios.
-
-The result of one of the runs cal be seen in the figure below:
-![Optimization](blackbox-filter-optimization.png)
+In these examples we compute the correlation between the original waveform and the distorted waveform. 
+The maximum of the normalized correlation should be equal to exactly 1 when they are identical, even if they are shifted. 
+Therefore, The loss function is defined as “1 - max(corr)”. However, there is a small caveat: the correlation would
+also be one when the waveforms have a different amplitude! So this has to be checked and corrected manually.
+Simply multiplying the feedforward coefficients by the ratio of the amplitudes would correct this.
+In these examples, this is being done only for plotting the waveforms.
 
 Notice the added group delay caused by the filters, it is being calculated in the script by looking at the index of 
 the maximum of the correlation.
+
+### Example 1 - Optimization using Nelder-Mead
+This example requires SciPi 1.7.0 or above
+In this example, we use the Nelder-Mead optimization to find the filter coefficients.
+Assuming that the system response is linear, the optimization can be done using SciPy filter module.
+The real-life experimental procedure would be as follows:
+
+1. Run the experiment once to retrieve the system response.
+2. Run the optimization offline, comparing the system response with the target system response.
+3. Run the experiment again, the response should be much better.
+4. If it is still not good enough, then second order effects are not negligible.
+   Run the optimization algorithm again, this time directly on the OPX measurement.
+   
+These steps are being emulated in the following script: [nelder-mead-filter-optimization.py](nelder-mead-filter-optimization.py)
+Of course, because our simulator response is linear (and identical), then step 4 is redundant and there is no difference
+between the 1st and 2nd iterations.
+
+![Optimization](nelder-mead-filter-optimization.png)
+   
+### Example 2 - Optimization using CMA (Covariance Matrix Adaptation)
+This example uses the CMA toolbox to solve the problem.
+
+Of course, the parameters and optimization strategy will have to be adapted in other scenarios.
+
+The result of one of the runs can be seen in the figure below:
+![Optimization](blackbox-filter-optimization.png)
 
 Script: [blackbox-filter-optimization.py](blackbox-filter-optimization.py)
 

@@ -29,10 +29,7 @@ distorted_waveform = signal.lfilter(
     np.array([1]), np.array([0.95, -0.15, 0.1]), waveform
 )
 
-plt.plot(waveform)
-plt.plot(distorted_waveform)
-
-plt.figure()
+bPlot = False
 
 
 def cost(params: List[float]):
@@ -115,7 +112,7 @@ def cost(params: List[float]):
     job.result_handles.wait_for_all_values()
     corrected_signal = -job.result_handles.adc.fetch_all() / 4096
 
-    if True:
+    if bPlot:
         plt.plot(waveform)
         plt.plot(distorted_waveform)
         plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), "--")
@@ -139,6 +136,7 @@ iterations = 15
 
 es = cma.CMAEvolutionStrategy(np.random.rand(param_number), 1, {"bounds": [-1, 1]})
 es.optimize(cost, iterations=iterations)
-plt.figure()
+
+bPlot = True
 cost(es.result_pretty().xbest)
 plt.show()

@@ -5,7 +5,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import SimulationConfig, QuantumMachinesManager, LoopbackInterface
 import numpy as np
 import scipy.signal as signal
-import scipy.optimize as opti
+import scipy.optimize as opti  # Requires SciPy 1.7.0 or above.
 
 qmm = QuantumMachinesManager()
 
@@ -124,69 +124,125 @@ def perform(params: List[float]):
         plt.plot(distorted_waveform)
         plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), "--")
         plt.legend(["Target waveform", "Distorted waveform", "Corrected waveform"])
-        if bCalc:
-            plt.title('Output according to the SciPy signal module')
-        else:
-            plt.title('Measured output')
         print(f"delay ~ {np.argmax(corr) - len(waveform) + 1}ns")
     return loss
 
 
+####################
+## Set Parameters ##
+####################
+n_coeff = 10
 M = 2  # number of feedback taps 0, 1, 2.
 eps = 1e-10
-param_number = 10
-initial_simplex = np.zeros([param_number + 1, param_number])
-initial_simplex[0, :] = np.array([0.01] * M + [0.8] + [0.01] * (param_number - 1 - M))
-for i in range(param_number):
+bCalc = True
+
+initial_simplex = np.zeros([n_coeff + 1, n_coeff])
+initial_simplex[0, :] = np.array([0.01] * M + [0.8] + [0.01] * (n_coeff - 1 - M))
+for i in range(n_coeff):
     initial_simplex[i + 1, :] = initial_simplex[0, :]
     initial_simplex[i + 1, i] = initial_simplex[0, i] + 0.2
 
-bCalc = False
-bPlot = False
-if bCalc:  # Since it is only a calculation, we can let it converge to stricter values.
-    fatol = 1e-7
-    xatol = 1e-3
-else:
-    fatol = 1e-5
-    xatol = 1e-2
-
+fatol_calc = 1e-7
+xatol_calc = 1e-3
+fatol = 1e-5
+xatol = 1e-2
 start_time = time.time()
-solver = opti.minimize(
+
+######################
+## Optimize Offline ##
+######################
+bPlot = False
+solver_calc = opti.minimize(
     perform,
     # Ignored when there is a simplex, but this is also a good starting point.
-    np.array([0] * M + [1] + [0] * (param_number - 1 - M)) + 0.2 * np.random.rand(param_number),
+    np.array([0] * M + [1] + [0] * (n_coeff - 1 - M)) + 0.2 * np.random.rand(n_coeff),
     method="Nelder-Mead",
     options={
         "initial_simplex": initial_simplex,
-        "fatol": fatol,
-        "xatol": xatol,
+        "fatol": fatol_calc,
+        "xatol": xatol_calc,
         "adaptive": False,
     },
     bounds=opti.Bounds([-2 + eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
                        [-1 + eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [-1] * (param_number - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+                       [-1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
                        [2 - eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
                        [1 - eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [1] * (param_number - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+                       [1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
                        ),
 )
 
-print(f'It took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes')
-bPlot = True
-bCalc = False
-perform(solver.x)
-
+###################
+## Plotting Part ##
+###################
 plt.figure()
 corrected_waveform = signal.lfilter(
-    np.array(solver.x[M:]), np.array(solver.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:]), np.array(solver_calc.x[:M]), distorted_waveform
 )
 norm = np.sum(waveform) / np.sum(corrected_waveform)
 corrected_waveform = signal.lfilter(
-    np.array(solver.x[M:]*norm), np.array(solver.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:]*norm), np.array(solver_calc.x[:M]), distorted_waveform
 )
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
 plt.plot(corrected_waveform, "--")
 plt.legend(["Target waveform", "Distorted waveform", "Corrected waveform"])
-plt.title('Output according to the SciPy signal module')
+plt.title('Output according to the SciPy signal module - 1st iteration')
+
+bPlot = True
+bCalc = False
+plt.figure()
+perform(solver_calc.x)
+plt.title('Output according to the OPX - 1st iteration')
+plt.show()
+
+#####################
+## Optimize Online ##
+#####################
+
+bPlot = False
+solver = opti.minimize(
+    perform,
+    solver_calc.x,
+    method="Nelder-Mead",
+    options={
+        "fatol": fatol,
+        "xatol": xatol,
+        "adaptive": False,
+    },
+    bounds=opti.Bounds([-2 + eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
+                       [-1 + eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
+                       [-1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+                       [2 - eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
+                       [1 - eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
+                       [1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+                       ),
+)
+
+###################
+## Plotting Part ##
+###################
+plt.figure()
+corrected_waveform = signal.lfilter(
+    np.array(solver_calc.x[M:]), np.array(solver_calc.x[:M]), distorted_waveform
+)
+norm = np.sum(waveform) / np.sum(corrected_waveform)
+corrected_waveform = signal.lfilter(
+    np.array(solver_calc.x[M:]*norm), np.array(solver_calc.x[:M]), distorted_waveform
+)
+
+plt.plot(waveform)
+plt.plot(distorted_waveform)
+plt.plot(corrected_waveform, "--")
+plt.legend(["Target waveform", "Distorted waveform", "Corrected waveform"])
+plt.title('Output according to the SciPy signal module - 2nd iteration')
+
+bPlot = True
+bCalc = False
+plt.figure()
+perform(solver_calc.x)
+plt.title('Output according to the OPX - 2nd iteration')
+
+#########
+print(f'Full optimization took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes')
