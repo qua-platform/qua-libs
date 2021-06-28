@@ -2,7 +2,11 @@ import time
 from typing import List
 import matplotlib.pyplot as plt
 from qm.qua import *
-from qm.QuantumMachinesManager import SimulationConfig, QuantumMachinesManager, LoopbackInterface
+from qm.QuantumMachinesManager import (
+    SimulationConfig,
+    QuantumMachinesManager,
+    LoopbackInterface,
+)
 import numpy as np
 import scipy.signal as signal
 import scipy.optimize as opti  # Requires SciPy 1.7.0 or above.
@@ -116,7 +120,7 @@ def perform(params: List[float]):
         )
     )
 
-    loss = (1 - np.max(corr))
+    loss = 1 - np.max(corr)
 
     print("loss:", loss)
     if bPlot:
@@ -163,13 +167,16 @@ solver_calc = opti.minimize(
         "xatol": xatol_calc,
         "adaptive": False,
     },
-    bounds=opti.Bounds([-2 + eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
-                       [-1 + eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [-1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
-                       [2 - eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
-                       [1 - eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
-                       ),
+    bounds=opti.Bounds(
+        [-2 + eps] * (M > 0)
+        + [-1 + eps] * (M > 1)  # First feedback tap is bounded at (-2,2)
+        + [-1]  # Second feedback tap is bounded at (-1,1)
+        * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+        [2 - eps] * (M > 0)
+        + [1 - eps] * (M > 1)  # First feedback tap is bounded at (-2,2)
+        + [1]  # Second feedback tap is bounded at (-1,1)
+        * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+    ),
 )
 
 ###################
@@ -181,20 +188,20 @@ corrected_waveform = signal.lfilter(
 )
 norm = np.sum(waveform) / np.sum(corrected_waveform)
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]*norm), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:] * norm), np.array(solver_calc.x[:M]), distorted_waveform
 )
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
 plt.plot(corrected_waveform, "--")
 plt.legend(["Target waveform", "Distorted waveform", "Corrected waveform"])
-plt.title('Output according to the SciPy signal module - 1st iteration')
+plt.title("Output according to the SciPy signal module - 1st iteration")
 
 bPlot = True
 bCalc = False
 plt.figure()
 perform(solver_calc.x)
-plt.title('Output according to the OPX - 1st iteration')
+plt.title("Output according to the OPX - 1st iteration")
 plt.show()
 
 #####################
@@ -211,13 +218,16 @@ solver = opti.minimize(
         "xatol": xatol,
         "adaptive": False,
     },
-    bounds=opti.Bounds([-2 + eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
-                       [-1 + eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [-1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
-                       [2 - eps] * (M > 0) +  # First feedback tap is bounded at (-2,2)
-                       [1 - eps] * (M > 1) +  # Second feedback tap is bounded at (-1,1)
-                       [1] * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
-                       ),
+    bounds=opti.Bounds(
+        [-2 + eps] * (M > 0)
+        + [-1 + eps] * (M > 1)  # First feedback tap is bounded at (-2,2)
+        + [-1]  # Second feedback tap is bounded at (-1,1)
+        * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+        [2 - eps] * (M > 0)
+        + [1 - eps] * (M > 1)  # First feedback tap is bounded at (-2,2)
+        + [1]  # Second feedback tap is bounded at (-1,1)
+        * (n_coeff - (M > 0) - (M > 1)),  # feedforward taps are bounded at [-1,1]
+    ),
 )
 
 ###################
@@ -229,20 +239,22 @@ corrected_waveform = signal.lfilter(
 )
 norm = np.sum(waveform) / np.sum(corrected_waveform)
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]*norm), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:] * norm), np.array(solver_calc.x[:M]), distorted_waveform
 )
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
 plt.plot(corrected_waveform, "--")
 plt.legend(["Target waveform", "Distorted waveform", "Corrected waveform"])
-plt.title('Output according to the SciPy signal module - 2nd iteration')
+plt.title("Output according to the SciPy signal module - 2nd iteration")
 
 bPlot = True
 bCalc = False
 plt.figure()
 perform(solver_calc.x)
-plt.title('Output according to the OPX - 2nd iteration')
+plt.title("Output according to the OPX - 2nd iteration")
 
 #########
-print(f'Full optimization took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes')
+print(
+    f"Full optimization took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes"
+)
