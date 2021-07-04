@@ -38,8 +38,11 @@ def perform(params: List[float]):
     print("feedback:", feedback_filter)
     print("feedforward:", feedforward_filter)
     if bCalc:  # Use the signal module to simulate the filter behavior.
+        scipy_feedback_filter = np.insert(
+            -feedback_filter, 0, np.array([1])
+        )  # SciPy uses a different notation.
         corrected_signal = signal.lfilter(
-            feedforward_filter, feedback_filter, distorted_waveform
+            feedforward_filter, scipy_feedback_filter, distorted_waveform
         )
     else:  # Use the OPX to get the real data (simulated in this case).
         config = {
@@ -183,12 +186,17 @@ solver_calc = opti.minimize(
 ## Plotting Part ##
 ###################
 plt.figure()
+scipy_feedback_filter = np.insert(
+    -solver_calc.x[:M], 0, np.array([1])
+)  # SciPy uses a different notation.
+
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform
 )
 norm = np.sum(waveform) / np.sum(corrected_waveform)
+
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:] * norm), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform
 )
 
 plt.plot(waveform)
@@ -234,12 +242,15 @@ solver = opti.minimize(
 ## Plotting Part ##
 ###################
 plt.figure()
+scipy_feedback_filter = np.insert(
+    -solver_calc.x[:M], 0, np.array([1])
+)  # SciPy uses a different notation.
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform
 )
 norm = np.sum(waveform) / np.sum(corrected_waveform)
 corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:] * norm), np.array(solver_calc.x[:M]), distorted_waveform
+    np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform
 )
 
 plt.plot(waveform)

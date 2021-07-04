@@ -45,6 +45,17 @@ Of course, because our simulator response is linear (and identical), then step 4
 between the 1st and 2nd iterations.
 
 ![Optimization](nelder-mead-filter-optimization.png)
+
+-------------------------------------------------------------------------------------------------------
+> **_Note:_** : 
+> SciPy uses a different convention for the feedback taps:
+> 1. SciPy have an extra coefficient a[0] which multiples y[n]. In our case, a[0]=1.
+> 2. The other coefficients have a minus sign.
+> 
+> This means that in order to simulate the OPX response with SciPy signal module, the coefficients need to undergo the 
+> transformation: (a[1], a[2]) -> (1, -a[1], -a[2]).
+
+-------------------------------------------------------------------------------------------------------
    
 ### Example 2 - Optimization using CMA (Covariance Matrix Adaptation)
 This example uses the CMA toolbox to solve the problem.
