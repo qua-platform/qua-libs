@@ -33,9 +33,7 @@ bPlot = False
 
 
 def cost(params: List[float]):
-    """
-    params:
-    """
+    # This is the script which will be called by the optimizer.
     M = 0  # number of feedback taps 0, 1, 2.
     feedback_filter = np.array(params[:M])
     feedforward_filter = np.array(params[M:])
@@ -110,7 +108,9 @@ def cost(params: List[float]):
         ),
     )
     job.result_handles.wait_for_all_values()
-    corrected_signal = -job.result_handles.adc.fetch_all() / 4096
+    corrected_signal = (
+        -job.result_handles.adc.fetch_all() / 4096
+    )  # This converts ADC units into volts
 
     if bPlot:
         plt.plot(waveform)
@@ -118,6 +118,8 @@ def cost(params: List[float]):
         plt.plot(corrected_signal * np.sum(waveform) / np.sum(corrected_signal), "--")
         plt.legend(["Target waveform", "Distorted waveform", "Corrected signal"])
 
+    # The correlation is used to calculate the "loss": Check whether the resulting output matches the required waveform,
+    # taking into account added delays. Check the readme for more information
     corr = np.correlate(corrected_signal, waveform, "full") / (
         np.sqrt(
             np.correlate(corrected_signal, corrected_signal)
