@@ -31,6 +31,8 @@ distorted_waveform = signal.lfilter(
 
 
 def perform(params: List[float]):
+    # This is the script which will be called by the optimizer. if bCalc=True, it will do a calculation based on SciPy
+    # signal module, otherwise, it will simulate using the OPX
     params = np.array(params)
 
     feedback_filter = params[:M]
@@ -114,8 +116,12 @@ def perform(params: List[float]):
             ),
         )
         job.result_handles.wait_for_all_values()
-        corrected_signal = -job.result_handles.adc.fetch_all() / 4096
+        corrected_signal = (
+            -job.result_handles.adc.fetch_all() / 4096
+        )  # This converts ADC units into volts
 
+    # The correlation is used to calculate the "loss": Check whether the resulting output matches the required waveform,
+    # taking into account added delays. Check the readme for more information
     corr = np.correlate(corrected_signal, waveform, "full") / (
         np.sqrt(
             np.correlate(corrected_signal, corrected_signal)
