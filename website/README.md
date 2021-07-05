@@ -22,4 +22,5 @@ This command starts a local development server and open up a browser window. Mos
 ### Examples
 
 1. Each example should have a title matching sidebar label.
+
 2. Example should have a slug matching it's path, all lowercased with dashes 
