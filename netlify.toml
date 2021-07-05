@@ -1,7 +1,6 @@
 [build]
-    base = "website/"
-    publish = "build/"
-    command = "npm run build"
+    publish = "website/build/"
+    command = "npm --refix website run build"
 
 [[redirects]]
     from = "/"
