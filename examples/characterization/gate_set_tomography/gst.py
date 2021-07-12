@@ -7,9 +7,10 @@ import pygsti
 
 
 class QuaGST:
-    def __init__(self, model: GSTModelPack, *gate_macros, pre_circuit=None, post_circuit=None, config=None,
+    def __init__(self, model: GSTModelPack, max_lengths, *gate_macros, pre_circuit=None, post_circuit=None, config=None,
                  quantum_machines_manager: QuantumMachinesManager = None, **execute_kwargs):
         self.pygsti_model = model
+        self.max_lengths = max_lengths
         self.gates = gate_macros
         assert len(self.pygsti_model.gates) == len(self.gates)
         self.pre_circuit = pre_circuit
@@ -20,7 +21,10 @@ class QuaGST:
         self.results = None
 
     def _get_model_circuits(self):
-        pass
+        germs = self.pygsti_model.germs()
+        prep_fiducials = self.pygsti_model.prep_fiducials()
+        meas_fiducials = self.pygsti_model.meas_fiducials()
+        
 
     def get_qua_program(self, counts):
         pass
@@ -31,7 +35,7 @@ class QuaGST:
     def run(self, counts=100):
         qm = self.qmm.open_qm(self.config)
         job = qm.execute(self.get_qua_program(counts), **self.execute_kwargs)
-        
+
     def get_results(self):
         pass
 
