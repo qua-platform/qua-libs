@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import time
 from scipy.special import comb
 import scipy.stats as stats
+from scipy.linalg import sqrtm
 
 # Setting up the Gaussian waveform sample
 gauss_pulse_len = 100  # nsec
@@ -23,8 +24,9 @@ Amp = 0.2  # Pulse Amplitude
 gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
 gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
 gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
-## Setting up the configuration of the experimental setup
-## Embedded in a Python dictionary
+
+# Setting up the configuration of the experimental setup
+# Embedded in a Python dictionary
 config = {
     "version": 1,
     "controllers": {  # Define the QM device and its outputs, in this case:
@@ -52,8 +54,7 @@ config = {
             "intermediate_frequency": 5.15e7,  # Resonant frequency of the qubit
             "operations": {  # Define the set of operations doable on the qubit, each operation is related
                 "gauss_pulse": "gauss_pulse_in",  # to a pulse
-                "Arbitrary_Op": "state_generation_pulse",
-                "Hadamard_Op": "Hadamard_pulse",
+                "pi": "gauss_pulse_in",
             },
         },
         "RR": {
@@ -94,12 +95,6 @@ config = {
         "state_generation_pulse": {
             # Pulse generating the arbitrary state, to be redefined according to the desired state
             "operation": "control",  # Could also be a sequence of pulses, cf function Arbitrary_state_generation()
-            "length": 100,
-            "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
-        },
-        "Hadamard_pulse": {
-            # To be redefined according to the hardware (function Hadamard could actually be a sequence of pulses)
-            "operation": "control",
             "length": 100,
             "waveforms": {"I": "gauss_wf", "Q": "zero_wf"},
         },
@@ -253,161 +248,98 @@ qmManager = QuantumMachinesManager()  # Reach OPX's IP address
 my_qm = qmManager.open_qm(
     config
 )  # Generate a Quantum Machine based on the configuration described above
-N_shots = 10
+N_shots = 1000
+qubit = 'qubit'
+rr = 'RR'
+n_input_states = 6
 
 
-def Arbitrary_state_generation(
-    tgt,
-):  # QUA macro for generating input state we want to sample out
-    play("Arbitrary_Op", tgt)
+def H(q):  # QUA macro for applying a Hadamard gate
+    frame_rotation(3 * np.pi / 2, q)
+    play("pi" * amp(0.5), q)
+    reset_frame(q)
 
 
-def Hadamard(tgt):  # QUA macro for applying a Hadamard gate
-    play("Hadamard_Op", tgt)
+def arb_gate(q, index):
+    with switch_(index):
+        with case_(0):  # X
+            play("pi", q)
+        with case_(1):  # Y
+            frame_rotation(np.pi / 2, q)
+            play("pi", q)
+        with case_(2):  # X/2
+            play("pi" * amp(0.5), q)
+        with case_(3):  # Y/2
+            frame_rotation(np.pi / 2, q)
+            play("pi" * amp(0.5), q)
+        with case_(4):  # -X/2
+            play("pi" * amp(-0.5), q)
+        with case_(5):  # -Y/2
+            frame_rotation(np.pi / 2, q)
+            play("pi" * amp(-0.5), q)
+    reset_frame(q)
 
 
-def state_saving(
-    I, Q, state_estimate, stream
-):  # Do state estimation protocol in QUA, and save the associated state
-    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
-    a = declare(fixed, value=1.0)
-    b = declare(fixed, value=1.0)
-    with if_(Q - a * I - b > 0):
-        assign(state_estimate, 1)
-    with else_():
-        assign(state_estimate, 0)
-    save(state_estimate, stream)
+with program() as state_tomo:
+    stream_state = declare_stream()
+    I = declare(fixed)
+    Q = declare(fixed)
+    s = declare(int, value=3)
+    n = declare(int)
+    j = declare(int)
+    th = declare(fixed, value=-5.57e-9)
+    state = declare(bool)
+
+    with for_(n, 0, n < N_shots, n + 1):
+        with for_(j, 0, j < 6, j + 1):
+            # X basis measurement
+            arb_gate(qubit, j)
+            H(qubit)
+            align()
+            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            assign(state, I < th)
+            save(state, stream_state)
+            align()
+            play("pi", qubit, condition=I < th)
+
+            # Y measurement
+            arb_gate(qubit, j)
+            H(qubit)
+            frame_rotation(np.pi / 2, qubit)
+            align()
+            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            assign(state, I < th)
+            save(state, stream_state)
+            align()
+            play("pi", qubit, condition=I < th)
+
+            # Z basis measurement
+            arb_gate(qubit, j)
+            align()
+            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            assign(state, I < th)
+            save(state, stream_state)
+            align()
+            play("pi", qubit, condition=I < th)
+
+    with stream_processing():
+        stream_state.boolean_to_int().buffer(n_input_states, 3).average().save("state")
+
+job = qmManager.simulate(config,
+                         state_tomo,
+                         SimulationConfig(
+                             int(100000))
+                         )  # Use LoopbackInterface to simulate the response of the qubit
+time.sleep(1.0)
+
+results = job.result_handles
+results.wait_for_all_values()
+P_1 = results.state.fetch_all()  # 2*P_1 - 1
+R_dir_inv = []  # Bloch vectors for each input states
+rho_dir_inv = []
 
 
-def do_tomography():
-    with program() as tomography:
-        stream_Ix = (
-            declare_stream()
-        )  # Open streams to allow data retrieval for post-processing
-        stream_Qx = declare_stream()
-        stream_Iy = declare_stream()
-        stream_Qy = declare_stream()
-        stream_Iz = declare_stream()
-        stream_Qz = declare_stream()
-        stream_Z = declare_stream()
-        stream_Y = declare_stream()
-        stream_X = declare_stream()
-
-        j = declare(
-            int
-        )  # Define necessary QUA variables to store the result of the experiments
-        Iz = declare(fixed)
-        Qz = declare(fixed)
-        Z = declare(fixed)
-        Ix = declare(fixed)
-        Qx = declare(fixed)
-        X = declare(fixed)
-        Iy = declare(fixed)
-        Qy = declare(fixed)
-        Y = declare(fixed)
-        t1 = declare(
-            int, value=10
-        )  # Assume we know the value of the relaxation time allowing to return to 0 state
-        with for_(j, 0, j < N_shots, j + 1):
-            # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
-            Arbitrary_state_generation("qubit")
-            # Begin tomography_process
-            # Start with Pauli-Z expectation value determination : getting statistics of state measurement is enough to calculate it
-            measure("meas_pulse", "RR", None, ("integW1", Iz), ("integW2", Qz))
-            save(Iz, stream_Iz)  # Save the results
-            save(Qz, stream_Qz)
-            state_saving(Iz, Qz, Z, stream_Z)
-            wait(
-                t1, "qubit"
-            )  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
-
-            # Repeat sequence for X axis
-            # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
-            Arbitrary_state_generation("qubit")
-            # Begin tomography_process
-            # Determine here Pauli X-expectation value, which corresponds to applying a Hadamard gate before measurement (unitary transformation)
-            Hadamard("qubit")
-            measure("meas_pulse", "RR", "samples", ("integW1", Ix), ("integW2", Qx))
-            save(Ix, stream_Ix)  # Save the results
-            save(Qx, stream_Qx)
-            state_saving(Ix, Qx, X, stream_X)
-            wait(
-                t1, "qubit"
-            )  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
-            # Could also do active reset
-
-            # Repeat for Y axis
-            # Generate an arbitrary quantum state, e.g fully superposed state |+>=(|0>+|1>)/sqrt(2)
-            Arbitrary_state_generation("qubit")
-            # Begin tomography_process
-            # Determine here Pauli Y-expectation value, which corresponds to applying a Hadamard gate then S-gate before measurement (unitary transformation)
-            Hadamard("qubit")
-            frame_rotation(np.pi / 2, "qubit")  # S-gate
-            measure("meas_pulse", "RR", "samples", ("integW1", Iy), ("integW2", Qy))
-            save(Iy, stream_Iy)  # Save the results
-            save(Qy, stream_Qy)
-            state_saving(Iy, Qy, Y, stream_Y)
-            wait(
-                t1, "qubit"
-            )  # Wait for relaxation of the qubit after the collapse of the wavefunction in case of collapsing into |1> state
-        with stream_processing():
-            stream_Iz.save_all("Iz_raw")
-            stream_Qz.save_all("Qz_raw")
-            stream_Z.save_all("Z")
-            stream_Ix.save_all("Ix_raw")
-            stream_Qx.save_all("Qx_raw")
-            stream_X.save_all("X")
-            stream_Iy.save_all("Iy_raw")
-            stream_Qy.save_all("Qy_raw")
-            stream_Y.save_all("Y")
-
-    my_job = my_qm.simulate(
-        tomography,
-        SimulationConfig(
-            int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-        ),
-    )  # Use LoopbackInterface to simulate the response of the qubit
-    time.sleep(1.0)
-    return my_job
-
-
-# Retrieving all results
-my_tomography_results = do_tomography().result_handles
-
-Ix = my_tomography_results.Ix_raw.fetch_all()["value"]
-Qx = my_tomography_results.Qx_raw.fetch_all()["value"]
-X = my_tomography_results.X.fetch_all()["value"]
-
-Iy = my_tomography_results.Iy_raw.fetch_all()["value"]
-Qy = my_tomography_results.Qy_raw.fetch_all()["value"]
-Y = my_tomography_results.Y.fetch_all()["value"]
-
-Iz = my_tomography_results.Iz_raw.fetch_all()["value"]
-Qz = my_tomography_results.Qz_raw.fetch_all()["value"]
-Z = my_tomography_results.Z.fetch_all()["value"]
-
-total_counts = [len(X), len(Y), len(Z)]
-counts_1 = [
-    np.count_nonzero(X),
-    np.count_nonzero(Y),
-    np.count_nonzero(Z),
-]  # Count the number of measurements of the |1> state for each axis
-counts_0 = [
-    total_counts[0] - counts_1[0],
-    total_counts[1] - counts_1[1],
-    total_counts[2] - counts_1[2],
-]  # Same for |0>
-
-# Perform direct inversion protocol
-
-R_dir_inv = [0, 0, 0]  # Bloch vector reconstruction
-for i in range(3):
-    R_dir_inv[i] = (counts_1[i] - counts_0[i]) / total_counts[i]
-
-
-def is_physical(
-    R,
-):  # Check if the reconstructed density matrix is physically valid or not.
+def is_physical(R):  # Check if the reconstructed density matrix is physically valid or not.
     if np.linalg.norm(R) <= 1:
         return True
     else:
@@ -418,23 +350,14 @@ def norm(R):
     return np.linalg.norm(R)
 
 
-print("The reconstructed Bloch vector using direct inversion is ", R_dir_inv)
-print(
-    "Is the associated quantum state valid?",
-    is_physical(R_dir_inv),
-    ". Norm: ",
-    norm(R_dir_inv),
-)
-
-rho_div_inv = 0.5 * (
-    np.array(([1.0, 0.0], [0.0, 1]))
-    + R_dir_inv[0] * np.array(([0.0, 1.0], [1.0, 0.0]))
-    + R_dir_inv[1] * np.array(([0.0, -1j], [1j, 0.0]))
-    + R_dir_inv[2] * np.array(([1.0, 0.0], [0.0, -1.0]))
-)
-print(" Reconstructed density matrix using direct inversion : ", rho_div_inv)
-print("Trace: ", np.trace(rho_div_inv))
-# Might be False when considering direct inversion method.
+for i in range(n_input_states):
+    R_dir_inv.append(1 - 2 * P_1[i])
+    rho_dir_inv.append(0.5 * (
+            np.array(([1.0, 0.0], [0.0, 1]))
+            + R_dir_inv[i][0] * np.array(([0.0, 1.0], [1.0, 0.0]))
+            + R_dir_inv[i][1] * np.array(([0.0, -1j], [1j, 0.0]))
+            + R_dir_inv[i][2] * np.array(([1.0, 0.0], [0.0, -1.0]))
+    ))
 
 
 # Bayesian Mean Estimate
@@ -467,59 +390,81 @@ def L(x, y, z, Nx1, Nx0, Ny1, Ny0, Nz1, Nz0):
 
 
 """
-Implement here a Metropolis-Hasings algorithm to efficiently evaluate the Baysian mean integral. 
+Implement here a Metropolis-Hasings algorithm to efficiently evaluate the Baysian mean integral.
 Help can be found here https://people.duke.edu/~ccc14/sta-663/MCMC.html and here
 https://en.wikipedia.org/wiki/Monte_Carlo_integration
 
-You can also look at the following paper: 
+You can also look at the following paper:
 Blume-Kohout, Robin. "Optimal, reliable estimation of quantum states." New Journal of Physics 12.4 (2010): 043034.
 
 Make sure that the efficiency of the algorithm is about 30%
 """
+R_BME = []
+rho_BME = []
+for j in range(n_input_states):
+    target = lambda x, y, z: L(
+        x,
+        y,
+        z,
+        N_shots * P_1[j][0],
+        N_shots * (1 - P_1[j][0]),
+        N_shots * P_1[j][1],
+        N_shots * (1 - P_1[j][1]),
+        N_shots * P_1[j][2],
+        N_shots * (1 - P_1[j][2]),
+    )
 
-target = lambda x, y, z: L(
-    x,
-    y,
-    z,
-    counts_1[0],
-    counts_0[0],
-    counts_1[1],
-    counts_0[1],
-    counts_1[2],
-    counts_0[2],
-)
+    r = np.array([0.0, 0.0, 0.0])
+    niters = 10000
+    burnin = 500
+    sigma = np.diag([0.005, 0.005, 0.005])
+    accepted = 0
+
+    rs = np.zeros((niters - burnin, 3), float)
+    for i in range(niters):
+        new_r = stats.multivariate_normal(r, sigma).rvs()
+        p = min(target(*new_r) / target(*r), 1)
+        if np.random.rand() < p:
+            r = new_r
+            accepted += 1
+        if i >= burnin:
+            rs[i - burnin] = r
+
+    # print("Efficiency: ", accepted / niters)
+    R_BME.append(rs.mean(axis=0))
+    # print("The reconstructed Bloch vector using Bayesian Mean Estimate is ", R_BME[j])
+    # print(
+    #     "Is the associated quantum state valid?",
+    #     is_physical(R_BME[j]),
+    #     ". Norm: ",
+    #     norm(R_BME[j]),
+    # )
+    rho_BME.append(0.5 * (
+            np.array(([1.0, 0.0], [0.0, 1]))
+            + R_BME[j][0] * np.array(([0.0, 1.0], [1.0, 0.0]))
+            + R_BME[j][1] * np.array(([0.0, -1j], [1j, 0.0]))
+            + R_BME[j][2] * np.array(([1.0, 0.0], [0.0, -1.0]))
+    ))
 
 
-r = np.array([0.0, 0.0, 0.0])
-niters = 10000
-burnin = 500
-sigma = np.diag([0.005, 0.005, 0.005])
-accepted = 0
+# Constructing density matrices for target states
+def fidelity(rho: np.ndarray, sigma: np.ndarray):
+    return np.real(np.trace(sqrtm(sqrtm(rho) @ sigma @ sqrtm(rho))) ** 2)
 
-rs = np.zeros((niters - burnin, 3), np.float)
-for i in range(niters):
-    new_r = stats.multivariate_normal(r, sigma).rvs()
-    p = min(target(*new_r) / target(*r), 1)
-    if np.random.rand() < p:
-        r = new_r
-        accepted += 1
-    if i >= burnin:
-        rs[i - burnin] = r
 
-print("Efficiency: ", accepted / niters)
-r_BME = rs.mean(axis=0)
-print("The reconstructed Bloch vector using Bayesian Mean Estimate is ", r_BME)
-print(
-    "Is the associated quantum state valid?",
-    is_physical(r_BME),
-    ". Norm: ",
-    norm(r_BME),
-)
-rho_BME = 0.5 * (
-    np.array(([1.0, 0.0], [0.0, 1]))
-    + r_BME[0] * np.array(([0.0, 1.0], [1.0, 0.0]))
-    + r_BME[1] * np.array(([0.0, -1j], [1j, 0.0]))
-    + r_BME[2] * np.array(([1.0, 0.0], [0.0, -1.0]))
-)
-print(" Reconstructed density matrix using direct inversion : ", rho_BME)
-print("Trace: ", np.trace(rho_BME))
+ket0 = np.array([[1], [0]])
+ket1 = np.array([[0], [1]])
+
+th_output_states = [ket1, 1j * ket1, 1 / np.sqrt(2) * (ket0 - 1j * ket1), 1 / np.sqrt(2) * (ket0 + ket1),
+                    1 / np.sqrt(2) * (ket0 + 1j * ket1), 1 / np.sqrt(2) * (ket0 - ket1)]
+
+rho_th = [s_th @ s_th.conj().T for s_th in th_output_states]
+
+for k in range(n_input_states):
+    print(f"Theoretical DM {k}:", rho_th[k])
+    print(f"Reconstructed DM {k} (DI)", rho_dir_inv[k])
+    print(f"Fidelity {k} (DI):", fidelity(rho_th[k], rho_dir_inv[k]))
+    # print(f"Is state {k} physically valid?", is_physical(R_dir_inv[k]), "Trace:", np.trace(rho_dir_inv[k]))
+    print(f"Reconstructed DM {k} (BME) :", rho_BME[k])
+    # print("Trace: ", np.trace(rho_BME[k]))
+    print(f"Fidelity {k} (BME):", fidelity(rho_th[k], rho_BME[k]))

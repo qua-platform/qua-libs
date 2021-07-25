@@ -24,7 +24,15 @@ class QuaGST:
         germs = self.pygsti_model.germs()
         prep_fiducials = self.pygsti_model.prep_fiducials()
         meas_fiducials = self.pygsti_model.meas_fiducials()
-        
+        ops = {}
+        germs_indices = []
+        prep_indices = []
+        meas_indices = []
+
+        op_index = 0
+        for g in germs:
+            for label in g:
+                pass
 
     def get_qua_program(self, counts):
         pass
