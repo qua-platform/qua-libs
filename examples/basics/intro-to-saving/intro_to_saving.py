@@ -169,3 +169,26 @@ print("4:Saving a stream to multiple tags")
 print(f"out_avg={out_avg}")
 print(f"out_raw={out_raw}")
 print("##################")
+
+# 5. Using multi-dimensional buffer operator in stream processing
+with program() as streamProg_buffer:
+    out_str = declare_stream()
+
+    a = declare(int)
+    b = declare(int)
+    with for_(a, 0, a <= 10, a + 1):
+        with for_(b, 10, b < 40, b+10):
+            save(b, out_str)
+
+    with stream_processing():
+        out_str.buffer(11, 3).save("out")
+
+job = QM1.simulate(streamProg_buffer, SimulationConfig(500))
+
+res = job.result_handles
+out = res.out.fetch_all()
+
+print("##################")
+print("5: Using the multi-dimensional buffer operator in stream processing")
+print(f"out={out}")
+print("##################")
