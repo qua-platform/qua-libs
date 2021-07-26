@@ -1,98 +1,140 @@
 import numpy as np
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from pygsti.construction import make_lsgst_experiment_list
 from pygsti.modelpacks import GSTModelPack
-import pygsti
 import time
+
+from encode_circuits import *
 
 
 class QuaGST:
-    def __init__(self, file: str, max_lengths, *gate_macros, circuit_list, config=None,
-                 quantum_machines_manager: QuantumMachinesManager = None, sequence_dict=None, N_shots=1000,
+    def __init__(self, file: str, model: GSTModelPack, basic_gates_macros: dict, pre_circuit, post_circuit,
+                 N_shots=1000,
+                 config=None,
+                 quantum_machines_manager: QuantumMachinesManager = None,
                  **execute_kwargs):
-        if sequence_dict is None:
-            sequence_dict = {}
+
         self.file = file
-        self.max_lengths = max_lengths
-        self.gates = gate_macros
-        # assert len(self.pygsti_model.gates) == len(self.gates)
+        self.model = model
+        self._get_circuit_list()
+        self.basic_gates_macros = basic_gates_macros
+        self._get_sequence_macros()
+        self.pre_circuit = pre_circuit
+        self.post_circuit = post_circuit
         self.config = config
         self.qmm = quantum_machines_manager
         self.N_shots = N_shots
         self.execute_kwargs = execute_kwargs
-        self.results = None
-        self.sequence_dict = sequence_dict
-        self.circuit_list = circuit_list
+        self.results = []
 
-    # def _get_model_circuits(self):
-    #     germs = self.pygsti_model.germs()
-    #     prep_fiducials = self.pygsti_model.prep_fiducials()
-    #     meas_fiducials = self.pygsti_model.meas_fiducials()
-    #     ops = {}
-    #     germs_indices = []
-    #     prep_indices = []
-    #     meas_indices = []
-    #
-    #     op_index = 0
-    #     for g in germs:
-    #         for label in g:
-    #             pass
+    def _get_circuit_list(self):
+        with open(file=self.file, mode='r') as f:
+            circuits = f.readlines()
+            self.circuit_list = encode_circuits(circuits, self.model)
 
-    def _encode_angles_in_IO(self, qm, job):
+    def _get_sequence_macros(self):
+        self.gate_sequence, self.sequence_macros = gate_sequence_and_macros(self.model, self.basic_gates_macros)
+
+    def _qua_circuit(self, encoded_circuit):
+        _n_ = declare(int)
+        # prep fiducials
+        with switch_(encoded_circuit[0]):
+            for i, m in enumerate(self.sequence_macros):
+                with case_(-1):
+                    pass
+                with case_(i):
+                    m()
+
+        # germ
+        with switch_(encoded_circuit[2]):
+            for i, m in enumerate(self.sequence_macros):
+                with case_(-1):
+                    pass
+                with case_(i):
+                    with for_(_n_, 0, _n_ < encoded_circuit[3], _n_ + 1):
+                        m()
+
+        # meas fiducials
+        with switch_(encoded_circuit[1]):
+            for i, m in enumerate(self.sequence_macros):
+                with case_(-1):
+                    pass
+                with case_(i):
+                    m()
+
+    def _encode_circuit_using_IO(self, qm, job):
         for circuit in self.circuit_list:
-            while not (job.is_paused()):
-                time.sleep(0.01)
-            qm.set_io2_value(len(circuit))
-            job.resume()
             for gate in range(0, len(circuit), 2):
                 while not (job.is_paused()):
                     time.sleep(0.01)
                 qm.set_io1_value(circuit[gate])
-                qm.set_io2_value(circuit[gate+1])
+                qm.set_io2_value(circuit[gate + 1])
                 job.resume()
 
-    def play_gate(self, g):
-        with switch_(g):
-            for i in range(len(self.sequence_dict.keys())):
-                with case_(i):
-                    self.sequence_dict[i]["macro"]  # Play macro attached to index i
+    def gst_qua_IO(self, circuits, out_stream):
+        _g_ = declare(int)
+        _n_shots_ = declare(int)
+        _n_circuits_ = declare(int)
 
-    def get_qua_program(self):
-        nb_of_circuits = len(self.circuit_list)
+        with for_(_n_circuits_, 0, _n_circuits_ < len(circuits), _n_circuits_ + 1):
+            circuit = declare(int, size=4)  # Plug circuit size
+            with for_(_g_, 0, _g_ < circuit.length(), _g_ + 2):
+                pause()
+                assign(circuit[_g_], IO1)
+                assign(circuit[_g_ + 1], IO2)
+
+            with for_(_n_shots_, 0, _n_shots_ < self.N_shots, _n_shots_ + 1):
+                self.pre_circuit()
+                self._qua_circuit(circuit)
+                self.post_circuit(out_stream)
+
+    def gst_qua(self, circuits, out_stream):
+        _n_shots_ = declare(int)
+        circuit = declare(int, size=4)  # Plug circuit size
+
+        with for_each_(circuit, circuits):
+            with for_(_n_shots_, 0, _n_shots_ < self.N_shots, _n_shots_ + 1):
+                if self.pre_circuit:
+                    self.pre_circuit()
+                self._qua_circuit(circuit)
+                if self.post_circuit:
+                    self.post_circuit(out_stream)
+
+    def get_qua_program(self, gst_body, circuits):
         with program() as gst_prog:
-            g = declare(int)
-            n = declare(int)
-            n2 = declare(int)
             out_stream = declare_stream()
 
-            with for_(n2, 0, n2 < nb_of_circuits, n2+1):
-                pause()
-                circuit = declare(int, size=IO2)  # Plug circuit size
-                with for_(g, 0, g < circuit.length(), g+2):
-                    pause()
-                    assign(circuit[g], IO1)
-                    assign(circuit[g+1], IO2)
-
-                with for_(n, 0, n < self.N_shots, n+1):
-                    with for_(g, 0, g < circuit.length(), g+1):
-                        self.play_gate(circuit[g])  # Attach to sequence dict a macro for measurement + saving
+            gst_body(circuits, out_stream)
 
             with stream_processing():
-                out_stream.average().buffer(nb_of_circuits).save("out")
+                out_stream.buffer(len(circuits), self.N_shots).save("counts")
 
         return gst_prog
 
     def save_circuit_list(self, file):
         pass
 
-    def run(self):
+    def run_IO(self):
         qm = self.qmm.open_qm(self.config)
-        job = qm.execute(self.get_qua_program(), **self.execute_kwargs)
+        job = qm.execute(self.get_qua_program(self.gst_qua_IO, self.circuit_list), **self.execute_kwargs)
 
-        self._encode_angles_in_IO(qm, job)
+        self._encode_circuit_using_IO(qm, job)
 
+        job.result_handles.wait_for_all_values()
 
+        self.results = job.result_handles.counts.fetch_all()
+
+    def run(self, n_circuits: int):
+        qm = self.qmm.open_qm(self.config)
+        for i in range(len(self.circuit_list) // n_circuits + 1):
+            circuits = self.circuit_list[i * n_circuits:(i + 1) * n_circuits]
+            if circuits:
+                job = qm.execute(self.get_qua_program(self.gst_qua, circuits),
+                                 **self.execute_kwargs)
+                job.result_handles.wait_for_all_values()
+
+                self.results.extend(job.result_handles.counts.fetch_all())
+                
     def get_results(self):
         pass
 
