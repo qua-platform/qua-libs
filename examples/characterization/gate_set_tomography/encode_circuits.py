@@ -1,25 +1,23 @@
-from qm.qua import *
-
-
 def gate_sequence_and_macros(model, basic_gates_macros=None):
     prep_fiducials, meas_fiducials, germs = model.prep_fiducials(), model.meas_fiducials(), model.germs()
 
     gate_sequence = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
+    gate_sequence.remove("{}")
     gate_sequence.sort(key=len, reverse=True)
     if basic_gates_macros:
         gate_sequence_macros = [s.split("G") for s in gate_sequence]
         for i, s in enumerate(gate_sequence_macros):
-            s = [basic_gates_macros["G" + k] for k in s if basic_gates_macros.get("G" + k) is not None]
-            gate_sequence_macros[i] = sequence_macros(basic_gates_macros, s)
+            s = [basic_gates_macros[k] for k in s if basic_gates_macros.get(k) is not None]
+            gate_sequence_macros[i] = sequence_macros(s)
         return gate_sequence, gate_sequence_macros
     else:
         return gate_sequence
 
 
-def sequence_macros(macros_dict, macros):
+def sequence_macros(macros):
     def foo():
         for m in macros:
-            macros_dict[m]()
+            m()
 
     return foo
 

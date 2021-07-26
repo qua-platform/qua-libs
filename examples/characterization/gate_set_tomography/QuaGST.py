@@ -1,14 +1,12 @@
+from qm.QuantumMachinesManager import QuantumMachinesManager
+import time
 import numpy as np
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
-from pygsti.modelpacks import GSTModelPack
-import time
-
 from encode_circuits import *
 
 
 class QuaGST:
-    def __init__(self, file: str, model: GSTModelPack, basic_gates_macros: dict, pre_circuit, post_circuit,
+    def __init__(self, file: str, model, basic_gates_macros: dict, pre_circuit=None, post_circuit=None,
                  N_shots=1000,
                  config=None,
                  quantum_machines_manager: QuantumMachinesManager = None,
@@ -40,25 +38,17 @@ class QuaGST:
         # prep fiducials
         with switch_(encoded_circuit[0]):
             for i, m in enumerate(self.sequence_macros):
-                with case_(-1):
-                    pass
                 with case_(i):
                     m()
-
         # germ
         with switch_(encoded_circuit[2]):
             for i, m in enumerate(self.sequence_macros):
-                with case_(-1):
-                    pass
                 with case_(i):
                     with for_(_n_, 0, _n_ < encoded_circuit[3], _n_ + 1):
                         m()
-
         # meas fiducials
         with switch_(encoded_circuit[1]):
             for i, m in enumerate(self.sequence_macros):
-                with case_(-1):
-                    pass
                 with case_(i):
                     m()
 
@@ -84,14 +74,15 @@ class QuaGST:
                 assign(circuit[_g_ + 1], IO2)
 
             with for_(_n_shots_, 0, _n_shots_ < self.N_shots, _n_shots_ + 1):
-                self.pre_circuit()
+                if self.pre_circuit:
+                    self.pre_circuit()
                 self._qua_circuit(circuit)
-                self.post_circuit(out_stream)
+                if self.post_circuit:
+                    self.post_circuit(out_stream)
 
     def gst_qua(self, circuits, out_stream):
         _n_shots_ = declare(int)
-        circuit = declare(int, size=4)  # Plug circuit size
-
+        circuit = [declare(int) for _ in range(4)]  # Plug circuit size
         with for_each_(circuit, circuits):
             with for_(_n_shots_, 0, _n_shots_ < self.N_shots, _n_shots_ + 1):
                 if self.pre_circuit:
@@ -114,9 +105,9 @@ class QuaGST:
     def save_circuit_list(self, file):
         pass
 
-    def run_IO(self):
+    def run_IO(self, n_circuits=None):
         qm = self.qmm.open_qm(self.config)
-        job = qm.execute(self.get_qua_program(self.gst_qua_IO, self.circuit_list), **self.execute_kwargs)
+        job = qm.execute(self.get_qua_program(self.gst_qua_IO, self.circuit_list[:n_circuits]), **self.execute_kwargs)
 
         self._encode_circuit_using_IO(qm, job)
 
@@ -129,12 +120,12 @@ class QuaGST:
         for i in range(len(self.circuit_list) // n_circuits + 1):
             circuits = self.circuit_list[i * n_circuits:(i + 1) * n_circuits]
             if circuits:
-                job = qm.execute(self.get_qua_program(self.gst_qua, circuits),
+                job = qm.execute(self.get_qua_program(self.gst_qua, np.array(circuits).T.tolist()),
                                  **self.execute_kwargs)
                 job.result_handles.wait_for_all_values()
 
-                self.results.extend(job.result_handles.counts.fetch_all())
-                
+                self.results.append(job.result_handles.counts.fetch_all())
+
     def get_results(self):
         pass
 
