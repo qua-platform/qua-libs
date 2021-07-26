@@ -3,61 +3,77 @@ from pygsti.objects import Circuit, Model, DataSet, Label
 from qm.qua import *
 from pygsti.construction import make_lsgst_experiment_list
 from pygsti.modelpacks import smq1Q_XYI
-mdl_ideal = smq1Q_XYI.target_model()
-# 2) get the building blocks needed to specify which circuits are needed
-prep_fiducials, meas_fiducials = smq1Q_XYI.prep_fiducials(), smq1Q_XYI.meas_fiducials()
-germs = smq1Q_XYI.germs()
-maxLengths = [1, 2, 4]  # roughly gives the length of the sequences used by GST
-# 3) generate "fake" data from a depolarized version of mdl_ideal
-mdl_true = mdl_ideal.depolarize(op_noise=0.01, spam_noise=0.001)
-listOfExperiments = pygsti.construction.make_lsgst_experiment_list(
-    mdl_ideal, prep_fiducials, meas_fiducials, germs, maxLengths)
-circ_list = pygsti.protocols.StandardGSTDesign(mdl_ideal, prep_fiducials, meas_fiducials, germs, maxLengths)
-ds = pygsti.construction.generate_fake_data(mdl_true, listOfExperiments, nSamples=1000,
-                                            sampleError="binomial", seed=1234)
-# Run GST
-results = pygsti.do_stdpractice_gst(ds, mdl_ideal, prep_fiducials, meas_fiducials,
-                                    germs, maxLengths, modes="TP,Target", verbosity=1)
-mdl_estimate = results.estimates['TP'].models['stdgaugeopt']
-print("2DeltaLogL(estimate, data): ", pygsti.tools.two_delta_logl(mdl_estimate, ds))
-print("2DeltaLogL(true, data): ", pygsti.tools.two_delta_logl(mdl_true, ds))
-print("2DeltaLogL(ideal, data): ", pygsti.tools.two_delta_logl(mdl_ideal, ds))
 
-gates = {'I': 0, 'X': 1, 'Y': 2}
-gate_list = []
-startn_list = []
-endn_list = []
+model = smq1Q_XYI
 
-# Add first line to test init+readout
-gate_list.append(gates['I'])
-startn_list.append(int(0))
-endn_list.append(int(1))
+prep_fiducials, meas_fiducials, germs, basic_gates = model.prep_fiducials(), model.meas_fiducials(), model.germs(), model.gates
+
+gate_sequences = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
+gate_sequences.sort(key=len, reverse=True)
+gate_sequence_to_index = {k: i for i, k in enumerate(gate_sequences)}
 
 GST_sequence_file = 'Circuits_before_results.txt'
 circ_list = []
-qubit_list = []
 with open(file=GST_sequence_file, mode='r') as f:
     circuits = f.readlines()
     for circ in circuits:
-        gates = []
+        start_gate = -1
+        end_gate = -1
+        germ_gate = -1
+        gates_mapped = []
         qubit_indices = []
         c = circ.rstrip()
-        for char in range(len(c)):
-            if c[char] == 0 and c[char] == 'G':
-                gates.append(c[0: c.find(':')])
-                qubit_indices.append(int(c[c.find(':') + 1]))
+        gates, qubit_measures = c.split("@")
+        if gates.find("(") >= 0:
+            germ_start_ind = gates.find("(")
+            germ_end_ind = gates.find(")")
+            germ = gates[germ_start_ind + 1:germ_end_ind]
+            germ_gate = gate_sequence_to_index[germ]
 
+            if gates.find("^") >= 0:
+                germ_repeat = int(gates[gates.find("^") + 1])
+                germ_end_ind += 3
             else:
-                if c[char] == 'G':
-                    gates.append(c[char: c.find(':', char)])
-                    qubit_indices.append(c[c.find(':', char) + 1])
+                germ_repeat = 1
+                germ_end_ind += 1
 
+            prep_gates = gates[:germ_start_ind]
+            meas_gates = gates[germ_end_ind:]
+            if prep_gates:
+                start_gate = gate_sequence_to_index[prep_gates]
+            if meas_gates:
+                end_gate = gate_sequence_to_index[meas_gates]
+
+        else:
+            germ_repeat = 0
+            done = False
+            for i, v in enumerate(map(gates.startswith, gate_sequences)):
+                if v:
+                    start_gate = i
+                    if gates[len(gate_sequences[i]):]:
+                        for j, k in enumerate(map(gates[len(gate_sequences[i]):].endswith, gate_sequences)):
+                            if k:
+                                end_gate = j
+                                if gate_sequences[start_gate] + gate_sequences[end_gate] == gates:
+                                    done = True
+                                    break
+                    else:
+                        break
+
+                    if done:
+                        break
+
+        gates = [start_gate, end_gate, germ_gate, germ_repeat]
         circ_list.append(gates)
-        qubit_list.append(qubit_indices)
-f.close()
-# :
-# :
-# diction= {"Gxpi2": {
-#     'macro_index': 0,
-#     'macro_function': macro
-# }}
+
+with open(file=GST_sequence_file, mode='r') as f:
+    circuits = f.readlines()
+    for i, circ in enumerate(circuits):
+        c = circ.rstrip()
+        gates, qubit_measures = c.split("@")
+        generated_gates = ""
+        generated_gates += gate_sequences[circ_list[i][0]] if circ_list[i][0] >= 0 else ""
+        generated_gates += "(" + gate_sequences[circ_list[i][2]] + ")" if circ_list[i][2] >= 0 else ""
+        generated_gates += "^" + str(circ_list[i][3]) if circ_list[i][3] > 1 else ""
+        generated_gates += gate_sequences[circ_list[i][1]] if circ_list[i][1] >= 0 else ""
+        assert gates == generated_gates
