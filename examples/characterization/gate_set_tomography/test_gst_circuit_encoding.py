@@ -22,9 +22,10 @@ with open(file=GST_sequence_file, mode='r') as f:
     for i, circ in enumerate(circuits):
         c = circ.rstrip()
         gates, qubit_measures = c.split("@")
-        generated_gates = ""
-        generated_gates += gate_sequences[circ_list[i][0]] if circ_list[i][0] >= 0 else ""
-        generated_gates += "(" + gate_sequences[circ_list[i][2]] + ")" if circ_list[i][2] >= 0 else ""
-        generated_gates += "^" + str(circ_list[i][3]) if circ_list[i][3] > 1 else ""
-        generated_gates += gate_sequences[circ_list[i][1]] if circ_list[i][1] >= 0 else ""
-        assert gates == generated_gates
+        if gates != '{}':
+            generated_gates = ""
+            generated_gates += gate_sequences[circ_list[i][0]] if circ_list[i][0] >= 0 else ""
+            generated_gates += "(" + gate_sequences[circ_list[i][2]] + ")" if circ_list[i][2] >= 0 else ""
+            generated_gates += "^" + str(circ_list[i][3]) if circ_list[i][3] > 1 else ""
+            generated_gates += gate_sequences[circ_list[i][1]] if circ_list[i][1] >= 0 else ""
+            assert gates == generated_gates
