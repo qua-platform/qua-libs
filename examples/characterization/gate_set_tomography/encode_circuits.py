@@ -1,4 +1,11 @@
-def gate_sequence_and_macros(model, basic_gates_macros=None):
+def gate_sequence_and_macros(model, basic_gates_macros: dict = None):
+    """
+    Given a pyGSTi model generate a generating set of gate sequences by taking a union of the fiducials and the germs.
+    If basic gates macros given, generate a macro for each gate sequence as well.
+    @param model: A pyGSTi model
+    @param basic_gates_macros: A dictionary with basic gates as keys nad macros for each gate as value
+    @return: List of strings of gate sequences, and list of gate sequences macros if given.
+    """
     prep_fiducials, meas_fiducials, germs = model.prep_fiducials(), model.meas_fiducials(), model.germs()
 
     gate_sequence = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
@@ -15,6 +22,12 @@ def gate_sequence_and_macros(model, basic_gates_macros=None):
 
 
 def sequence_macros(macros):
+    """
+    Generate a single macro from a list of macros
+    @param macros: List of macros
+    @return: macro
+    """
+
     def foo():
         for m in macros:
             m()
@@ -23,6 +36,16 @@ def sequence_macros(macros):
 
 
 def encode_circuits(circuits, model):
+    """
+    Encode a list of circuits generated from a given model. Each circuit will be encoded using 4 integers:
+        1. The index of the gate sequence before the germ, i.e. preparation fiducials
+        2. The index of the gate sequence after the germ, i.e. measurement fiducials
+        3. The index of the germ fate sequence
+        4. The number of repetitions of the germs
+    @param circuits: A list of circuits generates from a pyGSTi txt file
+    @param model: pyGSTi model
+    @return: list of encoded circuits, each circuit is a list of 4 integers
+    """
     gate_sequence = gate_sequence_and_macros(model)
     gate_sequence_to_index = {k: i for i, k in enumerate(gate_sequence)}
     circ_list = []
