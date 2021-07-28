@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import time
 import numpy as np
@@ -42,6 +43,7 @@ class QuaGST:
         self.N_shots = N_shots
         self.execute_kwargs = execute_kwargs
         self.results = []
+        self.last_job = None
 
     def _get_circuit_list(self):
         """
@@ -181,7 +183,7 @@ class QuaGST:
 
         self.results = job.result_handles.counts.fetch_all()
 
-    def run(self, n_circuits: int):
+    def run(self, n_circuits: int, plot_simulated_samples_con=None):
         """
         Run GST
         @param n_circuits: max number of circuits per program
@@ -196,7 +198,11 @@ class QuaGST:
                     **self.execute_kwargs,
                 )
                 job.result_handles.wait_for_all_values()
-
+                if plot_simulated_samples_con:
+                    plt.figure()
+                    job.get_simulated_samples().__getattribute__(plot_simulated_samples_con).plot()
+                    plt.show()
+                self.last_job = job
                 self.results.append(job.result_handles.counts.fetch_all())
 
     def get_results(self):
