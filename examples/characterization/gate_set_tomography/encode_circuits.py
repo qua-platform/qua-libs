@@ -1,4 +1,4 @@
-def gate_sequence_and_macros(model, basic_gates_macros: dict = None):
+def base_gate_sequence_and_macros(model, basic_gates_macros: dict = None):
     """
     Given a pyGSTi model generate a minimal generating set of gate sequences by taking a union of the fiducials and the germs.
     If basic gates macros given, generate a macro for each gate sequence as well.
@@ -13,25 +13,25 @@ def gate_sequence_and_macros(model, basic_gates_macros: dict = None):
     )
 
     # create minimal generating gate sequence
-    gate_sequence = list(
+    base_gate_sequence = list(
         {k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials}
     )
-    gate_sequence.remove("{}")
-    gate_sequence.sort(key=len, reverse=True)
+    base_gate_sequence.remove("{}")
+    base_gate_sequence.sort(key=len, reverse=True)
 
     if basic_gates_macros:
         # create generating gate sequence macros
-        gate_sequence_macros = [s.split("G") for s in gate_sequence]
-        for i, s in enumerate(gate_sequence_macros):
+        base_gate_sequence_macros = [s.split("G") for s in base_gate_sequence]
+        for i, s in enumerate(base_gate_sequence_macros):
             s = [
                 basic_gates_macros[k]
                 for k in s
                 if basic_gates_macros.get(k) is not None
             ]
-            gate_sequence_macros[i] = sequence_macros(s)
-        return gate_sequence, gate_sequence_macros
+            base_gate_sequence_macros[i] = sequence_macros(s)
+        return base_gate_sequence, base_gate_sequence_macros
     else:
-        return gate_sequence
+        return base_gate_sequence
 
 
 def sequence_macros(macros):
@@ -59,8 +59,8 @@ def encode_circuits(circuits, model):
     @param model: pyGSTi model
     @return: list of encoded circuits, each circuit is a list of 4 integers
     """
-    gate_sequence = gate_sequence_and_macros(model)
-    gate_sequence_to_index = {k: i for i, k in enumerate(gate_sequence)}
+    base_gate_sequence = base_gate_sequence_and_macros(model)
+    base_gate_sequence_to_index = {k: i for i, k in enumerate(base_gate_sequence)}
     circ_list = []
     for circ in circuits:
         start_gate, end_gate, germ_gate, germ_repeat = -1, -1, -1, 0
@@ -74,7 +74,7 @@ def encode_circuits(circuits, model):
             germ_start_ind = gates.find("(")
             germ_end_ind = gates.find(")")
             germ = gates[germ_start_ind + 1 : germ_end_ind]
-            germ_gate = gate_sequence_to_index[germ]
+            germ_gate = base_gate_sequence_to_index[germ]
 
             # find germ repetition
             if gates.find("^") >= 0:
@@ -87,26 +87,30 @@ def encode_circuits(circuits, model):
             prep_gates = gates[:germ_start_ind]
             meas_gates = gates[germ_end_ind:]
             if prep_gates:
-                start_gate = gate_sequence_to_index[prep_gates]
+                start_gate = base_gate_sequence_to_index[prep_gates]
             if meas_gates:
-                end_gate = gate_sequence_to_index[meas_gates]
+                end_gate = base_gate_sequence_to_index[meas_gates]
 
         else:  # if no germ
             """
             Match the correct combination of gate sequences for the prep and meas fiducials
             """
             done = False
-            for i, v in enumerate(map(gates.startswith, gate_sequence)):
+            for i, v in enumerate(map(gates.startswith, base_gate_sequence)):
                 if v:
                     start_gate = i
-                    if gates[len(gate_sequence[i]) :]:
+                    if gates[len(base_gate_sequence[i]) :]:
                         for j, k in enumerate(
-                            map(gates[len(gate_sequence[i]) :].endswith, gate_sequence)
+                            map(
+                                gates[len(base_gate_sequence[i]) :].endswith,
+                                base_gate_sequence,
+                            )
                         ):
                             if k:
                                 end_gate = j
                                 if (
-                                    gate_sequence[start_gate] + gate_sequence[end_gate]
+                                    base_gate_sequence[start_gate]
+                                    + base_gate_sequence[end_gate]
                                     == gates
                                 ):
                                     done = True
