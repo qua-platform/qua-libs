@@ -1,20 +1,33 @@
 def gate_sequence_and_macros(model, basic_gates_macros: dict = None):
     """
-    Given a pyGSTi model generate a generating set of gate sequences by taking a union of the fiducials and the germs.
+    Given a pyGSTi model generate a minimal generating set of gate sequences by taking a union of the fiducials and the germs.
     If basic gates macros given, generate a macro for each gate sequence as well.
     @param model: A pyGSTi model
     @param basic_gates_macros: A dictionary with basic gates as keys nad macros for each gate as value
     @return: List of strings of gate sequences, and list of gate sequences macros if given.
     """
-    prep_fiducials, meas_fiducials, germs = model.prep_fiducials(), model.meas_fiducials(), model.germs()
+    prep_fiducials, meas_fiducials, germs = (
+        model.prep_fiducials(),
+        model.meas_fiducials(),
+        model.germs(),
+    )
 
-    gate_sequence = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
+    # create minimal generating gate sequence
+    gate_sequence = list(
+        {k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials}
+    )
     gate_sequence.remove("{}")
     gate_sequence.sort(key=len, reverse=True)
+
     if basic_gates_macros:
+        # create generating gate sequence macros
         gate_sequence_macros = [s.split("G") for s in gate_sequence]
         for i, s in enumerate(gate_sequence_macros):
-            s = [basic_gates_macros[k] for k in s if basic_gates_macros.get(k) is not None]
+            s = [
+                basic_gates_macros[k]
+                for k in s
+                if basic_gates_macros.get(k) is not None
+            ]
             gate_sequence_macros[i] = sequence_macros(s)
         return gate_sequence, gate_sequence_macros
     else:
@@ -50,21 +63,20 @@ def encode_circuits(circuits, model):
     gate_sequence_to_index = {k: i for i, k in enumerate(gate_sequence)}
     circ_list = []
     for circ in circuits:
-        start_gate = -1
-        end_gate = -1
-        germ_gate = -1
-        germ_repeat = 0
+        start_gate, end_gate, germ_gate, germ_repeat = -1, -1, -1, 0
 
         c = circ.rstrip()
         gates, qubit_measures = c.split("@")
-        if gates == "{}":
+        if gates == "{}":  # if empty sequence do nothing
             pass
-        elif gates.find("(") >= 0:
+        elif gates.find("(") >= 0:  # if found germ
+            # extract germ indexes
             germ_start_ind = gates.find("(")
             germ_end_ind = gates.find(")")
-            germ = gates[germ_start_ind + 1:germ_end_ind]
+            germ = gates[germ_start_ind + 1 : germ_end_ind]
             germ_gate = gate_sequence_to_index[germ]
 
+            # find germ repetition
             if gates.find("^") >= 0:
                 germ_repeat = int(gates[gates.find("^") + 1])
                 germ_end_ind += 3
@@ -79,16 +91,24 @@ def encode_circuits(circuits, model):
             if meas_gates:
                 end_gate = gate_sequence_to_index[meas_gates]
 
-        else:
+        else:  # if no germ
+            """
+            Match the correct combination of gate sequences for the prep and meas fiducials
+            """
             done = False
             for i, v in enumerate(map(gates.startswith, gate_sequence)):
                 if v:
                     start_gate = i
-                    if gates[len(gate_sequence[i]):]:
-                        for j, k in enumerate(map(gates[len(gate_sequence[i]):].endswith, gate_sequence)):
+                    if gates[len(gate_sequence[i]) :]:
+                        for j, k in enumerate(
+                            map(gates[len(gate_sequence[i]) :].endswith, gate_sequence)
+                        ):
                             if k:
                                 end_gate = j
-                                if gate_sequence[start_gate] + gate_sequence[end_gate] == gates:
+                                if (
+                                    gate_sequence[start_gate] + gate_sequence[end_gate]
+                                    == gates
+                                ):
                                     done = True
                                     break
                     else:
