@@ -30,9 +30,13 @@ def encode_circuits(circuits, model):
         start_gate = -1
         end_gate = -1
         germ_gate = -1
+        germ_repeat = 0
+
         c = circ.rstrip()
         gates, qubit_measures = c.split("@")
-        if gates.find("(") >= 0:
+        if gates == "{}":
+            pass
+        elif gates.find("(") >= 0:
             germ_start_ind = gates.find("(")
             germ_end_ind = gates.find(")")
             germ = gates[germ_start_ind + 1:germ_end_ind]
@@ -53,7 +57,6 @@ def encode_circuits(circuits, model):
                 end_gate = gate_sequence_to_index[meas_gates]
 
         else:
-            germ_repeat = 0
             done = False
             for i, v in enumerate(map(gates.startswith, gate_sequence)):
                 if v:
