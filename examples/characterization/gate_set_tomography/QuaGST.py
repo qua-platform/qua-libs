@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import generate_qua_script
 import time
 import numpy as np
 from qm.qua import *
@@ -44,6 +45,7 @@ class QuaGST:
         self.execute_kwargs = execute_kwargs
         self.results = []
         self.last_job = None
+        self.qua_script = []
 
     def _get_circuit_list(self):
         """
@@ -172,8 +174,10 @@ class QuaGST:
         @return:
         """
         qm = self.qmm.open_qm(self.config)
+        qua_prog = self.get_qua_program(self.gst_qua_IO, self.circuit_list[:n_circuits])
+        self.qua_script = [generate_qua_script(qua_prog, self.config)]
         job = qm.execute(
-            self.get_qua_program(self.gst_qua_IO, self.circuit_list[:n_circuits]),
+            qua_prog,
             **self.execute_kwargs,
         )
 
@@ -193,8 +197,10 @@ class QuaGST:
         for i in range(len(self.circuit_list) // n_circuits + 1):
             circuits = self.circuit_list[i * n_circuits : (i + 1) * n_circuits]
             if circuits:
+                qua_prog = self.get_qua_program(self.gst_qua, np.array(circuits).T.tolist())
+                self.qua_script.append(generate_qua_script(qua_prog, self.config))
                 job = qm.execute(
-                    self.get_qua_program(self.gst_qua, np.array(circuits).T.tolist()),
+                    qua_prog,
                     **self.execute_kwargs,
                 )
                 job.result_handles.wait_for_all_values()
