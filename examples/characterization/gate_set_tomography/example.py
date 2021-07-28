@@ -29,7 +29,7 @@ def post_circuit(out_st):
 GST_sequence_file = 'Circuits_before_results.txt'
 # gate keys should match the model gates without the 'G' at the beginning.
 gate_macros = {"xpi2:0": x_pi2, "ypi2:0": y_pi2, "[]": id_gate}
-gst = QuaGST(GST_sequence_file, model=smq1Q_XYI, basic_gates_macros=gate_macros, N_shots=1, post_circuit=post_circuit,
+gst = QuaGST(GST_sequence_file, model=smq1Q_XYI, basic_gates_macros=gate_macros, N_shots=10, post_circuit=post_circuit,
              config=config, quantum_machines_manager=qmm, simulate=SimulationConfig(int(1e4)))
 gst.run(300)
 # gst.run_IO()
