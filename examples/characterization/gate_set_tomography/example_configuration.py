@@ -23,7 +23,7 @@ config = {
             "operations": {
                 "readoutOp": "readoutPulse",
                 "readoutOp2": "readoutPulse2",
-                "x_pi/2": "constPulse"
+                "x_pi/2": "constPulse",
             },
             "time_of_flight": 180,
             "smearing": 0,
@@ -60,7 +60,7 @@ config = {
         "ramp_wf2": {
             "type": "arbitrary",
             "samples": np.linspace(0, -0.5, pulse_len).tolist()
-                       + np.linspace(0, -0.5, pulse_len).tolist(),
+            + np.linspace(0, -0.5, pulse_len).tolist(),
         },
     },
     "digital_waveforms": {
