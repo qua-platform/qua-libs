@@ -34,7 +34,7 @@ class QuaGST:
         self.model = model
         self._get_circuit_list()
         self.basic_gates_macros = basic_gates_macros
-        self._get_sequence_macros()
+        self._get_base_sequence_macros()
         self.pre_circuit = pre_circuit
         self.post_circuit = post_circuit
         self.config = config
@@ -52,14 +52,15 @@ class QuaGST:
             circuits = f.readlines()
             self.circuit_list = encode_circuits(circuits, self.model)
 
-    def _get_sequence_macros(self):
+    def _get_base_sequence_macros(self):
         """
         Generate gate sequence list and corresponding macros
         @return:
         """
-        self.gate_sequence, self.sequence_macros = gate_sequence_and_macros(
-            self.model, self.basic_gates_macros
-        )
+        (
+            self.base_gate_sequence,
+            self.base_sequence_macros,
+        ) = base_gate_sequence_and_macros(self.model, self.basic_gates_macros)
 
     def _qua_circuit(self, encoded_circuit: list):
         """
@@ -70,18 +71,18 @@ class QuaGST:
         _n_ = declare(int)
         # prep fiducials
         with switch_(encoded_circuit[0]):
-            for i, m in enumerate(self.sequence_macros):
+            for i, m in enumerate(self.base_sequence_macros):
                 with case_(i):
                     m()
         # germ
         with switch_(encoded_circuit[2]):
-            for i, m in enumerate(self.sequence_macros):
+            for i, m in enumerate(self.base_sequence_macros):
                 with case_(i):
                     with for_(_n_, 0, _n_ < encoded_circuit[3], _n_ + 1):
                         m()
         # meas fiducials
         with switch_(encoded_circuit[1]):
-            for i, m in enumerate(self.sequence_macros):
+            for i, m in enumerate(self.base_sequence_macros):
                 with case_(i):
                     m()
 
