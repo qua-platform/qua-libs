@@ -38,15 +38,15 @@ config = {
             "smearing": 0,
         },
         "y_control": {
-                    "singleInput": {"port": ("con1", 2)},
-                    "intermediate_frequency": 100e6,
-                    "operations": {
-                        "readoutOp": "readoutPulse",
-                        "y_pi/2": "gaussPulse",
-                    },
-                    "time_of_flight": 180,
-                    "smearing": 0,
-                },
+            "singleInput": {"port": ("con1", 2)},
+            "intermediate_frequency": 100e6,
+            "operations": {
+                "readoutOp": "readoutPulse",
+                "y_pi/2": "gaussPulse",
+            },
+            "time_of_flight": 180,
+            "smearing": 0,
+        },
         "readout": {
             "singleInput": {"port": ("con1", 3)},
             "outputs": {"output1": ("con1", 1)},
