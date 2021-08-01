@@ -177,7 +177,7 @@ with program() as streamProg_buffer:
     a = declare(int)
     b = declare(int)
     with for_(a, 0, a <= 10, a + 1):
-        with for_(b, 10, b < 40, b+10):
+        with for_(b, 10, b < 40, b + 10):
             save(b, out_str)
 
     with stream_processing():

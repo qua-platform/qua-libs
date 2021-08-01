@@ -249,8 +249,8 @@ my_qm = qmManager.open_qm(
     config
 )  # Generate a Quantum Machine based on the configuration described above
 N_shots = 1000
-qubit = 'qubit'
-rr = 'RR'
+qubit = "qubit"
+rr = "RR"
 n_input_states = 6
 
 
@@ -296,7 +296,7 @@ with program() as state_tomo:
             arb_gate(qubit, j)
             H(qubit)
             align()
-            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            measure("meas_pulse", rr, None, demod.full("integW1", I, "out1"))
             assign(state, I < th)
             save(state, stream_state)
             align()
@@ -307,7 +307,7 @@ with program() as state_tomo:
             H(qubit)
             frame_rotation(np.pi / 2, qubit)
             align()
-            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            measure("meas_pulse", rr, None, demod.full("integW1", I, "out1"))
             assign(state, I < th)
             save(state, stream_state)
             align()
@@ -316,7 +316,7 @@ with program() as state_tomo:
             # Z basis measurement
             arb_gate(qubit, j)
             align()
-            measure('meas_pulse', rr, None, demod.full('integW1', I, 'out1'))
+            measure("meas_pulse", rr, None, demod.full("integW1", I, "out1"))
             assign(state, I < th)
             save(state, stream_state)
             align()
@@ -325,11 +325,9 @@ with program() as state_tomo:
     with stream_processing():
         stream_state.boolean_to_int().buffer(n_input_states, 3).average().save("state")
 
-job = qmManager.simulate(config,
-                         state_tomo,
-                         SimulationConfig(
-                             int(100000))
-                         )  # Use LoopbackInterface to simulate the response of the qubit
+job = qmManager.simulate(
+    config, state_tomo, SimulationConfig(int(100000))
+)  # Use LoopbackInterface to simulate the response of the qubit
 time.sleep(1.0)
 
 results = job.result_handles
@@ -339,7 +337,9 @@ R_dir_inv = []  # Bloch vectors for each input states
 rho_dir_inv = []
 
 
-def is_physical(R):  # Check if the reconstructed density matrix is physically valid or not.
+def is_physical(
+    R,
+):  # Check if the reconstructed density matrix is physically valid or not.
     if np.linalg.norm(R) <= 1:
         return True
     else:
@@ -352,12 +352,15 @@ def norm(R):
 
 for i in range(n_input_states):
     R_dir_inv.append(1 - 2 * P_1[i])
-    rho_dir_inv.append(0.5 * (
+    rho_dir_inv.append(
+        0.5
+        * (
             np.array(([1.0, 0.0], [0.0, 1]))
             + R_dir_inv[i][0] * np.array(([0.0, 1.0], [1.0, 0.0]))
             + R_dir_inv[i][1] * np.array(([0.0, -1j], [1j, 0.0]))
             + R_dir_inv[i][2] * np.array(([1.0, 0.0], [0.0, -1.0]))
-    ))
+        )
+    )
 
 
 # Bayesian Mean Estimate
@@ -439,12 +442,15 @@ for j in range(n_input_states):
     #     ". Norm: ",
     #     norm(R_BME[j]),
     # )
-    rho_BME.append(0.5 * (
+    rho_BME.append(
+        0.5
+        * (
             np.array(([1.0, 0.0], [0.0, 1]))
             + R_BME[j][0] * np.array(([0.0, 1.0], [1.0, 0.0]))
             + R_BME[j][1] * np.array(([0.0, -1j], [1j, 0.0]))
             + R_BME[j][2] * np.array(([1.0, 0.0], [0.0, -1.0]))
-    ))
+        )
+    )
 
 
 # Constructing density matrices for target states
@@ -455,8 +461,14 @@ def fidelity(rho: np.ndarray, sigma: np.ndarray):
 ket0 = np.array([[1], [0]])
 ket1 = np.array([[0], [1]])
 
-th_output_states = [ket1, 1j * ket1, 1 / np.sqrt(2) * (ket0 - 1j * ket1), 1 / np.sqrt(2) * (ket0 + ket1),
-                    1 / np.sqrt(2) * (ket0 + 1j * ket1), 1 / np.sqrt(2) * (ket0 - ket1)]
+th_output_states = [
+    ket1,
+    1j * ket1,
+    1 / np.sqrt(2) * (ket0 - 1j * ket1),
+    1 / np.sqrt(2) * (ket0 + ket1),
+    1 / np.sqrt(2) * (ket0 + 1j * ket1),
+    1 / np.sqrt(2) * (ket0 - ket1),
+]
 
 rho_th = [s_th @ s_th.conj().T for s_th in th_output_states]
 
