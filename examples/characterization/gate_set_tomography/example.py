@@ -47,7 +47,7 @@ gst.run(300, plot_simulated_samples_con="con1")
 # gst.last_job.get_simulated_samples().con1.plot()
 # gst.run_IO()
 
-gst_script = open("gst_qua.txt", 'w')
+gst_script = open("gst_qua.txt", "w")
 print(*gst.qua_script, file=gst_script)
 gst_script.close()
 

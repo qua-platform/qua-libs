@@ -187,7 +187,7 @@ class QuaGST:
 
         self.results = job.result_handles.counts.fetch_all()
 
-    def run(self, n_circuits: int = None, plot_simulated_samples_con = None):
+    def run(self, n_circuits: int = None, plot_simulated_samples_con=None):
         """
         Run GST
         @param n_circuits: max number of circuits per program
@@ -199,7 +199,9 @@ class QuaGST:
         for i in range(len(self.circuit_list) // n_circuits + 1):
             circuits = self.circuit_list[i * n_circuits : (i + 1) * n_circuits]
             if circuits:
-                qua_prog = self.get_qua_program(self.gst_qua, np.array(circuits).T.tolist())
+                qua_prog = self.get_qua_program(
+                    self.gst_qua, np.array(circuits).T.tolist()
+                )
                 self.qua_script.append(generate_qua_script(qua_prog, self.config))
                 job = qm.execute(
                     qua_prog,
@@ -208,7 +210,9 @@ class QuaGST:
                 job.result_handles.wait_for_all_values()
                 if plot_simulated_samples_con:
                     plt.figure()
-                    job.get_simulated_samples().__getattribute__(plot_simulated_samples_con).plot()
+                    job.get_simulated_samples().__getattribute__(
+                        plot_simulated_samples_con
+                    ).plot()
                     plt.show()
                 self.last_job = job
                 self.results.append(job.result_handles.counts.fetch_all())
