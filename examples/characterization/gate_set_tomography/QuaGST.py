@@ -187,13 +187,15 @@ class QuaGST:
 
         self.results = job.result_handles.counts.fetch_all()
 
-    def run(self, n_circuits: int, plot_simulated_samples_con=None):
+    def run(self, n_circuits: int = None, plot_simulated_samples_con = None):
         """
         Run GST
         @param n_circuits: max number of circuits per program
         @return:
         """
         qm = self.qmm.open_qm(self.config)
+        if n_circuits is None:
+            n_circuits = len(self.circuit_list)
         for i in range(len(self.circuit_list) // n_circuits + 1):
             circuits = self.circuit_list[i * n_circuits : (i + 1) * n_circuits]
             if circuits:
