@@ -1,9 +1,8 @@
-from typing import Optional, List
+from typing import Optional, List, Callable, Tuple, Union, Iterable
 
 from qiskit import QuantumCircuit, Aer, execute
 import qiskit.circuit.library as glib
 import numpy as np
-from configuration import config
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -107,32 +106,36 @@ def add_s_op(s1_ops, clifford, index, q):
     for op in s1_ops[index]:
         clifford[q].append(op)
 
-
-def I(b: Baking, *qe_set: str):
+"""
+In what follows, q_tgt should be the main target qubit for which should be played the single qubit gate.
+qe_set can be a set of additional quantum elements that might be needed to actually compute the gate 
+(e.g fluxline, trigger, ...) 
+"""
+def I(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def X(b: Baking, *qe_set: str):
+def X(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def Y(b: Baking, *qe_set: str):
+def Y(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def X_2(b: Baking, *qe_set: str):
+def X_2(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def Y_2(b: Baking, *qe_set: str):
+def Y_2(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def mX_2(b: Baking, *qe_set: str):
+def mX_2(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
-def mY_2(b: Baking, *qe_set: str):
+def mY_2(b: Baking, q_tgt, *qe_set: str):
     pass
 
 
@@ -155,47 +158,72 @@ single_qb_gate_macros = {
 
 class RBTwoQubits:
     def __init__(self, qmm: QuantumMachinesManager, config: dict, max_length: int, K: int,
-                 two_qb_gate_macros: dict, measure_macro: function, single_qb_macros: Optional[dict] = None,
-                 truncations_positions: Optional[List] = None, seed: int = None, *quantum_elements: str):
+                 two_qb_gate_baking_macros: dict[Callable], measure_macro: Callable,
+                 measure_args: Optional[Tuple] = None,
+                 single_qb_macros: Optional[dict] = None,
+                 truncations_positions: Optional[Iterable] = None, seed: Optional[int] = None, *quantum_elements: str):
         """
         Class to retrieve easily baked RB sequences and their inverse operations
         :param qmm QuantumMachinesManager instance
         :param config Configuration file
         :param max_length Maximum length of desired RB sequence
         :param K Number of RB sequences
+        :param two_qb_gate_baking_macros dictionary containing baking macros for 2 qb gates necessary to do all
+        Cliffords (should contain keys "CNOT", "iSWAP" and "SWAP" macros)
+        :param measure_macro QUA macro for measurement of the qubits
+        :param measure_args arguments to be passed to measure_macro
+        :param single_qb_macros baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
+        "X/2", "Y/2", "-X/2", "-Y/2")
+        :param truncations_positions list containing integers for building RB sequences of varying lengths
+        to perform fitting. If no list is provided, RB sequence for each length until max_length is generated
+        :param seed Random seed
         :param quantum_elements quantum elements in format (q1, q2, coupler, *other_elements)
-        :param truncations_positions
+
         :param seed
         """
         self.qmm = qmm
+        self.config = config
         for qe in quantum_elements:
             if qe not in config["elements"]:
                 raise KeyError(f"Quantum element {qe} is not in the config")
+        if seed is not None:
+            np.random.seed(seed)
+        if truncations_positions is None:
+            self.truncations_positions = range(max_length)
+        else:
+            set_truncations = set(truncations_positions)
+            set_truncations.add(max_length)
+            list_truncations = sorted(list(set_truncations))
+            self.truncations_positions = list_truncations
+        self.measure_macro = measure_macro
+        self.measure_args = measure_args
+        self.sequences = [TwoQbRBSequence(self.qmm, self.config, max_length, two_qb_gate_baking_macros, single_qb_macros,
+                                          self.truncations_positions, seed, *quantum_elements) for _ in range(K)]
 
-        self.sequences = [TwoQbRBSequence(self.qmm, config, max_length, two_qb_gate_macros, single_qb_macros,
-                                          truncations_positions, seed, *quantum_elements) for _ in range(K)]
-        self.inverse_ops = [seq.revert_ops for seq in self.sequences]
-        self.duration_trackers = [seq.duration_tracker for seq in self.sequences]
-        self.baked_sequences = [seq.full_sequence for seq in self.sequences]
-
-    def QUA_prog(self, seq: Baking):
+    def QUA_prog(self, b_seq: Baking):
         with program() as prog:
-            seq.run()
+            b_seq.run()
+            self.measure_macro(self.measure_args)
 
         return prog
 
     def execute(self):
-        for seq in self.baked_sequences:
-            prog = self.QUA_prog(seq)
+        for seq in self.sequences:
+            b_seq = seq.generate_baked_sequence()
+            prog = self.QUA_prog(b_seq=b_seq)
             qm = self.qmm.open_qm(self.config, close_other_machines=True)
             pid = qm.queue.compile(prog)
 
-        pjob = qm.queue.add_compiled(prog, overrides={b_new.get_waveforms_dict()})
-        job = qm.queue.wait_for_execution(pjob)
-        job.results_handles.wait_for_all_values()
+            for trunc_index in range(len(self.truncations_positions)):
+                truncated_wf = seq.generate_baked_truncated_sequence(b_seq, trunc_index)
+                pjob = qm.queue.add_compiled(prog, overrides=truncated_wf)
+                job = qm.queue.wait_for_execution(pjob)
+                job.results_handles.wait_for_all_values()
+
 
 class TwoQbRBSequence:
-    def __init__(self, qmm: QuantumMachinesManager, config: dict, d_max: int, two_qb_gate_macros: dict, single_qb_macros: Optional[dict] = None,
+    def __init__(self, qmm: QuantumMachinesManager, config: dict, d_max: int, two_qubit_gate_macros: dict,
+                 single_qb_macros: Optional[dict] = None,
                  truncations_positions: Optional[List] = None, seed: Optional[int] = None, *quantum_elements: str
                  ):
         self.qmm = qmm
@@ -205,32 +233,21 @@ class TwoQbRBSequence:
         self.seed = seed
         assert len(quantum_elements) >= 2, "Two qubit RB requires at least two quantum elements"
         self.quantum_elements = quantum_elements
-        self.two_qb_gate_macros = two_qb_gate_macros
+        self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
-        self.duration_tracker = [0] * d_max  # Keeps track of each Clifford's duration
-        self.operations_list = [None] * d_max
-        self.inverse_op_string = [""] * d_max
-        self.baked_sequence = self.generate_baked_sequence()  # Store the RB sequence
-        self.baked_wf_truncations = [self.generate_baked_truncated_sequence(trunc)
-                                     for trunc in self.truncations_positions]
+        # self.baked_sequence = self.generate_baked_sequence()  # Store the RB sequence
+        # self.baked_wf_truncations = [self.generate_baked_truncated_sequence(trunc)
+        #                              for trunc in self.truncations_positions] +\
+        #                             [self.baked_sequence.get_waveforms_dict()]
 
     def generate_RB_sequence(self):
-        if self.seed is not None:
-            np.random.seed(self.seed)
-
-        if self.truncations_positions is None:
-            self.truncations_positions = range(self.d_max)
-        else:
-            set_truncations = set(self.truncations_positions)
-            set_truncations.add(self.d_max)
-            self.truncations_positions.append(sorted(list(set_truncations)))
 
         # generate total sequence:
         main_seq = [self.index_to_clifford(index)
                     # List of dictionaries (one key per qe) containing sequences for each Clifford)
                     for index in np.random.randint(low=0, high=size_c2, size=self.d_max)]
-        main_seq_unitaries = [clifford_to_unitary(seq) for seq in main_seq]  # Unitaries to find inverse op
+        main_seq_unitaries = [self.clifford_to_unitary(seq) for seq in main_seq]  # Unitaries to find inverse op
         truncations_plus_inverse = []
 
         # generate truncations:
@@ -246,40 +263,53 @@ class TwoQbRBSequence:
             truncations_plus_inverse.append(trunc)
         return truncations_plus_inverse
 
-    def writing_baked_wf(self, b: Baking, trunc):
+    def _writing_baked_wf(self, b: Baking, trunc):
+        q0, q1 = self.quantum_elements[0], self.quantum_elements[1]
         for clifford in self.full_sequence[trunc]:
-            for qe in clifford:
-                for op in clifford[qe]:
-                    if op == "CNOT" or op == "SWAP" or op == "iSWAP":
-                        self.two_qb_gate_macros[op](b, self.quantum_elements)
-                    else:
-                        if self.single_qb_macros is not None:
-                            self.single_qb_macros[op](b, self.quantum_elements)
+            assert len(clifford[q0]) == len(clifford[q1])
+            for op0, op1 in zip(clifford[q0], clifford[q1]):
+                if len(op0) == len(op1):
+                    for opa, opb in zip(op0, op1):
+                        if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
+                            assert opa == opb
+                            b.align(*self.quantum_elements)
+                            self.two_qb_gate_macros[opa](b, *self.quantum_elements)
                         else:
-                            b.play(op, qe)
+                            self.play_single_qb_op(opa, q0, b)
+                            self.play_single_qb_op(opb, q1, b)
+
+                else:
+                    for opa in op0:
+                        self.play_single_qb_op(opa, q0, b)
+                    for opb in op1:
+                        self.play_single_qb_op(opb, q1, b)
             b.align(*self.quantum_elements)
 
     def generate_baked_sequence(self):
         """
         Generates the longest sequence desired with its associated inverse operation.
         The resulting baking object is the reference for overriding baked waveforms that are used for
-        truncations, i.e for shorter sequences
+        truncations, i.e for shorter sequences. Config is updated with this method
         """
         with baking(self.config, padding_method="right", override=True) as b:
-            self.writing_baked_wf(b, -1)
+            self._writing_baked_wf(b, -1)
         return b
 
-    def generate_baked_truncated_sequence(self, trunc):
-        """Generate truncated sequences compatible with waveform overriding for add_compiled feature"""
+    def generate_baked_truncated_sequence(self, b_ref: Baking, trunc: int):
+        """Generate truncated sequences compatible with waveform overriding for add_compiled feature. Config
+        is not updated by this method"""
 
         with baking(self.config, padding_method="right", override=False,
-                    baking_index=self.baked_sequence.get_baking_index()) as b_new:
-
-            self.writing_baked_wf(b_new, trunc)
+                    baking_index=b_ref.get_baking_index()) as b_new:
+            self._writing_baked_wf(b_new, trunc)
 
         return b_new.get_waveforms_dict()
 
     def index_to_clifford(self, index):
+        """
+        Returns a dictionary with list of operations to be conducted to run the Clifford indicated by the index
+        for each quantum element
+        """
         clifford = {}
         q0 = self.quantum_elements[0]
         q1 = self.quantum_elements[1]
@@ -288,42 +318,75 @@ class TwoQbRBSequence:
         if index < 576:
             # single qubit class
             q0c1, q1c1 = np.unravel_index(index, (24, 24))
-
-            add_single_qubit_clifford(clifford, q0c1, q0)
-            add_single_qubit_clifford(clifford, q1c1, q1)
+            clifford[q0].append(_c1_ops[q0c1])
+            clifford[q1].append(_c1_ops[q1c1])
 
         elif 576 <= index < 576 + 5184:
             # CNOT class
             index -= 576
             q0c1, q1c1, q0s1, q1s1y2 = np.unravel_index(index, (24, 24, 3, 3))
-            add_single_qubit_clifford(clifford, q0c1, q0)
-            add_single_qubit_clifford(clifford, q1c1, q1)
-            for q in self.quantum_elements:
-                clifford[q].append("CNOT")
-            add_s_op(_s1_ops, clifford, q0s1, q0)
-            add_s_op(_s1y2_ops, clifford, q1s1y2, q1)
+            clifford[q0].append(_c1_ops[q0c1])
+            clifford[q1].append(_c1_ops[q1c1])
+
+            clifford[q0].append(("CNOT",))
+            clifford[q1].append(("CNOT",))
+
+            clifford[q0].append(_s1_ops[q0s1])
+            clifford[q1].append(_s1y2_ops[q1s1y2])
 
         elif 576 + 5184 <= index < 576 + 2 * 5184:
             # iSWAP class
             index -= 576 + 5184
             q0c1, q1c1, q0s1y2, q1s1x2 = np.unravel_index(index, (24, 24, 3, 3))
-            add_single_qubit_clifford(clifford, q0c1, q0)
-            add_single_qubit_clifford(clifford, q1c1, q1)
-            for q in self.quantum_elements:
-                clifford[q].append("iSWAP")
-            add_s_op(_s1y2_ops, clifford, q0s1y2, q0)
-            add_s_op(_s1x2_ops, clifford, q1s1x2, q1)
+            clifford[q0].append(_c1_ops[q0c1])
+            clifford[q1].append(_c1_ops[q1c1])
+
+            clifford[q0].append(("iSWAP",))
+            clifford[q1].append(("iSWAP",))
+
+            clifford[q0].append(_s1y2_ops[q0s1y2])
+            clifford[q1].append(_s1x2_ops[q1s1x2])
 
         else:
             # swap class
             index -= 576 + 2 * 5184
             q0c1, q1c1 = np.unravel_index(index, (24, 24))
-            for q in self.quantum_elements:
-                clifford[q].append("SWAP")
-            add_single_qubit_clifford(clifford, q0c1, q0)
-            add_single_qubit_clifford(clifford, q1c1, q1)
+
+            clifford[q0].append(_c1_ops[q0c1])
+            clifford[q1].append(_c1_ops[q1c1])
+
+            clifford[q0].append(("SWAP",))
+            clifford[q1].append(("SWAP",))
 
         return clifford
+
+    def clifford_to_unitary(self, gate_seq):
+        qc = _clifford_to_qiskit_circ(gate_seq)
+        simulator = Aer.get_backend("unitary_simulator")
+        unitary: np.ndarray = np.eye(4)
+        q0 = self.quantum_elements[0]
+        q1 = self.quantum_elements[1]
+        g0 = gate_seq[q0]
+        g1 = gate_seq[q1]
+        assert len(g0)==len(g1), f"Clifford not correctly built, length on q0 ({len(g0)}) != length on q1 ({len(g1)})"
+        for i in range(len(g0)):
+            for 
+            if g0[i] == g1[i] == "CNOT":
+                unitary = gate_unitaries["CNOT"] @ unitary
+            elif g0[i] == g1[i] == "SWAP":
+                unitary = gate_unitaries["SWAP"] @ unitary
+            elif g0[i] == g1[i] == "iSWAP":
+                unitary = gate_unitaries["iSWAP"] @ unitary
+            else:
+
+
+        return unitary
+
+    def play_single_qb_op(self, op: str, q: str, b: Baking):
+        if self.single_qb_macros is not None:
+            self.single_qb_macros[op](b, q, self.quantum_elements)
+        else:
+            b.play(op, q)
 
 
 _single_gate_to_qiskit = {
@@ -334,6 +397,35 @@ _single_gate_to_qiskit = {
     'Y/2': glib.RYGate(np.pi / 2),
     '-X/2': glib.RXGate(-np.pi / 2),
     '-Y/2': glib.RYGate(-np.pi / 2),
+}
+
+gate_unitaries = {
+    'I': np.array([1., 0.],
+                  [0., 1.]),
+    'X': np.array([0., 1.],
+                  [1., 0.]),
+    'Y': np.array([0., -1j],
+                  [1j, 0.]),
+    'X/2': 1/np.sqrt(2)*np.array([1., -1j],
+                                 [-1j, 1.]),
+    'Y/2': 1/np.sqrt(2)*np.array([1., -1.],
+                                 [1.,  1.]),
+    '-X/2': 1/np.sqrt(2)*np.array([1., 1j],
+                                  [1j, 1.]),
+    '-Y/2': 1/np.sqrt(2)*np.array([1.,  1.],
+                                  [-1., 1.]),
+    'CNOT': np.array([1., 0., 0., 0.],
+                     [0., 1., 0., 0.],
+                     [0., 0., 0., 1.],
+                     [0., 0., 1., 0.]),
+    'SWAP': np.array([1., 0., 0., 0.],
+                     [0., 0., 1., 0.],
+                     [0., 1., 0., 0.],
+                     [0., 0., 0., 1.]),
+    'iSWAP': np.array([1., 0., 0., 0.],
+                      [0., 0., 1j, 0.],
+                      [0., 1j, 0., 0.],
+                      [0., 0., 0., 1.])
 }
 
 
@@ -355,13 +447,6 @@ def _clifford_to_qiskit_circ(clifford):
                     qc.append(_single_gate_to_qiskit['I'], [1])
     return qc
 
-
-def clifford_to_unitary(gate_seq):
-    qc = _clifford_to_qiskit_circ(gate_seq)
-    simulator = Aer.get_backend("unitary_simulator")
-    unitary: np.ndarray = execute(qc, simulator).result().get_unitary()
-
-    return unitary
 
 
 if _generate_table:
