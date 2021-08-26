@@ -55,6 +55,7 @@ config = {
             "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": 0,
             "operations": {
+                "I": "IPulse",
                 "X/2": "X/2Pulse",
                 "X": "XPulse",
                 "-X/2": "-X/2Pulse",
@@ -73,6 +74,7 @@ config = {
             "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": 0,
             "operations": {
+                "I": "IPulse",
                 "X/2": "X/2Pulse",
                 "X": "XPulse",
                 "-X/2": "-X/2Pulse",
@@ -118,6 +120,11 @@ config = {
         },
     },
     "pulses": {
+        "IPulse": {
+            "operation": "control",
+            "length": pulse_len,
+            "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
+        },
         "constPulse": {
             "operation": "control",
             "length": pulse_len,

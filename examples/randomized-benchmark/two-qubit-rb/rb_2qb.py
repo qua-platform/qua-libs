@@ -1,11 +1,9 @@
 from typing import Optional, List, Callable, Tuple, Union, Iterable
-
-from qiskit import QuantumCircuit, Aer, execute
-import qiskit.circuit.library as glib
 import numpy as np
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm.QmJob import JobResults
 
 # this builds up on https://arxiv.org/pdf/1402.4848
 # build up sequence
@@ -68,6 +66,9 @@ _s1y2_ops = [
     ('-X/2', '-Y/2', 'X/2')
 ]
 
+ld = np.load('c2_unitaries.npz')
+c2_unitaries = ld['arr_0']
+
 """
 For two qubit gates necessary to generate the 4 classes (see Supplementary info of this paper:
 https://arxiv.org/pdf/1210.7011.pdf), we require the user to complete the following macros below according
@@ -106,11 +107,14 @@ def add_s_op(s1_ops, clifford, index, q):
     for op in s1_ops[index]:
         clifford[q].append(op)
 
+
 """
 In what follows, q_tgt should be the main target qubit for which should be played the single qubit gate.
 qe_set can be a set of additional quantum elements that might be needed to actually compute the gate 
 (e.g fluxline, trigger, ...) 
 """
+
+
 def I(b: Baking, q_tgt, *qe_set: str):
     pass
 
@@ -157,13 +161,15 @@ single_qb_gate_macros = {
 
 
 class RBTwoQubits:
-    def __init__(self, qmm: QuantumMachinesManager, config: dict, max_length: int, K: int,
+    def __init__(self, *, qmm: QuantumMachinesManager, config: dict, max_length: int, K: int,
                  two_qb_gate_baking_macros: dict[Callable], measure_macro: Callable,
                  measure_args: Optional[Tuple] = None,
                  single_qb_macros: Optional[dict] = None,
-                 truncations_positions: Optional[Iterable] = None, seed: Optional[int] = None, *quantum_elements: str):
+                 truncations_positions: Optional[Iterable] = None, seed: Optional[int] = None, quantum_elements: Iterable[str]):
         """
         Class to retrieve easily baked RB sequences and their inverse operations
+        Protocol can played by using the method execute()
+
         :param qmm QuantumMachinesManager instance
         :param config Configuration file
         :param max_length Maximum length of desired RB sequence
@@ -178,7 +184,6 @@ class RBTwoQubits:
         to perform fitting. If no list is provided, RB sequence for each length until max_length is generated
         :param seed Random seed
         :param quantum_elements quantum elements in format (q1, q2, coupler, *other_elements)
-
         :param seed
         """
         self.qmm = qmm
@@ -197,8 +202,9 @@ class RBTwoQubits:
             self.truncations_positions = list_truncations
         self.measure_macro = measure_macro
         self.measure_args = measure_args
-        self.sequences = [TwoQbRBSequence(self.qmm, self.config, max_length, two_qb_gate_baking_macros, single_qb_macros,
-                                          self.truncations_positions, seed, *quantum_elements) for _ in range(K)]
+        self.sequences = [
+            TwoQbRBSequence(self.qmm, self.config, max_length, two_qb_gate_baking_macros, single_qb_macros,
+                            self.truncations_positions, seed, *quantum_elements) for _ in range(K)]
 
     def QUA_prog(self, b_seq: Baking):
         with program() as prog:
@@ -208,17 +214,26 @@ class RBTwoQubits:
         return prog
 
     def execute(self):
+        overall_results = {}
         for seq in self.sequences:
             b_seq = seq.generate_baked_sequence()
             prog = self.QUA_prog(b_seq=b_seq)
             qm = self.qmm.open_qm(self.config, close_other_machines=True)
-            pid = qm.queue.compile(prog)
+            pid = qm.compile(prog)
 
             for trunc_index in range(len(self.truncations_positions)):
                 truncated_wf = seq.generate_baked_truncated_sequence(b_seq, trunc_index)
-                pjob = qm.queue.add_compiled(prog, overrides=truncated_wf)
-                job = qm.queue.wait_for_execution(pjob)
-                job.results_handles.wait_for_all_values()
+                pjob = qm.queue.add_compiled(pid, overrides=truncated_wf)
+                job = pjob.wait_for_execution()
+                results = job.result_handles
+                results.wait_for_all_values()
+                self.post_process(results, overall_results)
+            b_seq.delete_baked_Op()
+
+        return overall_results
+
+    def post_process(self, results: JobResults, overall_results: dict):
+        pass
 
 
 class TwoQbRBSequence:
@@ -361,25 +376,27 @@ class TwoQbRBSequence:
         return clifford
 
     def clifford_to_unitary(self, gate_seq):
-        qc = _clifford_to_qiskit_circ(gate_seq)
-        simulator = Aer.get_backend("unitary_simulator")
         unitary: np.ndarray = np.eye(4)
         q0 = self.quantum_elements[0]
         q1 = self.quantum_elements[1]
         g0 = gate_seq[q0]
         g1 = gate_seq[q1]
-        assert len(g0)==len(g1), f"Clifford not correctly built, length on q0 ({len(g0)}) != length on q1 ({len(g1)})"
-        for i in range(len(g0)):
-            for 
-            if g0[i] == g1[i] == "CNOT":
-                unitary = gate_unitaries["CNOT"] @ unitary
-            elif g0[i] == g1[i] == "SWAP":
-                unitary = gate_unitaries["SWAP"] @ unitary
-            elif g0[i] == g1[i] == "iSWAP":
-                unitary = gate_unitaries["iSWAP"] @ unitary
+        assert len(g0) == len(g1), f"Clifford not correctly built, length on q0 ({len(g0)}) != length on q1 ({len(g1)})"
+        for c0, c1 in zip(g0, g1):
+            if len(c0) == len(c1):
+                for opa, opb in zip(c0, c1):
+                    if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
+                        assert opa == opb, f"Two qubit gate does not involve the two elements: " \
+                                           f"op for qubit 1 {opa} does not match op for qubit 2 {opb}"
+                        unitary = gate_unitaries[opa] @ unitary
+                    else:
+                        unitary = np.kron(gate_unitaries[opa], gate_unitaries[opb]) @ unitary
+
             else:
-
-
+                for opa in c0:
+                    unitary = np.kron(gate_unitaries[opa], np.eye(2)) @ unitary
+                for opb in c1:
+                    unitary = np.kron(np.eye(2), gate_unitaries[opb]) @ unitary
         return unitary
 
     def play_single_qb_op(self, op: str, q: str, b: Baking):
@@ -389,74 +406,33 @@ class TwoQbRBSequence:
             b.play(op, q)
 
 
-_single_gate_to_qiskit = {
-    'I': glib.IGate(),
-    'X': glib.XGate(),
-    'Y': glib.YGate(),
-    'X/2': glib.RXGate(np.pi / 2),
-    'Y/2': glib.RYGate(np.pi / 2),
-    '-X/2': glib.RXGate(-np.pi / 2),
-    '-Y/2': glib.RYGate(-np.pi / 2),
-}
-
 gate_unitaries = {
-    'I': np.array([1., 0.],
-                  [0., 1.]),
-    'X': np.array([0., 1.],
-                  [1., 0.]),
-    'Y': np.array([0., -1j],
-                  [1j, 0.]),
-    'X/2': 1/np.sqrt(2)*np.array([1., -1j],
-                                 [-1j, 1.]),
-    'Y/2': 1/np.sqrt(2)*np.array([1., -1.],
-                                 [1.,  1.]),
-    '-X/2': 1/np.sqrt(2)*np.array([1., 1j],
-                                  [1j, 1.]),
-    '-Y/2': 1/np.sqrt(2)*np.array([1.,  1.],
-                                  [-1., 1.]),
-    'CNOT': np.array([1., 0., 0., 0.],
+    'I': np.eye(2),
+    'X': np.array([[0., 1.],
+                   [1., 0.]]),
+    'Y': np.array([[0., -1j],
+                   [1j, 0.]]),
+    'X/2': 1 / np.sqrt(2) * np.array([[1., -1j],
+                                      [-1j, 1.]]),
+    'Y/2': 1 / np.sqrt(2) * np.array([[1., -1.],
+                                      [1., 1.]]),
+    '-X/2': 1 / np.sqrt(2) * np.array([[1., 1j],
+                                      [1j, 1.]]),
+    '-Y/2': 1 / np.sqrt(2) * np.array([[1., 1.],
+                                      [-1., 1.]]),
+    'CNOT': np.array([[1., 0., 0., 0.],
                      [0., 1., 0., 0.],
                      [0., 0., 0., 1.],
-                     [0., 0., 1., 0.]),
-    'SWAP': np.array([1., 0., 0., 0.],
+                     [0., 0., 1., 0.]]),
+    'SWAP': np.array([[1., 0., 0., 0.],
                      [0., 0., 1., 0.],
                      [0., 1., 0., 0.],
-                     [0., 0., 0., 1.]),
-    'iSWAP': np.array([1., 0., 0., 0.],
+                     [0., 0., 0., 1.]]),
+    'iSWAP': np.array([[1., 0., 0., 0.],
                       [0., 0., 1j, 0.],
                       [0., 1j, 0., 0.],
-                      [0., 0., 0., 1.])
+                      [0., 0., 0., 1.]])
 }
-
-
-def _clifford_to_qiskit_circ(clifford):
-    qc = QuantumCircuit(2)
-    for q0g, q1g in zip(*clifford):
-
-        if q0g == 'cz':
-            qc.append(glib.CZGate(), [0, 1])
-        else:
-            for i in range(max(len(q0g), len(q1g))):
-                try:
-                    qc.append(_single_gate_to_qiskit[q0g[i]], [0])
-                except IndexError:
-                    qc.append(_single_gate_to_qiskit['I'], [0])
-                try:
-                    qc.append(_single_gate_to_qiskit[q1g[i]], [1])
-                except IndexError:
-                    qc.append(_single_gate_to_qiskit['I'], [1])
-    return qc
-
-
-
-if _generate_table:
-    print('starting...')
-    c2_unitaries = [clifford_to_unitary(index_to_clifford(i)) for i in range(size_c2)]
-    np.savez_compressed('c2_unitaries', c2_unitaries)
-    print('done')
-else:
-    ld = np.load('../raw/c2_unitaries.npz')
-    c2_unitaries = ld['arr_0']
 
 
 def is_phase(unitary):
@@ -478,14 +454,6 @@ def unitary_to_index(unitary):
     assert len(matches) == 1, f"algorithm failed, found {len(matches)} matches > 1"
 
     return matches[0]
-
-
-def _clifford_seq_to_qiskit_circ(clifford_seq):
-    qc = QuantumCircuit(2)
-    for clifford in clifford_seq:
-        qc += _clifford_to_qiskit_circ(clifford)
-        qc.barrier()
-    return qc
 
 
 if __name__ == '__main__':
