@@ -206,7 +206,7 @@ class RBTwoQubits:
             TwoQbRBSequence(self.qmm, self.config, max_length, two_qb_gate_baking_macros, single_qb_macros,
                             self.truncations_positions, seed, *quantum_elements) for _ in range(K)]
 
-    def QUA_prog(self, b_seq: Baking):
+    def qua_prog(self, b_seq: Baking):
         with program() as prog:
             b_seq.run()
             self.measure_macro(self.measure_args)
@@ -217,7 +217,7 @@ class RBTwoQubits:
         overall_results = {}
         for seq in self.sequences:
             b_seq = seq.generate_baked_sequence()
-            prog = self.QUA_prog(b_seq=b_seq)
+            prog = self.qua_prog(b_seq=b_seq)
             qm = self.qmm.open_qm(self.config, close_other_machines=True)
             pid = qm.compile(prog)
 
