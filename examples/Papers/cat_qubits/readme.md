@@ -1,3 +1,10 @@
+---
+title: Cat-qubits for Quantum Computation
+sidebar_label: Cat-qubit paradigm
+slug: ./
+id: index
+---
+
 # Introducing Schrödinger cat qubit paradigm for QC using QUA
 
 ### Reference papers :

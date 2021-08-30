@@ -143,6 +143,7 @@ module.exports = [
             "Papers/coupling-qubit-left-handed-metamaterial/index",
             "Papers/suppressing-qubit-dephasing-using-real-time/index",
             "Papers/RAM-multimode-CQED/index"
+            "Papers/cat_qubits/index"
         ]
     },
       {
