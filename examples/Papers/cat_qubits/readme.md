@@ -35,7 +35,7 @@ Moreover, we call a quantum superposition of coherent states of opposite phases 
 
 
 # Encoding the qubit state on a QHO: advantage of bosonic code
-![Bloch sphere of the cat qubit [5]](/images/cat_qubit_sphere.png)
+![Bloch sphere of the cat qubit [5]](images/cat_qubit_sphere.png)
 
 The qubit state is encoded on the previously introduced coherent states, which are considered as orthogonal since the average number of photons in the cavity is always assumed to higher than 1, as shown on the Bloch sphere above.
 
@@ -53,7 +53,7 @@ under the assumption that $$\kappa_1 = \kappa_\phi=0$$. This is powerful, as it 
 
 # Configuration of experimental setup 
 We propose here a series of QUA scripts that are meant to generate the data necessary to produce figures in the reference [3], which uses the cat qubit encoding to demonstrate an exponential suppression of bit flip errors at the expense of linear increase of phase flip errors with the average photon number in the cavity.
-![Experimental setup [3].](/images/experimental_setup.png)
+![Experimental setup [3].](images/experimental_setup.png)
 We have the following quantum elements:
 
 - *buffer_drive*, with varying drive amplitude to tune up the average number of photons at frequency $$\omega_b$$. The buffer is in the experiment in [3] another cavity carrying a very high photon loss rate.
@@ -80,7 +80,7 @@ The storage-buffer engineered interaction creates a dynamic that keeps refocusin
 
 Using the two photon dissipation process, the state of the cat eventually falls back to one of the two attractors, and the probability of falling back on the original one (that is the state the cat was in before escaping the manifold) is significantly improved if the other attractor is very far away in phase space, hence reducing the probability of having a bit flip error.
 
-![Pseudo-potential induced by the two-photon dissipation engineered mechanism [3]](/images/potential.png)
+![Pseudo-potential induced by the two-photon dissipation engineered mechanism [3]](images/potential.png)
 
 ## What about phase flip errors?
 Phase flip errors typically arise when considering the single photon loss channel. In fact, considering the annihilation operator as a jump operator, we have that:
@@ -130,7 +130,7 @@ One can see here that we introduce a time dependence on the value of $$\alpha$$,
 Eventually, we recover the following dissipator:
 $$\frac{d \hat{\rho}(t)}{d t}=\kappa_{2} \mathcal{D}\left[\hat{a}^{2}-(\alpha e^{i\pi t/T})^{2}\right] \hat{\rho}(t)$$.
 The deformation must hence be adiabatic in order for the stabilization to occur at the same time as the position of the two attractors is being exchanged such that a basis flip is performed while temporarily exiting and going back to the original codespace. The diagram shown in [7] and displayed below summarizes the dynamics presented above.
-![[7]](/images/X_gate.png)
+![[7]](images/X_gate.png)
 
  The optimal "path" that the function $$\alpha(t)$$ should take in order to optimize the gate fidelity is currently an open question. In practise, tuning dynamically the value of $$\alpha$$ amounts to changing the relative phase of the weak buffer drive. Real time phase modulation can be realized in QUA by either defining a fixed detuning $$\Delta$$ from the resonant frequency $$\omega_d==\omega_b$$ (this will yield a linear change of the relative phase $$\phi(t)$$ as $$\frac{d\phi(t)}{dt}=\omega$$), or by using the frequency chirp, which allows the realization of a dynamic evolution of the frequency, which hence can define a variable rate for the relative phase. 
 In QUA, those frequency changes can be implemented in a few lines, which can either be:
@@ -171,5 +171,5 @@ We shall now focus on describing how the QOP can efficiently perform simultaneou
 
 
 
-![Circuit used for an X-basis measurement in the context of an X-type stabilizer measurement. The first step consists of entangling the ancilla qubit with the data qubits. Afterwords, the ancilla qubit is deflated followed by a SWAP with a readout mode. Lastly, the readout mode is repeatedly measured using a transmon qubit. The duration’s for the parts of the measurement procedure are labeled at the bottom of the figure below each circuit element. While these repeated parity measurements are occurring, the CNOT gates of the next error correction cycle can begin. Also included is a diagram of the physical layout of the stabilizer to give context to the measurement circuit [5].](/images/Syndrome_measurement.png)
-![Cat-qubit stabilization in the surface-code architecture. Each ATS is coupled to two data modes α, γ and two ancilla modes β,δ. In practice, ATSs are also coupled to a fifth readout mode (not shown here because it is not stabilized by any ATS). Each ATS is responsible for performing four CNOT gates (at different time steps) and stabilizing two phononic modes in the cat-code manifold during each time step [5].](/images/Stabilization_schedule.png)
+![Circuit used for an X-basis measurement in the context of an X-type stabilizer measurement. The first step consists of entangling the ancilla qubit with the data qubits. Afterwords, the ancilla qubit is deflated followed by a SWAP with a readout mode. Lastly, the readout mode is repeatedly measured using a transmon qubit. The duration’s for the parts of the measurement procedure are labeled at the bottom of the figure below each circuit element. While these repeated parity measurements are occurring, the CNOT gates of the next error correction cycle can begin. Also included is a diagram of the physical layout of the stabilizer to give context to the measurement circuit [5].](images/Syndrome_measurement.png)
+![Cat-qubit stabilization in the surface-code architecture. Each ATS is coupled to two data modes α, γ and two ancilla modes β,δ. In practice, ATSs are also coupled to a fifth readout mode (not shown here because it is not stabilized by any ATS). Each ATS is responsible for performing four CNOT gates (at different time steps) and stabilizing two phononic modes in the cat-code manifold during each time step [5].](images/Stabilization_schedule.png)
