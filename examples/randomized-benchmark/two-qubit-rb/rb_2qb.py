@@ -1,4 +1,4 @@
-from typing import Optional, List, Callable, Tuple, Union, Iterable
+from typing import Optional, List, Callable, Tuple, Union, Dict
 import numpy as np
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
@@ -11,9 +11,9 @@ from qm.QmJob import JobResults
 _generate_table = False
 _test_2_design = False  # careful, this takes about 20 minutes
 size_c2 = 11520
-
-"""If no single_qb_macros are provided, Single qubit Clifford generators are assumed to be already setup in the config with 
-operations names matching ops described below 
+Clifford = Dict[str, List[Tuple]]
+"""If no single_qb_macros are provided, Single qubit Clifford generators are assumed 
+to be already setup in the config with operations names matching ops described below 
 (i.e 'I', 'X', 'Y', 'Y/2', 'X/2', '-X/2' and '-Y/2' are present in operations 
 list of both elements describing qubit 0 and qubit 1"""
 
@@ -69,148 +69,100 @@ _s1y2_ops = [
 ld = np.load('c2_unitaries.npz')
 c2_unitaries = ld['arr_0']
 
-"""
-For two qubit gates necessary to generate the 4 classes (see Supplementary info of this paper:
-https://arxiv.org/pdf/1210.7011.pdf), we require the user to complete the following macros below according
-to their own native set of qubit gates, that is perform the appropriate decomposition and convert the pulse sequence
-in a sequence of baking play statements (amounts to similar structure as QUA, just add the prefix b. before every statement)
-Example :
-in QUA you would have for a CZ operation:
-    play("CZ", "coupler")
-in the macros below you write instead:
-    b.play("CZ", "coupler")
-"""
-
-
-# Baking Macros needed for two qubit gates
-
-def CNOT(b: Baking, *qe_set: str):
-    # Map your pulse sequence for performing a CNOT using baking play statements
-    #
-    pass
-
-
-def iSWAP(b: Baking, *qe_set: str):
-    pass
-
-
-def SWAP(b: Baking, *qe_set: str):
-    pass
-
-
-def add_single_qubit_clifford(clifford, index, q):
-    for op in _c1_ops[index]:
-        clifford[q].append(op)
-
-
-def add_s_op(s1_ops, clifford, index, q):
-    for op in s1_ops[index]:
-        clifford[q].append(op)
-
-
-"""
-In what follows, q_tgt should be the main target qubit for which should be played the single qubit gate.
-qe_set can be a set of additional quantum elements that might be needed to actually compute the gate 
-(e.g fluxline, trigger, ...) 
-"""
-
-
-def I(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def X(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def Y(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def X_2(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def Y_2(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def mX_2(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-def mY_2(b: Baking, q_tgt, *qe_set: str):
-    pass
-
-
-two_qb_gate_macros = {
-    "CNOT": CNOT,
-    "iSWAP": iSWAP,
-    "SWAP": SWAP
-}
-
-single_qb_gate_macros = {
-    "I": I,
-    "X": X,
-    "Y": Y,
-    "X/2": X_2,
-    "-X/2": mX_2,
-    "Y/2": Y_2,
-    "-Y/2": mY_2
-}
-
 
 class RBTwoQubits:
-    def __init__(self, *, qmm: QuantumMachinesManager, config: dict, max_length: int, K: int,
-                 two_qb_gate_baking_macros: dict[Callable], measure_macro: Callable,
+    def __init__(self, qmm: QuantumMachinesManager,
+                 config: Dict,
+                 quantum_elements: Iterable[str],
+                 N_Clifford: Union[Iterable, int],
+                 K: int,
+                 N_shots: int,
+                 two_qb_gate_baking_macros: Dict[str, Callable],
+                 measure_macro: Callable,
+                 stream_macro: Callable,
                  measure_args: Optional[Tuple] = None,
-                 single_qb_macros: Optional[dict] = None,
-                 truncations_positions: Optional[Iterable] = None, seed: Optional[int] = None, quantum_elements: Iterable[str]):
+                 single_qb_macros: Optional[Dict] = None,
+                 seed: Optional[int] = None
+                 ):
         """
-        Class to retrieve easily baked RB sequences and their inverse operations
+        Class designed to ease the realization of a Two-qubit Randomized Benchmarking experiment.
+        The class generates sequences of 2 qubit Cliffords (selection done in four classes as done in
+        https://arxiv.org/abs/1210.7011), and creates a series of baked waveforms (one per random sequence) and plays
+        them in different QUA programs. Shorter random sequences are also generated from truncations and are played
+        more efficiently from the original baked waveform using the add_compiled feature of the QM API.
+
+        The user is expected to provide macros for two qubit Clifford generators (CNOT, iSWAP and SWAP) based on their
+        own set of native gates,
+        a measurement macro and a macro for the stream processing according to the measurement type.
+        Additional parameters can be provided such as truncation positions, macros for single qubit gates if those are
+        more complex than one single QUA play statement and a random seed.
         Protocol can played by using the method execute()
 
-        :param qmm QuantumMachinesManager instance
-        :param config Configuration file
-        :param max_length Maximum length of desired RB sequence
-        :param K Number of RB sequences
-        :param two_qb_gate_baking_macros dictionary containing baking macros for 2 qb gates necessary to do all
-        Cliffords (should contain keys "CNOT", "iSWAP" and "SWAP" macros)
-        :param measure_macro QUA macro for measurement of the qubits
-        :param measure_args arguments to be passed to measure_macro
-        :param single_qb_macros baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
-        "X/2", "Y/2", "-X/2", "-Y/2")
-        :param truncations_positions list containing integers for building RB sequences of varying lengths
-        to perform fitting. If no list is provided, RB sequence for each length until max_length is generated
-        :param seed Random seed
-        :param quantum_elements quantum elements in format (q1, q2, coupler, *other_elements)
-        :param seed
+
+        :param qmm: QuantumMachinesManager instance
+        :param config: Configuration file
+        :param N_Clifford:
+            Number of Clifford gates per sequence. If a list of integers is provided,
+            one sequence per element is generated.
+        :param K: Number of RB sequences
+        :param N_shots: Number of shots for averaging per sequence
+
+        :param two_qb_gate_baking_macros:
+            dictionary containing baking macros for 2 qb gates necessary to do all
+            Cliffords (should contain keys "CNOT", "iSWAP" and "SWAP" macros)
+
+        :param measure_macro: QUA macro for measurement of the qubits
+            (shall contain save statements for stream_processing)
+
+        :param measure_args: arguments to be passed to measure_macro
+
+        :param stream_macro:
+            Stream processing QUA Macro, should be compatible with all
+            variables introduced in measure_macro
+
+        :param single_qb_macros:
+            baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
+            "X/2", "Y/2", "-X/2", "-Y/2")
+
+        :param seed: Random seed
+
+        :param quantum_elements:
+            quantum elements involved in format (q_ctrl, q_tgt, *other_elements)
         """
+
+        self.stream_macro = stream_macro
         self.qmm = qmm
         self.config = config
+        self.N_shots = N_shots
         for qe in quantum_elements:
             if qe not in config["elements"]:
                 raise KeyError(f"Quantum element {qe} is not in the config")
         if seed is not None:
             np.random.seed(seed)
-        if truncations_positions is None:
-            self.truncations_positions = range(max_length)
+        if type(N_Clifford) == int:
+            self.N_Clifford = range(N_Clifford)
         else:
-            set_truncations = set(truncations_positions)
-            set_truncations.add(max_length)
+            set_truncations = set(N_Clifford)
             list_truncations = sorted(list(set_truncations))
-            self.truncations_positions = list_truncations
+            self.N_Clifford = list_truncations
         self.measure_macro = measure_macro
         self.measure_args = measure_args
         self.sequences = [
-            TwoQbRBSequence(self.qmm, self.config, max_length, two_qb_gate_baking_macros, single_qb_macros,
-                            self.truncations_positions, seed, *quantum_elements) for _ in range(K)]
+            TwoQbRBSequence(self.qmm, self.config,
+                            self.N_Clifford,
+                            two_qb_gate_baking_macros,
+                            single_qb_macros,
+                            seed,
+                            *quantum_elements) for _ in range(K)]
 
     def qua_prog(self, b_seq: Baking):
         with program() as prog:
-            b_seq.run()
-            self.measure_macro(self.measure_args)
-
+            n = declare(int)
+            with for_(n, 0, n < self.N_shots, n+1):
+                b_seq.run()
+                self.measure_macro(*self.measure_args)
+        with stream_processing():
+            self.stream_macro()
         return prog
 
     def execute(self):
@@ -221,10 +173,10 @@ class RBTwoQubits:
             qm = self.qmm.open_qm(self.config, close_other_machines=True)
             pid = qm.compile(prog)
 
-            for trunc_index in range(len(self.truncations_positions)):
-                truncated_wf = seq.generate_baked_truncated_sequence(b_seq, trunc_index)
-                pjob = qm.queue.add_compiled(pid, overrides=truncated_wf)
-                job = pjob.wait_for_execution()
+            for trunc_index in range(len(self.N_Clifford)):
+                truncated_wf = seq.retrieve_truncations(b_seq, trunc_index)
+                pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
+                job = pending_job.wait_for_execution()
                 results = job.result_handles
                 results.wait_for_all_values()
                 self.post_process(results, overall_results)
@@ -237,26 +189,33 @@ class RBTwoQubits:
 
 
 class TwoQbRBSequence:
-    def __init__(self, qmm: QuantumMachinesManager, config: dict, d_max: int, two_qubit_gate_macros: dict,
+    def __init__(self, qmm: QuantumMachinesManager, config: dict,
+                 N_Cliffords: List,
+                 two_qubit_gate_macros: dict,
                  single_qb_macros: Optional[dict] = None,
-                 truncations_positions: Optional[List] = None, seed: Optional[int] = None, *quantum_elements: str
+                 seed: Optional[int] = None,
+                 *quantum_elements: str
                  ):
         self.qmm = qmm
-        self.d_max = d_max
         self.config = config
-        self.truncations_positions = truncations_positions
+        self.truncations_positions = N_Cliffords
+        self.d_max = N_Cliffords[-1]
         self.seed = seed
         assert len(quantum_elements) >= 2, "Two qubit RB requires at least two quantum elements"
         self.quantum_elements = quantum_elements
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
-        # self.baked_sequence = self.generate_baked_sequence()  # Store the RB sequence
-        # self.baked_wf_truncations = [self.generate_baked_truncated_sequence(trunc)
-        #                              for trunc in self.truncations_positions] +\
-        #                             [self.baked_sequence.get_waveforms_dict()]
 
-    def generate_RB_sequence(self):
+    def generate_RB_sequence(self) -> List[List[Clifford]]:
+        """
+        Generate all sequences according to provided truncations. Each Clifford is a dict with quantum elements as keys
+        and to each key is associated a list of tuples (each tuple is either a single qubit Clifford,
+        or a two-qubit gate marker).
+
+        :returns: List of all RB sequences containing Clifford operations in the form:
+            [ List of Clifford for truncation #1, List of Clifford for truncation #2,...]
+        """
 
         # generate total sequence:
         main_seq = [self.index_to_clifford(index)
@@ -266,9 +225,11 @@ class TwoQbRBSequence:
         truncations_plus_inverse = []
 
         # generate truncations:
+        print(len(self.truncations_positions), self.truncations_positions)
         for pos in self.truncations_positions:
-            trunc = main_seq[:pos + 1]
-            trunc_unitary = main_seq_unitaries[:pos + 1]
+            trunc = main_seq[:pos+1]
+            print(pos, len(trunc))
+            trunc_unitary = main_seq_unitaries[:pos+1]
             trunc_unitary_prod = np.eye(4)
             for unitary in trunc_unitary:
                 trunc_unitary_prod = unitary @ trunc_unitary_prod
@@ -276,9 +237,10 @@ class TwoQbRBSequence:
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
             truncations_plus_inverse.append(trunc)
+            print(trunc)
         return truncations_plus_inverse
 
-    def _writing_baked_wf(self, b: Baking, trunc):
+    def _writing_baked_wf(self, b: Baking, trunc) -> None:
         q0, q1 = self.quantum_elements[0], self.quantum_elements[1]
         for clifford in self.full_sequence[trunc]:
             assert len(clifford[q0]) == len(clifford[q1])
@@ -298,19 +260,21 @@ class TwoQbRBSequence:
                         self.play_single_qb_op(opa, q0, b)
                     for opb in op1:
                         self.play_single_qb_op(opb, q1, b)
-            b.align(*self.quantum_elements)
+            # b.align(*self.quantum_elements)
 
-    def generate_baked_sequence(self):
+    def generate_baked_sequence(self) -> Baking:
         """
         Generates the longest sequence desired with its associated inverse operation.
         The resulting baking object is the reference for overriding baked waveforms that are used for
         truncations, i.e for shorter sequences. Config is updated with this method
+
+        :returns: Baking object containing RB sequence of longest size
         """
         with baking(self.config, padding_method="right", override=True) as b:
             self._writing_baked_wf(b, -1)
         return b
 
-    def generate_baked_truncated_sequence(self, b_ref: Baking, trunc: int):
+    def retrieve_truncations(self, b_ref: Baking, trunc: int) -> Dict:
         """Generate truncated sequences compatible with waveform overriding for add_compiled feature. Config
         is not updated by this method"""
 
@@ -320,7 +284,7 @@ class TwoQbRBSequence:
 
         return b_new.get_waveforms_dict()
 
-    def index_to_clifford(self, index):
+    def index_to_clifford(self, index) -> Clifford:
         """
         Returns a dictionary with list of operations to be conducted to run the Clifford indicated by the index
         for each quantum element
@@ -447,10 +411,10 @@ def unitary_to_index(unitary):
     matches = []
     prod_unitaries = unitary.conj().T @ c2_unitaries
     eye4 = np.eye(4)
-    for i in range(size_c2):
-        if np.abs(np.abs(prod_unitaries[i, 0, 0]) - 1) < 1e-10:
-            if np.max(np.abs(prod_unitaries[i] / prod_unitaries[i, 0, 0] - eye4)) < 1e-10:
-                matches.append(i)
+    for x in range(size_c2):
+        if np.abs(np.abs(prod_unitaries[x, 0, 0]) - 1) < 1e-10:
+            if np.max(np.abs(prod_unitaries[x] / prod_unitaries[x, 0, 0] - eye4)) < 1e-10:
+                matches.append(x)
     assert len(matches) == 1, f"algorithm failed, found {len(matches)} matches > 1"
 
     return matches[0]
