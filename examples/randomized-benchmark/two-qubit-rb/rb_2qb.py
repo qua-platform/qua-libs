@@ -228,7 +228,6 @@ class TwoQbRBSequence:
         print(len(self.truncations_positions), self.truncations_positions)
         for pos in self.truncations_positions:
             trunc = main_seq[:pos+1]
-            print(pos, len(trunc))
             trunc_unitary = main_seq_unitaries[:pos+1]
             trunc_unitary_prod = np.eye(4)
             for unitary in trunc_unitary:
@@ -237,7 +236,6 @@ class TwoQbRBSequence:
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
             truncations_plus_inverse.append(trunc)
-            print(trunc)
         return truncations_plus_inverse
 
     def _writing_baked_wf(self, b: Baking, trunc) -> None:
