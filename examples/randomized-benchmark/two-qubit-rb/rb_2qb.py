@@ -76,11 +76,7 @@ class RBTwoQubits:
                  quantum_elements: Iterable[str],
                  N_Clifford: Union[Iterable, int],
                  K: int,
-                 N_shots: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
-                 measure_macro: Callable,
-                 stream_macro: Callable,
-                 measure_args: Optional[Tuple] = None,
                  single_qb_macros: Optional[Dict] = None,
                  seed: Optional[int] = None
                  ):
@@ -111,15 +107,6 @@ class RBTwoQubits:
             dictionary containing baking macros for 2 qb gates necessary to do all
             Cliffords (should contain keys "CNOT", "iSWAP" and "SWAP" macros)
 
-        :param measure_macro: QUA macro for measurement of the qubits
-            (shall contain save statements for stream_processing)
-
-        :param measure_args: arguments to be passed to measure_macro
-
-        :param stream_macro:
-            Stream processing QUA Macro, should be compatible with all
-            variables introduced in measure_macro
-
         :param single_qb_macros:
             baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
             "X/2", "Y/2", "-X/2", "-Y/2")
@@ -130,10 +117,8 @@ class RBTwoQubits:
             quantum elements involved in format (q_ctrl, q_tgt, *other_elements)
         """
 
-        self.stream_macro = stream_macro
         self.qmm = qmm
         self.config = config
-        self.N_shots = N_shots
         for qe in quantum_elements:
             if qe not in config["elements"]:
                 raise KeyError(f"Quantum element {qe} is not in the config")
@@ -145,8 +130,6 @@ class RBTwoQubits:
             set_truncations = set(N_Clifford)
             list_truncations = sorted(list(set_truncations))
             self.N_Clifford = list_truncations
-        self.measure_macro = measure_macro
-        self.measure_args = measure_args
         self.sequences = [
             TwoQbRBSequence(self.qmm, self.config,
                             self.N_Clifford,
@@ -155,89 +138,17 @@ class RBTwoQubits:
                             seed,
                             *quantum_elements) for _ in range(K)]
 
-    def qua_prog(self, b_seq: Baking):
-        if self.measure_args is not None:
-            with program() as prog:
-                n = declare(int)
-                th1 = declare(fixed, value=0.)
-                th2 = declare(fixed, value=0.)
-                stream1 = declare_stream()
-                stream2 = declare_stream()
-                state1 = declare(bool)
-                state2 = declare(bool)
-                I1 = declare(fixed)
-                I2 = declare(fixed)
-                d1 = declare(fixed)
-                d2 = declare(fixed)
-                d3 = declare(fixed)
-                d4 = declare(fixed)
-                with for_(n, 0, n < self.N_shots, n+1):
-                    b_seq.run()
-                    # self.measure_macro(*self.measure_args)
-                    measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
-                            demod.full('integW2', d2, 'out2'))
-                    measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
-                            demod.full('integW2', d4, 'out2'))
-                with stream_processing():
-                    # self.stream_macro()
-                    stream1.boolean_to_int().average().save("state1")
-                    stream2.boolean_to_int().average().save("state2")
-        else:
-            with program() as prog:
-                n = declare(int)
-                th1 = declare(fixed, value=0.)
-                th2 = declare(fixed, value=0.)
-                stream1 = declare_stream()
-                stream2 = declare_stream()
-                state1 = declare(bool)
-                state2 = declare(bool)
-                I1 = declare(fixed)
-                I2 = declare(fixed)
-                d1 = declare(fixed)
-                d2 = declare(fixed)
-                d3 = declare(fixed)
-                d4 = declare(fixed)
-                with for_(n, 0, n < self.N_shots, n+1):
-                    b_seq.run()
-                    # self.measure_macro()
-                    align()
-                    measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
-                            demod.full('integW2', d2, 'out2'))
-                    measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
-                            demod.full('integW2', d4, 'out2'))
-                    assign(I1, d1 + d2)
-                    assign(I2, d3 + d4)
-                    assign(state1, I1 > th1)
-                    assign(state2, I2 > th2)
-                    save(state1, stream1)
-                    save(state2, stream2)
-                with stream_processing():
-                    self.stream_macro(stream1, stream2)
-                    # stream1.boolean_to_int().average().save("state1")
-                    # stream2.boolean_to_int().average().save("state2")
-        return prog
+    def run(self, prog_list):
+        """
+        Run the full two qubit RB experiment
 
-    def execute(self):
-        overall_results = {}
-        for seq in self.sequences:
-            b_seq = seq.generate_baked_sequence()
-            prog = self.qua_prog(b_seq=b_seq)
-            qm = self.qmm.open_qm(self.config, close_other_machines=True)
-            pid = qm.compile(prog)
-
-            for trunc_index in range(len(self.N_Clifford)):
-                truncated_wf = seq.retrieve_truncations(b_seq, trunc_index)
-                pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
-                job = pending_job.wait_for_execution()
-                results = job.result_handles
-                results.wait_for_all_values()
-                self.post_process(results, overall_results)
-            b_seq.delete_baked_Op()
-
-        return overall_results
-
-    def post_process(self, results: JobResults, overall_results: dict):
-        pass
+        :param prog_list: list of QUA programs to be executed, each one should carry the baked sequence run and the
+            measurement operation inside
+        """
+        assert len(prog_list) == len(self.sequences), 'Number of programs provided do ' \
+                                                      'not match the number of sequences generated'
+        for seq, prog in zip(self.sequences, prog_list):
+            seq.execute(prog)
 
 
 class TwoQbRBSequence:
@@ -246,15 +157,17 @@ class TwoQbRBSequence:
                  two_qubit_gate_macros: dict,
                  single_qb_macros: Optional[dict] = None,
                  seed: Optional[int] = None,
-                 *quantum_elements: str
+                 quantum_elements: Optional[Iterable[str]] = None
                  ):
         self.qmm = qmm
         self.config = config
         self.truncations_positions = N_Cliffords
         self.d_max = N_Cliffords[-1]
         self.seed = seed
-        assert len(quantum_elements) >= 2, "Two qubit RB requires at least two quantum elements"
-        self.quantum_elements = quantum_elements
+        if quantum_elements is not None:
+            self.quantum_elements = quantum_elements
+        else:
+            self.quantum_elements = ("q0", "q1")
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
@@ -289,6 +202,29 @@ class TwoQbRBSequence:
             truncations_plus_inverse.append(trunc)
 
         return truncations_plus_inverse
+
+    def execute(self, prog):
+        """
+        Run the QUA program for one RB sequence and all its shorter truncations
+
+        :param prog: QUA program that should contain the b.run() statement and the measurement,
+            where b is the baking object associated to the RBSequence object this method is called from
+
+        """
+        b_seq = self.generate_baked_sequence()
+        overall_results = {}
+        qm = self.qmm.open_qm(self.config, close_other_machines=True)
+        pid = qm.compile(prog)
+
+        for trunc_index in range(len(self.truncations_positions)):
+            truncated_wf = self.retrieve_truncations(b_seq, trunc_index)
+            pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
+            job = pending_job.wait_for_execution()
+            results = job.result_handles
+            results.wait_for_all_values()
+        self.b_seq.delete_baked_Op()
+
+        return overall_results
 
     def _writing_baked_wf(self, b: Baking, trunc) -> None:
         q0, q1 = self.quantum_elements[0], self.quantum_elements[1]
