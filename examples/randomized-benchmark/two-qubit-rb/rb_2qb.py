@@ -156,13 +156,65 @@ class RBTwoQubits:
                             *quantum_elements) for _ in range(K)]
 
     def qua_prog(self, b_seq: Baking):
-        with program() as prog:
-            n = declare(int)
-            with for_(n, 0, n < self.N_shots, n+1):
-                b_seq.run()
-                self.measure_macro(*self.measure_args)
-        with stream_processing():
-            self.stream_macro()
+        if self.measure_args is not None:
+            with program() as prog:
+                n = declare(int)
+                th1 = declare(fixed, value=0.)
+                th2 = declare(fixed, value=0.)
+                stream1 = declare_stream()
+                stream2 = declare_stream()
+                state1 = declare(bool)
+                state2 = declare(bool)
+                I1 = declare(fixed)
+                I2 = declare(fixed)
+                d1 = declare(fixed)
+                d2 = declare(fixed)
+                d3 = declare(fixed)
+                d4 = declare(fixed)
+                with for_(n, 0, n < self.N_shots, n+1):
+                    b_seq.run()
+                    # self.measure_macro(*self.measure_args)
+                    measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
+                            demod.full('integW2', d2, 'out2'))
+                    measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
+                            demod.full('integW2', d4, 'out2'))
+                with stream_processing():
+                    # self.stream_macro()
+                    stream1.boolean_to_int().average().save("state1")
+                    stream2.boolean_to_int().average().save("state2")
+        else:
+            with program() as prog:
+                n = declare(int)
+                th1 = declare(fixed, value=0.)
+                th2 = declare(fixed, value=0.)
+                stream1 = declare_stream()
+                stream2 = declare_stream()
+                state1 = declare(bool)
+                state2 = declare(bool)
+                I1 = declare(fixed)
+                I2 = declare(fixed)
+                d1 = declare(fixed)
+                d2 = declare(fixed)
+                d3 = declare(fixed)
+                d4 = declare(fixed)
+                with for_(n, 0, n < self.N_shots, n+1):
+                    b_seq.run()
+                    # self.measure_macro()
+                    align()
+                    measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
+                            demod.full('integW2', d2, 'out2'))
+                    measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
+                            demod.full('integW2', d4, 'out2'))
+                    assign(I1, d1 + d2)
+                    assign(I2, d3 + d4)
+                    assign(state1, I1 > th1)
+                    assign(state2, I2 > th2)
+                    save(state1, stream1)
+                    save(state2, stream2)
+                with stream_processing():
+                    self.stream_macro(stream1, stream2)
+                    # stream1.boolean_to_int().average().save("state1")
+                    # stream2.boolean_to_int().average().save("state2")
         return prog
 
     def execute(self):
@@ -225,7 +277,6 @@ class TwoQbRBSequence:
         truncations_plus_inverse = []
 
         # generate truncations:
-        print(len(self.truncations_positions), self.truncations_positions)
         for pos in self.truncations_positions:
             trunc = main_seq[:pos+1]
             trunc_unitary = main_seq_unitaries[:pos+1]
@@ -236,6 +287,7 @@ class TwoQbRBSequence:
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
             truncations_plus_inverse.append(trunc)
+
         return truncations_plus_inverse
 
     def _writing_baked_wf(self, b: Baking, trunc) -> None:
@@ -247,7 +299,7 @@ class TwoQbRBSequence:
                     for opa, opb in zip(op0, op1):
                         if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
                             assert opa == opb
-                            b.align(*self.quantum_elements)
+                            # b.align(*self.quantum_elements)
                             self.two_qb_gate_macros[opa](b, *self.quantum_elements)
                         else:
                             self.play_single_qb_op(opa, q0, b)

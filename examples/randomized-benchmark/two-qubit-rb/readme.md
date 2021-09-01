@@ -31,6 +31,8 @@ We introduce a specific class that allows an easy generation and execution of mu
 few generic inputs the user shall provide:
 - a  QuantumMachinesManager instance, which will be used to launch  the series of jobs necessary to play all synthezised sequences 
 - a config dictionary, used to open a Quantum Machine and to store the waveforms randomly generated
+- - *quantum_elements*: all quantum elements necessary to compute the gates. Note that the first two elements of this list shall be consisting the adressing of *qubit0* and *qubit1* directly, or 
+if macros are indicated 
 - *max_length*: Maximum number of Cliffords the random sequence shall contain
 - *K*: Number of random sequences to be generated for averaging
 - *two_qb_gate_macros*: Dictionary containing macros taking a baking object as input and using
@@ -43,7 +45,7 @@ a set of macros. Note that the dictionary shall then contain macros for all sing
 - *truncation_positions*: Optional Iterable indicating at which lengths the search and implementation of an inverse operation shall be done (necessary for the fitting).
 If no iterable is provided, then all truncations from 1 to *max_length* are performed
 - *seed*: Random seed
-- *quantum_elements*: all quantum elements necessary to compute the gates. Note that the first two elements of this list shall be consisting the adressing of *qubit0* and *qubit1* directly.
+
 
 # Run the experiment
 Once the instance of the previously class is created,
