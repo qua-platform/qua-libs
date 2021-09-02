@@ -170,11 +170,10 @@ s1 = sequences[0].full_sequence
 for h in s1:
     print(len(h), h)
 
-seq = sequences[0]
-b = seq.generate_baked_sequence()
-print(b.get_Op_length("q0"))
+baked_reference = s.baked_reference
+print(baked_reference.get_Op_length("q0"))
 print("starting simulation")
-job = qmm.simulate(config=config, program=qua_prog(b, 100), simulate=SimulationConfig(5000))
+job = qmm.simulate(config=config, program=qua_prog(baked_reference, 100), simulate=SimulationConfig(5000))
 
 samples = job.get_simulated_samples()
 samples.con1.plot()

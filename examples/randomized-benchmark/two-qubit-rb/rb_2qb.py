@@ -3,7 +3,6 @@ import numpy as np
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm.QmJob import JobResults
 from copy import deepcopy
 
 # this builds up on https://arxiv.org/pdf/1402.4848
@@ -71,6 +70,10 @@ ld = np.load('c2_unitaries.npz')
 c2_unitaries = ld['arr_0']
 
 
+def retrieve_truncations(seq, baked_reference, trunc_index):
+    return seq.retrieve_truncations(baked_reference, trunc_index)
+
+
 class RBTwoQubits:
     def __init__(self, qmm: QuantumMachinesManager,
                  config: Dict,
@@ -85,12 +88,12 @@ class RBTwoQubits:
         Class designed to ease the realization of a Two-qubit Randomized Benchmarking experiment.
         The class generates sequences of 2 qubit Cliffords (selection done in four classes as done in
         https://arxiv.org/abs/1210.7011), and creates a series of baked waveforms (one per random sequence) and plays
-        them in different QUA programs. Shorter random sequences are also generated from truncations and are played
+        them successively with the use of one single QUA program.
+        Shorter random sequences are also generated from truncations and are played
         more efficiently from the original baked waveform using the add_compiled feature of the QM API.
 
         The user is expected to provide macros for two qubit Clifford generators (CNOT, iSWAP and SWAP) based on their
         own set of native gates,
-        a measurement macro and a macro for the stream processing according to the measurement type.
         Additional parameters can be provided such as truncation positions, macros for single qubit gates if those are
         more complex than one single QUA play statement and a random seed.
         Protocol can played by using the method execute()
@@ -99,10 +102,10 @@ class RBTwoQubits:
         :param qmm: QuantumMachinesManager instance
         :param config: Configuration file
         :param N_Clifford:
-            Number of Clifford gates per sequence. If a list of integers is provided,
-            one sequence per element is generated.
+            Number of Clifford gates per sequence. If iterable is provided, then a series of sequences of various
+            lengths are generated. If integer is provided, all sequence truncations are generated up to
+            the indicated max number.
         :param K: Number of RB sequences
-        :param N_shots: Number of shots for averaging per sequence
 
         :param two_qb_gate_baking_macros:
             dictionary containing baking macros for 2 qb gates necessary to do all
@@ -110,12 +113,14 @@ class RBTwoQubits:
 
         :param single_qb_macros:
             baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
-            "X/2", "Y/2", "-X/2", "-Y/2")
+            "X/2", "Y/2", "-X/2", "-Y/2"). If None is provided, then the param quantum_elements should carry the name of
+            the quantum elements representing qubit 0 and 1.
 
         :param seed: Random seed
 
         :param quantum_elements:
-            quantum elements involved in format (q_ctrl, q_tgt, *other_elements)
+            quantum elements involved for qubit 0 and 1, should be the same name as in the config. If none is provided,
+            then macros for single qubit gates are required
         """
 
         self.qmm = qmm
@@ -152,18 +157,36 @@ class RBTwoQubits:
                 max_length = seq.sequence_length
                 tgt_seq = seq
         self.config = tgt_seq.mock_config
-
+        self.baked_reference = tgt_seq.baked_sequence
 
     def run(self, prog):
         """
         Run the full two qubit RB experiment
 
-        :param prog_list: list of QUA programs to be executed, each one should carry the baked sequence run and the
-            measurement operation inside
-        """
+        :param prog: QUA program to be executed, should carry the following form:
+            RB_EXP = RBTwoQubits(...)
+            b = RB_EXP.baked_reference
+            with program as prog():
+                n = declare(int)
+                with for_(n, 0, n < N_shots, n+1):
+                    b.run()
+                    measure(...)
 
-        for seq, prog in zip(self.sequences, prog_list):
-            seq.execute(prog)
+                with stream_processing():
+                    ...
+        """
+        qm = self.qmm.open_qm(self.config, close_other_machines=True)
+        pid = qm.compile(prog)
+        for seq in self.sequences:
+            for trunc_index in range(len(self.N_Clifford)):
+                truncated_wf = retrieve_truncations(seq, self.baked_reference, trunc_index)
+                pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
+                job = pending_job.wait_for_execution()
+                results = job.result_handles
+                results.wait_for_all_values()
+
+        print("Experiment done, results are available")
+        return results
 
 
 class TwoQbRBSequence:
@@ -221,30 +244,6 @@ class TwoQbRBSequence:
 
         return truncations_plus_inverse
 
-    def execute(self, prog):
-        """
-        Run the QUA program for one RB sequence and all its shorter truncations
-
-        :param prog: QUA program that should contain the b.run() statement and the measurement,
-            where b is the baking object associated to the RBSequence object this method is called from
-        :param config: Configuration file where the longest baked sequence is stored
-
-        """
-        b_seq = self.generate_baked_sequence()
-        overall_results = {}
-        qm = self.qmm.open_qm(config, close_other_machines=True)
-        pid = qm.compile(prog)
-
-        for trunc_index in range(len(self.truncations_positions)):
-            truncated_wf = self.retrieve_truncations(b_seq, trunc_index)
-            pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
-            job = pending_job.wait_for_execution()
-            results = job.result_handles
-            results.wait_for_all_values()
-        b_seq.delete_baked_Op()
-
-        return overall_results
-
     def _writing_baked_wf(self, b: Baking, trunc) -> None:
         q0, q1 = self.quantum_elements[0], self.quantum_elements[1]
         for clifford in self.full_sequence[trunc]:
@@ -281,7 +280,7 @@ class TwoQbRBSequence:
         """Generate truncated sequences compatible with waveform overriding for add_compiled feature. Config
         is not updated by this method"""
 
-        with baking(self.config, padding_method="right", override=False,
+        with baking(self.mock_config, padding_method="right", override=False,
                     baking_index=b_ref.get_baking_index()) as b_new:
             self._writing_baked_wf(b_new, trunc)
 
@@ -422,14 +421,3 @@ def unitary_to_index(unitary):
 
     return matches[0]
 
-
-if __name__ == '__main__':
-    if _test_2_design:
-        sum_2d = 0
-        for i in range(size_c2):
-            if i % 10 == 0:
-                print(i)
-            for j in range(size_c2):
-                sum_2d += np.abs(np.trace(c2_unitaries[i].conj().T @ c2_unitaries[j])) ** 4
-        print("2 design ? ")
-        print(sum_2d / size_c2 ** 2)
