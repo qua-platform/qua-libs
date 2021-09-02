@@ -3,7 +3,7 @@ Author: Arthur Strauss - Quantum Machines
 Created: 23/02/2021
 """
 
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Dict, Optional, Set
 import numpy as np
 from qm import qua
 import copy
@@ -19,13 +19,17 @@ def baking(
     Opens a context manager to synthesize samples for arbitrary waveforms. The input config is updated, unless a
     baking_index is given, in which case the generated waveforms can be retrieved using the get_waveform_dict() method,
     in a format readily pluggable as an overrides argument
+
     :param config: config file
     :param padding_method: Method to pad 0s to format the waveform to match hardware constraint
-    (>16 ns and multiple of 4), can be set to "right", "left", "symmetric_r" or "symmetric_l"
+        (>16 ns and multiple of 4), can be set to "right", "left", "symmetric_r" or "symmetric_l"
     :param override: Define if baked waveforms are overridable when using add_compiled feature (default set to False)
     :param baking_index: index of a reference baking object to impose length constraint on new baked waveform
-    (default set to None). If integer is provided, input config is not updated with the waveform to be generated
-    (useful for matching lengths when using waveform overriding in add_compiled feature)
+        (default set to None).
+        If the reference waveforms do have different lengths for different quantum elements, the longest waveform
+        is taken as a constraint.
+        Moreover, if index is provided, input config is not updated with the waveform to be generated
+        (useful for matching lengths when using waveform overriding in add_compiled feature)
     """
     return Baking(config, padding_method, override, baking_index)
 
@@ -67,7 +71,7 @@ class Baking:
         return self
 
     @property
-    def elements(self):
+    def elements(self) -> Set:
         """
         Return the set of quantum elements involved in the baking
         """
@@ -81,10 +85,10 @@ class Baking:
         return BakingOperations(self)
 
     @property
-    def config(self):
+    def config(self) -> Dict:
         return self._config
 
-    def _find_baking_index(self, baking_index: int = None):
+    def _find_baking_index(self, baking_index: int = None) -> int:
         if baking_index is None:
             max_index = [-1]
             for qe in self._config["elements"].keys():
@@ -119,7 +123,7 @@ class Baking:
 
         return sample_dict, qe_dict, digit_samples_dict
 
-    def _update_config(self, qe, qe_samples):
+    def _update_config(self, qe, qe_samples) -> None:
 
         # Generates new Op, pulse, and waveform for each qe to be added in the original config file
 
@@ -322,14 +326,17 @@ class Baking:
         except KeyError:
             raise KeyError(f"No waveforms found for pulse {pulse}")
 
-    def get_baking_index(self):
+    def get_baking_index(self) -> int:
+        """
+        :return: Index of the baking object (based on its order of creation)
+        """
         return self._ctr
 
-    def get_current_length(self, qe: str):
+    def get_current_length(self, qe: str) -> int:
         """
         Retrieve within the baking the current length of the waveform being created (within the baking)
 
-        :param qe quantum element
+        :param qe: quantum element
         """
         if "mixInputs" in self._local_config["elements"][qe]:
             return len(self._samples_dict[qe]["I"])
@@ -338,7 +345,7 @@ class Baking:
         else:
             raise KeyError("quantum element not in the config")
 
-    def _get_pulse_index(self, qe):
+    def _get_pulse_index(self, qe) -> int:
         index = 0
         for pulse in self._local_config["pulses"]:
             if pulse.find(f"{qe}_baked_pulse_b{self._ctr}") != -1:
@@ -348,15 +355,22 @@ class Baking:
     def get_qe_set(self):
         return self._qe_set
 
-    def get_waveforms_dict(self):
+    def get_waveforms_dict(self) -> Dict:
+        """
+
+        :return: Dictionary of baked waveforms for all quantum elements, in a format compatible
+            with overrides argument of the add_compiled method of QM API
+        """
         return self.override_waveforms_dict
 
-    def delete_baked_Op(self, *qe_set: str):
+    def delete_baked_Op(self, *qe_set: str) -> None:
         """
-        Delete in the input config of the baking object the associated baked operation and
-        its associated pulse and waveform(s) for the specified quantum element
-        :param qe: tuple of selected quantum elements, if no element is provided, operations are deleted for every element
-        involved within the baking object
+        Delete from config baked operation and its associated pulse and waveform(s) for
+        specified quantum_elements
+
+        :param qe_set:
+            tuple of selected quantum elements, if no element is provided,
+            all baked operations are deleted for every element (associated to baking object)
         """
 
         def remove_Op(q):
@@ -401,10 +415,12 @@ class Baking:
             for qe in self._qe_dict.keys():
                 remove_Op(qe)
 
-    def get_Op_name(self, qe: str):
+    def get_Op_name(self, qe: str) -> str:
         """
         Get the baked operation issued from the baking object for quantum element qe
-        :param qe: quantum element for which the baked operation is intended to be played on
+
+        :param qe: quantum element carrying the baked operation
+        :returns: Name of baked operation associated to element qe
         """
         if not (qe in self._qe_set):
             raise KeyError(
@@ -413,35 +429,49 @@ class Baking:
         else:
             return f"baked_Op_{self._ctr}"
 
-    def get_Op_length(self, qe: str):
+    def get_Op_length(self, qe: Optional[str] = None) -> int:
         """
         Retrieve the length of the finalized baked waveform associated to quantum element qe (outside the baking)
-        :param qe: quantum element
+
+        :param qe: target quantum element, if None is provided, then length of the longest baked waveform
+            associated to baking object is returned
+        :returns: Length of baked operation associated to element qe (or maximum length if None is provided)
+
         """
-        if self.update_config:
-            if not (qe in self._qe_set):
-                raise KeyError(
-                    f"{qe} is not in the set of quantum elements of the baking object "
-                )
-            else:
-                if "mixInputs" in self._config["elements"][qe]:
-                    return len(
-                        self._config["waveforms"][f"{qe}_baked_wf_I_{self._ctr}"][
-                            "samples"
-                        ]
+        if qe is not None:
+            if self.update_config and self._out:
+                if not (qe in self._qe_set):
+                    raise KeyError(
+                        f"{qe} is not in the set of quantum elements of the baking object "
                     )
                 else:
-                    return len(
-                        self._config["waveforms"][f"{qe}_baked_wf_{self._ctr}"][
-                            "samples"
-                        ]
-                    )
-        else:
-            return self.get_current_length(qe)
+                    if "mixInputs" in self._config["elements"][qe]:
+                        return len(
+                            self._config["waveforms"][f"{qe}_baked_wf_I_{self._ctr}"][
+                                "samples"
+                            ]
+                        )
+                    else:
+                        return len(
+                            self._config["waveforms"][f"{qe}_baked_wf_{self._ctr}"][
+                                "samples"
+                            ]
+                        )
+            else:
+                return self.get_current_length(qe)
 
-    def add_digital_waveform(self, name: str, digital_samples: List[Tuple]):
+        else:
+            max_length = 0
+            for qe in self._qe_dict:
+                length = self.get_Op_length(qe)
+                if length > max_length:
+                    max_length = length
+            return max_length
+
+    def add_digital_waveform(self, name: str, digital_samples: List[Tuple]) -> None:
         """
         Adds a digital waveform to be attached to a baked operation created using the add_Op method
+
         :param name: name of the digital waveform
         :param digital_samples: samples used to generate digital_waveform
         """
@@ -457,9 +487,10 @@ class Baking:
         qe: str,
         samples: Union[List[float], List[List[float]]],
         digital_marker: str = None,
-    ):
+    ) -> None:
         """
         Adds an operation playable within the baking context manager.
+
         :param name: name of the Operation to be added for the quantum element (to be used only within the context manager)
         :param qe: targeted quantum element
         :param  samples: arbitrary waveforms to be inserted into pulse definition
@@ -536,10 +567,12 @@ class Baking:
     def play(self, Op: str, qe: str, amp: Union[float, Tuple[float]] = 1.0) -> None:
         """
         Add a pulse to the baked sequence
+
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
-        :param amp: amplitude of the pulse, can be either a float or a tuple of 4 variables (similar to amp(a) or amp(v00, v01, v10, v11) in QUA)
-        :return:
+        :param amp:
+            amplitude of the pulse, can be either a float or a tuple of 4 variables
+            (similar to amp(a) or amp(v00, v01, v10, v11) in QUA)
         """
         try:
             if self._qe_dict[qe]["time_track"] == 0:
@@ -628,16 +661,16 @@ class Baking:
     ) -> None:
         """
         Add a waveform to the sequence at the specified time index.
-        If indicated time is higher than the pulse duration for the specified quantum element,
-        a wait command followed by the given waveform at indicated time (in ns) occurs.
+        If t is higher than pulse duration for the specified quantum element,
+        a wait command followed by the given waveform at indicated time (in ns) is played.
         Otherwise, waveform is added (addition of samples) to the pre-existing sequence.
         Finally, providing a negative index starts adding the sample with a prior negative wait of t
         Note that the phase played for the newly formed sample is the one that was set before adding the new waveform
+
         :param Op: operation to play to quantum element
         :param qe: targeted quantum element
         :param t: Time tag in ns where the pulse should be added
         :param amp: amplitude of the pulse, can be either a float or a tuple of 4 variables (similar to amp(a) or amp(v00, v01, v10, v11) in QUA)
-        :return:
         """
         if type(t) != int:
             if type(t) == float:
@@ -752,46 +785,52 @@ class Baking:
                     f'Op:"{Op}" does not exist in configuration and not manually added (use add_pulse)'
                 )
 
-    def frame_rotation(self, angle: float, qe: str):
+    def frame_rotation(self, angle: float, qe: str) -> None:
         """
         Shift the phase of the oscillator associated with a quantum element by the given angle.
-        This is typically used for virtual z-rotations. Frame rotation done within the baking sticks to the rest of the
+        This is typically used for virtual z-rotations.
+        Frame rotation done within the baking sticks to the rest of the
         QUA program after its execution.
+
         :param angle: phase parameter
         :param qe: quantum element
         """
 
         self._update_qe_phase(qe, angle)
 
-    def frame_rotation_2pi(self, angle: float, qe: str):
+    def frame_rotation_2pi(self, angle: float, qe: str) -> None:
         """
         Shift the phase of the oscillator associated with a quantum element by the given angle.
         This is typically used for virtual z-rotations. This performs a frame rotation of 2*π*angle
+
         :param angle: phase parameter
         :param qe: quantum element
         """
 
         self._update_qe_phase(qe, 2 * np.pi * angle)
 
-    def set_detuning(self, qe: str, freq: int):
+    def set_detuning(self, qe: str, freq: int) -> None:
         """Update frequency by adding detuning to original IF set in the config.
-        Unlike frame rotation, the detuning will only affect the baked operation and will not stick in the element
-        :param qe quantum element
-        :param freq frequency of the detuning (in Hz)
+        Unlike frame rotation, the detuning will only affect the baked operation and will not stick to the element
+
+        :param qe: quantum element
+        :param freq: frequency of the detuning (in Hz)
         """
         self._qe_dict[qe]["freq"] = freq
 
-    def reset_frame(self, *qe_set: str):
+    def reset_frame(self, *qe_set: str) -> None:
         """
         Used to reset all of the frame updated made up to this statement.
+
         :param qe_set: Set[str] of quantum elements
         """
         for qe in qe_set:
             self._update_qe_phase(qe, -self._qe_dict[qe]["phase"])
 
-    def ramp(self, amp: float, duration: int, qe: str):
+    def ramp(self, amp: float, duration: int, qe: str) -> None:
         """
         Analog of ramp function in QUA
+
         :param amp: slope
         :param duration: duration of ramping
         :param qe: quantum element
@@ -804,13 +843,13 @@ class Baking:
             self._samples_dict[qe]["I"] += [0] * duration
         self._update_qe_time(qe, duration)
 
-    def _update_qe_time(self, qe: str, dt: int):
+    def _update_qe_time(self, qe: str, dt: int) -> None:
         self._qe_dict[qe]["time"] += dt
 
-    def _update_qe_phase(self, qe: str, phi: float):
+    def _update_qe_phase(self, qe: str, phi: float) -> None:
         self._qe_dict[qe]["phase"] += phi
 
-    def wait(self, duration: int, *qe_set: str):
+    def wait(self, duration: int, *qe_set: str) -> None:
         """
         Wait for the given duration on all provided elements.
         Here, the wait is simply adding 0 to the existing sample for a given duration.
@@ -842,14 +881,14 @@ class Baking:
                 # Duration is negative so just add for subtraction
                 self._qe_dict[qe]["time_track"] = self._qe_dict[qe]["time"] + duration
 
-    def align(self, *qe_set: str):
+    def align(self, *qe_set: str) -> None:
         """
         Align several quantum elements together.
         All of the quantum elements referenced in *elements will wait for all
         the others to finish their currently running statement.
 
-        :param qe_set : set of quantum elements to be aligned altogether, if no element is passed, alignment is done
-        all elements within the baking
+        :param qe_set: set of quantum elements to be aligned altogether, if no element is passed, alignment is done
+            for all elements within the baking
         """
 
         def alignment(qe_set2):
@@ -877,10 +916,10 @@ class Baking:
         """
         Plays the baked waveform
         This method must be used within a QUA program
-        :param amp_array list of tuples for amplitudes (e.g [(qe1, amp1), (qe2, amp2)] ), each amplitude must be a scalar
-        :param trunc_array list of tuples for truncations (e.g [(qe1, amp1), (qe2, amp2)] ), each truncation must be a
-         int or QUA int
-        :return None
+
+        :param amp_array: list of tuples for amplitudes (e.g [(qe1, amp1), (qe2, amp2)] ), each amplitude must be a scalar
+        :param trunc_array: list of tuples for truncations (e.g [(qe1, amp1), (qe2, amp2)] ), each truncation must be a
+            int or QUA int
         """
 
         qe_set = self.get_qe_set()
@@ -933,19 +972,26 @@ class Baking:
 
                 qua.frame_rotation(self._qe_dict[qe]["phase"], qe)
 
-    def _retrieve_constraint_length(self, baking_index: int = None):
+    def _retrieve_constraint_length(self, baking_index: int = None) -> Optional[int]:
         if baking_index is not None:
+            max_length = 0
             for pulse in self._local_config["pulses"]:
-                if pulse.find(f"baked_pulse_{baking_index}") != -1:
-                    return self._local_config["pulses"][pulse]["length"]
+                if (
+                    pulse.find(f"baked_pulse_{baking_index}") != -1
+                    and self._local_config["pulses"][pulse]["length"] > max_length
+                ):
+                    max_length = self._local_config["pulses"][pulse]["length"]
+
+            return max_length
         else:
             return None
 
 
-def deterministic_run(baking_list, j):
+def deterministic_run(baking_list, j) -> None:
     """
     Generates a QUA macro for a binary tree ensuring a synchronized play of operations
     listed in the various baking objects
+
     :param baking_list: Python list of Baking objects
     :param j: QUA int
     """
