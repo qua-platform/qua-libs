@@ -16,52 +16,53 @@ in QUA you would have for a CZ operation:
 in the macros below you write instead:
     b.play("CZ", "coupler")
 """
-
-
+# Define here quantum elements required to compute the macros
+q0 = "q0"
+q1 = "q1"
+coupler = "coupler"
 # Baking Macros required for two qubit gates
-def retrieve_my_elements(*qe_set):
-    assert len(qe_set) == 3, f"My 2 qubit RB should contain only q0, q1 and coupler {qe_set}"
-    return qe_set[0], qe_set[1], qe_set[2]
+
+# Here is my assumed native two qubit gate
 
 
-def CNOT(b: Baking, *qe_set: str):
+def CZ(b_seq: Baking):
+    b_seq.align(q0, q1, coupler)
+    b_seq.play("CZ", coupler)
+    b_seq.align(q0, q1, coupler)
+
+
+def CNOT(b_seq: Baking, ctrl: str = "q0", tgt: str = "q1"):
     # Map your pulse sequence for performing a CNOT using baking play statements
     #
-    q0, q1, coupler = retrieve_my_elements(*qe_set)
 
     # Option 1: simple play statement for single qubit gate
 
-    b.play("-Y/2", q1)
-    b.align(q1, coupler)
-    b.play("CZ", coupler)
-    b.align(q0, q1, coupler)
-    b.play("Y/2", q1)
+    b_seq.play("-Y/2", tgt)
+    CZ(b_seq)
+    b_seq.play("Y/2", tgt)
     # Option 2: macro required for single qubit gate
 
-    # mY_2(b, q1)
-    # b.align(q1, coupler)
-    # b.play("CZ", coupler)
-    # b.align(q0, q1, coupler)
-    # Y_2(b, q1)
+    # mY_2(b_seq, tgt)
+    # b_seq.align(tgt, coupler)
+    # b_seq.play("CZ", coupler)
+    # b_seq.align(ctrl, tgt, coupler)
+    # Y_2(b_seq, tgt)
 
 
-def iSWAP(b: Baking, *qe_set: str):
-    q0, q1, coupler = retrieve_my_elements(*qe_set)
-    alt_set = (q1, q0, coupler)
-    b.play("-X/2", q1)
-    CNOT(b, *alt_set)
-    b.play("-X/2", q1)
-    b.play("Y/2", q0)
-    CNOT(b, *alt_set)
-    b.play("X/2", q1)
+def iSWAP(b_seq: Baking):
+
+    b_seq.play("-X/2", q1)
+    CNOT(b_seq, q1, q0)
+    b_seq.play("-X/2", q1)
+    CZ(b_seq)
+    b_seq.play("Y/2", q0)
+    b_seq.play("X/2", q1)
 
 
-def SWAP(b: Baking, *qe_set: str):
-    q0, q1, coupler = retrieve_my_elements(*qe_set)
-    alt_set = (q1, q0, coupler)
-    CNOT(b, *qe_set)
-    CNOT(b, *alt_set)
-    CNOT(b, *qe_set)
+def SWAP(b_seq: Baking):
+    CNOT(b_seq, q0, q1)
+    CNOT(b_seq, q1, q0)
+    CNOT(b_seq, q0, q1)
 
 
 """
@@ -117,41 +118,53 @@ single_qb_gate_macros = {
 }
 
 
-def measure(*measure_args: Optional[Tuple]):
-    th1 = declare(fixed, value=0.)
-    th2 = declare(fixed, value=0.)
-    stream1 = declare_stream()
-    stream2 = declare_stream()
-    state1 = declare(bool)
-    state2 = declare(bool)
-    I1 = declare(fixed)
-    I2 = declare(fixed)
-    d1 = declare(fixed)
-    d2 = declare(fixed)
-    d3 = declare(fixed)
-    d4 = declare(fixed)
-    measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
-            demod.full('integW2', d2, 'out2'))
-    measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
-            demod.full('integW2', d4, 'out2'))
-    assign(I1, d1 + d2)
-    assign(I2, d3 + d4)
-    assign(state1, I1 > th1)
-    assign(state2, I2 > th2)
-    save(state1, stream1)
-    save(state2, stream2)
-
-
 def stream_macro(stream1, stream2):
     stream1.boolean_to_int().average().save("state1")
     stream2.boolean_to_int().average().save("state2")
 
 
-nCliffords = range(1, 170, 2)
-s = RBTwoQubits(qmm=qmm, config=config, quantum_elements=["q0", "q1", "coupler"],
-                N_Clifford=nCliffords, K=1, N_shots=100,
+def qua_prog(b_seq: Baking, N_shots: int):
+    with program() as prog:
+        n = declare(int)
+        th1 = declare(fixed, value=0.)
+        th2 = declare(fixed, value=0.)
+        stream1 = declare_stream()
+        stream2 = declare_stream()
+        state1 = declare(bool)
+        state2 = declare(bool)
+        I1 = declare(fixed)
+        I2 = declare(fixed)
+        d1 = declare(fixed)
+        d2 = declare(fixed)
+        d3 = declare(fixed)
+        d4 = declare(fixed)
+        with for_(n, 0, n < N_shots, n+1):
+            b_seq.run()
+            align()
+            measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
+                    demod.full('integW2', d2, 'out2'))
+            measure('readout', "rr2", None, demod.full('integW1', d3, 'out1'),
+                    demod.full('integW2', d4, 'out2'))
+
+            assign(I1, d1+d2)
+            assign(I2, d3+d4)
+            assign(state1, I1 > th1)
+            assign(state2, I2 > th2)
+            save(state1, stream1)
+            save(state2, stream2)
+        with stream_processing():
+            # self.stream_macro()
+            stream1.boolean_to_int().average().save("state1")
+            stream2.boolean_to_int().average().save("state2")
+
+    return prog
+
+
+nCliffords = range(1, 180, 2)
+s = RBTwoQubits(qmm=qmm, config=config,
+                N_Clifford=nCliffords, K=1,
                 two_qb_gate_baking_macros=two_qb_gate_macros,
-                measure_macro=measure, stream_macro=stream_macro)
+                quantum_elements=("q0", "q1"))
 sequences = s.sequences
 s1 = sequences[0].full_sequence
 for h in s1:
@@ -160,9 +173,8 @@ for h in s1:
 seq = sequences[0]
 b = seq.generate_baked_sequence()
 print(b.get_Op_length("q0"))
-prog = s.qua_prog(b)
 print("starting simulation")
-job = qmm.simulate(config=config, program=prog, simulate=SimulationConfig(5000))
+job = qmm.simulate(config=config, program=qua_prog(b, 100), simulate=SimulationConfig(5000))
 
 samples = job.get_simulated_samples()
 samples.con1.plot()

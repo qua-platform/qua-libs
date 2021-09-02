@@ -4,6 +4,7 @@ from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.QmJob import JobResults
+from copy import deepcopy
 
 # this builds up on https://arxiv.org/pdf/1402.4848
 # build up sequence
@@ -73,11 +74,11 @@ c2_unitaries = ld['arr_0']
 class RBTwoQubits:
     def __init__(self, qmm: QuantumMachinesManager,
                  config: Dict,
-                 quantum_elements: Iterable[str],
                  N_Clifford: Union[Iterable, int],
                  K: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
-                 single_qb_macros: Optional[Dict] = None,
+                 quantum_elements: Iterable[str] = None,
+                 single_qb_macros: Optional[Dict[str, Callable]] = None,
                  seed: Optional[int] = None
                  ):
         """
@@ -118,10 +119,15 @@ class RBTwoQubits:
         """
 
         self.qmm = qmm
-        self.config = config
-        for qe in quantum_elements:
-            if qe not in config["elements"]:
-                raise KeyError(f"Quantum element {qe} is not in the config")
+
+        if quantum_elements is not None:
+            for qe in quantum_elements:
+                if qe not in config["elements"]:
+                    raise KeyError(f"Quantum element {qe} is not in the config")
+        else:
+            if single_qb_macros is None:
+                raise KeyError("No elements or single qubit gate macros have been provided,"
+                               " impossible to do single qubit gates")
         if seed is not None:
             np.random.seed(seed)
         if type(N_Clifford) == int:
@@ -131,22 +137,31 @@ class RBTwoQubits:
             list_truncations = sorted(list(set_truncations))
             self.N_Clifford = list_truncations
         self.sequences = [
-            TwoQbRBSequence(self.qmm, self.config,
+            TwoQbRBSequence(self.qmm, config,
                             self.N_Clifford,
                             two_qb_gate_baking_macros,
                             single_qb_macros,
                             seed,
-                            *quantum_elements) for _ in range(K)]
+                            quantum_elements) for _ in range(K)]
 
-    def run(self, prog_list):
+        max_length = 0
+        tgt_seq = None
+
+        for seq in self.sequences:
+            if max_length < seq.sequence_length:
+                max_length = seq.sequence_length
+                tgt_seq = seq
+        self.config = tgt_seq.mock_config
+
+
+    def run(self, prog):
         """
         Run the full two qubit RB experiment
 
         :param prog_list: list of QUA programs to be executed, each one should carry the baked sequence run and the
             measurement operation inside
         """
-        assert len(prog_list) == len(self.sequences), 'Number of programs provided do ' \
-                                                      'not match the number of sequences generated'
+
         for seq, prog in zip(self.sequences, prog_list):
             seq.execute(prog)
 
@@ -154,16 +169,17 @@ class RBTwoQubits:
 class TwoQbRBSequence:
     def __init__(self, qmm: QuantumMachinesManager, config: dict,
                  N_Cliffords: List,
-                 two_qubit_gate_macros: dict,
-                 single_qb_macros: Optional[dict] = None,
+                 two_qubit_gate_macros: Dict[str, Callable],
+                 single_qb_macros: Optional[Dict[str, Callable]] = None,
                  seed: Optional[int] = None,
                  quantum_elements: Optional[Iterable[str]] = None
                  ):
         self.qmm = qmm
-        self.config = config
+        self.mock_config = deepcopy(config)
         self.truncations_positions = N_Cliffords
         self.d_max = N_Cliffords[-1]
         self.seed = seed
+        self._number_of_gates = 0
         if quantum_elements is not None:
             self.quantum_elements = quantum_elements
         else:
@@ -171,6 +187,8 @@ class TwoQbRBSequence:
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
+        self.baked_sequence = self._generate_baked_sequence()
+        self.sequence_length = self.baked_sequence.get_Op_length()
 
     def generate_RB_sequence(self) -> List[List[Clifford]]:
         """
@@ -209,11 +227,12 @@ class TwoQbRBSequence:
 
         :param prog: QUA program that should contain the b.run() statement and the measurement,
             where b is the baking object associated to the RBSequence object this method is called from
+        :param config: Configuration file where the longest baked sequence is stored
 
         """
         b_seq = self.generate_baked_sequence()
         overall_results = {}
-        qm = self.qmm.open_qm(self.config, close_other_machines=True)
+        qm = self.qmm.open_qm(config, close_other_machines=True)
         pid = qm.compile(prog)
 
         for trunc_index in range(len(self.truncations_positions)):
@@ -222,7 +241,7 @@ class TwoQbRBSequence:
             job = pending_job.wait_for_execution()
             results = job.result_handles
             results.wait_for_all_values()
-        self.b_seq.delete_baked_Op()
+        b_seq.delete_baked_Op()
 
         return overall_results
 
@@ -235,8 +254,7 @@ class TwoQbRBSequence:
                     for opa, opb in zip(op0, op1):
                         if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
                             assert opa == opb
-                            # b.align(*self.quantum_elements)
-                            self.two_qb_gate_macros[opa](b, *self.quantum_elements)
+                            self.two_qb_gate_macros[opa](b)
                         else:
                             self.play_single_qb_op(opa, q0, b)
                             self.play_single_qb_op(opb, q1, b)
@@ -246,9 +264,8 @@ class TwoQbRBSequence:
                         self.play_single_qb_op(opa, q0, b)
                     for opb in op1:
                         self.play_single_qb_op(opb, q1, b)
-            # b.align(*self.quantum_elements)
 
-    def generate_baked_sequence(self) -> Baking:
+    def _generate_baked_sequence(self) -> Baking:
         """
         Generates the longest sequence desired with its associated inverse operation.
         The resulting baking object is the reference for overriding baked waveforms that are used for
@@ -256,7 +273,7 @@ class TwoQbRBSequence:
 
         :returns: Baking object containing RB sequence of longest size
         """
-        with baking(self.config, padding_method="right", override=True) as b:
+        with baking(self.mock_config, padding_method="right", override=True) as b:
             self._writing_baked_wf(b, -1)
         return b
 
