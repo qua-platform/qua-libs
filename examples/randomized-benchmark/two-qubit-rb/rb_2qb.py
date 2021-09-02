@@ -1,6 +1,7 @@
 from typing import Optional, List, Callable, Tuple, Union, Dict
 import numpy as np
-from qualang_tools.bakery.bakery import baking, Baking
+# from qualang_tools.bakery.bakery import baking, Baking
+from bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from copy import deepcopy
@@ -124,7 +125,7 @@ class RBTwoQubits:
         """
 
         self.qmm = qmm
-
+        self.config = config
         if quantum_elements is not None:
             for qe in quantum_elements:
                 if qe not in config["elements"]:
@@ -156,7 +157,8 @@ class RBTwoQubits:
             if max_length < seq.sequence_length:
                 max_length = seq.sequence_length
                 tgt_seq = seq
-        self.config = tgt_seq.mock_config
+        print(tgt_seq.mock_config["elements"]["q0"]["operations"].keys())
+        self.config.update(tgt_seq.mock_config)
         self.baked_reference = tgt_seq.baked_sequence
 
     def run(self, prog):

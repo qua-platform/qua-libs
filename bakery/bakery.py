@@ -463,9 +463,10 @@ class Baking:
         else:
             max_length = 0
             for qe in self._qe_dict:
-                length = self.get_Op_length(qe)
-                if length > max_length:
-                    max_length = length
+                if self._qe_dict[qe]["time"] > 0:
+                    length = self.get_Op_length(qe)
+                    if length > max_length:
+                        max_length = length
             return max_length
 
     def add_digital_waveform(self, name: str, digital_samples: List[Tuple]) -> None:

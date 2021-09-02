@@ -118,11 +118,6 @@ single_qb_gate_macros = {
 }
 
 
-def stream_macro(stream1, stream2):
-    stream1.boolean_to_int().average().save("state1")
-    stream2.boolean_to_int().average().save("state2")
-
-
 def qua_prog(b_seq: Baking, N_shots: int):
     with program() as prog:
         n = declare(int)
@@ -153,7 +148,6 @@ def qua_prog(b_seq: Baking, N_shots: int):
             save(state1, stream1)
             save(state2, stream2)
         with stream_processing():
-            # self.stream_macro()
             stream1.boolean_to_int().average().save("state1")
             stream2.boolean_to_int().average().save("state2")
 
@@ -167,8 +161,8 @@ s = RBTwoQubits(qmm=qmm, config=config,
                 quantum_elements=("q0", "q1"))
 sequences = s.sequences
 s1 = sequences[0].full_sequence
-for h in s1:
-    print(len(h), h)
+# for h in s1:
+#     print(len(h), h)
 
 baked_reference = s.baked_reference
 print(baked_reference.get_Op_length("q0"))
