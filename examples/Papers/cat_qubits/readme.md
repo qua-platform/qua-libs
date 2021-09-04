@@ -46,7 +46,11 @@ Moreover, we call a quantum superposition of coherent states of opposite phases 
 
 The qubit state is encoded on the previously introduced coherent states, which are considered as orthogonal since the average number of photons in the cavity is always assumed to higher than 1, as shown on the Bloch sphere above.
 
-The advantage of this encoding is sources of errors arise from what . It turns out that the two main error channels that usually occur are respectively the photon loss (also called energy relaxation) and phase damping (or dephasing) channels.
+This encoding is an efficient conversion of a continuous variable description of a quantum system into a logical two-level system. On a usual transmon qubit, a truncation of the Hilbert space 
+associated to a QHO would be done to work with a subspace spanned by the ground and first excited states of the QHO. Here, the fact that we use coherent states (which are superpositions of Fock states) 
+do allow a natural delocalization of the stored quantum information onto many energy levels. We are now going to see how this encoding can also be used as a strength to overcome noisy quantum channels characterizing a cavity by turning 
+them into simple logical digital errors.
+It turns out that the two main error channels that usually occur are respectively the photon loss (also called energy relaxation) and phase damping (or dephasing) channels.
 What is done in [3] to overcome the photon loss channel is the engineering of a specific interaction that strongly couples the cavity encoding the cat qubit to another cavity called the "buffer" which focuses on the exchange of photons by pair. This dissipation engineering technique is used to control the entropy flow accumulated in the system by focusing on one type of dissipation, at the expense of the usual single photon loss channel rate.
 The Master equation characterizing the system can be written as:
 $$\frac{d \hat{\rho}(t)}{d t}=\kappa_{2} \mathcal{D}\left[\hat{a}^{2}-\alpha^{2}\right] \hat{\rho}(t)+\kappa_{1} \mathcal{D}[\hat{a}] \hat{\rho}(t)+\kappa_{\phi} \mathcal{D}\left[\hat{a}^{\dagger} \hat{a}\right] \hat{\rho}(t)$$, with $$\mathcal{D}[\hat{L}] \hat{\rho}:=\hat{L} \hat{\rho} \hat{L}^{\dagger}-\frac{1}{2}\left(\hat{L}^{\dagger} \hat{L} \hat{\rho}+\hat{\rho} \hat{L}^{\dagger} \hat{L}\right)$$. 
