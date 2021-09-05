@@ -6,11 +6,6 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from copy import deepcopy
 
-# this builds up on https://arxiv.org/pdf/1402.4848
-# build up sequence
-
-_generate_table = False
-_test_2_design = False  # careful, this takes about 20 minutes
 size_c2 = 11520
 Clifford = Dict[str, List[Tuple]]
 """If no single_qb_macros are provided, Single qubit Clifford generators are assumed 
