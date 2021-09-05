@@ -157,7 +157,6 @@ class RBTwoQubits:
             if max_length < seq.sequence_length:
                 max_length = seq.sequence_length
                 tgt_seq = seq
-        print(tgt_seq.mock_config["elements"]["q0"]["operations"].keys())
         self.config.update(tgt_seq.mock_config)
         self.baked_reference = tgt_seq.baked_sequence
 
@@ -179,6 +178,7 @@ class RBTwoQubits:
         """
         qm = self.qmm.open_qm(self.config, close_other_machines=True)
         pid = qm.compile(prog)
+        results_list = []
         for seq in self.sequences:
             for trunc_index in range(len(self.N_Clifford)):
                 truncated_wf = retrieve_truncations(seq, self.baked_reference, trunc_index)
@@ -186,9 +186,10 @@ class RBTwoQubits:
                 job = pending_job.wait_for_execution()
                 results = job.result_handles
                 results.wait_for_all_values()
+                results_list.append(results)
 
         print("Experiment done, results are available")
-        return results
+        return results_list
 
 
 class TwoQbRBSequence:
