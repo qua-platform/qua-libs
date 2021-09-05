@@ -353,7 +353,14 @@ class Baking:
         return index
 
     def get_qe_set(self):
-        return self._qe_set
+        if self._out:
+            return self._qe_set
+        else:
+            qe_set = set()
+            for qe in self._qe_dict:
+                if self._qe_dict[qe]["time"] > 0:
+                    qe_set.add(qe)
+            return qe_set
 
     def get_waveforms_dict(self) -> Dict:
         """
@@ -907,7 +914,7 @@ class Baking:
                     self.wait(last_t - qe_t, qe)
 
         if len(qe_set) == 0:
-            alignment(self._qe_dict.keys())
+            alignment(self.get_qe_set())
         else:
             alignment(qe_set)
 

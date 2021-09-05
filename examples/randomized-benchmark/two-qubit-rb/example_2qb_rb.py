@@ -1,8 +1,5 @@
 from rb_2qb import *
-from qm.QuantumMachinesManager import SimulationConfig
 from configuration import config
-from typing import Optional
-
 qmm = QuantumMachinesManager()
 
 """
@@ -154,20 +151,26 @@ def qua_prog(b_seq: Baking, N_shots: int):
     return prog
 
 
-nCliffords = range(1, 180, 2)
-s = RBTwoQubits(qmm=qmm, config=config,
-                N_Clifford=nCliffords, K=1,
+n_max = 85
+step = 10
+nCliffords = range(1, n_max, step)
+K = 5
+print(nCliffords)
+RB_exp = RBTwoQubits(qmm=qmm, config=config,
+                N_Clifford=nCliffords, K=K,
                 two_qb_gate_baking_macros=two_qb_gate_macros,
                 quantum_elements=("q0", "q1"))
-sequences = s.sequences
+sequences = RB_exp.sequences
 s1 = sequences[0].full_sequence
+# Uncomment lines below to see random sequence in terms of Cliffords
 # for h in s1:
 #     print(len(h), h)
 
-baked_reference = s.baked_reference
-print(baked_reference.get_Op_length("q0"))
-print("starting simulation")
-job = qmm.simulate(config=config, program=qua_prog(baked_reference, 100), simulate=SimulationConfig(5000))
+# Retrieve here the longest baked waveform to perform overriding with the run function
+baked_reference = RB_exp.baked_reference
+print("reference", baked_reference.get_Op_length("q0"))
+RB_exp.run(prog=qua_prog(baked_reference, 100))
 
-samples = job.get_simulated_samples()
-samples.con1.plot()
+results_list = RB_exp.results
+jobs = RB_exp.job_list
+

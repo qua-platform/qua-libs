@@ -71,10 +71,6 @@ ld = np.load('c2_unitaries.npz')
 c2_unitaries = ld['arr_0']
 
 
-def retrieve_truncations(seq, baked_reference, trunc_index):
-    return seq.retrieve_truncations(baked_reference, trunc_index)
-
-
 class RBTwoQubits:
     def __init__(self, qmm: QuantumMachinesManager,
                  config: Dict,
@@ -125,7 +121,7 @@ class RBTwoQubits:
         """
 
         self.qmm = qmm
-        self.config = config
+        # self.config = config
         if quantum_elements is not None:
             for qe in quantum_elements:
                 if qe not in config["elements"]:
@@ -157,8 +153,14 @@ class RBTwoQubits:
             if max_length < seq.sequence_length:
                 max_length = seq.sequence_length
                 tgt_seq = seq
-        self.config.update(tgt_seq.mock_config)
+        # self.config.update(tgt_seq.mock_config)
+        self.config = deepcopy(tgt_seq.mock_config)
         self.baked_reference = tgt_seq.baked_sequence
+        self.results = []
+        self.job_list = []
+
+    def retrieve_truncations(self, seq, baked_reference, trunc_index):
+        return seq.retrieve_truncations(self.config, baked_reference, trunc_index)
 
     def run(self, prog):
         """
@@ -178,18 +180,23 @@ class RBTwoQubits:
         """
         qm = self.qmm.open_qm(self.config, close_other_machines=True)
         pid = qm.compile(prog)
-        results_list = []
-        for seq in self.sequences:
+        print("Total number of sequences:", len(self.sequences))
+        print("Total number of truncations:", len(self.N_Clifford))
+        print("Total number of circuits to be run:", len(self.sequences)*len(self.N_Clifford))
+        for i, seq in enumerate(self.sequences):
+            print("Running RB for sequence", i)
             for trunc_index in range(len(self.N_Clifford)):
-                truncated_wf = retrieve_truncations(seq, self.baked_reference, trunc_index)
+                print(f"Running sequence of {self.N_Clifford[trunc_index]} Cliffords")
+                print("Number of Cliffords", len(seq.full_sequence[trunc_index]), seq.full_sequence[trunc_index])
+                truncated_wf = self.retrieve_truncations(seq, self.baked_reference, trunc_index)
                 pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
                 job = pending_job.wait_for_execution()
+                self.job_list.append(job)
                 results = job.result_handles
                 results.wait_for_all_values()
-                results_list.append(results)
+                self.results.append(results)
 
         print("Experiment done, results are available")
-        return results_list
 
 
 class TwoQbRBSequence:
@@ -275,17 +282,19 @@ class TwoQbRBSequence:
 
         :returns: Baking object containing RB sequence of longest size
         """
-        with baking(self.mock_config, padding_method="right", override=True) as b:
+        with baking(self.mock_config, padding_method="left", override=True) as b:
             self._writing_baked_wf(b, -1)
+            b.align()
         return b
 
-    def retrieve_truncations(self, b_ref: Baking, trunc: int) -> Dict:
+    def retrieve_truncations(self, config: Dict, b_ref: Baking, trunc: int) -> Dict:
         """Generate truncated sequences compatible with waveform overriding for add_compiled feature. Config
         is not updated by this method"""
 
-        with baking(self.mock_config, padding_method="right", override=False,
+        with baking(config, padding_method="left", override=False,
                     baking_index=b_ref.get_baking_index()) as b_new:
             self._writing_baked_wf(b_new, trunc)
+            b_new.align()
 
         return b_new.get_waveforms_dict()
 
