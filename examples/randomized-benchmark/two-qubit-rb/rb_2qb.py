@@ -1,7 +1,6 @@
 from typing import Optional, List, Callable, Tuple, Union, Dict
 import numpy as np
-# from qualang_tools.bakery.bakery import baking, Baking
-from bakery.bakery import baking, Baking
+from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from copy import deepcopy
