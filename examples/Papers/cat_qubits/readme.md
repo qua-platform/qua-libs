@@ -30,14 +30,14 @@ The goal of this overview is to provide the basics of this encoding, and how QUA
 The cat qubit is defined upon specific states of lights characterizing the modes in a high-Q cavity that behaves like a quantum harmonic oscillator (QHO). Provided the eigenbasis $$\{|n\rangle, n\in \mathcal{N}\}$$ of the Hamiltonian characterizing the QHO ($$\hat{H}=\hbar\omega(\hat{a}^\dagger\hat{a}+\frac{1}{2})$$), we define the coherent state of complex amplitude $$\alpha$$ as :
 $$|\alpha\rangle:=e^{-|\alpha|^2/2} \displaystyle \sum_n\frac{\alpha^n}{\sqrt{n!}}|n\rangle$$
 
-The property of those states are that they constitute eigenstates of the annihilation operator  $$\hat{a}$$ of the QHO, that is $$\hat{a}|\alpha\rangle=\alpha|\alpha\rangle$$. Note that $$|\alpha\rangle$$ is the unique eigenstate associated to the eigenvalue $$\alpha$$.
+Those states constitute eigenstates of the annihilation operator  $$\hat{a}$$ of the QHO, that is $$\hat{a}|\alpha\rangle=\alpha|\alpha\rangle$$. Note that $$|\alpha\rangle$$ is the unique eigenstate associated to the eigenvalue $$\alpha$$.
 One can easily show that the average photon number $$\langle\hat{a}^{\dagger}\hat{a}\rangle\equiv\langle\alpha|\hat{a}^{\dagger}\hat{a}|\alpha\rangle$$ on this state is given by $$|\alpha|^2$$.
 Moreover, the dot product between two coherent states $$|\alpha\rangle$$ and $$|\beta\rangle$$ decreases exponentially with the norm of the respective photon numbers : $$\langle\alpha|\beta\rangle=e^{-\frac{1}{2}(|\alpha|^2+|\beta|^2-2\alpha^*\beta)}$$
 This means that $$|\alpha\rangle$$ and $$|-\alpha\rangle$$ are quasi-orthogonal if $$|\alpha|^2\gg 1$$: $$\langle\alpha|-\alpha\rangle=e^{-2|\alpha|^2}$$.
 Finally, a coherent state can be obtained from the vacuum state of the QHO by applying the displacement operation:
 $$\hat{D}(\alpha)|0\rangle=e^{\alpha\hat{a}^\dagger-\alpha^*\hat{a}}|0\rangle=|\alpha\rangle$$.
 
-Another interesting property about those states is that they minimize the Heisenberg uncertainty relation, as it can be shown that $$\Delta x \Delta p=\hbar/2$$ for $$\alpha=x+ip$$. This fact justifies the name of classical states of light in the litterature, as it reduces to the minimum amount the quantum character of the light.
+Another interesting property about those states is that they minimize the Heisenberg uncertainty relation, as it can be shown that $$\Delta x \Delta p=\hbar/2$$ for $$\alpha=x+ip$$. This fact justifies the name of classical states of light in the literature, as it reduces to the minimum amount the quantum character of the light.
 Moreover, we call a quantum superposition of coherent states of opposite phases "Schrödinger cat states", because as the example of the cat, this is a quantum superposition of two macroscopic states usually very well observed in classical physics.
 
 
