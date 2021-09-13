@@ -71,7 +71,7 @@ class RBTwoQubits:
                  N_Clifford: Union[Iterable, int],
                  K: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
-                 quantum_elements: Iterable[str] = None,
+                 qubits: Iterable[str] = None,
                  single_qb_macros: Optional[Dict[str, Callable]] = None,
                  seed: Optional[int] = None
                  ):
@@ -109,15 +109,15 @@ class RBTwoQubits:
 
         :param seed: Random seed
 
-        :param quantum_elements:
-            quantum elements involved for qubit 0 and 1, should be the same name as in the config. If none is provided,
+        :param qubits:
+            qubits involved in the protocol, should be the same name as in the config. If None is provided,
             then macros for single qubit gates are required
         """
 
         self.qmm = qmm
         # self.config = config
-        if quantum_elements is not None:
-            for qe in quantum_elements:
+        if qubits is not None:
+            for qe in qubits:
                 if qe not in config["elements"]:
                     raise KeyError(f"Quantum element {qe} is not in the config")
         else:
@@ -138,7 +138,7 @@ class RBTwoQubits:
                             two_qb_gate_baking_macros,
                             single_qb_macros,
                             seed,
-                            quantum_elements) for _ in range(K)]
+                            qubits) for _ in range(K)]
 
         max_length = 0
         tgt_seq = None
@@ -182,6 +182,7 @@ class RBTwoQubits:
             for trunc_index in range(len(self.N_Clifford)):
                 print(f"Running sequence of {self.N_Clifford[trunc_index]} Cliffords")
                 print("Number of Cliffords", len(seq.full_sequence[trunc_index]), seq.full_sequence[trunc_index])
+
                 truncated_wf = self.retrieve_truncations(seq, self.baked_reference, trunc_index)
                 pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
                 job = pending_job.wait_for_execution()
@@ -374,7 +375,7 @@ class TwoQbRBSequence:
     def play_single_qb_op(self, op: str, q: str, b: Baking):
         if self.single_qb_macros is not None:
             self.single_qb_macros[op](b, q, self.quantum_elements)
-        else:
+        else:  # Remove this option
             b.play(op, q)
 
 

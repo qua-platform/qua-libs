@@ -1,5 +1,6 @@
 from rb_2qb import *
 from configuration import config
+from qm.QuantumMachinesManager import SimulationConfig
 qmm = QuantumMachinesManager()
 
 """
@@ -23,8 +24,13 @@ coupler = "coupler"
 
 
 def CZ(b_seq: Baking):
+    """
+    The native two-qubit gate shall always contain align before and after the playing statements
+    """
     b_seq.align(q0, q1, coupler)
+
     b_seq.play("CZ", coupler)
+
     b_seq.align(q0, q1, coupler)
 
 
@@ -63,7 +69,7 @@ def SWAP(b_seq: Baking):
 
 
 """
-In what follows, q_tgt should be the main target qubit for which should be played the single qubit gate.
+In  what follows, q_tgt should be the maintarget qubit for which should be played the single qubit gate.
 qe_set can be a set of additional quantum elements that might be needed to actually compute the gate
 (e.g fluxline, trigger, ...). It is then up to the user to use a name convention for elements allowing him to perform
 the correct gate to the right target qubit and its associated elements
@@ -131,6 +137,7 @@ def qua_prog(b_seq: Baking, N_shots: int):
         d3 = declare(fixed)
         d4 = declare(fixed)
         with for_(n, 0, n < N_shots, n+1):
+            wait(4, q0, q1)  # Wait for qubits to decay
             b_seq.run()
             align()
             measure('readout', "rr1", None, demod.full('integW1', d1, 'out1'),
@@ -151,26 +158,30 @@ def qua_prog(b_seq: Baking, N_shots: int):
     return prog
 
 
-n_max = 85
+n_max = 2
 step = 10
 nCliffords = range(1, n_max, step)
-K = 5
+N_sequences = 5
 print(nCliffords)
 RB_exp = RBTwoQubits(qmm=qmm, config=config,
-                N_Clifford=nCliffords, K=K,
+                N_Clifford=nCliffords, K=N_sequences,
                 two_qb_gate_baking_macros=two_qb_gate_macros,
-                quantum_elements=("q0", "q1"))
+                qubits=("q0", "q1"))
 sequences = RB_exp.sequences
 s1 = sequences[0].full_sequence
 # Uncomment lines below to see random sequence in terms of Cliffords
-# for h in s1:
-#     print(len(h), h)
+for h in s1:
+    print(len(h), h)
 
 # Retrieve here the longest baked waveform to perform overriding with the run function
 baked_reference = RB_exp.baked_reference
-print("reference", baked_reference.get_Op_length("q0"))
-RB_exp.run(prog=qua_prog(baked_reference, 100))
 
-results_list = RB_exp.results
-jobs = RB_exp.job_list
+job = qmm.simulate(RB_exp.config, qua_prog(b_seq=baked_reference, N_shots=100), simulate=SimulationConfig(12000))
+samples = job.get_simulated_samples()
+samples.con1.plot()
+print("reference", baked_reference.get_Op_length("q0"))
+# RB_exp.run(prog=qua_prog(baked_reference, 100))
+#
+# results_list = RB_exp.results
+# jobs = RB_exp.job_list
 
