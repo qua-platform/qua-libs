@@ -64,6 +64,12 @@ The consequence of this is that the number of maximum Clifford operations playab
 Assuming all single qubit gates have the same length, and using one single native two qubit gate with another (longer) length, we have performed the following approximative benchmark of how many Clifford operations are playable.
 Note that this number may slightly vary as all Clifford operations do not carry the same number of gates and there is therefore some randomness on the actual number that can be played. The benchmark done below indicates how many Clifford are playable with certainty without reaching waveform memory.
 
+| 1 qubit gate length [ns]/ 2 qubit gate length [ns] | 100 | 200 | 252 |
+|----------------------------------------------------|-----|-----|-----|
+| 32                                                 | 175 | 120 | 105 |
+| 40                                                 | 150 | 110 | 95  |
+| 52                                                 | 128 | 100 | 84  |
+| 72                                                 | 100 | 81  | 72  |
 ##2. Delay between active reset and actual start of the sequence
 As mentioned earlier, the use of *add_compile* is done in order to minimize the overall required time to run the full experiment.
 This is possible by using waveform overriding (more details here: https://qm-docs.s3.amazonaws.com/v1.10/python/features.html#precompile-jobs).
