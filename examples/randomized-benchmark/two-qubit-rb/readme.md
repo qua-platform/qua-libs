@@ -32,7 +32,7 @@ few generic inputs the user shall provide:
 - a  QuantumMachinesManager instance, which will be used to launch  the series of jobs necessary to play all synthezised sequences 
 - a config dictionary, used to open a Quantum Machine and to store the waveforms randomly generated
 - *N_Clifford*, the number of desired Clifford per sequence. Here an array of different values can be provided to retrieve different truncations
-- *K*: Number of random sequences to be generated for averaging
+- *N_sequences*: Number of random sequences to be generated for averaging
 - *two_qb_gate_macros*: Dictionary containing macros taking a baking object as input and using
  baking play statements on necessary quantum elements to perform the three 2 qubit gates mentioned above ("CNOT", "SWAP" and "iSWAP" which are the three keys of the dictionary).
 - *quantum_elements*, shall specify the name in the config of the two quantum elements corresonding to the two qubits to be characterized. This is to be specified if the 1 qubit Clifford set is specified as operations for each of those two quantum elements. 
@@ -43,11 +43,32 @@ a set of macros. Note that the dictionary shall then contain macros for all sing
 
 
 # Run the experiment
-Once the instance of the previously class is created,
-one can launch the full experiment by using the method run, which will create a series of pending jobs to run all random sequences and their truncations generated with the baking tool.
-The output of this method is a list of result_handles to be post-processed for graph generation. Each result_handles correspond to the result of one sequence in particular.
-This method takes as an input a QUA program, which should contain a *b.run()* statement, where *b* is the attribute *baked_reference* of the RBTwoQubits instance. It should also contain the measurement and the stream processing adapted to the user's setup.
-An example of such QUA program is provided in the executable script.
 
-With this method, one can hope to run up to 170 Cliffords (assuming single qubit gate are 32 ns long and two qubit gates are 100 ns long). This estimation is highly dependent of each pulse length.
+The example shows briefly how one can run the experiment using the class. The method *run* uses one single argument,
+which is the main QUA program the user should define with its own measurement commands and its own stream_processing, such that the retrieval and fitting of results can be done directly. 
+The user shall build its QUA program according to two important guidelines:
+1. The user shall involve the call of a *b.run()*, where *b* is the baking object retrievable by the attribute of the RBTwoQubitClass *baked_reference*.
+2. The state estimation for both qubits should be done directly in QUA, and shall therefore contain two streams (one for each qubit state) filled with 0s or 1s in order to retrieve the result of each circuit independently in the post-processing.
+
+The example of QUA program provided proposes to embed it into a function, allowing the user to choose the number of repetitions of each sequence he wants to set for getting good statistics.
+
+Once the experiment is run, the user can retrieve the survival probability using the method *retrieve_results*, and can also plot the usual graph and perform a fitting of the results using the method *plot* of the class.
+
+# Description of how the experiment is done and current limitations
+2 qubit RB can be a challenge to implement because of the associated number of Cliffords one has to sample in the 2 qubit Clifford group (11520).
+In our proposed implementation, we exploit the baking tool in order to perform the sequence generation and inversion before running the actual QUA program.
+Moreover, we use the *add_compiled* feature of the QOP to be able to load random sequences in a row. This avoid of having to redo full compilation when running each QUA program in charge of playing each random sequence (and all its truncations for shorter Clifford lengths).
+This scheme involves two main limitations that are described below.
+##1. Maximum number of Clifford limited on lengths of gates 
+The consequence of this is that the number of maximum Clifford operations playable in the experiment is limited by the waveform memory, and is therefore highly dependent on the length of the gates the user has calibrated.
+Assuming all single qubit gates have the same length, and using one single native two qubit gate with another (longer) length, we have performed the following approximative benchmark of how many Clifford operations are playable.
+Note that this number may slightly vary as all Clifford operations do not carry the same number of gates and there is therefore some randomness on the actual number that can be played. The benchmark done below indicates how many Clifford are playable with certainty without reaching waveform memory.
+
+##2. Delay between active reset and actual start of the sequence
+As mentioned earlier, the use of *add_compile* is done in order to minimize the overall required time to run the full experiment.
+This is possible by using waveform overriding (more details here: https://qm-docs.s3.amazonaws.com/v1.10/python/features.html#precompile-jobs).
+In order to exploit this feature, all waveforms that are passed between two jobs shall be of exact same length.
+This means that for each random sequence and each of its subsequent truncations (for shorter number of Clifford composing the sequence), the baked waveform shall be completed with additional 0s in order to match the same number of samples as the longest baked waveform (the one containing the maximum number of Clifford operations).
+As a consequence, there is an additional delay that is added when playing shorter sequences as the padded 0s are placed before playing the actual truncated sequence (in order to avoid gaps between the play of the sequence and the start of the readout).
+In case the user wants to implement an active reset feature, there is therefore a variable delay (dependent on which truncation is being played) between the moment the state is reset and the actual start of the random sequence.
 

@@ -3,14 +3,13 @@ import numpy as np
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm.QmJob import JobResults
 from copy import deepcopy
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 
 size_c2 = 11520
 Clifford = Dict[str, List[Tuple]]
-"""If no single_qb_macros are provided, Single qubit Clifford generators are assumed 
-to be already setup in the config with operations names matching ops described below 
-(i.e 'I', 'X', 'Y', 'Y/2', 'X/2', '-X/2' and '-Y/2' are present in operations 
-list of both elements describing qubit 0 and qubit 1"""
 
 _c1_ops = [
     ('I',),
@@ -69,10 +68,9 @@ class RBTwoQubits:
     def __init__(self, qmm: QuantumMachinesManager,
                  config: Dict,
                  N_Clifford: Union[Iterable, int],
-                 K: int,
+                 N_sequences: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
-                 qubits: Iterable[str] = None,
-                 single_qb_macros: Optional[Dict[str, Callable]] = None,
+                 single_qb_macros: Dict[str, Callable],
                  seed: Optional[int] = None
                  ):
         """
@@ -96,7 +94,7 @@ class RBTwoQubits:
             Number of Clifford gates per sequence. If iterable is provided, then a series of sequences of various
             lengths are generated. If integer is provided, all sequence truncations are generated up to
             the indicated max number.
-        :param K: Number of RB sequences
+        :param N_sequences: Number of RB sequences
 
         :param two_qb_gate_baking_macros:
             dictionary containing baking macros for 2 qb gates necessary to do all
@@ -104,26 +102,16 @@ class RBTwoQubits:
 
         :param single_qb_macros:
             baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
-            "X/2", "Y/2", "-X/2", "-Y/2"). If None is provided, then the param quantum_elements should carry the name of
-            the quantum elements representing qubit 0 and 1.
+            "X/2", "Y/2", "-X/2", "-Y/2").
 
         :param seed: Random seed
-
-        :param qubits:
-            qubits involved in the protocol, should be the same name as in the config. If None is provided,
-            then macros for single qubit gates are required
         """
 
         self.qmm = qmm
-        # self.config = config
-        if qubits is not None:
-            for qe in qubits:
-                if qe not in config["elements"]:
-                    raise KeyError(f"Quantum element {qe} is not in the config")
-        else:
-            if single_qb_macros is None:
-                raise KeyError("No elements or single qubit gate macros have been provided,"
-                               " impossible to do single qubit gates")
+        self._experiment_completed = False
+        self._statistics_retrieved = False
+        self._P_00 = 0
+        self.N_sequences = N_sequences
         if seed is not None:
             np.random.seed(seed)
         if type(N_Clifford) == int:
@@ -137,8 +125,7 @@ class RBTwoQubits:
                             self.N_Clifford,
                             two_qb_gate_baking_macros,
                             single_qb_macros,
-                            seed,
-                            qubits) for _ in range(K)]
+                            seed) for _ in range(N_sequences)]
 
         max_length = 0
         tgt_seq = None
@@ -147,10 +134,9 @@ class RBTwoQubits:
             if max_length < seq.sequence_length:
                 max_length = seq.sequence_length
                 tgt_seq = seq
-        # self.config.update(tgt_seq.mock_config)
         self.config = deepcopy(tgt_seq.mock_config)
         self.baked_reference = tgt_seq.baked_sequence
-        self.results = []
+        self.results = [[JobResults] * len(self.N_Clifford)] * N_sequences
         self.job_list = []
 
     def retrieve_truncations(self, seq, baked_reference, trunc_index):
@@ -189,18 +175,55 @@ class RBTwoQubits:
                 self.job_list.append(job)
                 results = job.result_handles
                 results.wait_for_all_values()
-                self.results.append(results)
+                self.results[i][trunc_index] = results
 
+        self._experiment_completed = True
         print("Experiment done, results are available")
+
+    def retrieve_results(self, stream_name_0: str, stream_name_1: str, N_shots: int):
+        if self._experiment_completed:
+            P_00 = [None] * len(self.N_Clifford)
+            for trunc in range(len(self.N_Clifford)):
+
+                for seq in range(self.N_sequences):
+                    results_q0 = self.results[seq][trunc].get(name=stream_name_0).fetch_all()['value']
+                    results_q1 = self.results[seq][trunc].get(name=stream_name_1).fetch_all()['value']
+                    assert len(results_q0) == len(results_q1), "The two streams provided do not have the same length"
+                    assert len(results_q0) == N_shots, "Number of shots provided does not match the length of the streamed data"
+                    for i in range(N_shots):
+                        if results_q0[i] == 0 and results_q1[i] == 0:
+                            P_00[trunc] += 1 / (N_shots*self.N_sequences)
+            self._P_00 = P_00
+            self._statistics_retrieved = True
+            return P_00
+        else:
+            return "Results non retrievable, the experiment is not completed or has not been run (play run method)"
+
+    def plot(self):
+        if self._experiment_completed and self._statistics_retrieved:
+            xdata = self.N_Clifford  # depths
+            ydata = self._P_00
+
+            def model(x, A, alpha, B):
+                return A + B * alpha ** x
+
+            popt, pcov = curve_fit(model, xdata, ydata)
+            A, alpha, B = popt
+
+            print("Average Error per Clifford: ", 3*(1.0 - alpha)/4)
+            plt.figure()
+            plt.plot(xdata, ydata, 'x')
+            plt.plot(xdata, A + B * alpha**xdata)
+            plt.xlabel("Number of Clifford operations")
+            plt.ylabel("Average |00> state fidelity")
 
 
 class TwoQbRBSequence:
     def __init__(self, qmm: QuantumMachinesManager, config: dict,
                  N_Cliffords: List,
                  two_qubit_gate_macros: Dict[str, Callable],
-                 single_qb_macros: Optional[Dict[str, Callable]] = None,
+                 single_qb_macros: Dict[str, Callable],
                  seed: Optional[int] = None,
-                 quantum_elements: Optional[Iterable[str]] = None
                  ):
         self.qmm = qmm
         self.mock_config = deepcopy(config)
@@ -208,10 +231,7 @@ class TwoQbRBSequence:
         self.d_max = N_Cliffords[-1]
         self.seed = seed
         self._number_of_gates = 0
-        if quantum_elements is not None:
-            self.quantum_elements = quantum_elements
-        else:
-            self.quantum_elements = ("q0", "q1")
+        self.qubits = ("q0", "q1")
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
@@ -250,7 +270,7 @@ class TwoQbRBSequence:
         return truncations_plus_inverse
 
     def _writing_baked_wf(self, b: Baking, trunc) -> None:
-        q0, q1 = self.quantum_elements[0], self.quantum_elements[1]
+        q0, q1 = self.qubits[0], self.qubits[1]
         for clifford in self.full_sequence[trunc]:
             assert len(clifford[q0]) == len(clifford[q1])
             for op0, op1 in zip(clifford[q0], clifford[q1]):
@@ -258,16 +278,16 @@ class TwoQbRBSequence:
                     for opa, opb in zip(op0, op1):
                         if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
                             assert opa == opb
-                            self.two_qb_gate_macros[opa](b)
+                            self.two_qb_gate_macros[opa](b, q0, q1)
                         else:
-                            self.play_single_qb_op(opa, q0, b)
-                            self.play_single_qb_op(opb, q1, b)
+                            self.single_qb_macros[opa](b, q0)
+                            self.single_qb_macros[opb](b, q1)
 
                 else:
                     for opa in op0:
-                        self.play_single_qb_op(opa, q0, b)
+                        self.single_qb_macros[opa](b, q0)
                     for opb in op1:
-                        self.play_single_qb_op(opb, q1, b)
+                        self.single_qb_macros[opb](b, q1)
 
     def _generate_baked_sequence(self) -> Baking:
         """
@@ -299,9 +319,9 @@ class TwoQbRBSequence:
         for each quantum element
         """
         clifford = {}
-        q0 = self.quantum_elements[0]
-        q1 = self.quantum_elements[1]
-        for qe in self.quantum_elements:
+        q0 = self.qubits[0]
+        q1 = self.qubits[1]
+        for qe in self.qubits:
             clifford[qe] = []
         if index < 576:
             # single qubit class
@@ -350,8 +370,8 @@ class TwoQbRBSequence:
 
     def clifford_to_unitary(self, gate_seq):
         unitary: np.ndarray = np.eye(4)
-        q0 = self.quantum_elements[0]
-        q1 = self.quantum_elements[1]
+        q0 = self.qubits[0]
+        q1 = self.qubits[1]
         g0 = gate_seq[q0]
         g1 = gate_seq[q1]
         assert len(g0) == len(g1), f"Clifford not correctly built, length on q0 ({len(g0)}) != length on q1 ({len(g1)})"
@@ -372,11 +392,6 @@ class TwoQbRBSequence:
                     unitary = np.kron(np.eye(2), gate_unitaries[opb]) @ unitary
         return unitary
 
-    def play_single_qb_op(self, op: str, q: str, b: Baking):
-        if self.single_qb_macros is not None:
-            self.single_qb_macros[op](b, q, self.quantum_elements)
-        else:  # Remove this option
-            b.play(op, q)
 
 
 gate_unitaries = {
