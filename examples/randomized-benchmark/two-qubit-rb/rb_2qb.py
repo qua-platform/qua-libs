@@ -111,6 +111,7 @@ class RBTwoQubits:
         self._experiment_completed = False
         self._statistics_retrieved = False
         self._P_00 = 0
+        self.alpha = 0
         self.N_sequences = N_sequences
         if seed is not None:
             np.random.seed(seed)
@@ -182,7 +183,7 @@ class RBTwoQubits:
 
     def retrieve_results(self, stream_name_0: str, stream_name_1: str, N_shots: int):
         if self._experiment_completed:
-            P_00 = [None] * len(self.N_Clifford)
+            P_00 = [0.] * len(self.N_Clifford)
             for trunc in range(len(self.N_Clifford)):
 
                 for seq in range(self.N_sequences):
@@ -200,6 +201,9 @@ class RBTwoQubits:
             return "Results non retrievable, the experiment is not completed or has not been run (play run method)"
 
     def plot(self):
+        """
+        Performs the fitting over the acquired data on survival probability for the different lengths of random sequences
+        """
         if self._experiment_completed and self._statistics_retrieved:
             xdata = self.N_Clifford  # depths
             ydata = self._P_00
@@ -211,11 +215,16 @@ class RBTwoQubits:
             A, alpha, B = popt
 
             print("Average Error per Clifford: ", 3*(1.0 - alpha)/4)
+            self.alpha = alpha
             plt.figure()
             plt.plot(xdata, ydata, 'x')
             plt.plot(xdata, A + B * alpha**xdata)
             plt.xlabel("Number of Clifford operations")
             plt.ylabel("Average |00> state fidelity")
+
+    def retrieve_average_error_gate(self):
+        N_gates_per_Clifford = 3
+        return 3*(1.0 - self.alpha)/(4* N_gates_per_Clifford)
 
 
 class TwoQbRBSequence:
