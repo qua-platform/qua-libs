@@ -56,7 +56,8 @@ Once the experiment is run, the user can retrieve the survival probability using
 2 qubit RB can be a challenge to implement because of the associated number of Cliffords one has to sample in the 2 qubit Clifford group (11520).
 In our proposed implementation, we exploit the baking tool in order to perform the sequence generation and inversion before running the actual QUA program.
 Moreover, we use the *add_compiled* feature of the QOP to be able to load random sequences successively, without having to compile a new program at every iteration. This scheme involves two main limitations that are described below.
-##1. Maximum number of Clifford limited on lengths of gates 
+
+## 1. Maximum number of Clifford limited on lengths of gates 
 The first consequence of this method is that the number of maximum Clifford operations playable in the experiment is limited by the waveform memory, and is therefore highly dependent on the length of the gates the user has calibrated.
 Assuming all single qubit gates have the same length, and using one single native two qubit gate with another (longer) length, we have performed the following approximative benchmark of how many Clifford operations are playable.
 Note that this number may slightly vary as all Clifford operations do not carry the same number of gates and there is therefore some randomness on the actual number that can be played. The benchmark done below indicates the maximum number of playable Clifford operations in one single random sequence with certainty.
@@ -70,8 +71,7 @@ Note that this number may slightly vary as all Clifford operations do not carry 
 | 52                       |                                        | 128 | 100 | 84  |
 | 72                       |                                        | 100 | 81  | 72  |                                             | 100 | 81  | 72  |
 
-
-##2. Delay between active reset and actual start of the sequence
+## 2. Delay between active reset and actual start of the sequence
 As mentioned earlier, the use of *add_compile* is done in order to minimize the overall required time to run the full experiment.
 This is possible by using waveform overriding (more details here: https://qm-docs.s3.amazonaws.com/v1.10/python/features.html#precompile-jobs).
 In order to exploit this feature, all waveforms that are passed between two jobs must be of exact same length.
