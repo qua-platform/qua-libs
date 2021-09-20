@@ -112,6 +112,8 @@ class RBTwoQubits:
         self._statistics_retrieved = False
         self._P_00 = 0
         self.alpha = 0
+        self.A = 0
+        self.B = 0
         self.N_sequences = N_sequences
         if seed is not None:
             np.random.seed(seed)
@@ -182,6 +184,9 @@ class RBTwoQubits:
         print("Experiment done, results are available")
 
     def retrieve_results(self, stream_name_0: str, stream_name_1: str, N_shots: int):
+        """
+        Retrieves the average error per Clifford issued from the fitting of obtained results
+        """
         if self._experiment_completed:
             P_00 = [0.] * len(self.N_Clifford)
             for trunc in range(len(self.N_Clifford)):
@@ -195,36 +200,44 @@ class RBTwoQubits:
                         if results_q0[i] == 0 and results_q1[i] == 0:
                             P_00[trunc] += 1 / (N_shots*self.N_sequences)
             self._P_00 = P_00
+            xdata = self.N_Clifford  # depths
+            ydata = P_00
+            assert len(xdata) == len(ydata)
+
+            def model(x, a, beta, b):
+                return a + b * beta ** x
+
+            popt, pcov = curve_fit(model, xdata, ydata)
+            A, alpha, B = popt
+
+            print("Average Error per Clifford: ", 3 * (1.0 - alpha) / 4)
+            self.alpha = alpha
+            self.A = A
+            self.B = B
             self._statistics_retrieved = True
-            return P_00
+            return 3 * (1.0 - alpha) / 4
         else:
             return "Results non retrievable, the experiment is not completed or has not been run (play run method)"
 
     def plot(self):
         """
-        Performs the fitting over the acquired data on survival probability for the different lengths of random sequences
+        Plots the experimental results and the fitting function performed through the method retrieve_results
         """
         if self._experiment_completed and self._statistics_retrieved:
-            xdata = self.N_Clifford  # depths
-            ydata = self._P_00
-
-            def model(x, A, alpha, B):
-                return A + B * alpha ** x
-
-            popt, pcov = curve_fit(model, xdata, ydata)
-            A, alpha, B = popt
-
-            print("Average Error per Clifford: ", 3*(1.0 - alpha)/4)
-            self.alpha = alpha
+            xdata = np.array(self.N_Clifford)
+            ydata = np.array(self._P_00)
             plt.figure()
             plt.plot(xdata, ydata, 'x')
-            plt.plot(xdata, A + B * alpha**xdata)
+            plt.plot(xdata, self.A + self.B * self.alpha**xdata)
             plt.xlabel("Number of Clifford operations")
             plt.ylabel("Average |00> state fidelity")
 
+        else:
+            raise NotImplementedError("Plotting not possible: Experiment not completed or method to retrieve results not called")
+        
     def retrieve_average_error_gate(self):
         N_gates_per_Clifford = 3
-        return 3*(1.0 - self.alpha)/(4* N_gates_per_Clifford)
+        return 3*(1.0 - self.alpha)/(4 * N_gates_per_Clifford)
 
 
 class TwoQbRBSequence:
