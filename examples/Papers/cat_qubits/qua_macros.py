@@ -2,8 +2,7 @@ from qm.qua import *
 from Examples.Papers.cat_qubits.exponential_suppression_bit_flip_errors.configuration import deflation_duration
 
 
-def Ramsey(transmon, readout_res, revival_time, threshold, polarization, target_state):
-    I = declare(fixed)
+def Ramsey(transmon, readout_res, revival_time, threshold, polarization, target_state, I):
 
     play("X90", transmon)
     wait(revival_time, transmon)
