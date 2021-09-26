@@ -71,6 +71,7 @@ class RBTwoQubits:
                  N_sequences: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
+                 qubit_register: Tuple[str],
                  seed: Optional[int] = None
                  ):
         """
@@ -103,7 +104,7 @@ class RBTwoQubits:
         :param single_qb_macros:
             baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
             "X/2", "Y/2", "-X/2", "-Y/2").
-
+        :param qubit_register: Tuple containing target names for the qubits to be addressed, e.g (q0,q1)
         :param seed: Random seed
         """
 
@@ -128,6 +129,7 @@ class RBTwoQubits:
                             self.N_Clifford,
                             two_qb_gate_baking_macros,
                             single_qb_macros,
+                            qubit_register,
                             seed) for _ in range(N_sequences)]
 
         max_length = 0
@@ -215,7 +217,7 @@ class RBTwoQubits:
             self.A = A
             self.B = B
             self._statistics_retrieved = True
-            return 3 * (1.0 - alpha) / 4
+            return P_00, 3 * (1.0 - alpha) / 4
         else:
             return "Results non retrievable, the experiment is not completed or has not been run (play run method)"
 
@@ -233,7 +235,8 @@ class RBTwoQubits:
             plt.ylabel("Average |00> state fidelity")
 
         else:
-            raise NotImplementedError("Plotting not possible: Experiment not completed or method to retrieve results not called")
+            raise NotImplementedError("Plotting not possible: Experiment not completed "
+                                      "or method to retrieve results not called")
         
     def retrieve_average_error_gate(self):
         N_gates_per_Clifford = 3
@@ -245,6 +248,7 @@ class TwoQbRBSequence:
                  N_Cliffords: List,
                  two_qubit_gate_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
+                 qubit_register: Tuple[str],
                  seed: Optional[int] = None,
                  ):
         self.qmm = qmm
@@ -253,7 +257,8 @@ class TwoQbRBSequence:
         self.d_max = N_Cliffords[-1]
         self.seed = seed
         self._number_of_gates = 0
-        self.qubits = ("q0", "q1")
+        assert len(qubit_register) == 2, "Register shall contain 2 qubits only"
+        self.qubits = qubit_register
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()

@@ -228,5 +228,5 @@ baked_reference = RB_exp.baked_reference
 # print("reference", baked_reference.get_Op_length("q0"))
 
 RB_exp.run(prog=qua_prog(baked_reference, N_shots=N_shots))
-P_00 = RB_exp.retrieve_results(stream_name_0="state0", stream_name_1="state1", N_shots=N_shots)
+P_00, Average_Error_per_Clifford = RB_exp.retrieve_results(stream_name_0="state0", stream_name_1="state1", N_shots=N_shots)
 RB_exp.plot()

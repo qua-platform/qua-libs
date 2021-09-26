@@ -37,10 +37,15 @@ few generic inputs the user shall provide:
  baking play statements on necessary quantum elements to perform the three 2 qubit gates mentioned above ("CNOT", "SWAP" and "iSWAP" which are also keys of the dictionary).  The native two-qubit gate macro shall always contain a baking align statement before and after the playing statements
 - *single_qb_macros*: Optional dictionary in the case where a single qubit gate is not simply a QUA play statement on one quantum element, one can specify a dictionary of 
 a set of macros. Note that the dictionary shall then contain macros for all single qubit generators, i.e "I", "X", "Y", "X/2", "Y/2", "-X/2", "-Y/2".
+- *qubit_register*: Tuple containing names of two target qubits 
 - *seed*: Random seed
 
 
 # Run the experiment
+Before running the experiment, the user shall define all baking macros for computing Clifford generators for each of the two target qubits specified in the *qubit_register*.
+To help the user retrieve the correct quantum elements to be addressed when specifying one of the two qubits, we propose the implementation of the *Resolver* class, which aims to facilitate the retrieval of various quantum elements that might need to be involved for computing a specific quantum gate on the "logical qubits".
+One could in fact see a qubit as a set of quantum elements in the configuration, that do depend on the operation to be played on. Recall that within the *RBTwoQubits* class, the macros will be called with the following arguments: the baking object of reference (which shall always be 
+a parameter of the baking macros, as shown in the example), and the target qubit(s) (the two names given in the *qubit_register* argument of the class) on which the macros shall be applied. Single qubit gate macros only require one target qubit out of the two provided, whereas the two_qubit_gate macros require the two qubits of the register (a control and a target, always chosen to be in the same order for this experiment).
 
 The example shows briefly how one can run the experiment using the class. The method *run* uses one single argument,
 which is the main QUA program the user should define with its own measurement commands and its own stream_processing, such that the retrieval and fitting of results can be done directly. 
@@ -50,7 +55,7 @@ The user shall build its QUA program according to two important guidelines:
 
 The example of QUA program provided proposes to embed it into a function, allowing the user to choose the number of repetitions of each sequence he wants to set for getting good statistics.
 
-Once the experiment is run, the user can retrieve the survival probability using the method *retrieve_results*, and can also plot the usual graph and perform a fitting of the results using the method *plot* of the class.
+Once the experiment is run, the user can retrieve the survival probability and the average error per Clifford using the method *retrieve_results*, and can also plot the usual graph and perform a fitting of the results using the method *plot* of the class.
 
 # Description of how the experiment is done and current limitations
 2 qubit RB can be a challenge to implement because of the associated number of Cliffords one has to sample in the 2 qubit Clifford group (11520).
