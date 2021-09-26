@@ -212,12 +212,12 @@ print(nCliffords)
 RB_exp = RBTwoQubits(qmm=qmm, config=config,
                      N_Clifford=nCliffords, N_sequences=N_sequences,
                      two_qb_gate_baking_macros=two_qb_gate_macros,
-                     single_qb_macros=single_qb_gate_macros)
+                     single_qb_macros=single_qb_gate_macros, qubit_register=("q0", "q1"))
 sequences = RB_exp.sequences
 s1 = sequences[0].full_sequence
 # Uncomment lines below to see random sequence in terms of Cliffords
-for h in s1:
-    print(len(h), h)
+for Cl in s1:
+    print(len(Cl), Cl)
 
 # Retrieve here the longest baked waveform to perform overriding with the run function
 baked_reference = RB_exp.baked_reference

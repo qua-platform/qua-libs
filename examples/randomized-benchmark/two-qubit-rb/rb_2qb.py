@@ -71,7 +71,7 @@ class RBTwoQubits:
                  N_sequences: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
-                 qubit_register: Tuple[str],
+                 qubit_register: Tuple[str, str],
                  seed: Optional[int] = None
                  ):
         """
@@ -248,7 +248,7 @@ class TwoQbRBSequence:
                  N_Cliffords: List,
                  two_qubit_gate_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
-                 qubit_register: Tuple[str],
+                 qubit_register: Tuple[str, str],
                  seed: Optional[int] = None,
                  ):
         self.qmm = qmm
@@ -420,7 +420,6 @@ class TwoQbRBSequence:
         return unitary
 
 
-
 gate_unitaries = {
     'I': np.eye(2),
     'X': np.array([[0., 1.],
@@ -469,4 +468,3 @@ def unitary_to_index(unitary):
     assert len(matches) == 1, f"algorithm failed, found {len(matches)} matches > 1"
 
     return matches[0]
-
