@@ -24,35 +24,38 @@ simulation_config = SimulationConfig(
 )
 
 revival_time = int(np.pi / chi_qa / 4) * 4  # get revival time in multiples of 4 ns
-
-# range to sample alpha
-alpha = np.linspace(-2, 2, 4)
-# scale alpha to get the required power amplitude for the pulse
-amp_displace = list(-alpha / np.sqrt(2 * np.pi) / 4)
 shots = 10
+
+# Sweeping parameters for amplitude
 eps_max = 1
 N_eps = int(eps_max // 0.3)
 d_eps = eps_max/N_eps
+
+# Threshold for state discrimination
 threshold = 0.0
-IQ_grid_step = 0.5
+
+# Grid for sweeping phase space
+IQ_step = 0.5
 grid_start = -1.0
 grid_stop = 1.05
-N_points = int((grid_stop-grid_start)//IQ_grid_step)
+N_points = int((grid_stop-grid_start) // IQ_step)
+
 with program() as buffer_drive_amp_cal:
-    amp_dis = declare(fixed, value=amp_displace)
     n = declare(int)
     i = declare(fixed)
     q = declare(fixed)
     eps = declare(fixed)
+
     I = declare(fixed)
     pol = declare(int)
     state = declare(bool)
+
     parity_stream = declare_stream()
 
     with for_(n, 0, n < shots, n + 1):  # shots for averaging
         with for_(eps, 0.3, eps < eps_max, eps + d_eps):  # Buffer drive amplitude sweep
-            with for_(i, grid_start, i < grid_stop, i + IQ_grid_step):  # Real part of alpha
-                with for_(q, grid_start, q < grid_stop, q + IQ_grid_step):  # Imaginary part of alpha
+            with for_(i, grid_start, i < grid_stop, i + IQ_step):  # Real part of alpha
+                with for_(q, grid_start, q < grid_stop, q + IQ_step):  # Imaginary part of alpha
                     with for_(pol, 0, pol < 2, pol + 1):  # Iterate over X90 and -X90 for second Ramsey pulse
                         # State preparation
                         play("pump", "ATS", duration=2e2)
@@ -70,10 +73,11 @@ with program() as buffer_drive_amp_cal:
                         align()
                         with if_(state):
                             play("X", "transmon")
-                        deflate(buffer_drive_on=False, buffer_amp=eps)
+                        # deflate(buffer_drive_on=False, buffer_amp=eps)
                         align("ATS", "storage", "transmon")
                         with if_(state):
-                            g_one_to_g_zero()
+                            # g_one_to_g_zero()
+                            g_odd_to_g_even()
 
                         with if_(pol == 1):
                             assign(state, ~state)

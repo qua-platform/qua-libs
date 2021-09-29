@@ -37,6 +37,12 @@ def g_one_to_g_zero():
     play("g1_to_g0_opt_con", "transmon")
 
 
+def g_odd_to_g_even():  # In case cavity has not been deflated prior to parity measurement
+    align("storage", "transmon")
+    play("g1_to_g0_opt_con", "storage")
+    play("g1_to_g0_opt_con", "transmon")
+
+
 def e_one_to_g_zero():
     align("storage", "transmon")
     play("e1_to_g0_opt_con", "storage")
