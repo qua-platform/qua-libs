@@ -290,6 +290,7 @@ class TwoQbRBSequence:
             for unitary in trunc_unitary:
                 trunc_unitary_prod = unitary @ trunc_unitary_prod
             inverse_unitary = trunc_unitary_prod.conj().T
+            assert np.round(trunc_unitary_prod @ inverse_unitary, 6) == np.eye(4)
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
             truncations_plus_inverse.append(trunc)
