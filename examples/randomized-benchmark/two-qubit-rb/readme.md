@@ -20,12 +20,18 @@ The pattern behind RB is always the same:
 - Repeat prior steps for varying number of Cliffords within the sequence
 
 In order to have an easy way to derive all Cliffords of the two qubit Clifford group, 
-we use the decomposition illustrated in the following reference: https://arxiv.org/pdf/1210.7011.pdf.
-This decomposition allows an easy derivation of the group from the Clifford group for one qubit, and uses three main two qubit gates
-(that shall be decomposed later into a native set of gates by the user depending on its own hardware):
-- CNOT
-- SWAP
-- iSWAP
+we use the decomposition in four classed illustrated in the following reference: https://arxiv.org/pdf/1210.7011.pdf.
+The classes are defined as follows:
+
+- single qubit class (where two operations from the one qubit Clifford group are played on the two qubits)
+- the CNOT class (where the Clifford consists of a CNOT gate surrounded by single qubit gates)
+- the iSWAP class (same form as the CNOT class but replacing the CNOT by the iSWAP gate)
+- This decomposition into 4 classes allows an easy derivation of all elements from the Clifford group.
+- the SWAP class (two one qubit gate followed by a SWAP gate).
+
+In order to make the code of RB hardware agnostic, we therefore require from the user to
+provide a decomposition of the three two qubit gates depicted above in his own set of native gates. Those decompositions shall be
+provided as sets of baking play instructions that will eventually serve to compute the circuit of the intended two qubit gate.
 
 We introduce a specific class that allows an easy generation and execution of multiple random Clifford sequences based on 
 few generic inputs the user shall provide:
@@ -43,7 +49,7 @@ a set of macros. Note that the dictionary shall then contain macros for all sing
 
 # Run the experiment
 Before running the experiment, the user shall define all baking macros for computing Clifford generators for each of the two target qubits specified in the *qubit_register*.
-To help the user retrieve the correct quantum elements to be addressed when specifying one of the two qubits, we propose the implementation of the *Resolver* class, which aims to facilitate the retrieval of various quantum elements that might need to be involved for computing a specific quantum gate on the "logical qubits".
+To help the user retrieve the correct quantum elements to be addressed when specifying one of the two qubits, we propose the implementation of the *Resolver* class, which aims to facilitate the retrieval of various quantum elements that might need to be involved for computing a specific quantum gate on the qubits.
 One could in fact see a qubit as a set of quantum elements in the configuration, that do depend on the operation to be played on. Recall that within the *RBTwoQubits* class, the macros will be called with the following arguments: the baking object of reference (which shall always be 
 a parameter of the baking macros, as shown in the example), and the target qubit(s) (the two names given in the *qubit_register* argument of the class) on which the macros shall be applied. Single qubit gate macros only require one target qubit out of the two provided, whereas the two_qubit_gate macros require the two qubits of the register (a control and a target, always chosen to be in the same order for this experiment).
 

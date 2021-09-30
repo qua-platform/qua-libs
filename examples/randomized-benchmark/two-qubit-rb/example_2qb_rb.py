@@ -9,7 +9,7 @@ qmm = QuantumMachinesManager()
 For the required two qubit gates to generate the 4 classes (see Supplementary info of this paper:
 https://arxiv.org/pdf/1210.7011.pdf), we require the user to complete the following macros below according
 to their own native set of qubit gates, that is perform the appropriate decomposition and convert the pulse sequence
-in a sequence of baking play statements (amounts to similar structure as QUA, just add the prefix b. before every statement)
+into a sequence of baking play statements (amounts to similar structure as QUA, just add the prefix b. before every statement)
 Example :
 in QUA you would have for a CZ operation:
     play("CZ", "coupler")
@@ -115,9 +115,8 @@ def SWAP(b_seq: Baking, ctrl: str = "q0", tgt: str = "q1"):
 
 
 """
-In  what follows, q_tgt should be the main target qubit for which should be played the single qubit gate.
-If other elements shall be used to compute a single qubit gate, it is possible to modify/add methods related to the resolver
-to retrieve easily each element required.
+In  what follows, q_tgt is the name of the target qubit on which the gate is applied.
+
 """
 
 
@@ -148,6 +147,11 @@ def mX_2(b: Baking, q_tgt):
 def mY_2(b: Baking, q_tgt):
     b.play("-Y/2", resolve.q(q_tgt))
 
+
+""" 
+The two dictionaries for macros given to the RBTwoQubit class shall be in the exact following format.
+Note that we only require gates that are used to generate the Clifford sequence
+"""
 
 two_qb_gate_macros = {
     "CNOT": CNOT,

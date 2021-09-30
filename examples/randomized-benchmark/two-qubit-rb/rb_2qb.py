@@ -99,10 +99,10 @@ class RBTwoQubits:
 
         :param two_qb_gate_baking_macros:
             dictionary containing baking macros for 2 qb gates necessary to do all
-            Cliffords (should contain keys "CNOT", "iSWAP" and "SWAP" macros)
+            Cliffords (should contain 3 keys "CNOT", "iSWAP" and "SWAP" macros)
 
         :param single_qb_macros:
-            baking macros for playing single qubit Cliffords (should contain keys "I", "X", "Y",
+            baking macros for playing single qubit Cliffords (should contain 7 keys "I", "X", "Y",
             "X/2", "Y/2", "-X/2", "-Y/2").
         :param qubit_register: Tuple containing target names for the qubits to be addressed, e.g (q0,q1)
         :param seed: Random seed
@@ -124,6 +124,23 @@ class RBTwoQubits:
             set_truncations = set(N_Clifford)
             list_truncations = sorted(list(set_truncations))
             self.N_Clifford = list_truncations
+
+        # Check if macros dictionary contain all required gates
+        assert len(two_qb_gate_baking_macros.keys()) == 3, f"{len(two_qb_gate_baking_macros.keys())} provided " \
+                                                           f"instead of 3 (CNOT, SWAP and iSWAP)"
+        assert "CNOT" in two_qb_gate_baking_macros, "CNOT key not found"
+        assert "SWAP" in two_qb_gate_baking_macros, "SWAP key not found"
+        assert "iSWAP" in two_qb_gate_baking_macros, "iSWAP key not found"
+
+        assert len(single_qb_macros.keys()) == 7
+        assert "I" in single_qb_macros, "I key not found"
+        assert "X" in single_qb_macros, "X key not found"
+        assert "Y" in single_qb_macros, "Y key not found"
+        assert "X/2" in single_qb_macros, "X/2 key not found"
+        assert "Y/2" in single_qb_macros, "Y/2 key not found"
+        assert "-X/2" in single_qb_macros, "-X/2 key not found"
+        assert "-Y/2" in single_qb_macros, "-Y/2 key not found"
+
         self.sequences = [
             TwoQbRBSequence(self.qmm, config,
                             self.N_Clifford,
