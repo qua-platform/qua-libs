@@ -6,10 +6,11 @@ def Ramsey(transmon, readout_res, revival_time, threshold, polarization, target_
 
     play("X90", transmon)
     wait(revival_time, transmon)
-    with if_(polarization == 0):
-        play("X90", transmon)
-    with else_():
-        play("X90" * amp(-1), transmon)
+    with switch_(polarization, unsafe=True):  # Make sure cases handle all possible outcomes when using unsafe
+        with case_(0):
+            play("X90", transmon)
+        with case_(1):
+            play("X90" * amp(-1), transmon)
 
     align(transmon, readout_res)
     measure(

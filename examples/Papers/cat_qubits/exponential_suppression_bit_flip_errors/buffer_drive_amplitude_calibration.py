@@ -27,18 +27,20 @@ revival_time = int(np.pi / chi_qa / 4) * 4  # get revival time in multiples of 4
 shots = 10
 
 # Sweeping parameters for amplitude
+eps_min = 0.3
 eps_max = 1
-N_eps = int(eps_max // 0.3)
-d_eps = eps_max/N_eps
-
+d_eps = 0.3
+eps_vec =  np.arange(eps_min, eps_max-d_eps/2, d_eps)
+N_eps = len(eps_vec)
 # Threshold for state discrimination
 threshold = 0.0
 
 # Grid for sweeping phase space
 IQ_step = 0.5
 grid_start = -1.0
-grid_stop = 1.05
-N_points = int((grid_stop-grid_start) // IQ_step)
+grid_stop = 1
+grid_vec = np.arange(grid_start, grid_stop-IQ_step/2, IQ_step)
+N_points = len(grid_vec)
 
 with program() as buffer_drive_amp_cal:
     n = declare(int)
@@ -53,9 +55,9 @@ with program() as buffer_drive_amp_cal:
     parity_stream = declare_stream()
 
     with for_(n, 0, n < shots, n + 1):  # shots for averaging
-        with for_(eps, 0.3, eps < eps_max, eps + d_eps):  # Buffer drive amplitude sweep
-            with for_(i, grid_start, i < grid_stop, i + IQ_step):  # Real part of alpha
-                with for_(q, grid_start, q < grid_stop, q + IQ_step):  # Imaginary part of alpha
+        with for_(eps, 0.3, eps < eps_max-d_eps/2, eps + d_eps):  # Buffer drive amplitude sweep
+            with for_(i, grid_start, i < grid_stop+IQ_step/2, i + IQ_step):  # Real part of alpha
+                with for_(q, grid_start, q < grid_stop+IQ_step/2, q + IQ_step):  # Imaginary part of alpha
                     with for_(pol, 0, pol < 2, pol + 1):  # Iterate over X90 and -X90 for second Ramsey pulse
                         # State preparation
                         play("pump", "ATS", duration=2e2)
@@ -67,12 +69,11 @@ with program() as buffer_drive_amp_cal:
                         align()
 
                         # Parity measurement
-                        Ramsey("transmon", "RR", revival_time, threshold, pol, state)
+                        Ramsey("transmon", "RR", revival_time, threshold, pol, state, I)
 
                         # Active reset of transmon and storage
                         align()
-                        with if_(state):
-                            play("X", "transmon")
+                        play("X", "transmon", condition=state)
                         # deflate(buffer_drive_on=False, buffer_amp=eps)
                         align("ATS", "storage", "transmon")
                         with if_(state):
