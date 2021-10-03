@@ -29,10 +29,47 @@ The classes are defined as follows:
 - This decomposition into 4 classes allows an easy derivation of all elements from the Clifford group.
 - the SWAP class (two one qubit gate followed by a SWAP gate).
 
-In order to make the code of RB hardware agnostic, we therefore require from the user to
-provide a decomposition of the three two qubit gates depicted above in his own set of native gates. Those decompositions shall be
-provided as sets of baking play instructions that will eventually serve to compute the circuit of the intended two qubit gate.
+In order to make the code of RB hardware agnostic, we require from the user to
+provide baking macros (Python functions taking as argument a baking object and where baking play statements are inserted)
+corresponding to all quantum gates that are required to perform Clifford selection according to the 4 classes.
 
+The user must define two dictionaries, one for the three two-qubit gates introduced above and a set of single qubit Clifford 
+generating the single qubit Clifford group:
+```
+two_qb_gate_macros = {
+    "CNOT": CNOT,
+    "iSWAP": iSWAP,
+    "SWAP": SWAP
+}
+
+single_qb_gate_macros = {
+    "I": I,
+    "X": X,
+    "Y": Y,
+    "X/2": X_2,
+    "-X/2": mX_2,
+    "Y/2": Y_2,
+    "-Y/2": mY_2
+}
+```
+
+The macros for each gate shall be defined according to the following:
+
+```
+def CNOT(b_seq: Baking, ctrl: str, tgt: str):
+    b_seq.play("necessary pulses",...) # to convert the native two qb gate into a CNOT
+    b_seq.align(all_elements)
+    b_seq.play("my_hardware_native_two_qb_gate", ..)
+    b_seq.align(all_elements)
+    b_seq.play("additional necessary pulses",...)
+def SWAP(b_seq: Baking, ctrl: str, tgt: str):
+    ...
+.
+.
+.
+def X(b_seq: Baking, tgt: str):
+    b_seq.play(...)
+```
 We introduce a specific class that allows an easy generation and execution of multiple random Clifford sequences based on 
 few generic inputs the user shall provide:
 - a  *QuantumMachinesManager* instance, which will be used to launch  the series of jobs necessary to play all synthezised sequences 
@@ -41,9 +78,8 @@ few generic inputs the user shall provide:
 - *N_sequences*: Number of random sequences to be generated for averaging
 - *two_qb_gate_macros*: Dictionary containing macros taking a baking object as input and using
  baking play statements on necessary quantum elements to perform the three 2 qubit gates mentioned above ("CNOT", "SWAP" and "iSWAP" which are also keys of the dictionary).  The native two-qubit gate macro shall always contain a baking align statement before and after the playing statements
-- *single_qb_macros*: Optional dictionary in the case where a single qubit gate is not simply a QUA play statement on one quantum element, one can specify a dictionary of 
-a set of macros. Note that the dictionary shall then contain macros for all single qubit generators, i.e "I", "X", "Y", "X/2", "Y/2", "-X/2", "-Y/2".
-- *qubit_register*: Tuple containing names of two target qubits 
+- *single_qb_macros*: shall contain keys "I", "X", "Y", "X/2", "Y/2", "-X/2", "-Y/2".
+- *qubit_register*: set of aliases provided by the Resolver class to describe the two qubits 
 - *seed*: Random seed
 
 
@@ -51,7 +87,7 @@ a set of macros. Note that the dictionary shall then contain macros for all sing
 Before running the experiment, the user shall define all baking macros for computing Clifford generators for each of the two target qubits specified in the *qubit_register*.
 To help the user retrieve the correct quantum elements to be addressed when specifying one of the two qubits, we propose the implementation of the *Resolver* class, which aims to facilitate the retrieval of various quantum elements that might need to be involved for computing a specific quantum gate on the qubits.
 One could in fact see a qubit as a set of quantum elements in the configuration, that do depend on the operation to be played on. Recall that within the *RBTwoQubits* class, the macros will be called with the following arguments: the baking object of reference (which shall always be 
-a parameter of the baking macros, as shown in the example), and the target qubit(s) (the two names given in the *qubit_register* argument of the class) on which the macros shall be applied. Single qubit gate macros only require one target qubit out of the two provided, whereas the two_qubit_gate macros require the two qubits of the register (a control and a target, always chosen to be in the same order for this experiment).
+a parameter of the baking macros, as shown in the example), and the target qubit(s) (the aliases given in the *qubit_register* argument of the class) on which the macros shall be applied. Single qubit gate macros only require one target qubit out of the two provided, whereas the two_qubit_gate macros require the two qubits of the register (a control and a target, always chosen to be in the same order for this experiment).
 
 The example shows briefly how one can run the experiment using the class. The method *run* uses one single argument,
 which is the main QUA program the user should define with its own measurement commands and its own stream_processing, such that the retrieval and fitting of results can be done directly. 
