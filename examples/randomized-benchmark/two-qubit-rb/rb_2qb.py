@@ -71,7 +71,7 @@ class RBTwoQubits:
                  N_sequences: int,
                  two_qb_gate_baking_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
-                 qubit_register: Tuple[str, str],
+                 qubit_register: Dict,
                  seed: Optional[int] = None
                  ):
         """
@@ -107,7 +107,7 @@ class RBTwoQubits:
         :param qubit_register: Tuple containing target names for the qubits to be addressed, e.g (q0,q1)
         :param seed: Random seed
         """
-
+        self.qubits = tuple(qubit_register.keys())
         self.qmm = qmm
         self._experiment_completed = False
         self._statistics_retrieved = False
@@ -146,7 +146,7 @@ class RBTwoQubits:
                             self.N_Clifford,
                             two_qb_gate_baking_macros,
                             single_qb_macros,
-                            qubit_register,
+                            self.qubits,
                             seed) for _ in range(N_sequences)]
 
         max_length = 0
@@ -236,7 +236,7 @@ class RBTwoQubits:
             self._statistics_retrieved = True
             return P_00, 3 * (1.0 - alpha) / 4
         else:
-            return "Results non retrievable, the experiment is not completed or has not been run (play run method)"
+            raise ValueError("Experiment was not executed (use run() method)")
 
     def plot(self):
         """
@@ -265,7 +265,7 @@ class TwoQbRBSequence:
                  N_Cliffords: List,
                  two_qubit_gate_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
-                 qubit_register: Tuple[str, str],
+                 qubit_register: Tuple,
                  seed: Optional[int] = None,
                  ):
         self.qmm = qmm
@@ -275,6 +275,8 @@ class TwoQbRBSequence:
         self.seed = seed
         self._number_of_gates = 0
         assert len(qubit_register) == 2, "Register shall contain 2 qubits only"
+        assert isinstance(qubit_register[0], str)
+        assert isinstance(qubit_register[1], str)
         self.qubits = qubit_register
         self.two_qb_gate_macros = two_qubit_gate_macros
         self.single_qb_macros = single_qb_macros
@@ -307,7 +309,7 @@ class TwoQbRBSequence:
             for unitary in trunc_unitary:
                 trunc_unitary_prod = unitary @ trunc_unitary_prod
             inverse_unitary = trunc_unitary_prod.conj().T
-            assert np.round(trunc_unitary_prod @ inverse_unitary, 6) == np.eye(4)
+            assert np.round(trunc_unitary_prod @ inverse_unitary, 6).all() == np.eye(4).all()
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
             truncations_plus_inverse.append(trunc)

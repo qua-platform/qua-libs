@@ -32,16 +32,30 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                1: {"offset": +0.0},  # qe1-I
-                2: {"offset": +0.0},  # qe1-Q
-                3: {"offset": +0.0},  # qe2-I
-                4: {"offset": +0.0},  # qe2-Q
-                5: {"offset": +0.0},  # coupler-I
-                6: {"offset": +0.0},  # coupler-Q
-                7: {"offset": +0.0},  # rr1-I
-                8: {"offset": +0.0},  # rr1-Q
-                9: {"offset": +0.0},  # rr2-I
-                10: {"offset": +0.0},  # rr2-Q
+                1: {"offset": +0.0},  # q0_xy_I
+                2: {"offset": +0.0},  # q0_xy_Q
+                3: {"offset": +0.0},  # q1_xy_I
+                4: {"offset": +0.0},  # q1_xy_Q
+                5: {"offset": +0.0},  # q0_z
+                6: {"offset": +0.0},  # q1_z
+                7: {"offset": +0.0},  # coupler
+                8: {"offset": +0.0},  # rr1-I
+                9: {"offset": +0.0},  # rr1-Q
+            },
+            "digital_outputs": {
+                1: {},
+            },
+            "analog_inputs": {
+                1: {"offset": +0.0},
+                2: {"offset": +0.0},
+            },
+        },
+
+        "con2": {
+            "type": "opx1",
+            "analog_outputs": {
+                1: {"offset": +0.0},  # rr2-I
+                2: {"offset": +0.0},  # rr2-Q
             },
             "digital_outputs": {
                 1: {},
@@ -53,59 +67,51 @@ config = {
         }
     },
     "elements": {
-        "q0": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": qubit_LO,
-                "mixer": "mixer_qubit",
-            },
-            "intermediate_frequency": qubit_IF,
-            "operations": {
-                "I": "IPulse",
-                "X/2": "X/2Pulse",
-                "X": "XPulse",
-                "-X/2": "-X/2Pulse",
-                "Y/2": "Y/2Pulse",
-                "Y": "YPulse",
-                "-Y/2": "-Y/2Pulse",
-            },
+        **{
+            qubit_xy[0]: {
+                "mixInputs": {
+                    "I": ("con1", qubit_xy[1]),
+                    "Q": ("con1", qubit_xy[2]),
+                    "lo_frequency": qubit_LO,
+                    "mixer": "mixer_qubit",
+                },
+                "intermediate_frequency": qubit_IF,
+                "operations": {
+                    "I": "IPulse",
+                    "X/2": "X/2Pulse",
+                    "X": "XPulse",
+                    "-X/2": "-X/2Pulse",
+                    "Y/2": "Y/2Pulse",
+                    "Y": "YPulse",
+                    "-Y/2": "-Y/2Pulse",
+                },
+            }
+            for qubit_xy in [("q0_xy", 1, 2), ("q1_xy", 3, 4)]
         },
-        "q1": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO,
-                "mixer": "mixer_qubit",
-
-            },
-            "intermediate_frequency": qubit_IF,
-            "operations": {
-                "I": "IPulse",
-                "X/2": "X/2Pulse",
-                "X": "XPulse",
-                "-X/2": "-X/2Pulse",
-                "Y/2": "Y/2Pulse",
-                "Y": "YPulse",
-                "-Y/2": "-Y/2Pulse",
-            },
+        **{
+            qubit_z[0]: {
+                "singleInput": {
+                    "port": ("con1", qubit_z[1]),
+                },
+                "intermediate_frequency": qubit_IF,
+                "operations": {
+                    "CZ_qubit_tone": "constPulse"
+                },
+            } for qubit_z in [("q0_z", 5), ("q1_z", 6)]
         },
-        "coupler": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
-                "lo_frequency": coupler_LO,
-                "mixer": "mixer_coupler",
+        "coupler01": {
+            "singleInput": {
+                "port": ("con1", 7),
             },
             "intermediate_frequency": coupler_IF,
             "operations": {
-                "CZ": "constPulse",
+                "CZ_coupler_tone": "constPulse",
             },
         },
-        "rr1": {
+        "rr0": {
             "mixInputs": {
-                "I": ("con1", 7),
-                "Q": ("con1", 8),
+                "I": ("con1", 8),
+                "Q": ("con1", 9),
                 "lo_frequency": rr_LO,
                 "mixer": "mixer_RR",
             },
@@ -118,10 +124,10 @@ config = {
             "time_of_flight": 28,
             "smearing": 0,
         },
-        "rr2": {
+        "rr1": {
             "mixInputs": {
-                "I": ("con1", 9),
-                "Q": ("con1", 10),
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
                 "lo_frequency": rr_LO,
                 "mixer": "mixer_RR",
             },
@@ -144,8 +150,9 @@ config = {
         "constPulse": {
             "operation": "control",
             "length": pulse_len2,
-            "waveforms": {"I": "const_wf", "Q": "zero_wf"},
+            "waveforms": {"single": "const_wf"},
         },
+
         "XPulse": {
             "operation": "control",
             "length": pulse_len,
