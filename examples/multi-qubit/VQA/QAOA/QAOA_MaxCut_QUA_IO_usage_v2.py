@@ -104,15 +104,11 @@ def quantum_avg_computation(
     timing = results.timing.fetch_all()["value"]
     print(timing[-1])
 
-    counts = (
-        {}
-    )  # Dictionary containing statistics of measurement of each bitstring obtained
+    counts = {} # Dictionary containing statistics of measurement of each bitstring obtained
     for i in range(2 ** n):
         counts[generate_binary(n)[i]] = 0
 
-    for i in range(
-        Nshots
-    ):  # Here we build in the statistics by picking line by line the bistrings obtained in measurements
+    for i in range(Nshots):  # build statistics by picking line by line the bistrings obtained in measurements
         bitstring = ""
         for j in range(len(output_states)):
             bitstring += str(output_states[j][i])
@@ -120,9 +116,7 @@ def quantum_avg_computation(
 
     avr_C = 0
 
-    for bitstr in list(
-        counts.keys()
-    ):  # Computation of expectation value according to simulation results
+    for bitstr in list(counts.keys()):  # Computation of expectation value according to simulation results
 
         # use sampled bit string x to compute C(x)
         x = [int(num) for num in list(bitstr)]
@@ -214,97 +208,65 @@ def result_optimization(max_iter=100):
     )  # Returns costs, optimized angles, associated approximation ratio.
 
 
-with program() as QAOA:
-    rep = declare(
-        int
-    )  # Iterator for sampling (necessary to have good statistics for expectation value estimation)
-    t = declare(int, value=10)  # Assume knowledge of relaxation time
-    timing = declare(int, value=0)
+th = 0.  # Threshold for state discrimination
+state_strings = [f"state{i}" for i in range(n)]
+I_strings = [f"I{i}" for i in range(n)]
+Q_strings = [f"Q{i}" for i in range(n)]
+q = [f"q{i}" for i in range(n)]
+rr = [f"rr{i}" for i in range(n)]
 
+with program() as QAOA:
+    rep = declare(int)  # Iterator for sampling (necessary to have good statistics for expectation value estimation)
     I = declare(fixed)
     Q = declare(fixed)
-    state_estimate = declare(int)
-
-    state_streams, I_streams, Q_streams = [None] * n, [None] * n, [None] * n
-    state_strings, I_strings, Q_strings = [None] * n, [None] * n, [None] * n
-    for i in range(n):
-        state_strings[i] = "state" + str(i)
-        I_strings[i] = "I" + str(i)
-        Q_strings[i] = "Q" + str(i)
-        state_streams[i], I_streams[i], Q_streams[i] = (
-            declare_stream(),
-            declare_stream(),
-            declare_stream(),
-        )
-
+    state = declare(bool, size=n)
+    γ = declare(fixed)
+    β = declare(fixed)
+    block = declare(int)
+    γ_set = declare(fixed, size=p)
+    β_set = declare(fixed, size=p)
+    Cut = declare(int)
+    bitstring_stream = declare_stream()
     with infinite_loop_():
         pause()
-        γ = declare(fixed)
-        β = declare(fixed)
-        block = declare(int)
-        γ_set = declare(fixed, size=p)
-        β_set = declare(fixed, size=p)
 
         with for_(block, init=0, cond=block < p, update=i + 1):
             pause()
             assign(γ_set[block], IO1)
             assign(β_set[block], IO2)
 
-        with for_(
-            rep, init=0, cond=rep <= Nshots, update=rep + 1
-        ):  # Do Nshots times the same quantum circuit
-
+        with for_(rep, init=0, cond=rep <= Nshots, update=rep + 1):
             # Apply Hadamard on each qubit
             for k in range(n):  # Run what's inside for qubit0, qubit1, ..., qubit4
-                q = "qubit" + str(k)
-                Hadamard(q)
+                Hadamard(q[k])
 
             with for_each_((γ, β), (γ_set, β_set)):
                 #  Cost Hamiltonian evolution
                 for edge in G.edges():  # Iterate over the whole connectivity of Graph G
-                    i = edge[0]
-                    j = edge[1]
-                    qc = "qubit" + str(
-                        i
-                    )  # Define string corresponding to targeted quantum element in the config
-                    qt = "qubit" + str(j)
-                    CU1(2 * γ, qc, qt)
-                    Rz(-γ, qc)
-                    Rz(-γ, qt)
+                    ctrl, tgt = q[edge[0]], q[edge[1]]
+                    CU1(2 * γ, ctrl, tgt)
+                    Rz(-γ, ctrl)
+                    Rz(-γ, tgt)
 
-                    # Mixing Hamiltonian evolution
-
+                # Mixing Hamiltonian evolution
                 for k in range(n):  # Apply X(β) rotation on each qubit
-                    q = "qubit" + str(k)
-                    Rx(-2 * β, q)
-                save(γ, "gamma")
-                save(β, "beta")
+                    Rx(-2 * β, q[k])
 
             # Measurement and state determination
 
             for k in range(n):  # Iterate over each resonator 'CPW' in the config file
-                RR = "CPW" + str(k)
-                q = "qubit" + str(k)
-                measurement(RR, I, Q)
+                measure("meas_pulse", rr[k], None, dual_demod.full(("integW1", I), ("integW2", Q)))
+                assign(state[k], I > th)
 
-                state_saving(
-                    I, Q, state_estimate, state_streams[k]
-                )  # Do state discrimination based on each IQ point and save it in a variable called state0,1,..
                 # Active reset, flip the qubit is measured state is 1
-                with if_(state_estimate == 1):
+                with if_(state[k]):
                     Rx(π, q)
 
-                raw_saving(
-                    I, Q, I_streams[k], Q_streams[k]
-                )  # Save I & Q variables, if deemed necessary by the user
+            cost_function_C(Cut, G)
 
-        assign(timing, timing + 1)
-        save(timing, "timing")
     with stream_processing():
         for i in range(n):
             state_streams[i].buffer(Nshots).save(state_strings[i])
-            I_streams[i].buffer(Nshots).save(I_strings[i])
-            Q_streams[i].buffer(Nshots).save(Q_strings[i])
 
 
 job = QM.execute(QAOA)
