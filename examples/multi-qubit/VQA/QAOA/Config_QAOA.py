@@ -8,9 +8,6 @@ import random as rand
 import math
 import time
 
-# We import the tools to handle general Graphs
-
-
 π = np.pi
 
 
@@ -37,7 +34,7 @@ def gauss_der(amplitude, mu, sigma, delf, length):
 x90amp = 0.4
 x90std = 0.2
 x90mean = 0
-x90duration = 1000
+x90duration = 80
 x90detuning = 0
 x90waveform = gauss(
     x90amp, x90mean, x90std, x90detuning, x90duration
@@ -46,12 +43,9 @@ lmda = 0.5  # Define scaling parameter for Drag Scheme
 alpha = -1  # Define anharmonicity parameter
 x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
 
-# Y180 definition
-y180waveform = gauss(
-    2 * x90amp, x90mean, x90std, x90detuning, x90duration
-)  # Assume you have calibration for a X90 pulse
-y180der_waveform = gauss_der(2 * x90amp, x90mean, x90std, x90detuning, x90duration)
-
+LO_freq = 1e9
+qubit_IF = 0
+rr_IF = 0
 IBMconfig = {
     "version": 1,
     "controllers": {
@@ -91,28 +85,31 @@ IBMconfig = {
         },
     },
     "elements": {
-        "qubit0": {
+        "q0": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
-                "lo_frequency": 5.10e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_qubit",
             },
-            "intermediate_frequency": 0,  # 5.2723e9,
+            "intermediate_frequency": qubit_IF,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR_with_q1": "CR_01",
+                "CR_with_q2": "CR_02",
+                "CR_with_q3": "CR_03",
             },
         },
-        "CPW0": {
+        "rr0": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
-                "lo_frequency": 6.00e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_res",
             },
-            "intermediate_frequency": 0,
+            "intermediate_frequency": rr_IF,
             "operations": {
                 "meas_pulse": "meas_pulse_in",
             },
@@ -120,28 +117,31 @@ IBMconfig = {
             "smearing": 0,
             "outputs": {"out1": ("con1", 1)},
         },
-        "qubit1": {
+        "q1": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
-                "lo_frequency": 5.10e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_qubit",
             },
-            "intermediate_frequency": 0,  # 5.2122e9,
+            "intermediate_frequency": qubit_IF,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR_with_q0": "CR_10",
+                "CR_with_q2": "CR_12",
+                "CR_with_q3": "CR_13",
             },
         },
-        "CPW1": {
+        "rr1": {
             "mixInputs": {
                 "I": ("con1", 7),
                 "Q": ("con1", 8),
-                "lo_frequency": 6.00e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_res",
             },
-            "intermediate_frequency": 0,  # 6.12e7,
+            "intermediate_frequency": rr_IF,
             "operations": {
                 "meas_pulse": "meas_pulse_in",
             },
@@ -149,28 +149,31 @@ IBMconfig = {
             "smearing": 0,
             "outputs": {"out1": ("con1", 2)},
         },
-        "qubit2": {
+        "q2": {
             "mixInputs": {
                 "I": ("con2", 1),
                 "Q": ("con2", 2),
-                "lo_frequency": 5.10e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_qubit",
             },
-            "intermediate_frequency": 0,  # 5.0154e9,
+            "intermediate_frequency": qubit_IF,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR_with_q0": "CR_20",
+                "CR_with_q1": "CR_21",
+                "CR_with_q3": "CR_23",
             },
         },
-        "CPW2": {
+        "rr2": {
             "mixInputs": {
                 "I": ("con2", 3),
                 "Q": ("con2", 4),
-                "lo_frequency": 6.00e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_res",
             },
-            "intermediate_frequency": 0,  # 6.12e7,
+            "intermediate_frequency": rr_IF,
             "operations": {
                 "meas_pulse": "meas_pulse_in",
             },
@@ -178,28 +181,31 @@ IBMconfig = {
             "smearing": 0,
             "outputs": {"out1": ("con2", 1)},
         },
-        "qubit3": {
+        "q3": {
             "mixInputs": {
                 "I": ("con2", 5),
                 "Q": ("con2", 6),
-                "lo_frequency": 5.10e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_qubit",
             },
-            "intermediate_frequency": 0,  # 5.2805e9,
+            "intermediate_frequency": qubit_IF,
             "operations": {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
+                "CR_with_q0": "CR_30",
+                "CR_with_q1": "CR_31",
+                "CR_with_q2": "CR_32",
             },
         },
-        "CPW3": {
+        "rr3": {
             "mixInputs": {
                 "I": ("con2", 7),
                 "Q": ("con2", 8),
-                "lo_frequency": 6.00e7,
+                "lo_frequency": LO_freq,
                 "mixer": "mixer_res",
             },
-            "intermediate_frequency": 0,  # 6.12e7,
+            "intermediate_frequency": rr_IF,
             "operations": {
                 "meas_pulse": "meas_pulse_in",
             },
@@ -213,7 +219,7 @@ IBMconfig = {
             "operation": "measurement",
             "length": 200,
             "waveforms": {
-                "I": "exc_wf",  # Decide what pulse to apply for each component
+                "I": "exc_wf",
                 "Q": "zero_wf",
             },
             "integration_weights": {
@@ -243,8 +249,8 @@ IBMconfig = {
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_wf": {"type": "arbitrary", "samples": x90waveform},
         "x90_der_wf": {"type": "arbitrary", "samples": x90der_waveform},
-        "y180_wf": {"type": "arbitrary", "samples": y180waveform},
-        "y180_der_wf": {"type": "arbitrary", "samples": y180der_waveform},
+        "y180_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90waveform))},
+        "y180_der_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90der_waveform))},
         "exc_wf": {"type": "constant", "sample": 0.479},
     },
     "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},
@@ -255,15 +261,15 @@ IBMconfig = {
     "mixers": {  # Potential corrections to be brought related to the IQ mixing scheme
         "mixer_res": [
             {
-                "intermediate_frequency": 0,
-                "lo_frequency": 6.00e7,
+                "intermediate_frequency": rr_IF,
+                "lo_frequency": LO_freq,
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
         "mixer_qubit": [
             {
-                "intermediate_frequency": 0,
-                "lo_frequency": 5.10e7,
+                "intermediate_frequency": qubit_IF,
+                "lo_frequency": LO_freq,
                 "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
@@ -299,7 +305,7 @@ def cost_function_C(
         e1 = edge[0]
         e2 = edge[1]
         w = G[e1][e2]["weight"]
-        C = C + w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
+        C += w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
 
     return C
 
@@ -373,25 +379,8 @@ def SWAP(qubit1, qubit2):
     CNOT(qubit1, qubit2)
 
 
-def measurement(RR, I, Q):  # Simple measurement command, could be changed/generalized
-    measure("meas_pulse", RR, None, ("integW1", I), ("integW2", Q))
-
-
 # Stream processing QUA macros
 def raw_saving(I, Q, I_stream, Q_stream):
     # Saving command
     save(I, I_stream)
     save(Q, Q_stream)
-
-
-def state_saving(
-    I, Q, state_estimate, stream
-):  # Do state estimation protocol in QUA, and save the associated state
-    # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
-    a = declare(fixed, value=1.0)
-    b = declare(fixed, value=1.0)
-    with if_(Q - a * I - b > 0):
-        assign(state_estimate, 1)
-    with else_():
-        assign(state_estimate, 0)
-    save(state_estimate, stream)
