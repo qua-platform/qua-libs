@@ -32,7 +32,6 @@ G.add_nodes_from(V)
 G.add_weighted_edges_from(E)
 E = G.edges()
 MaxCut_value = 5.0  # Value of the ideal MaxCut (set to None if unknown)
-
 # Drawing the Graph G
 colors = ['b' for node in G.nodes()]
 default_axes = plt.axes(frameon=True)
@@ -82,9 +81,10 @@ with program() as QAOA:
     block = declare(int)
     γ_set = declare(fixed, size=p)
     β_set = declare(fixed, size=p)
-    Cut = declare(int, value=0)
+    Cut = declare(fixed, value=0)
     Expectation_value = declare(fixed, value=0.)
     w = declare(fixed)
+    var = declare(fixed)
 
     with infinite_loop_():
         pause()
@@ -117,17 +117,24 @@ with program() as QAOA:
 
             # Measurement and state determination
             for k in range(n):  # Iterate over each resonator
-                measure("meas_pulse", rr[k], None, dual_demod.full(("integW1", I), ("integW2", Q)))
+                measure("meas_pulse", rr[k], None, integration.full("integW1", I))
                 assign(state[k], Cast.to_int(I > th))
 
                 # Active reset, flip the qubit is measured state is 1
-                with if_(state[k]):
-                    Rx(π, q)
+                with if_(Cast.to_bool(state[k])):
+                    Rx(π, q[k])
 
             # Cost function evaluation
-            for e in E:
-                assign(w, G[e[0]][e[1]]["weight"])
-                assign(Cut, Cut + w * (state[e[0]] * (1 - state[e[1]]) + state[e[1]] * (1 - state[e[0]])))
+            for e in E:  # for each edge in the graph
+                e1 = int(e[0])
+                e2 = int(e[1])
+                assign(w, G[e1][e2]["weight"])  # Retrieve weight associated to edge e
+                assign(Cut, Cut +
+                       w *
+                       (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
+                        Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
+                        )
+                       )
             assign(Expectation_value, Expectation_value + Math.div(Cut, N_shots))
 
         save(Expectation_value, "exp_value")
