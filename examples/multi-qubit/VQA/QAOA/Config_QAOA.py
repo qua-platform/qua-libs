@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 from qm.qua import *
 
@@ -36,6 +38,7 @@ lmda = 0.5  # Define scaling parameter for Drag Scheme
 alpha = -1  # Define anharmonicity parameter
 x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
 
+CR_duration = 120
 LO_freq = 1e9
 qubit_IF = 0
 rr_IF = 0
@@ -223,24 +226,34 @@ IBMconfig = {
         },
         "X90_pulse": {
             "operation": "control",
-            "length": 1000,
+            "length": x90duration,
             "waveforms": {"I": "x90_wf", "Q": "x90_der_wf"},
         },
         "Y90_pulse": {
             "operation": "control",
-            "length": 1000,
+            "length": x90duration,
             "waveforms": {"I": "x90_der_wf", "Q": "x90_wf"},
         },
         "Y180_pulse": {
             "operation": "control",
-            "length": 1000,
+            "length": x90duration,
             "waveforms": {"I": "y180_der_wf", "Q": "y180_wf"},
+        },
+
+        **{
+            f"CR_{i}{j}": {
+                "operation": "control",
+                "length": CR_duration,
+                "waveforms": {"I": "CR_wf", "Q": "zero_wf"},
+            }
+            for i,j in itertools.product(range(4), range(4))
         },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_wf": {"type": "arbitrary", "samples": x90waveform},
+        "CR_wf": {"type": "arbitrary", "samples": [0.2] * CR_duration},
         "x90_der_wf": {"type": "arbitrary", "samples": x90der_waveform},
         "y180_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90waveform))},
         "y180_der_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90der_waveform))},
