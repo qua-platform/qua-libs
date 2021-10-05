@@ -214,23 +214,16 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         print("Optimization for", p, "block")
     else:
         print("Optimization for", p, "blocks")
-    angles = []
-    min_bound = []
-    max_bound = []
+
+    min_bound = [0.] * (2 * p)
+    max_bound = [2*π, π] * p
+    boundaries = [(min_bound[i], max_bound[i]) for i in range(2 * p)]
 
     # Generate random initial angles
+    angles = []
     for i in range(p):
         angles.append(rand.uniform(0, 2 * π))
         angles.append(rand.uniform(0, π))
-        min_bound.append(0.0)
-        min_bound.append(0.0)
-        max_bound.append(2 * π)
-        max_bound.append(π)
-
-    boundaries = []
-
-    for i in range(2 * p):  # Generate boundaries for each variable during optimization
-        boundaries.append((min_bound[i], max_bound[i]))
 
     if optimizer == "SPSA":
         opti_angle, expectation_value = SPSA_optimize(np.array(angles), boundaries, max_iter)
@@ -239,6 +232,7 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         opti_angle = Result.x
         expectation_value = quantum_avg_computation(opti_angles)
 
+    # Print results
     if MaxCut_value is not None:
         ratio = expectation_value / MaxCut_value
         print("Approximation ratio : ", ratio)
