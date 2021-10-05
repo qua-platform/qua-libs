@@ -1,12 +1,5 @@
 import numpy as np
-from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import QuantumMachine
 from qm.qua import *
-
-
-import random as rand
-import math
-import time
 
 π = np.pi
 
@@ -276,21 +269,6 @@ IBMconfig = {
     },
 }
 
-# Auxiliary Python functions
-def generate_binary(
-    n,
-):  # Define a function to generate a list of binary strings (Python function, not related to QUA)
-
-    # 2^(n-1)  2^n - 1 inclusive
-    bin_arr = range(0, int(math.pow(2, n)))
-    bin_arr = [bin(i)[2:] for i in bin_arr]
-
-    # Prepending 0's to binary strings
-    max_len = len(max(bin_arr, key=len))
-    bin_arr = [i.zfill(max_len) for i in bin_arr]
-
-    return bin_arr
-
 
 def cost_function_C(
     x, G
@@ -329,9 +307,8 @@ def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
     Rz(𝜙 - π / 2, tgt)
 
 
-def CR(
-    ctrl, tgt
-):  # gate created based on the implementation on IBM in the following paper : https://arxiv.org/abs/2004.06755
+def CR(ctrl, tgt):
+    """https://arxiv.org/abs/2004.06755"""
     return None
 
 
