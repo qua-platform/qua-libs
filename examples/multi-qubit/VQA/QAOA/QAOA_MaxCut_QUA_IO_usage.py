@@ -14,11 +14,11 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 import time
 import random as rand
 
+# QM configuration based on IBM Yorktown Quantum Computer:
+# https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
 
-# QM configuration based on IBM Quantum Computer :
-# Yorktown device https://github.com/Qiskit/ibmq-device-information/tree/master/backends/yorktown/V1
-qm1 = QuantumMachinesManager()
-QM = qm1.open_qm(IBMconfig)
+qmm = QuantumMachinesManager()
+qm = qmm.open_qm(IBMconfig)
 
 # MaxCut problem definition for QAOA
 
@@ -43,9 +43,13 @@ nx.draw_networkx(G, node_color=colors, node_size=600, alpha=1, ax=default_axes, 
 p = 1  # depth of quantum circuit, i.e number of adiabatic evolution blocks
 N_shots = 10  # Sampling number for expectation value computation
 
+th = 0.  # Threshold for state discrimination
+# Introduce registers to address relevant quantum elements in config
+q = [f"q{i}" for i in range(n)]
+rr = [f"rr{i}" for i in range(n)]
 # Initialize angles to random to launch the program
-QM.set_io1_value(np.random.uniform(0, 2*π))
-QM.set_io2_value(np.random.uniform(0, π))
+qm.set_io1_value(np.random.uniform(0, 2 * π))
+qm.set_io2_value(np.random.uniform(0, π))
 
 """ 
 We use here multiple global variables, callable in every function : 
@@ -66,33 +70,22 @@ By order of calling when using the full algorithm we have the following tree:
 3. QAOA, the QUA program 
 """
 
-th = 0.  # Threshold for state discrimination
-# Introduce registers to address relevant quantum elements in config
-q = [f"q{i}" for i in range(n)]
-rr = [f"rr{i}" for i in range(n)]
-
 with program() as QAOA:
-    rep = declare(int)
-    I = declare(fixed)
-    Q = declare(fixed)
+    rep, b = declare(int), declare(int)
+    I, Q = declare(fixed), declare(fixed)
     state = declare(int, size=n)
-    γ = declare(fixed)
-    β = declare(fixed)
-    block = declare(int)
-    γ_set = declare(fixed, size=p)
-    β_set = declare(fixed, size=p)
-    Cut = declare(fixed, value=0)
-    Expectation_value = declare(fixed, value=0.)
+    γ, β = declare(fixed, size=p), declare(fixed, size=p)
+    Cut, Expectation_value = declare(fixed, value=0), declare(fixed, value=0.)
     w = declare(fixed)
 
     with infinite_loop_():
         pause()
 
         # Load circuit parameters using IO variables
-        with for_(block, init=0, cond=block < p, update=block + 1):
+        with for_(b, init=0, cond=b < p, update=b + 1):
             pause()
-            assign(γ_set[block], IO1)
-            assign(β_set[block], IO2)
+            assign(γ[b], IO1)
+            assign(β[b], IO2)
 
         # Start running quantum circuit (repeated N_shots times)
         with for_(rep, init=0, cond=rep <= N_shots, update=rep + 1):
@@ -100,19 +93,21 @@ with program() as QAOA:
             for k in range(n):  # Run what's inside for qubit0, qubit1, ..., qubit4
                 Hadamard(q[k])
 
-            with for_each_((γ, β), (γ_set, β_set)):
-                #  Cost Hamiltonian evolution
-                for edge in E:  # Iterate over the whole connectivity of Graph G
-                    ctrl, tgt = q[edge[0]], q[edge[1]]
-                    CU1(2 * γ, ctrl, tgt)
-                    Rz(-γ, ctrl)
-                    Rz(-γ, tgt)
+            with for_(b, init=0, cond=b < p, update=b + 1):
+
+                # Cost Hamiltonian evolution
+                for e in E:  # Iterate over the whole connectivity of Graph G
+                    e1, e2 = int(e[0]), int(e[1])
+                    ctrl, tgt = q[e1], q[e2]
+                    CU1(2 * γ[b], ctrl, tgt)
+                    Rz(-γ[b], ctrl)
+                    Rz(-γ[b], tgt)
+
+                align()
 
                 # Mixing Hamiltonian evolution
                 for k in range(n):  # Apply X(β) rotation on each qubit
-                    Rx(-2 * β, q[k])
-
-            align()
+                    Rx(-2 * β[b], q[k])
 
             # Measurement and state determination
             for k in range(n):  # Iterate over each resonator
@@ -125,13 +120,11 @@ with program() as QAOA:
 
             # Cost function evaluation
             for e in E:  # for each edge in the graph
-                e1 = int(e[0])
-                e2 = int(e[1])
+                e1, e2 = int(e[0]), int(e[1])
                 assign(w, G[e1][e2]["weight"])  # Retrieve weight associated to edge e
-                assign(Cut, Cut +
-                       w * (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
-                            Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
-                            )
+                assign(Cut, Cut + w * (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
+                                       Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
+                                       )
                        )
             assign(Expectation_value, Expectation_value + Math.div(Cut, N_shots))
 
@@ -149,8 +142,8 @@ def encode_angles_in_IO(gamma: List[float], beta: List[float]):
     for i in range(len(gamma)):
         while not (job.is_paused()):
             time.sleep(0.01)
-        QM.set_io1_value(gamma[i])
-        QM.set_io2_value(beta[i])
+        qm.set_io1_value(gamma[i])
+        qm.set_io2_value(beta[i])
         job.resume()
 
 
@@ -190,9 +183,7 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
         cost_minus = quantum_avg_computation(angles_minus)
         gradient_est = (cost_plus - cost_minus) / (2 * c_k * delta_k)
         angles = angles - a_k * gradient_est
-        for i in range(
-                len(angles)
-        ):  # Used to set angles value within the boundaries during optimization
+        for i in range(len(angles)):  # Used to set angles value within the boundaries during optimization
             angles[i] = min(angles[i], boundaries[i][1])
             angles[i] = max(angles[i], boundaries[i][0])
 
@@ -202,7 +193,7 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
 
 
 def SPSA_calibration():
-    return 1.0, 1.0, 1.0, 1.0, 1.0
+    return 0.6283185307179586, 1e-1, 0, 0.602, 0.101
 
 
 # Run QAOA procedure from here, for various adiabatic evolution block numbers
@@ -213,12 +204,12 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         print("Optimization for", p, "blocks")
 
     min_bound = [0.] * (2 * p)
-    max_bound = [2*π, π] * p
+    max_bound = [2 * π, π] * p
     boundaries = [(min_bound[i], max_bound[i]) for i in range(2 * p)]
 
     # Generate random initial angles
     angles = []
-    for i in range(p):
+    for _ in range(p):
         angles.append(rand.uniform(0, 2 * π))
         angles.append(rand.uniform(0, π))
 
@@ -234,13 +225,13 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         ratio = expectation_value / MaxCut_value
         print("Approximation ratio : ", ratio)
     print("Average cost value obtained: ", expectation_value)
-    print("Optimized angles set: γ:", opti_angle[0: 2*p: 2], "β:", opti_angle[1: 2 * p: 2])
+    print("Optimized angles set: γ:", opti_angle[0: 2 * p: 2], "β:", opti_angle[1: 2 * p: 2])
 
     return expectation_value, opti_angle
 
 
 # Run the algorithm
 
-job = QM.execute(QAOA)
+job = qm.execute(QAOA)
 exp, opti_angles = result_optimization()
 job.halt()
