@@ -4,7 +4,6 @@ Created: 06/10/2021
 This script must run on QUA 0.9 or higher
 """
 
-# QM imports
 from Config_QAOA import *
 import networkx as nx
 from typing import List
@@ -20,10 +19,10 @@ import random as rand
 qmm = QuantumMachinesManager()
 qm = qmm.open_qm(IBMconfig)
 
-# MaxCut problem definition for QAOA
+# Problem definition for QAOA: MaxCut instance on a graph with 4 nodes
 
-# Generating the connectivity graph with 5 nodes
-n = 4
+# Generating the graph using networkx package
+n = 4  # Number of nodes
 V = np.arange(0, n, 1)
 E = [(0, 1, 1.0), (0, 2, 1.0), (1, 2, 1.0), (3, 2, 1.0), (0, 3, 1.0), (1, 3, 1.0)]
 
@@ -31,7 +30,7 @@ G = nx.Graph()
 G.add_nodes_from(V)
 G.add_weighted_edges_from(E)
 E = G.edges()
-MaxCut_value = 5.0  # Value of the ideal MaxCut (set to None if unknown)
+
 # Drawing the Graph G
 colors = ['b' for node in G.nodes()]
 default_axes = plt.axes(frameon=True)
@@ -42,11 +41,14 @@ nx.draw_networkx(G, node_color=colors, node_size=600, alpha=1, ax=default_axes, 
 # Algorithm hyperparameters
 p = 1  # depth of quantum circuit, i.e number of adiabatic evolution blocks
 N_shots = 10  # Sampling number for expectation value computation
+MaxCut_value = 5.0  # Value of the ideal MaxCut (set to None if unknown) to calculate approximation ratio
 
 th = 0.  # Threshold for state discrimination
+
 # Introduce registers to address relevant quantum elements in config
 q = [f"q{i}" for i in range(n)]
 rr = [f"rr{i}" for i in range(n)]
+
 # Initialize angles to random to launch the program
 qm.set_io1_value(np.random.uniform(0, 2 * π))
 qm.set_io2_value(np.random.uniform(0, π))
@@ -56,7 +58,7 @@ We use here multiple global variables, callable in every function :
 - G: graph instance modelling the MaxCut problem we're solving
 - n:  number of nodes in the graph, which is also the number of qubits
 - N_shots: sampling number for expectation value computation
-- QM: Quantum Machine instance opened with a specific hardware configuration
+- qm: Quantum Machine instance opened with a specific hardware configuration
 - p:  number of adiabatic evolution blocks, i.e defines the depth of the quantum circuit preparing QAOA ansatz state
 
 This script relies on built in functions.
@@ -89,14 +91,14 @@ with program() as QAOA:
 
         # Start running quantum circuit (repeated N_shots times)
         with for_(rep, init=0, cond=rep <= N_shots, update=rep + 1):
-            # Apply Hadamard on each qubit
-            for k in range(n):  # Run what's inside for qubit0, qubit1, ..., qubit4
+
+            for k in range(n):  # for each qubit in the config (= node in the graph G)
                 Hadamard(q[k])
 
-            with for_(b, init=0, cond=b < p, update=b + 1):
+            with for_(b, init=0, cond=b < p, update=b + 1):  # for each block of the QAOA quantum circuit
 
-                # Cost Hamiltonian evolution
-                for e in E:  # Iterate over the whole connectivity of Graph G
+                # Cost Hamiltonian evolution: derived here specifically for MaxCut problem
+                for e in E:  # for each edge of the graph G
                     e1, e2 = int(e[0]), int(e[1])
                     ctrl, tgt = q[e1], q[e2]
                     CU1(2 * γ[b], ctrl, tgt)
@@ -114,12 +116,12 @@ with program() as QAOA:
                 measure("meas_pulse", rr[k], None, integration.full("integW1", I))
                 assign(state[k], Cast.to_int(I > th))
 
-                # Active reset, flip the qubit is measured state is 1
+                # Active reset: flip the qubit (X pulse) if measured state is 1
                 with if_(Cast.to_bool(state[k])):
                     Rx(π, q[k])
 
             # Cost function evaluation
-            for e in E:  # for each edge in the graph
+            for e in E:  # for each edge of the graph G
                 e1, e2 = int(e[0]), int(e[1])
                 assign(w, G[e1][e2]["weight"])  # Retrieve weight associated to edge e
                 assign(Cut, Cut + w * (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
@@ -135,7 +137,7 @@ with program() as QAOA:
 
 def encode_angles_in_IO(gamma: List[float], beta: List[float]):
     """
-    Insert parameters using IO variables by keeping track of where we are in the QUA program
+    Insert parameter sets in the program with IO variables
     """
     if len(gamma) != len(beta):
         raise IndexError("Angle sets are not matching desired circuit depth")
@@ -172,11 +174,14 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
     Use SPSA optimization scheme, source : https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF
     """
 
-    a, c, A, alpha, gamma = SPSA_calibration()
+    def SPSA_calibration():
+        return 0.6283185307179586, 1e-1, 0, 0.602, 0.101
+
+    a, c, A, alpha1, gamma = SPSA_calibration()
     angles = init_angles
 
     for j in range(1, max_iter):
-        a_k = a / (j + A) ** alpha
+        a_k = a / (j + A) ** alpha1
         c_k = c / j ** gamma
         # Vector of random variables issued from a Bernoulli distribution +1,-1, could be something else
         delta_k = (2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1)
@@ -191,10 +196,6 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
             angles[i] = max(angles[i], boundaries[i][0])
 
     return angles, -quantum_avg_computation(angles)  # return optimized angles and associated expectation value
-
-
-def SPSA_calibration():
-    return 0.6283185307179586, 1e-1, 0, 0.602, 0.101
 
 
 def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
