@@ -1,6 +1,6 @@
 """QAOA_MaxCut_QUA_IO_usage.py: Implementation of QAOA for solving a MaxCut problem instance with real-time capabilities
 Author: Arthur Strauss - Quantum Machines
-Created: 25/11/2020
+Created: 06/10/2021
 This script must run on QUA 0.7 or higher
 """
 
@@ -84,7 +84,6 @@ with program() as QAOA:
     Cut = declare(fixed, value=0)
     Expectation_value = declare(fixed, value=0.)
     w = declare(fixed)
-    var = declare(fixed)
 
     with infinite_loop_():
         pause()
@@ -130,10 +129,9 @@ with program() as QAOA:
                 e2 = int(e[1])
                 assign(w, G[e1][e2]["weight"])  # Retrieve weight associated to edge e
                 assign(Cut, Cut +
-                       w *
-                       (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
-                        Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
-                        )
+                       w * (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
+                            Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
+                            )
                        )
             assign(Expectation_value, Expectation_value + Math.div(Cut, N_shots))
 
@@ -184,9 +182,8 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
     for j in range(1, max_iter):
         a_k = a / (j + A) ** alpha
         c_k = c / j ** gamma
-        delta_k = (
-                2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1
-        )  # Vector of random variables issued from a Bernoulli distribution +1,-1, could be something else
+        # Vector of random variables issued from a Bernoulli distribution +1,-1, could be something else
+        delta_k = (2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1)
         angles_plus = angles + c_k * delta_k
         angles_minus = angles - c_k * delta_k
         cost_plus = quantum_avg_computation(angles_plus)
