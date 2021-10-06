@@ -1,7 +1,7 @@
 """QAOA_MaxCut_QUA_IO_usage.py: Implementation of QAOA for solving a MaxCut problem instance with real-time capabilities
 Author: Arthur Strauss - Quantum Machines
 Created: 06/10/2021
-This script must run on QUA 0.7 or higher
+This script must run on QUA 0.9 or higher
 """
 
 # QM imports
@@ -147,7 +147,10 @@ def encode_angles_in_IO(gamma: List[float], beta: List[float]):
         job.resume()
 
 
-def quantum_avg_computation(angles: List[float]):  # Calculate Hamiltonian expectation value (cost function to optimize)
+def quantum_avg_computation(angles: List[float]):
+    """
+    Calculate Hamiltonian expectation value (cost function to optimize)
+    """
 
     gamma = angles[0: 2 * p: 2]
     beta = angles[1: 2 * p: 2]
@@ -187,17 +190,20 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
             angles[i] = min(angles[i], boundaries[i][1])
             angles[i] = max(angles[i], boundaries[i][0])
 
-    return angles, -quantum_avg_computation(
-        angles
-    )  # return optimized angles and associated expectation value
+    return angles, -quantum_avg_computation(angles)  # return optimized angles and associated expectation value
 
 
 def SPSA_calibration():
     return 0.6283185307179586, 1e-1, 0, 0.602, 0.101
 
 
-# Run QAOA procedure from here, for various adiabatic evolution block numbers
 def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
+    """
+    Main function to retrieve results of the algorithm
+
+    :param optimizer: name of classical optimization algorithm (based on scipy library or "SPSA")
+    :param max_iter: maximum number of iterations for running SPSA
+    """
     if p == 1:
         print("Optimization for", p, "block")
     else:

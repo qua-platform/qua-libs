@@ -283,24 +283,6 @@ IBMconfig = {
 }
 
 
-def cost_function_C(
-    x, G
-):  # Cost function for MaxCut problem, needs to be adapted to the considered optimization problem
-
-    E = G.edges()
-    if len(x) != len(G.nodes()):
-        return np.nan
-
-    C = 0
-    for edge in E:
-        e1 = edge[0]
-        e2 = edge[1]
-        w = G[e1][e2]["weight"]
-        C += w * x[e1] * (1 - x[e2]) + w * x[e2] * (1 - x[e1])
-
-    return C
-
-
 # QUA macros (pulse definition of quantum gates)
 def Hadamard(tgt):
     U2(tgt, 0, π)
@@ -367,10 +349,3 @@ def SWAP(qubit1, qubit2):
     CNOT(qubit1, qubit2)
     CNOT(qubit2, qubit1)
     CNOT(qubit1, qubit2)
-
-
-# Stream processing QUA macros
-def raw_saving(I, Q, I_stream, Q_stream):
-    # Saving command
-    save(I, I_stream)
-    save(Q, Q_stream)
