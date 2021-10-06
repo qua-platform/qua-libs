@@ -75,25 +75,24 @@ class RBTwoQubits:
                  seed: Optional[int] = None
                  ):
         """
-        Class designed to ease the realization of a Two-qubit Randomized Benchmarking experiment.
-        The class generates sequences of 2 qubit Cliffords (selection done in four classes as done in
-        https://arxiv.org/abs/1210.7011), and creates a series of baked waveforms (one per random sequence) and plays
-        them successively with the use of one single QUA program.
+        Class designed for running a Two-qubit Randomized Benchmarking experiment.
+        The class generates sequences of 2 qubit Clifford operations (selection done within four classes as done in
+        https://arxiv.org/abs/1210.7011), creates a series of baked waveforms (one per random sequence), and returns one
+        as a reference to be run within a QUA program prepared by the user.
         Shorter random sequences are also generated from truncations and are played
         more efficiently from the original baked waveform using the add_compiled feature of the QM API.
 
         The user is expected to provide macros for two qubit Clifford generators (CNOT, iSWAP and SWAP) based on their
-        own set of native gates,
-        Additional parameters can be provided such as truncation positions, macros for single qubit gates if those are
-        more complex than one single QUA play statement and a random seed.
-        Protocol can played by using the method execute()
+        own set of native gates, as well as macros for single qubit Clifford generators (I, X, Y , Y/2, -Y/2, X/2, -X/2
+        Additional parameters can be provided such as truncation positions, and a random seed.
+        Protocol can played by using the method run()
 
 
         :param qmm: QuantumMachinesManager instance
         :param config: Configuration file
         :param N_Clifford:
-            Number of Clifford gates per sequence. If iterable is provided, then a series of sequences of various
-            lengths are generated. If integer is provided, all sequence truncations are generated up to
+            Number of Clifford gates per sequence. If iterable is provided, truncations of indicated lengths are run.
+            If integer is provided, all truncations are generated up to
             the indicated max number.
         :param N_sequences: Number of RB sequences
 
@@ -104,7 +103,7 @@ class RBTwoQubits:
         :param single_qb_macros:
             baking macros for playing single qubit Cliffords (should contain 7 keys "I", "X", "Y",
             "X/2", "Y/2", "-X/2", "-Y/2").
-        :param qubit_register: Tuple containing target names for the qubits to be addressed, e.g (q0,q1)
+        :param qubit_register: Aliases dictionary used for Resolver initialization (cf example)
         :param seed: Random seed
         """
         self.qubits = tuple(qubit_register.keys())
