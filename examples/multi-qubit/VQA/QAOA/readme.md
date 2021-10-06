@@ -13,13 +13,13 @@ The problem considered here, is the traditional one for this algorithm: the MaxC
 on a graph containing 4 nodes.
 
 # Introduction
-Quantum computers bear promises of solving computational problems that are today known as intractable when trying to address them using classical computation. However, the development of such devices implies multiple technical challenges that currently limit the potentiality of what one can actually hope to solve with those machines.
+Quantum computers carry promises of solving computational problems that are today known as intractable when trying to address them using classical computation. However, the development of such devices implies multiple technical challenges that currently limit the potentiality of what one can actually hope to solve with those machines.
 
 Today, we are at a stage that is commonly named the Noisy Intermediate Scale Quantum (or NISQ) era, which is characterized by the fact that we have between 5 and 100 qubits to play with, and which are subject to noise sources leading to decoherence effects.
 A significant field of research associated to this stage is the investigation of potential uses that it may already offer in terms of use for solving computationally costly problems. One of the most promising algorithm that has been elaborated in this framework is the Quantum Approximate Optimization Algorithm (QAOA). 
 This algorithm's purpose is to provide an approximation of the solution of a combinatorial optimization problem, which usually corresponds to a NP-hard problem.
 
-We will investigate the key components of QAOA by translating it into a QUA framework, using the features of real-time feedback of the OPX.
+We will investigate the key components of QAOA by translating it into a QUA framework, using real-time capabilities of the OPX.
 
 
 # 1. Theoretical reminders
@@ -118,54 +118,51 @@ Describe the demodulation process of the data
 
 ### 3.2 Global variables of the Python code
 There are few global variables introduced in the main script that uses full OPX's abilities (named QAOA_MaxCut_QUA_IO_usage.py), callable in every function defined to run QAOA: 
-- $$G$$, the graph instance (generated with the Python package networkx)
-- $$n$$, the number of nodes in $$G$$, aka the number of qubits in our configuration
-- MaxCut_value, the maximum cut of the graph $$G$$
-- $$N_{shots}$$, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
-- $$p$$, number of adiabatic blocks (parameter dependent) in the quantum circuit
-- $$qm1$$, the QuantumMachinesManager() instance
-- $$QM$$, the Quantum Machine instance
-- job, the job instance executing the QUA program 
+- *G*, the graph instance (generated with the Python package networkx)
+- *n*, the number of nodes in *G*, aka the number of qubits in our configuration
+- MaxCut_value, the maximum cut of the graph *G*
+- *N_shots*, number of shots allowing the expectation value determination (number of measurement samples for one particular trial state preparation)
+- *p*, number of adiabatic blocks (parameter dependent) in the quantum circuit
+- *qmm*, the QuantumMachinesManager() instance
+- *qm*, the Quantum Machine instance
+- *job*, the job instance executing the QUA program 
 
 ### 3.3 The usual structure of QAOA
 
-As we mentioned earlier, the QAOA consists in a big classical loop scheme, orchestrated by a classical optimization algorithm which successively calls the quantum computer to retrieve the evaluation of the cost function we are trying to optimize. Each call to the quantum computer is supposedly done with a fixed set of parameters, and once the quantum computer returns the associated cost value, the optimizer intends to produce a new parameter set designed to obtain another cost value, closer to the maximum one.
+As we mentioned earlier, the QAOA consists in a classical loop scheme, orchestrated by a classical optimization algorithm which successively calls the quantum computer to retrieve the evaluation of the cost function we are trying to optimize. Each call to the quantum computer is supposedly done with a fixed set of parameters, and once the quantum computer returns the associated cost value, the optimizer intends to produce a new parameter set designed to obtain another cost value, closer to the maximum one.
 
-Usually, one would initialize a classical optimizer and make successive calls to a QUA program that would run the designed quantum circuit (according to the fixed parameters) to the hardware. This is what is being done in the script named QAOA_MaxCut_QUA_1, where the QUA program serves as the executioner of the trial state preparation for a particular angle set. This QUA program is embedded into a Python function called Launch_QAOA(), which takes angles sets $$\gamma$$ & $$\beta$$, as well as the graph $$G$$ to prepare the ansatz state according to the connectivity of the latter.
+Usually, one would initialize a classical optimizer and make successive calls to a new QUA program that would run a parametrized quantum circuit on the hardware. 
 
-This solution, despite being relatively simple, is not efficient in terms of communications between the OPXs and the servers. 
+This solution, despite being relatively simple, is not efficient in terms of communications between the OPXs and the servers. In fact, launching a new program at each iteration (each program differs only by the values of the circuit parameters) involves a new compilation whereas the program itself carries the same structure all along.
 
-To avoid the launch of a different QUA program each time we need to call the quantum computer, we use a slightly different protocol, which consists in defining a single QUA program, interacting continuously with the classical computations necessary to produce the final result of QAOA. This is the improved and specific version of QAOA implemented in the script QAOA_MaxCut_QUA_IO_usage.py.
+To avoid the launch of a different QUA program each time we need to call the quantum computer, we use a slightly different protocol, which consists of defining a single QUA program, interacting continuously with the classical computations necessary to produce the final result of QAOA. This is the improved and specific version of QAOA implemented in the script *QAOA_MaxCut_QUA_IO_usage.py*.
 
 ### 3.4 Using the continuous feedback loop
 
-The QUA program consists in an infinite_loop, running the same sequence over and over again. 
-Each iteration within this loop is a run of $$N_{shots}$$ QAOA quantum circuits, that are associated to one particular parameter set. The user defined $$N_{shots}$$ parameter indicates the number of samples we want to get in order to estimate statistics 
+The QUA program consists of an *infinite_loop*.
+Each iteration within this loop is a run of *N_{shots}* QAOA quantum circuits, that are associated to one particular parameter set.
 
-Between two iterations, the QUA program is paused, waiting for the client PC to call the Python function "encode_angles_in_IO()", which sends to the Quantum Machine instance the parameter set to be used to run the next quantum circuit sequence, using the IO1 and IO2 features of the Quantum Machine. It is in this function that the job is resumed, so that the program can compute the quantum circuit and stream the results of the measurement.
+Between two iterations, the QUA program is paused, waiting for the client PC to call the Python function *encode_angles_in_IO()*, which sends to the Quantum Machine instance the parameter set to be used to run the next quantum circuit sequence, using the two *input/output* (IO) variables of the Quantum Machine. It is in this function that the job is resumed (after setting through *IO* variables the new parameter set), 
+so that the program can compute the quantum circuit and compute in real time the associated expectation value, returned to the client PC via the *stream_processing*.
 
 ### 3.5 Main organs 
-The QAOA outline is embedded in the call of one general Python function named result_optimization().
-This function returns lists of optimized_angles, approximation ratios, and final expectation values for the provided parameters provided as global variables in the script.
+The QAOA outline is embedded in the call of one general Python function named *result_optimization()*.
+This function returns lists of optimized_angles, and the associated expectation value for the provided parameters provided as global variables in the script.
 
-This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to the function SPSA_optimize.
+This global function generates a set of initial random parameters, as well as a set of boundaries for each of those, to be fed to a classical optimizer.
 
-The latter function implements the SPSA algorithm for classical optimization loop (https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF), and uses the Python function quantum_avg_computation() to retrieve the result of the evaluation of the expectation value (which is the cost function to be maximized by the optimizer).
+The latter optimizer can either be chosen among the ones available in scipy library (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html), 
+or the SPSA algorithm for classical optimization loop (https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF). The optimizer uses the Python function *quantum_avg_computation()* to retrieve the result of the evaluation of the expectation value (which is the cost function to be maximized by the optimizer).
 
-The function quantum_avg_computation() takes as input a set of angles, and plugs in the QUA program those angles (using IO values of the QM). Once this is done, this function generates the result_handles associated to job, and retrieves the measurement results to calculate explicitly the estimation of the desired cost hamiltonian expectation value. The output of the program is simply the estimated expectation value (called Mp in the function) with a minus sign (since minimizing -Mp corresponds to getting the maximum of Mp once absolute value is applied).
+The function *quantum_avg_computation()* takes as input a set of angles, and plugs them in the QUA program. It then returns using the *stream_processing()* the target expectation value, calculated in real time in the QUA program.
 
 ### 3.6 The QUA program
 
-The heart of the whole script is the QUA program, which is, as mentioned before, an infinite_loop running a pulse sequence dependent of the angle parameters initialized using the IO values of the Quantum Machine.
+The heart of the whole script is the QUA program, which is, as mentioned before, an *infinite_loop* running a pulse sequence dependent of the angle parameters initialized using the IO values of the Quantum Machine.
 
-Within the infinite_loop stands a for_ loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state $$N_{shots}$$ times (the higher is $$N_{shots}$$, the more accurate will be the computed expectation value).
+Within the *infinite_loop* stands a *for_* loop, meant to reproduce the same quantum circuit dedicated to the preparation of the QAOA trial state *N_{shots}* times.
 
-To make the code clearer for the user, a series of gates (QUA macros) such as Hadamard(), CU1(), Rz(),...  are used and consist in a pulse sequence associated to the physical realization of those gates on a superconducting hardware. The compilation of those gates is used according to what is usually done on an IBM machine.
+To make the code clearer for the user, a series of gates (QUA macros) such as Hadamard(), CU1(), Rz(),...  are used and consist of a pulse sequence associated to the physical realization of those gates on a superconducting hardware. The realization of those gates is done according to what is usually done on an IBM machine.
 
-Second part of the QUA deals with the measurement of each qubit and the saving of the associated result (after having performed state estimation based on IQ values obtained) in QUA stream variables, that are handled generically using standardized bitstrings callable easily in the result handles for classical data processing.
-
-
-
-
-
+Second part of the QUA deals with the measurement of each qubit and the computation of the cost function associated to the measurement results. 
 
