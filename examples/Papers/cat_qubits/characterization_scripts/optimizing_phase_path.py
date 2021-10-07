@@ -212,7 +212,7 @@ with program() as X_gate_baked_profile:
 
     with for_(n, 0, n < shots, n + 1):  # shots for averaging
         with for_(a, -1, a <= 1, a + 2):
-            # State prep: displace cavity to state |0> = |α> or |1> (assuming direct control of storage)
+            # State prep: displace cavity to state |0> = |α> or |1> = |-α> (assuming direct control of storage)
             play("Displace_Op" * amp(a), "storage")
             align()
 

@@ -11,7 +11,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 from Examples.Papers.cat_qubits.qua_macros import *
 
@@ -30,7 +30,7 @@ shots = 10
 eps_min = 0.3
 eps_max = 1
 d_eps = 0.3
-eps_vec =  np.arange(eps_min, eps_max-d_eps/2, d_eps)
+eps_vec = np.arange(eps_min, eps_max - d_eps / 2, d_eps)
 N_eps = len(eps_vec)
 # Threshold for state discrimination
 threshold = 0.0
@@ -39,14 +39,14 @@ threshold = 0.0
 IQ_step = 0.5
 grid_start = -1.0
 grid_stop = 1
-grid_vec = np.arange(grid_start, grid_stop-IQ_step/2, IQ_step)
+grid_vec = np.arange(grid_start, grid_stop - IQ_step / 2, IQ_step)
 N_points = len(grid_vec)
 
 with program() as buffer_drive_amp_cal:
     n = declare(int)
     i = declare(fixed)
     q = declare(fixed)
-    eps = declare(fixed)
+    a = declare(fixed)
 
     I = declare(fixed)
     pol = declare(int)
@@ -55,13 +55,13 @@ with program() as buffer_drive_amp_cal:
     parity_stream = declare_stream()
 
     with for_(n, 0, n < shots, n + 1):  # shots for averaging
-        with for_(eps, 0.3, eps < eps_max-d_eps/2, eps + d_eps):  # Buffer drive amplitude sweep
-            with for_(i, grid_start, i < grid_stop+IQ_step/2, i + IQ_step):  # Real part of alpha
-                with for_(q, grid_start, q < grid_stop+IQ_step/2, q + IQ_step):  # Imaginary part of alpha
+        with for_(a, eps_min, a < eps_max - d_eps / 2, a + d_eps):  # Buffer drive amplitude sweep
+            with for_(i, grid_start, i < grid_stop + IQ_step / 2, i + IQ_step):  # Real part of alpha
+                with for_(q, grid_start, q < grid_stop + IQ_step / 2, q + IQ_step):  # Imaginary part of alpha
                     with for_(pol, 0, pol < 2, pol + 1):  # Iterate over X90 and -X90 for second Ramsey pulse
                         # State preparation
                         play("pump", "ATS", duration=2e2)
-                        play("drive" * amp(eps), "buffer", duration=2e2)
+                        play("drive" * amp(a), "buffer", duration=2e2)
                         align()
 
                         # Displacement operation on storage mode
@@ -87,7 +87,7 @@ with program() as buffer_drive_amp_cal:
 
     with stream_processing():
         parity_stream.boolean_to_int().buffer(2).map(FUNCTIONS.average()).buffer(
-            N_eps, N_points, N_points).average().save("Wigner")
+            N_eps, N_points, N_points).average().save("parity")
 
 qmm = QuantumMachinesManager()
 job = qmm.simulate(
@@ -118,12 +118,12 @@ plt.yticks(
 
 res = job.result_handles
 res.wait_for_all_values()
-P_excited = res.Wigner.fetch_all()
+P_excited = res.parity.fetch_all()
 Wigner = np.zeros_like(P_excited)
-for eps in range(N_eps):
-    for real in range(N_points):
-        for imag in range(N_points):
-            Wigner[eps][real][imag] = 4 / np.pi * P_excited[eps][real][imag] - 1
+for a in range(N_eps):
+    for re in range(N_points):
+        for im in range(N_points):
+            Wigner[a][re][im] = (4 * P_excited[a][re][im] - 1) / np.pi
 
 # for eps in range(eps):
 #     plt.figure()
@@ -141,5 +141,5 @@ for eps in range(N_eps):
 #     ax.set_ylabel("Im(alpha)")
 #     ax.set_title("Wigner function")
 
-# Insert fitting tools here for 2D Gaussians to assess
+# Insert fitting tools here for 2D Gaussian to assess
 # the distance between the two measured states
