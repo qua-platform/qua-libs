@@ -193,7 +193,7 @@ config = {
                 "lo_frequency": omega_LO_b,
                 "mixer": "mixer_buffer",
             },
-            "intermediate_frequency": omega_a,
+            "intermediate_frequency": omega_b,
             "operations": {
                 "drive": "drive_pulse",
                 "deflation": "deflation_pulse",
