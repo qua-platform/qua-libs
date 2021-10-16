@@ -129,8 +129,8 @@ with program() as QAOA:
                                        )
                        )
             assign(Expectation_value, Expectation_value + Math.div(Cut, N_shots))
-
-        save(Expectation_value, "exp_value")
+            assign(IO1, Expectation_value)
+        # save(Expectation_value, "exp_value")
 
 
 # Main Python functions for launching QAOA algorithm
@@ -163,8 +163,10 @@ def quantum_avg_computation(angles: List[float]):
     # Wait for experiment to be completed
     while not (job.is_paused()):
         time.sleep(0.0001)
-    results = job.result_handles
-    exp_value = results.exp_value.fetch_all()
+
+    exp_value = qm.get_io1_value()["fixed_value"]
+    # results = job.result_handles
+    # exp_value = results.exp_value.fetch_all()
 
     return -exp_value  # minus sign because optimizer finds the minimum
 
