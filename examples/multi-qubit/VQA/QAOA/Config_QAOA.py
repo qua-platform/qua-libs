@@ -304,7 +304,7 @@ def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
 
 def CR(ctrl, tgt):
     """https://arxiv.org/abs/2004.06755"""
-    return None
+    align()
 
 
 def CNOT(ctrl, tgt):  # To be defined

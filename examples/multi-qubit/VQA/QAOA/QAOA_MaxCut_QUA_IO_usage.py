@@ -79,9 +79,12 @@ with program() as QAOA:
     γ, β = declare(fixed, size=p), declare(fixed, size=p)
     Cut, Expectation_value = declare(fixed, value=0), declare(fixed, value=0.)
     w = declare(fixed)
-
+    # waiting = declare(bool, value=True)
     with infinite_loop_():
         pause()
+        # assign(waiting, True)
+        # with while_(waiting):
+        #     assign(waiting, IO1)
 
         # Load circuit parameters using IO variables
         with for_(b, init=0, cond=b < p, update=b + 1):
@@ -128,8 +131,9 @@ with program() as QAOA:
                                        Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
                                        )
                        )
-            assign(Expectation_value, Expectation_value + Math.div(Cut, N_shots))
-            assign(IO1, Expectation_value)
+            assign(Expectation_value, Expectation_value + Cut)
+        assign(Expectation_value, Math.div(Expectation_value, N_shots))
+        assign(IO1, Expectation_value)
         # save(Expectation_value, "exp_value")
 
 
@@ -156,6 +160,8 @@ def quantum_avg_computation(angles: List[float]):
 
     gamma = angles[0: 2 * p: 2]
     beta = angles[1: 2 * p: 2]
+
+    # qm.set_io1_value(True)
     job.resume()
 
     encode_angles_in_IO(gamma, beta)
