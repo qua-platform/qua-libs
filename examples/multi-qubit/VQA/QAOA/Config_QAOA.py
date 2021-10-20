@@ -38,7 +38,9 @@ lmda = 0.5  # Define scaling parameter for Drag Scheme
 alpha = -1  # Define anharmonicity parameter
 x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
 
-CR_duration = 120
+CR_const_duration = 160
+CR_edges_duration = 16
+CR_amp = 0.108
 LO_freq = 1e9
 qubit_IF = 0
 rr_IF = 0
@@ -93,9 +95,10 @@ IBMconfig = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR_with_q1": "CR_01",
-                "CR_with_q2": "CR_02",
-                "CR_with_q3": "CR_03",
+                **{f"CR_with_q{i}_const": f"CR_const_0{i}" for i in [1, 2, 3]},
+                **{f"CR_with_q{i}_rise": f"CR_rise_0{i}" for i in [1, 2, 3]},
+                **{f"CR_with_q{i}_fall": f"CR_fall_0{i}" for i in [1, 2, 3]},
+
             },
         },
         "rr0": {
@@ -125,9 +128,9 @@ IBMconfig = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR_with_q0": "CR_10",
-                "CR_with_q2": "CR_12",
-                "CR_with_q3": "CR_13",
+                **{f"CR_with_q{i}_const": f"CR_const_1{i}" for i in [0, 2, 3]},
+                **{f"CR_with_q{i}_rise": f"CR_rise_1{i}" for i in [0, 2, 3]},
+                **{f"CR_with_q{i}_fall": f"CR_fall_1{i}" for i in [0, 2, 3]},
             },
         },
         "rr1": {
@@ -157,9 +160,9 @@ IBMconfig = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR_with_q0": "CR_20",
-                "CR_with_q1": "CR_21",
-                "CR_with_q3": "CR_23",
+                **{f"CR_with_q{i}_const": f"CR_const_2{i}" for i in [0, 1, 3]},
+                **{f"CR_with_q{i}_rise": f"CR_rise_2{i}" for i in [0, 1, 3]},
+                **{f"CR_with_q{i}_fall": f"CR_fall_2{i}" for i in [0, 1, 3]},
             },
         },
         "rr2": {
@@ -189,9 +192,9 @@ IBMconfig = {
                 "X90": "X90_pulse",
                 "Y90": "Y90_pulse",
                 "Y180": "Y180_pulse",
-                "CR_with_q0": "CR_30",
-                "CR_with_q1": "CR_31",
-                "CR_with_q2": "CR_32",
+                **{f"CR_with_q{i}_const": f"CR_const_3{i}" for i in [0, 1, 2]},
+                **{f"CR_with_q{i}_rise": f"CR_rise_3{i}" for i in [0, 1, 2]},
+                **{f"CR_with_q{i}_fall": f"CR_fall_3{i}" for i in [0, 1, 2]},
             },
         },
         "rr3": {
@@ -241,10 +244,26 @@ IBMconfig = {
         },
 
         **{
-            f"CR_{i}{j}": {
+            f"CR_rise_{i}{j}": {
                 "operation": "control",
-                "length": CR_duration,
-                "waveforms": {"I": "CR_wf", "Q": "zero_wf"},
+                "length": CR_edges_duration,
+                "waveforms": {"I": "CR_rising_edge_wf", "Q": "zero_wf"},
+            }
+            for i,j in itertools.product(range(4), range(4))
+        },
+        **{
+            f"CR_fall_{i}{j}": {
+                "operation": "control",
+                "length": CR_edges_duration,
+                "waveforms": {"I": "CR_falling_edge_wf", "Q": "zero_wf"},
+            }
+            for i,j in itertools.product(range(4), range(4))
+        },
+        **{
+            f"CR_const_{i}{j}": {
+                "operation": "control",
+                "length": CR_const_duration,
+                "waveforms": {"I": "CR_const_wf", "Q": "zero_wf"},
             }
             for i,j in itertools.product(range(4), range(4))
         },
@@ -253,7 +272,9 @@ IBMconfig = {
         "const_wf": {"type": "constant", "sample": 0.2},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_wf": {"type": "arbitrary", "samples": x90waveform},
-        "CR_wf": {"type": "arbitrary", "samples": [0.2] * CR_duration},
+        "CR_rising_edge_wf": {"type": "arbitrary", "samples": [0.] + gauss(CR_amp, 0, 7.1, 0, 28)[0: 14] + [0.]},
+        "CR_falling_edge_wf": {"type": "arbitrary", "samples": [0.] + gauss(CR_amp, 0, 7.1, 0, 28)[14:] + [0]},
+        "CR_const_wf":{"type": "constant", "sample": CR_amp},
         "x90_der_wf": {"type": "arbitrary", "samples": x90der_waveform},
         "y180_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90waveform))},
         "y180_der_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90der_waveform))},
@@ -283,6 +304,11 @@ IBMconfig = {
 }
 
 
+def get_IF(tgt):
+
+    return IBMconfig["elements"][tgt]["intermediate_frequency"]
+
+
 # QUA macros (pulse definition of quantum gates)
 def Hadamard(tgt):
     U2(tgt, 0, π)
@@ -294,7 +320,7 @@ def U2(tgt, 𝜙=0, 𝜆=0):
     Rz(𝜙, tgt)
 
 
-def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
+def U3(tgt: str, 𝜃=0, 𝜙=0, 𝜆=0):
     Rz(𝜆 - π / 2, tgt)
     X90(tgt)
     Rz(π - 𝜃, tgt)
@@ -302,9 +328,19 @@ def U3(tgt, 𝜃=0, 𝜙=0, 𝜆=0):
     Rz(𝜙 - π / 2, tgt)
 
 
-def CR(ctrl, tgt):
-    """https://arxiv.org/abs/2004.06755"""
+def CR(ctrl: str, tgt: str):
+    """
+    Based on info available in this paper: https://arxiv.org/abs/2004.06755
+    Note that it would be easier to synthesize the pulses for each element with the baking separately
+    """
     align()
+    frame_rotation(-0.166, ctrl)
+    update_frequency(ctrl, get_IF(tgt))
+    play(f"CR_with_{tgt}_rise", ctrl)
+    play(f"CR_with_{tgt}_const", ctrl)
+    play(f"CR_with_{tgt}_fall", ctrl)
+    align()
+    update_frequency(ctrl, get_IF(ctrl))
 
 
 def CNOT(ctrl, tgt):  # To be defined
