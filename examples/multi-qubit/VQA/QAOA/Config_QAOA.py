@@ -98,7 +98,6 @@ IBMconfig = {
                 **{f"CR_with_q{i}_const": f"CR_const_0{i}" for i in [1, 2, 3]},
                 **{f"CR_with_q{i}_rise": f"CR_rise_0{i}" for i in [1, 2, 3]},
                 **{f"CR_with_q{i}_fall": f"CR_fall_0{i}" for i in [1, 2, 3]},
-
             },
         },
         "rr0": {
@@ -242,14 +241,13 @@ IBMconfig = {
             "length": x90duration,
             "waveforms": {"I": "y180_der_wf", "Q": "y180_wf"},
         },
-
         **{
             f"CR_rise_{i}{j}": {
                 "operation": "control",
                 "length": CR_edges_duration,
                 "waveforms": {"I": "CR_rising_edge_wf", "Q": "zero_wf"},
             }
-            for i,j in itertools.product(range(4), range(4))
+            for i, j in itertools.product(range(4), range(4))
         },
         **{
             f"CR_fall_{i}{j}": {
@@ -257,7 +255,7 @@ IBMconfig = {
                 "length": CR_edges_duration,
                 "waveforms": {"I": "CR_falling_edge_wf", "Q": "zero_wf"},
             }
-            for i,j in itertools.product(range(4), range(4))
+            for i, j in itertools.product(range(4), range(4))
         },
         **{
             f"CR_const_{i}{j}": {
@@ -265,19 +263,28 @@ IBMconfig = {
                 "length": CR_const_duration,
                 "waveforms": {"I": "CR_const_wf", "Q": "zero_wf"},
             }
-            for i,j in itertools.product(range(4), range(4))
+            for i, j in itertools.product(range(4), range(4))
         },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_wf": {"type": "arbitrary", "samples": x90waveform},
-        "CR_rising_edge_wf": {"type": "arbitrary", "samples": [0.] + gauss(CR_amp, 0, 7.1, 0, 28)[0: 14] + [0.]},
-        "CR_falling_edge_wf": {"type": "arbitrary", "samples": [0.] + gauss(CR_amp, 0, 7.1, 0, 28)[14:] + [0]},
-        "CR_const_wf":{"type": "constant", "sample": CR_amp},
+        "CR_rising_edge_wf": {
+            "type": "arbitrary",
+            "samples": [0.0] + gauss(CR_amp, 0, 7.1, 0, 28)[0:14] + [0.0],
+        },
+        "CR_falling_edge_wf": {
+            "type": "arbitrary",
+            "samples": [0.0] + gauss(CR_amp, 0, 7.1, 0, 28)[14:] + [0],
+        },
+        "CR_const_wf": {"type": "constant", "sample": CR_amp},
         "x90_der_wf": {"type": "arbitrary", "samples": x90der_waveform},
         "y180_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90waveform))},
-        "y180_der_wf": {"type": "arbitrary", "samples": list(2 * np.array(x90der_waveform))},
+        "y180_der_wf": {
+            "type": "arbitrary",
+            "samples": list(2 * np.array(x90der_waveform)),
+        },
         "exc_wf": {"type": "constant", "sample": 0.479},
     },
     "digital_waveforms": {"marker1": {"samples": [(1, 4), (0, 2), (1, 1), (1, 0)]}},

@@ -81,7 +81,6 @@ class RBSequence:
         self.inverse_op_string = [""] * d_max
         self.sequence = self.generate_RB_sequence()  # Store the RB sequence
 
-
     def play_revert_op(self, index: int):
         """Plays an operation resetting qubit in its ground state based on the
         transformation provided by the index in Cayley table (switch using baked Cliffords)

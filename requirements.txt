@@ -1,6 +1,5 @@
-qualang-tools>=0.2
-qm_qua>=0.3.2
-jinja2>=2.11.2
+qm-qua
+jinja2==2.11.2
 sqlalchemy>=1.3.18
 colorama>=0.4.3
 matplotlib>=3.2.2

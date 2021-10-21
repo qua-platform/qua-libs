@@ -32,7 +32,7 @@ G.add_weighted_edges_from(E)
 E = G.edges()
 
 # Drawing the Graph G
-colors = ['b' for node in G.nodes()]
+colors = ["b" for node in G.nodes()]
 default_axes = plt.axes(frameon=True)
 pos = nx.spring_layout(G)
 
@@ -43,7 +43,7 @@ p = 1  # depth of quantum circuit, i.e number of adiabatic evolution blocks
 N_shots = 10  # Sampling number for expectation value computation
 MaxCut_value = 5.0  # Value of the ideal MaxCut (set to None if unknown) to calculate approximation ratio
 
-th = 0.  # Threshold for state discrimination
+th = 0.0  # Threshold for state discrimination
 
 # Introduce registers to address relevant quantum elements in config
 q = [f"q{i}" for i in range(n)]
@@ -77,7 +77,7 @@ with program() as QAOA:
     I, Q = declare(fixed), declare(fixed)
     state = declare(int, size=n)
     γ, β = declare(fixed, size=p), declare(fixed, size=p)
-    Cut, Expectation_value = declare(fixed, value=0), declare(fixed, value=0.)
+    Cut, Expectation_value = declare(fixed, value=0), declare(fixed, value=0.0)
     w = declare(fixed)
     # waiting = declare(bool, value=True)
     with infinite_loop_():
@@ -98,7 +98,9 @@ with program() as QAOA:
             for k in range(n):  # for each qubit in the config (= node in the graph G)
                 Hadamard(q[k])
 
-            with for_(b, init=0, cond=b < p, update=b + 1):  # for each block of the QAOA quantum circuit
+            with for_(
+                b, init=0, cond=b < p, update=b + 1
+            ):  # for each block of the QAOA quantum circuit
 
                 # Cost Hamiltonian evolution: derived here specifically for MaxCut problem
                 for e in E:  # for each edge of the graph G
@@ -127,10 +129,15 @@ with program() as QAOA:
             for e in E:  # for each edge of the graph G
                 e1, e2 = int(e[0]), int(e[1])
                 assign(w, G[e1][e2]["weight"])  # Retrieve weight associated to edge e
-                assign(Cut, Cut + w * (Cast.to_fixed(state[e1]) * (1. - Cast.to_fixed(state[e2])) +
-                                       Cast.to_fixed(state[e2]) * (1. - Cast.to_fixed(state[e1]))
-                                       )
-                       )
+                assign(
+                    Cut,
+                    Cut
+                    + w
+                    * (
+                        Cast.to_fixed(state[e1]) * (1.0 - Cast.to_fixed(state[e2]))
+                        + Cast.to_fixed(state[e2]) * (1.0 - Cast.to_fixed(state[e1]))
+                    ),
+                )
             assign(Expectation_value, Expectation_value + Cut)
         assign(Expectation_value, Math.div(Expectation_value, N_shots))
         assign(IO1, Expectation_value)
@@ -138,6 +145,7 @@ with program() as QAOA:
 
 
 # Main Python functions for launching QAOA algorithm
+
 
 def encode_angles_in_IO(gamma: List[float], beta: List[float]):
     """
@@ -158,8 +166,8 @@ def quantum_avg_computation(angles: List[float]):
     Calculate Hamiltonian expectation value (cost function to optimize)
     """
 
-    gamma = angles[0: 2 * p: 2]
-    beta = angles[1: 2 * p: 2]
+    gamma = angles[0 : 2 * p : 2]
+    beta = angles[1 : 2 * p : 2]
 
     # qm.set_io1_value(True)
     job.resume()
@@ -192,21 +200,25 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
         a_k = a / (j + A) ** alpha1
         c_k = c / j ** gamma
         # Vector of random variables issued from a Bernoulli distribution +1,-1, could be something else
-        delta_k = (2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1)
+        delta_k = 2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1
         angles_plus = angles + c_k * delta_k
         angles_minus = angles - c_k * delta_k
         cost_plus = quantum_avg_computation(angles_plus)
         cost_minus = quantum_avg_computation(angles_minus)
         gradient_est = (cost_plus - cost_minus) / (2 * c_k * delta_k)
         angles = angles - a_k * gradient_est
-        for i in range(len(angles)):  # Used to set angles value within the boundaries during optimization
+        for i in range(
+            len(angles)
+        ):  # Used to set angles value within the boundaries during optimization
             angles[i] = min(angles[i], boundaries[i][1])
             angles[i] = max(angles[i], boundaries[i][0])
 
-    return angles, -quantum_avg_computation(angles)  # return optimized angles and associated expectation value
+    return angles, -quantum_avg_computation(
+        angles
+    )  # return optimized angles and associated expectation value
 
 
-def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
+def result_optimization(optimizer: str = "Nelder-Mead", max_iter: int = 100):
     """
     Main function to retrieve results of the algorithm
 
@@ -218,7 +230,7 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
     else:
         print("Optimization for", p, "blocks")
 
-    min_bound = [0.] * (2 * p)
+    min_bound = [0.0] * (2 * p)
     max_bound = [2 * π, π] * p
     boundaries = [(min_bound[i], max_bound[i]) for i in range(2 * p)]
 
@@ -229,9 +241,16 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         angles.append(rand.uniform(0, π))
 
     if optimizer == "SPSA":
-        opti_angle, expectation_value = SPSA_optimize(np.array(angles), boundaries, max_iter)
+        opti_angle, expectation_value = SPSA_optimize(
+            np.array(angles), boundaries, max_iter
+        )
     else:
-        Result = minimize(quantum_avg_computation, np.array(angles), method=optimizer, bounds=boundaries)
+        Result = minimize(
+            quantum_avg_computation,
+            np.array(angles),
+            method=optimizer,
+            bounds=boundaries,
+        )
         opti_angle = Result.x
         expectation_value = quantum_avg_computation(opti_angles)
 
@@ -240,7 +259,12 @@ def result_optimization(optimizer: str = 'Nelder-Mead', max_iter: int = 100):
         ratio = expectation_value / MaxCut_value
         print("Approximation ratio : ", ratio)
     print("Average cost value obtained: ", expectation_value)
-    print("Optimized angles set: γ:", opti_angle[0: 2 * p: 2], "β:", opti_angle[1: 2 * p: 2])
+    print(
+        "Optimized angles set: γ:",
+        opti_angle[0 : 2 * p : 2],
+        "β:",
+        opti_angle[1 : 2 * p : 2],
+    )
 
     return expectation_value, opti_angle
 
