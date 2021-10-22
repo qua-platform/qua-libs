@@ -38,9 +38,7 @@ with program() as powerRabiProg:  # Power Rabi QUA program
     a_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do 10 times the experiment
-        with for_(
-            a, 0.00, a < a_max - da / 2, a + da
-        ):  # Sweep from 0 to 0.7 V the amplitude
+        with for_(a, 0.00, a < a_max, a + da):  # Sweep from 0 to 1 V the amplitude
             play(
                 "gauss_pulse" * amp(a), "qubit"
             )  # Modulate the Gaussian pulse with the varying amplitude a
