@@ -126,12 +126,12 @@ for i in range(N_tau):
 # so to properly obtain T1 in units of ns, we multiply tau_vec*4 below
 param0 = [1, 20]
 popt, pcov = curve_fit(
-    decay, tau_vec * 4, state_value_mean, param0, sigma=state_value_var
+    decay, 4 * tau_vec, state_value_mean, param0, sigma=state_value_var
 )
 
 plt.figure()
-plt.plot(tau_vec * 4, state_value_mean, ".", label="measurement")
-plt.plot(tau_vec * 4, decay(tau_vec * 4, *popt), "-r", label="fit")
+plt.plot(4 * tau_vec, state_value_mean, ".", label="measurement")
+plt.plot(4 * tau_vec, decay(4 * tau_vec, *popt), "-r", label="fit")
 plt.legend()
 plt.title(f"T1 measurement T1={popt[1]:.1f} [ns]")
 plt.xlabel("tau[ns]")
