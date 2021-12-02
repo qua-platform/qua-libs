@@ -30,8 +30,8 @@ def measure_and_save_state(
 
 QM1 = QMm.open_qm(config)
 
-taumax = 60
-dtau = 1
+taumax = 60  # in units of clock cycles, i.e., taumax = 60*4 ns = 240 ns
+dtau = 1  # in units of clock cycles (4 ns)
 NAVG = 60
 recovery_delay = 100  # wait to return to ground
 N_tau = taumax // dtau
@@ -115,19 +115,23 @@ def estimate_state(v):
 state_th = [[None] * NAVG] * N_tau
 state_value_mean = []
 state_value_var = []
+
 for i in range(N_tau):
     for j in range(NAVG):
         state_th[i][j] = estimate_state(tau_vec[i])
     state_value_mean.append(np.mean(state_th[i]))
     state_value_var.append(np.std(state_th[i]))
 
-
+# tau_vec was defined in units of clock cycles (4 ns)
+# so to properly obtain T1 in units of ns, we multiply tau_vec*4 below
 param0 = [1, 20]
-popt, pcov = curve_fit(decay, tau_vec, state_value_mean, param0, sigma=state_value_var)
+popt, pcov = curve_fit(
+    decay, 4 * tau_vec, state_value_mean, param0, sigma=state_value_var
+)
 
 plt.figure()
-plt.plot(tau_vec, state_value_mean, ".", label="measurement")
-plt.plot(tau_vec, decay(tau_vec, *popt), "-r", label="fit")
+plt.plot(4 * tau_vec, state_value_mean, ".", label="measurement")
+plt.plot(4 * tau_vec, decay(4 * tau_vec, *popt), "-r", label="fit")
 plt.legend()
 plt.title(f"T1 measurement T1={popt[1]:.1f} [ns]")
 plt.xlabel("tau[ns]")
