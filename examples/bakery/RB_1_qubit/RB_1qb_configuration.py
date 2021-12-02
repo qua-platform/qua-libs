@@ -91,7 +91,7 @@ config = {
         "XPulse": {
             "operation": "control",
             "length": pulse_len,
-            "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
+            "waveforms": {"I": "const_wf", "Q": "zero_wf"},
         },
         "X/2Pulse": {
             "operation": "control",
@@ -135,7 +135,7 @@ config = {
         "pi_wf": {"type": "arbitrary", "samples": gauss(0.2, 0, 12, pulse_len)},
         "-pi/2_wf": {"type": "arbitrary", "samples": gauss(-0.1, 0, 12, pulse_len)},
         "pi/2_wf": {"type": "arbitrary", "samples": gauss(0.1, 0, 12, pulse_len)},
-        "zero_wf": {"type": "constant", "sample": 0},
+        "zero_wf": {"type": "constant", "sample": 0.0},
         "readout_wf": {"type": "constant", "sample": 0.3},
     },
     "digital_waveforms": {

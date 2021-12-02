@@ -8,7 +8,7 @@ module.exports = {
   url: "https://qua-platform.github.io",
   baseUrl: "/libs/",
   onBrokenLinks: "throw",
-  favicon: "img/favicon.ico",
+  favicon: "img/qua-logo.ico",
   organizationName: "qua-platform",
   projectName: "qua-libs",
   themeConfig: {

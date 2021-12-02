@@ -112,17 +112,17 @@ config = {
         "sxPulse": {
             "operation": "control",
             "length": pulse_len,
-            "waveforms": {"I": "zero_wf", "Q": "zero_wf"},
+            "waveforms": {"I": "pi/2_wf", "Q": "zero_wf"},
         },
         "syPulse": {
             "operation": "control",
             "length": pulse_len,
-            "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
+            "waveforms": {"I": "zero_wf", "Q": "pi/2_wf"},
         },
         "swPulse": {
             "operation": "control",
             "length": pulse_len,
-            "waveforms": {"I": "pi/2_wf", "Q": "zero_wf"},
+            "waveforms": {"I": "pi/2_wf", "Q": "pi/2_wf"},
         },
         "couplerPulse": {
             "operation": "control",
