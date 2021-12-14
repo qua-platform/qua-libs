@@ -121,15 +121,11 @@ ro_I = ConstantWaveform("ro_I", 0.01)
 ro_Q = ConstantWaveform("ro_Q", 0.0)
 
 ro_pulse = MeasurePulse("ro_pulse", [ro_I, ro_Q], 100)
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=100))
-)
+ro_pulse.add(Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=100)))
 ro_pulse.add(
     Weights(ConstantIntegrationWeights("minus_sin", cosine=0, sine=-1, duration=100))
 )
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=100))
-)
+ro_pulse.add(Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=100)))
 
 # Note that here we add the operations to the resonators, after adding resonators to the ConfigBuilder
 # but these operations appear in the final configuration

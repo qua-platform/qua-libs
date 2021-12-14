@@ -26,15 +26,11 @@ wfs = [
 ]
 
 ro_pulse = MeasurePulse("ro_pulse", wfs, 16)
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=16))
-)
+ro_pulse.add(Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=16)))
 ro_pulse.add(
     Weights(ConstantIntegrationWeights("minus_sin", cosine=0, sine=-1, duration=16))
 )
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=16))
-)
+ro_pulse.add(Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=16)))
 res.add(Operation(ro_pulse))
 
 # Adding resonator to the builder
