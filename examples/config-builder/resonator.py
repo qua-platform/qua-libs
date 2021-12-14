@@ -4,8 +4,14 @@ from qualang_tools.config.configuration import *
 from qualang_tools.config.components import *
 from qualang_tools.config.builder import ConfigBuilder
 
-cont = Controller("con1")
+# Initialize ConfigBuilder object
+cb = ConfigBuilder()
 
+# Adding controller
+cont = Controller("con1")
+cb.add(cont)
+
+# Setting properties of readout resonator object and the operations it supports
 res = ReadoutResonator(
     "res1",
     outputs=[cont.analog_output(0), cont.analog_output(1)],
@@ -15,34 +21,24 @@ res = ReadoutResonator(
 res.lo_frequency = 4e9
 
 wfs = [
-    ArbitraryWaveform("wf1", np.linspace(0, -0.5, 16).tolist()),
-    ArbitraryWaveform("wf2", np.linspace(0, -0.5, 16).tolist()),
+    ArbitraryWaveform("wf1", np.linspace(0, -0.5, 16)),
+    ArbitraryWaveform("wf2", np.linspace(0, -0.5, 16)),
 ]
 
 ro_pulse = MeasurePulse("ro_pulse", wfs, 16)
 ro_pulse.add(
-    Weights(ConstantIntegrationWeights("integ_w1_I", cosine=1, sine=0, duration=16))
+    Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=16))
 )
 ro_pulse.add(
-    Weights(ConstantIntegrationWeights("integ_w1_Q", cosine=0, sine=-1, duration=16))
+    Weights(ConstantIntegrationWeights("minus_sin", cosine=0, sine=-1, duration=16))
 )
 ro_pulse.add(
-    Weights(ConstantIntegrationWeights("integ_w2_I", cosine=0, sine=1, duration=16))
+    Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=16))
 )
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("integ_w2_Q", cosine=1, sine=0, duration=16))
-)
-
 res.add(Operation(ro_pulse))
 
-cb = ConfigBuilder()
-cb.add(cont)
-
-# here the two wfs are already added to resonator object, but still it is possible to add them to the setup
-# and they should appear in the config
-# cb.add(wfs[0])
-# cb.add(wfs[1])
-
+# Adding resonator to the builder
 cb.add(res)
 
+# Build the QUA configuration
 print(cb.build())
