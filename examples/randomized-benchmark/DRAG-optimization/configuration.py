@@ -1,25 +1,53 @@
 import numpy as np
 
-gauss_len = 100
+gauss_len = 16
 gaussian_amp = 0.2
 
 
 def gauss(amplitude, mu, sigma, delf, length):
-    t = np.linspace(-length / 2, length / 2, length)
+    t = np.linspace(0, length, length)
     gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    gauss_wave = gauss_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_wave]
 
 
 def gauss_der(amplitude, mu, sigma, delf, length):
-    t = np.linspace(-length / 2, length / 2, length)
+    t = np.linspace(0, length, length)
     gauss_der_wave = (
-        amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+        amplitude
+        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
+        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    )
+    return [float(x) for x in gauss_der_wave]
+
+
+def gauss_det(amplitude, mu, sigma, delf, length):
+    t = np.linspace(0, length, length)
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = (
+        amplitude
+        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
+        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
     )
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
-    return [float(x) for x in gauss_der_wave]
+    Xgauss_wave = gauss_wave * np.cos(2 * np.pi * delf * t * 1e-9) + (
+        alpha / delta
+    ) * gauss_der_wave * np.sin(2 * np.pi * delf * t * 1e-9)
+    return [float(x) for x in Xgauss_wave]
+
+
+def gauss_der_det(amplitude, mu, sigma, delf, length):
+    t = np.linspace(0, length, length)
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_der_wave = (
+        amplitude
+        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
+        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    )
+    # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
+    Ygauss_der_wave = -(alpha / delta) * gauss_der_wave * np.cos(
+        2 * np.pi * delf * t * 1e-9
+    ) + gauss_wave * np.sin(2 * np.pi * delf * t * 1e-9)
+    return [float(x) for x in Ygauss_der_wave]
 
 
 def IQ_imbalance(g, phi):
@@ -29,12 +57,16 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-delf = 0.0  # Detuning frequency e.g. [-25,-10] MHz
-gauss_pulse = gauss(gaussian_amp, 0, 6, delf, gauss_len)
-drag_gauss_pulse = gauss(gaussian_amp, 0, 6, delf, gauss_len)
-alpha = 0.05
-delta = 0.8 - 2 * np.pi * delf  # Below Eqn. (4) in Chen et al.
-drag_gauss_der_pulse = gauss_der(alpha / delta * gaussian_amp, 0, 6, delf, gauss_len)
+delf = -0.0e6  # Detuning frequency e.g. [-25,-10] MHz
+alpha = 0.5
+delta = 2 * np.pi * (-200e6 - delf)  # Below Eqn. (4) in Chen et al.
+gauss_pulse = gauss(gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len)
+drag_gauss_pulse = gauss_det(
+    gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len
+)
+drag_gauss_der_pulse = gauss_der_det(
+    gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len
+)
 
 readout_len = 400
 qubit_IF = 0
