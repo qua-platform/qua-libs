@@ -1,55 +1,65 @@
 import numpy as np
 
-gauss_len = 16
-gaussian_amp = 0.2
+gauss_len = 16  # pulse length in ns
+gaussian_amp = 0.2  # pulse amplitude in volts
+
+# Definition of pulses follow Chen et al. PRL, 116, 020501 (2016)
 
 
-def gauss(amplitude, mu, sigma, delf, length):
-    t = np.linspace(0, length, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+# I-quadrature component for gaussian shaped pulses
+def gauss(amplitude, sigma, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
     return [float(x) for x in gauss_wave]
 
 
-def gauss_der(amplitude, mu, sigma, delf, length):
-    t = np.linspace(0, length, length)
-    gauss_der_wave = (
+# Q-quadrature component for gaussian shaped pulses
+def gauss_derivative(amplitude, sigma, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_derivative_wave = (
         amplitude
-        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
-        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * t / (2 * sigma ** 2))
+        * np.exp(-(t ** 2) / (2 * sigma ** 2))
     )
-    return [float(x) for x in gauss_der_wave]
+    return [float(x) for x in gauss_derivative_wave]
 
 
-def gauss_det(amplitude, mu, sigma, delf, length):
-    t = np.linspace(0, length, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-    gauss_der_wave = (
+# I-quadrature component for gaussian shaped detuned pulses
+def gauss_detuned(amplitude, sigma, del_f, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
+    gauss_derivative_wave = (
         amplitude
-        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
-        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * t / (2 * sigma ** 2))
+        * np.exp(-(t ** 2) / (2 * sigma ** 2))
     )
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    Xgauss_wave = gauss_wave * np.cos(2 * np.pi * delf * t * 1e-9) + (
+    gaussian_detuned_wave = gauss_wave * np.cos(2 * np.pi * del_f * t * 1e-9) + (
         alpha / delta
-    ) * gauss_der_wave * np.sin(2 * np.pi * delf * t * 1e-9)
-    return [float(x) for x in Xgauss_wave]
+    ) * gauss_derivative_wave * np.sin(2 * np.pi * del_f * t * 1e-9)
+    return [float(x) for x in gaussian_detuned_wave]
 
 
-def gauss_der_det(amplitude, mu, sigma, delf, length):
-    t = np.linspace(0, length, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
-    gauss_der_wave = (
+def gauss_derivative_detuned(amplitude, sigma, del_f, length):
+    t = np.linspace(-length / 2, length / 2, length)
+    gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
+    gauss_derivative_wave = (
         amplitude
-        * (-2 * 1e9 * (t - mu) / (2 * sigma ** 2))
-        * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * t / (2 * sigma ** 2))
+        * np.exp(-(t ** 2) / (2 * sigma ** 2))
     )
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
-    Ygauss_der_wave = -(alpha / delta) * gauss_der_wave * np.cos(
-        2 * np.pi * delf * t * 1e-9
-    ) + gauss_wave * np.sin(2 * np.pi * delf * t * 1e-9)
-    return [float(x) for x in Ygauss_der_wave]
+    gaussian_derivative_detuned_wave = -(
+        alpha / delta
+    ) * gauss_derivative_wave * np.cos(
+        2 * np.pi * del_f * t * 1e-9
+    ) + gauss_wave * np.sin(
+        2 * np.pi * del_f * t * 1e-9
+    )
+    return [float(x) for x in gaussian_derivative_detuned_wave]
 
 
+# IQ imbalance function for mixer calibration
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
@@ -57,15 +67,16 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-delf = -0.0e6  # Detuning frequency e.g. [-25,-10] MHz
-alpha = 0.5
-delta = 2 * np.pi * (-200e6 - delf)  # Below Eqn. (4) in Chen et al.
-gauss_pulse = gauss(gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len)
-drag_gauss_pulse = gauss_det(
-    gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len
-)
-drag_gauss_der_pulse = gauss_der_det(
-    gaussian_amp, gauss_len / 2, gauss_len / 5, delf, gauss_len
+# Parameters needed to define DRAG pulses
+del_f = -0.0e6  # Detuning frequency -10 MHz
+alpha = 0.5  # DRAG coefficient
+delta = 2 * np.pi * (-200e6 - del_f)  # Below Eqn. (4) in Chen et al.
+
+# DRAG waveforms
+gauss_pulse = gauss(gaussian_amp, gauss_len / 5, gauss_len)
+drag_gauss_pulse = gauss_detuned(gaussian_amp, gauss_len / 5, del_f, gauss_len)
+drag_gauss_derivative_pulse = gauss_derivative_detuned(
+    gaussian_amp, gauss_len / 5, del_f, gauss_len
 )
 
 readout_len = 400
@@ -159,7 +170,10 @@ config = {
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_pulse},
         "DRAG_gauss_wf": {"type": "arbitrary", "samples": drag_gauss_pulse},
-        "DRAG_gauss_der_wf": {"type": "arbitrary", "samples": drag_gauss_der_pulse},
+        "DRAG_gauss_der_wf": {
+            "type": "arbitrary",
+            "samples": drag_gauss_derivative_pulse,
+        },
         "readout_wf": {"type": "constant", "sample": 0.3},
     },
     "digital_waveforms": {
