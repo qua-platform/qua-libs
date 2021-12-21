@@ -2,7 +2,6 @@
 title: Waveform baking
 author: Arthur Strauss
 author_title: Libraries Team
-author_image_url:  
 tags: [Libraries, baking]
 description: Introducing to the waveform baking tool 
 hide_table_of_contents: false
