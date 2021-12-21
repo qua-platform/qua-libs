@@ -7,6 +7,13 @@ license = "BSD"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+Pillow = "^8.4.0"
+bokeh = "^2.4.2"
+cryptography = "^36.0.1"
+Jinja2 = "^3.0.3"
+lxml = "^4.7.1"
+pikepdf = "^4.2.0"
+websockets = "^10.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b0"
