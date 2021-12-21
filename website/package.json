@@ -17,8 +17,8 @@
     "scripts": "npm run script:examples-index-generator"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.0.0-beta.0",
-    "@docusaurus/preset-classic": "^2.0.0-beta.0",
+    "@docusaurus/core": "^2.0.0-beta.ff31de0ff",
+    "@docusaurus/preset-classic": "^2.0.0-beta.ff31de0ff",
     "@mdx-js/react": "^1.6.22",
     "clsx": "^1.1.1",
     "react": "^17.0.2",
@@ -37,19 +37,19 @@
     ]
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^2.0.0-beta.0",
-    "@tsconfig/docusaurus": "^1.0.2",
-    "@types/react": "^17.0.5",
-    "@types/react-helmet": "^6.1.1",
-    "@types/react-router-dom": "^5.1.7",
+    "@docusaurus/module-type-aliases": "^2.0.0-beta.13",
+    "@tsconfig/docusaurus": "^1.0.4",
+    "@types/react": "^17.0.37",
+    "@types/react-helmet": "^6.1.4",
+    "@types/react-router-dom": "^5.3.2",
     "favicons": "^6.2.2",
     "favicons-webpack-plugin": "^5.0.2",
-    "glob": "^7.1.7",
-    "prettier": "^2.3.0",
+    "glob": "^7.2.0",
+    "prettier": "^2.5.1",
     "rehype-katex": "^4.0.0",
     "remark-math": "^3.0.1",
     "shelljs": "^0.8.4",
     "shx": "^0.3.3",
-    "typescript": "^4.2.4"
+    "typescript": "^4.5.4"
   }
 }
