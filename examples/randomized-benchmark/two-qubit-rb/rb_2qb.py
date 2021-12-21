@@ -281,7 +281,7 @@ class TwoQbRBSequence:
         self.single_qb_macros = single_qb_macros
         self.full_sequence = self.generate_RB_sequence()
         self.baked_sequence = self._generate_baked_sequence()
-        self.sequence_length = self.baked_sequence.get_Op_length()
+        self.sequence_length = self.baked_sequence.get_op_length()
 
     def generate_RB_sequence(self) -> List[List[Clifford]]:
         """

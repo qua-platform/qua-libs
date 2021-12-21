@@ -84,12 +84,12 @@ def CZ(b_seq: Baking, ctrl: str, tgt: str):
                 resolve.q(ctrl, channel="xy"), resolve.q(tgt, channel="xy"),
                 resolve.coupler(ctrl, tgt))
 
+
 # Baking Macros required for the two qubit gates to go in the macro dictionary to initialize the RBTwoQubit instance
 # Shall contain macros for CNOT, SWAP, and iSWAP
 
 
 def CNOT(b_seq: Baking, ctrl: str, tgt: str):
-
     mY_2(b_seq, tgt)
     CZ(b_seq, ctrl, tgt)
     Y_2(b_seq, tgt)
@@ -166,6 +166,7 @@ single_qb_gate_macros = {
     "-Y/2": mY_2
 }
 
+
 # Define the QUA program according to setup measurement scheme. Shall include at least baking object as argument
 # to use the method b_seq.run(). Here, we also pass as a parameter the sampling number for each circuit
 
@@ -209,28 +210,34 @@ def qua_prog(b_seq: Baking, N_shots: int):
 
     return prog
 
+
 # Define here parameters characterizing the experiment (number of operations to be played, number of random sequence to
 # be played)
+
 n_max = 175
 step = 10
 nCliffords = range(1, n_max, step)
 N_sequences = 5
 N_shots = 100
-print(nCliffords)
+
+# Define class instance to generate random sequences
 RB_exp = RBTwoQubits(qmm=qmm, config=config,
                      N_Clifford=nCliffords, N_sequences=N_sequences,
                      two_qb_gate_baking_macros=two_qb_gate_macros,
                      single_qb_macros=single_qb_gate_macros, qubit_register=aliases)
-sequences = RB_exp.sequences
-s1 = sequences[0].full_sequence
+
+# Here you can check which sequences have been generated (in terms of Clifford operations)
+# sequences = RB_exp.sequences
+# s1 = sequences[0].full_sequence
 # Uncomment lines below to see random sequence in terms of Cliffords
 # for Cl in s1:
 #     print(len(Cl), Cl)
 
-# Retrieve here the longest baked waveform to perform overriding with the run function
+# Necessary step:
+# Retrieve the longest baked waveform to perform overriding with the run function, "baked_reference"
 baked_reference = RB_exp.baked_reference
 
-print("length of larger sequence:", baked_reference.get_Op_length())
+print("length of longest random sequence:", baked_reference.get_op_length())
 
 RB_exp.run(prog=qua_prog(baked_reference, N_shots=N_shots))
 P_00, Average_Error_per_Clifford = RB_exp.retrieve_results(stream_name_0="state0",
