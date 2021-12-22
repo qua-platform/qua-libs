@@ -6,8 +6,7 @@ authors = ["Tal Shani <tal@quantum-machines.co>"]
 license = "BSD"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.10"
-qualang-tools = "^0.4.0"
+python = "^3.8"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b0"
