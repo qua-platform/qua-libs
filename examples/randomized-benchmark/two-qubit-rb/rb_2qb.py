@@ -141,7 +141,7 @@ class RBTwoQubits:
         assert "-Y/2" in single_qb_macros, "-Y/2 key not found"
 
         self.sequences = [
-            TwoQbRBSequence(self.qmm, config,
+            TwoQbRBSequence(config,
                             self.N_Clifford,
                             two_qb_gate_baking_macros,
                             single_qb_macros,
@@ -260,14 +260,14 @@ class RBTwoQubits:
 
 
 class TwoQbRBSequence:
-    def __init__(self, qmm: QuantumMachinesManager, config: dict,
+    def __init__(self, config: dict,
                  N_Cliffords: List,
                  two_qubit_gate_macros: Dict[str, Callable],
                  single_qb_macros: Dict[str, Callable],
                  qubit_register: Tuple,
                  seed: Optional[int] = None,
                  ):
-        self.qmm = qmm
+
         self.mock_config = deepcopy(config)
         self.truncations_positions = N_Cliffords
         self.d_max = N_Cliffords[-1]
