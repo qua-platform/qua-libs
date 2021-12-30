@@ -214,9 +214,9 @@ def qua_prog(b_seq: Baking, N_shots: int):
 # Define here parameters characterizing the experiment (number of operations to be played, number of random sequence to
 # be played)
 
-n_max = 175
+n_max = 175  # Maximum length of random sequence, i.e maximum number of Clifford composing sequence
 step = 10
-nCliffords = range(1, n_max, step)
+nCliffords = range(1, n_max, step)  # Specify all truncations you want to generate to realize the fitting
 N_sequences = 5
 N_shots = 100
 
@@ -238,6 +238,9 @@ RB_exp = RBTwoQubits(qmm=qmm, config=config,
 baked_reference = RB_exp.baked_reference
 
 print("length of longest random sequence:", baked_reference.get_op_length())
+if baked_reference.get_op_length() > 65000:
+    raise ValueError('Baked random sequence is too long (waveform memory is saturated),'
+                     ' solve this by lowering maximum number of Clifford')
 
 RB_exp.run(prog=qua_prog(baked_reference, N_shots=N_shots))
 P_00, Average_Error_per_Clifford = RB_exp.retrieve_results(stream_name_0="state0",

@@ -1,9 +1,8 @@
-from typing import Optional, List, Callable, Tuple, Union, Dict
+from typing import List, Callable, Tuple, Union, Dict
 import numpy as np
 from qualang_tools.bakery.bakery import baking, Baking
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm.QmJob import JobResults
 from copy import deepcopy
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
@@ -157,7 +156,7 @@ class RBTwoQubits:
                 tgt_seq = seq
         self.config = deepcopy(tgt_seq.mock_config)
         self.baked_reference = tgt_seq.baked_sequence
-        self.results = [[JobResults] * len(self.N_Clifford)] * N_sequences
+        self.results = []
         self.job_list = []
 
     def retrieve_truncations(self, seq, baked_reference, trunc_index):
@@ -186,6 +185,8 @@ class RBTwoQubits:
         print("Total number of circuits to be run:", len(self.sequences)*len(self.N_Clifford))
         for i, seq in enumerate(self.sequences):
             print("Running RB for sequence", i)
+            results_list = []
+            job_list = []
             for trunc_index in range(len(self.N_Clifford)):
                 print(f"Running sequence of {self.N_Clifford[trunc_index]} Cliffords")
                 print("Number of Cliffords", len(seq.full_sequence[trunc_index]), seq.full_sequence[trunc_index])
@@ -193,11 +194,12 @@ class RBTwoQubits:
                 truncated_wf = self.retrieve_truncations(seq, self.baked_reference, trunc_index)
                 pending_job = qm.queue.add_compiled(pid, overrides=truncated_wf)
                 job = pending_job.wait_for_execution()
-                self.job_list.append(job)
+                job_list.append(job)
                 results = job.result_handles
                 results.wait_for_all_values()
-                self.results[i][trunc_index] = results
-
+                results_list.append(results)
+            self.results.append(results_list)
+            self.job_list.append(job_list)
         self._experiment_completed = True
         print("Experiment done, results are available")
 
@@ -216,7 +218,8 @@ class RBTwoQubits:
                     assert len(results_q0) == N_shots, "Number of shots provided does not match the length of the streamed data"
                     for i in range(N_shots):
                         if results_q0[i] == 0 and results_q1[i] == 0:
-                            P_00[trunc] += 1 / (N_shots*self.N_sequences)
+                            P_00[trunc] += 1
+                P_00[trunc] /= N_shots * self.N_sequences
             self._P_00 = P_00
             xdata = self.N_Clifford  # depths
             ydata = P_00
@@ -315,17 +318,22 @@ class TwoQbRBSequence:
 
         return truncations_plus_inverse
 
-    def _writing_baked_wf(self, b: Baking, trunc) -> None:
+    def _writing_baked_wf(self, b: Baking, trunc: int) -> None:
+        """
+        Method to bake the waveform corresponding to the truncated random sequence
+        :param trunc: index of truncation of the longest sequence, shall be set to -1 if longest sequence
+        """
         q0, q1 = self.qubits[0], self.qubits[1]
-        for clifford in self.full_sequence[trunc]:
+        for clifford in self.full_sequence[trunc]:  # loop over Clifford ops in the truncated random sequence
             assert len(clifford[q0]) == len(clifford[q1])
-            for op0, op1 in zip(clifford[q0], clifford[q1]):
-                if len(op0) == len(op1):
+            for op0, op1 in zip(clifford[q0], clifford[q1]):  # loop over operations in Clifford (for both qubits)
+                if len(op0) == len(op1):  # If length is equal, simplify the writing of the op : case 1 is 2 qb gate
+                    # case 2 is two single qubit ops having the same number of gates
                     for opa, opb in zip(op0, op1):
-                        if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
+                        if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":  # Check if op is a two-qubit gate
                             assert opa == opb
                             self.two_qb_gate_macros[opa](b, q0, q1)
-                        else:
+                        else:  # Series of single qubit gates to be played
                             self.single_qb_macros[opa](b, q0)
                             self.single_qb_macros[opb](b, q1)
 
@@ -350,7 +358,9 @@ class TwoQbRBSequence:
 
     def retrieve_truncations(self, config: Dict, b_ref: Baking, trunc: int) -> Dict:
         """Generate truncated sequences compatible with waveform overriding for add_compiled feature. Config
-        is not updated by this method"""
+        is not updated by this method
+        :returns: Dictionary of waveforms compatible with override argument of add_compiled method
+        """
 
         with baking(config, padding_method="left", override=False,
                     baking_index=b_ref.get_baking_index()) as b_new:
@@ -359,16 +369,20 @@ class TwoQbRBSequence:
 
         return b_new.get_waveforms_dict()
 
-    def index_to_clifford(self, index) -> Clifford:
+    def index_to_clifford(self, index: int) -> Clifford:
         """
         Returns a dictionary with list of operations to be conducted to run the Clifford indicated by the index
         for each quantum element
+        :returns: Dictionary with keys associated to qubit 0 and qubit 1 and items corresponding to gate sequence
+            to play the Clifford operation
         """
-        clifford = {}
         q0 = self.qubits[0]
         q1 = self.qubits[1]
-        for qe in self.qubits:
-            clifford[qe] = []
+        clifford = {
+            q0: [],
+            q1: []
+        }
+
         if index < 576:
             # single qubit class
             q0c1, q1c1 = np.unravel_index(index, (24, 24))
@@ -414,13 +428,14 @@ class TwoQbRBSequence:
 
         return clifford
 
-    def clifford_to_unitary(self, gate_seq):
+    def clifford_to_unitary(self, gate_seq: Clifford):
         unitary: np.ndarray = np.eye(4)
         q0 = self.qubits[0]
         q1 = self.qubits[1]
         g0 = gate_seq[q0]
         g1 = gate_seq[q1]
-        assert len(g0) == len(g1), f"Clifford not correctly built, length on q0 ({len(g0)}) != length on q1 ({len(g1)})"
+        assert len(g0) == len(g1), f"Clifford not correctly built, length on qubit 0 ({len(g0)}) != length " \
+                                   f"on qubit 1 ({len(g1)})"
         for c0, c1 in zip(g0, g1):
             if len(c0) == len(c1):
                 for opa, opb in zip(c0, c1):
