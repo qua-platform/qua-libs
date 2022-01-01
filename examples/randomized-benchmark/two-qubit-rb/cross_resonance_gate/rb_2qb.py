@@ -6,7 +6,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from copy import deepcopy
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-
+import pandas as pd
 size_c2 = 11520
 Clifford = Dict[str, List[Tuple]]
 
@@ -59,8 +59,10 @@ _s1y2_ops = [
     ('-X/2', '-Y/2', 'X/2')
 ]
 
-ld = np.load('c2_unitaries.npz')
+ld = np.load('c2_unitaries_ZX.npz')
 c2_unitaries = ld['arr_0']
+c2_table = pd.read_csv("cayley_table.csv").to_numpy()[:, 1:]
+c2_inverse_list = pd.read_csv("inverse_index_list.csv").to_numpy()[:, 1:]
 
 
 class RBTwoQubits:
@@ -82,9 +84,9 @@ class RBTwoQubits:
         more efficiently from the original baked waveform using the add_compiled feature of the QM API.
 
         The user is expected to provide macros for two qubit Clifford generators (CNOT, iSWAP and SWAP) based on their
-        own set of native gates, as well as macros for single qubit Clifford generators (I, X, Y , Y/2, -Y/2, X/2, -X/2
+        own set of native gates, as well as macros for single qubit Clifford generators (I, X, Y , Y/2, -Y/2, X/2, -X/2)
         Additional parameters can be provided such as truncation positions, and a random seed.
-        Protocol can played by using the method run()
+        Protocol can be played by using the method run()
 
 
         :param qmm: QuantumMachinesManager instance
@@ -124,11 +126,12 @@ class RBTwoQubits:
             self.N_Clifford = list_truncations
 
         # Check if macros dictionary contain all required gates
-        assert len(two_qb_gate_baking_macros.keys()) == 3, f"{len(two_qb_gate_baking_macros.keys())} provided " \
-                                                           f"instead of 3 (CNOT, SWAP and iSWAP)"
-        assert "CNOT" in two_qb_gate_baking_macros, "CNOT key not found"
-        assert "SWAP" in two_qb_gate_baking_macros, "SWAP key not found"
-        assert "iSWAP" in two_qb_gate_baking_macros, "iSWAP key not found"
+        # assert len(two_qb_gate_baking_macros.keys()) == 3, f"{len(two_qb_gate_baking_macros.keys())} provided " \
+        #                                                    f"instead of 3 (CNOT, SWAP and iSWAP)"
+        # assert "CNOT" in two_qb_gate_baking_macros, "CNOT key not found"
+        # assert "SWAP" in two_qb_gate_baking_macros, "SWAP key not found"
+        # assert "iSWAP" in two_qb_gate_baking_macros, "iSWAP key not found"
+        assert "-ZX_pi_over_2" in two_qb_gate_baking_macros, "-ZX_pi_over_2 key not found"
 
         assert len(single_qb_macros.keys()) == 7
         assert "I" in single_qb_macros, "I key not found"
@@ -182,7 +185,7 @@ class RBTwoQubits:
         pid = qm.compile(prog)
         print("Total number of sequences:", len(self.sequences))
         print("Total number of truncations:", len(self.N_Clifford))
-        print("Total number of circuits to be run:", len(self.sequences)*len(self.N_Clifford))
+        print("Total number of circuits to be run:", len(self.sequences) * len(self.N_Clifford))
         for i, seq in enumerate(self.sequences):
             print("Running RB for sequence", i)
             results_list = []
@@ -200,6 +203,7 @@ class RBTwoQubits:
                 results_list.append(results)
             self.results.append(results_list)
             self.job_list.append(job_list)
+
         self._experiment_completed = True
         print("Experiment done, results are available")
 
@@ -215,7 +219,8 @@ class RBTwoQubits:
                     results_q0 = self.results[seq][trunc].get(name=stream_name_0).fetch_all()['value']
                     results_q1 = self.results[seq][trunc].get(name=stream_name_1).fetch_all()['value']
                     assert len(results_q0) == len(results_q1), "The two streams provided do not have the same length"
-                    assert len(results_q0) == N_shots, "Number of shots provided does not match the length of the streamed data"
+                    assert len(
+                        results_q0) == N_shots, "Number of shots provided does not match length of the streamed data"
                     for i in range(N_shots):
                         if results_q0[i] == 0 and results_q1[i] == 0:
                             P_00[trunc] += 1
@@ -249,17 +254,17 @@ class RBTwoQubits:
             ydata = np.array(self._P_00)
             plt.figure()
             plt.plot(xdata, ydata, 'x')
-            plt.plot(xdata, self.A + self.B * self.alpha**xdata)
+            plt.plot(xdata, self.A + self.B * self.alpha ** xdata)
             plt.xlabel("Number of Clifford operations")
             plt.ylabel("Average |00> state fidelity")
 
         else:
             raise NotImplementedError("Plotting not possible: Experiment not completed "
                                       "or method to retrieve results not called")
-        
+
     def retrieve_average_error_gate(self):
         N_gates_per_Clifford = 3
-        return 3*(1.0 - self.alpha)/(4 * N_gates_per_Clifford)
+        return 3 * (1.0 - self.alpha) / (4 * N_gates_per_Clifford)
 
 
 class TwoQbRBSequence:
@@ -285,6 +290,7 @@ class TwoQbRBSequence:
         self.full_sequence = self.generate_RB_sequence()
         self.baked_sequence = self._generate_baked_sequence()
         self.sequence_length = self.baked_sequence.get_op_length()
+        # self._generate_cayley_table()
 
     def generate_RB_sequence(self) -> List[List[Clifford]]:
         """
@@ -297,43 +303,62 @@ class TwoQbRBSequence:
         """
 
         # generate total sequence:
-        main_seq = [self.index_to_clifford(index)
-                    # List of dictionaries (one key per qe) containing sequences for each Clifford)
-                    for index in np.random.randint(low=0, high=size_c2, size=self.d_max)]
+        main_indices = [i for i in np.random.randint(low=0, high=size_c2, size=self.d_max)]
+        main_seq = [self.index_to_clifford(i) for i in main_indices]
+        # List of dictionaries (one key per qe) containing sequences for each Clifford
         main_seq_unitaries = [self.clifford_to_unitary(seq) for seq in main_seq]  # Unitaries to find inverse op
         truncations_plus_inverse = []
 
         # generate truncations:
         for pos in self.truncations_positions:
-            trunc = main_seq[:pos+1]
-            trunc_unitary = main_seq_unitaries[:pos+1]
+            trunc = main_seq[:pos + 1]
+            trunc_unitary = main_seq_unitaries[:pos + 1]
             trunc_unitary_prod = np.eye(4)
             for unitary in trunc_unitary:
                 trunc_unitary_prod = unitary @ trunc_unitary_prod
+            # print("Final unitary", np.round(trunc_unitary_prod,5))
+            # print("Final Clifford", self.index_to_clifford(unitary_to_index(trunc_unitary_prod)))
             inverse_unitary = trunc_unitary_prod.conj().T
-            assert np.round(trunc_unitary_prod @ inverse_unitary, 6).all() == np.eye(4).all()
+            assert np.array_equal(np.round(trunc_unitary_prod @ inverse_unitary, 6), np.eye(4))
             inverse_clifford = self.index_to_clifford(unitary_to_index(inverse_unitary))
             trunc.append(inverse_clifford)
+            # print("Inverse Clifford operation:", inverse_clifford)
+            # print("Inverse unitary:", np.round(inverse_unitary,5))
             truncations_plus_inverse.append(trunc)
 
         return truncations_plus_inverse
 
+    def generate_RB_sequence_2(self) -> List[List[Clifford]]:
+
+        truncations_plus_inverse = []
+        state_tracker = [0] * self.d_max
+        main_seq = np.random.randint(low=0, high=11520, size=self.d_max)
+        for d in range(self.d_max):
+            i = main_seq[d]
+            if d == 0:
+                state_tracker[d] = c2_table[d][i]
+            else:
+                state_tracker[d] = c2_table[d-1][i]
+
+        for pos in self.truncations_positions:
+            trunc = main_seq[: pos+1]
+            inverse_op = c2_inverse_list[state_tracker[pos+1]]
+            trunc.append(inverse_op)
+            truncations_plus_inverse.append([self.index_to_clifford(i) for i in trunc])
+
+        return truncations_plus_inverse
+
     def _writing_baked_wf(self, b: Baking, trunc: int) -> None:
-        """
-        Method to bake the waveform corresponding to the truncated random sequence
-        :param trunc: index of truncation of the longest sequence, shall be set to -1 if longest sequence
-        """
         q0, q1 = self.qubits[0], self.qubits[1]
-        for clifford in self.full_sequence[trunc]:  # loop over Clifford ops in the truncated random sequence
+        for clifford in self.full_sequence[trunc]:
             assert len(clifford[q0]) == len(clifford[q1])
-            for op0, op1 in zip(clifford[q0], clifford[q1]):  # loop over operations in Clifford (for both qubits)
-                if len(op0) == len(op1):  # If length is equal, simplify the writing of the op : case 1 is 2 qb gate
-                    # case 2 is two single qubit ops having the same number of gates
+            for op0, op1 in zip(clifford[q0], clifford[q1]):
+                if len(op0) == len(op1):
                     for opa, opb in zip(op0, op1):
-                        if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":  # Check if op is a two-qubit gate
+                        if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP" or opa == "-ZX_pi_over_2":
                             assert opa == opb
                             self.two_qb_gate_macros[opa](b, q0, q1)
-                        else:  # Series of single qubit gates to be played
+                        else:
                             self.single_qb_macros[opa](b, q0)
                             self.single_qb_macros[opb](b, q1)
 
@@ -347,9 +372,9 @@ class TwoQbRBSequence:
         """
         Generates the longest sequence desired with its associated inverse operation.
         The resulting baking object is the reference for overriding baked waveforms that are used for
-        truncations, i.e for shorter sequences. Config is updated with this method
+        truncations, i.e. for shorter sequences. Config is updated with this method
 
-        :returns: Baking object containing RB sequence of longest size
+        :returns: Baking object containing RB sequence of the longest size
         """
         with baking(self.mock_config, padding_method="left", override=True) as b:
             self._writing_baked_wf(b, -1)
@@ -376,13 +401,14 @@ class TwoQbRBSequence:
         :returns: Dictionary with keys associated to qubit 0 and qubit 1 and items corresponding to gate sequence
             to play the Clifford operation
         """
+
         q0 = self.qubits[0]
         q1 = self.qubits[1]
         clifford = {
+            "index": index,
             q0: [],
             q1: []
         }
-
         if index < 576:
             # single qubit class
             q0c1, q1c1 = np.unravel_index(index, (24, 24))
@@ -396,8 +422,8 @@ class TwoQbRBSequence:
             clifford[q0].append(_c1_ops[q0c1])
             clifford[q1].append(_c1_ops[q1c1])
 
-            clifford[q0].append(("CNOT",))
-            clifford[q1].append(("CNOT",))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
 
             clifford[q0].append(_s1_ops[q0s1])
             clifford[q1].append(_s1y2_ops[q1s1y2])
@@ -409,8 +435,12 @@ class TwoQbRBSequence:
             clifford[q0].append(_c1_ops[q0c1])
             clifford[q1].append(_c1_ops[q1c1])
 
-            clifford[q0].append(("iSWAP",))
-            clifford[q1].append(("iSWAP",))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
+            clifford[q0].append(("-Y/2",))
+            clifford[q1].append(("-Y/2",))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
 
             clifford[q0].append(_s1y2_ops[q0s1y2])
             clifford[q1].append(_s1x2_ops[q1s1x2])
@@ -423,8 +453,16 @@ class TwoQbRBSequence:
             clifford[q0].append(_c1_ops[q0c1])
             clifford[q1].append(_c1_ops[q1c1])
 
-            clifford[q0].append(("SWAP",))
-            clifford[q1].append(("SWAP",))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
+            clifford[q0].append(("-Y/2",))
+            clifford[q1].append(("-Y/2",))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
+            clifford[q0].append(("X/2",))
+            clifford[q1].append(("X/2", "-Y/2"))
+            clifford[q0].append(("-ZX_pi_over_2",))
+            clifford[q1].append(("-ZX_pi_over_2",))
 
         return clifford
 
@@ -434,14 +472,15 @@ class TwoQbRBSequence:
         q1 = self.qubits[1]
         g0 = gate_seq[q0]
         g1 = gate_seq[q1]
-        assert len(g0) == len(g1), f"Clifford not correctly built, length on qubit 0 ({len(g0)}) != length " \
-                                   f"on qubit 1 ({len(g1)})"
+        assert len(g0) == len(g1), f"Clifford not correctly built, length on qubit 0 ({len(g0)}) != length on qubit 1" \
+                                   f" ({len(g1)})"
         for c0, c1 in zip(g0, g1):
             if len(c0) == len(c1):
                 for opa, opb in zip(c0, c1):
-                    if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP":
+                    if opa == "CNOT" or opa == "SWAP" or opa == "iSWAP" or opa == "-ZX_pi_over_2":
                         assert opa == opb, f"Two qubit gate does not involve the two elements: " \
                                            f"op for qubit 1 {opa} does not match op for qubit 2 {opb}"
+
                         unitary = gate_unitaries[opa] @ unitary
                     else:
                         unitary = np.kron(gate_unitaries[opa], gate_unitaries[opb]) @ unitary
@@ -452,6 +491,32 @@ class TwoQbRBSequence:
                 for opb in c1:
                     unitary = np.kron(np.eye(2), gate_unitaries[opb]) @ unitary
         return unitary
+
+    def _generate_cayley_table(self):
+        cayley_table = np.zeros((11520, 11520))
+        inverse_index_list = np.zeros(11520)
+        inverse_Clifford_list = [None] * 11520
+        for i in range(11520):
+            for j in range(11520):
+                Cliff0, Cliff1 = self.index_to_clifford(i), self.index_to_clifford(j)
+                Unit0, Unit1 = self.clifford_to_unitary(Cliff0), self.clifford_to_unitary(Cliff1)
+                # print("Unit0")
+                # print(Unit0)
+                # print("Unit1")
+                # print(Unit1)
+                # print("Composition")
+                # print(np.round(Unit1@Unit0, 4))
+                cayley_table[i][j] = unitary_to_index(Unit1 @ Unit0)
+                print(i, j)
+                if np.array_equal(np.round(Unit1 @ Unit0, 4), np.eye(4)):
+                    print("Found inverse!", i, j, cayley_table[i][j])
+                if cayley_table[i][j] == 0:
+                    print(np.round(Unit1 @ Unit0, 4))
+                    assert np.array_equal(1/np.round(Unit1 @ Unit0, 4)[0][0]*np.round(Unit1 @ Unit0, 4), np.eye(4))
+                    inverse_index_list[i] = j
+                    inverse_Clifford_list[i] = self.index_to_clifford(j)
+        np.savetxt("cayley_table.csv", cayley_table, delimiter=',')
+        np.savetxt('inverse_index_list.csv', inverse_index_list, delimiter=',')
 
 
 gate_unitaries = {
@@ -465,21 +530,25 @@ gate_unitaries = {
     'Y/2': 1 / np.sqrt(2) * np.array([[1., -1.],
                                       [1., 1.]]),
     '-X/2': 1 / np.sqrt(2) * np.array([[1., 1j],
-                                      [1j, 1.]]),
+                                       [1j, 1.]]),
     '-Y/2': 1 / np.sqrt(2) * np.array([[1., 1.],
-                                      [-1., 1.]]),
+                                       [-1., 1.]]),
     'CNOT': np.array([[1., 0., 0., 0.],
-                     [0., 1., 0., 0.],
-                     [0., 0., 0., 1.],
-                     [0., 0., 1., 0.]]),
+                      [0., 1., 0., 0.],
+                      [0., 0., 0., 1.],
+                      [0., 0., 1., 0.]]),
     'SWAP': np.array([[1., 0., 0., 0.],
-                     [0., 0., 1., 0.],
-                     [0., 1., 0., 0.],
-                     [0., 0., 0., 1.]]),
+                      [0., 0., 1., 0.],
+                      [0., 1., 0., 0.],
+                      [0., 0., 0., 1.]]),
     'iSWAP': np.array([[1., 0., 0., 0.],
-                      [0., 0., 1j, 0.],
-                      [0., 1j, 0., 0.],
-                      [0., 0., 0., 1.]])
+                       [0., 0., 1j, 0.],
+                       [0., 1j, 0., 0.],
+                       [0., 0., 0., 1.]]),
+    '-ZX_pi_over_2': 1 / np.sqrt(2) * np.array([[1., 1j, 0., 0.],
+                                                [1j, 1., 0., 0.],
+                                                [0., 0., 1., -1j],
+                                                [0., 0., -1j, 1.]])
 }
 
 

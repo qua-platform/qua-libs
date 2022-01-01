@@ -214,7 +214,7 @@ def qua_prog(b_seq: Baking, N_shots: int):
 # Define here parameters characterizing the experiment (number of operations to be played, number of random sequence to
 # be played)
 
-n_max = 175  # Maximum length of random sequence, i.e maximum number of Clifford composing sequence
+n_max = 175  # Maximum length of random sequence, i.e. maximum number of Clifford composing sequence
 step = 10
 nCliffords = range(1, n_max, step)  # Specify all truncations you want to generate to realize the fitting
 N_sequences = 5
