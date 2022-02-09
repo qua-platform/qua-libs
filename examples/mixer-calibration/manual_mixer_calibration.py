@@ -10,6 +10,12 @@ from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
 
+def IQ_imbalance(g, phi):
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1-g**2)*(2*c**2-1))
+    return [float(N * x) for x in [(1-g)*c, (1+g)*s, (1-g)*s, (1+g)*c]]
+
 qmm = QuantumMachinesManager()
 qm1 = qmm.open_qm(config)
 
@@ -31,7 +37,7 @@ else:
 # These are the 3 commands used to correct for mixer imperfections. The first two commands are used to set the DC of the
 # I, Q channels to compensate for the LO leakage. The last command is used to correct for the phase and amplitude
 # mismatches between the channels.
-# The output if the IQ Mixer should be connected to a spectrum analyzer and values should be chosen as to minimize the
+# The output of the IQ Mixer should be connected to a spectrum analyzer and values should be chosen as to minimize the
 # unwanted peaks.
 # If python can read the output of the spectrum analyzer, then this process can be automated and the correct values can
 # found using an optimization method such as Nelder-Mead:
