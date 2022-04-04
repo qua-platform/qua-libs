@@ -1,3 +1,5 @@
+pulse_duration = 4e5
+
 config = {
     "version": 1,
     "controllers": {
@@ -6,21 +8,11 @@ config = {
             "analog_outputs": {
                 1: {"offset": +0.0},
             },
-            "digital_outputs": {
-                1: {}
-            },
         }
     },
     "elements": {
         "qe1": {
             "singleInput": {"port": ("con1", 1)},
-            "digitalInputs": {
-                "digital_input1": {
-                    "port": ("con1", 1),
-                    "delay": 0,
-                    "buffer": 0,
-                },
-            },
             "intermediate_frequency": 5e6,
             "operations": {
                 "const": "constPulse",
@@ -30,11 +22,11 @@ config = {
     "pulses": {
         "constPulse": {
             "operation": "control",
-            "length": 1000,  # in ns
+            "length": pulse_duration,  # in ns
             "waveforms": {"single": "const_wf"},
-        }
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
-    }
+    },
 }

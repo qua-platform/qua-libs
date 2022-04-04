@@ -7,7 +7,7 @@ id: index
 
 A pulse with continuously changing frequency is called a 
 _chirped_ pulse. Details on how this feature is implemented can be found in the 
-QUA docs. 
+[QUA docs](https://qm-docs.qualang.io/guides/features#frequency-chirp). 
 
 In this example, we show a simple usage of the `chirp` keyword 
 in the `play` statement to sweep the frequency at a uniform rate (of 3kHz/nsec).
