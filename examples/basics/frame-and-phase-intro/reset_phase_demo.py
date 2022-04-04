@@ -2,6 +2,8 @@
 reset_phase_demo.py:
 Author: Gal Winer - Quantum Machines
 Created: 8/11/2020
+Revised by Tomer Feld - Quantum Machines
+Revision date: 04/04/2022
 Created on QUA version: 0.5.138
 """
 
@@ -10,43 +12,12 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import numpy as np
+from configuration import *
 from scipy.optimize import leastsq
 
-config = {
-    "version": 1,
-    "controllers": {
-        "con1": {
-            "type": "opx1",
-            "analog_outputs": {
-                1: {"offset": +0.0},
-            },
-        }
-    },
-    "elements": {
-        "qubit": {
-            "singleInput": {"port": ("con1", 1)},
-            "intermediate_frequency": 1.7e6,
-            "operations": {
-                "const": "constPulse",
-            },
-        },
-    },
-    "pulses": {
-        "constPulse": {
-            "operation": "control",
-            "length": 1000,  # in ns
-            "waveforms": {"single": "const_wf"},
-        },
-    },
-    "waveforms": {
-        "const_wf": {"type": "constant", "sample": 0.2},
-    },
-}
-QMm = QuantumMachinesManager()
+qmm = QuantumMachinesManager()
 
 # Create a quantum machine based on the configuration.
-
-QM1 = QMm.open_qm(config)
 
 with program() as no_reset_ph:
     # This program plays the same pulse twice with 200ns in between.
@@ -66,8 +37,8 @@ with program() as reset_ph_and_rotate:
     # and shifted by pi/2.
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
-    reset_phase("qubit")
-    frame_rotation(np.pi / 2, "qubit")
+    # reset_phase("qubit")
+    frame_rotation_2pi(0.5, "qubit")
     play("const", "qubit")
 
 with program() as reset_both_ph_and_rotate:
@@ -81,7 +52,7 @@ with program() as reset_both_ph_and_rotate:
     play("const", "qubit")
 
 # Simulate 1st program
-job = QM1.simulate(no_reset_ph, SimulationConfig(int(800)))
+job = qmm.simulate(config,no_reset_ph, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 
 # This creates the reference sin wave according to the 1st pulse. It is made in this manner because the exact timing
@@ -106,7 +77,7 @@ plt.legend(("Reference", "Output"))
 plt.title("Pulse - 200ns - Pulse. 1st pulse is arbitrary, 2nd pulse has same phase")
 
 # Simulate 2nd program
-job = QM1.simulate(reset_ph, SimulationConfig(int(800)))
+job = qmm.simulate(config,reset_ph, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(412, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")
@@ -121,7 +92,7 @@ plt.title(
 )
 
 # Simulate 3rd program
-job = QM1.simulate(reset_ph_and_rotate, SimulationConfig(int(800)))
+job = qmm.simulate(config,reset_ph_and_rotate, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(413, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")
@@ -136,7 +107,7 @@ plt.title(
 )
 
 # Simulate 4rd program
-job = QM1.simulate(reset_both_ph_and_rotate, SimulationConfig(int(800)))
+job = qmm.simulate(config,reset_both_ph_and_rotate, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(414, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")
