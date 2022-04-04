@@ -5,8 +5,10 @@ slug: ./
 id: index
 ---
 
-This example shows basic usage of streams and stream processing. The program consists of a 
-for-loop which populates `stream1` with integers between 0 and 99 and `stream2` with random integers.
+This example shows basic usage of streams and stream processing. Read more on the stream processing and 
+it's capabilities in the [QUA docs](https://qm-docs.qualang.io/guides/stream_proc).
+
+The program consists of a for-loop which populates `stream1` with integers between 0 and 99 and `stream2` with random integers.
 So, if you didn't know QUA has a pseudo-random number generator, now you know. 
 
 ```python
@@ -31,6 +33,7 @@ manipulations on the same stream and save the result to different tags ("names")
         stream2.zip(stream1).save_all('zipped_streams') #two streams are combined into a vector of tuples. like the python zip function.
 ```
 
+Feel free to explore the results and see that they make sense to you!
 
 
 [download script](intro-to-streams.py)
