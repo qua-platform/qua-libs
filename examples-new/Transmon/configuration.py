@@ -38,16 +38,17 @@ gauss_sigma = gauss_len / 5
 gauss_amp = 0.35
 gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
-pi_len = 40
-pi_sigma = pi_len / 5
-pi_amp = 0.35
-pi_wf, pi_drag_wf = np.array(drag_gaussian_pulse_waveforms(pi_amp, pi_len, pi_sigma, alpha=0, delta=1))  # No DRAG when alpha=0
+x180_len = 40
+x180_sigma = x180_len / 5
+x180_amp = 0.35
+x180_drag_wf, x180_drag_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
 
-pi_half_len = pi_len
-pi_half_sigma = pi_half_len / 5
-pi_half_amp = pi_amp / 2
-pi_half_wf, pi_half_drag_wf = np.array(drag_gaussian_pulse_waveforms(pi_half_amp, pi_half_len, pi_half_sigma, alpha=0, delta=1))  # No DRAG when alpha=0
-
+x90_len = x180_len
+x90_sigma = x90_len / 5
+x90_amp = x180_amp / 2
+x90_drag_wf, x90_drag_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
 resonator_IF = 60e6
@@ -65,7 +66,7 @@ long_readout_len = 50000
 long_readout_amp = 0.1
 
 # IQ Plane Angle
-rotation_angle = (0.0/180) * np.pi
+rotation_angle = (0.0/180) * np.x180
 
 config = {
     'version': 1,
@@ -98,8 +99,8 @@ config = {
                 'cw': 'const_pulse',
                 'saturation': 'saturation_pulse',
                 'gauss': 'gaussian_pulse',
-                'pi': 'pi_pulse',
-                'pi_half': 'pi_half_pulse',
+                'x180': 'x180_pulse',
+                'x90': 'x90_pulse',
             },
         },
         'resonator': {
@@ -149,20 +150,20 @@ config = {
                 'Q': 'zero_wf',
             },
         },
-        'pi_pulse': {
+        'x180_pulse': {
             'operation': 'control',
-            'length': pi_len,
+            'length': x180_len,
             'waveforms': {
-                'I': 'pi_wf',
-                'Q': 'pi_drag_wf',
+                'I': 'x180_drag_wf',
+                'Q': 'x180_drag_der_wf',
             },
         },
-        'pi_half_pulse': {
+        'x90_pulse': {
             'operation': 'control',
-            'length': pi_half_len,
+            'length': x90_len,
             'waveforms': {
-                'I': 'pi_half_wf',
-                'Q': 'pi_drag_half_wf',
+                'I': 'x90_drag_wf',
+                'Q': 'x90_drag_wf',
             },
         },
         'short_readout_pulse': {
@@ -176,6 +177,9 @@ config = {
                 'cos': 'short_cosine_weights',
                 'sin': 'short_sine_weights',
                 'minus_sin': 'short_minus_sine_weights',
+                'rotated_cos': 'short_rotated_cosine_weights',
+                'rotated_sin': 'short_rotated_sine_weights',
+                'rotated_minus_sin': 'short_rotated_minus_sine_weights',
             },
             'digital_marker': 'ON',
         },
@@ -190,6 +194,9 @@ config = {
                 'cos': 'cosine_weights',
                 'sin': 'sine_weights',
                 'minus_sin': 'minus_sine_weights',
+                'rotated_cos': 'rotated_cosine_weights',
+                'rotated_sin': 'rotated_sine_weights',
+                'rotated_minus_sin': 'rotated_minus_sine_weights',
             },
             'digital_marker': 'ON',
         },
@@ -204,6 +211,9 @@ config = {
                 'cos': 'long_cosine_weights',
                 'sin': 'long_sine_weights',
                 'minus_sin': 'long_minus_sine_weights',
+                'rotated_cos': 'long_rotated_cosine_weights',
+                'rotated_sin': 'long_rotated_sine_weights',
+                'rotated_minus_sin': 'long_rotated_minus_sine_weights',
             },
             'digital_marker': 'ON',
         },
@@ -214,10 +224,10 @@ config = {
         'saturation_drive_wf': {'type': 'constant', 'sample': saturation_amp},
         'zero_wf': {'type': 'constant', 'sample': 0.0},
         'gauss_wf': {'type': 'arbitrary', 'samples': gauss_wf.tolist()},
-        'pi_wf': {'type': 'arbitrary', 'samples': pi_wf.tolist()},
-        'pi_drag_wf': {'type': 'arbitrary', 'samples': pi_drag_wf.tolist()},
-        'pi_half_wf': {'type': 'arbitrary', 'samples': pi_half_wf.tolist()},
-        'pi_half_drag_wf': {'type': 'arbitrary', 'samples': pi_half_drag_wf.tolist()},
+        'x180_drag_wf': {'type': 'arbitrary', 'samples': x180_drag_wf.tolist()},
+        'x180_drag_der_wf': {'type': 'arbitrary', 'samples': x180_drag_der_wf.tolist()},
+        'x90_drag_wf': {'type': 'arbitrary', 'samples': x90_drag_wf.tolist()},
+        'x90_drag_der_wf': {'type': 'arbitrary', 'samples': x90_drag_der_wf.tolist()},
         'short_readout_wf': {'type': 'constant', 'sample': short_readout_amp},
         'readout_wf': {'type': 'constant', 'sample': readout_amp},
         'long_readout_wf': {'type': 'constant', 'sample': long_readout_amp},
@@ -240,6 +250,18 @@ config = {
             'cosine': [(0.0, short_readout_len)],
             'sine': [(-1.0, short_readout_len)],
         },
+        'short_rotated_cosine_weights': {
+            'cosine': [(np.cos(rotation_angle), short_readout_len)],
+            'sine': [(-np.sin(rotation_angle), short_readout_len)],
+        },
+        'short_rotated_sine_weights': {
+            'cosine': [(np.sin(rotation_angle), short_readout_len)],
+            'sine': [(np.cos(rotation_angle), short_readout_len)],
+        },
+        'short_rotated_minus_sine_weights': {
+            'cosine': [(-np.sin(rotation_angle), short_readout_len)],
+            'sine': [(-np.cos(rotation_angle), short_readout_len)],
+        },
         'cosine_weights': {
             'cosine': [(1.0, readout_len)],
             'sine': [(0.0, readout_len)],
@@ -252,6 +274,18 @@ config = {
             'cosine': [(0.0, readout_len)],
             'sine': [(-1.0, readout_len)],
         },
+        'rotated_cosine_weights': {
+            'cosine': [(np.cos(rotation_angle), readout_len)],
+            'sine': [(-np.sin(rotation_angle), readout_len)],
+        },
+        'rotated_sine_weights': {
+            'cosine': [(np.sin(rotation_angle), readout_len)],
+            'sine': [(np.cos(rotation_angle), readout_len)],
+        },
+        'rotated_minus_sine_weights': {
+            'cosine': [(-np.sin(rotation_angle), readout_len)],
+            'sine': [(-np.cos(rotation_angle), readout_len)],
+        },
         'long_cosine_weights': {
             'cosine': [(1.0, long_readout_len)],
             'sine': [(0.0, long_readout_len)],
@@ -263,6 +297,18 @@ config = {
         'long_minus_sine_weights': {
             'cosine': [(0.0, long_readout_len)],
             'sine': [(-1.0, long_readout_len)],
+        },
+        'long_rotated_cosine_weights': {
+            'cosine': [(np.cos(rotation_angle), long_readout_len)],
+            'sine': [(-np.sin(rotation_angle), long_readout_len)],
+        },
+        'long_rotated_sine_weights': {
+            'cosine': [(np.sin(rotation_angle), long_readout_len)],
+            'sine': [(np.cos(rotation_angle), long_readout_len)],
+        },
+        'long_rotated_minus_sine_weights': {
+            'cosine': [(-np.sin(rotation_angle), long_readout_len)],
+            'sine': [(-np.cos(rotation_angle), long_readout_len)],
         },
     },
     'mixers': {
