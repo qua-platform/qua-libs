@@ -13,7 +13,7 @@ from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 
 # Open communication with the server.
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(host='127.0.0.1',port=9510)
 
 with program() as measureProg:
     ind = declare(int)

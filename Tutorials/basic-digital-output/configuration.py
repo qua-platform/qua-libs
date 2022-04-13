@@ -2,7 +2,6 @@ config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "type": "opx1",
             "analog_outputs": {
                 1: {"offset": +0.0},
             },

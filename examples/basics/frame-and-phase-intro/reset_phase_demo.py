@@ -15,7 +15,7 @@ import numpy as np
 from configuration import *
 from scipy.optimize import leastsq
 
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(port=9510)
 
 # Create a quantum machine based on the configuration.
 
@@ -37,8 +37,8 @@ with program() as reset_ph_and_rotate:
     # and shifted by pi/2.
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
-    # reset_phase("qubit")
-    frame_rotation_2pi(0.5, "qubit")
+    reset_phase("qubit")
+    frame_rotation_2pi(-0.25, "qubit")
     play("const", "qubit")
 
 with program() as reset_both_ph_and_rotate:
@@ -48,7 +48,7 @@ with program() as reset_both_ph_and_rotate:
     play("const", "qubit")
     wait(50, "qubit")  # 50 cycles = 200 ns
     reset_phase("qubit")
-    frame_rotation(np.pi / 2, "qubit")
+    frame_rotation_2pi(-0.25, "qubit")
     play("const", "qubit")
 
 # Simulate 1st program
