@@ -20,7 +20,7 @@ The device consist of a single Transmon qubit coupled to a multimode 3D resonato
 The calibration of the macro consist of three steps -
 1) Time-domain Ramsey. In this step we are using the method `time_domain_ramesy_full_sweep(self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False)` to perform a Ramsey mesurement in the time domain. The probablity to measure the qubit in the excited state (as a function of tau) is:
 
-<img src="https://latex.codecogs.com/svg.latex?\Large&space;\mathcal{P}_e(\tau)\sim A\exp\left(-\frac{\tau}{T_{2}}\right)\left(\frac{1+\cos\text{(2\ensuremath{\pi}\ensuremath{\Delta}\ensuremath{\tau}+\ensuremath{\phi})}}{2}\right)" />
+https://latex.codecogs.com/svg.image?\mathcal{P}(e)\sim&space;A\exp\left(-\frac{\tau}{T_{2}}\right)\left(\frac{1&plus;\cos\text{(2\ensuremath{\pi}\ensuremath{\Delta}\ensuremath{\tau}&plus;\ensuremath{\phi})}}{2}\right)&space;
 
 The parameter Delta is the oscillations frequency in the time-domain, and it is the shift of the drive from the real resonance frquency of the qubit (assuming the frequency of the qubit to be constant during the time-domain ramsey). Since we are introducing a shift of `f_ref` WRT to resonance, so we expect the first peak to be found at `1/tau` (red dot in the plot below). However, because the resonance frequency of the qubit drifted by the time we started the measurement, the osscilation frequency is `f_ref+f_drift'. Thus, the red dot is not located exactly on the first peak:
 
