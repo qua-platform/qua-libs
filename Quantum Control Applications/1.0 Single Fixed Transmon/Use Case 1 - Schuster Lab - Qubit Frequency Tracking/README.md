@@ -60,13 +60,7 @@ Assuming small drifts we can take a Taylor series of the sinus and get the gain 
 
 <img src="https://latex.codecogs.com/svg.image?d=\Delta&space;P/2\pi&space;A\tau_{0}" />
 
-Finally, in order to show that the two-point-ramsy method is actually working, we looped for ~2 hours over a TD ramsey W/O and W correction for drifts (see code below):
-
-`freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_ref', False)
- freq_track_obj.two_points_ramsey()
- freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_corr', True)`
-
-and here are the results
+Finally, in order to show that the two-point-ramsy method is actually working, we looped for ~2 hours over a TD ramsey W/O and W correction for drifts. Here are the results
 
 ![active_frequency_tracking.PNG](active_frequency_tracking.PNG)
 
