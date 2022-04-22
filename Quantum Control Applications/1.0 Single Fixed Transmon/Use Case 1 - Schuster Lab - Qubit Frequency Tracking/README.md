@@ -54,7 +54,7 @@ In order to analyze the data we used the method `freq_domain_ramsey_full_sweep_a
 
 In this step we are using the `two_points_ramsey(self)` method in order to actively track and correct in real-time for the frequency drift of the qubit. Our error signal is based on the difference between two points in the FD Ramsey that are ceneterd around the resonance frequency of the qubit (see the two red stars in the figure above). We chose the points to be detuned from resonace in `+-(1/4)*f_ref', in order to have the highest sensitivity to frequency drifts. In the equation below we are calculating the drift (d) as a function of the error signal (delta P):
 
-<img src="\mathcal{P}_{e}(+\delta+d)-\mathcal{P}_{e}(-\delta+d)=-A\sin\left(\underbrace{2\ensuremath{\pi}\ensuremath{\frac{\delta}{f_{ref}}}}_{\pi/2}\right)\sin\left(2\ensuremath{\pi}\ensuremath{\frac{d}{f_{ref}}}\right)" />
+<img src="https://latex.codecogs.com/svg.image?\mathcal{P}_{e}(&plus;\delta&plus;drift)-\mathcal{P}_{e}(-\delta&plus;drift)=-A\sin\left(\underbrace{2\ensuremath{\pi}\ensuremath{\frac{\delta}{f_{ref}}}}_{\pi/2}\right)\sin\left(2\ensuremath{\pi}\ensuremath{\frac{drift}{f_{ref}}}\right)" />
 
 Assuming small drifts we can take a Taylor series of the sinus and get the gain factor for the active correction
 
@@ -68,7 +68,7 @@ Finally, in order to show that the two-point-ramsy method is actually working, w
     freq_track_obj.two_points_ramsey()
     freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_corr', True)`
 
-We looped for ~2 hours over a TD ramsey W/O and W correction for drifts (see figure below).We can see that with the active feedback the qubit frequency is stable! 
+We looped for ~2 hours over a TD ramsey W/O and W correction for drifts (see figure below). We can see that with the active feedback the qubit frequency is stable! 
 
 ![active_frequency_tracking.PNG](active_frequency_tracking.PNG)
 
