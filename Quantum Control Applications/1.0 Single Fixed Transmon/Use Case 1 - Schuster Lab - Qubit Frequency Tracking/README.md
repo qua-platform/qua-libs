@@ -60,15 +60,15 @@ Assuming small drifts we can take a Taylor series of the sinus and get the gain 
 
 <img src="https://latex.codecogs.com/svg.image?d=\Delta&space;P/2\pi&space;A\tau_{0}" />
 
-Finally, in order to show that the two-point-ramsy method is actually working, we interleaved it in the following sequence:
+Finally, in order to show that the two-point-ramsy method is actually working, we looped for ~2 hours over a TD ramsey W/O and W correction for drifts (see code below):
 
-`with for_(i, 0, i < 10000, i+1):
+`freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_ref', False)
+ freq_track_obj.two_points_ramsey()
+ freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_corr', True)`
 
-    freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_ref', False)
-    freq_track_obj.two_points_ramsey()
-    freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, 'Pe_td_corr', True)`
-
-We looped for ~2 hours over a TD ramsey W/O and W correction for drifts (see figure below). We can see that with the active feedback the qubit frequency is stable! 
+and here are the results
 
 ![active_frequency_tracking.PNG](active_frequency_tracking.PNG)
+
+We can see that with the active feedback the qubit frequency is stable! 
 
