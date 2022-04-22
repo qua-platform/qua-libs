@@ -84,7 +84,6 @@ class qubit_frequency_tracking:
 
 
         fit_type = lambda x,a : post_decay_mean*a[4]*(1-np.exp(-x*decay_gauss*a[1])) + peaks[0]/2*a[2]*(np.exp(-x*decay_gauss*a[1])*(a[5] * initial_offset/peaks[0]*2+np.cos(2*np.pi*a[0]*omega/(2*np.pi)*x + a[3]))) #here problem, removed the 1+
-
         def curve_fit3(f, x, y, a0):
             def opt(x, y, a):
                 return np.sum(np.abs(f(x, a) - y) ** 2)
