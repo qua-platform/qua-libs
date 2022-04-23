@@ -1,12 +1,12 @@
 # Qubit Frequency Tracking
 
-_Written by: Niv Drucker_
+_Autohr: Niv Drucker_
 
-_Demonstrated in: the Lab of Prof. David Schuster in the University of Chicago._
+_Demonstrated in the Lab of Prof. David Schuster in the University of Chicago._
 
-_The experiment of: Ankur Agrawal._
+_Demontrated on the experiment of Ankur Agrawal._
 
-_Important note: This is the exact code that was used for running the qubit frequency tracking measurement, and the code is tailored for a very specific setup and SW environment. Thus, the code is only for insipiration._
+_Important note: The code in this folder is the exact code that was used for running the qubit frequency tracking measurement, and the it is tailored for a very specific setup and SW environment. Thus, the code is only for insipiration._
 
 ## The goal
 The goal of this measurement is to track the frequency fluctuations of the transmon qubit, and update the frequency of the qubit element accordingly using a closed-loop feedback. This should enable us to stay in the reference frame of the qubit. More precisecly, our goal is to calibrate a frequency-tracking-macro (the two-point-Ramsey macro) that can be interleaved in a general experiment\routine, and correct actively for the frequency fluctuations.
@@ -23,9 +23,9 @@ The calibration of the macro consist of three steps -
 
 In this step we are using the method `time_domain_ramesy_full_sweep(self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False)` to perform a Ramsey mesurement in the time domain. The probablity to measure the qubit in the excited state (as a function of tau) is:
 
-<img src="https://latex.codecogs.com/svg.image?\mathcal{P}(e)\sim&space;\exp\left(-\frac{\tau}{T_{2}}\right)\left(\frac{1&plus;\cos\text{(2\ensuremath{\pi}\ensuremath{\Delta}\ensuremath{\tau}&plus;\ensuremath{\phi})}}{2}\right)&space;" />
+<img src="https://latex.codecogs.com/svg.image?\mathcal{P_e}(\tau)\sim&space;\exp\left(-\frac{\tau}{T_{2}}\right)\left(\frac{1&plus;\cos\text{(2\ensuremath{\pi}\ensuremath{\Delta}\ensuremath{\tau}&plus;\ensuremath{\phi})}}{2}\right)&space;" />
 
-The parameter Delta determines the oscillation frequency, and it is the shift of the drive from the real resonance frquency of the qubit (assuming the frequency of the qubit is constant during the measurement). Since we are introducing a shift of `f_ref` WRT to resonance, we expect the first peak to be found at `1/f_ref` (red star in the plot below). In practice, we get the red star in `1/Delta = 1/(fref-drift)' due to a drift in the resonance frequency of the qubit before we started the experiment.
+The parameter Delta determines the oscillation frequency, and it is the shift of the drive from the real resonance frequency of the qubit (assuming the frequency of the qubit is constant during the measurement). Since we are introducing a shift of `f_ref` WRT to resonance, we expect the first peak to be found at `1/f_ref` (red star in the plot below). In practice, we get the red star in `1/Delta = 1/(fref-drift)` due to a drift in the resonance frequency of the qubit before we started the experiment.
 
 
 ![td_ramsey0](td_ramsey0.png)
@@ -33,7 +33,7 @@ The parameter Delta determines the oscillation frequency, and it is the shift of
 The raw data is in blue and the purple curve is the fit (ignore the red dashed line). For the analysis we used the mathod `time_domain_ramesy_full_sweep_analysis(self, result_handles, stream_name)`.
 Note that the fit method `_fit_ramsey` is slightly different from the equation above, so to enable better fitting. 
 From the fit we extract T2, the new resonance frequency of the qubit and phi.
-In order to verify that frequency calibration worked properly we are running the TD Ramsey again and check that now we get the red dot on the first peak:
+In order to verify that frequency calibration worked properly we are running the TD Ramsey again and check that we get the red dot on the first peak
 
 ![td_ramsey_corrected.png](td_ramsey_corrected.png)
 
@@ -44,7 +44,7 @@ In this step we are fixing tau and sweeping over Delta (by sweeping the frequenc
 
 <img src="https://latex.codecogs.com/svg.image?\mathcal{P}(e)\sim&space;A\left(1&plus;\cos\text{(2\ensuremath{\pi}\ensuremath{\frac{1}{f_{ref}}}\ensuremath{\Delta}&plus;\ensuremath{\phi})}\right)" />
 
-Since we want later an error signal symmetric around zero detuning, we took the fixed tau to be '1/f_ref'. So the osscilation frequency in the frequency domain is `1 / f_ref`. Note that it is possible to choose other values of `tau0` and maybe get better results. We didn't try to optimize it. Here are the frequency-domain results:
+Since we want later an error signal symmetric around zero detuning, we took the fixed tau to be `1/f_ref`. So the osscilation frequency in the frequency domain is `1 / f_ref`. Note that it is possible to choose other values of `tau` and maybe get better results. We didn't try to optimize it. Here are the frequency-domain results:
 
 ![fd_ramsey.png](fd_ramsey.png)
 
@@ -52,17 +52,17 @@ In order to analyze the data we used the method `freq_domain_ramsey_full_sweep_a
  
 ### Step 3: Two point Ramsey
 
-In this step we are using the `two_points_ramsey(self)` method in order to actively track and correct in real-time for the frequency drift of the qubit. Our error signal is based on the difference between two points in the FD Ramsey that are ceneterd around the resonance frequency of the qubit (see the two red stars in the figure above). We chose the points to be detuned from resonace in `+-(1/4)*f_ref', in order to have the highest sensitivity to frequency drifts. In the equation below we are calculating the drift (d) as a function of the error signal (delta P):
+In this step we are using the `two_points_ramsey(self)` method in order to actively track and correct for the frequency drift of the qubit. Our error signal is based on the difference between two points in the FD Ramsey that are ideally ceneterd around the zero detuning (see the two red stars in the figure above). We chose the points to be detuned from resonance in `+-(1/4)*f_ref`, in order to have the highest sensitivity to frequency drifts. In the equation below we are calculating the drift (d) as a function of the error signal (delta P):
 
-<img src="https://latex.codecogs.com/svg.image?\mathcal{P}_{e}(&plus;\delta&plus;drift)-\mathcal{P}_{e}(-\delta&plus;drift)=-A\sin\left(\underbrace{2\ensuremath{\pi}\ensuremath{\frac{\delta}{f_{ref}}}}_{\pi/2}\right)\sin\left(2\ensuremath{\pi}\ensuremath{\frac{drift}{f_{ref}}}\right)" />
+<img src="https://latex.codecogs.com/svg.image?\mathcal{P}_{e}(&plus;\delta&plus;d)-\mathcal{P}_{e}(-\delta&plus;d)=-A\sin\left(\underbrace{2\ensuremath{\pi}\ensuremath{\frac{\delta}{f_{ref}}}}_{\pi/2}\right)\sin\left(2\ensuremath{\pi}\ensuremath{\frac{d}{f_{ref}}}\right)" />
 
 Assuming small drifts we can take a Taylor series of the sinus and get the gain factor for the active correction
 
 <img src="https://latex.codecogs.com/svg.image?d=\Delta&space;P/2\pi&space;A\tau_{0}" />
 
-Finally, in order to show that the two-point-ramsy method is actually working, we looped for ~2 hours over a TD ramsey W/O and W correction for drifts. Here are the results
+Finally, in order to show that the two-point-Ramsey method is actually working, we looped for ~2 hours over a TD ramsey W and W/O active correction for the drifts. Here are the results
 
 ![active_frequency_tracking.PNG](active_frequency_tracking.PNG)
 
-We can see that with the active feedback the qubit frequency is stable! 
+We can see that with the active feedback the qubit frequency is much more stable! 
 
