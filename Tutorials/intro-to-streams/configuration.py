@@ -1,4 +1,4 @@
-pulse_duration = 1e3
+pulse_len = 1e3
 
 config = {
     "version": 1,
@@ -21,7 +21,7 @@ config = {
     "pulses": {
         "constPulse": {
             "operation": "control",
-            "length": pulse_duration,  # in ns
+            "length": pulse_len,  # in ns
             "waveforms": {"single": "const_wf"},
         }
     },
