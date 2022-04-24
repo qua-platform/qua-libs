@@ -23,7 +23,7 @@ config = {
                 "readout": "readout_pulse",
                 "long_readout": "long_readout_pulse",
             },
-            "time_of_flight": 180,
+            "time_of_flight": 24,
             "smearing": 0,
         },
     },
