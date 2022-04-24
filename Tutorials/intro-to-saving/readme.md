@@ -5,7 +5,7 @@ slug: ./
 id: index
 ---
 
-This example shows four QUA programs where variables are saved.
+This example shows five QUA programs where variables are saved.
 Each one shows a slightly different variation on how this can be achieved:
 either by saving directly to a tag that is then collected from the `result_handles`
 structure, or by saving to a `stream` and processing it in various ways. 
@@ -21,7 +21,7 @@ Four programs are included:
 1. Assigning values to variables and saving variables to tags.
 This program saves literal values and values calculated with math operations. 
 It then saves them directly to `tags`. This is a less powerful method of saving
-that is not the recommended mode of operation, yet it is still supported. 
+that is not the recommended mode of operation, yet it is still supported as a legacy method. 
 ```python
 with program() as saving_a_var:
     a = declare(int, value=5)
@@ -36,7 +36,7 @@ with program() as saving_a_var:
 ```
 2. Saving variables to streams and using stream processing.
 The `stream` construct is a powerful way to save and manipulate data on the server. 
-It is described in detail in the QUA main docs. This example shows basic usage. 
+It is described in detail in the [QUA docs](https://qm-docs.qualang.io/guides/stream_proc). This example shows basic usage. 
 ```python
 with program() as streamProg:
     out_str = declare_stream()
@@ -89,8 +89,24 @@ with program() as multiple_tags:
         # Two separate streams (or pipes) are used on the data:
         # 1. Put the data into vectors of length 1, average and save only the last one
         # 2. Save all of the raw data directly
-        out_str1.buffer(1).average().save("out_avg")
+        out_str1.buffer(2).average().save("out_avg")
         out_str1.save_all("out_raw")
+```
+5. Multi-dimensional buffer.
+
+This examples shows usage of a multi-dimensional buffer in the stream processing.
+```python
+with program() as streamProg_buffer:
+    out_str = declare_stream()
+
+    a = declare(int)
+    b = declare(int)
+    with for_(a, 0, a <= 10, a + 1):
+        with for_(b, 10, b < 40, b + 10):
+            save(b, out_str)
+
+    with stream_processing():
+        out_str.buffer(11, 3).save("out")
 ```
 
 ## Post processing 
