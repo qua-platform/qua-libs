@@ -35,7 +35,7 @@ with program() as measureProg:
 
     sliced_demod_res = declare(fixed, size=int(num_segments))
     acc_demod_res = declare(fixed, size=int(num_segments))
-    mov_demod_res = declare(fixed, size=int(10))
+    mov_demod_res = declare(fixed, size=10)
 
     measure("readout", "qe1", raw_adc, demod.full("cos", I))
     save(I, "full")
