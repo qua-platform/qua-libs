@@ -30,6 +30,8 @@ def declare_vars(stream_num=1):
     return [time_var, amp_var, stream_array]
 
 ```
+Then we demonstrate how QUA variables can be modified within a macro 
+
 
 The program then demonstrates how QUA statements can be initiated with a macro and parameterized 
 such that reusable components can be set up. 
@@ -41,8 +43,8 @@ def qua_function_calls(el):
     :param el: The quantum element used by the QUA statements
     :return:
     """
-    play('playOp', el, duration=300)
-    play('playOp'*amp(b), el, duration=300)
+    play('const', el, duration=300)
+    play('const'*amp(b), el, duration=300)
 ```
 ## Script
 
