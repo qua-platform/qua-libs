@@ -59,8 +59,8 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 qm = qmm.open_qm(config)
 job = qm.execute(echo)
 res_handles = job.result_handles
-I_handles = res_handles.get("I").fetch_all()
-Q_handles = res_handles.get("Q").fetch_all()
+I_handles = res_handles.get("I")
+Q_handles = res_handles.get("Q")
 I_handles.wait_for_values(1)
 Q_handles.wait_for_values(1)
 

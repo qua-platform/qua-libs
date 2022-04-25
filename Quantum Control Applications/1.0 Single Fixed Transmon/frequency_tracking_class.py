@@ -4,6 +4,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 class qubit_frequency_tracking:
 
     def __init__(self, qubit, rr, f_res):
@@ -40,7 +41,7 @@ class qubit_frequency_tracking:
         self.if_total = declare(int, value=0)
         self.se_vec = declare(fixed, size=3)
         self.idx = declare(int)
-        self.fres_corr = declare(int, value=int(self.fres+0.5))
+        self.fres_corr = declare(int, value=int(self.fres + 0.5))
         self.fres_corr_st = declare_stream()
         self.corr = declare(int, value=0)
         self.corr_st = declare_stream()
@@ -59,7 +60,7 @@ class qubit_frequency_tracking:
         new_w = new_w[ind]
 
         yy = np.abs(new_w)
-        first_read_data_ind = np.where(yy[1:] - yy[:-1]>0)[0][0]  # away from the DC peak
+        first_read_data_ind = np.where(yy[1:] - yy[:-1] > 0)[0][0]  # away from the DC peak
 
         new_f = new_f[first_read_data_ind:]
         new_w = new_w[first_read_data_ind:]
@@ -67,19 +68,22 @@ class qubit_frequency_tracking:
         out_freq = new_f[np.argmax(np.abs(new_w))]
         new_w_arg = new_w[np.argmax(np.abs(new_w))]
 
-        omega = out_freq * 2 * np.pi / (x[1]-x[0])  # get gauss for frequency #here
+        omega = out_freq * 2 * np.pi / (x[1] - x[0])  # get gauss for frequency #here
 
-        cycle = int(np.ceil(1/out_freq))
-        peaks = np.array([np.std(y[i*cycle:(i+1)*cycle]) for i in range(int(len(y)/cycle))])*np.sqrt(2)*2
+        cycle = int(np.ceil(1 / out_freq))
+        peaks = np.array([np.std(y[i * cycle:(i + 1) * cycle]) for i in range(int(len(y) / cycle))]) * np.sqrt(2) * 2
 
         initial_offset = np.mean(y[:cycle])
-        cycles_wait = np.where(peaks > peaks[0]*0.37)[0][-1]
+        cycles_wait = np.where(peaks > peaks[0] * 0.37)[0][-1]
 
         post_decay_mean = np.mean(y[-cycle:])
 
-        decay_gauss = np.log(peaks[0]/peaks[cycles_wait])/(cycles_wait*cycle) / (x[1]-x[0]) #get gauss for decay #here
+        decay_gauss = np.log(peaks[0] / peaks[cycles_wait]) / (cycles_wait * cycle) / (
+                    x[1] - x[0])  # get gauss for decay #here
 
-        fit_type = lambda x,a : post_decay_mean*a[4]*(1-np.exp(-x*decay_gauss*a[1])) + peaks[0]/2*a[2]*(np.exp(-x*decay_gauss*a[1])*(a[5] * initial_offset/peaks[0]*2+np.cos(2*np.pi*a[0]*omega/(2*np.pi)*x + a[3]))) #here problem, removed the 1+
+        fit_type = lambda x, a: post_decay_mean * a[4] * (1 - np.exp(-x * decay_gauss * a[1])) + peaks[0] / 2 * a[2] * (
+                    np.exp(-x * decay_gauss * a[1]) * (a[5] * initial_offset / peaks[0] * 2 + np.cos(
+                2 * np.pi * a[0] * omega / (2 * np.pi) * x + a[3])))  # here problem, removed the 1+
 
         def curve_fit3(f, x, y, a0):
             def opt(x, y, a):
@@ -88,17 +92,20 @@ class qubit_frequency_tracking:
             out = optimize.minimize(lambda a: opt(x, y, a), a0)
             return out["x"]
 
-        angle0 = np.angle(new_w_arg) - omega*x[0]
+        angle0 = np.angle(new_w_arg) - omega * x[0]
 
         popt = curve_fit3(
-            fit_type,x,y,
-            [1, 1, 1, angle0, 1,1,1],
+            fit_type, x, y,
+            [1, 1, 1, angle0, 1, 1, 1],
         )
 
-        print(f"f = {popt[0]*omega/(2*np.pi)}, phase = {popt[3] % (2*np.pi)}, tau = {1/(decay_gauss*popt[1])}, amp = {peaks[0]*popt[2]}, uncertainty population = {post_decay_mean*popt[4]},initial offset = {popt[5] * initial_offset}")
-        out = {"fit_func" : lambda x: fit_type(x, popt),"f": popt[0]*omega/(2*np.pi), "phase" : popt[3] % (2*np.pi), "tau" : 1/(decay_gauss*popt[1]),"amp" : peaks[0]*popt[2],"uncertainty_population":post_decay_mean*popt[4],"initial_offset":popt[5] * initial_offset}
+        print(
+            f"f = {popt[0] * omega / (2 * np.pi)}, phase = {popt[3] % (2 * np.pi)}, tau = {1 / (decay_gauss * popt[1])}, amp = {peaks[0] * popt[2]}, uncertainty population = {post_decay_mean * popt[4]},initial offset = {popt[5] * initial_offset}")
+        out = {"fit_func": lambda x: fit_type(x, popt), "f": popt[0] * omega / (2 * np.pi),
+               "phase": popt[3] % (2 * np.pi), "tau": 1 / (decay_gauss * popt[1]), "amp": peaks[0] * popt[2],
+               "uncertainty_population": post_decay_mean * popt[4], "initial_offset": popt[5] * initial_offset}
 
-        plt.plot(x,fit_type(x, [1, 1, 1,angle0,1,1,1]),'--r',linewidth = 1 )
+        plt.plot(x, fit_type(x, [1, 1, 1, angle0, 1, 1, 1]), '--r', linewidth=1)
         return out
 
     def time_domain_ramesy_full_sweep(self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False):
@@ -112,7 +119,6 @@ class qubit_frequency_tracking:
             update_frequency(self.qubit, self.fres + self.f_ref)
         with for_(self.n, 0, self.n < reps, self.n + 1):
             with for_(self.tau, tau_min, self.tau < tau_max, self.tau + dtau):
-
                 # Should be replaced by the initialization procedure of the qubit to the ground state #
                 wait(10000, 'qubit')
                 #######################################################################################
@@ -137,25 +143,25 @@ class qubit_frequency_tracking:
     def time_domain_ramesy_full_sweep_analysis(self, result_handles, stream_name):
 
         Pe = result_handles.get(stream_name).fetch_all()
-        t = np.array(self.tau_vec)*4
+        t = np.array(self.tau_vec) * 4
         plt.plot(t, Pe)
         out = qubit_frequency_tracking._fit_ramsey(self, t, Pe)  # in [ns]
         plt.plot(t, out["fit_func"](t), 'm')
         plt.xlabel("time[ns]")
         plt.ylabel("P(|e>)")
 
-        self.fres = self.fres - (out["f"] * 1e9 - self.f_ref) # Intermediate frequency [Hz]
+        self.fres = self.fres - (out["f"] * 1e9 - self.f_ref)  # Intermediate frequency [Hz]
         print(f"shifting by {out['f'] * 1e9 - self.f_ref}, and now f_res = {self.fres}")
 
         self.t2 = out['tau']
         self.phase = out['phase']
         self.tau0 = int(1 / self.f_ref / 4e-9)
-        plt.plot(self.tau0*4, out["fit_func"](self.tau0*4), 'r*', label='ideal first peak location')
+        plt.plot(self.tau0 * 4, out["fit_func"](self.tau0 * 4), 'r*', label='ideal first peak location')
         plt.legend()
 
     def freq_domain_ramsey_full_sweep(self, reps, fmin, fmax, df, stream_name, oscillation_number=1, correct=False):
-        self.tau0 = oscillation_number*int(1/self.f_ref/4e-9)
-        self.delta = 1/(self.tau0 * 4e-9)/4  # the last 4 is for 1/4 of a cycle
+        self.tau0 = oscillation_number * int(1 / self.f_ref / 4e-9)
+        self.delta = 1 / (self.tau0 * 4e-9) / 4  # the last 4 is for 1/4 of a cycle
         self.fvec = np.arange(fmin, fmax, df).astype(int).tolist()
 
         with for_(self.m, 0, self.m < reps, self.m + 1):
@@ -201,17 +207,15 @@ class qubit_frequency_tracking:
 
     def two_points_ramsey(self):
 
-        c = int(1/(2 * np.pi * self.tau0 * 4e-9 * self.frequency_sweep_amp))
+        c = int(1 / (2 * np.pi * self.tau0 * 4e-9 * self.frequency_sweep_amp))
         print(f"c = {c}")
         assign(self.se_vec[0], 0)
         assign(self.se_vec[1], 0)
 
-        with for_(self.p, 0, self.p < 32768, self.p+1):
-
+        with for_(self.p, 0, self.p < 32768, self.p + 1):
             assign(self.f, self.fres - self.delta)
 
             with for_(self.idx, 0, self.idx < 2, self.idx + 1):
-
                 # Should be replaced by the initialization procedure of the qubit to the ground state #
                 wait(10000, 'qubit')
                 # Note: if you are using active reset, you might want to do it with the new corrected
@@ -234,13 +238,9 @@ class qubit_frequency_tracking:
                 assign(self.se_vec[self.idx], self.se_vec[self.idx] + (Cast.to_fixed(self.res) >> 15))
                 assign(self.f, self.f + 2 * self.delta)
 
-        assign(self.corr, Cast.mul_int_by_fixed(c, (self.se_vec[0]-self.se_vec[1])))
+        assign(self.corr, Cast.mul_int_by_fixed(c, (self.se_vec[0] - self.se_vec[1])))
         assign(self.fres_corr, self.fres_corr - self.corr)
         # update_frequency(self.qubit, self.fres_corr)
 
         save(self.fres_corr, self.fres_corr_st)
         save(self.corr, self.corr_st)
-
-
-
-

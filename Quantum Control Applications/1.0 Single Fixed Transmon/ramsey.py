@@ -11,7 +11,7 @@ import numpy as np
 tau_min = 4
 tau_max = 100
 dtau = 2
-taus = np.arange(tau_min, tau_max + dtau/2, dtau)  # + 0.1 to add t_max to taus
+taus = np.arange(tau_min, tau_max + 0.1, dtau)  # + 0.1 to add tau_max to taus
 
 n_avg = 1e4
 cooldown_time = 5 * qubit_T1 // 4
@@ -50,8 +50,8 @@ qm = qmm.open_qm(config)
 
 job = qm.execute(ramsey)
 res_handles = job.result_handles
-I_handles = res_handles.get("I").fetch_all()
-Q_handles = res_handles.get("Q").fetch_all()
+I_handles = res_handles.get("I")
+Q_handles = res_handles.get("Q")
 I_handles.wait_for_values(1)
 Q_handles.wait_for_values(1)
 

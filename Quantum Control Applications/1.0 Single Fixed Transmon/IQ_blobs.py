@@ -26,8 +26,8 @@ with program() as IQ_blobs:
     with for_(n, 0, n < n_runs, n + 1):
         align("qubit", "resonator")
         measure("readout", "resonator", None,
-                dual_demod.full("cos", "out1", "sin", "out2", I_g),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q_g))
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g))
         save(I_g, I_g_st)
         save(Q_g, Q_g_st)
         wait(cooldown_time, "resonator")
@@ -36,22 +36,37 @@ with program() as IQ_blobs:
         play("pi", "qubit")
         align("qubit", "resonator")
         measure("readout", "resonator", None,
-                dual_demod.full("cos", "out1", "sin", "out2", I_e),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q_e))
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e))
         save(I_e, I_e_st)
         save(Q_e, Q_e_st)
         wait(cooldown_time, "resonator")
 
-        # # Assume we have two blobs, we can use the integration weights to rotate them such that all of the information
-        # # will be in the I axis, and then to perform active reset:
-        # I = declare(int)
+        # Assume we have two blobs, we can use the integration weights to rotate them such that all of the information
+        # will be in the I axis.
+        # See this for more information: https://qm-docs.qualang.io/guides/demod#rotating-the-iq-plane
+        # Once we do this, we can perform active reset using:
+        #########################################
+        #
+        # # Active reset:
+        # with if_(I < 0.2):
+        #     play("pi", "qubit")
+        #
+        #########################################
+        #
+        # # Active reset (faster):
+        # play("pi", "qubit", condition=I < 0.2)
+        #
+        #########################################
         #
         # # Repeat until success active reset
         # with while_(I < 0.2):
         #     play("pi", "qubit")
         #     align("qubit", "resonator")
         #     measure("readout", "resonator", None,
-        #             dual_demod.full("rotated_1", "out1", "rotated_2", "out2", I))
+        #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
+        #
+        #########################################
         #
         # # Repeat until success active reset, up to 3 iterations
         # count = declare(int)
@@ -61,11 +76,10 @@ with program() as IQ_blobs:
         #     play("pi", "qubit")
         #     align("qubit", "resonator")
         #     measure("readout", "resonator", None,
-        #             dual_demod.full("rotated_1", "out1", "rotated_2", "out2", I))
+        #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
         #     assign(count, count + 1)
         #
-        # # Single active reset:
-        # play("pi", "qubit", condition=I < 0.2)
+        #########################################
 
     with stream_processing():
         I_g_st.save_all('I_g')
