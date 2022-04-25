@@ -13,7 +13,7 @@ from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 
 # Open communication with the server.
-qmm = QuantumMachinesManager(host='127.0.0.1',port=9510)
+qmm = QuantumMachinesManager(host="127.0.0.1", port=9510)
 
 with program() as measureProg:
     ind = declare(int)
@@ -42,7 +42,9 @@ job = qmm.simulate(
     measureProg,
     SimulationConfig(
         4000,  # Duration of simulation in units of clock cycles (4 ns)
-        simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])  # Simulate a loopback from analog output 1 to analog input 1
+        simulation_interface=LoopbackInterface(
+            [("con1", 1, "con1", 1)]
+        ),  # Simulate a loopback from analog output 1 to analog input 1
     ),
 )
 

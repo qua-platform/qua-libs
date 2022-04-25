@@ -1,28 +1,3 @@
 .idea
 __pycache__
 .pytest_cache/
-*.py[cod]
-tests/my_db.db
-
-.DS_Store
-examples/advanced-topics/IIR-FIR/outcmaes
-
-examples/multi-qubit/multiplexed-multilevel-NN-discriminator/try6/
-
-examples/multi-qubit/multiplexed-multilevel-NN-discriminator/model.png
-
-examples/multi-qubit/multiplexed-multilevel-NN-discriminator/try7/
-examples/leakage-reduction/outcmaes/
-/examples/randomized-benchmark/leakage-reduction/outcmaes/
-
-examples/Workshops/CQE/6. leakage-reduction/outcmaes/
-
-examples/Workshops/CQE/6. leakage-reduction/.ipynb_checkpoints/
-
-examples/Workshops/CQE/.ipynb_checkpoints/
-
-examples/Workshops/CQE/8.memory-enhanced-quantum-comms/.ipynb_checkpoints/
-
-examples/Workshops/CQE/0. unconditional quantum teleportation/.ipynb_checkpoints/
-
-*.npy

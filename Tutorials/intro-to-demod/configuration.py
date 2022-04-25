@@ -40,7 +40,10 @@ config = {
             "length": 2 * readout_len,
             "waveforms": {"single": "ramp_wf2"},
             "digital_marker": "ON",
-            "integration_weights": {"cos": "long_cosine_weights", "sin": "sine_weights"},
+            "integration_weights": {
+                "cos": "long_cosine_weights",
+                "sin": "sine_weights",
+            },
         },
     },
     "waveforms": {
@@ -51,7 +54,8 @@ config = {
         },
         "ramp_wf2": {
             "type": "arbitrary",
-            "samples": np.linspace(0, -0.5, readout_len).tolist() + np.linspace(0, -0.5, readout_len).tolist(),
+            "samples": np.linspace(0, -0.5, readout_len).tolist()
+            + np.linspace(0, -0.5, readout_len).tolist(),
         },
     },
     "digital_waveforms": {

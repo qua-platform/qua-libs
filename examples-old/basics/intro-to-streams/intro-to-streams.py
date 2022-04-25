@@ -42,7 +42,9 @@ job = qmm.simulate(
     measureProg,
     SimulationConfig(
         4000,  # Duration of simulation in units of clock cycles (4 ns)
-        simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])  # Simulate a loopback from analog output 1 to analog input 1
+        simulation_interface=LoopbackInterface(
+            [("con1", 1, "con1", 1)]
+        ),  # Simulate a loopback from analog output 1 to analog input 1
     ),
 )
 

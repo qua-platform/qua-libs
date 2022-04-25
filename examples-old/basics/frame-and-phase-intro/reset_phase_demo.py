@@ -52,7 +52,7 @@ with program() as reset_both_ph_and_rotate:
     play("const", "qubit")
 
 # Simulate 1st program
-job = qmm.simulate(config,no_reset_ph, SimulationConfig(int(800)))
+job = qmm.simulate(config, no_reset_ph, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 
 # This creates the reference sin wave according to the 1st pulse. It is made in this manner because the exact timing
@@ -77,7 +77,7 @@ plt.legend(("Reference", "Output"))
 plt.title("Pulse - 200ns - Pulse. 1st pulse is arbitrary, 2nd pulse has same phase")
 
 # Simulate 2nd program
-job = qmm.simulate(config,reset_ph, SimulationConfig(int(800)))
+job = qmm.simulate(config, reset_ph, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(412, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")
@@ -92,7 +92,7 @@ plt.title(
 )
 
 # Simulate 3rd program
-job = qmm.simulate(config,reset_ph_and_rotate, SimulationConfig(int(800)))
+job = qmm.simulate(config, reset_ph_and_rotate, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(413, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")
@@ -107,7 +107,7 @@ plt.title(
 )
 
 # Simulate 4rd program
-job = qmm.simulate(config,reset_both_ph_and_rotate, SimulationConfig(int(800)))
+job = qmm.simulate(config, reset_both_ph_and_rotate, SimulationConfig(int(800)))
 samples = job.get_simulated_samples()
 plt.subplot(414, sharex=ax1)
 plt.plot(t_ref, ref_sin, "r")

@@ -5,9 +5,7 @@ config = {
             "analog_outputs": {
                 1: {"offset": +0.0},
             },
-            "digital_outputs": {
-                1: {}
-            },
+            "digital_outputs": {1: {}},
         }
     },
     "elements": {

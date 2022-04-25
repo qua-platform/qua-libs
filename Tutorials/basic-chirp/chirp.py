@@ -76,6 +76,6 @@ Pxx, freqs, bins, im = plt.specgram(
 plt.show()
 ax1.set_xticklabels((ax1.get_xticks() * 1e6).astype(int))
 ax1.set_yticklabels((ax1.get_yticks() / 1e6).astype(int))
-plt.title('Quadratic Chirp')
+plt.title("Quadratic Chirp")
 plt.xlabel("t [us]")
 plt.ylabel("f [MHz]")

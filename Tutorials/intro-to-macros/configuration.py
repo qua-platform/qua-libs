@@ -27,5 +27,5 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": 0.2},
-    }
+    },
 }

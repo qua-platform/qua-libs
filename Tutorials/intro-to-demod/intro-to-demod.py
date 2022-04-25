@@ -50,9 +50,12 @@ with program() as measureProg:
     with for_(ind, 0, ind < num_segments, ind + 1):  # save a QUA array
         save(acc_demod_res[ind], acc_int_stream)
 
-    measure("readout", "qe1", None,
-            demod.moving_window("cos", mov_demod_res, samples_per_chunk, chunks_per_window)
-            )
+    measure(
+        "readout",
+        "qe1",
+        None,
+        demod.moving_window("cos", mov_demod_res, samples_per_chunk, chunks_per_window),
+    )
     with for_(ind, 0, ind < num_segments, ind + 1):
         save(mov_demod_res[ind], mov_int_stream)
 
@@ -60,7 +63,7 @@ with program() as measureProg:
         int_stream.save_all("demod_sliced")
         acc_int_stream.save_all("demod_acc")
         mov_int_stream.save_all("demod_mov")
-        raw_adc.input1().save('raw_input')
+        raw_adc.input1().save("raw_input")
 
 job = qmm.simulate(
     config,
