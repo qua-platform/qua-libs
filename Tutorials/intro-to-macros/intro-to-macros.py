@@ -18,9 +18,9 @@ qmm = QuantumMachinesManager(port=9510)
 
 def declare_vars(stream_num=1):
     """
-    A macro to declare QUA variables. `stream_num` showcases a way to declare multiple streams in an array
-    Note that variables and streams don't have to be explicitly returned to the QUA program,
-    but it is considered good practice to do so.
+    A macro to declare QUA variables. `stream_num` showcases a way to declare multiple streams in an array.
+    Note that variables and streams declared inside the macro must be explicitly returned to the QUA program if they are
+    to be used outside of the macro's scope.
     """
     time_var = declare(int, value=100)
     amp_var = declare(fixed, value=0.2)
@@ -28,10 +28,18 @@ def declare_vars(stream_num=1):
     return [time_var, amp_var, stream_array]
 
 
-def modify_var(addition=0.3):
+def modify_var_good_practice(local_b, addition=0.3):
     """
-    A macro to modify a QUA variable. In this case, the variable does not
-    need to be returned.
+    A macro to modify a QUA variable. This example shows an example for good practice. Passing the QUA variable into and
+    out from the macro, signifies that the QUA variable is changed within the macro.
+    """
+    assign(local_b, local_b + addition)
+    return local_b
+
+def modify_var_bad_practice(addition=0.3):
+    """
+    A macro to modify a QUA variable. In this case, the variable is not passed to the macro. If there is a QUA variable
+    with the pointer 'b', it will be changed outside of the macro's scope.
     """
     assign(b, b + addition)
 
@@ -53,13 +61,16 @@ with program() as prog:
     save(b, c_streams[0])  # Saves b into stream for printing at the end
     play("const" * amp(b), "qe1", duration=t)
 
-    # Plays pulse with amplitude of 0.2 (from config) * b=0.5 (after modify_var) for t=100ns (from declare_vars)
-    modify_var()
+    # Plays pulse with amplitude of 0.2 (from config) * b=0.5 (after modify_var_good_practice) for t=100ns (from declare_vars)
+    b = modify_var_good_practice(b)
     save(b, c_streams[0])  # Saves b into stream for printing at the end
     play("const" * amp(b), "qe1", duration=t)
 
+
     # Plays pulse twice, first with amplitude 0.2 (from config) for duration 300ns (from qua_function_calls).
-    # Second with with 0.2 (from config) * b=0.5 (after modify_var) for duration 300ns (from qua_function_calls).
+    # Second with with 0.2 (from config) * b=0.6 (after both modify_var) for duration 300ns (from qua_function_calls).
+    modify_var_bad_practice(addition=0.1) # Adds 0.1 to b
+    save(b, c_streams[0])  # Saves b into stream for printing at the end
     qua_function_calls("qe1")
 
     with stream_processing():
@@ -72,6 +83,6 @@ samples = job.get_simulated_samples()
 samples.con1.plot()
 
 print("##################")
-print("b is saved twice, once before the call to modify_var and once afterwards")
-print(f"Before:{out_str[0][0]:.1f}, After:{out_str[1][0]:.1f}")
+print("b is saved three times, before and after every call to the modify_var macros")
+print(f"Before:{out_str[0][0]:.1f}, After 1st:{out_str[1][0]:.1f}, After 2nd:{out_str[2][0]:.1f}")
 print("##################")
