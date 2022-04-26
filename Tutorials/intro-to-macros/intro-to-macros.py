@@ -36,6 +36,7 @@ def modify_var_good_practice(local_b, addition=0.3):
     assign(local_b, local_b + addition)
     return local_b
 
+
 def modify_var_bad_practice(addition=0.3):
     """
     A macro to modify a QUA variable. In this case, the variable is not passed to the macro. If there is a QUA variable
@@ -66,10 +67,9 @@ with program() as prog:
     save(b, c_streams[0])  # Saves b into stream for printing at the end
     play("const" * amp(b), "qe1", duration=t)
 
-
     # Plays pulse twice, first with amplitude 0.2 (from config) for duration 300ns (from qua_function_calls).
     # Second with with 0.2 (from config) * b=0.6 (after both modify_var) for duration 300ns (from qua_function_calls).
-    modify_var_bad_practice(addition=0.1) # Adds 0.1 to b
+    modify_var_bad_practice(addition=0.1)  # Adds 0.1 to b
     save(b, c_streams[0])  # Saves b into stream for printing at the end
     qua_function_calls("qe1")
 
@@ -84,5 +84,7 @@ samples.con1.plot()
 
 print("##################")
 print("b is saved three times, before and after every call to the modify_var macros")
-print(f"Before:{out_str[0][0]:.1f}, After 1st:{out_str[1][0]:.1f}, After 2nd:{out_str[2][0]:.1f}")
+print(
+    f"Before:{out_str[0][0]:.1f}, After 1st:{out_str[1][0]:.1f}, After 2nd:{out_str[2][0]:.1f}"
+)
 print("##################")
