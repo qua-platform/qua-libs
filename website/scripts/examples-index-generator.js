@@ -7,7 +7,7 @@ const {collectReadmeFiles} = require("./_collect_files");
 const {loadSidebars} = require("@docusaurus/plugin-content-docs/lib/sidebars");
 
 
-const prefix = "../Examples/"
+const prefix = "../examples-old/"
 const files = collectReadmeFiles(prefix)
 
 const header = `---

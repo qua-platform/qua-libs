@@ -66,7 +66,7 @@ module.exports = {
       {
         docs: {
           routeBasePath: "examples",
-          path: "../examples",
+          path: "../examples-old",
           sidebarPath: require.resolve("./sidebars.js"),
           // Please change this to your repo.
           editUrl:
