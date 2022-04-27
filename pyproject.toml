@@ -23,11 +23,13 @@ flake8 = "^3.9.1"
 [tool.black]
 line-length = 88
 target-version = ['py37']
-include = '(examples)/.+\.pyi?$'
+#include = '(examples)/.+\.pyi?$'
+#include = '(Quantum Control Applications)/.+\.pyi?$'
+#include = '(Tutorials)/.+\.pyi?$'
 
 [tool.poe.tasks]
 format="black examples"
-check_format="black --check examples"
+check_format="black --check ."
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

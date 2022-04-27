@@ -23,7 +23,7 @@ function Home() {
                 'button button--outline button--secondary button--lg',
                 styles.getStarted,
               )}
-              to={useBaseUrl('examples/')}>
+              to={useBaseUrl('https://github.com/qua-platform/qua-libs/')}>
               Get Started
             </Link>
           </div>
@@ -38,6 +38,8 @@ function Home() {
 
                     Welcome to the QUA libraries repository. Your one-stop-shop for
                     a batteries-included QUA experience.
+                    Note that this website is being revised, and in the meanwhile, we recommend that you view the
+                    libraries through the <a href='https://github.com/qua-platform/qua-libs/'>Github repository</a>.
                 </p>
               </div>
             </div>

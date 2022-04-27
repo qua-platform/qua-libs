@@ -6,7 +6,7 @@ const {trimWhitespace} = require("./_text_utils");
 const fs = require("fs")
 const {collectReadmeFiles} = require("./_collect_files");
 
-const prefix = "../Examples/"
+const prefix = "../examples-old/"
 const files = collectReadmeFiles(prefix)
 
 const sepRegex = /^\s*---\s*$/
