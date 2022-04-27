@@ -28,7 +28,7 @@ simulate = True
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
-    n = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    n = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(n * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
@@ -42,11 +42,11 @@ config = {
                 2: {"offset": 0.0},  # Q
                 3: {
                     "offset": 0.0,
-                    "filter": {"feedforward": [2 ** -9], "feedback": [1 - 2 ** -9]},
+                    "filter": {"feedforward": [2**-9], "feedback": [1 - 2**-9]},
                 },  # FSM X
                 4: {
                     "offset": 0.0,
-                    "filter": {"feedforward": [2 ** -9], "feedback": [1 - 2 ** -9]},
+                    "filter": {"feedforward": [2**-9], "feedback": [1 - 2**-9]},
                 },  # FSM Y
                 5: {"offset": 0.0},  # AOM
             },

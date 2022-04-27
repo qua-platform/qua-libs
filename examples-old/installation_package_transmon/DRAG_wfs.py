@@ -8,11 +8,11 @@ from scipy.signal.windows import gaussian
 # I-quadrature component for gaussian shaped pulses
 def gaussian_detuned(amplitude, sigma, delf, length, alph, delt):
     t = np.linspace(0, length, length)
-    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     gauss_der_wave = (
         amplitude
-        * (-2 * 1e9 * (t - length / 2) / (2 * sigma ** 2))
-        * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))
+        * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     )
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gaussian_detuned_wave = gauss_wave * np.cos(2 * np.pi * delf * t * 1e-9) - (
@@ -24,11 +24,11 @@ def gaussian_detuned(amplitude, sigma, delf, length, alph, delt):
 # Q-quadrature component for gaussian shaped pulses
 def gaussian_derivative_detuned(amplitude, sigma, delf, length, alph, delt):
     t = np.linspace(0, length, length)
-    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     gauss_der_wave = (
         amplitude
-        * (-2 * 1e9 * (t - length / 2) / (2 * sigma ** 2))
-        * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))
+        * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     )
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gaussian_derivative_detuned_wave = (alph / delt) * gauss_der_wave * np.cos(
@@ -69,7 +69,7 @@ def cos_derivative_detuned(amplitude, delf, length, alph, delt):
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 

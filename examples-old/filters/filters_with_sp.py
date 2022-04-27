@@ -113,8 +113,8 @@ samples = job.get_simulated_samples()
 res = job.result_handles
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing extra dimensions.
-raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2 ** 12)
-filter_adc = np.squeeze(res.filtered_data.fetch_all()["value"] / 2 ** 12)
+raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2**12)
+filter_adc = np.squeeze(res.filtered_data.fetch_all()["value"] / 2**12)
 
 ax1 = plt.subplot(211)
 plt.plot(raw_adc, ".")
@@ -129,8 +129,8 @@ plt.tight_layout()
 plt.show()
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing extra dimensions.
-fft_raw_adc = np.squeeze(res.fft_raw_data.fetch_all()["value"] / 2 ** 12)
-fft_filter_adc = np.squeeze(res.fft_filter_data.fetch_all()["value"] / 2 ** 12)
+fft_raw_adc = np.squeeze(res.fft_raw_data.fetch_all()["value"] / 2**12)
+fft_filter_adc = np.squeeze(res.fft_filter_data.fetch_all()["value"] / 2**12)
 
 # Sqrt of Sum of Squares (gives absolute value).
 # Normalize by the length of the original sine wave such that we will get the result in real units.

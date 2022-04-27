@@ -70,7 +70,7 @@ while res_handles.is_processing():
     plt.cla()
     I = I_handles.fetch_all()
     Q = Q_handles.fetch_all()
-    plt.plot(freqs, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
     # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 
     # If we want to plot the phase...
@@ -83,7 +83,7 @@ while res_handles.is_processing():
 plt.cla()
 I = I_handles.fetch_all()
 Q = Q_handles.fetch_all()
-plt.plot(freqs, np.sqrt(I ** 2 + Q ** 2), ".")
+plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
 # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 
 # If we want to plot the phase...

@@ -54,7 +54,7 @@ class DCoffsetCalibrator:
         adc2 = np.mean(job.result_handles.adc_input2.fetch_all()["value"])
         con_name = config["elements"][qe]["outputs"]["out1"][0]
         print("DC offsets to apply:")
-        print(f"input 1 on {con_name}: ", -adc1 * (2 ** -12))
-        print(f"input 2 on {con_name}: ", -adc2 * (2 ** -12))
-        offsets[con_name] = (-adc1 * (2 ** -12), -adc2 * (2 ** -12))
+        print(f"input 1 on {con_name}: ", -adc1 * (2**-12))
+        print(f"input 2 on {con_name}: ", -adc2 * (2**-12))
+        offsets[con_name] = (-adc1 * (2**-12), -adc2 * (2**-12))
         return offsets

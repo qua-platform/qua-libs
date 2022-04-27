@@ -16,7 +16,7 @@ simulation_config = SimulationConfig(
     simulation_interface=LoopbackInterface(
         [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)],
         latency=230,
-        noisePower=0.05 ** 2,
+        noisePower=0.05**2,
     ),
 )
 rr_num = 2  # currently works only for up to 2, due to 10 parallel demodulation limit (each rr requires 4 real demods)

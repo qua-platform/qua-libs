@@ -7,12 +7,12 @@ def drag_gaussian_pulse_waveforms(
 ):
     t = np.arange(length, dtype=int)  # array of size pulse length in ns
     gauss_wave = amplitude * np.exp(
-        -((t - length / 2) ** 2) / (2 * sigma ** 2)
+        -((t - length / 2) ** 2) / (2 * sigma**2)
     )  # gaussian function
     gauss_der_wave = (
         amplitude
-        * (-2 * 1e9 * (t - length / 2) / (2 * sigma ** 2))
-        * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))
+        * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     )  # derivative of gaussian
     if substracted:  # if statement to determine usage of subtracted gaussian
         gauss_wave = gauss_wave - gauss_wave[-1]  # subtracted gaussian
@@ -40,7 +40,7 @@ def drag_cosine_pulse_waveforms(amplitude, length, alpha, detune, delta):
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 

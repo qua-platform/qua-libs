@@ -79,7 +79,7 @@ ax1 = plt.subplot(211)
 plt.plot(samples.con1.analog["1"])
 plt.title("Simulated samples")
 plt.subplot(212, sharex=ax1)
-plt.plot(raw_adc / 2 ** 12)  # Converting the 12 bit ADC value to voltage
+plt.plot(raw_adc / 2**12)  # Converting the 12 bit ADC value to voltage
 plt.title("Raw ADC input")
 plt.xlabel("Sample number")
 plt.tight_layout()

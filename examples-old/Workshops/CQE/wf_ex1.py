@@ -14,7 +14,7 @@ my_func1 = lambda x: 2 * sqrt(
 
 my_func2 = lambda x: -3 * sqrt(1 - (x / 7) ** 2) * sqrt(abs(abs(x) - 4) / (abs(x) - 4))
 my_func3 = (
-    lambda x: abs(x / 2) - 0.0913722 * x ** 2 - 3 + sqrt(1 - (abs(abs(x) - 2) - 1) ** 2)
+    lambda x: abs(x / 2) - 0.0913722 * x**2 - 3 + sqrt(1 - (abs(abs(x) - 2) - 1) ** 2)
 )
 
 my_func4 = (

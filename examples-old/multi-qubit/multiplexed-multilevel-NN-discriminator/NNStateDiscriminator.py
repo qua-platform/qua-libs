@@ -375,16 +375,16 @@ class NNStateDiscriminator:
 
             # multiply raw input signals by cos/sin with the appropriate frequency
             raw1cos = self._quantize_traces(
-                raw1 * (2 ** -12) * self._down_cos(freq, self.time_diff, readout_len)
+                raw1 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len)
             )
             raw1sin = self._quantize_traces(
-                raw1 * (2 ** -12) * self._down_sin(freq, self.time_diff, readout_len)
+                raw1 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len)
             )
             raw2cos = self._quantize_traces(
-                raw2 * (2 ** -12) * self._down_cos(freq, self.time_diff, readout_len)
+                raw2 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len)
             )
             raw2sin = self._quantize_traces(
-                raw2 * (2 ** -12) * self._down_sin(freq, self.time_diff, readout_len)
+                raw2 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len)
             )
 
             ########################
@@ -528,7 +528,7 @@ class NNStateDiscriminator:
         self.qua_vars["b"] = declare(
             fixed,
             value=np.hstack(
-                [self.final_weights[i][1] * (2 ** -12) for i in range(self.rr_num)]
+                [self.final_weights[i][1] * (2**-12) for i in range(self.rr_num)]
             ).tolist(),
         )
 

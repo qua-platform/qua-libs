@@ -115,7 +115,7 @@ def DRAG_Q(B, mu, sigma):
     """
 
     def f(t):
-        return B * (-2.0 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2.0 * sigma ** 2))
+        return B * (-2.0 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2.0 * sigma**2))
 
     return f
 

@@ -9,7 +9,7 @@ gaussian_amp = 0.2  # pulse amplitude in volts
 # I-quadrature component for gaussian shaped pulses
 def gauss(amplitude, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-(t**2) / (2 * sigma**2))
     return [float(x) for x in gauss_wave]
 
 
@@ -18,8 +18,8 @@ def gauss_derivative(amplitude, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
     gauss_derivative_wave = (
         amplitude
-        * (-2 * 1e9 * t / (2 * sigma ** 2))
-        * np.exp(-(t ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * t / (2 * sigma**2))
+        * np.exp(-(t**2) / (2 * sigma**2))
     )
     return [float(x) for x in gauss_derivative_wave]
 
@@ -30,12 +30,12 @@ def drag_gaussian_pulse_waveforms(
 ):
     t = np.arange(length, dtype=int)  # array of size pulse length in ns
     gauss_wave = amplitude * np.exp(
-        -((t - length / 2) ** 2) / (2 * sigma ** 2)
+        -((t - length / 2) ** 2) / (2 * sigma**2)
     )  # gaussian function
     gauss_der_wave = (
         amplitude
-        * (-2 * 1e9 * (t - length / 2) / (2 * sigma ** 2))
-        * np.exp(-((t - length / 2) ** 2) / (2 * sigma ** 2))
+        * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))
+        * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))
     )  # derivative of gaussian
     if substracted:  # if statement to determine usage of subtracted gaussian
         gauss_wave = gauss_wave - gauss_wave[-1]  # subtracted gaussian
@@ -50,7 +50,7 @@ def drag_gaussian_pulse_waveforms(
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 

@@ -39,7 +39,7 @@ def cost(x):
         ),
     )
     res = job.result_handles
-    result_vector = res.data.fetch_all()["value"] / 2 ** 12
+    result_vector = res.data.fetch_all()["value"] / 2**12
     result_vector = -np.squeeze(result_vector, axis=0)
     optimal = np.array(gauss(0.2, 0, 3.0, 0, 100))
     answer = np.sqrt(np.sum((optimal - result_vector) ** 2))
@@ -61,7 +61,7 @@ job = QM1.simulate(
     ),
 )
 res_init = job.result_handles
-result_vector = res_init.data.fetch_all()["value"] / 2 ** 12
+result_vector = res_init.data.fetch_all()["value"] / 2**12
 result_vector_init = -np.squeeze(result_vector, axis=0)
 
 config["waveforms"]["gauss_wf"]["samples"] = gauss(
@@ -75,7 +75,7 @@ job = QM1.simulate(
     ),
 )
 res_opt = job.result_handles
-result_vector = res_opt.data.fetch_all()["value"] / 2 ** 12
+result_vector = res_opt.data.fetch_all()["value"] / 2**12
 result_vector_opt = -np.squeeze(result_vector, axis=0)
 
 plt.figure()

@@ -144,9 +144,9 @@ samples = job.get_simulated_samples()
 res = job.result_handles
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing the extra dimension.
-raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2 ** 12)
+raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2**12)
 filter_adc = res.data.fetch_all()["value"] * (
-    2 ** 12
+    2**12
 )  # For 'demod' the correction is the other way around
 
 plt.figure()
@@ -175,9 +175,9 @@ samples = job.get_simulated_samples()
 res = job.result_handles
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing the extra dimension.
-raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2 ** 12)
+raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2**12)
 filter_adc = res.data.fetch_all()["value"] * (
-    2 ** 12
+    2**12
 )  # For 'demod' the correction is the other way around
 
 plt.figure()
