@@ -20,7 +20,7 @@ simulation_config = SimulationConfig(
     simulation_interface=LoopbackInterface(
         [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)],
         latency=200,
-        noisePower=0.05 ** 2,
+        noisePower=0.05**2,
     ),
 )
 

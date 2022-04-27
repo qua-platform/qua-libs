@@ -7,5 +7,5 @@ from pandas import DataFrame
 
 def gauss(amplitude, mu, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
     return [float(x) for x in gauss_wave]

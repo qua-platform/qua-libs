@@ -165,7 +165,7 @@ class StateDiscriminator:
         the qubit state
         """
         weights = weights / norm
-        bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
+        bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2**-24) * 4
 
         np.savez(self.path, weights=weights, bias=bias)
         self.saved_data = {"weights": weights, "bias": bias}

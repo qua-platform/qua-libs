@@ -76,7 +76,7 @@ optimized_weights = [1.0] * int(304)
 def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
-    n = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    n = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(n * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 

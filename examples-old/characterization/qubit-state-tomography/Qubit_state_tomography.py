@@ -22,7 +22,7 @@ from scipy.linalg import sqrtm
 gauss_pulse_len = 100  # nsec
 Amp = 0.2  # Pulse Amplitude
 gauss_arg = np.linspace(-3, 3, gauss_pulse_len)
-gauss_wf = np.exp(-(gauss_arg ** 2) / 2)
+gauss_wf = np.exp(-(gauss_arg**2) / 2)
 gauss_wf = Amp * gauss_wf / np.max(gauss_wf)
 
 # Setting up the configuration of the experimental setup

@@ -6,7 +6,7 @@ gaussian_amp = 0.2
 
 def square_gauss(amplitude, sigma, length):
     t = np.linspace(-10, 10, 20)
-    gauss_wave = amplitude * np.exp(-(t ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-(t**2) / (2 * sigma**2))
     return (
         [float(x) for x in gauss_wave[:10]]
         + [amplitude] * length
@@ -16,7 +16,7 @@ def square_gauss(amplitude, sigma, length):
 
 def gauss(amplitude, mu, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma ** 2))
+    gauss_wave = amplitude * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
     return [float(x) for x in gauss_wave]
 
 

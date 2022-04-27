@@ -163,7 +163,7 @@ value = 1 - np.average(resvalue, axis=0)
 
 
 def power_law(m, a, b, p):
-    return a * (p ** m) + b
+    return a * (p**m) + b
 
 
 x = np.linspace(1, max_circuit_depth, max_circuit_depth)
@@ -193,9 +193,9 @@ print("Covariance Matrix")
 print(cov)
 
 one_minus_p = 1 - pars[2]
-r_c = one_minus_p * (1 - 1 / 2 ** 1)
+r_c = one_minus_p * (1 - 1 / 2**1)
 r_g = r_c / 1.875
-r_c_std = stdevs[2] * (1 - 1 / 2 ** 1)
+r_c_std = stdevs[2] * (1 - 1 / 2**1)
 r_g_std = r_c_std / 1.875
 
 print("#########################")

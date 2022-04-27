@@ -33,10 +33,10 @@ qm = qmm.open_qm(config)
 job = qm.execute(tof_cal)
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
-adc1 = res_handles.get("adc1").fetch_all() / 2 ** 12
-adc2 = res_handles.get("adc2").fetch_all() / 2 ** 12
-adc1_single_run = res_handles.get("adc1_single_run").fetch_all() / 2 ** 12
-adc2_single_run = res_handles.get("adc2_single_run").fetch_all() / 2 ** 12
+adc1 = res_handles.get("adc1").fetch_all() / 2**12
+adc2 = res_handles.get("adc2").fetch_all() / 2**12
+adc1_single_run = res_handles.get("adc1_single_run").fetch_all() / 2**12
+adc2_single_run = res_handles.get("adc2_single_run").fetch_all() / 2**12
 
 plt.figure()
 plt.title("Single run (Check ADCs saturation)")

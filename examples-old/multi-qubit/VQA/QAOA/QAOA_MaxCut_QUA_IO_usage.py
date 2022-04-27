@@ -198,7 +198,7 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
 
     for j in range(1, max_iter):
         a_k = a / (j + A) ** alpha1
-        c_k = c / j ** gamma
+        c_k = c / j**gamma
         # Vector of random variables issued from a Bernoulli distribution +1,-1, could be something else
         delta_k = 2 * np.round(np.random.uniform(0, 1, 2 * p)) - 1
         angles_plus = angles + c_k * delta_k

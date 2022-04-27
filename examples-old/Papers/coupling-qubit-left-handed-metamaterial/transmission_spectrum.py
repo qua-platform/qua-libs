@@ -67,7 +67,7 @@ I = results.I.fetch_all()["value"]
 Q = results.Q.fetch_all()["value"]
 f = results.f.fetch_all()["value"]
 f_GHZ = f / 1e9
-S_21 = np.sqrt(I ** 2 + Q ** 2)
+S_21 = np.sqrt(I**2 + Q**2)
 plt.figure()
 plt.plot(f, S_21)
 plt.xlabel("Frequency [GHz]")

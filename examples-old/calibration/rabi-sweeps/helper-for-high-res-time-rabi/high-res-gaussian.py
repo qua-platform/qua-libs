@@ -45,5 +45,5 @@ my_timeRabi_results = my_job.result_handles
 samples = my_job.get_simulated_samples()
 I = samples.con1.analog.get("1")
 Q = samples.con1.analog.get("1")
-out = np.sqrt(I ** 2 + Q ** 2)
+out = np.sqrt(I**2 + Q**2)
 plt.plot(out)

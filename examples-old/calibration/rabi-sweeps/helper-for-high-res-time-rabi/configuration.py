@@ -5,9 +5,9 @@ def delayed_gauss(amp, length, sigma):
     gauss_arg = np.linspace(-sigma, sigma, length)
     delay = 16 - length - 4
     if delay < 0:
-        return amp * np.exp(-(gauss_arg ** 2) / 2)
+        return amp * np.exp(-(gauss_arg**2) / 2)
 
-    return np.r_[np.zeros(delay), amp * np.exp(-(gauss_arg ** 2) / 2), np.zeros(4)]
+    return np.r_[np.zeros(delay), amp * np.exp(-(gauss_arg**2) / 2), np.zeros(4)]
 
 
 # Definition of the sample for Gaussian pulse

@@ -171,7 +171,7 @@ job = qmm.simulate(
 )
 
 # show negative time axis if correlation is two sided and scale it according to bin size
-t_axis = (2 ** bin_size_pow_ns) * (
+t_axis = (2**bin_size_pow_ns) * (
     np.arange(bin_vec_len) if fold else np.arange(-bin_vec_len + 1, bin_vec_len)
 )
 

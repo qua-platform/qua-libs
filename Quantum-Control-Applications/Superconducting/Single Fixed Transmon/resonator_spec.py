@@ -61,7 +61,7 @@ Q = res_handles.get("Q").fetch_all()
 
 plt.figure()
 plt.title("resonator spectroscopy power")
-plt.plot(freqs, np.sqrt(I ** 2 + Q ** 2), ".")
+plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
 # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
 plt.xlabel("freq")
 
