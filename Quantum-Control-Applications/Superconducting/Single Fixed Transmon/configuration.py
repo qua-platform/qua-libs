@@ -20,7 +20,7 @@ def IQ_imbalance(g, phi):
 #############
 
 qop_ip = "127.0.0.1"
-qop_port = 9510
+qop_port = 80
 
 # Qubits
 qubit_IF = 50e6
@@ -28,7 +28,7 @@ qubit_LO = 7e9
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
-qubit_T1 = 10e3
+qubit_T1 = int(10e3)
 
 saturation_len = 1000
 saturation_amp = 0.1

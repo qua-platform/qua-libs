@@ -1,6 +1,9 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
+import matplotlib
+
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -53,12 +56,19 @@ qm = qmm.open_qm(config)
 
 job = qm.execute(T1)
 res_handles = job.result_handles
-I_handles = res_handles.get("I").fetch_all()
-Q_handles = res_handles.get("Q").fetch_all()
+I_handles = res_handles.get("I")
+Q_handles = res_handles.get("Q")
 I_handles.wait_for_values(1)
 Q_handles.wait_for_values(1)
 
-plt.figure()
+
+def on_close(event):
+    job.halt()
+
+
+f = plt.figure()
+f.canvas.mpl_connect("close_event", on_close)
+
 while res_handles.is_processing():
     plt.cla()
     I = I_handles.fetch_all()
@@ -69,7 +79,6 @@ while res_handles.is_processing():
     plt.legend()
     plt.show()
     plt.pause(0.1)
-
 
 plt.cla()
 I = I_handles.fetch_all()
