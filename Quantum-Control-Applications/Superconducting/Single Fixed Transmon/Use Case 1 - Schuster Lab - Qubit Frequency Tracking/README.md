@@ -6,7 +6,7 @@ _Demonstrated in the Lab of Prof. David Schuster in the University of Chicago._
 
 _Demontrated on the experiment of Ankur Agrawal._
 
-_Important note: The code in this folder is the exact code that was used for running the qubit frequency tracking measurement, and the it is tailored for a very specific setup and SW environment. Thus, the code is only for insipiration._
+_Important note: The code in this folder is the exact code that was used for running the qubit frequency tracking measurement, and it is tailored for a very specific setup and software environment. Thus, the code is only for insipiration._
 
 ## The goal
 The goal of this measurement is to track the frequency fluctuations of the transmon qubit, and update the frequency of the qubit element accordingly using a closed-loop feedback. This should enable us to stay in the reference frame of the qubit. More precisecly, our goal is to calibrate a frequency-tracking-macro (the two-point-Ramsey macro) that can be interleaved in a general experiment\routine, and correct actively for the frequency fluctuations.
