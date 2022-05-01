@@ -19,7 +19,7 @@ It includes:
 * The "Tutorials" folder contains various tutorials and guides for working with the OPX.
 
 * The "Quantum Control Applications" folder contains scripts and examples for different qubits types, all the way
-  from basic measurements through randomized benchmarking to advanced protocols. 
+  from basic to advanced protocols. 
   It also includes various examples and results from labs. [link]
 
 ## Support and Contribution
