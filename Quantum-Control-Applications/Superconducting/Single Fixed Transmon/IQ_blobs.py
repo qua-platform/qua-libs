@@ -164,6 +164,7 @@ if b_print:
     ----------------
     | {eg:.3f} | {ee:.3f} |
     -----------------
+    IQ plane rotated by: {180 / np.pi * angle:.1f}{chr(176)}
     Threshold: {threshold:.3e} ({threshold_direction_string})
     Readout Fidelity: {100*(gg + ee)/2:.1f}%
     """
