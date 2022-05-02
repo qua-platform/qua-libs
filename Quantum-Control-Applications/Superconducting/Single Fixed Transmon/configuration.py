@@ -20,7 +20,7 @@ def IQ_imbalance(g, phi):
     """
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
@@ -47,7 +47,10 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
         Q = declare(fixed)
     if threshold is not None and state is None:
         state = declare(bool)
-    measure("readout", "resonator", None,
+    measure(
+        "readout",
+        "resonator",
+        None,
         dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
         dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
     )

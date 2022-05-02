@@ -134,7 +134,12 @@ def false_detections(threshold, Ig, Ie):
     return false_detections_var
 
 
-fit = minimize(false_detections, 0.5 * (np.mean(Ig_rotated) + np.mean(Ie_rotated)), (Ig_rotated, Ie_rotated), method='Nelder-Mead')
+fit = minimize(
+    false_detections,
+    0.5 * (np.mean(Ig_rotated) + np.mean(Ie_rotated)),
+    (Ig_rotated, Ie_rotated),
+    method="Nelder-Mead",
+)
 threshold = fit.x[0]
 
 if np.mean(Ig) < np.mean(Ie):
@@ -142,16 +147,17 @@ if np.mean(Ig) < np.mean(Ie):
     ge = np.sum(Ig_rotated > threshold) / len(Ig_rotated)
     eg = np.sum(Ie_rotated < threshold) / len(Ie_rotated)
     ee = np.sum(Ie_rotated > threshold) / len(Ie_rotated)
-    threshold_direction_string = 'Excited is larger'
+    threshold_direction_string = "Excited is larger"
 else:
     gg = np.sum(Ig_rotated > threshold) / len(Ig_rotated)
     ge = np.sum(Ig_rotated < threshold) / len(Ig_rotated)
     eg = np.sum(Ie_rotated > threshold) / len(Ie_rotated)
     ee = np.sum(Ie_rotated < threshold) / len(Ie_rotated)
-    threshold_direction_string = 'Ground is larger'
+    threshold_direction_string = "Ground is larger"
 
 if b_print:
-    print(f'''
+    print(
+        f"""
     Fidelity Matrix:
     -----------------
     | {gg:.3f} | {ge:.3f} |
@@ -160,32 +166,40 @@ if b_print:
     -----------------
     Threshold: {threshold:.3e} ({threshold_direction_string})
     Readout Fidelity: {100*(gg + ee)/2:.1f}%
-    ''')
+    """
+    )
 
 if b_plot:
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-    ax1.plot(Ig, Qg, ".", alpha=0.1, label='Ground')
-    ax1.plot(Ie, Qe, ".", alpha=0.1, label='Excited')
+    ax1.plot(Ig, Qg, ".", alpha=0.1, label="Ground")
+    ax1.plot(Ie, Qe, ".", alpha=0.1, label="Excited")
     ax1.axis("equal")
     ax1.legend(["Ground", "Excited"])
-    ax1.set_title('Original Data')
-    ax2.plot(Ig_rotated, Qg_rotated, ".", alpha=0.1, label='Ground')
-    ax2.plot(Ie_rotated, Qe_rotated, ".", alpha=0.1, label='Excited')
+    ax1.set_title("Original Data")
+    ax2.plot(Ig_rotated, Qg_rotated, ".", alpha=0.1, label="Ground")
+    ax2.plot(Ie_rotated, Qe_rotated, ".", alpha=0.1, label="Excited")
     ax2.axis("equal")
-    ax2.set_title('Rotated Data')
-    ax3.hist(Ig_rotated, bins=50, alpha=0.75, label='Ground')
-    ax3.hist(Ie_rotated, bins=50, alpha=0.75, label='Excited')
-    ax3.axvline(x=threshold, color='k', ls='--', alpha=0.5)
-    ax3.text(0.7, 0.9, f"{threshold:.3e}", horizontalalignment='center', verticalalignment='center', transform=ax3.transAxes)
-    ax3.set_title('1D Histogram')
+    ax2.set_title("Rotated Data")
+    ax3.hist(Ig_rotated, bins=50, alpha=0.75, label="Ground")
+    ax3.hist(Ie_rotated, bins=50, alpha=0.75, label="Excited")
+    ax3.axvline(x=threshold, color="k", ls="--", alpha=0.5)
+    ax3.text(
+        0.7,
+        0.9,
+        f"{threshold:.3e}",
+        horizontalalignment="center",
+        verticalalignment="center",
+        transform=ax3.transAxes,
+    )
+    ax3.set_title("1D Histogram")
     ax4.imshow(np.array([[gg, ge], [eg, ee]]))
     ax4.set_xticks([0, 1])
     ax4.set_yticks([0, 1])
-    ax4.set_xticklabels(labels=['|g>', '|e>'])
-    ax4.set_yticklabels(labels=['|g>', '|e>'])
+    ax4.set_xticklabels(labels=["|g>", "|e>"])
+    ax4.set_yticklabels(labels=["|g>", "|e>"])
     ax4.text(0, 0, gg, ha="center", va="center", color="w")
     ax4.text(0, 1, ge, ha="center", va="center", color="w")
     ax4.text(1, 0, eg, ha="center", va="center", color="w")
     ax4.text(1, 1, ee, ha="center", va="center", color="w")
-    ax4.set_title('Fidelities')
+    ax4.set_title("Fidelities")
     fig.tight_layout()

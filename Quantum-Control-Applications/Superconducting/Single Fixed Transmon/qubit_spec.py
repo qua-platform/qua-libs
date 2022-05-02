@@ -48,7 +48,7 @@ with program() as qubit_spec:
     with stream_processing():
         I_st.buffer(len(freqs)).average().save("I")
         Q_st.buffer(len(freqs)).average().save("Q")
-        n_st.save('iteration')
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -65,7 +65,7 @@ job = qm.execute(qubit_spec)
 res_handles = job.result_handles
 I_handle = res_handles.get("I")
 Q_handle = res_handles.get("Q")
-iteration_handle = res_handles.get('iteration')
+iteration_handle = res_handles.get("iteration")
 I_handle.wait_for_values(1)
 Q_handle.wait_for_values(1)
 iteration_handle.wait_for_values(1)
@@ -79,7 +79,7 @@ def on_close(event):
 
 f = plt.figure()
 f.canvas.mpl_connect("close_event", on_close)
-print('Progress =', end=' ')
+print("Progress =", end=" ")
 
 while res_handles.is_processing():
     plt.cla()
@@ -88,7 +88,7 @@ while res_handles.is_processing():
     iteration = iteration_handle.fetch_all()
     if iteration / n_avg > next_percent:
         percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f'{percent}%', end=' ')
+        print(f"{percent}%", end=" ")
         next_percent = percent / 100 + 0.1  # Print every 10%
 
     plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
@@ -104,7 +104,7 @@ plt.cla()
 I = I_handle.fetch_all()
 Q = Q_handle.fetch_all()
 iteration = iteration_handle.fetch_all()
-print(f'{round(iteration/n_avg * 100)}%')
+print(f"{round(iteration/n_avg * 100)}%")
 plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
 # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 

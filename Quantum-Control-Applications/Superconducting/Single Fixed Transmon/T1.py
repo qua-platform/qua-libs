@@ -46,7 +46,7 @@ with program() as T1:
     with stream_processing():
         I_st.buffer(len(taus)).average().save("I")
         Q_st.buffer(len(taus)).average().save("Q")
-        n_st.save('iteration')
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -59,7 +59,7 @@ job = qm.execute(T1)
 res_handles = job.result_handles
 I_handle = res_handles.get("I")
 Q_handle = res_handles.get("Q")
-iteration_handle = res_handles.get('iteration')
+iteration_handle = res_handles.get("iteration")
 I_handle.wait_for_values(1)
 Q_handle.wait_for_values(1)
 iteration_handle.wait_for_values(1)
@@ -73,17 +73,17 @@ def on_close(event):
 
 f = plt.figure()
 f.canvas.mpl_connect("close_event", on_close)
-print('Progress =', end=' ')
+print("Progress =", end=" ")
 
 while res_handles.is_processing():
     plt.cla()
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
-    if iteration/n_avg > next_percent:
-        percent = 10 * round(iteration/n_avg * 10)  # Round to nearest 10%
-        print(f'{percent}%', end=' ')
-        next_percent = percent/100 + 0.1  # Print every 10%
+    if iteration / n_avg > next_percent:
+        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
+        print(f"{percent}%", end=" ")
+        next_percent = percent / 100 + 0.1  # Print every 10%
 
     plt.plot(taus, I, ".", label="I")
     plt.plot(taus, Q, ".", label="Q")
@@ -95,7 +95,7 @@ plt.cla()
 I = I_handle.fetch_all()
 Q = Q_handle.fetch_all()
 iteration = iteration_handle.fetch_all()
-print(f'{round(iteration/n_avg * 100)}%')
+print(f"{round(iteration/n_avg * 100)}%")
 plt.plot(taus, I, ".", label="I")
 plt.plot(taus, Q, ".", label="Q")
 
