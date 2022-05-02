@@ -1,9 +1,6 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
-import matplotlib
-
-matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -23,6 +20,7 @@ amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
 
 with program() as power_rabi:
     n = declare(int)
+    n_st = declare_stream()
     a = declare(fixed)
     I = declare(fixed)
     Q = declare(fixed)
@@ -45,10 +43,12 @@ with program() as power_rabi:
             save(I, I_st)
             save(Q, Q_st)
             wait(cooldown_time, "resonator")
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(len(amps)).average().save("I")
         Q_st.buffer(len(amps)).average().save("Q")
+        n_st.save('iteration')
 
 #####################################
 #  Open Communication with the QOP  #
@@ -59,34 +59,46 @@ qm = qmm.open_qm(config)
 
 job = qm.execute(power_rabi)
 res_handles = job.result_handles
-I_handles = res_handles.get("I")
-Q_handles = res_handles.get("Q")
-I_handles.wait_for_values(1)
-Q_handles.wait_for_values(1)
+I_handle = res_handles.get("I")
+Q_handle = res_handles.get("Q")
+iteration_handle = res_handles.get('iteration')
+I_handle.wait_for_values(1)
+Q_handle.wait_for_values(1)
+iteration_handle.wait_for_values(1)
+next_percent = 0.1  # First time print 10%
 
 
 def on_close(event):
+    event.canvas.stop_event_loop()
     job.halt()
 
 
 f = plt.figure()
 f.canvas.mpl_connect("close_event", on_close)
+print('Progress =', end=' ')
 
 while res_handles.is_processing():
     plt.cla()
-    I = I_handles.fetch_all()
-    Q = Q_handles.fetch_all()
+    I = I_handle.fetch_all()
+    Q = Q_handle.fetch_all()
+    iteration = iteration_handle.fetch_all()
+    if iteration / n_avg > next_percent:
+        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
+        print(f'{percent}%', end=' ')
+        next_percent = percent / 100 + 0.1  # Print every 10%
+
     plt.plot(amps, I, ".", label="I")
     plt.plot(amps, Q, ".", label="Q")
 
     plt.legend()
-    plt.show()
     plt.pause(0.1)
 
 
 plt.cla()
-I = I_handles.fetch_all()
-Q = Q_handles.fetch_all()
+I = I_handle.fetch_all()
+Q = Q_handle.fetch_all()
+iteration = iteration_handle.fetch_all()
+print(f'{round(iteration/n_avg * 100)}%')
 plt.plot(amps, I, ".", label="I")
 plt.plot(amps, Q, ".", label="Q")
 
