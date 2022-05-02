@@ -26,6 +26,7 @@ with program() as T1:
     tau = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
+        # Notice it's <= to include t_max (This is only for integers!)
         with for_(tau, tau_min, tau <= tau_max, tau + dtau):
             play("pi", "qubit")
             wait(tau, "qubit")

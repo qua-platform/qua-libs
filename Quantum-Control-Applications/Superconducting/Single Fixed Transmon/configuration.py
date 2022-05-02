@@ -1,5 +1,5 @@
 import numpy as np
-from qm.qua import *
+from qm.qua import declare, fixed, measure, dual_demod, assign
 from scipy.signal.windows import gaussian
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 
