@@ -16,9 +16,7 @@ resonators = ["rr" + str(i) for i in range(rr_num)]
 qubits = ["qb" + str(i) for i in range(rr_num)]
 path = "folder_name"
 calibrate_with = ["rr0"]
-discriminator = NNStateDiscriminator.NNStateDiscriminator(
-    qmm, config, resonators, qubits, calibrate_with, path
-)
+discriminator = NNStateDiscriminator.NNStateDiscriminator(qmm, config, resonators, qubits, calibrate_with, path)
 
 
 def prepare_qubits(state, qubits):
@@ -28,15 +26,11 @@ def prepare_qubits(state, qubits):
 
 
 num_of_combinations = 243
-states = np.random.randint(
-    0, discriminator.num_of_states, (num_of_combinations, discriminator.rr_num)
-)
+states = np.random.randint(0, discriminator.num_of_states, (num_of_combinations, discriminator.rr_num))
 wait_time = 100  # wait time between measurement and next state preparation
 n_avg = 15  # repeat the measurement n_avg times and average the result in the training
 
-discriminator.generate_training_data(
-    prepare_qubits, "readout", n_avg, states, wait_time
-)
+discriminator.generate_training_data(prepare_qubits, "readout", n_avg, states, wait_time)
 
 discriminator.train()
 

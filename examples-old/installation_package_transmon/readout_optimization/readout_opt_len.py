@@ -30,24 +30,12 @@ def opt_len(time):  # will update time in nanoseconds
     config["integration_weights"]["sin_weights"]["sine"] = [(1.0, time)]
     config["integration_weights"]["minus_sin_weights"]["cosine"] = [(0.0, time)]
     config["integration_weights"]["minus_sin_weights"]["sine"] = [(-1.0, time)]
-    config["integration_weights"]["rotated_cos_weights"]["cosine"] = [
-        (np.cos(rotation_angle), time)
-    ]
-    config["integration_weights"]["rotated_cos_weights"]["sine"] = [
-        (-np.sin(rotation_angle), time)
-    ]
-    config["integration_weights"]["rotated_sin_weights"]["cosine"] = [
-        (np.sin(rotation_angle), time)
-    ]
-    config["integration_weights"]["rotated_sin_weights"]["sine"] = [
-        (np.cos(rotation_angle), time)
-    ]
-    config["integration_weights"]["rotated_minus_sin_weights"]["cosine"] = [
-        (-np.sin(rotation_angle), time)
-    ]
-    config["integration_weights"]["rotated_minus_sin_weights"]["sine"] = [
-        (-np.cos(rotation_angle), time)
-    ]
+    config["integration_weights"]["rotated_cos_weights"]["cosine"] = [(np.cos(rotation_angle), time)]
+    config["integration_weights"]["rotated_cos_weights"]["sine"] = [(-np.sin(rotation_angle), time)]
+    config["integration_weights"]["rotated_sin_weights"]["cosine"] = [(np.sin(rotation_angle), time)]
+    config["integration_weights"]["rotated_sin_weights"]["sine"] = [(np.cos(rotation_angle), time)]
+    config["integration_weights"]["rotated_minus_sin_weights"]["cosine"] = [(-np.sin(rotation_angle), time)]
+    config["integration_weights"]["rotated_minus_sin_weights"]["sine"] = [(-np.cos(rotation_angle), time)]
 
     ###################
     # The QUA program #
@@ -115,18 +103,10 @@ def opt_len(time):  # will update time in nanoseconds
             Ie_st.average().save("Ieavg")
             Qe_st.average().save("Qeavg")
             # variances
-            (((Ig_st * Ig_st).average()) - (Ig_st.average() * Ig_st.average())).save(
-                "Igvar"
-            )
-            (((Qg_st * Qg_st).average()) - (Qg_st.average() * Qg_st.average())).save(
-                "Qgvar"
-            )
-            (((Ie_st * Ie_st).average()) - (Ie_st.average() * Ie_st.average())).save(
-                "Ievar"
-            )
-            (((Qe_st * Qe_st).average()) - (Qe_st.average() * Qe_st.average())).save(
-                "Qevar"
-            )
+            (((Ig_st * Ig_st).average()) - (Ig_st.average() * Ig_st.average())).save("Igvar")
+            (((Qg_st * Qg_st).average()) - (Qg_st.average() * Qg_st.average())).save("Qgvar")
+            (((Ie_st * Ie_st).average()) - (Ie_st.average() * Ie_st.average())).save("Ievar")
+            (((Qe_st * Qe_st).average()) - (Qe_st.average() * Qe_st.average())).save("Qevar")
 
     #######################
     # Simulate or execute #

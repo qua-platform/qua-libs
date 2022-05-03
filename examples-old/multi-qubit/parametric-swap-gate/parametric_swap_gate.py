@@ -165,15 +165,11 @@ config = {
         "zero_wf": {"type": "constant", "sample": 0.0},
         "pi_wf": {
             "type": "arbitrary",
-            "samples": [
-                float(arg) for arg in gauss_amp * gaussian(gauss_len, gauss_sig)
-            ],
+            "samples": [float(arg) for arg in gauss_amp * gaussian(gauss_len, gauss_sig)],
         },
         "pi2_wf": {
             "type": "arbitrary",
-            "samples": [
-                float(arg) for arg in 0.5 * gauss_amp * gaussian(gauss_len, gauss_sig)
-            ],
+            "samples": [float(arg) for arg in 0.5 * gauss_amp * gaussian(gauss_len, gauss_sig)],
         },
         "swap_ge_eg_wf": {
             "type": "arbitrary",

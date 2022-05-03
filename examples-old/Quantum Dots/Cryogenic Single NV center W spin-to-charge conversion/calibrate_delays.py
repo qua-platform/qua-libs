@@ -32,9 +32,7 @@ with program() as calib_delays:
 
     # Declare QUA variables
     ###################
-    times = declare(
-        int, size=100
-    )  # 'size' defines the max number of photons to be counted
+    times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'
     counts = declare(int)  # variable to save the total number of photons
     i = declare(int)  # variable used to save data
@@ -48,14 +46,10 @@ with program() as calib_delays:
         wait(initial_delay_cycles, "laser_EX705nm")  # wait before starting PL
         play("PL", "laser_EX705nm", duration=laser_len_cycles)  # Photoluminescence
 
-        wait(
-            initial_delay_cycles + (laser_len_cycles - mw_len_cycles) // 2, "qubit"
-        )  # delay the microwave pulse
+        wait(initial_delay_cycles + (laser_len_cycles - mw_len_cycles) // 2, "qubit")  # delay the microwave pulse
         play("mw", "qubit", duration=mw_len_cycles)  # play microwave pulse
 
-        measure(
-            "photon_count", "SNSPD", None, time_tagging.analog(times, meas_len, counts)
-        )  # photon count on SNSPD
+        measure("photon_count", "SNSPD", None, time_tagging.analog(times, meas_len, counts))  # photon count on SNSPD
 
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream
@@ -65,9 +59,7 @@ with program() as calib_delays:
     # Stream processing
     ###################
     with stream_processing():
-        times_st.histogram([[i, i] for i in range(meas_len)]).save(
-            "times_hist"
-        )  # histogram
+        times_st.histogram([[i, i] for i in range(meas_len)]).save("times_hist")  # histogram
         n_st.save("iteration")
 
 #######################

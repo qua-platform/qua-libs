@@ -386,13 +386,9 @@ else:
                 res.append(job.result_handles.get("res{}".format(x)).fetch_all())
             iteration = iteration_handle.fetch_all()
             print(iteration)
-            plt.xticks(
-                ticks=range(21), labels=[str(el) for el in sequence], rotation=90
-            )
+            plt.xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=90)
             res = np.array(res)
-            values = (
-                ((res - res[0]) / res[-1]) * (-2)
-            ) + 1  # minus the ground state value and
+            values = (((res - res[0]) / res[-1]) * (-2)) + 1  # minus the ground state value and
             # divided by the excited state value [0,1)
             # values = res * (-2) + 1
             plt.plot(values, ".")

@@ -136,9 +136,7 @@ with program() as dd_prog:
 
 if True:
     config["elements"]["qubit"]["intermediate_frequency"] = 0
-    qmm.simulate(
-        config, dd_prog, SimulationConfig(5000)
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, dd_prog, SimulationConfig(5000)).get_simulated_samples().con1.plot()
 else:
     job = qm.execute(dd_prog)
     res_handle = job.result_handles

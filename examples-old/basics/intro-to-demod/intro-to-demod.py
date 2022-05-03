@@ -71,9 +71,7 @@ with program() as measureProg:
 
 job = QM1.simulate(
     measureProg,
-    SimulationConfig(
-        4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 res = job.result_handles

@@ -64,9 +64,7 @@ with program() as T1:
 
 job = QM1.simulate(
     T1,
-    SimulationConfig(
-        int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 samples = job.get_simulated_samples()

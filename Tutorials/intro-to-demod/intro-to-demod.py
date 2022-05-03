@@ -68,9 +68,7 @@ with program() as measureProg:
 job = qmm.simulate(
     config,
     measureProg,
-    SimulationConfig(
-        4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 res = job.result_handles

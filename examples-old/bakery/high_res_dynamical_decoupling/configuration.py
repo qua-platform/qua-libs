@@ -133,9 +133,7 @@ config = {
             "singleInput": {
                 "port": ("con1", 3),
             },
-            "hold_offset": {
-                "duration": 1
-            },  # This makes it a sticky element, means that it "holds" the voltage
+            "hold_offset": {"duration": 1},  # This makes it a sticky element, means that it "holds" the voltage
             "operations": {
                 "um_step": "stepPulse",
                 "half_range": "edgePulse",
@@ -145,9 +143,7 @@ config = {
             "singleInput": {
                 "port": ("con1", 4),
             },
-            "hold_offset": {
-                "duration": 1
-            },  # This makes it a sticky element, means that it "holds" the voltage
+            "hold_offset": {"duration": 1},  # This makes it a sticky element, means that it "holds" the voltage
             "operations": {
                 "um_step": "stepPulse",
                 "half_range": "edgePulse",
@@ -207,9 +203,7 @@ config = {
         },
         "pi_half_gauss_wf": {
             "type": "arbitrary",
-            "samples": (
-                pi_half_amp * signal.windows.gaussian(pi_half_len, pi_half_len / 5)
-            ).tolist(),
+            "samples": (pi_half_amp * signal.windows.gaussian(pi_half_len, pi_half_len / 5)).tolist(),
         },
         "laser_wf": {"type": "constant", "sample": 0.499},  # Need to calibrate
         "zero_wf": {"type": "constant", "sample": 0.0},

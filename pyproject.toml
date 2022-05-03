@@ -21,7 +21,7 @@ poethepoet = "^0.10.0"
 flake8 = "^3.9.1"
 
 [tool.black]
-line-length = 88
+line-length = 120
 target-version = ['py37']
 #include = '(examples)/.+\.pyi?$'
 #include = '(Quantum Control Applications)/.+\.pyi?$'

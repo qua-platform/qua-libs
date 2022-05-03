@@ -60,9 +60,7 @@ res_handles.wait_for_all_values()
 
 plt.cla()
 states = res_handles.get("states").fetch_all()
-states = -2 * (
-    states - 0.5
-)  # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>
+states = -2 * (states - 0.5)  # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>
 
 I = np.array([[1, 0], [0, 1]])
 sigma_x = np.array([[0, 1], [1, 0]])

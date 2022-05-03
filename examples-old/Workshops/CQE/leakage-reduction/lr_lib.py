@@ -154,9 +154,7 @@ def get_DRAG_pulse(gate: str, params: list, t: float):
     ts = np.linspace(0.0, t, ns)
     ts[-1] -= 0.01
     ts[0] += 0.01
-    I_t = DRAG_I(
-        params[0], t / 2, t
-    )  # we suppose that we optimize the I,Q quadratures for X/2 gate
+    I_t = DRAG_I(params[0], t / 2, t)  # we suppose that we optimize the I,Q quadratures for X/2 gate
     Q_t = DRAG_Q(params[1], t / 2, t)
     if gate == "X/2":
         I = [(I_t(_t) + an_func(_t)) for _t in ts]
@@ -354,6 +352,4 @@ x_the = np.array([1, 2.3, 100e6])
 x_0 = np.array([1.2, 2.2, 110e6])
 e = np.sqrt(np.sum((x_0 - x_the) ** 2))
 ts = np.linspace(0.0, readout_len, readout_len)
-config["waveforms"]["readout_wf"]["samples"] = [
-    DRAG_I(1.0, 0.5 * readout_len, readout_len)(t) for t in ts
-]
+config["waveforms"]["readout_wf"]["samples"] = [DRAG_I(1.0, 0.5 * readout_len, readout_len)(t) for t in ts]

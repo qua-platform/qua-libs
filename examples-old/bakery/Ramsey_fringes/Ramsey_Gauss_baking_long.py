@@ -18,9 +18,7 @@ short_ramsey_baking_list = []  # Stores the baking objects
 # Create the different baked sequences, corresponding to the different taus up to 16 ns
 for i in range(2 * Tpihalf):
     with baking(config, padding_method="left") as b:
-        init_delay = (
-            2 * Tpihalf
-        )  # Put initial delay to ensure that all of the pulses will have the same length
+        init_delay = 2 * Tpihalf  # Put initial delay to ensure that all of the pulses will have the same length
         b.wait(init_delay, "drive")  # We first wait the entire duration.
 
         # We add the 2nd pi_half pulse with the phase 'dephasing' (Confusingly, the first pulse will be added later)
@@ -85,12 +83,8 @@ with program() as RamseyGauss:  # to measure Rabi flops every 1ns starting from 
                 deterministic_run(short_ramsey_baking_list, t, unsafe=True)
                 align()
             with else_():
-                assign(
-                    t_cycles, t >> 2
-                )  # Right shift by 2 is a quick way to divide by 4
-                assign(
-                    t_left_ns, t - (t_cycles << 2)
-                )  # left shift by 2 is a quick way to multiply by 4
+                assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
+                assign(t_left_ns, t - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
                 assign(t_cycles, t_cycles - Tpihalf // 4)
                 with switch_(t_left_ns, unsafe=True):
                     for j in range(4):

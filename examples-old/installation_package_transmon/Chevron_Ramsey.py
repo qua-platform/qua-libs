@@ -60,9 +60,7 @@ with program() as chevron_ramsey:
 
         with for_(f, f_min, f <= f_max, f + df):
 
-            update_frequency(
-                "qubit", qubit_if - f
-            )  # update qubit frequency with detuning
+            update_frequency("qubit", qubit_if - f)  # update qubit frequency with detuning
 
             with for_(tau, tau_min, tau < tau_max + dt / 2, tau + dt):
                 wait(cooldown_time, "qubit")  # for qubit to decay
@@ -100,9 +98,7 @@ if simulate:
         duration=100000,
         simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)])),
     )
-    job = qmm.simulate(
-        config, chevron_ramsey, simulate_config
-    )  # do simulation with qmm
+    job = qmm.simulate(config, chevron_ramsey, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
 else:

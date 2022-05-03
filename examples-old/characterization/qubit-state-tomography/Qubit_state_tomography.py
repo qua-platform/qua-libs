@@ -245,9 +245,7 @@ config = {
     },
 }
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
-my_qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 N_shots = 1000
 qubit = "qubit"
 rr = "RR"

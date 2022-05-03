@@ -20,9 +20,7 @@ def state_estimate(I, Q, state_var):
 def active_reset(I, Q):
     with while_(Q > 0):
         play("pi_g_e", "charge_line")
-        measure(
-            "readout", "readout_resonator", None, demod.full("integW_sin", Q, "out1")
-        )
+        measure("readout", "readout_resonator", None, demod.full("integW_sin", Q, "out1"))
 
 
 def prepare_e():
@@ -96,9 +94,7 @@ def time_freq_sweep(prepare, N, sb_freqs, t_init, t_final, step):
                     save(state_var, state)
 
         with stream_processing():
-            state.buffer(len(sb_freqs), int((t_final - t_init) / step)).average().save(
-                "state"
-            )
+            state.buffer(len(sb_freqs), int((t_final - t_init) / step)).average().save("state")
         return prog
 
 

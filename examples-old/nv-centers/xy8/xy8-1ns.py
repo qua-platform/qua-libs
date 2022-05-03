@@ -94,9 +94,7 @@ with program() as xy8:
         play("laser", "qubit")
 
         with for_(t, t_min, t <= t_max, t + dt):  # Implicit Align
-            assign(
-                tt, 2 * t
-            )  # This calculate the multiplication only once, which is more efficient.
+            assign(tt, 2 * t)  # This calculate the multiplication only once, which is more efficient.
             for j in range(4):
                 # Play meas (pi/2 pulse at x)
                 play("pi_half", "qubit")
@@ -111,9 +109,7 @@ with program() as xy8:
                 frame_rotation(np.pi, "qubit")
                 play("pi_half", "qubit")
                 reset_frame("qubit")  # Such that next tau would start in x.
-                measure(
-                    "readout", "qubit", None, time_tagging.raw(times, 300, counts_ref)
-                )
+                measure("readout", "qubit", None, time_tagging.raw(times, 300, counts_ref))
                 # Time tagging done here, in real time
 
             # save counts:

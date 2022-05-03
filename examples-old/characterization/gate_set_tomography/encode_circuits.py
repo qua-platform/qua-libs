@@ -13,9 +13,7 @@ def base_gate_sequence_and_macros(model, basic_gates_macros: dict = None):
     )
 
     # create minimal generating gate sequence
-    base_gate_sequence = list(
-        {k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials}
-    )
+    base_gate_sequence = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
     base_gate_sequence.remove("{}")
     base_gate_sequence.sort(key=len, reverse=True)
 
@@ -23,11 +21,7 @@ def base_gate_sequence_and_macros(model, basic_gates_macros: dict = None):
         # create generating gate sequence macros
         base_gate_sequence_macros = [s.split("G") for s in base_gate_sequence]
         for i, s in enumerate(base_gate_sequence_macros):
-            s = [
-                basic_gates_macros[k]
-                for k in s
-                if basic_gates_macros.get(k) is not None
-            ]
+            s = [basic_gates_macros[k] for k in s if basic_gates_macros.get(k) is not None]
             base_gate_sequence_macros[i] = sequence_macros(s)
         return base_gate_sequence, base_gate_sequence_macros
     else:
@@ -108,11 +102,7 @@ def encode_circuits(circuits, model):
                         ):
                             if k:
                                 end_gate = j
-                                if (
-                                    base_gate_sequence[start_gate]
-                                    + base_gate_sequence[end_gate]
-                                    == gates
-                                ):
+                                if base_gate_sequence[start_gate] + base_gate_sequence[end_gate] == gates:
                                     done = True
                                     break
                     else:

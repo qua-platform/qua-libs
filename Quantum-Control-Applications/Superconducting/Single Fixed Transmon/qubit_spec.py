@@ -27,9 +27,7 @@ with program() as qubit_spec:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(
-            f, f_min, f <= f_max, f + df
-        ):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
             update_frequency("qubit", f)
             play("saturation", "qubit")
             align("qubit", "resonator")

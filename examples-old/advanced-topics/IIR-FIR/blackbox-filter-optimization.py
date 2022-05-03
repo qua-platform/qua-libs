@@ -25,9 +25,7 @@ tof = 248
 waveform = [0.0] * 30 + [0.2] * (pulse_len - 60) + [0.0] * 30
 
 # We use an  arbitrarily selected filter for distorting the signal
-distorted_waveform = signal.lfilter(
-    np.array([1]), np.array([0.95, -0.15, 0.1]), waveform
-)
+distorted_waveform = signal.lfilter(np.array([1]), np.array([0.95, -0.15, 0.1]), waveform)
 
 bPlot = False
 
@@ -102,15 +100,11 @@ def cost(params: List[float]):
         filter_optimization,
         SimulationConfig(
             duration=150,
-            simulation_interface=LoopbackInterface(
-                [("con1", 1, "con1", 1)], latency=200
-            ),
+            simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)], latency=200),
         ),
     )
     job.result_handles.wait_for_all_values()
-    corrected_signal = (
-        -job.result_handles.adc.fetch_all() / 4096
-    )  # This converts ADC units into volts
+    corrected_signal = -job.result_handles.adc.fetch_all() / 4096  # This converts ADC units into volts
 
     if bPlot:
         plt.plot(waveform)
@@ -121,10 +115,7 @@ def cost(params: List[float]):
     # The correlation is used to calculate the "loss": Check whether the resulting output matches the required waveform,
     # taking into account added delays. Check the readme for more information
     corr = np.correlate(corrected_signal, waveform, "full") / (
-        np.sqrt(
-            np.correlate(corrected_signal, corrected_signal)
-            * np.correlate(waveform, waveform)
-        )
+        np.sqrt(np.correlate(corrected_signal, corrected_signal) * np.correlate(waveform, waveform))
     )
     loss = 1 - np.max(corr)
 

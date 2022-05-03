@@ -14,9 +14,7 @@ def gauss(amplitude, mu, sigma, delf, length):
 
 def gauss_der(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_der_wave = (
-        amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
-    )
+    gauss_der_wave = amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_der_wave]

@@ -55,9 +55,7 @@ class Driver(InstrumentDriver.InstrumentWorker):
             elif prog_name == "qua_prog_2":
                 prog = self.qua_prog_2
 
-            job = self.QM1.simulate(
-                prog(a=amp, f=freq), SimulationConfig(int(1000))
-            )  # in clock cycles, 4 ns
+            job = self.QM1.simulate(prog(a=amp, f=freq), SimulationConfig(int(1000)))  # in clock cycles, 4 ns
             samples = job.get_simulated_samples()
 
             # if asking for signal, start with getting values of other controls

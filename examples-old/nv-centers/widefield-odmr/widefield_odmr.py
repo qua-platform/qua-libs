@@ -47,18 +47,14 @@ with program() as CW_ODMR:
         play("init", "AOM", duration=normalReadout // 4)  # init
         play("CW", "NV", duration=normalReadout // 4)  # MW
         play("trigger", "camera", duration=normalReadout // 4)  # camera
-        wait(
-            1000 // 4, "camera"
-        )  # camera rearming (can be removed if camera will be configured
+        wait(1000 // 4, "camera")  # camera rearming (can be removed if camera will be configured
         # to take 200 frames from a single trigger)
 
         # Reference without MW
         align("AOM", "camera")
         play("init", "AOM", duration=normalReadout // 4)  # init
         play("trigger", "camera", duration=normalReadout // 4)  # camera
-        wait(
-            1000 // 4, "camera"
-        )  # camera rearming (can be removed if camera will be configured
+        wait(1000 // 4, "camera")  # camera rearming (can be removed if camera will be configured
         # to take 200 frames from a single trigger)
 
 ################
@@ -120,9 +116,7 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks(
-        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
-    )
+    plt.yticks([-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center")
     plt.xlabel("t [ns]")
     plt.title("CW ODMR")
 
@@ -141,9 +135,7 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks(
-        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
-    )
+    plt.yticks([-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center")
     plt.xlabel("t [ns]")
     plt.title("CW ODMR - fast readout")
 
@@ -162,9 +154,7 @@ if simulate:
     plt.plot(MW_I)
     plt.plot(MW_Q)
     plt.plot(camera)
-    plt.yticks(
-        [-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center"
-    )
+    plt.yticks([-3.5, -1.5, 0.5], ["Camera", "MW", "AOM"], rotation="vertical", va="center")
     plt.xlabel("t [ns]")
     plt.title("Pulsed ODMR")
 

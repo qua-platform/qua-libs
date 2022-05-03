@@ -30,15 +30,11 @@ with program() as time_rabi:
 
     # Declare QUA variables
     ###################
-    times_dark = declare(
-        int, size=100
-    )  # 'size' defines the max number of photons to be counted
+    times_dark = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     counts_dark = declare(int)  # variable to save the total number of photons
     counts_dark_st = declare_stream()  # stream for 'counts'
 
-    times_bright = declare(
-        int, size=100
-    )  # 'size' defines the max number of photons to be counted
+    times_bright = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     counts_bright = declare(int)  # variable to save the total number of photons
     counts_bright_st = declare_stream()  # stream for 'counts'
 
@@ -92,9 +88,7 @@ with program() as time_rabi:
 simulate = True
 
 if simulate:
-    qmm.simulate(
-        config, time_rabi, SimulationConfig(10000)
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, time_rabi, SimulationConfig(10000)).get_simulated_samples().con1.plot()
 else:
     job = qm.execute(time_rabi)  # execute QUA program
 

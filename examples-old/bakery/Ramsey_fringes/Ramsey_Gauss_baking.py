@@ -100,9 +100,7 @@ qmm = QuantumMachinesManager()
 job = qmm.simulate(
     config,
     RamseyGauss,
-    SimulationConfig(
-        17 * (wait_time_cc + readout_pulse_length + drive_cc) * int(sample_rate / 1e9)
-    ),
+    SimulationConfig(17 * (wait_time_cc + readout_pulse_length + drive_cc) * int(sample_rate / 1e9)),
 )
 samps = job.get_simulated_samples()
 plt.figure()

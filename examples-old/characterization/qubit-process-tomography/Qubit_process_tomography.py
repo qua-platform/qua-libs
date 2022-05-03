@@ -20,9 +20,7 @@ from configuration import *
 
 π = np.pi
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
-qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 N_shots = 1  # Number of shots fixed to determine operator expectation values
 
 
@@ -76,9 +74,7 @@ def Arbitrary_process(
     Ry(π / 2, tgt)
 
 
-def state_saving(
-    I, Q, state_estimate, stream
-):  # Do state estimation protocol in QUA, and save the associated state
+def state_saving(I, Q, state_estimate, stream):  # Do state estimation protocol in QUA, and save the associated state
     # Define coef a & b defining the line separating states 0 & 1 in the IQ Plane (calibration required), here a & b are arbitrary
     a = declare(fixed, value=1.0)
     b = declare(fixed, value=1.0)
@@ -122,9 +118,7 @@ with program() as process_tomography:
     stream_Y = declare_stream()
     stream_X = declare_stream()
 
-    j = declare(
-        int
-    )  # Define necessary QUA variables to store the result of the experiments
+    j = declare(int)  # Define necessary QUA variables to store the result of the experiments
     Iz = declare(fixed)
     Qz = declare(fixed)
     Z = declare(fixed)
@@ -134,9 +128,7 @@ with program() as process_tomography:
     Iy = declare(fixed)
     Qy = declare(fixed)
     Y = declare(fixed)
-    t1 = declare(
-        int, value=10
-    )  # Assume we know the value of the relaxation time allowing to return to 0 state
+    t1 = declare(int, value=10)  # Assume we know the value of the relaxation time allowing to return to 0 state
     with for_(j, 0, j < N_shots, j + 1):
         # Preparing state |0>, i.e do nothing else than tomography:
         Z_tomography("qubit", "RR", Iz, Qz, Z, stream_Z)
@@ -170,9 +162,7 @@ with program() as process_tomography:
 job = qmManager.simulate(
     config,
     process_tomography,
-    SimulationConfig(
-        int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )  # Use LoopbackInterface to simulate the response of the qubit
 time.sleep(1.0)
 
@@ -183,20 +173,14 @@ Y = my_tomography_results.Y.fetch_all()["value"]
 Z = my_tomography_results.Z.fetch_all()["value"]
 
 # Using direct inversion for state tomography on each of the 4 prepared states
-state = np.array(
-    [[None, None, None]] * 4
-)  # Store results associated to each of the 4 prepared states
+state = np.array([[None, None, None]] * 4)  # Store results associated to each of the 4 prepared states
 counts_1 = np.array(
     [[None, None, None]] * 4
 )  # Store number of 1s measured for each axis (X,Y,Z) for each of the 4 prepared states
 counts_0 = np.array([[None, None, None]] * 4)  # Same for 0s
 R_dir_inv = np.array([[0, 0, 0]] * 4)  # Bloch vectors for each of the 4 prepared states
-rho_div_inv = np.array(
-    [None] * 4
-)  # Density matrices associated to the 4 states obtained after applying the process
-ρ = np.array(
-    [None] * 4
-)  # Store matrices described in eq 8.173-8.176 of Box 8.5 in Nielsen & Chuang
+rho_div_inv = np.array([None] * 4)  # Density matrices associated to the 4 states obtained after applying the process
+ρ = np.array([None] * 4)  # Store matrices described in eq 8.173-8.176 of Box 8.5 in Nielsen & Chuang
 
 for i in range(4):
     state[i] = [X[i::4], Y[i::4], Z[i::4]]  # Isolate results for |0>,|1>, |+> and |->
@@ -226,22 +210,11 @@ for i in range(4):
 
 ρ[0] = rho_div_inv[0]
 ρ[3] = rho_div_inv[1]
-ρ[1] = (
-    rho_div_inv[2]
-    - 1j * rho_div_inv[3]
-    - ((1 - 1j) / 2) * (rho_div_inv[0] + rho_div_inv[1])
-)
-ρ[2] = (
-    rho_div_inv[2]
-    + 1j * rho_div_inv[3]
-    - ((1 + 1j) / 2) * (rho_div_inv[0] + rho_div_inv[1])
-)
+ρ[1] = rho_div_inv[2] - 1j * rho_div_inv[3] - ((1 - 1j) / 2) * (rho_div_inv[0] + rho_div_inv[1])
+ρ[2] = rho_div_inv[2] + 1j * rho_div_inv[3] - ((1 + 1j) / 2) * (rho_div_inv[0] + rho_div_inv[1])
 
-Λ = (
-    0.5
-    * np.array(  # Build the Λ matrix as described in eq 8.178 of Box 8.5 of Nielsen & Chuang
-        [[1, 0, 0, 1], [0, 1, 1, 0], [0, 1, -1, 0], [1, 0, 0, -1]]
-    )
+Λ = 0.5 * np.array(  # Build the Λ matrix as described in eq 8.178 of Box 8.5 of Nielsen & Chuang
+    [[1, 0, 0, 1], [0, 1, 1, 0], [0, 1, -1, 0], [1, 0, 0, -1]]
 )
 
 R = np.array(

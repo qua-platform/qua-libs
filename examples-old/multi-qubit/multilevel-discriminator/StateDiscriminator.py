@@ -59,9 +59,7 @@ class StateDiscriminator:
             and the moment that the signal is written to memory (when the timestamps are created).
             This time difference needs to be accounted for in order to digitally down-convert correctly
             """
-            self.time_diff = TimeDiffCalibrator.calibrate(
-                self.qmm, list(self.config["controllers"].keys())[0]
-            )
+            self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config["controllers"].keys())[0])
         rr_freq = self._get_qe_freq(qe)
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig
@@ -89,12 +87,7 @@ class StateDiscriminator:
             period_ns = int(1 / rr_freq * 1e9)
             hann = signal.hann(period_ns * 2, sym=True)
             hann = hann / np.sum(hann)
-            traces = np.array(
-                [
-                    np.convolve(traces[i, :], hann, "same")
-                    for i in range(self.num_of_states)
-                ]
-            )
+            traces = np.array([np.convolve(traces[i, :], hann, "same") for i in range(self.num_of_states)])
         return traces
 
     @staticmethod
@@ -232,14 +225,8 @@ class StateDiscriminator:
             pulse,
             self.rr_qe,
             adc,
-            *[
-                demod.full(f"state_{str(i)}_in1", d1_st[i], out1)
-                for i in range(self.num_of_states)
-            ],
-            *[
-                demod.full(f"state_{str(i)}_in2", d2_st[i], out2)
-                for i in range(self.num_of_states)
-            ],
+            *[demod.full(f"state_{str(i)}_in1", d1_st[i], out1) for i in range(self.num_of_states)],
+            *[demod.full(f"state_{str(i)}_in2", d2_st[i], out2) for i in range(self.num_of_states)],
         )
 
         for i in range(self.num_of_states):

@@ -29,11 +29,7 @@ mw_len = 500  # in units of ns
 pi_len = 60  # in units of ns
 pi_amp = 0.3  # in units of volts
 pi_wf = (
-    pi_amp
-    * (
-        signal.windows.gaussian(pi_len, pi_len / 5)
-        - signal.windows.gaussian(pi_len, pi_len / 5)[-1]
-    )
+    pi_amp * (signal.windows.gaussian(pi_len, pi_len / 5) - signal.windows.gaussian(pi_len, pi_len / 5)[-1])
 ).tolist()  # waveform
 
 # Pi_half pulse parameters
@@ -52,21 +48,14 @@ gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf = (
     gauss_amp
-    * (
-        signal.windows.gaussian(gauss_len, gauss_len / 5)
-        - signal.windows.gaussian(gauss_len, gauss_len / 5)[-1]
-    )
+    * (signal.windows.gaussian(gauss_len, gauss_len / 5) - signal.windows.gaussian(gauss_len, gauss_len / 5)[-1])
 ).tolist()  # waveform
 
 # Pi_aux pulse parameters
 pi_aux_len = 60  # in units of volts
 pi_aux_amp = 0.3  # in units of ns
 pi_aux_wf = (
-    pi_amp
-    * (
-        signal.windows.gaussian(pi_len, pi_len / 5)
-        - signal.windows.gaussian(pi_len, pi_len / 5)[-1]
-    )
+    pi_amp * (signal.windows.gaussian(pi_len, pi_len / 5) - signal.windows.gaussian(pi_len, pi_len / 5)[-1])
 ).tolist()  # waveform
 
 # Integration weights

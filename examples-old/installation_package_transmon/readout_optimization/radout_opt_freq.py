@@ -49,9 +49,7 @@ with program() as rr_opt_f:
     # Pulse sequence
     ################
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(
-            f, f_min, f <= f_max, f + df
-        ):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
             update_frequency("resonator", f)
             # |g> IQ blob
             wait(cooldown_time, "qubit")  # wait for qubit to decay

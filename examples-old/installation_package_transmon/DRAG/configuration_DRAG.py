@@ -2,13 +2,9 @@ import numpy as np
 from scipy.signal.windows import gaussian
 
 # Definition of pulses follow Chen et al. PRL, 116, 020501 (2016)
-def drag_gaussian_pulse_waveforms(
-    amplitude, length, sigma, alpha, detune, delta, substracted
-):
+def drag_gaussian_pulse_waveforms(amplitude, length, sigma, alpha, detune, delta, substracted):
     t = np.arange(length, dtype=int)  # array of size pulse length in ns
-    gauss_wave = amplitude * np.exp(
-        -((t - length / 2) ** 2) / (2 * sigma**2)
-    )  # gaussian function
+    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))  # gaussian function
     gauss_der_wave = (
         amplitude
         * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))
@@ -26,9 +22,7 @@ def drag_gaussian_pulse_waveforms(
 def drag_cosine_pulse_waveforms(amplitude, length, alpha, detune, delta):
     t = np.arange(length, dtype=int)  # array of size pulse length in ns
     cos_wave = 0.5 * amplitude * (1 - np.cos(t * 2 * np.pi / length))  # cosine function
-    sin_wave = (
-        0.5 * amplitude * (2 * np.pi / length * 1e9) * np.sin(t * 2 * np.pi / length)
-    )  # derivative of cos_wave
+    sin_wave = 0.5 * amplitude * (2 * np.pi / length * 1e9) * np.sin(t * 2 * np.pi / length)  # derivative of cos_wave
     z = cos_wave + 1j * sin_wave * (alpha / delta)  # complex DRAG envelope
     z *= np.exp(1j * 2 * np.pi * detune * t * 1e-9)  # complex DRAG detuned envelope
     I_wf = z.real.tolist()  # get the real part of the I component of waveform
@@ -48,9 +42,7 @@ drag_len = 16  # length of pulse in ns
 drag_amp = 0.1  # amplitude of pulse in Volts
 drag_del_f = -0e6  # Detuning frequency in MHz
 drag_alpha = 1  # DRAG coefficient
-drag_delta = (
-    2 * np.pi * (-200e6 - drag_del_f)
-)  # Updated drag_delta, see Eqn. (4) in Chen et al.
+drag_delta = 2 * np.pi * (-200e6 - drag_del_f)  # Updated drag_delta, see Eqn. (4) in Chen et al.
 
 # Definition of I- and Q-quadratures DRAG waveforms for pi and pi_half pulses with a gaussian envelope
 drag_gauss_wf, drag_gauss_der_wf = drag_gaussian_pulse_waveforms(

@@ -92,16 +92,12 @@ opx.sim_time(100000)
 opx.n_points(f_pts)
 station = qc.Station()
 station.add_component(opx)
-exp = load_or_create_experiment(
-    experiment_name="my experiment", sample_name="this sample"
-)
+exp = load_or_create_experiment(experiment_name="my experiment", sample_name="this sample")
 
 meas = Measurement(exp=exp, station=station)
 
 meas.register_parameter(opx.ext_v)  # register the independent parameter
-meas.register_parameter(
-    opx.spectrum, setpoints=(opx.ext_v,)
-)  # now register the dependent one
+meas.register_parameter(opx.spectrum, setpoints=(opx.ext_v,))  # now register the dependent one
 
 
 with meas.run() as datasaver:

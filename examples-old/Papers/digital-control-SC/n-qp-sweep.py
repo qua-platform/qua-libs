@@ -32,17 +32,13 @@ t_poison_max = 500
 dt_poison = 20
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
     state = declare(bool)
-    th = declare(
-        fixed, value=2.0
-    )  # Threshold assumed to have been calibrated by state discrimination exp
+    th = declare(fixed, value=2.0)  # Threshold assumed to have been calibrated by state discrimination exp
     t = declare(int)
     t_poison = declare(int)
     f = declare(int)
@@ -56,9 +52,7 @@ with program() as bias_current_sweeping:  #
     update_frequency("SFQ_trigger", int(200e6))  # assumed this is far off-resonant
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(
-            t_poison, t_poison_min, t_poison < t_poison_max, t_poison + dt_poison
-        ):
+        with for_(t_poison, t_poison_min, t_poison < t_poison_max, t_poison + dt_poison):
             with for_(t, t_min, t < t_max, t + dt):
                 play("pi_pulse", "SFQ_bias", duration=t_poison)
                 play("pi_pulse", "SFQ_trigger", duration=t_poison)  # poison stage

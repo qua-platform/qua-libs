@@ -115,9 +115,7 @@ with program() as confocal_g2:
         save(counts, "counts")
 
     with stream_processing():
-        g2_stream.buffer(2 * correlation_width).save_all(
-            "g2"
-        )  # Take g2 vector per position.
+        g2_stream.buffer(2 * correlation_width).save_all("g2")  # Take g2 vector per position.
 
 
 job = QM1.execute(confocal_g2)

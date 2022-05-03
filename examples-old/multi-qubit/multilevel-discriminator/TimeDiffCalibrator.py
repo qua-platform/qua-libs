@@ -109,9 +109,7 @@ class TimeDiffCalibrator:
             cal_phase,
             SimulationConfig(
                 500,
-                simulation_interface=LoopbackInterface(
-                    [("con1", 1, "con1", 1), ("con2", 2, "con2", 2)]
-                ),
+                simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con2", 2, "con2", 2)]),
             ),
         )
 

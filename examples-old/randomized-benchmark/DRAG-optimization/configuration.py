@@ -16,22 +16,14 @@ def gauss(amplitude, sigma, length):
 # Q-quadrature component for gaussian shaped pulses
 def gauss_derivative(amplitude, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_derivative_wave = (
-        amplitude
-        * (-2 * 1e9 * t / (2 * sigma**2))
-        * np.exp(-(t**2) / (2 * sigma**2))
-    )
+    gauss_derivative_wave = amplitude * (-2 * 1e9 * t / (2 * sigma**2)) * np.exp(-(t**2) / (2 * sigma**2))
     return [float(x) for x in gauss_derivative_wave]
 
 
 # Definition of I- and Q-quadratures DRAG waveforms for pi and pi_half pulses with a gaussian envelope
-def drag_gaussian_pulse_waveforms(
-    amplitude, length, sigma, alpha, detune, delta, substracted
-):
+def drag_gaussian_pulse_waveforms(amplitude, length, sigma, alpha, detune, delta, substracted):
     t = np.arange(length, dtype=int)  # array of size pulse length in ns
-    gauss_wave = amplitude * np.exp(
-        -((t - length / 2) ** 2) / (2 * sigma**2)
-    )  # gaussian function
+    gauss_wave = amplitude * np.exp(-((t - length / 2) ** 2) / (2 * sigma**2))  # gaussian function
     gauss_der_wave = (
         amplitude
         * (-2 * 1e9 * (t - length / 2) / (2 * sigma**2))

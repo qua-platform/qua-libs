@@ -66,10 +66,7 @@ program_id = QM1.compile(prog)
 
 
 def make_wf():
-    return (
-        np.sin(np.linspace(0, 10 * np.pi + np.random.uniform(0, 2 * np.pi), arb_len))
-        / 2
-    ).tolist()
+    return (np.sin(np.linspace(0, 10 * np.pi + np.random.uniform(0, 2 * np.pi), arb_len)) / 2).tolist()
 
 
 def run_and_time_cjob(compiled_program):

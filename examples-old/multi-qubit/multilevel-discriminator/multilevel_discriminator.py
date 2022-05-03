@@ -66,15 +66,11 @@ with program() as training_program:
             wait(wait_time, "rr1a")
 
 qmm = QuantumMachinesManager()
-discriminator = StateDiscriminator(
-    qmm, config, "rr1a", len(states), "discriminator_params.npz"
-)
+discriminator = StateDiscriminator(qmm, config, "rr1a", len(states), "discriminator_params.npz")
 
 # train the discriminator on the prepared states and readout response, for best state assignment during measurement
 # for simulating:
-discriminator.train(
-    program=training_program, plot=True, dry_run=True, simulate=simulation_config
-)
+discriminator.train(program=training_program, plot=True, dry_run=True, simulate=simulation_config)
 # when running a real experiment:
 # discriminator.train(program=training_program, plot=True)
 

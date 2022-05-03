@@ -67,9 +67,7 @@ with program() as CPMGprog:
 
 job = QM1.simulate(
     CPMGprog,
-    SimulationConfig(
-        int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 samples = job.get_simulated_samples()

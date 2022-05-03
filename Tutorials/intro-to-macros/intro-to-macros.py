@@ -84,7 +84,5 @@ samples.con1.plot()
 
 print("##################")
 print("b is saved three times, before and after every call to the modify_var macros")
-print(
-    f"Before:{out_str[0][0]:.1f}, After 1st:{out_str[1][0]:.1f}, After 2nd:{out_str[2][0]:.1f}"
-)
+print(f"Before:{out_str[0][0]:.1f}, After 1st:{out_str[1][0]:.1f}, After 2nd:{out_str[2][0]:.1f}")
 print("##################")

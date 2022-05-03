@@ -14,9 +14,7 @@ prep_fiducials, meas_fiducials, germs, basic_gates = (
     model.gates,
 )
 
-gate_sequences = list(
-    {k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials}
-)
+gate_sequences = list({k.str.split("@")[0] for k in prep_fiducials + germs + meas_fiducials})
 gate_sequences.sort(key=len, reverse=True)
 
 GST_sequence_file = "Circuits_before_results.txt"
@@ -30,16 +28,10 @@ with open(file=GST_sequence_file, mode="r") as f:
         c = circ.rstrip()
         gates, qubit_measures = c.split("@")
         generated_gates = ""
-        generated_gates += (
-            gate_sequences[circ_list[i][0]] if circ_list[i][0] >= 0 else ""
-        )
-        generated_gates += (
-            "(" + gate_sequences[circ_list[i][2]] + ")" if circ_list[i][2] >= 0 else ""
-        )
+        generated_gates += gate_sequences[circ_list[i][0]] if circ_list[i][0] >= 0 else ""
+        generated_gates += "(" + gate_sequences[circ_list[i][2]] + ")" if circ_list[i][2] >= 0 else ""
         generated_gates += "^" + str(circ_list[i][3]) if circ_list[i][3] > 1 else ""
-        generated_gates += (
-            gate_sequences[circ_list[i][1]] if circ_list[i][1] >= 0 else ""
-        )
+        generated_gates += gate_sequences[circ_list[i][1]] if circ_list[i][1] >= 0 else ""
         if generated_gates == "":
             generated_gates = "{}"
         assert gates == generated_gates

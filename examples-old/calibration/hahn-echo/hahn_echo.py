@@ -112,9 +112,7 @@ with program() as hahn_echo:
 
 job = qm.simulate(
     hahn_echo,
-    SimulationConfig(
-        int(300000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(300000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 # samples = job.get_simulated_samples()

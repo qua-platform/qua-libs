@@ -26,9 +26,7 @@ dt = 1
 N_t = t_max // dt
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 Vb_min = 0.1
 Vb_max = 0.5
 dVb = 0.01
@@ -36,9 +34,7 @@ with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
     state = declare(bool)
-    th = declare(
-        fixed, value=2.0
-    )  # Threshold assumed to have been calibrated by state discrimination exp
+    th = declare(fixed, value=2.0)  # Threshold assumed to have been calibrated by state discrimination exp
     t = declare(int)
     V_b = declare(fixed)  # Sweeping parameter over the set of amplitudes
     I_b = declare(fixed)
@@ -51,9 +47,7 @@ with program() as bias_current_sweeping:  #
     Q_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):
-        with for_(
-            V_b, Vb_min, V_b < Vb_max, V_b + dVb
-        ):  # Sweep from 0 to V_c the bias voltage
+        with for_(V_b, Vb_min, V_b < Vb_max, V_b + dVb):  # Sweep from 0 to V_c the bias voltage
             with for_(t, 16, t < t_max, t + dt):
                 play("playOp" * amp(V_b), "SFQ_bias", duration=t)
                 play("const_pulse", "SFQ_trigger", duration=t)

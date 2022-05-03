@@ -58,17 +58,11 @@ with program() as resonator_spec:
         with for_(
             a, a_min, a < a_max + da / 2, a + da
         ):  # Notice it's + da/2 to include a_max (This is only for fixed!)
-            with for_(
-                f, f_min, f <= f_max, f + df
-            ):  # Notice it's <= to include f_max (This is only for integers!)
-                update_frequency(
-                    "resonator", f
-                )  # update frequency of resonator element
+            with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+                update_frequency("resonator", f)  # update frequency of resonator element
                 wait(cooldown_time, "resonator")  # wait for resonator to decay
                 align("resonator", "flux")
-                play(
-                    "offset" * amp(a), "flux", duration=1500
-                )  # duration of flux covers pulse to qubit and readout
+                play("offset" * amp(a), "flux", duration=1500)  # duration of flux covers pulse to qubit and readout
                 wait(1250, "resonator")  # wait for flux to settle due to filters
                 measure(
                     "readout",
@@ -79,9 +73,7 @@ with program() as resonator_spec:
                 )
                 save(I, I_st)
                 save(Q, Q_st)
-                play(
-                    "minus_offset" * amp(a), "flux", duration=1500
-                )  # negative pulse to quickly remove the current
+                play("minus_offset" * amp(a), "flux", duration=1500)  # negative pulse to quickly remove the current
         save(n, n_st)
 
     # Stream processing
@@ -103,9 +95,7 @@ if simulate:
         duration=10000,
         simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)])),
     )
-    job = qmm.simulate(
-        config, resonator_spec, simulate_config
-    )  # do simulation with qmm
+    job = qmm.simulate(config, resonator_spec, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
 else:

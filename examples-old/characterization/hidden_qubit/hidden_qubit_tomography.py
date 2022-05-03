@@ -73,6 +73,4 @@ with program() as hidden_qubit_tomography:
                         play_pulse(pulse)
 
                     for op in tomography_set[readout_operator]:
-                        play_readout(
-                            op
-                        )  # See def of the function, remains to define the real readout operation
+                        play_readout(op)  # See def of the function, remains to define the real readout operation

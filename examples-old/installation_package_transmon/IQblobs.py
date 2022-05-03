@@ -135,18 +135,10 @@ with program() as iq_blobs:
         Ie_st.average().save("Ie.avg")
         Qe_st.average().save("Qe.avg")
         # variances
-        (((Ig_st * Ig_st).average()) - (Ig_st.average() * Ig_st.average())).save(
-            "Igvar"
-        )
-        (((Qg_st * Qg_st).average()) - (Qg_st.average() * Qg_st.average())).save(
-            "Qgvar"
-        )
-        (((Ie_st * Ie_st).average()) - (Ie_st.average() * Ie_st.average())).save(
-            "Ievar"
-        )
-        (((Qe_st * Qe_st).average()) - (Qe_st.average() * Qe_st.average())).save(
-            "Qevar"
-        )
+        (((Ig_st * Ig_st).average()) - (Ig_st.average() * Ig_st.average())).save("Igvar")
+        (((Qg_st * Qg_st).average()) - (Qg_st.average() * Qg_st.average())).save("Qgvar")
+        (((Ie_st * Ie_st).average()) - (Ie_st.average() * Ie_st.average())).save("Ievar")
+        (((Qe_st * Qe_st).average()) - (Qe_st.average() * Qe_st.average())).save("Qevar")
 
 
 #######################

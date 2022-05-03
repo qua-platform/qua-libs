@@ -39,15 +39,11 @@ config = {
             "smearing": 0,
         },
         "qeDig": {
-            "digitalInputs": {
-                "trig_cam": {"buffer": 0, "delay": 144, "port": (opx_one, 9)}
-            },
+            "digitalInputs": {"trig_cam": {"buffer": 0, "delay": 144, "port": (opx_one, 9)}},
             "operations": {"marker": "marker_in"},
         },
         "qeCol": {
-            "singleInputCollection": {
-                "inputs": {"o1": (opx_one, 3), "o2": (opx_one, 4)}
-            },
+            "singleInputCollection": {"inputs": {"o1": (opx_one, 3), "o2": (opx_one, 4)}},
             "intermediate_frequency": IF_freq,
             "operations": {"measurement": "readout_pulse"},
             "outputs": {"out1": (opx_one, 1)},

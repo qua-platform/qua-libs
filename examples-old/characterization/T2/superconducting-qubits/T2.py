@@ -60,9 +60,7 @@ with program() as T2:
 
 job = QM1.simulate(
     T2,
-    SimulationConfig(
-        int(500000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    ),
+    SimulationConfig(int(500000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])),
 )
 
 job.result_handles.wait_for_all_values()

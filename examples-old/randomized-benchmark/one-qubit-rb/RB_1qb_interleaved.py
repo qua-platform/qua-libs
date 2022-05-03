@@ -30,9 +30,7 @@ with program() as RBprog:
             wait(10 * t1, "qe1")
 
     with stream_processing():
-        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save(
-            "out_stream"
-        )
+        out_str.boolean_to_int().buffer(len(circuit_depth_vec)).average().save("out_stream")
 
 job = QM1.simulate(RBprog, SimulationConfig(int(10000)))
 res = job.result_handles

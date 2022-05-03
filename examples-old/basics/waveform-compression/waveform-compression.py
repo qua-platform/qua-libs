@@ -17,9 +17,7 @@ import matplotlib.pyplot as plt
 QMm = QuantumMachinesManager()
 length = 1000  # 1000 samples
 sample_rate = 1e7  # in units of GSPS
-pulse = (
-    (np.random.random(length) / 2) - 0.5
-).tolist()  # arbitrary pulse samples must be a python list
+pulse = ((np.random.random(length) / 2) - 0.5).tolist()  # arbitrary pulse samples must be a python list
 b, a = signal.butter(3, 0.5)
 
 pulse = signal.filtfilt(b, a, pulse)
@@ -58,9 +56,7 @@ f.suptitle("Manually setting pulse sample rate")
 
 # test: increase max_allowed_error for fitting a pulse into memory (>65k samples at 1e-4 error)
 length = 400000
-pulse = (
-    (np.random.random(length) / 2) - 0.25
-).tolist()  # arbitrary pulse samples must be a python list
+pulse = ((np.random.random(length) / 2) - 0.25).tolist()  # arbitrary pulse samples must be a python list
 b, a = signal.butter(3, 0.01)
 pulse = signal.filtfilt(b, a, pulse)
 

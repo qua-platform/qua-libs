@@ -145,9 +145,7 @@ res = job.result_handles
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing the extra dimension.
 raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2**12)
-filter_adc = res.data.fetch_all()["value"] * (
-    2**12
-)  # For 'demod' the correction is the other way around
+filter_adc = res.data.fetch_all()["value"] * (2**12)  # For 'demod' the correction is the other way around
 
 plt.figure()
 ax1 = plt.subplot(211)
@@ -155,9 +153,7 @@ plt.plot(raw_adc)
 plt.axis(ymin=-0.4, ymax=0.4)
 plt.title("Raw ADC Input - 20 MHz & 100 kHz")
 plt.subplot(212, sharex=ax1)
-plt.plot(
-    np.arange(0, pulse_len, 4 * chunk_size), filter_adc / (4 * chunk_size), "."
-)  # Data is scaled by 4*chunk_size
+plt.plot(np.arange(0, pulse_len, 4 * chunk_size), filter_adc / (4 * chunk_size), ".")  # Data is scaled by 4*chunk_size
 plt.title("Filtered ADC input")
 plt.xlabel("t [ns]")
 plt.tight_layout()
@@ -176,9 +172,7 @@ res = job.result_handles
 
 # Fetching data, converting the 12 bit ADC value to voltage and removing the extra dimension.
 raw_adc = np.squeeze(res.raw_data.fetch_all()["value"] / 2**12)
-filter_adc = res.data.fetch_all()["value"] * (
-    2**12
-)  # For 'demod' the correction is the other way around
+filter_adc = res.data.fetch_all()["value"] * (2**12)  # For 'demod' the correction is the other way around
 
 plt.figure()
 ax1 = plt.subplot(211)
@@ -186,9 +180,7 @@ plt.plot(raw_adc)
 plt.axis(ymin=-0.4, ymax=0.4)
 plt.title("Raw ADC Input - 20 MHz & 20.1 MHz")
 plt.subplot(212, sharex=ax1)
-plt.plot(
-    np.arange(0, pulse_len, 4 * chunk_size), filter_adc / (2 * chunk_size), "."
-)  # Data is scaled by 2*chunk_size
+plt.plot(np.arange(0, pulse_len, 4 * chunk_size), filter_adc / (2 * chunk_size), ".")  # Data is scaled by 2*chunk_size
 plt.title("Filtered ADC input")
 plt.xlabel("t [ns]")
 plt.tight_layout()

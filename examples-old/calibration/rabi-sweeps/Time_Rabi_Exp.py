@@ -17,9 +17,7 @@ N_t = len(np.arange(t_min, t_max + dt, dt))  # Number of timesteps
 N_max = 3
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
-my_qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as timeRabiProg:  # Time Rabi QUA program
     I = declare(fixed)  # QUA variables declaration
@@ -29,12 +27,8 @@ with program() as timeRabiProg:  # Time Rabi QUA program
     I_stream = declare_stream()  # Declare streams to store I and Q components
     Q_stream = declare_stream()
     t_stream = declare_stream()
-    with for_(
-        Nrep, 0, Nrep < N_max, Nrep + 1
-    ):  # Do a 100 times the experiment to obtain statistics
-        with for_(
-            t, t_min, t <= t_max, t + dt
-        ):  # Sweep from 0 to 100 *4 ns the pulse duration
+    with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
+        with for_(t, t_min, t <= t_max, t + dt):  # Sweep from 0 to 100 *4 ns the pulse duration
             play("gauss_pulse", "qubit", duration=t)
             align("qubit", "RR")
             measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
@@ -48,9 +42,7 @@ with program() as timeRabiProg:  # Time Rabi QUA program
 
 my_job = my_qm.simulate(
     timeRabiProg,
-    SimulationConfig(
-        int(200000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(200000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )  ##Use Loopback interface for simulation of the output of the resonator readout
 time.sleep(1.0)
 my_timeRabi_results = my_job.result_handles

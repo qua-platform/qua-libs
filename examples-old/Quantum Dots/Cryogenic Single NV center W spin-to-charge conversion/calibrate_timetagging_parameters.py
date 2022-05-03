@@ -26,9 +26,7 @@ with program() as cal_tt:
 
     # Declare QUA variables
     ###################
-    times = declare(
-        int, size=1000
-    )  # 'size' defines the max number of photons to be counted
+    times = declare(int, size=1000)  # 'size' defines the max number of photons to be counted
     counts = declare(int)  # variable to save the total number of photons
     counts_st = declare_stream()  # stream for 'counts'
     adc_st = declare_stream(adc_trace=True)  # stream to save ADC data
@@ -36,9 +34,7 @@ with program() as cal_tt:
     # Pulse sequence
     ################
     play("PL", "laser_EX705nm", duration=int(meas_len // 4))  # Photoluminescence
-    measure(
-        "photon_count", "SNSPD", adc_st, time_tagging.analog(times, meas_len, counts)
-    )  # photon count on SNSPD
+    measure("photon_count", "SNSPD", adc_st, time_tagging.analog(times, meas_len, counts))  # photon count on SNSPD
     save(counts, counts_st)  # save QUA variable to stream
 
     # Stream processing

@@ -83,9 +83,8 @@ class OPX(Instrument):
         idn.update(self.QMm.version())
         t = time.time() - (begin_time or self._t0)
 
-        con_msg = (
-            "Connected to: {vendor} {model}, client ver. = {client}, server ver. ={server} "
-            "in {t:.2f}s".format(t=t, **idn)
+        con_msg = "Connected to: {vendor} {model}, client ver. = {client}, server ver. ={server} " "in {t:.2f}s".format(
+            t=t, **idn
         )
         print(con_msg)
         self.log.info(f"Connected to instrument: {idn}")
@@ -104,9 +103,7 @@ class GeneratedSetPoints(Parameter):
         self._numpointsparam = numpointsparam
 
     def get_raw(self):
-        return np.linspace(
-            self._startparam(), self._stopparam(), self._numpointsparam()
-        )
+        return np.linspace(self._startparam(), self._stopparam(), self._numpointsparam())
 
 
 class Spectrum(ParameterWithSetpoints):
@@ -203,8 +200,6 @@ class OPX_SpectrumScan(OPX):
                     save(I, result_str)
 
             with stream_processing():
-                result_str.buffer(self.n_avg()).map(FUNCTIONS.average()).save_all(
-                    "result"
-                )
+                result_str.buffer(self.n_avg()).map(FUNCTIONS.average()).save_all("result")
 
         return prog

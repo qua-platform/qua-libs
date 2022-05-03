@@ -34,9 +34,7 @@ readout_amp = 0.4  # in V
 long_readout_len = 70000  # in ns
 long_readout_amp = 0.1  # in V
 
-time_of_flight = (
-    180  # Time it takes the pulses to go through the RF chain, including the device.
-)
+time_of_flight = 180  # Time it takes the pulses to go through the RF chain, including the device.
 
 # Qubit parameters:
 saturation_amp = 0.2  # in V
@@ -45,38 +43,24 @@ saturation_len = 50000  # Needs to be several T1 so that the final state is an e
 # Pi pulse parameters
 pi_len = 60  # in units of ns
 pi_amp = 0.3  # in units of volts
-pi_wf = (
-    pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])
-).tolist()  # waveform
-minus_pi_wf = (
-    (-1) * pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])
-).tolist()  # waveform
+pi_wf = (pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])).tolist()  # waveform
+minus_pi_wf = ((-1) * pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])).tolist()  # waveform
 
 # Pi_half pulse parameters
 pi_half_len = 60  # in units of ns
 pi_half_amp = 0.15  # in units of volts
 pi_half_wf = (
-    pi_half_amp
-    * (
-        gaussian(pi_half_len, pi_half_len / 5)
-        - gaussian(pi_half_len, pi_half_len / 5)[-1]
-    )
+    pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])
 ).tolist()  # waveform
 minus_pi_half_wf = (
-    (-1)
-    * pi_half_amp
-    * (
-        gaussian(pi_half_len, pi_half_len / 5)
-        - gaussian(pi_half_len, pi_half_len / 5)[-1]
-    )
+    (-1) * pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])
 ).tolist()  # waveform
 
 # Subtracted Gaussian pulse parameters
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_wf = (
-    gauss_amp
-    * (gaussian(gauss_len, gauss_len / 5) - gaussian(gauss_len, gauss_len / 5)[-1])
+    gauss_amp * (gaussian(gauss_len, gauss_len / 5) - gaussian(gauss_len, gauss_len / 5)[-1])
 ).tolist()  # waveform
 
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
@@ -86,9 +70,7 @@ gauss_wf = (
 square_flux_amp = 0.3
 minus_square_flux_amp = -0.3
 triangle_flux_amp = 0.3
-triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [
-    triangle_flux_amp * (1 - i / 7) for i in range(8)
-]
+triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [triangle_flux_amp * (1 - i / 7) for i in range(8)]
 
 # Rotation angle:
 rotation_angle = (0.0 / 180) * np.pi  # angle in degrees
@@ -341,15 +323,11 @@ config = {
         "-pi_half_wf": {"type": "arbitrary", "samples": minus_pi_half_wf},
     },
     "digital_waveforms": {
-        "ON": {
-            "samples": [(1, 0)]
-        },  # commonly used for measurement pulses, e.g., in a readout pulse
+        "ON": {"samples": [(1, 0)]},  # commonly used for measurement pulses, e.g., in a readout pulse
     },
     "integration_weights": {
         "short_cos_weights": {
-            "cosine": [
-                (1.0, short_readout_len)
-            ],  # Previous format for versions before 1.20: [1.0] * readout_len
+            "cosine": [(1.0, short_readout_len)],  # Previous format for versions before 1.20: [1.0] * readout_len
             "sine": [(0.0, short_readout_len)],
         },
         "short_sin_weights": {
@@ -373,9 +351,7 @@ config = {
             "sine": [(-np.cos(rotation_angle), short_readout_len)],
         },
         "cos_weights": {
-            "cosine": [
-                (1.0, readout_len)
-            ],  # Previous format for versions before 1.20: [1.0] * readout_len
+            "cosine": [(1.0, readout_len)],  # Previous format for versions before 1.20: [1.0] * readout_len
             "sine": [(0.0, readout_len)],
         },
         "sin_weights": {
@@ -399,9 +375,7 @@ config = {
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
         "long_cos_weights": {
-            "cosine": [
-                (1.0, long_readout_len)
-            ],  # Previous format for versions before 1.20: [1.0] * readout_len
+            "cosine": [(1.0, long_readout_len)],  # Previous format for versions before 1.20: [1.0] * readout_len
             "sine": [(0.0, long_readout_len)],
         },
         "long_sin_weights": {

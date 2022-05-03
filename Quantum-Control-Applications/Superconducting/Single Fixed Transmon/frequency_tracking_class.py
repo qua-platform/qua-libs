@@ -59,9 +59,7 @@ class qubit_frequency_tracking:
         new_w = new_w[ind]
 
         yy = np.abs(new_w)
-        first_read_data_ind = np.where(yy[1:] - yy[:-1] > 0)[0][
-            0
-        ]  # away from the DC peak
+        first_read_data_ind = np.where(yy[1:] - yy[:-1] > 0)[0][0]  # away from the DC peak
 
         new_f = new_f[first_read_data_ind:]
         new_w = new_w[first_read_data_ind:]
@@ -72,16 +70,7 @@ class qubit_frequency_tracking:
         omega = out_freq * 2 * np.pi / (x[1] - x[0])  # get gauss for frequency #here
 
         cycle = int(np.ceil(1 / out_freq))
-        peaks = (
-            np.array(
-                [
-                    np.std(y[i * cycle : (i + 1) * cycle])
-                    for i in range(int(len(y) / cycle))
-                ]
-            )
-            * np.sqrt(2)
-            * 2
-        )
+        peaks = np.array([np.std(y[i * cycle : (i + 1) * cycle]) for i in range(int(len(y) / cycle))]) * np.sqrt(2) * 2
 
         initial_offset = np.mean(y[:cycle])
         cycles_wait = np.where(peaks > peaks[0] * 0.37)[0][-1]
@@ -89,19 +78,12 @@ class qubit_frequency_tracking:
         post_decay_mean = np.mean(y[-cycle:])
 
         decay_gauss = (
-            np.log(peaks[0] / peaks[cycles_wait])
-            / (cycles_wait * cycle)
-            / (x[1] - x[0])
+            np.log(peaks[0] / peaks[cycles_wait]) / (cycles_wait * cycle) / (x[1] - x[0])
         )  # get gauss for decay #here
 
-        fit_type = lambda x, a: post_decay_mean * a[4] * (
-            1 - np.exp(-x * decay_gauss * a[1])
-        ) + peaks[0] / 2 * a[2] * (
+        fit_type = lambda x, a: post_decay_mean * a[4] * (1 - np.exp(-x * decay_gauss * a[1])) + peaks[0] / 2 * a[2] * (
             np.exp(-x * decay_gauss * a[1])
-            * (
-                a[5] * initial_offset / peaks[0] * 2
-                + np.cos(2 * np.pi * a[0] * omega / (2 * np.pi) * x + a[3])
-            )
+            * (a[5] * initial_offset / peaks[0] * 2 + np.cos(2 * np.pi * a[0] * omega / (2 * np.pi) * x + a[3]))
         )  # here problem, removed the 1+
 
         def curve_fit3(f, x, y, a0):
@@ -136,9 +118,7 @@ class qubit_frequency_tracking:
         plt.plot(x, fit_type(x, [1, 1, 1, angle0, 1, 1, 1]), "--r", linewidth=1)
         return out
 
-    def time_domain_ramesy_full_sweep(
-        self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False
-    ):
+    def time_domain_ramesy_full_sweep(self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False):
 
         self.f_ref = f_ref
         self.tau_vec = np.arange(tau_min, tau_max, dtau).astype(int).tolist()
@@ -188,9 +168,7 @@ class qubit_frequency_tracking:
         plt.xlabel("time[ns]")
         plt.ylabel("P(|e>)")
 
-        self.fres = self.fres - (
-            out["f"] * 1e9 - self.f_ref
-        )  # Intermediate frequency [Hz]
+        self.fres = self.fres - (out["f"] * 1e9 - self.f_ref)  # Intermediate frequency [Hz]
         print(f"shifting by {out['f'] * 1e9 - self.f_ref}, and now f_res = {self.fres}")
 
         self.t2 = out["tau"]
@@ -204,9 +182,7 @@ class qubit_frequency_tracking:
         )
         plt.legend()
 
-    def freq_domain_ramsey_full_sweep(
-        self, reps, fmin, fmax, df, stream_name, oscillation_number=1, correct=False
-    ):
+    def freq_domain_ramsey_full_sweep(self, reps, fmin, fmax, df, stream_name, oscillation_number=1, correct=False):
         self.tau0 = oscillation_number * int(1 / self.f_ref / 4e-9)
         self.delta = 1 / (self.tau0 * 4e-9) / 4  # the last 4 is for 1/4 of a cycle
         self.fvec = np.arange(fmin, fmax, df).astype(int).tolist()

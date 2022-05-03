@@ -39,9 +39,7 @@ class NNStateDiscriminator:
         self.path = path
         self.resonators = resonators
         self.qubits = qubits
-        assert len(self.resonators) == len(
-            self.qubits
-        ), "The number of resonators must equal to the number of qubits"
+        assert len(self.resonators) == len(self.qubits), "The number of resonators must equal to the number of qubits"
         self.calibrate_with = calibrate_with
         self._create_dir()
         self.time_diff = 0
@@ -56,10 +54,7 @@ class NNStateDiscriminator:
         try:
             os.mkdir(self.path)
         except OSError:
-            print(
-                "Creation of the directory %s failed, it might already exist."
-                % self.path
-            )
+            print("Creation of the directory %s failed, it might already exist." % self.path)
         else:
             print("Successfully created the directory %s " % self.path)
 
@@ -71,9 +66,7 @@ class NNStateDiscriminator:
                 file.close()
                 if self.load_config_from_file:
                     self.config = data["config"]
-                    print(
-                        f"ATTENTION: The configuration was loaded from the file {self.path}\\optimal_params.pkl"
-                    )
+                    print(f"ATTENTION: The configuration was loaded from the file {self.path}\\optimal_params.pkl")
                     print(
                         "To use a new imported configuration set: self.load_config_from_file=False\n"
                         "or use a new directory path or delete the optimal_params.pkl file"
@@ -83,9 +76,7 @@ class NNStateDiscriminator:
             except FileNotFoundError:
                 pass
 
-    def _training_program(
-        self, prepare_qubits, readout_op, avg_n, states, wait_time, with_timestamps
-    ):
+    def _training_program(self, prepare_qubits, readout_op, avg_n, states, wait_time, with_timestamps):
         with program() as train:
             n = declare(int)
             raw = [declare_stream(adc_trace=True) for i in range(self.rr_num)]
@@ -170,9 +161,7 @@ class NNStateDiscriminator:
             self._calibrate_dc_offset(**execute_args)
 
         QM = self.qmm.open_qm(self.config)
-        self.number_of_raw_data_files = (
-            len(states) // self.MAX_STATES + 1 - (len(states) % self.MAX_STATES == 0)
-        )
+        self.number_of_raw_data_files = len(states) // self.MAX_STATES + 1 - (len(states) % self.MAX_STATES == 0)
         if len(states) > self.MAX_STATES:
             # divide the data and states into chunks of size at most MAX_STATES
             print(
@@ -210,15 +199,9 @@ class NNStateDiscriminator:
                 con_name = self.config["elements"][element]["outputs"]["out1"][0]
                 if con_name not in already_calibrated:
                     already_calibrated.add(con_name)
-                    dc_offsets = DCoffsetCalibrator.calibrate(
-                        self.qmm, self.config, element, **execute_args
-                    )
-                    self.config["controllers"][con_name]["analog_inputs"][1][
-                        "offset"
-                    ] = dc_offsets[con_name][0]
-                    self.config["controllers"][con_name]["analog_inputs"][2][
-                        "offset"
-                    ] = dc_offsets[con_name][1]
+                    dc_offsets = DCoffsetCalibrator.calibrate(self.qmm, self.config, element, **execute_args)
+                    self.config["controllers"][con_name]["analog_inputs"][1]["offset"] = dc_offsets[con_name][0]
+                    self.config["controllers"][con_name]["analog_inputs"][2]["offset"] = dc_offsets[con_name][1]
             else:
                 con_name = self.config["elements"][element]["mixInputs"]["I"][0]
                 print(
@@ -252,9 +235,7 @@ class NNStateDiscriminator:
         time_diff = {}
         for element in self.calibrate_with:
             if self.config["elements"][element].get("outputs", False):
-                time_diff[element] = TimeDiffCalibrator.calibrate(
-                    self.qmm, self.config, element, **execute_args
-                )
+                time_diff[element] = TimeDiffCalibrator.calibrate(self.qmm, self.config, element, **execute_args)
             else:
                 con_name = self.config["elements"][element]["mixInputs"]["I"][0]
                 print(
@@ -275,30 +256,16 @@ class NNStateDiscriminator:
 
     @staticmethod
     def _down_cos(freq, time_diff, readout_len):
-        return np.cos(
-            2
-            * np.pi
-            * freq
-            * 1e-9
-            * np.linspace(0 - time_diff, readout_len - 1 - time_diff, readout_len)
-        )
+        return np.cos(2 * np.pi * freq * 1e-9 * np.linspace(0 - time_diff, readout_len - 1 - time_diff, readout_len))
 
     @staticmethod
     def _down_sin(freq, time_diff, readout_len):
-        return np.sin(
-            2
-            * np.pi
-            * freq
-            * 1e-9
-            * np.linspace(0 - time_diff, readout_len - 1 - time_diff, readout_len)
-        )
+        return np.sin(2 * np.pi * freq * 1e-9 * np.linspace(0 - time_diff, readout_len - 1 - time_diff, readout_len))
 
     @staticmethod
     def _reshape_and_average_raw_data(raw, N, with_timestamps):
         if with_timestamps:
-            return np.mean(
-                np.reshape(raw["value"], (N, -1, raw["value"].shape[1])), axis=0
-            )
+            return np.mean(np.reshape(raw["value"], (N, -1, raw["value"].shape[1])), axis=0)
         else:
             return np.mean(np.reshape(raw, (N, -1, raw.shape[1])), axis=0)
 
@@ -331,10 +298,7 @@ class NNStateDiscriminator:
             data_files_idx = np.arange(self.number_of_raw_data_files)
         if calibrate_time_diff:
             self._calibrate_time_diff(calibrate_dc_offset, **execute_args)
-        raw_data_files = [
-            h5py.File(self.path + "\\" + f"raw_data_{i}.hdf5", "r")
-            for i in data_files_idx
-        ]
+        raw_data_files = [h5py.File(self.path + "\\" + f"raw_data_{i}.hdf5", "r") for i in data_files_idx]
 
         final_weights = []
         models = []
@@ -349,43 +313,28 @@ class NNStateDiscriminator:
 
             raw1 = np.vstack(
                 [
-                    self._reshape_and_average_raw_data(
-                        raw["raw1_" + str(j)], raw["N"][0], raw["with_timestamps"][0]
-                    )
+                    self._reshape_and_average_raw_data(raw["raw1_" + str(j)], raw["N"][0], raw["with_timestamps"][0])
                     for raw in raw_data_files
                 ]
             )
             raw2 = np.vstack(
                 [
-                    self._reshape_and_average_raw_data(
-                        raw["raw2_" + str(j)], raw["N"][0], raw["with_timestamps"][0]
-                    )
+                    self._reshape_and_average_raw_data(raw["raw2_" + str(j)], raw["N"][0], raw["with_timestamps"][0])
                     for raw in raw_data_files
                 ]
             )
 
             labels = np.vstack(
-                [
-                    [tf.one_hot(s[j], self.num_of_states) for s in raw["states"]]
-                    for raw in raw_data_files
-                ]
+                [[tf.one_hot(s[j], self.num_of_states) for s in raw["states"]] for raw in raw_data_files]
             )
             labels = labels[: raw1.shape[0], :]
             freq = self.config["elements"][self.resonators[j]]["intermediate_frequency"]
 
             # multiply raw input signals by cos/sin with the appropriate frequency
-            raw1cos = self._quantize_traces(
-                raw1 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len)
-            )
-            raw1sin = self._quantize_traces(
-                raw1 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len)
-            )
-            raw2cos = self._quantize_traces(
-                raw2 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len)
-            )
-            raw2sin = self._quantize_traces(
-                raw2 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len)
-            )
+            raw1cos = self._quantize_traces(raw1 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len))
+            raw1sin = self._quantize_traces(raw1 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len))
+            raw2cos = self._quantize_traces(raw2 * (2**-12) * self._down_cos(freq, self.time_diff, readout_len))
+            raw2sin = self._quantize_traces(raw2 * (2**-12) * self._down_sin(freq, self.time_diff, readout_len))
 
             ########################
             # build neural network #
@@ -424,12 +373,8 @@ class NNStateDiscriminator:
 
             inputs = tf.keras.layers.concatenate([in1add, in2add])
 
-            final = tf.keras.layers.Dense(
-                self.num_of_states, name="final", activation="softmax"
-            )(inputs)
-            model = tf.keras.models.Model(
-                inputs=[in1cos, in1sin, in2cos, in2sin], outputs=final
-            )
+            final = tf.keras.layers.Dense(self.num_of_states, name="final", activation="softmax")(inputs)
+            model = tf.keras.models.Model(inputs=[in1cos, in1sin, in2cos, in2sin], outputs=final)
             loss_fn = tf.keras.losses.categorical_crossentropy
             model.compile(optimizer="adam", loss=loss_fn, metrics=["accuracy"])
 
@@ -521,15 +466,11 @@ class NNStateDiscriminator:
         self.qua_vars["j"] = declare(int)
         self.qua_vars["w"] = declare(
             fixed,
-            value=np.vstack([self.final_weights[i][0].T for i in range(self.rr_num)])
-            .flatten()
-            .tolist(),
+            value=np.vstack([self.final_weights[i][0].T for i in range(self.rr_num)]).flatten().tolist(),
         )
         self.qua_vars["b"] = declare(
             fixed,
-            value=np.hstack(
-                [self.final_weights[i][1] * (2**-12) for i in range(self.rr_num)]
-            ).tolist(),
+            value=np.hstack([self.final_weights[i][1] * (2**-12) for i in range(self.rr_num)]).tolist(),
         )
 
     def measure_state(self, readout_op, result, adc=None):
@@ -567,20 +508,11 @@ class NNStateDiscriminator:
             ):
                 assign(
                     self.qua_vars["res"][self.qua_vars["j"]],
-                    self.qua_vars["w"][
-                        self.qua_vars["i"] * 2 * self.num_of_states
-                        + 2 * self.qua_vars["j"]
-                    ]
+                    self.qua_vars["w"][self.qua_vars["i"] * 2 * self.num_of_states + 2 * self.qua_vars["j"]]
                     * self.qua_vars["out1"][self.qua_vars["i"]]
-                    + self.qua_vars["w"][
-                        self.qua_vars["i"] * 2 * self.num_of_states
-                        + 2 * self.qua_vars["j"]
-                        + 1
-                    ]
+                    + self.qua_vars["w"][self.qua_vars["i"] * 2 * self.num_of_states + 2 * self.qua_vars["j"] + 1]
                     * self.qua_vars["out2"][self.qua_vars["i"]]
-                    + self.qua_vars["b"][
-                        self.qua_vars["i"] * self.num_of_states + self.qua_vars["j"]
-                    ],
+                    + self.qua_vars["b"][self.qua_vars["i"] * self.num_of_states + self.qua_vars["j"]],
                 )
             assign(self.qua_vars["temp"], Math.argmax(self.qua_vars["res"]))
             save(self.qua_vars["temp"], result)

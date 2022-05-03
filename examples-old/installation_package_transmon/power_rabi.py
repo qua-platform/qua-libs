@@ -53,9 +53,7 @@ with program() as power_rabi:
             a, a_min, a < a_max + da / 2, a + da
         ):  # Notice it's + da/2 to include a_max (This is only for fixed!)
             wait(cooldown_time, "qubit")  # wait for qubit to decay
-            play(
-                "gaussian" * amp(a), "qubit"
-            )  # play gaussian pulse with variable amplitude
+            play("gaussian" * amp(a), "qubit")  # play gaussian pulse with variable amplitude
             align("qubit", "resonator")
             measure(
                 "readout",

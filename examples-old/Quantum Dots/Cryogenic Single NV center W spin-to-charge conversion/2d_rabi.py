@@ -55,9 +55,7 @@ with program() as power_rabi_2d:
                 play("charge_init", "laser_705nm")  # charge initialization
                 play("spin_init", "laser_E12")  # spin initialization
                 align("qubit", "laser_E12", "laser_705nm")
-                play(
-                    "gauss" * amp(a), "qubit", duration=t
-                )  # gaussian pulse of duration t cycles and varied amplitude
+                play("gauss" * amp(a), "qubit", duration=t)  # gaussian pulse of duration t cycles and varied amplitude
                 align("qubit", "laser_EX", "SNSPD")
                 play("EX", "laser_EX")  # Spin readout to m = 0 transition
                 measure(
@@ -83,9 +81,7 @@ with program() as power_rabi_2d:
 simulate = True
 
 if simulate:
-    qmm.simulate(
-        config, power_rabi_2d, SimulationConfig(10000)
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, power_rabi_2d, SimulationConfig(10000)).get_simulated_samples().con1.plot()
 else:
     job = qm.execute(power_rabi_2d)  # execute QUA program
 
@@ -104,9 +100,7 @@ else:
             pass
 
         else:
-            plt.pcolormesh(
-                4 * t_vec, a_vec, counts / 1000 / (meas_len * 1e-9) / iteration
-            )  # kcps
+            plt.pcolormesh(4 * t_vec, a_vec, counts / 1000 / (meas_len * 1e-9) / iteration)  # kcps
             plt.xlabel("t_int [ns]")
             plt.ylabel("amplitude")
             plt.title("2D Rabi")

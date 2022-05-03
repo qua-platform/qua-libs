@@ -28,19 +28,13 @@ cb.add(con2)
 cb.add(con3)
 
 # Define the qubits and the operations that they support
-qb1 = Transmon(
-    "qb1", I=con1.analog_output(1), Q=con1.analog_output(2), intermediate_frequency=50e6
-)
+qb1 = Transmon("qb1", I=con1.analog_output(1), Q=con1.analog_output(2), intermediate_frequency=50e6)
 qb1.lo_frequency = 4.8e9
 
-qb2 = Transmon(
-    "qb2", I=con2.analog_output(1), Q=con2.analog_output(2), intermediate_frequency=50e6
-)
+qb2 = Transmon("qb2", I=con2.analog_output(1), Q=con2.analog_output(2), intermediate_frequency=50e6)
 qb2.lo_frequency = 4.8e9
 
-qb3 = Transmon(
-    "qb3", I=con3.analog_output(1), Q=con3.analog_output(2), intermediate_frequency=50e6
-)
+qb3 = Transmon("qb3", I=con3.analog_output(1), Q=con3.analog_output(2), intermediate_frequency=50e6)
 qb3.lo_frequency = 4.8e9
 
 # Adding the qubits to the ConfigBuilder
@@ -122,9 +116,7 @@ ro_Q = ConstantWaveform("ro_Q", 0.0)
 
 ro_pulse = MeasurePulse("ro_pulse", [ro_I, ro_Q], 100)
 ro_pulse.add(Weights(ConstantIntegrationWeights("cos", cosine=1, sine=0, duration=100)))
-ro_pulse.add(
-    Weights(ConstantIntegrationWeights("minus_sin", cosine=0, sine=-1, duration=100))
-)
+ro_pulse.add(Weights(ConstantIntegrationWeights("minus_sin", cosine=0, sine=-1, duration=100)))
 ro_pulse.add(Weights(ConstantIntegrationWeights("sin", cosine=0, sine=1, duration=100)))
 
 # Note that here we add the operations to the resonators, after adding resonators to the ConfigBuilder

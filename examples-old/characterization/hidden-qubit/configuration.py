@@ -15,9 +15,7 @@ def gauss(amplitude, mu, sigma, delf, length):
 
 def gauss_der(amplitude, mu, sigma, delf, length):
     t = np.linspace(-length / 2, length / 2, length)
-    gauss_der_wave = (
-        amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
-    )
+    gauss_der_wave = amplitude * (-2 * (t - mu)) * np.exp(-((t - mu) ** 2) / (2 * sigma**2))
     # Detuning correction Eqn. (4) in Chen et al. PRL, 116, 020501 (2016)
     gauss_der_wave = gauss_der_wave * np.exp(2 * np.pi * delf * t)
     return [float(x) for x in gauss_der_wave]
@@ -30,9 +28,7 @@ x90std = 0.2
 x90mean = 0
 x90duration = 1000
 x90detuning = 0
-x90waveform = gauss(
-    x90amp, x90mean, x90std, x90detuning, x90duration
-)  # Assume you have calibration for a X90 pulse
+x90waveform = gauss(x90amp, x90mean, x90std, x90detuning, x90duration)  # Assume you have calibration for a X90 pulse
 lmda = 0.5  # Define scaling parameter for Drag Scheme
 alpha = -1  # Define anharmonicity parameter
 x90der_waveform = gauss_der(x90amp, x90mean, x90std, x90detuning, x90duration)
@@ -71,15 +67,11 @@ config = {
                 2: {"offset": +0.0},  # Control qubit Q component
                 3: {"offset": +0.0},  # Readout resonator I component
                 4: {"offset": +0.0},  # Readout resonator Q component
-                5: {
-                    "offset": +0.0
-                },  # Tunable coupler I component (flux-tunable transmon)
+                5: {"offset": +0.0},  # Tunable coupler I component (flux-tunable transmon)
                 6: {"offset": +0.0},  # Tunable coupler Q component
             },
             "analog_inputs": {
-                1: {
-                    "offset": +0.0
-                },  # Input of the readout resonator coupled to control qubit
+                1: {"offset": +0.0},  # Input of the readout resonator coupled to control qubit
             },
         }
     },
@@ -331,9 +323,7 @@ def state_saving(
 
 def measure_and_reset_state(RR, I, Q, A, B, stream_A, stream_B):
     measure("ReadoutOp", RR, None, ("integW1", I), ("integW2", Q))
-    state_saving(
-        I, Q, A, B, stream_A, stream_B
-    )  # To be redefined to match the joint qubit readout
+    state_saving(I, Q, A, B, stream_A, stream_B)  # To be redefined to match the joint qubit readout
     # Active reset
     with if_((A == 1) & (B == 1)):
         Rx(π, "control")

@@ -76,16 +76,12 @@ QM1 = QMm.open_qm(config)
 with program() as filter_sp:
     data_stream = declare_stream(adc_trace=True)
     play("readoutOp", "qe2")  # Plays a 15MHz frequency waveform
-    measure(
-        "readoutOp", "qe1", data_stream
-    )  # Plays a 5.5MHz frequency waveform and readout the data
+    measure("readoutOp", "qe1", data_stream)  # Plays a 5.5MHz frequency waveform and readout the data
 
     # Creates a 5th order Butterworth LPF filter at 7.5MHz.
     # For other filters, see https://docs.scipy.org/doc/scipy/reference/signal.html or any other source
     # 'y' is the filter's impulse response.
-    butter = signal.dlti(
-        *signal.butter(5, 7.5e6, btype="low", analog=False, output="ba", fs=1e9)
-    )
+    butter = signal.dlti(*signal.butter(5, 7.5e6, btype="low", analog=False, output="ba", fs=1e9))
     t, y = signal.dimpulse(butter, n=pulse_len)
     y = np.squeeze(y)
 
@@ -142,9 +138,7 @@ ax2 = plt.subplot(211)
 # In our case, dt = 1ns and maxT = pulse_len.
 # In addition, the resulting fft data is shifted such that the order is [0:1/(2*dt), -1/(2*dt):0].
 # Here, instead of shifting the data, we just look only at the positive part.
-plt.plot(
-    np.arange(0, 0.5, 1 / pulse_len), fft_raw_adc[: int(np.ceil(len(fft_raw_adc) / 2))]
-)
+plt.plot(np.arange(0, 0.5, 1 / pulse_len), fft_raw_adc[: int(np.ceil(len(fft_raw_adc) / 2))])
 plt.title("FFT on Raw Data")
 plt.subplot(212, sharex=ax2)
 # Here, maxT = 2*pulse_len because of the convolution

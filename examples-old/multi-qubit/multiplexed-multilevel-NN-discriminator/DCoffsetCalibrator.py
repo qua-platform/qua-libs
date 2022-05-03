@@ -17,13 +17,9 @@ class DCoffsetCalibrator:
         }
         config["digital_waveforms"]["dc_offset_ON"] = {"samples": [(1, 0)]}
         config["waveforms"]["dc_offset_zero_wf"] = {"type": "constant", "sample": 0.0}
-        config["elements"][qe]["operations"][
-            "dc_offset_readout"
-        ] = "dc_offset_readout_pulse"
+        config["elements"][qe]["operations"]["dc_offset_readout"] = "dc_offset_readout_pulse"
         config["elements"][qe]["intermediate_frequency"] = freq
-        config["mixers"][config["elements"][qe]["mixInputs"]["mixer"]][0][
-            "intermediate_frequency"
-        ] = freq
+        config["mixers"][config["elements"][qe]["mixInputs"]["mixer"]][0]["intermediate_frequency"] = freq
         print(
             f"ATTENTION: Using the mixer at the 0'th position of {config['elements'][qe]['mixInputs']['mixer']} to "
             f"calibrate DC offset."

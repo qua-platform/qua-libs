@@ -57,21 +57,13 @@ with program() as qubit_spec:
         with for_(
             a, a_min, a < a_max + da / 2, a + da
         ):  # Notice it's + da/2 to include a_max (This is only for fixed!)
-            with for_(
-                f, f_min, f <= f_max, f + df
-            ):  # Notice it's <= to include f_max (This is only for integers!)
-                update_frequency(
-                    "qubit", f
-                )  # update frequency of operations to the qubit
+            with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+                update_frequency("qubit", f)  # update frequency of operations to the qubit
                 wait(cooldown_time, "qubit")  # wait for qubit to decay
                 align("qubit", "flux")
-                play(
-                    "offset" * amp(a), "flux", duration=15000
-                )  # duration of flux covers pulse to qubit and readout
+                play("offset" * amp(a), "flux", duration=15000)  # duration of flux covers pulse to qubit and readout
                 wait(1250, "qubit")  # wait for flux to settle due to filters
-                play(
-                    "saturation", "qubit"
-                )  # to create a mixed state between |g> and |e>
+                play("saturation", "qubit")  # to create a mixed state between |g> and |e>
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -82,9 +74,7 @@ with program() as qubit_spec:
                 )
                 save(I, I_st)
                 save(Q, Q_st)
-                play(
-                    "minus_offset" * amp(a), "flux", duration=15000
-                )  # negative pulse to quickly remove the current
+                play("minus_offset" * amp(a), "flux", duration=15000)  # negative pulse to quickly remove the current
         save(n, n_st)
 
     # Stream processing

@@ -24,9 +24,7 @@ simulation_config = SimulationConfig(
     ),
 )
 
-revival_time = (
-    int(np.pi / configuration.chi / 4) * 4
-)  # get revival time in multiples of 4 ns
+revival_time = int(np.pi / configuration.chi / 4) * 4  # get revival time in multiples of 4 ns
 
 # range to sample alpha
 points = 10
@@ -75,9 +73,7 @@ def wigner_prog():
                     save(I, "I")
                     save(Q, "Q")
 
-                    wait(
-                        10, "cavity_I", "cavity_Q", "qubit", "rr"
-                    )  # wait and let all elements relax
+                    wait(10, "cavity_I", "cavity_Q", "qubit", "rr")  # wait and let all elements relax
     return wigner_tomo
 
 
@@ -89,12 +85,8 @@ job.result_handles.wait_for_all_values()
 I = job.result_handles.I.fetch_all()["value"]
 Q = job.result_handles.Q.fetch_all()["value"]
 phase = np.arctan2(I, Q).reshape(-1, shots)
-ground = (
-    np.count_nonzero(phase < 0, axis=1) / shots
-)  # count the number of ground state measurements
-excited = (
-    np.count_nonzero(phase > 0, axis=1) / shots
-)  # count the number of excited states measurements
+ground = np.count_nonzero(phase < 0, axis=1) / shots  # count the number of ground state measurements
+excited = np.count_nonzero(phase > 0, axis=1) / shots  # count the number of excited states measurements
 parity = (excited - ground).reshape(points, points)
 wigner = 2 / np.pi * parity
 plt.figure()
