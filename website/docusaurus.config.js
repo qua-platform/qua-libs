@@ -31,7 +31,6 @@ module.exports = {
           label: "Contributing",
           position: "left",
         },
-        {to: 'blog/', label: 'Blog', position: 'left'},
         {
           href: "https://github.com/qua-platform/qua-libs",
           label: "GitHub",
