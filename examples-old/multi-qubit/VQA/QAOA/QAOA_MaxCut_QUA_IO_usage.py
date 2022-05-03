@@ -98,9 +98,7 @@ with program() as QAOA:
             for k in range(n):  # for each qubit in the config (= node in the graph G)
                 Hadamard(q[k])
 
-            with for_(
-                b, init=0, cond=b < p, update=b + 1
-            ):  # for each block of the QAOA quantum circuit
+            with for_(b, init=0, cond=b < p, update=b + 1):  # for each block of the QAOA quantum circuit
 
                 # Cost Hamiltonian evolution: derived here specifically for MaxCut problem
                 for e in E:  # for each edge of the graph G
@@ -207,15 +205,11 @@ def SPSA_optimize(init_angles, boundaries, max_iter=100):
         cost_minus = quantum_avg_computation(angles_minus)
         gradient_est = (cost_plus - cost_minus) / (2 * c_k * delta_k)
         angles = angles - a_k * gradient_est
-        for i in range(
-            len(angles)
-        ):  # Used to set angles value within the boundaries during optimization
+        for i in range(len(angles)):  # Used to set angles value within the boundaries during optimization
             angles[i] = min(angles[i], boundaries[i][1])
             angles[i] = max(angles[i], boundaries[i][0])
 
-    return angles, -quantum_avg_computation(
-        angles
-    )  # return optimized angles and associated expectation value
+    return angles, -quantum_avg_computation(angles)  # return optimized angles and associated expectation value
 
 
 def result_optimization(optimizer: str = "Nelder-Mead", max_iter: int = 100):
@@ -241,9 +235,7 @@ def result_optimization(optimizer: str = "Nelder-Mead", max_iter: int = 100):
         angles.append(rand.uniform(0, π))
 
     if optimizer == "SPSA":
-        opti_angle, expectation_value = SPSA_optimize(
-            np.array(angles), boundaries, max_iter
-        )
+        opti_angle, expectation_value = SPSA_optimize(np.array(angles), boundaries, max_iter)
     else:
         Result = minimize(
             quantum_avg_computation,

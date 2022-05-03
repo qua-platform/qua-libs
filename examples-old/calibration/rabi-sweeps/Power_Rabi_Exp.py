@@ -24,9 +24,7 @@ N_max = 3
 
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
-my_qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as powerRabiProg:  # Power Rabi QUA program
     I = declare(fixed)  # QUA variables declaration
@@ -38,12 +36,8 @@ with program() as powerRabiProg:  # Power Rabi QUA program
     a_stream = declare_stream()
 
     with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do 10 times the experiment
-        with for_(
-            a, 0.00, a < a_max - da / 2, a + da
-        ):  # Sweep from 0 to 0.7 V the amplitude
-            play(
-                "gauss_pulse" * amp(a), "qubit"
-            )  # Modulate the Gaussian pulse with the varying amplitude a
+        with for_(a, 0.00, a < a_max - da / 2, a + da):  # Sweep from 0 to 0.7 V the amplitude
+            play("gauss_pulse" * amp(a), "qubit")  # Modulate the Gaussian pulse with the varying amplitude a
             align("qubit", "RR")
             measure("meas_pulse", "RR", None, ("integW1", I), ("integW2", Q))
             save(I, I_stream)  # Save the results
@@ -56,9 +50,7 @@ with program() as powerRabiProg:  # Power Rabi QUA program
 
 my_job = my_qm.simulate(
     powerRabiProg,
-    SimulationConfig(
-        int(600000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(600000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )  # Use LoopbackInterface to simulate the response of the qubit
 time.sleep(1.0)
 

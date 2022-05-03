@@ -34,9 +34,7 @@ with program() as power_rabi:
 
     # Declare QUA variables
     ###################
-    times = declare(
-        int, size=100
-    )  # 'size' defines the max number of photons to be counted
+    times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     counts = declare(int)  # variable to save the total number of photons
     counts_st = declare_stream()  # stream for 'counts'
     a = declare(fixed)  # variable to sweep over the amplitude
@@ -77,9 +75,7 @@ with program() as power_rabi:
 simulate = True
 
 if simulate:
-    qmm.simulate(
-        config, power_rabi, SimulationConfig(10000)
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, power_rabi, SimulationConfig(10000)).get_simulated_samples().con1.plot()
 else:
     job = qm.execute(power_rabi)  # execute QUA program
 

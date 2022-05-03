@@ -1,4 +1,5 @@
 import numpy as np
+from qm.qua import declare, fixed, measure, dual_demod, assign
 from scipy.signal.windows import gaussian
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 
@@ -9,10 +10,53 @@ from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+
+    :param g: relative gain imbalance between the I & Q ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the I & Q ports (radians), set to 0 for no phase imbalance.
+    """
     c = np.cos(phi)
     s = np.sin(phi)
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+
+
+# Readout macro
+def readout_macro(threshold=None, state=None, I=None, Q=None):
+    """
+    A macro for performing the readout, with the ability to perform state discrimination.
+    If `threshold` is given, the information in the `I` quadrature will be compared against the threshold and `state`
+    would be `True` if `I > threshold`.
+    Note that it is assumed that the results are rotated such that all the information is in the `I` quadrature.
+
+    :param threshold: Optional. The threshold to compare `I` against.
+    :param state: A QUA variable for the state information, only used when a threshold is given.
+        Should be of type `bool`. If not given, a new variable will be created
+    :param I: A QUA variable for the information in the `I` quadrature. Should be of type `Fixed`. If not given, a new
+        variable will be created
+    :param Q: A QUA variable for the information in the `Q` quadrature. Should be of type `Fixed`. If not given, a new
+        variable will be created
+    :return: Three QUA variables populated with the results of the readout: (`state`, `I`, `Q`)
+    """
+    if I is None:
+        I = declare(fixed)
+    if Q is None:
+        Q = declare(fixed)
+    if threshold is not None and state is None:
+        state = declare(bool)
+    measure(
+        "readout",
+        "resonator",
+        None,
+        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+    )
+    if threshold is not None:
+        assign(state, I > threshold)
+    return state, I, Q
 
 
 #############
@@ -34,6 +78,8 @@ saturation_len = 1000
 saturation_amp = 0.1
 const_len = 100
 const_amp = 0.1
+square_pi_len = 100
+square_pi_amp = 0.1
 
 gauss_len = 20
 gauss_sigma = gauss_len / 5
@@ -51,9 +97,7 @@ x180_drag_wf, x180_drag_der_wf = np.array(
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x90_drag_wf, x90_drag_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1)
-)
+x90_drag_wf, x90_drag_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
@@ -71,8 +115,9 @@ readout_amp = 0.2
 long_readout_len = 50000
 long_readout_amp = 0.1
 
-# IQ Plane Angle
+# IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
+ge_threshold = 0.0
 
 config = {
     "version": 1,
@@ -138,6 +183,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "square_pi_pulse": {
+            "operation": "control",
+            "length": square_pi_len,
+            "waveforms": {
+                "I": "square_pi_wf",
                 "Q": "zero_wf",
             },
         },
@@ -225,6 +278,7 @@ config = {
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
+        "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "x180_drag_wf": {"type": "arbitrary", "samples": x180_drag_wf.tolist()},

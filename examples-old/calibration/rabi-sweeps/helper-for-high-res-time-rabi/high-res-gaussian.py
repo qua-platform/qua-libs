@@ -19,20 +19,14 @@ N_t = int(t_max / dt)  # Number of timesteps
 n_repeats = 1
 
 qmManager = QuantumMachinesManager()
-my_qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as timeRabiProg:  # Time Rabi QUA program
     t = declare(int)  # Sweeping parameter over the set of durations
     r = declare(int)  # Number of repetitions of the experiment
 
-    with for_(
-        r, 0, r < n_repeats, r + 1
-    ):  # Do a n_repeats times the experiment to obtain statistics
-        with for_(
-            t, t_start, t <= t_max, t + dt
-        ):  # Sweep the pulse duration from t_start to t_max
+    with for_(r, 0, r < n_repeats, r + 1):  # Do a n_repeats times the experiment to obtain statistics
+        with for_(t, t_start, t <= t_max, t + dt):  # Sweep the pulse duration from t_start to t_max
             play(f"gauss_pulse_{resolution}ns_res", "qubit", duration=t)
 
 

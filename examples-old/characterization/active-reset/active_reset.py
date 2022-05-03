@@ -31,9 +31,7 @@ with program() as active_reset:
 
         play("pi", "qubit", condition=I > th)
         align("qubit", "rr")
-        measure(
-            "readout", "rr", None, demod.full("integW1", I), demod.full("integW2", Q)
-        )
+        measure("readout", "rr", None, demod.full("integW1", I), demod.full("integW2", Q))
 
         save(I, I_stream)
         save(Q, Q_stream)

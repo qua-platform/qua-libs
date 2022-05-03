@@ -55,13 +55,9 @@ with program() as power_rabi:
     ################
     with for_(n, 0, n < n_avg, n + 1):  # averaging QUA for_ loop
 
-        with for_(
-            a, a_min, a < a_max + da / 2, a + da
-        ):  # to tweak around the amplitude
+        with for_(a, a_min, a < a_max + da / 2, a + da):  # to tweak around the amplitude
 
-            with for_(
-                p, p_min, p < p_max + dp / 2, p + dp
-            ):  # QUA for_, iterates over number (odd) of pulses
+            with for_(p, p_min, p < p_max + dp / 2, p + dp):  # QUA for_, iterates over number (odd) of pulses
                 with switch_(p):  # QUA switch_
                     for i in range(p_min, p_max + dp, dp):  # Python for
                         with case_(i):  # QUA case_

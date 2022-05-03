@@ -43,12 +43,8 @@ with program() as power_rabi:
     I = declare(fixed)  # demodulated and integrated signal
     Q = declare(fixed)  # demodulated and integrated signal
     d_st = declare_stream()  # stream for d
-    d_I = declare(
-        fixed, value=1.0
-    )  # I_e - I_g / np.sqrt(dI**2 + dQ**2), projection to the unitary vector
-    d_Q = declare(
-        fixed, value=1.0
-    )  # Q_e - Q_g / np.sqrt(dI**2 + dQ**2), projection to the unitary vector
+    d_I = declare(fixed, value=1.0)  # I_e - I_g / np.sqrt(dI**2 + dQ**2), projection to the unitary vector
+    d_Q = declare(fixed, value=1.0)  # Q_e - Q_g / np.sqrt(dI**2 + dQ**2), projection to the unitary vector
     d = declare(fixed)
 
     # Pulse sequence
@@ -59,9 +55,7 @@ with program() as power_rabi:
             a, a_min, a < a_max + da / 2, a + da
         ):  # Notice it's + da/2 to include a_max (This is only for fixed!)
             wait(cooldown_time, "qubit")  # wait for qubit to decay
-            play(
-                "gaussian" * amp(a), "qubit"
-            )  # play gaussian pulse with variable amplitude
+            play("gaussian" * amp(a), "qubit")  # play gaussian pulse with variable amplitude
             align("qubit", "resonator")
             measure(
                 "readout",

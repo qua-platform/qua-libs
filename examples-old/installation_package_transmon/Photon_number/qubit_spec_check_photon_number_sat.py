@@ -57,19 +57,11 @@ with program() as qubit_spec:
         with for_(
             a, a_min, a < a_max + da / 2, a + da
         ):  # Notice it's + da/2 to include a_max (This is only for fixed!)
-            with for_(
-                f, f_min, f <= f_max, f + df
-            ):  # Notice it's <= to include f_max (This is only for integers!)
-                update_frequency(
-                    "qubit", f
-                )  # update frequency of operations to the qubit
+            with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+                update_frequency("qubit", f)  # update frequency of operations to the qubit
                 wait(cooldown_time, "qubit", "resonator")  # wait for qubit to decay
-                wait(
-                    2500, "qubit"
-                )  # wait 10 us, so that resonator rings up before saturation pulse
-                play(
-                    "saturation", "qubit"
-                )  # to create a mixed state between |g> and |e>
+                wait(2500, "qubit")  # wait 10 us, so that resonator rings up before saturation pulse
+                play("saturation", "qubit")  # to create a mixed state between |g> and |e>
                 measure(
                     "long_readout" * amp(a),
                     "resonator",

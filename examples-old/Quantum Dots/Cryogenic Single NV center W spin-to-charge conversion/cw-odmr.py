@@ -52,9 +52,7 @@ with program() as cw_odmr:
             align("qubit", "laser_EX705nm", "SNSPD")  # align all elements
 
             play("mw", "qubit", duration=int(meas_len // 4))  # play microwave pulse
-            play(
-                "PL", "laser_EX705nm", duration=int(meas_len // 4)
-            )  # Photoluminescence
+            play("PL", "laser_EX705nm", duration=int(meas_len // 4))  # Photoluminescence
             measure(
                 "photon_count",
                 "SNSPD",
@@ -78,9 +76,7 @@ with program() as cw_odmr:
 simulate = True
 
 if simulate:
-    qmm.simulate(
-        config, cw_odmr, SimulationConfig(int(1.1 * meas_len))
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, cw_odmr, SimulationConfig(int(1.1 * meas_len))).get_simulated_samples().con1.plot()
     plt.show()
 else:
     job = qm.execute(cw_odmr)  # execute QUA program
@@ -100,9 +96,7 @@ else:
             pass
 
         else:
-            plt.plot(
-                LO_freq + f_vec, counts / 1000 / (meas_len * 1e-9) / iteration
-            )  # kcps
+            plt.plot(LO_freq + f_vec, counts / 1000 / (meas_len * 1e-9) / iteration)  # kcps
             plt.xlabel("f_vec [Hz]")
             plt.ylabel("counts [kcps]")
             plt.title("ODMR")

@@ -70,9 +70,7 @@ with program() as measureProg:
         "readoutOp",
         "qe1",
         None,
-        integration.moving_window(
-            "x", mov_integration_res, samples_per_chunk, chunks_per_window
-        ),
+        integration.moving_window("x", mov_integration_res, samples_per_chunk, chunks_per_window),
     )
     with for_(ind, 0, ind < num_segments, ind + 1):
         save(mov_integration_res[ind], mov_int_stream)
@@ -84,9 +82,7 @@ with program() as measureProg:
 
 job = QM1.simulate(
     measureProg,
-    SimulationConfig(
-        4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(4000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 res = job.result_handles

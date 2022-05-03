@@ -22,9 +22,7 @@ def simulate_pulse(IF_freq, chi, k, Ts, Td, power):
     Q = np.array(Q)
     t = np.arange(len(I))
 
-    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(
-        2 * np.pi * IF_freq * t * 1e-9
-    )
+    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(2 * np.pi * IF_freq * t * 1e-9)
 
     return t, I, Q, S
 

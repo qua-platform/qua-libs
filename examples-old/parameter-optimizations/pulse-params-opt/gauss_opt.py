@@ -28,15 +28,11 @@ with program() as dragopt:
 
 
 def cost(x):
-    config["waveforms"]["gauss_wf"]["samples"] = gauss(
-        0.2, x[0], x[1], 0, 100
-    )  # update the config
+    config["waveforms"]["gauss_wf"]["samples"] = gauss(0.2, x[0], x[1], 0, 100)  # update the config
     QM1 = QMm.open_qm(config)  # reopen the QM using new config file e.g. new waveform
     job = QM1.simulate(
         dragopt,
-        SimulationConfig(
-            int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-        ),
+        SimulationConfig(int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])),
     )
     res = job.result_handles
     result_vector = res.data.fetch_all()["value"] / 2**12
@@ -46,33 +42,23 @@ def cost(x):
     return answer
 
 
-res = optimize.minimize(
-    cost, x0=[1, 2], method="nelder-mead", options={"xatol": 1e-8, "disp": True}
-)
+res = optimize.minimize(cost, x0=[1, 2], method="nelder-mead", options={"xatol": 1e-8, "disp": True})
 
-config["waveforms"]["gauss_wf"]["samples"] = gauss(
-    0.2, 1, 2, 0, 100
-)  # update the config
+config["waveforms"]["gauss_wf"]["samples"] = gauss(0.2, 1, 2, 0, 100)  # update the config
 QM1 = QMm.open_qm(config)  # reopen the QM using new config file e.g. new waveform
 job = QM1.simulate(
     dragopt,
-    SimulationConfig(
-        int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    ),
+    SimulationConfig(int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])),
 )
 res_init = job.result_handles
 result_vector = res_init.data.fetch_all()["value"] / 2**12
 result_vector_init = -np.squeeze(result_vector, axis=0)
 
-config["waveforms"]["gauss_wf"]["samples"] = gauss(
-    0.2, res.x[0], res.x[1], 0, 100
-)  # update the config
+config["waveforms"]["gauss_wf"]["samples"] = gauss(0.2, res.x[0], res.x[1], 0, 100)  # update the config
 QM1 = QMm.open_qm(config)  # reopen the QM using new config file e.g. new waveform
 job = QM1.simulate(
     dragopt,
-    SimulationConfig(
-        int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    ),
+    SimulationConfig(int(1000), simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])),
 )
 res_opt = job.result_handles
 result_vector = res_opt.data.fetch_all()["value"] / 2**12

@@ -131,9 +131,7 @@ def cost(freq, amplitude):
     job.result_handles.wait_for_all_values(timeout=120)
     print("done.")
 
-    target = np.array(
-        [-1] * 5 + [0] * 12 + [1] * 4
-    )  # the goal values for the sigma z expectation values
+    target = np.array([-1] * 5 + [0] * 12 + [1] * 4)  # the goal values for the sigma z expectation values
 
     result = job.result_handles.sigma_z.fetch_all()
 

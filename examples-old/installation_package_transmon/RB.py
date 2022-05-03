@@ -209,9 +209,7 @@ with program() as rb:
     # Stream processing
     ###################
     with stream_processing():
-        res_st.buffer(avgs).map(FUNCTIONS.average()).buffer(
-            num_of_sequences, max_circuit_depth
-        ).save("res")
+        res_st.buffer(avgs).map(FUNCTIONS.average()).buffer(num_of_sequences, max_circuit_depth).save("res")
         m_st.save("iteration")
 
 """
@@ -260,9 +258,7 @@ else:
             resvalue = resvalue_handle.fetch_all()
             iteration = iteration_handle.fetch_all() + 1
             print(iteration)
-            value = 1 - (
-                np.average(resvalue, axis=0) / resvalue_ground
-            )  # need to normalize by ground state value
+            value = 1 - (np.average(resvalue, axis=0) / resvalue_ground)  # need to normalize by ground state value
             plt.plot(value)
             plt.xlabel("Number of gates")
             plt.ylabel("Fidelity")
@@ -280,9 +276,7 @@ else:
     # for a, b in zip(i_seq, seq):
     #     print('seq = ', b, 'i_seq', a)
 
-    value = 1 - (
-        np.average(resvalue, axis=0) / resvalue_ground
-    )  # need to normalize by ground state value
+    value = 1 - (np.average(resvalue, axis=0) / resvalue_ground)  # need to normalize by ground state value
     plt.plot(value)
     plt.xlabel("Number of gates")
     plt.ylabel("Fidelity")
@@ -321,9 +315,7 @@ else:
     print("#########################")
     print("### Fitted Parameters ###")
     print("#########################")
-    print(
-        f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-    )
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
     print("Covariance Matrix")
     print(cov)
 

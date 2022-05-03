@@ -6,13 +6,9 @@ from copy import deepcopy
 class TimeDiffCalibrator:
     @staticmethod
     def _update_config(freq, config, qe):
-        config["elements"][qe]["operations"][
-            "time_diff_long_readout"
-        ] = "time_diff_long_readout_pulse"
+        config["elements"][qe]["operations"]["time_diff_long_readout"] = "time_diff_long_readout_pulse"
         config["elements"][qe]["intermediate_frequency"] = freq
-        config["mixers"][config["elements"][qe]["mixInputs"]["mixer"]][0][
-            "intermediate_frequency"
-        ] = freq
+        config["mixers"][config["elements"][qe]["mixInputs"]["mixer"]][0]["intermediate_frequency"] = freq
         print(
             f"ATTENTION: Using the mixer at the 0'th position of {config['elements'][qe]['mixInputs']['mixer']} to "
             f"calibrate time difference."

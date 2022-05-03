@@ -33,16 +33,12 @@ def track_frequency(qe, pulse, current_w, w_step):
     # measure the response magnitude at a lower frequency by 1 step
     update_frequency(qe, current_w - w_step)
     # Note: the amplitude spoofing won't be needed in a real experiment
-    measure_response_magnitude(
-        qe, pulse * amp(LORENTZIAN[steps_position - 1]), res_w_smaller
-    )
+    measure_response_magnitude(qe, pulse * amp(LORENTZIAN[steps_position - 1]), res_w_smaller)
 
     # measure the response magnitude at a higher frequency by 1 step
     update_frequency(qe, current_w + w_step)
     # Note: the amplitude spoofing won't be needed in a real experiment
-    measure_response_magnitude(
-        qe, pulse * amp(LORENTZIAN[steps_position + 1]), res_w_bigger
-    )
+    measure_response_magnitude(qe, pulse * amp(LORENTZIAN[steps_position + 1]), res_w_bigger)
 
     # figure out which frequency at the lowest response magnitude, and update the current frequency accordingly
     best_w = Util.cond(
@@ -75,9 +71,7 @@ with program() as w_if_tracking:
 
     # Note: this line won't be needed in a real experiment because spoofing won't be needed
     # used for lorenzian response spoofing, this is the way to pre-process and create the Lorentz function as a QUA array
-    LORENTZIAN = declare(
-        fixed, value=[1 - 0.5 / (1 + 0.1 * (n - 50) ** 2) for n in range(100)]
-    )
+    LORENTZIAN = declare(fixed, value=[1 - 0.5 / (1 + 0.1 * (n - 50) ** 2) for n in range(100)])
     # this spoof variable is the index of the current spoofing
     steps_position = declare(int, value=50)
 
@@ -103,9 +97,7 @@ with program() as w_if_tracking:
         # for exmaple, let's have an experiment that measures the magnitude of response
         response = declare(fixed)
         # Note: the amplitude spoofing won't be needed in a real experiment
-        measure_response_magnitude(
-            qe, pulse * amp(LORENTZIAN[steps_position]), response
-        )
+        measure_response_magnitude(qe, pulse * amp(LORENTZIAN[steps_position]), response)
         save(response, "response")
         save(current_w, "w")
 

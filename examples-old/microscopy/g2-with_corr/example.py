@@ -61,8 +61,7 @@ def calc_corr(corr_in1, corr_in2, in_len, fold):
             out_ind = in_len - i_iter1 if fold else i_iter1 - 1
             assign(
                 corr_out[out_ind],
-                corr_out[out_ind]
-                + (corr_in2[i_iter2] * corr_in1[in_len - i_iter1 + i_iter2]),
+                corr_out[out_ind] + (corr_in2[i_iter2] * corr_in1[in_len - i_iter1 + i_iter2]),
             )
 
     # calculate for m=0 using the QUA dot product function
@@ -164,16 +163,12 @@ job = qmm.simulate(
         include_analog_waveforms=True,  # include analog waveform names
         include_digital_waveforms=True,  # include digital waveform names
         # loopback to simulate beam splitter response
-        simulation_interface=LoopbackInterface(
-            [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)]
-        ),
+        simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)]),
     ),
 )
 
 # show negative time axis if correlation is two sided and scale it according to bin size
-t_axis = (2**bin_size_pow_ns) * (
-    np.arange(bin_vec_len) if fold else np.arange(-bin_vec_len + 1, bin_vec_len)
-)
+t_axis = (2**bin_size_pow_ns) * (np.arange(bin_vec_len) if fold else np.arange(-bin_vec_len + 1, bin_vec_len))
 
 corr_output = job.result_handles.get("corr_output").fetch_all()["value"]
 plt.plot(t_axis, corr_output)
@@ -187,8 +182,7 @@ if fold:
     corr_output_validate_temp = np.zeros(bin_vec_len)
     corr_output_validate_temp[0] = corr_output_validate[bin_vec_len - 1]
     corr_output_validate_temp[1:bin_vec_len] = (
-        np.flip(corr_output_validate[0 : bin_vec_len - 1])
-        + corr_output_validate[bin_vec_len : (2 * bin_vec_len - 1)]
+        np.flip(corr_output_validate[0 : bin_vec_len - 1]) + corr_output_validate[bin_vec_len : (2 * bin_vec_len - 1)]
     )
     corr_output_validate = corr_output_validate_temp
 

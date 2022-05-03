@@ -87,9 +87,7 @@ plt.plot(
     "b.",
 )  # Plot every 25th point (for clarity)
 plt.legend(("Reference", "Output"))
-plt.title(
-    "Pulse - 200ns - Phase Reset - Pulse. 1st pulse is arbitrary. 2nd pulse is cosine"
-)
+plt.title("Pulse - 200ns - Phase Reset - Pulse. 1st pulse is arbitrary. 2nd pulse is cosine")
 
 # Simulate 3rd program
 job = qmm.simulate(config, reset_ph_and_rotate, SimulationConfig(int(800)))
@@ -102,9 +100,7 @@ plt.plot(
     "b.",
 )  # Plot every 25th point (for clarity)
 plt.legend(("Reference", "Output"))
-plt.title(
-    "Pulse - 200ns - Phase Reset - Rotate - Pulse. 1st pulse is arbitrary. 2nd pulse is sine"
-)
+plt.title("Pulse - 200ns - Phase Reset - Rotate - Pulse. 1st pulse is arbitrary. 2nd pulse is sine")
 
 # Simulate 4rd program
 job = qmm.simulate(config, reset_both_ph_and_rotate, SimulationConfig(int(800)))
@@ -117,9 +113,7 @@ plt.plot(
     "b.",
 )  # Plot every 25th point (for clarity)
 plt.legend(("Reference", "Output"))
-plt.title(
-    "Reset - Pulse - 200ns - Phase Reset - Rotate - Pulse. 1st Pulse is cosine, 2nd is sine"
-)
+plt.title("Reset - Pulse - 200ns - Phase Reset - Rotate - Pulse. 1st Pulse is cosine, 2nd is sine")
 
 plt.xlabel("time [ns]")
 plt.tight_layout()

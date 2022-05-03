@@ -187,8 +187,7 @@ config = {
         "ON": {"samples": [(1, 0)]},
         "OFF": {"samples": [(0, 0)]},  # [(value, length)]
         "Modulate": {
-            "samples": [(1, readout_pulse_length / 20), (0, readout_pulse_length / 20)]
-            * 10  # [(value, length)]
+            "samples": [(1, readout_pulse_length / 20), (0, readout_pulse_length / 20)] * 10  # [(value, length)]
         },
     },
     "integration_weights": {

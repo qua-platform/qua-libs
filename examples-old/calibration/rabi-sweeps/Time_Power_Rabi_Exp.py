@@ -20,9 +20,7 @@ da = 0.05  # amplitude sweeping step
 N_a = int(np.round(a_max / da))  # Number of steps
 
 qmManager = QuantumMachinesManager()  # Reach OPX's IP address
-my_qm = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+my_qm = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA program
     I = declare(fixed)  # QUA variables declaration
@@ -35,13 +33,9 @@ with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA p
     amp_stream = declare_stream()
     Nrep = declare(int)  # Number of repetitions of the experiment
 
-    with for_(
-        Nrep, 0, Nrep < N_max, Nrep + 1
-    ):  # Do a 100 times the experiment to obtain statistics
+    with for_(Nrep, 0, Nrep < N_max, Nrep + 1):  # Do a 100 times the experiment to obtain statistics
         with for_(a, 0.0, a < a_max, a + da):  # Sweep for varying amplitudes
-            with for_(
-                t, 0, t < t_max, t + dt
-            ):  # Sweep from 0 to t_max *4 ns the pulse duration
+            with for_(t, 0, t < t_max, t + dt):  # Sweep from 0 to t_max *4 ns the pulse duration
 
                 play("gauss_pulse" * amp(a), "qubit", duration=t)
                 align("qubit", "RR")
@@ -60,9 +54,7 @@ with program() as time_powerRabiProg:  # Mix up of the power and time Rabi QUA p
 
 my_job = my_qm.simulate(
     time_powerRabiProg,
-    SimulationConfig(
-        int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 time.sleep(1.0)
 my_timeRabi_results = my_job.result_handles

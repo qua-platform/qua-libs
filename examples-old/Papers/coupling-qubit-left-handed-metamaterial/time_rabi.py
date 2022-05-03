@@ -24,9 +24,7 @@ df = 1e6
 N_f = int((f_max - f_min) / df)
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 LO_source = mock_LO_source(9.2e9)
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration

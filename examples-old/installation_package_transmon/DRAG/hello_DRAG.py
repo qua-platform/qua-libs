@@ -64,9 +64,7 @@ simulate = True
 
 if simulate:
     # simulation properties
-    simulate_config = SimulationConfig(
-        duration=700, simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)]))
-    )
+    simulate_config = SimulationConfig(duration=700, simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)])))
     job = qmm.simulate(config, hello_qua, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 

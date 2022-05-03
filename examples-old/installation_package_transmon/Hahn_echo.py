@@ -48,9 +48,7 @@ with program() as ramsey:
     I_st = declare_stream()  # stream for I
     Q_st = declare_stream()  # stream for Q
 
-    update_frequency(
-        "qubit", qubit_if - detuning
-    )  # update qubit frequency with detuning
+    update_frequency("qubit", qubit_if - detuning)  # update qubit frequency with detuning
 
     # Pulse sequence
     ################

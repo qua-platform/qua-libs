@@ -54,8 +54,7 @@ config = {
         },
         "ramp_wf2": {
             "type": "arbitrary",
-            "samples": np.linspace(0, -0.5, readout_len).tolist()
-            + np.linspace(0, -0.5, readout_len).tolist(),
+            "samples": np.linspace(0, -0.5, readout_len).tolist() + np.linspace(0, -0.5, readout_len).tolist(),
         },
     },
     "digital_waveforms": {

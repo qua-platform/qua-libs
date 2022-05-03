@@ -29,9 +29,7 @@ def simulate_pulse(IF_freq, chi, k, Ts, Td, input_I, input_Q):
     Q = np.array(Q)
     t = np.arange(len(I))
 
-    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(
-        2 * np.pi * IF_freq * t * 1e-9
-    )
+    S = I * np.cos(2 * np.pi * IF_freq * t * 1e-9) + Q * np.sin(2 * np.pi * IF_freq * t * 1e-9)
 
     return t, I, Q, S
 
@@ -75,9 +73,7 @@ gauss_pulse = gauss(0.2, -(pulse_len / 2 - 3 * gauss_sigma), gauss_sigma, pulse_
 k = 0.04
 chi = 0.023
 
-[tdis_, Idis_, Qdis_, Sdis_] = simulate_pulse(
-    cavity_IF, -1 * chi, k, displace_len - 1, 0, displace_I, displace_Q
-)
+[tdis_, Idis_, Qdis_, Sdis_] = simulate_pulse(cavity_IF, -1 * chi, k, displace_len - 1, 0, displace_I, displace_Q)
 
 [tg_, Ig_, Qg_, Sg_] = simulate_pulse(rr_IF, -1 * chi, k, Ts, Td, const_I, const_Q)
 [te_, Ie_, Qe_, Se_] = simulate_pulse(rr_IF, 1 * chi, k, Ts, Td, const_I, const_Q)

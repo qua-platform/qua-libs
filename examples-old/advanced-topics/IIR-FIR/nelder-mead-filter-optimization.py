@@ -25,9 +25,7 @@ tof = 248
 waveform = [0.0] * 30 + [0.2] * (pulse_len - 60) + [0.0] * 30
 
 # We use an arbitrarily selected filter for distorting the signal
-distorted_waveform = signal.lfilter(
-    np.array([1]), np.array([0.95, -0.15, 0.1]), waveform
-)
+distorted_waveform = signal.lfilter(np.array([1]), np.array([0.95, -0.15, 0.1]), waveform)
 
 
 def perform(params: List[float]):
@@ -40,12 +38,8 @@ def perform(params: List[float]):
     print("feedback:", feedback_filter)
     print("feedforward:", feedforward_filter)
     if bCalc:  # Use the signal module to simulate the filter behavior.
-        scipy_feedback_filter = np.insert(
-            -feedback_filter, 0, np.array([1])
-        )  # SciPy uses a different notation.
-        corrected_signal = signal.lfilter(
-            feedforward_filter, scipy_feedback_filter, distorted_waveform
-        )
+        scipy_feedback_filter = np.insert(-feedback_filter, 0, np.array([1]))  # SciPy uses a different notation.
+        corrected_signal = signal.lfilter(feedforward_filter, scipy_feedback_filter, distorted_waveform)
     else:  # Use the OPX to get the real data (simulated in this case).
         config = {
             "version": 1,
@@ -110,23 +104,16 @@ def perform(params: List[float]):
             filter_optimization,
             SimulationConfig(
                 duration=150,
-                simulation_interface=LoopbackInterface(
-                    [("con1", 1, "con1", 1)], latency=200
-                ),
+                simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)], latency=200),
             ),
         )
         job.result_handles.wait_for_all_values()
-        corrected_signal = (
-            -job.result_handles.adc.fetch_all() / 4096
-        )  # This converts ADC units into volts
+        corrected_signal = -job.result_handles.adc.fetch_all() / 4096  # This converts ADC units into volts
 
     # The correlation is used to calculate the "loss": Check whether the resulting output matches the required waveform,
     # taking into account added delays. Check the readme for more information
     corr = np.correlate(corrected_signal, waveform, "full") / (
-        np.sqrt(
-            np.correlate(corrected_signal, corrected_signal)
-            * np.correlate(waveform, waveform)
-        )
+        np.sqrt(np.correlate(corrected_signal, corrected_signal) * np.correlate(waveform, waveform))
     )
 
     loss = 1 - np.max(corr)
@@ -192,18 +179,12 @@ solver_calc = opti.minimize(
 ## Plotting Part ##
 ###################
 plt.figure()
-scipy_feedback_filter = np.insert(
-    -solver_calc.x[:M], 0, np.array([1])
-)  # SciPy uses a different notation.
+scipy_feedback_filter = np.insert(-solver_calc.x[:M], 0, np.array([1]))  # SciPy uses a different notation.
 
-corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform
-)
+corrected_waveform = signal.lfilter(np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform)
 norm = np.sum(waveform) / np.sum(corrected_waveform)
 
-corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform
-)
+corrected_waveform = signal.lfilter(np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform)
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
@@ -248,16 +229,10 @@ solver = opti.minimize(
 ## Plotting Part ##
 ###################
 plt.figure()
-scipy_feedback_filter = np.insert(
-    -solver_calc.x[:M], 0, np.array([1])
-)  # SciPy uses a different notation.
-corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform
-)
+scipy_feedback_filter = np.insert(-solver_calc.x[:M], 0, np.array([1]))  # SciPy uses a different notation.
+corrected_waveform = signal.lfilter(np.array(solver_calc.x[M:]), scipy_feedback_filter, distorted_waveform)
 norm = np.sum(waveform) / np.sum(corrected_waveform)
-corrected_waveform = signal.lfilter(
-    np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform
-)
+corrected_waveform = signal.lfilter(np.array(solver_calc.x[M:] * norm), scipy_feedback_filter, distorted_waveform)
 
 plt.plot(waveform)
 plt.plot(distorted_waveform)
@@ -272,6 +247,4 @@ perform(solver_calc.x)
 plt.title("Output according to the OPX - 2nd iteration")
 
 #########
-print(
-    f"Full optimization took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes"
-)
+print(f"Full optimization took {int((time.time() - start_time)//60)}:{int((time.time() - start_time)%60)} minutes")

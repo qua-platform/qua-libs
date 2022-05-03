@@ -14,9 +14,7 @@ import time
 from configuration import *
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 N = 3  # 120
 t_samp = 12 // 4

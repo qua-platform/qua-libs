@@ -32,17 +32,13 @@ t_recovery_max = 500
 dt_recovery = 20
 
 qmManager = QuantumMachinesManager()
-QM = qmManager.open_qm(
-    config
-)  # Generate a Quantum Machine based on the configuration described above
+QM = qmManager.open_qm(config)  # Generate a Quantum Machine based on the configuration described above
 
 with program() as bias_current_sweeping:  #
     I = declare(fixed)  # QUA variables declaration
     Q = declare(fixed)
     state = declare(bool)
-    th = declare(
-        fixed, value=2.0
-    )  # Threshold assumed to have been calibrated by state discrimination exp
+    th = declare(fixed, value=2.0)  # Threshold assumed to have been calibrated by state discrimination exp
     t = declare(int)
     t_recovery = declare(int)
     f = declare(int)

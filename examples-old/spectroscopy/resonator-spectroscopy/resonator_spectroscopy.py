@@ -25,9 +25,7 @@ with program() as resonator_spectroscopy:
     A = declare_stream()
     with for_(n, 0, n < 1000, n + 1):
         with for_(f, 1e6, f < 100.5e6, f + 1e6):
-            wait(
-                100, "rr"
-            )  # wait 100 clock cycles (4microS) for letting resonator relax to vacuum
+            wait(100, "rr")  # wait 100 clock cycles (4microS) for letting resonator relax to vacuum
 
             update_frequency("rr", f)
             measure(
@@ -48,9 +46,7 @@ qm = qmm.open_qm(config)
 # need to run the simulation for a sufficiently long time, because the buffer outputs results only when full
 job = qm.simulate(
     resonator_spectroscopy,
-    SimulationConfig(
-        int(1e6), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(1e6), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 res_handle = job.result_handles
 Q_handle = res_handle.get("Q")

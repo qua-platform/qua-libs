@@ -23,14 +23,12 @@ for arg in ["Pe_0", "Pe_corrected"]:
 
     with program() as prog:
         freq_track_obj.qua_declarations()
-        freq_track_obj.time_domain_ramesy_full_sweep(
-            reps, freq_track_obj.f_ref, 4, 50000, 50, arg
-        )
+        freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 50, arg)
 
         with stream_processing():
-            freq_track_obj.state_estimation_st[0].buffer(
-                reps, len(freq_track_obj.tau_vec)
-            ).map(FUNCTIONS.average()).save(arg)
+            freq_track_obj.state_estimation_st[0].buffer(reps, len(freq_track_obj.tau_vec)).map(
+                FUNCTIONS.average()
+            ).save(arg)
 
     job = qm.execute(prog)
     job.result_handles.wait_for_all_values()
@@ -50,9 +48,9 @@ with program() as prog:
         oscillation,
     )
     with stream_processing():
-        freq_track_obj.state_estimation_st[0].buffer(
-            reps, len(freq_track_obj.fvec)
-        ).map(FUNCTIONS.average()).save("Pe_fd")
+        freq_track_obj.state_estimation_st[0].buffer(reps, len(freq_track_obj.fvec)).map(FUNCTIONS.average()).save(
+            "Pe_fd"
+        )
 
 qm = qmm.open_qm(config)
 job = qm.execute(prog)
@@ -104,21 +102,17 @@ with program() as prog:
 
     with for_(i, 0, i < 10000, i + 1):
 
-        freq_track_obj.time_domain_ramesy_full_sweep(
-            reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_ref", False
-        )
+        freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_ref", False)
         freq_track_obj.two_points_ramsey()
-        freq_track_obj.time_domain_ramesy_full_sweep(
-            reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_corr", True
-        )
+        freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_corr", True)
 
     with stream_processing():
-        freq_track_obj.state_estimation_st[0].buffer(
-            reps, len(freq_track_obj.tau_vec)
-        ).map(FUNCTIONS.average()).save("Pe_td_ref")
-        freq_track_obj.state_estimation_st[1].buffer(
-            reps, len(freq_track_obj.tau_vec)
-        ).map(FUNCTIONS.average()).save("Pe_td_corr")
+        freq_track_obj.state_estimation_st[0].buffer(reps, len(freq_track_obj.tau_vec)).map(FUNCTIONS.average()).save(
+            "Pe_td_ref"
+        )
+        freq_track_obj.state_estimation_st[1].buffer(reps, len(freq_track_obj.tau_vec)).map(FUNCTIONS.average()).save(
+            "Pe_td_corr"
+        )
 
 job = qm.execute(prog)
 td_ref_handle = job.result_handles.get("Pe_td_ref")

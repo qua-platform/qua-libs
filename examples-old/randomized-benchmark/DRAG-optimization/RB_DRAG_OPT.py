@@ -198,12 +198,8 @@ def drag_prog(e, d=20):
 
 def cost(x):
     # x[0] = alpha, x[1]=beta
-    config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss(
-        x[0] * 0.2, 0, 6, 0, 100
-    )  # update the config
-    config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss_der(
-        x[1] * 0.2, 0, 6, 0, 100
-    )  # update the config
+    config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss(x[0] * 0.2, 0, 6, 0, 100)  # update the config
+    config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss_der(x[1] * 0.2, 0, 6, 0, 100)  # update the config
     QM1 = QMm.open_qm(config)  # reopen the QM using new config file e.g. new waveform
     optimal_x = [1, 0.5]
     e = np.sqrt(np.sum((optimal_x - x) ** 2))
@@ -218,21 +214,15 @@ def cost(x):
     return err
 
 
-res = optimize.minimize(
-    cost, x0=[1.2, 0.3], method="nelder-mead", options={"xatol": 1e-2, "disp": True}
-)
+res = optimize.minimize(cost, x0=[1.2, 0.3], method="nelder-mead", options={"xatol": 1e-2, "disp": True})
 x_the = np.array([1, 0.5])
 x_0 = np.array([1.2, 0.3])
 opt_x = res.x
 e = np.sqrt(np.sum((x_0 - x_the) ** 2))
 e_f = np.sqrt(np.sum((opt_x - x_the) ** 2))
 
-config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss(
-    x_0[0] * 0.2, 0, 6, 0, 100
-)  # update the config
-config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss_der(
-    x_0[1] * 0.2, 0, 6, 0, 100
-)  # update the config
+config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss(x_0[0] * 0.2, 0, 6, 0, 100)  # update the config
+config["waveforms"]["DRAG_gauss_wf"]["samples"] = gauss_der(x_0[1] * 0.2, 0, 6, 0, 100)  # update the config
 QM1 = QMm.open_qm(config)  # reopen the QM using new config file e.g. new waveform
 
 circuit_depth_vec = np.sort(list(set(np.logspace(0, 2, 10).astype(int)))).tolist()

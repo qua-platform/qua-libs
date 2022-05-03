@@ -34,9 +34,7 @@ with program() as t1_measurement:
 
     # Declare QUA variables
     ###################
-    times = declare(
-        int, size=100
-    )  # 'size' defines the max number of photons to be counted
+    times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
 
     counts = declare(int)  # variable to save the total number of photons
     counts_ref = declare(int)
@@ -114,9 +112,7 @@ with program() as t1_measurement:
 simulate = True
 
 if simulate:
-    qmm.simulate(
-        config, t1_measurement, SimulationConfig(10000)
-    ).get_simulated_samples().con1.plot()
+    qmm.simulate(config, t1_measurement, SimulationConfig(10000)).get_simulated_samples().con1.plot()
 else:
     job = qm.execute(t1_measurement)  # execute QUA program
 

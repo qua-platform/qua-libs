@@ -12,9 +12,7 @@ from auto_mixer_tools_visa import KeysightFieldFox
 # Parameters #
 ##############
 # Important Parameters:
-address = (
-    "TCPIP0::192.168.1.9::inst0::INSTR"  # The address for the SA, opened using visa.
-)
+address = "TCPIP0::192.168.1.9::inst0::INSTR"  # The address for the SA, opened using visa.
 bDoSweeps = True  # If True, performs a large sweep before and after the optimization.
 method = 1  # If set to 1, checks power using a channel power measurement. If set to 2, checks power using a marker.
 

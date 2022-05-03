@@ -15,12 +15,8 @@ RB_sequences = RB.sequences
 RB_baked_sequences = RB.baked_sequences
 duration_trackers = RB.duration_trackers
 inverse_ops = RB.inverse_ops  # Array of inverse indices
-played_Cliffords = [
-    RB_sequences[k].operations_list for k in range(K)
-]  # List of random ops (strings)
-played_inverse_Ops = [
-    RB.sequences[k].inverse_op_string for k in range(K)
-]  # List of inverse sequences (strings)
+played_Cliffords = [RB_sequences[k].operations_list for k in range(K)]  # List of random ops (strings)
+played_inverse_Ops = [RB.sequences[k].inverse_op_string for k in range(K)]  # List of inverse sequences (strings)
 
 with program() as RB_prog:
     truncate = declare(int)
@@ -33,9 +29,7 @@ with program() as RB_prog:
     out_str = declare_stream()
 
     for k in range(K):
-        truncate_array = declare(
-            int, value=[x * pulse_len // 4 for x in duration_trackers[k]]
-        )
+        truncate_array = declare(int, value=[x * pulse_len // 4 for x in duration_trackers[k]])
 
         inverse_ops_QUA = declare(int, value=inverse_ops[k])
         with for_each_((truncate, inverse_op), (truncate_array, inverse_ops_QUA)):

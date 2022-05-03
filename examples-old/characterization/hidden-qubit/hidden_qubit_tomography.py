@@ -42,24 +42,16 @@ with program() as hidden_qubit_tomography:
                         play_pulse(op)
 
                     align("RR", "control", "TC")
-                    measure_and_reset_state(
-                        "RR", I, Q, state_c, state_h, stream_c, stream_h
-                    )
+                    measure_and_reset_state("RR", I, Q, state_c, state_h, stream_c, stream_h)
 
     with stream_processing():
-        stream_c.boolean_to_int().buffer(
-            N_shots, nb_processes, nb_basis_states, nb_Pauli_op
-        ).save_all("state_c")
-        stream_h.boolean_to_int().buffer(
-            N_shots, nb_processes, nb_basis_states, nb_Pauli_op
-        ).save_all("state_h")
+        stream_c.boolean_to_int().buffer(N_shots, nb_processes, nb_basis_states, nb_Pauli_op).save_all("state_c")
+        stream_h.boolean_to_int().buffer(N_shots, nb_processes, nb_basis_states, nb_Pauli_op).save_all("state_h")
 
 job = qm1.simulate(
     config,
     hidden_qubit_tomography,
-    SimulationConfig(
-        int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(50000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )  # Use LoopbackInterface to simulate the response of the qubit
 
 results = job.result_handles
@@ -71,9 +63,7 @@ counts = {}
 frequencies = {}
 expectation_values = {}
 ρ = {}
-for i, process in list(
-    enumerate(processes.keys())
-):  # 4 #Initialize all the dictionaries
+for i, process in list(enumerate(processes.keys())):  # 4 #Initialize all the dictionaries
     counts[process] = {}
     frequencies[process] = {}
     expectation_values[process] = {}
@@ -103,13 +93,9 @@ for i, process in list(
                 counts[process][input_state][readout_operator][state] += 1
                 # frequencies[process][input_state][readout_operator][state] += 1. / N_shots
                 if (state == "00") or (state == "01"):
-                    expectation_values[process][input_state][readout_operator] += (
-                        1.0 / N_shots
-                    )
+                    expectation_values[process][input_state][readout_operator] += 1.0 / N_shots
                 else:
-                    expectation_values[process][input_state][readout_operator] -= (
-                        1.0 / N_shots
-                    )
+                    expectation_values[process][input_state][readout_operator] -= 1.0 / N_shots
 
 
 ID = np.array([[1, 0], [0, 1]])

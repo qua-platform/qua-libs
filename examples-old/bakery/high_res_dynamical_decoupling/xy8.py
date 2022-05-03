@@ -90,9 +90,7 @@ with program() as XY8:
                     play("pi_half", "qubit")
         align()
         play("init", "laser_AOM")
-        measure(
-            "readout", "spcm1", None, time_tagging.analog(times, meas_len // 4, counts)
-        )
+        measure("readout", "spcm1", None, time_tagging.analog(times, meas_len // 4, counts))
         save(counts, counts_st)
 
     with stream_processing():

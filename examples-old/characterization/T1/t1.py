@@ -64,9 +64,7 @@ with program() as T1:
 
 job = QM1.simulate(
     T1,
-    SimulationConfig(
-        int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])
-    ),
+    SimulationConfig(int(100000), simulation_interface=LoopbackInterface([("con1", 1, "con1", 1)])),
 )
 
 samples = job.get_simulated_samples()
@@ -125,9 +123,7 @@ for i in range(N_tau):
 # tau_vec was defined in units of clock cycles (4 ns)
 # so to properly obtain T1 in units of ns, we multiply tau_vec*4 below
 param0 = [1, 20]
-popt, pcov = curve_fit(
-    decay, 4 * tau_vec, state_value_mean, param0, sigma=state_value_var
-)
+popt, pcov = curve_fit(decay, 4 * tau_vec, state_value_mean, param0, sigma=state_value_var)
 
 plt.figure()
 plt.plot(4 * tau_vec, state_value_mean, ".", label="measurement")

@@ -49,9 +49,7 @@ with program() as resonator_spec:
     ################
     with for_(n, 0, n < n_avg, n + 1):
 
-        with for_(
-            f, f_min, f <= f_max, f + df
-        ):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
             update_frequency("resonator", f)  # update frequency of resonator element
             wait(cooldown_time, "resonator")  # wait for resonator to decay
             measure(
@@ -84,9 +82,7 @@ if simulate:
         duration=1000,
         simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)])),
     )
-    job = qmm.simulate(
-        config, resonator_spec, simulate_config
-    )  # do simulation with qmm
+    job = qmm.simulate(config, resonator_spec, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
 else:
