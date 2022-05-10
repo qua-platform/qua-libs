@@ -5,6 +5,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+from qm import SimulationConfig
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
@@ -13,7 +14,7 @@ num_of_sequences = 50
 n_avgs = 20
 seed = 345324
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager()
 
 
 def generate_sequence():
@@ -43,72 +44,72 @@ def play_sequence(sequence_list, depth):
             with case_(0):
                 wait(x180_len // 4, "qubit")
             with case_(1):
-                play("X", "qubit")
+                play("x180", "qubit")
             with case_(2):
-                play("Y", "qubit")
+                play("y180", "qubit")
             with case_(3):
-                play("Y", "qubit")
-                play("X", "qubit")
+                play("y180", "qubit")
+                play("x180", "qubit")
             with case_(4):
-                play("X/2", "qubit")
-                play("Y/2", "qubit")
+                play("x90", "qubit")
+                play("y90", "qubit")
             with case_(5):
-                play("X/2", "qubit")
-                play("-Y/2", "qubit")
+                play("x90", "qubit")
+                play("y270", "qubit")
             with case_(6):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
             with case_(7):
-                play("-X/2", "qubit")
-                play("-Y/2", "qubit")
+                play("x270", "qubit")
+                play("y270", "qubit")
             with case_(8):
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(9):
-                play("Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("y90", "qubit")
+                play("x270", "qubit")
             with case_(10):
-                play("-Y/2", "qubit")
-                play("X/2", "qubit")
+                play("y270", "qubit")
+                play("x90", "qubit")
             with case_(11):
-                play("-Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("y270", "qubit")
+                play("x270", "qubit")
             with case_(12):
-                play("X/2", "qubit")
+                play("x90", "qubit")
             with case_(13):
-                play("-X/2", "qubit")
+                play("x270", "qubit")
             with case_(14):
-                play("Y/2", "qubit")
+                play("y90", "qubit")
             with case_(15):
-                play("-Y/2", "qubit")
+                play("y270", "qubit")
             with case_(16):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(17):
-                play("-X/2", "qubit")
-                play("-Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x270", "qubit")
+                play("y270", "qubit")
+                play("x90", "qubit")
             with case_(18):
-                play("X", "qubit")
-                play("Y/2", "qubit")
+                play("x180", "qubit")
+                play("y90", "qubit")
             with case_(19):
-                play("X", "qubit")
-                play("-Y/2", "qubit")
+                play("x180", "qubit")
+                play("y270", "qubit")
             with case_(20):
-                play("Y", "qubit")
-                play("X/2", "qubit")
+                play("y180", "qubit")
+                play("x90", "qubit")
             with case_(21):
-                play("Y", "qubit")
-                play("-X/2", "qubit")
+                play("y180", "qubit")
+                play("x270", "qubit")
             with case_(22):
-                play("X/2", "qubit")
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x90", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(23):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
+                play("x270", "qubit")
 
 
 with program() as rb:
@@ -120,6 +121,8 @@ with program() as rb:
     res_st = declare_stream()
     I = declare(fixed)
     Q = declare(fixed)
+    state = declare(bool)
+    state_st = declare_stream()
 
     with for_(m, 0, m < num_of_sequences, m + 1):
         sequence_list, inv_gate_list = generate_sequence()
@@ -141,20 +144,19 @@ with program() as rb:
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I),
                 )
-                assign(res, I > 0.1)  # Need to set threshold
-                save(res, res_st)
+                state = readout_macro(threshold=ge_threshold, state=state)
+                save(state, state_st)
 
-                assign(sequence_list[depth], saved_gate)
 
     with stream_processing():
-        res_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
+        state_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
         ).save("res")
 
 
 qm = qmm.open_qm(config)
 
-job = qm.execute(rb)
+job = qm.simulate(rb, SimulationConfig(int(100)))
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
 resvalue = res_handles.res.fetch_all()
@@ -186,7 +188,9 @@ stdevs = np.sqrt(np.diag(cov))
 print("#########################")
 print("### Fitted Parameters ###")
 print("#########################")
-print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+print(
+    f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+)
 print("Covariance Matrix")
 print(cov)
 
