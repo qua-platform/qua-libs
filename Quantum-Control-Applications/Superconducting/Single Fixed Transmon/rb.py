@@ -147,7 +147,6 @@ with program() as rb:
                 state = readout_macro(threshold=ge_threshold, state=state)
                 save(state, state_st)
 
-
     with stream_processing():
         state_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
@@ -188,9 +187,7 @@ stdevs = np.sqrt(np.diag(cov))
 print("#########################")
 print("### Fitted Parameters ###")
 print("#########################")
-print(
-    f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-)
+print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
 print("Covariance Matrix")
 print(cov)
 
