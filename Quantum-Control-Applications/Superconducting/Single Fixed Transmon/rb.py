@@ -5,7 +5,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from qm import SimulationConfig
+
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
@@ -14,7 +14,7 @@ num_of_sequences = 50
 n_avgs = 20
 seed = 345324
 
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
 
 def generate_sequence():
@@ -130,23 +130,19 @@ with program() as rb:
         with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
             with for_(n, 0, n < n_avgs, n + 1):
                 assign(saved_gate, sequence_list[depth])
-                assign(sequence_list[depth], inv_gate_list[depth - 1])
-                wait(5000, "qubit")  # Several T1s, can replace with active reset
+                assign(sequence_list[depth], inv_gate_list[depth - 1]) #making sure to have the last gate as the inverse gate
+                cooldown_time = 5 * qubit_T1 // 4
+                wait(cooldown_time, "resonator")
 
                 align("resonator", "qubit")
 
                 play_sequence(sequence_list, depth)
 
                 align("qubit", "resonator")
-                measure(
-                    "readout",
-                    "resonator",
-                    None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                )
-                state = readout_macro(threshold=ge_threshold, state=state)
+                state = readout_macro(threshold=ge_threshold, state=state) #make sure you updated the ge_threshold
                 save(state, state_st)
 
+                assign(sequence_list[depth], saved_gate)
     with stream_processing():
         state_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
@@ -155,7 +151,7 @@ with program() as rb:
 
 qm = qmm.open_qm(config)
 
-job = qm.simulate(rb, SimulationConfig(int(100)))
+job = qm.execute(rb)
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
 resvalue = res_handles.res.fetch_all()
