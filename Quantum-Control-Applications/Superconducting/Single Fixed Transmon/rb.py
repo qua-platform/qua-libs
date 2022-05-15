@@ -12,6 +12,7 @@ delta_depth = 1  # must be 1!!
 num_of_sequences = 50
 n_avgs = 20
 seed = 345324
+cooldown_time = 5 * qubit_T1 // 4
 
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
@@ -43,72 +44,72 @@ def play_sequence(sequence_list, depth):
             with case_(0):
                 wait(x180_len // 4, "qubit")
             with case_(1):
-                play("X", "qubit")
+                play("x180", "qubit")
             with case_(2):
-                play("Y", "qubit")
+                play("y180", "qubit")
             with case_(3):
-                play("Y", "qubit")
-                play("X", "qubit")
+                play("y180", "qubit")
+                play("x180", "qubit")
             with case_(4):
-                play("X/2", "qubit")
-                play("Y/2", "qubit")
+                play("x90", "qubit")
+                play("y90", "qubit")
             with case_(5):
-                play("X/2", "qubit")
-                play("-Y/2", "qubit")
+                play("x90", "qubit")
+                play("y270", "qubit")
             with case_(6):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
             with case_(7):
-                play("-X/2", "qubit")
-                play("-Y/2", "qubit")
+                play("x270", "qubit")
+                play("y270", "qubit")
             with case_(8):
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(9):
-                play("Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("y90", "qubit")
+                play("x270", "qubit")
             with case_(10):
-                play("-Y/2", "qubit")
-                play("X/2", "qubit")
+                play("y270", "qubit")
+                play("x90", "qubit")
             with case_(11):
-                play("-Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("y270", "qubit")
+                play("x270", "qubit")
             with case_(12):
-                play("X/2", "qubit")
+                play("x90", "qubit")
             with case_(13):
-                play("-X/2", "qubit")
+                play("x270", "qubit")
             with case_(14):
-                play("Y/2", "qubit")
+                play("y90", "qubit")
             with case_(15):
-                play("-Y/2", "qubit")
+                play("y270", "qubit")
             with case_(16):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(17):
-                play("-X/2", "qubit")
-                play("-Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x270", "qubit")
+                play("y270", "qubit")
+                play("x90", "qubit")
             with case_(18):
-                play("X", "qubit")
-                play("Y/2", "qubit")
+                play("x180", "qubit")
+                play("y90", "qubit")
             with case_(19):
-                play("X", "qubit")
-                play("-Y/2", "qubit")
+                play("x180", "qubit")
+                play("y270", "qubit")
             with case_(20):
-                play("Y", "qubit")
-                play("X/2", "qubit")
+                play("y180", "qubit")
+                play("x90", "qubit")
             with case_(21):
-                play("Y", "qubit")
-                play("-X/2", "qubit")
+                play("y180", "qubit")
+                play("x270", "qubit")
             with case_(22):
-                play("X/2", "qubit")
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("x90", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
             with case_(23):
-                play("-X/2", "qubit")
-                play("Y/2", "qubit")
-                play("-X/2", "qubit")
+                play("x270", "qubit")
+                play("y90", "qubit")
+                play("x270", "qubit")
 
 
 with program() as rb:
@@ -120,37 +121,36 @@ with program() as rb:
     res_st = declare_stream()
     I = declare(fixed)
     Q = declare(fixed)
+    state = declare(bool)
+    state_st = declare_stream()
 
     with for_(m, 0, m < num_of_sequences, m + 1):
         sequence_list, inv_gate_list = generate_sequence()
 
         with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
             with for_(n, 0, n < n_avgs, n + 1):
+                # Replacing the last gate in the sequence with the sequence's inverse gate
+                # The original gate is saved in 'saved_gate' and is being restored at the end
                 assign(saved_gate, sequence_list[depth])
                 assign(sequence_list[depth], inv_gate_list[depth - 1])
-                wait(5000, "qubit")  # Several T1s, can replace with active reset
+
+                # Can replace by active reset
+                wait(cooldown_time, "resonator")
 
                 align("resonator", "qubit")
 
                 play_sequence(sequence_list, depth)
-
                 align("qubit", "resonator")
-                measure(
-                    "readout",
-                    "resonator",
-                    None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                )
-                assign(res, I > 0.1)  # Need to set threshold
-                save(res, res_st)
+                # Make sure you updated the ge_threshold
+                state = readout_macro(threshold=ge_threshold, state=state)
+
+                save(state, state_st)
 
                 assign(sequence_list[depth], saved_gate)
-
     with stream_processing():
-        res_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
+        state_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
         ).save("res")
-
 
 qm = qmm.open_qm(config)
 
