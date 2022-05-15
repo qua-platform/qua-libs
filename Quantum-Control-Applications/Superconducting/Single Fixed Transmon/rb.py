@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 
-
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 delta_depth = 1  # must be 1!!
@@ -130,18 +129,21 @@ with program() as rb:
 
         with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
             with for_(n, 0, n < n_avgs, n + 1):
+                # Replacing the last gate in the sequence with the sequence's inverse gate
+                # The original gate is saved in 'saved_gate' and is being restored at the end
                 assign(saved_gate, sequence_list[depth])
-                assign(
-                    sequence_list[depth], inv_gate_list[depth - 1]
-                )  # Making sure to have the last gate as the inverse gate
+                assign(sequence_list[depth], inv_gate_list[depth - 1])
+
+                # Can replace by active reset
                 wait(cooldown_time, "resonator")
 
                 align("resonator", "qubit")
 
                 play_sequence(sequence_list, depth)
-
                 align("qubit", "resonator")
-                state = readout_macro(threshold=ge_threshold, state=state)  # Make sure you updated the ge_threshold
+                # Make sure you updated the ge_threshold
+                state = readout_macro(threshold=ge_threshold, state=state)
+
                 save(state, state_st)
 
                 assign(sequence_list[depth], saved_gate)
@@ -149,7 +151,6 @@ with program() as rb:
         state_st.boolean_to_int().buffer(n_avgs).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
         ).save("res")
-
 
 qm = qmm.open_qm(config)
 
