@@ -13,6 +13,7 @@ delta_depth = 1  # must be 1!!
 num_of_sequences = 50
 n_avgs = 20
 seed = 345324
+cooldown_time = 5 * qubit_T1 // 4
 
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
@@ -130,8 +131,9 @@ with program() as rb:
         with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
             with for_(n, 0, n < n_avgs, n + 1):
                 assign(saved_gate, sequence_list[depth])
-                assign(sequence_list[depth], inv_gate_list[depth - 1]) #making sure to have the last gate as the inverse gate
-                cooldown_time = 5 * qubit_T1 // 4
+                assign(
+                    sequence_list[depth], inv_gate_list[depth - 1]
+                )  # Making sure to have the last gate as the inverse gate
                 wait(cooldown_time, "resonator")
 
                 align("resonator", "qubit")
@@ -139,7 +141,7 @@ with program() as rb:
                 play_sequence(sequence_list, depth)
 
                 align("qubit", "resonator")
-                state = readout_macro(threshold=ge_threshold, state=state) #make sure you updated the ge_threshold
+                state = readout_macro(threshold=ge_threshold, state=state)  # Make sure you updated the ge_threshold
                 save(state, state_st)
 
                 assign(sequence_list[depth], saved_gate)
