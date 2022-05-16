@@ -89,9 +89,7 @@ gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 x180_len = 40
 x180_sigma = x180_len / 5
 x180_amp = 0.35
-x180_wf, x180_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1)
-)
+x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x270_len = y90_len = y180_len = y270_len = x180_len
@@ -118,7 +116,6 @@ long_readout_amp = 0.1
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
-
 
 
 config = {
