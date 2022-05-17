@@ -86,8 +86,9 @@ while res_handles.is_processing():
         print(f"{percent}%", end=" ")
         next_percent = percent / 100 + 0.1  # Print every 10%
 
-    plt.plot(amps, I, ".", label="I")
-    plt.plot(amps, Q, ".", label="Q")
+    plt.plot(amps * gauss_amp, I, ".", label="I")
+    plt.plot(amps * gauss_amp, Q, ".", label="Q")
+    plt.xlabel("Pi amp [volts]")
 
     plt.legend()
     plt.pause(0.1)
@@ -98,7 +99,8 @@ I = I_handle.fetch_all()
 Q = Q_handle.fetch_all()
 iteration = iteration_handle.fetch_all()
 print(f"{round(iteration/n_avg * 100)}%")
-plt.plot(amps, I, ".", label="I")
-plt.plot(amps, Q, ".", label="Q")
+plt.plot(amps * gauss_amp, I, ".", label="I")
+plt.plot(amps * gauss_amp, Q, ".", label="Q")
+plt.xlabel("Pi amp [volts]")
 
 plt.legend()
