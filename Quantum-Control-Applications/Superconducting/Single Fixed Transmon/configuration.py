@@ -89,15 +89,37 @@ gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 x180_len = 40
 x180_sigma = x180_len / 5
 x180_amp = 0.35
-x180_drag_wf, x180_drag_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1)
-)
+x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x90_drag_wf, x90_drag_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
+x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+x270_len = x180_len
+x270_sigma = x270_len / 5
+x270_amp = -x90_amp
+x270_wf, x270_der_wf = np.array(drag_gaussian_pulse_waveforms(x270_amp, x270_len, x270_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+y180_len = x180_len
+y180_sigma = y180_len / 5
+y180_amp = x180_amp
+y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+y90_len = x180_len
+y90_sigma = y90_len / 5
+y90_amp = y180_amp / 2
+y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+y270_len = x180_len
+y270_sigma = y270_len / 5
+y270_amp = -y90_amp
+y270_wf, y270_der_wf = np.array(drag_gaussian_pulse_waveforms(y270_amp, y270_len, y270_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
@@ -118,6 +140,7 @@ long_readout_amp = 0.1
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+
 
 config = {
     "version": 1,
@@ -151,8 +174,12 @@ config = {
                 "gauss": "gaussian_pulse",
                 "pi": "x180_pulse",
                 "pi_half": "x90_pulse",
-                "x180": "x180_pulse",
                 "x90": "x90_pulse",
+                "x180": "x180_pulse",
+                "x270": "x270_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
+                "y270": "y270_pulse",
             },
         },
         "resonator": {
@@ -207,20 +234,52 @@ config = {
                 "Q": "zero_wf",
             },
         },
-        "x180_pulse": {
-            "operation": "control",
-            "length": x180_len,
-            "waveforms": {
-                "I": "x180_drag_wf",
-                "Q": "x180_drag_der_wf",
-            },
-        },
         "x90_pulse": {
             "operation": "control",
             "length": x90_len,
             "waveforms": {
-                "I": "x90_drag_wf",
-                "Q": "x90_drag_wf",
+                "I": "x90_wf",
+                "Q": "x90_der_wf",
+            },
+        },
+        "x180_pulse": {
+            "operation": "control",
+            "length": x180_len,
+            "waveforms": {
+                "I": "x180_wf",
+                "Q": "x180_der_wf",
+            },
+        },
+        "x270_pulse": {
+            "operation": "control",
+            "length": x270_len,
+            "waveforms": {
+                "I": "x270_wf",
+                "Q": "x270_der_wf",
+            },
+        },
+        "y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "y90_der_wf",
+                "Q": "y90_wf",
+            },
+        },
+        "y180_pulse": {
+            "operation": "control",
+            "length": y180_len,
+            "waveforms": {
+                "I": "y180_der_wf",
+                "Q": "y180_wf",
+            },
+        },
+        "y270_pulse": {
+            "operation": "control",
+            "length": y270_len,
+            "waveforms": {
+                "I": "y270_der_wf",
+                "Q": "y270_wf",
             },
         },
         "short_readout_pulse": {
@@ -281,10 +340,18 @@ config = {
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
-        "x180_drag_wf": {"type": "arbitrary", "samples": x180_drag_wf.tolist()},
-        "x180_drag_der_wf": {"type": "arbitrary", "samples": x180_drag_der_wf.tolist()},
-        "x90_drag_wf": {"type": "arbitrary", "samples": x90_drag_wf.tolist()},
-        "x90_drag_der_wf": {"type": "arbitrary", "samples": x90_drag_der_wf.tolist()},
+        "x90_wf": {"type": "arbitrary", "samples": x90_wf.tolist()},
+        "x90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
+        "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
+        "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
+        "x270_wf": {"type": "arbitrary", "samples": x270_wf.tolist()},
+        "x270_der_wf": {"type": "arbitrary", "samples": x270_der_wf.tolist()},
+        "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
+        "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
+        "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
+        "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
+        "y270_wf": {"type": "arbitrary", "samples": y270_wf.tolist()},
+        "y270_der_wf": {"type": "arbitrary", "samples": y270_der_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
         "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
