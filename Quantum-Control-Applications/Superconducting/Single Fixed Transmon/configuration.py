@@ -95,7 +95,6 @@ x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x270_amp = -x90_amp
 x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
@@ -105,7 +104,23 @@ x270_amp = -x90_amp
 x270_wf, x270_der_wf = np.array(drag_gaussian_pulse_waveforms(x270_amp, x270_len, x270_sigma, alpha=0, delta=1))
 # No DRAG when alpha=0, it's just a gaussian.
 
-y90_len = y180_len = y270_len = x180_len
+y180_len = x180_len
+y180_sigma = y180_len / 5
+y180_amp = x180_amp
+y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+y90_len = x180_len
+y90_sigma = y90_len / 5
+y90_amp = y180_amp / 2
+y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
+
+y270_len = x180_len
+y270_sigma = y270_len / 5
+y270_amp = -y90_amp
+y270_wf, y270_der_wf = np.array(drag_gaussian_pulse_waveforms(y270_amp, y270_len, y270_sigma, alpha=0, delta=1))
+# No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
 resonator_IF = 60e6
@@ -331,12 +346,12 @@ config = {
         "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
         "x270_wf": {"type": "arbitrary", "samples": x270_wf.tolist()},
         "x270_der_wf": {"type": "arbitrary", "samples": x270_der_wf.tolist()},
-        "y90_wf": {"type": "arbitrary", "samples": x90_wf.tolist()},
-        "y90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
-        "y180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
-        "y180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
-        "y270_wf": {"type": "arbitrary", "samples": x270_wf.tolist()},
-        "y270_der_wf": {"type": "arbitrary", "samples": x270_der_wf.tolist()},
+        "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
+        "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
+        "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
+        "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
+        "y270_wf": {"type": "arbitrary", "samples": y270_wf.tolist()},
+        "y270_der_wf": {"type": "arbitrary", "samples": y270_der_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
         "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
