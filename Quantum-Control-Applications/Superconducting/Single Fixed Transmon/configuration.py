@@ -177,9 +177,9 @@ config = {
                 "x90": "x90_pulse",
                 "x180": "x180_pulse",
                 "x270": "x270_pulse",
-                "y90": "x90_pulse",
-                "y180": "x180_pulse",
-                "y270": "x270_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
+                "y270": "y270_pulse",
             },
         },
         "resonator": {
