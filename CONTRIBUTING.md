@@ -20,7 +20,7 @@ You can read more about git [here](https://docs.github.com/en/get-started/using-
 GitHub has a [page](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) dedicated to explaining the steps for contributing to repositories. 
 You can click on the desktop link on the top of the webpage to get to the GitHub Desktop instructions.
 The steps can be summarized as follows:
-1. Fork the repository (Optional, see below)
+1. Fork the repository
 2. Create a branch (Optional, see below)
 3. Write your changes and push them.
 4. Open a Pull Request (PR) back to the main repository.
@@ -37,12 +37,12 @@ At any point, you can simply open a PR, state that you are having problems with 
 Coding tips to avoid [merge conflicts](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/addressing-merge-conflicts/resolving-a-merge-conflict-on-github):
 1. Build new features or fix existing ones in a branch. You can do as many commits as you want to a branch, saving your work as you go along. You can push this feature branch to save your work and back it up. 
    
-    Note: You can either work in the main repository or create a fork, in any case, we recommend that you create a branch.
-2. If you're working from your own fork, make sure your [fork is in sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) with the main repository.
+    Note: You must work on your own fork, we recommend that you create a branch in your fork.
+2. Make sure your [fork is in sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) with the main repository.
 
 Code standard guidelines:
 1. When you are ready to merge your code into the main repository, you need to make sure that all of your commits and commit messages are good and descriptive. You can always squash your commits into a few (or a single) commits.
-2. We use [black](https://pypi.org/project/black/) to make sure that our code is standardized. Format your code before opening the PR by first install black:```pip install black``` and then type in the terminal ```black .\qualang_tools\``` (At the root of the repository)
+2. We use [black](https://pypi.org/project/black/) to make sure that our code is standardized. Format your code before opening the PR by first install black:```pip install black``` and then type in the terminal ```black .``` (At the root of the repository)
 
 # Contributor License Agreement
 
