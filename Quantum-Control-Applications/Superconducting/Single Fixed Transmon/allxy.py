@@ -23,6 +23,7 @@ with program() as ALLXY:
 
     with for_(n, 0, n < n_points, n + 1):
         assign(r_, r.rand_int(21))
+        # Can replace by active reset
         wait(cooldown_time, "qubit")
 
         with switch_(r_):
@@ -40,8 +41,8 @@ with program() as ALLXY:
                 save(I, I_st[0])
                 save(Q, Q_st[0])
             with case_(1):
-                play("X", "qubit")
-                play("X", "qubit")
+                play("x180", "qubit")
+                play("x180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -53,8 +54,8 @@ with program() as ALLXY:
                 save(I, I_st[1])
                 save(Q, Q_st[1])
             with case_(2):
-                play("Y", "qubit")
-                play("Y", "qubit")
+                play("y180", "qubit")
+                play("y180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -66,8 +67,8 @@ with program() as ALLXY:
                 save(I, I_st[2])
                 save(Q, Q_st[2])
             with case_(3):
-                play("X", "qubit")
-                play("Y", "qubit")
+                play("x180", "qubit")
+                play("y180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -79,8 +80,8 @@ with program() as ALLXY:
                 save(I, I_st[3])
                 save(Q, Q_st[3])
             with case_(4):
-                play("Y", "qubit")
-                play("X", "qubit")
+                play("y180", "qubit")
+                play("x180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -92,7 +93,7 @@ with program() as ALLXY:
                 save(I, I_st[4])
                 save(Q, Q_st[4])
             with case_(5):
-                play("X/2", "qubit")
+                play("x90", "qubit")
                 wait(x180_len // 4, "qubit")
                 align("qubit", "resonator")
                 measure(
@@ -105,7 +106,7 @@ with program() as ALLXY:
                 save(I, I_st[5])
                 save(Q, Q_st[5])
             with case_(6):
-                play("Y/2", "qubit")
+                play("y90", "qubit")
                 wait(x180_len // 4, "qubit")
                 align("qubit", "resonator")
                 measure(
@@ -118,8 +119,8 @@ with program() as ALLXY:
                 save(I, I_st[6])
                 save(Q, Q_st[6])
             with case_(7):
-                play("X/2", "qubit")
-                play("Y/2", "qubit")
+                play("x90", "qubit")
+                play("y90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -131,8 +132,8 @@ with program() as ALLXY:
                 save(I, I_st[7])
                 save(Q, Q_st[7])
             with case_(8):
-                play("Y/2", "qubit")
-                play("X/2", "qubit")
+                play("y90", "qubit")
+                play("x90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -144,8 +145,8 @@ with program() as ALLXY:
                 save(I, I_st[8])
                 save(Q, Q_st[8])
             with case_(9):
-                play("X/2", "qubit")
-                play("Y", "qubit")
+                play("x90", "qubit")
+                play("y180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -157,8 +158,8 @@ with program() as ALLXY:
                 save(I, I_st[9])
                 save(Q, Q_st[9])
             with case_(10):
-                play("Y/2", "qubit")
-                play("X", "qubit")
+                play("y90", "qubit")
+                play("x180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -170,8 +171,8 @@ with program() as ALLXY:
                 save(I, I_st[10])
                 save(Q, Q_st[10])
             with case_(11):
-                play("X", "qubit")
-                play("Y/2", "qubit")
+                play("x180", "qubit")
+                play("y90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -183,8 +184,8 @@ with program() as ALLXY:
                 save(I, I_st[11])
                 save(Q, Q_st[11])
             with case_(12):
-                play("Y", "qubit")
-                play("X/2", "qubit")
+                play("y180", "qubit")
+                play("x90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -196,8 +197,8 @@ with program() as ALLXY:
                 save(I, I_st[12])
                 save(Q, Q_st[12])
             with case_(13):
-                play("X/2", "qubit")
-                play("X", "qubit")
+                play("x90", "qubit")
+                play("x180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -209,8 +210,8 @@ with program() as ALLXY:
                 save(I, I_st[13])
                 save(Q, Q_st[13])
             with case_(14):
-                play("X", "qubit")
-                play("X/2", "qubit")
+                play("x180", "qubit")
+                play("x90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -222,8 +223,8 @@ with program() as ALLXY:
                 save(I, I_st[14])
                 save(Q, Q_st[14])
             with case_(15):
-                play("Y/2", "qubit")
-                play("Y", "qubit")
+                play("y90", "qubit")
+                play("y180", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -235,8 +236,8 @@ with program() as ALLXY:
                 save(I, I_st[15])
                 save(Q, Q_st[15])
             with case_(16):
-                play("Y", "qubit")
-                play("Y/2", "qubit")
+                play("y180", "qubit")
+                play("y90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -248,7 +249,7 @@ with program() as ALLXY:
                 save(I, I_st[16])
                 save(Q, Q_st[16])
             with case_(17):
-                play("X", "qubit")
+                play("x180", "qubit")
                 wait(x180_len // 4, "qubit")
                 align("qubit", "resonator")
                 measure(
@@ -261,7 +262,7 @@ with program() as ALLXY:
                 save(I, I_st[17])
                 save(Q, Q_st[17])
             with case_(18):
-                play("Y", "qubit")
+                play("y180", "qubit")
                 wait(x180_len // 4, "qubit")
                 align("qubit", "resonator")
                 measure(
@@ -274,8 +275,8 @@ with program() as ALLXY:
                 save(I, I_st[18])
                 save(Q, Q_st[18])
             with case_(19):
-                play("X/2", "qubit")
-                play("X/2", "qubit")
+                play("x90", "qubit")
+                play("x90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -287,8 +288,8 @@ with program() as ALLXY:
                 save(I, I_st[19])
                 save(Q, Q_st[19])
             with case_(20):
-                play("Y/2", "qubit")
-                play("Y/2", "qubit")
+                play("y90", "qubit")
+                play("y90", "qubit")
                 align("qubit", "resonator")
                 measure(
                     "readout",
@@ -332,26 +333,26 @@ plt.plot(Q)
 
 sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pdf-optimized_driving_0.pdf
     ("I", "I"),
-    ("X", "X"),
-    ("Y", "Y"),
-    ("X", "Y"),
-    ("Y", "X"),
-    ("X/2", "I"),
-    ("Y/2", "I"),
-    ("X/2", "Y/2"),
-    ("Y/2", "X/2"),
-    ("X/2", "Y"),
-    ("Y/2", "X"),
-    ("X", "Y/2"),
-    ("Y", "X/2"),
-    ("X/2", "X"),
-    ("X", "X/2"),
-    ("Y/2", "Y"),
-    ("Y", "Y/2"),
-    ("X", "I"),
-    ("Y", "I"),
-    ("X/2", "X/2"),
-    ("Y/2", "Y/2"),
+    ("x180", "x180"),
+    ("y180", "y180"),
+    ("x180", "y180"),
+    ("y180", "x180"),
+    ("x90", "I"),
+    ("y90", "I"),
+    ("x90", "y90"),
+    ("y90", "x90"),
+    ("x90", "y180"),
+    ("y90", "x180"),
+    ("x180", "y90"),
+    ("y180", "x90"),
+    ("x90", "x180"),
+    ("x180", "x90"),
+    ("y90", "y180"),
+    ("y", "y90"),
+    ("x180", "I"),
+    ("y180", "I"),
+    ("x90", "x90"),
+    ("y90", "y90"),
 ]
 
 plt.xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=90)
