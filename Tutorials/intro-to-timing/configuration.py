@@ -1,4 +1,3 @@
-
 config = {
     "version": 1,
     "controllers": {
@@ -8,7 +7,7 @@ config = {
                 1: {"offset": +0.0},
                 2: {"offset": +0.0},
             },
-            },
+        },
     },
     "elements": {
         "qe1": {
@@ -19,7 +18,6 @@ config = {
                 "const2": "constPulse2",
             },
         },
-
         "qe2": {
             "singleInput": {"port": ("con1", 2)},
             "intermediate_frequency": 0e6,
