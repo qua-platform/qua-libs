@@ -8,9 +8,8 @@ from configuration import *
 QMm = QuantumMachinesManager()
 
 with program() as prog:
-    with program() as prog:
-        play('const1', 'qe1')
-        play('const2', 'qe2')
+    play('const1', 'qe1')
+    play('const2', 'qe2')
 
 
 job = QMm.simulate(config, prog, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
