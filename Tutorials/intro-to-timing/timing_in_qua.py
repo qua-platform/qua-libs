@@ -7,28 +7,28 @@ from configuration import *
 qmm = QuantumMachinesManager()
 
 with program() as example1:
-    play("const1", "qe1")
-    play("const2", "qe2")
+    play("cw1", "qubit")
+    play("cw2", "resonator")
 
 with program() as example2:
-    play("const1", "qe1")
+    play("cw1", "qubit")
     wait(100)
-    play("const2", "qe2")
+    play("cw2", "resonator")
 
 with program() as example3:
-    play("const1", "qe1")
-    align("qe1", "qe2")
-    play("const2", "qe2")
+    play("cw1", "qubit")
+    align("qubit", "resonator")
+    play("cw2", "resonator")
 
 with program() as example4:
     t = Random()
-    play("const1", "qe1", duration=4 * t.rand_int(50))
-    align("qe1", "qe2")
-    play("const2", "qe2")
+    play("cw1", "qubit", duration=4 * t.rand_int(50))
+    align("qubit", "resonator")
+    play("cw2", "resonator")
 
 with program() as example5:
-    play("const1", "qe1")
-    play("const2", "qe1")
+    play("cw1", "qubit")
+    play("cw2", "qubit")
 
 # Simulate and plot 1st example
 job = qmm.simulate(config, example1, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
@@ -37,14 +37,14 @@ samples = job.get_simulated_samples()
 plt.figure(1)
 
 plt.subplot(2, 1, 1)
-samples.con1.plot("qe1")
+samples.con1.plot("1")
 plt.xlabel("Time[ns]")
-plt.ylabel("qe1")
+plt.ylabel("qubit")
 plt.title("example 1 - Two pulses from different elements")
 plt.subplot(2, 1, 2)
-samples.con1.plot("qe2")
+samples.con1.plot("2")
 plt.xlabel("Time[ns]")
-plt.ylabel("qe2")
+plt.ylabel("resonator")
 
 plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
 
@@ -56,14 +56,14 @@ samples = job.get_simulated_samples()
 plt.figure(2)
 
 plt.subplot(2, 1, 1)
-samples.con1.plot("qe1")
+samples.con1.plot("1")
 plt.xlabel("Time[ns]")
-plt.ylabel("qe1")
+plt.ylabel("qubit")
 plt.title("example 2 - Two pulses from different elements with wait command")
 plt.subplot(2, 1, 2)
-samples.con1.plot("qe2")
+samples.con1.plot("2")
 plt.xlabel("Time[ns]")
-plt.ylabel("qe2")
+plt.ylabel("resonator")
 
 plt.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
 

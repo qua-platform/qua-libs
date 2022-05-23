@@ -10,29 +10,29 @@ config = {
         },
     },
     "elements": {
-        "qe1": {
+        "qubit": {
             "singleInput": {"port": ("con1", 1)},
             "intermediate_frequency": 0e6,
             "operations": {
-                "const1": "constPulse1",
-                "const2": "constPulse2",
+                "cw1": "const_pulse1",
+                "cw2": "const_pulse2",
             },
         },
-        "qe2": {
+        "resonator": {
             "singleInput": {"port": ("con1", 2)},
             "intermediate_frequency": 0e6,
             "operations": {
-                "const2": "constPulse2",
+                "cw2": "const_pulse2",
             },
         },
     },
     "pulses": {
-        "constPulse1": {
+        "const_pulse1": {
             "operation": "control",
             "length": 1000,  # in ns
             "waveforms": {"single": "const_wf1"},
         },
-        "constPulse2": {
+        "const_pulse2": {
             "operation": "control",
             "length": 2000,  # in ns
             "waveforms": {"single": "const_wf2"},
