@@ -25,7 +25,7 @@ The script presents five examples in order to demonstrate the timing in QUA.
 The examples and the figures of each example are described below:
 
 1. Two pulses from different elements.
-![timing_in_qu](timing_example2.png "Two pulses from different elements")
+![timing_in_qu](timing_example1.png "Two pulses from different elements")
 
 2. Two pulses from different elements with wait command.
 ![timing_in_qu](timing_example2.png "Two pulses from different elements with wait command")
@@ -39,7 +39,7 @@ The examples and the figures of each example are described below:
 4. Two pulses from different elements with align command (non-deterministic case).
 ![timing_in_qu](timing_example4.png "Two pulses from different elements with align command (non-deterministic case")
 
-If we play the two elements on the same plot and zoom in to the area where one element ends and the other starts we can see a gap between them.
+If we zoom in to the area where one element ends and the other starts we can see a gap between them.
 ![timing_in_qu](timing_example4b.png "Two pulses from different elements with align command (non-deterministic case")
 
 **Note**:
