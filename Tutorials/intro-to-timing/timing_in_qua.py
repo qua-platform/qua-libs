@@ -36,17 +36,17 @@ samples = job.get_simulated_samples()
 
 plt.figure(1)
 samples.con1.plot()
+plt.title("example 1 - Two pulses from different elements")
 plt.legend(["qubit", "resonator"])
 
 # Simulate and plot 2nd example
 job = qmm.simulate(config, example2, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
 samples = job.get_simulated_samples()
-plt.title("example 1 - Two pulses from different elements")
 
 plt.figure(2)
 samples.con1.plot()
-plt.legend(["qubit", "resonator"])
 plt.title("example 2 - Two pulses from different elements with wait command")
+plt.legend(["qubit", "resonator"])
 
 # Simulate and plot 3rd example
 job = qmm.simulate(config, example3, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
@@ -54,8 +54,8 @@ samples = job.get_simulated_samples()
 
 plt.figure(3)
 samples.con1.plot()
-plt.legend(["qubit", "resonator"])
 plt.title("example 3 - Two pulses from different elements \n with align command (deterministic case)")
+plt.legend(["qubit", "resonator"])
 
 # Simulate and plot 4th example
 job = qmm.simulate(config, example4, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
@@ -63,8 +63,8 @@ samples = job.get_simulated_samples()
 
 plt.figure(4)
 samples.con1.plot()
-plt.legend(["qubit", "resonator"])
 plt.title("example 4 - Two pulses from different elements \n with align command (non-deterministic case)")
+plt.legend(["qubit", "resonator"])
 
 # Simulate and plot 5th example
 job = qmm.simulate(config, example5, SimulationConfig(int(1000)))  # in clock cycles, 4 ns
@@ -72,5 +72,5 @@ samples = job.get_simulated_samples()
 
 plt.figure(5)
 samples.con1.plot("analog1")
-plt.legend(["qubit"])
 plt.title("example 5 - Two pulses from the same element")
+plt.legend(["qubit"])
