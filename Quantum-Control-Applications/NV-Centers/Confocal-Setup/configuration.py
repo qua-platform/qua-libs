@@ -26,7 +26,7 @@ def IQ_imbalance(g, phi):
 #############
 
 qop_ip = "127.0.0.1"
-qop_port = 9510
+qop_port = 80
 
 # Frequencies
 NV_IF_freq = 40e6  # in units of Hz
