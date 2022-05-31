@@ -1,3 +1,6 @@
+"""
+Measures T2
+"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -54,7 +57,7 @@ with program() as echo:
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 ####################
 # Simulate Program #

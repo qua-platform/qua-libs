@@ -1,3 +1,6 @@
+"""
+A template to perform state tomography
+"""
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -50,7 +53,7 @@ with program() as state_tomography:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 job = qm.execute(state_tomography)  # execute QUA program

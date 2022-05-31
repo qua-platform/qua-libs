@@ -29,7 +29,7 @@ with program() as cw_odmr:
             update_frequency("NV", f)  # update frequency
             align()  # align all elements
 
-            play("const", "NV", duration=int(long_meas_len // 4))  # play microwave pulse
+            play("cw", "NV", duration=int(long_meas_len // 4))  # play microwave pulse
             play("laser_ON", "AOM", duration=int(long_meas_len // 4))
             measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
 
@@ -43,7 +43,7 @@ with program() as cw_odmr:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 

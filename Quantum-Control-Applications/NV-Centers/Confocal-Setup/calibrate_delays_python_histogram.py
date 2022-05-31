@@ -38,7 +38,7 @@ with program() as calib_delays:
         play("laser_ON", "AOM", duration=laser_len_cycles)
 
         wait(initial_delay_cycles + (laser_len_cycles - mw_len_cycles) // 2, "NV")  # delay the microwave pulse
-        play("const", "NV", duration=mw_len_cycles)  # play microwave pulse
+        play("cw", "NV", duration=mw_len_cycles)  # play microwave pulse
 
         measure("readout", "SPCM", None, time_tagging.analog(times, meas_len, counts))
         wait(wait_between_runs, "SPCM")
@@ -55,7 +55,7 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 

@@ -1,3 +1,7 @@
+"""
+Performs an ALLXY experiment to correct for gates imperfections
+(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
+"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -309,7 +313,7 @@ with program() as ALLXY:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 
