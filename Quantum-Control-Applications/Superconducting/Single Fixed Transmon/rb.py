@@ -145,7 +145,7 @@ with program() as rb:
                 play_sequence(sequence_list, depth)
                 align("qubit", "resonator")
                 # Make sure you updated the ge_threshold
-                state = readout_macro(threshold=ge_threshold, state=state)
+                state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
                 save(state, state_st)
 
