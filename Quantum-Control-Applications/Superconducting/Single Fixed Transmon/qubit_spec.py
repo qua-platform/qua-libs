@@ -3,6 +3,8 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from qm import SimulationConfig
+from scipy import signal
 
 ###################
 # The QUA program #
@@ -51,60 +53,76 @@ with program() as qubit_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager()
 
-###############
-# Run Program #
-###############
-qm = qmm.open_qm(config)
+###########################
+# Run or Simulate Program #
+###########################
 
-job = qm.execute(qubit_spec)
+simulate = True
 
-res_handles = job.result_handles
-I_handle = res_handles.get("I")
-Q_handle = res_handles.get("Q")
-iteration_handle = res_handles.get("iteration")
-I_handle.wait_for_values(1)
-Q_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-next_percent = 0.1  # First time print 10%
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)
+    job = qmm.simulate(config, qubit_spec, simulation_config)
+    job.get_simulated_samples().con1.plot()
+
+else:
+    qm = qmm.open_qm(config)
+
+    job = qm.execute(qubit_spec)
+
+    res_handles = job.result_handles
+    I_handle = res_handles.get("I")
+    Q_handle = res_handles.get("Q")
+    iteration_handle = res_handles.get("iteration")
+    I_handle.wait_for_values(1)
+    Q_handle.wait_for_values(1)
+    iteration_handle.wait_for_values(1)
+    next_percent = 0.1  # First time print 10%
 
 
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
+    def on_close(event):
+        event.canvas.stop_event_loop()
+        job.halt()
 
 
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-print("Progress =", end=" ")
+    f = plt.figure()
+    f.canvas.mpl_connect("close_event", on_close)
+    print("Progress =", end=" ")
 
-while res_handles.is_processing():
+    while res_handles.is_processing():
+        plt.cla()
+        I = I_handle.fetch_all()
+        Q = Q_handle.fetch_all()
+        iteration = iteration_handle.fetch_all()
+        # If we want to plot the phase
+        phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+
+        if iteration / n_avg > next_percent:
+            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
+            print(f"{percent}%", end=" ")
+            next_percent = percent / 100 + 0.1  # Print every 10%
+
+        plt.plot(freqs, phase*(180/np.pi), '.-')
+        # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
+        # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
+
+        plt.pause(0.1)
+
     plt.cla()
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
-
-    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
+    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+    print(f"{round(iteration/n_avg * 100)}%")
+    plt.plot(freqs, phase*(180/np.pi), '.-')
+    plt.ylabel('phase (degrees)')
+    plt.xlabel('freqs [Hz]')
+    # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
     # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 
-    # If we want to plot the phase...
-    phase = np.unwrap(np.angle(I + 1j * Q))
-
-    plt.pause(0.1)
-
-
-plt.cla()
-I = I_handle.fetch_all()
-Q = Q_handle.fetch_all()
-iteration = iteration_handle.fetch_all()
-print(f"{round(iteration/n_avg * 100)}%")
-plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-# plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
-
-# If we want to plot the phase...
-phase = np.unwrap(np.angle(I + 1j * Q))
+    plt.figure()
+    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
+    plt.title('qubit spectroscopy magnitude')
+    plt.xlabel('freqs [Hz]')

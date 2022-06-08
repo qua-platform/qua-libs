@@ -5,6 +5,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+from qm import SimulationConfig
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
@@ -14,7 +15,8 @@ n_avgs = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager()
 
 
 def generate_sequence():
@@ -152,57 +154,72 @@ with program() as rb:
             num_of_sequences, max_circuit_depth
         ).save("res")
 
-qm = qmm.open_qm(config)
 
-job = qm.execute(rb)
-res_handles = job.result_handles
-res_handles.wait_for_all_values()
-resvalue = res_handles.res.fetch_all()
+#######################
+# Simulate or Execute #
+#######################
 
-value = 1 - np.average(resvalue, axis=0)
+simulate = True
+
+if simulate:
+
+    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
+    job = qmm.simulate(config, rb, simulation_config)
+    job.get_simulated_samples().con1.plot()
+
+else:
+
+    qm = qmm.open_qm(config)
+
+    job = qm.execute(rb)
+    res_handles = job.result_handles
+    res_handles.wait_for_all_values()
+    resvalue = res_handles.res.fetch_all()
+
+    value = 1 - np.average(resvalue, axis=0)
 
 
-def power_law(m, a, b, p):
-    return a * (p**m) + b
+    def power_law(m, a, b, p):
+        return a * (p**m) + b
 
 
-x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-plt.xlabel("Number of cliffords")
-plt.ylabel("Sequence Fidelity")
+    x = np.linspace(1, max_circuit_depth, max_circuit_depth)
+    plt.xlabel("Number of cliffords")
+    plt.ylabel("Sequence Fidelity")
 
-pars, cov = curve_fit(
-    f=power_law,
-    xdata=x,
-    ydata=value,
-    p0=[0.5, 0.5, 0.9],
-    bounds=(-np.inf, np.inf),
-    maxfev=2000,
-)
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
 
-plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
-stdevs = np.sqrt(np.diag(cov))
+    stdevs = np.sqrt(np.diag(cov))
 
-print("#########################")
-print("### Fitted Parameters ###")
-print("#########################")
-print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
-print("Covariance Matrix")
-print(cov)
+    print("#########################")
+    print("### Fitted Parameters ###")
+    print("#########################")
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+    print("Covariance Matrix")
+    print(cov)
 
-one_minus_p = 1 - pars[2]
-r_c = one_minus_p * (1 - 1 / 2**1)
-r_g = r_c / 1.875
-r_c_std = stdevs[2] * (1 - 1 / 2**1)
-r_g_std = r_c_std / 1.875
+    one_minus_p = 1 - pars[2]
+    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_g = r_c / 1.875
+    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_g_std = r_c_std / 1.875
 
-print("#########################")
-print("### Useful Parameters ###")
-print("#########################")
-print(
-    f"1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1}), "
-    f"r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1}), "
-    f"r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-)
+    print("#########################")
+    print("### Useful Parameters ###")
+    print("#########################")
+    print(
+        f"1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1}), "
+        f"r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1}), "
+        f"r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    )
 
-np.savez("rb_values", value)
+    np.savez("rb_values", value)
