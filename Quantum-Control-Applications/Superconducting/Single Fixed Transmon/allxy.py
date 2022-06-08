@@ -7,6 +7,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -307,56 +308,65 @@ with program() as ALLXY:
 
     with stream_processing():
         for i in range(21):
-            I_st[i].boolean_to_int().average().save(f"I{i}")
-            Q_st[i].boolean_to_int().average().save(f"Q{i}")
+            I_st[i].average().save(f"I{i}")
+            Q_st[i].average().save(f"Q{i}")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
+simulate = True
 
-job = qm.execute(ALLXY)
-job.result_handles.wait_for_all_values()
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
+    job = qmm.simulate(config, ALLXY, simulation_config)
+    job.get_simulated_samples().con1.plot()
 
-I = []
-Q = []
-for x in range(21):
-    I.append(job.result_handles.get(f"I{x}").fetch_all())
-    Q.append(job.result_handles.get(f"Q{x}").fetch_all())
+else:
 
-I = np.array(I)
-Q = np.array(Q)
+    qm = qmm.open_qm(config)
 
-plt.figure()
-plt.plot(I)
+    job = qm.execute(ALLXY)
+    job.result_handles.wait_for_all_values()
 
-plt.figure()
-plt.plot(Q)
+    I = []
+    Q = []
+    for x in range(21):
+        I.append(job.result_handles.get(f"I{x}").fetch_all())
+        Q.append(job.result_handles.get(f"Q{x}").fetch_all())
 
-sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pdf-optimized_driving_0.pdf
-    ("I", "I"),
-    ("x180", "x180"),
-    ("y180", "y180"),
-    ("x180", "y180"),
-    ("y180", "x180"),
-    ("x90", "I"),
-    ("y90", "I"),
-    ("x90", "y90"),
-    ("y90", "x90"),
-    ("x90", "y180"),
-    ("y90", "x180"),
-    ("x180", "y90"),
-    ("y180", "x90"),
-    ("x90", "x180"),
-    ("x180", "x90"),
-    ("y90", "y180"),
-    ("y", "y90"),
-    ("x180", "I"),
-    ("y180", "I"),
-    ("x90", "x90"),
-    ("y90", "y90"),
-]
+    I = np.array(I)
+    Q = np.array(Q)
 
-plt.xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=90)
+    plt.figure()
+    plt.plot(I)
+
+    plt.figure()
+    plt.plot(Q)
+
+    sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pdf-optimized_driving_0.pdf
+        ("I", "I"),
+        ("x180", "x180"),
+        ("y180", "y180"),
+        ("x180", "y180"),
+        ("y180", "x180"),
+        ("x90", "I"),
+        ("y90", "I"),
+        ("x90", "y90"),
+        ("y90", "x90"),
+        ("x90", "y180"),
+        ("y90", "x180"),
+        ("x180", "y90"),
+        ("y180", "x90"),
+        ("x90", "x180"),
+        ("x180", "x90"),
+        ("y90", "y180"),
+        ("y", "y90"),
+        ("x180", "I"),
+        ("y180", "I"),
+        ("x90", "x90"),
+        ("y90", "y90"),
+    ]
+
+    plt.xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=90)

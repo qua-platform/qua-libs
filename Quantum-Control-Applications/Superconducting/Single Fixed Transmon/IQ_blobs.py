@@ -27,7 +27,6 @@ with program() as IQ_blobs:
     Q_e_st = declare_stream()
 
     with for_(n, 0, n < n_runs, n + 1):
-        align("qubit", "resonator")
         measure(
             "readout",
             "resonator",
@@ -39,8 +38,9 @@ with program() as IQ_blobs:
         save(Q_g, Q_g_st)
         wait(cooldown_time, "resonator")
 
-        align()
-        play("pi", "qubit")
+        align()  # global align
+
+        play("x180", "qubit")
         align("qubit", "resonator")
         measure(
             "readout",
