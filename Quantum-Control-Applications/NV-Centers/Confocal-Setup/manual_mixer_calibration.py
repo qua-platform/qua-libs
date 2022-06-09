@@ -29,3 +29,7 @@ job = qm.execute(cw_output)
 
 # qm.set_output_dc_offset_by_element('NV', ('I', 'Q'), (-0.001, 0.003))
 # qm.set_mixer_correction('mixer_NV', int(NV_IF_freq), int(NV_LO_freq), IQ_imbalance(0.015, 0.01))
+
+# Note that the LO leakage (DC Offset) depends on the I & Q powers, it is advised to run this step with no input power.
+# This will ensure that there is no LO leakage while the pulses are not played.
+# This can be achieved by changing the line above to `play("cw" * amp(0), "NV")`

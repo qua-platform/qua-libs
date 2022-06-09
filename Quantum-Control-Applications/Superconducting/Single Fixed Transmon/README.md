@@ -8,8 +8,8 @@ Use with care.
 
 1. [Hello QUA](hello_qua.py) - A script used for playing with QUA
 2. [Mixer Calibration](manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances
-3. [Time Of Flight calibration](time_of_flight.py) -  A script used to look at the raw ADC data, this allows 
-checking that the ADC is not saturated, correct for DC offsets and define the time of flight
+3. [Raw ADC Traces](raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
+is not saturated, correct for DC offsets and define the time of flight
 4. [Resonator Spectroscopy](resonator_spec.py) - Performs a 1D frequency sweep on the resonator
 5. [Qubit Spectroscopy](qubit_spec.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator
 6. [Time Rabi](time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse

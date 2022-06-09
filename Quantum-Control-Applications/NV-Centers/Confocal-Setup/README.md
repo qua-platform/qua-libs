@@ -9,8 +9,8 @@ Use with care.
 
 1. [Hello QUA](hello_qua.py) - A script used for playing with QUA
 2. [Mixer Calibration](manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances
-3. [Time Tagging Calibrations](time_tagging_calibrations.py) - A script used to look at the raw ADC data, this allows 
-checking that the ADC is not saturated and defining the threshold for time tagging
+3. [Raw ADC Traces](raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC is
+not saturated and defining the threshold for time tagging
 4. [Counter](counter.py) - Starts a counter which reports the current counts from the SPCM
 5. [CW ODMR](cw_odmr.py) - Counts photons while sweeping the frequency of the applied MW
 6. [Calibrate Delays](calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging 
