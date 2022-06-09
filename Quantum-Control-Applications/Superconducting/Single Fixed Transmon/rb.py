@@ -1,3 +1,6 @@
+"""
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
+"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from scipy.optimize import curve_fit
@@ -14,7 +17,7 @@ n_avgs = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 
 def generate_sequence():
@@ -142,7 +145,7 @@ with program() as rb:
                 play_sequence(sequence_list, depth)
                 align("qubit", "resonator")
                 # Make sure you updated the ge_threshold
-                state = readout_macro(threshold=ge_threshold, state=state)
+                state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
                 save(state, state_st)
 

@@ -26,7 +26,6 @@ def IQ_imbalance(g, phi):
 #############
 
 qop_ip = "127.0.0.1"
-qop_port = 9510
 
 # Frequencies
 NV_IF_freq = 40e6  # in units of Hz
@@ -75,10 +74,10 @@ config = {
     },
     "elements": {
         "NV": {
-            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2), "lo_frequency": NV_LO_freq, "mixer": "mixer_qubit"},
+            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2), "lo_frequency": NV_LO_freq, "mixer": "mixer_NV"},
             "intermediate_frequency": NV_IF_freq,
             "operations": {
-                "const": "cw_pulse",
+                "cw": "const_pulse",
                 "pi": "x180_pulse",
                 "pi_half": "x90_pulse",
                 "x180": "x180_pulse",
@@ -122,7 +121,7 @@ config = {
         },
     },
     "pulses": {
-        "cw_pulse": {
+        "const_pulse": {
             "operation": "control",
             "length": mw_len_NV,
             "waveforms": {"I": "cw_wf", "Q": "zero_wf"},
@@ -166,7 +165,7 @@ config = {
         "OFF": {"samples": [(0, 0)]},  # [(on/off, ns)]
     },
     "mixers": {
-        "mixer_qubit": [
+        "mixer_NV": [
             {"intermediate_frequency": NV_IF_freq, "lo_frequency": NV_LO_freq, "correction": IQ_imbalance(0.0, 0.0)},
         ],
     },

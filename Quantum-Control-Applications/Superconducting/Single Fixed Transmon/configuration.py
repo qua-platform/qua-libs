@@ -64,7 +64,6 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
 #############
 
 qop_ip = "127.0.0.1"
-qop_port = 80
 
 # Qubits
 qubit_IF = 50e6

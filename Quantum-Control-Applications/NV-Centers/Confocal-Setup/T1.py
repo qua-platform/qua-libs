@@ -67,7 +67,7 @@ with program() as T1:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 
