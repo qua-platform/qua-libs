@@ -183,7 +183,7 @@ The data is stored in a 2d array where the first column corresponds to the I and
 and the second column to the I and Q data for the X/2-Y/2 sequence.
 Each row corresponds to a different truncation time.
 
-###3.4 Calculating the detuning and flux response
+### 3.4 Calculating the detuning and flux response
 From the previously acquired data, we first extract the resonator phase as the angle between I and Q and renormalize it by the phase 
 of the ground and excited states in order to get the population of the excited state defined as: `Pe = (phase - phase_ground) / (phase_excited - phase_ground)`.
 
@@ -208,7 +208,7 @@ the I and Q quadratures (right), for the X/2-wait-X/2 (blue) and X/2-wait-Y/2 (o
 
 The bottom left plot represents the temporal evolution of excited state population derived in section [3.4](#3.4-Calculating-the-detuning-and-flux-response). 
 The bottom right plot represents the qubit detuning induced by the flux bias. The blue dots are experimental data derived 
-in section [3.4](#3.4-calculating-the-detuning-and-flux-response) and the red dashed line has been derived using the 
+in section [3.4](#3.4-Calculating-the-detuning-and-flux-response) and the red dashed line has been derived using the 
 flux waveform and the calibrated detuning versus flux pulse amplitude law obtained in section [3.5](#3.5-Calibration-of-the-detuning-versus-flux-pulse-amplitude).
 
 ![results](cryoscope_results.PNG)
