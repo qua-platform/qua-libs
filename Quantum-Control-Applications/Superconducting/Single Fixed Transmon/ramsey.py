@@ -29,7 +29,7 @@ with program() as ramsey:
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
         with for_(tau, tau_min, tau <= tau_max, tau + dtau):
-            # play("x90", "qubit")
+            play("x90", "qubit")
             wait(tau, "qubit")
             play("x90", "qubit")
             align("qubit", "resonator")
