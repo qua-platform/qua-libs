@@ -27,14 +27,15 @@ with program() as ramsey:
     Q = declare(fixed)
     Q_st = declare_stream()
     tau = declare(int)
-
-    update_frequency('qubit', detuning)
+    phase = declare(fixed)
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
         with for_(tau, tau_min, tau <= tau_max, tau + dtau):
             play("pi_half", "qubit")
+            assign(phase, Cast.mul_fixed_by_int(detuning*1e-9, 4*tau))
             wait(tau, "qubit")
+            frame_rotation_2pi(phase)
             play("pi_half", "qubit")
             align("qubit", "resonator")
             measure(
@@ -47,6 +48,7 @@ with program() as ramsey:
             save(I, I_st)
             save(Q, Q_st)
             wait(cooldown_time, "resonator")
+            reset_frame('qubit')
         save(n, n_st)
 
     with stream_processing():
@@ -105,7 +107,7 @@ else:
         plt.plot(taus, I, ".", label="I")
         plt.plot(taus, Q, ".", label="Q")
         plt.xlabel('Time in the equator')
-        plt.title('Ramsey freq detuning')
+        plt.title('Ramsey with frame rotation')
 
         plt.legend()
         plt.pause(0.1)
@@ -118,5 +120,5 @@ else:
     plt.plot(taus, I, ".", label="I")
     plt.plot(taus, Q, ".", label="Q")
     plt.xlabel('Time in the equator')
-    plt.title('Ramsey freq detuning')
+    plt.title('Ramsey with frame rotation')
     plt.legend()
