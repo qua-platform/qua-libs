@@ -7,6 +7,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -33,24 +34,33 @@ with program() as tof_cal:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
-job = qm.execute(tof_cal)
-res_handles = job.result_handles
-res_handles.wait_for_all_values()
-adc1 = res_handles.get("adc1").fetch_all() / 2**12
-adc2 = res_handles.get("adc2").fetch_all() / 2**12
-adc1_single_run = res_handles.get("adc1_single_run").fetch_all() / 2**12
-adc2_single_run = res_handles.get("adc2_single_run").fetch_all() / 2**12
+simulate = True
 
-plt.figure()
-plt.title("Single run (Check ADCs saturation)")
-plt.plot(adc1_single_run)
-plt.plot(adc2_single_run)
-plt.show()
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
+    job = qmm.simulate(config, tof_cal, simulation_config)
+    job.get_simulated_samples().con1.plot()
 
-plt.figure()
-plt.title("Averaged run (Check ToF & DC Offset)")
-plt.plot(adc1)
-plt.plot(adc2)
-plt.show()
-print(f"Input1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+else:
+
+    qm = qmm.open_qm(config)
+    job = qm.execute(tof_cal)
+    res_handles = job.result_handles
+    res_handles.wait_for_all_values()
+    adc1 = res_handles.get("adc1").fetch_all() / 2**12
+    adc2 = res_handles.get("adc2").fetch_all() / 2**12
+    adc1_single_run = res_handles.get("adc1_single_run").fetch_all() / 2**12
+    adc2_single_run = res_handles.get("adc2_single_run").fetch_all() / 2**12
+
+    plt.figure()
+    plt.title("Single run (Check ADCs saturation)")
+    plt.plot(adc1_single_run)
+    plt.plot(adc2_single_run)
+    plt.show()
+
+    plt.figure()
+    plt.title("Averaged run (Check ToF & DC Offset)")
+    plt.plot(adc1)
+    plt.plot(adc2)
+    plt.show()
+    print(f"Input1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
