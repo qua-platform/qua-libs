@@ -82,8 +82,8 @@ else:
     # detrend removes the linear increase of phase
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
     plt.title("resonator spectroscopy phase")
-    plt.plot(freqs, phase*(180/np.pi), ".")
+    plt.plot(freqs, phase * (180 / np.pi), ".")
     # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
-    plt.ylabel('phase (degrees)')
+    plt.ylabel("phase (degrees)")
     plt.xlabel("freq")
     plt.show()

@@ -180,10 +180,8 @@ else:
 
     value = 1 - np.average(resvalue, axis=0)
 
-
     def power_law(m, a, b, p):
         return a * (p**m) + b
-
 
     x = np.linspace(1, max_circuit_depth, max_circuit_depth)
     plt.xlabel("Number of cliffords")

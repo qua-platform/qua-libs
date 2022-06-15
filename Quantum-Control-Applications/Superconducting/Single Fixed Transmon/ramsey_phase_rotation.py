@@ -33,7 +33,7 @@ with program() as ramsey:
         # Notice it's <= to include t_max (This is only for integers!)
         with for_(tau, tau_min, tau <= tau_max, tau + dtau):
             play("pi_half", "qubit")
-            assign(phase, Cast.mul_fixed_by_int(detuning*1e-9, 4*tau))
+            assign(phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau))
             wait(tau, "qubit")
             frame_rotation_2pi(phase)
             play("pi_half", "qubit")
@@ -48,7 +48,7 @@ with program() as ramsey:
             save(I, I_st)
             save(Q, Q_st)
             wait(cooldown_time, "resonator")
-            reset_frame('qubit')
+            reset_frame("qubit")
         save(n, n_st)
 
     with stream_processing():
@@ -84,11 +84,9 @@ else:
     iteration_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
 
-
     def on_close(event):
         event.canvas.stop_event_loop()
         job.halt()
-
 
     f = plt.figure()
     f.canvas.mpl_connect("close_event", on_close)
@@ -106,8 +104,8 @@ else:
 
         plt.plot(taus, I, ".", label="I")
         plt.plot(taus, Q, ".", label="Q")
-        plt.xlabel('Time in the equator')
-        plt.title('Ramsey with frame rotation')
+        plt.xlabel("Time in the equator")
+        plt.title("Ramsey with frame rotation")
 
         plt.legend()
         plt.pause(0.1)
@@ -119,6 +117,6 @@ else:
     print(f"{round(iteration/n_avg * 100)}%")
     plt.plot(taus, I, ".", label="I")
     plt.plot(taus, Q, ".", label="Q")
-    plt.xlabel('Time in the equator')
-    plt.title('Ramsey with frame rotation')
+    plt.xlabel("Time in the equator")
+    plt.title("Ramsey with frame rotation")
     plt.legend()

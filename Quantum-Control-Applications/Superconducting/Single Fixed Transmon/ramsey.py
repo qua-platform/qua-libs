@@ -31,7 +31,7 @@ with program() as ramsey:
     Q_st = declare_stream()
     tau = declare(int)
 
-    update_frequency('qubit', detuning)
+    update_frequency("qubit", detuning)
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
@@ -85,11 +85,9 @@ else:
     iteration_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
 
-
     def on_close(event):
         event.canvas.stop_event_loop()
         job.halt()
-
 
     f = plt.figure()
     f.canvas.mpl_connect("close_event", on_close)
@@ -107,8 +105,8 @@ else:
 
         plt.plot(taus, I, ".", label="I")
         plt.plot(taus, Q, ".", label="Q")
-        plt.xlabel('Time in the equator')
-        plt.title('Ramsey freq detuning')
+        plt.xlabel("Time in the equator")
+        plt.title("Ramsey freq detuning")
 
         plt.legend()
         plt.pause(0.1)
@@ -120,6 +118,6 @@ else:
     print(f"{round(iteration/n_avg * 100)}%")
     plt.plot(taus, I, ".", label="I")
     plt.plot(taus, Q, ".", label="Q")
-    plt.xlabel('Time in the equator')
-    plt.title('Ramsey freq detuning')
+    plt.xlabel("Time in the equator")
+    plt.title("Ramsey freq detuning")
     plt.legend()

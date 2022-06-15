@@ -79,11 +79,9 @@ else:
     iteration_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
 
-
     def on_close(event):
         event.canvas.stop_event_loop()
         job.halt()
-
 
     f = plt.figure()
     f.canvas.mpl_connect("close_event", on_close)
@@ -104,7 +102,6 @@ else:
 
         plt.legend()
         plt.pause(0.1)
-
 
     plt.cla()
     I = I_handle.fetch_all()

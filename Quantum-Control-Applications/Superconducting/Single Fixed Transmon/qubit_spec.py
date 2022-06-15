@@ -83,11 +83,9 @@ else:
     iteration_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
 
-
     def on_close(event):
         event.canvas.stop_event_loop()
         job.halt()
-
 
     f = plt.figure()
     f.canvas.mpl_connect("close_event", on_close)
@@ -106,7 +104,7 @@ else:
             print(f"{percent}%", end=" ")
             next_percent = percent / 100 + 0.1  # Print every 10%
 
-        plt.plot(freqs, phase*(180/np.pi), '.-')
+        plt.plot(freqs, phase * (180 / np.pi), ".-")
         # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
         # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 
@@ -118,13 +116,13 @@ else:
     iteration = iteration_handle.fetch_all()
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
     print(f"{round(iteration/n_avg * 100)}%")
-    plt.plot(freqs, phase*(180/np.pi), '.-')
-    plt.ylabel('phase (degrees)')
-    plt.xlabel('freqs [Hz]')
+    plt.plot(freqs, phase * (180 / np.pi), ".-")
+    plt.ylabel("phase (degrees)")
+    plt.xlabel("freqs [Hz]")
     # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
     # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
 
     plt.figure()
     plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    plt.title('qubit spectroscopy magnitude')
-    plt.xlabel('freqs [Hz]')
+    plt.title("qubit spectroscopy magnitude")
+    plt.xlabel("freqs [Hz]")
