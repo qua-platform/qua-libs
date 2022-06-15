@@ -15,8 +15,7 @@ n_avgs = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
 
-# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
 
 def generate_sequence():

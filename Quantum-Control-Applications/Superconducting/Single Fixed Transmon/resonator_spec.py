@@ -48,8 +48,7 @@ with program() as resonator_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
 #######################
 # Simulate or execute #
