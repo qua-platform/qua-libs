@@ -29,7 +29,7 @@ with program() as T1:
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
         with for_(tau, tau_min, tau <= tau_max, tau + dtau):
-            play("x180", "qubit")
+            play("pi", "qubit")
             wait(tau, "qubit")
             align("qubit", "resonator")
             measure(
