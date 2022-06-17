@@ -253,12 +253,12 @@ config = {
                 "Q": "x180_der_wf",
             },
         },
-        "x270_pulse": {
+        "-x90_pulse": {
             "operation": "control",
             "length": minus_x90_len,
             "waveforms": {
-                "I": "x270_wf",
-                "Q": "x270_der_wf",
+                "I": "minus_x90_wf",
+                "Q": "minus_x90_der_wf",
             },
         },
         "y90_pulse": {
@@ -277,12 +277,12 @@ config = {
                 "Q": "y180_wf",
             },
         },
-        "y270_pulse": {
+        "-y90_pulse": {
             "operation": "control",
             "length": minus_y90_len,
             "waveforms": {
-                "I": "y270_der_wf",
-                "Q": "y270_wf",
+                "I": "minus_y90_der_wf",
+                "Q": "minus_y90_wf",
             },
         },
         "short_readout_pulse": {
@@ -347,14 +347,14 @@ config = {
         "x90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
         "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
         "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
-        "x270_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "x270_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_x90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
         "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
         "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
         "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
         "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
-        "y270_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "y270_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_y90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
         "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
