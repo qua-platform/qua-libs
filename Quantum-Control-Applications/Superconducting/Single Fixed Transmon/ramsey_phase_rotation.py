@@ -35,7 +35,7 @@ with program() as ramsey:
             play("pi_half", "qubit")
             assign(phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau))
             wait(tau, "qubit")
-            frame_rotation_2pi(phase)
+            frame_rotation_2pi(phase, 'qubit')
             play("pi_half", "qubit")
             align("qubit", "resonator")
             measure(

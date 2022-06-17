@@ -31,7 +31,7 @@ with program() as ramsey:
     Q_st = declare_stream()
     tau = declare(int)
 
-    update_frequency("qubit", detuning)
+    update_frequency("qubit", qubit_IF + detuning)
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)

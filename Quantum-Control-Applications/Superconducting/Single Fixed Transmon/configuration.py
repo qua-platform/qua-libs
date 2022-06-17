@@ -56,7 +56,7 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
     )
     if threshold is not None:
         assign(state, I > threshold)
-    return state
+    return state, I, Q
 
 
 #############
@@ -348,13 +348,13 @@ config = {
         "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
         "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
         "minus_x90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_der_wf.tolist()},
         "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
         "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
         "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
         "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
         "minus_y90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_y90_der_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
         "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
