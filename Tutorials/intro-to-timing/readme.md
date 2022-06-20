@@ -25,29 +25,29 @@ The script presents five examples in order to demonstrate the timing in QUA.
 The examples and the figures of each example are described below:
 
 1. Two pulses from different elements.
-![Two_pulses_from_different_elements](timing_example1.PNG "Two_pulses_from_different_elements")
+![Two pulses from different elements](timing_example1.PNG)
 
 2. Two pulses from different elements with wait command.
-![Two_pulses_from different_elements_with_wait_command](timing_example2.PNG "Two_pulses_from different_elements_with_wait_command")
+![Two pulses from different elements with wait command](timing_example2.PNG)
 
 3. Two pulses from different elements with align command (deterministic case).
-![Two_pulses_from_different_elements_with_align_command(deterministic_case)](timing_example3.PNG "Two_pulses_from_different_elements_with_align_command(deterministic_case)")
+![Two pulses from different elements with align command (deterministic case)](timing_example3.PNG)
 
 **Note**:
 >In the deterministic case above, the align command is translated to the wait command with the specific known wait time.
 
 4. Two pulses from different elements with align command (non-deterministic case).
-![Two_pulses_from_different_elements_with_align_command(non-deterministic_case](timing_example4.PNG "Two_pulses_from_different_elements_with_align_command(non-deterministic_case")
+![Two pulses from different elements with align command (non-deterministic case](timing_example4.PNG)
 
 If we zoom in to the area where one element ends and the other starts we can see a gap between them.
-![Two_pulses_from_different_elements_with_align_command(non-deterministic_case](timing_example4b.PNG "Two_pulses_from_different_elements_with_align_command(non-deterministic_case")
+![Two pulses from different elements with align command (non-deterministic case](timing_example4b.PNG)
 
 **Note**:
 >When playing two elements with align command in the non-deterministic case, there is a few cycles delay between the pulses.
 Since in the non deterministic case it takes few cycles to pass the information from one thread to the other.
 
 5. Two pulses from the same element.
-![Two_pulses_from_the_same_element](timing_example5.PNG "Two_pulses_from_the_same_element")
+![Two pulses from the same element](timing_example5.PNG)
 
    
  
