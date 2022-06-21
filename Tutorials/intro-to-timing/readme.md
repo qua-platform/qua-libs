@@ -25,29 +25,35 @@ The script presents five examples in order to demonstrate the timing in QUA.
 The examples and the figures of each example are described below:
 
 1. Two pulses from different elements.
-![Two pulses from different elements](timing_example1.PNG)
+
+    ![Two pulses from different elements](timing_example1.PNG)
 
 2. Two pulses from different elements with wait command.
-![Two pulses from different elements with wait command](timing_example2.PNG)
+
+    ![Two pulses from different elements with wait command](timing_example2.PNG)
 
 3. Two pulses from different elements with align command (deterministic case).
-![Two pulses from different elements with align command (deterministic case)](timing_example3.PNG)
 
-**Note**:
->In the deterministic case above, the align command is translated to the wait command with the specific known wait time.
+    ![Two pulses from different elements with align command (deterministic case)](timing_example3.PNG)
+
+    **Note**:
+    >In the deterministic case above, the align command is translated to the wait command with the specific known wait time.
 
 4. Two pulses from different elements with align command (non-deterministic case).
-![Two pulses from different elements with align command (non-deterministic case](timing_example4.PNG)
 
-If we zoom in to the area where one element ends and the other starts we can see a gap between them.
-![Two pulses from different elements with align command (non-deterministic case](timing_example4b.PNG)
+    ![Two pulses from different elements with align command (non-deterministic case](timing_example4.PNG)
 
-**Note**:
->When playing two elements with align command in the non-deterministic case, there is a few cycles delay between the pulses.
+    If we zoom in to the area where one element ends and the other starts we can see a gap between them.
+
+    ![Two pulses from different elements with align command (non-deterministic case](timing_example4b.PNG)
+
+    **Note**:
+    >When playing two elements with align command in the non-deterministic case, there is a few cycles delay between the pulses.
 Since in the non deterministic case it takes few cycles to pass the information from one thread to the other.
 
 5. Two pulses from the same element.
-![Two pulses from the same element](timing_example5.PNG)
+
+    ![Two pulses from the same element](timing_example5.PNG)
 
    
  
