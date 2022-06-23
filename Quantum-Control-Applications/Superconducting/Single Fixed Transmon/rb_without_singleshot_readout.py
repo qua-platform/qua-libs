@@ -143,7 +143,10 @@ with program() as rb:
 
                 play_sequence(sequence_list, depth)
                 align("qubit", "resonator")
-                measure("readout", "resonator", None,
+                measure(
+                    "readout",
+                    "resonator",
+                    None,
                     dual_demod.full("cos", "out1", "sin", "out2", I),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
