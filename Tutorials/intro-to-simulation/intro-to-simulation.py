@@ -4,69 +4,6 @@ Author: Tomer Feld - Quantum Machines
 Created: 26/06/2022
 
 """
-
-# readout_len = 200
-# const_len = 200
-# const_amp = 0.2
-#
-# config = {
-#     "version": 1,
-#     "controllers": {
-#         "con1": {
-#             "analog_outputs": {
-#                 1: {"offset": +0.0},
-#             },
-#             "analog_inputs": {
-#                 1: {"offset": +0.0},
-#             },
-#         }
-#     },
-#     "elements": {
-#         "qe1": {
-#             "singleInput": {"port": ("con1", 1)},
-#             "outputs": {"output1": ("con1", 1)},
-#             "intermediate_frequency": 100e6,
-#             "operations": {
-#                 'const': 'const_pulse',
-#                 "readout": "readout_pulse",
-#                 "long_readout": "long_readout_pulse",
-#             },
-#             "time_of_flight": 36,
-#             "smearing": 0,
-#         },
-#     },
-#     "pulses": {
-#         "readout_pulse": {
-#             "operation": "measure",
-#             "length": readout_len,
-#             "waveforms": {"single": "const_wf"},
-#             "digital_marker": "ON",
-#             "integration_weights": {"cos": "cosine_weights", "sin": "sine_weights"},
-#         },
-#         "const_pulse": {
-#             "operation": "control",
-#             "length": const_len,
-#             "waveforms": {"single": "const_wf"},
-#         },
-#     },
-#     "waveforms": {
-#         "const_wf": {"type": "constant", "sample": const_amp},
-#     },
-#     "digital_waveforms": {
-#         "ON": {"samples": [(1, 0)]},
-#     },
-#     "integration_weights": {
-#         "cosine_weights": {
-#             "cosine": [(1.0, readout_len)],
-#             "sine": [(0.0, readout_len)],
-#         },
-#         "sine_weights": {
-#             "cosine": [(0.0, readout_len)],
-#             "sine": [(1.0, readout_len)],
-#         },
-#     },
-# }
-
 import numpy as np
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -75,7 +12,7 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 
-qmm = QuantumMachinesManager('127.0.0.1', 9510)
+qmm = QuantumMachinesManager()
 
 ##
 # ## Example 1 - Basic simulation, No inputs
@@ -126,6 +63,7 @@ simulated_job = qmm.simulate(config, prog2, SimulationConfig(
 samples = simulated_job.get_simulated_samples()
 
 # plot analog ports 1 and 3:
+plt.figure()
 samples.con1.plot(analog_ports={'1', '3'}, digital_ports={})
 
 # another way:
