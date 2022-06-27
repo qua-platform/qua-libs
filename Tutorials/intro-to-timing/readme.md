@@ -6,19 +6,7 @@ This script is designed to showcase the timing in QUA.
 
 A QUA program defines not only the pulses that are played, but also specifies when they should be played.
 
-The QUA syntax defines an implicit pulse dependency, which determines the order of pulses execution.
-The dependency can be summarized as follows:
-
-1. Each pulse is played immediately, unless specified otherwise or a calculation has to be done.
-
-**Note**:
->It can be specified otherwise by either wait or align command.
-
-2. Pulses applied to the same element are dependent on each other according to the order in which they appear in the program.
-
-**Note**:
->Each element has its own thread, unless specified otherwise. If they do share thread they are dependent on each other as in case 2 above.
-
+A detailed explanation can be found in [timing_in_QUA](https://qm-docs.qualang.io/introduction).
 
 ## Script
 The script presents five examples in order to demonstrate the timing in QUA.
@@ -28,9 +16,13 @@ The examples and the figures of each example are described below:
 
     ![Two pulses from different elements](timing_example1.PNG)
 
+The two pulses start at the same time since they relate to different elements.
+
 2. Two pulses from different elements with wait command.
 
     ![Two pulses from different elements with wait command](timing_example2.PNG)
+
+The play on the resonator is delayed by a 400 ns (100 cycles).
 
 3. Two pulses from different elements with align command (deterministic case).
 
@@ -38,6 +30,8 @@ The examples and the figures of each example are described below:
 
     **Note**:
     >In the deterministic case above, the align command is translated to the wait command with the specific known wait time.
+
+The play on the resonator starts right after the qubit's play ends. This is due to the align command (in the deterministic case).
 
 4. Two pulses from different elements with align command (non-deterministic case).
 
@@ -56,4 +50,4 @@ Since in the non deterministic case it takes few cycles to pass the information 
     ![Two pulses from the same element](timing_example5.PNG)
 
    
- 
+The two play commands are played one after the other since they are played from the same element.
