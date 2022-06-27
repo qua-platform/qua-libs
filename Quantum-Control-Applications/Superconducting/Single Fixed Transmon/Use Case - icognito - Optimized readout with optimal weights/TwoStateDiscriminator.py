@@ -4,14 +4,13 @@ from qm.qua import *
 
 from pandas import DataFrame
 from sklearn import mixture
-from configuration import readout_len, smearing
 import matplotlib.pyplot as plt
 
 
 class TwoStateDiscriminator(StateDiscriminator):
 
-    def __init__(self, qmm, config, update_tof, rr_qe, path, lsb):
-        super().__init__(qmm, config, update_tof, rr_qe, path, lsb)
+    def __init__(self, qmm, config, update_tof, rr_qe, path, lsb, meas_len, smearing):
+        super().__init__(qmm, config, update_tof, rr_qe, path, lsb, meas_len, smearing)
         self.num_of_states = 2
 
     def _update_config(self):
@@ -28,7 +27,7 @@ class TwoStateDiscriminator(StateDiscriminator):
         w_minus_cos = []
 
         # assigning integration weights to list of tuples
-        for i in range(smearing//4, (readout_len+smearing)//4):
+        for i in range(self.smearing//4, (self.meas_len+self.smearing)//4):
             w_plus_cos.append((np.real(b_vec)[i], 4))
             w_minus_sin.append((np.imag(-b_vec)[i], 4))
             w_plus_sin.append((np.imag(b_vec)[i], 4))

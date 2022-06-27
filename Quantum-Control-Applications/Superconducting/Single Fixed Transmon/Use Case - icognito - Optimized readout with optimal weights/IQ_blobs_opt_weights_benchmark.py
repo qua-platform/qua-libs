@@ -33,7 +33,9 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       update_tof=False,
                                       rr_qe=rr_qe,
                                       path=f'ge_disc_params_{rr_qe}.npz',
-                                      lsb=lsb)
+                                      lsb=lsb,
+                                      meas_len=readout_len,
+                                      smearing=smearing)
 
 with program() as benchmark:
     n = declare(int)

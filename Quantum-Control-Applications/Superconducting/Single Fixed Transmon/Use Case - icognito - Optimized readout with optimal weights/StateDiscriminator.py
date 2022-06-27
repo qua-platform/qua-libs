@@ -18,7 +18,7 @@ class StateDiscriminator:
         and down-conversion of the readout pulse.
     """
 
-    def __init__(self, qmm, config, update_tof, rr_qe, path, lsb=False):
+    def __init__(self, qmm, config, update_tof, rr_qe, path, meas_len, smearing, lsb=False):
         """
         Constructor for the state discriminator class.
         :param qmm: QuantumMachinesManager object
@@ -43,6 +43,8 @@ class StateDiscriminator:
         self.sigma = dict()
         self._load_file(path)
         self.lsb = lsb
+        self.meas_len = meas_len
+        self.smearing = smearing
 
     def _load_file(self, path):
         if os.path.isfile(path):
@@ -54,7 +56,7 @@ class StateDiscriminator:
 
     def _downconvert(self, qe, x, ts):
         if self.time_diff is None:
-            self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config['controllers'].keys())[0])
+            self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config['controllers'].keys())[0], self._get_qe_freq(qe))
         rr_freq = self._get_qe_freq(qe)
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig

@@ -10,6 +10,11 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(qop_ip)
+
 ###################
 # The QUA program #
 ###################
@@ -68,7 +73,9 @@ discriminator = TwoStateDiscriminator(qmm=qmm,
                                       update_tof=False,
                                       rr_qe=rr_qe,
                                       path=f'ge_disc_params_{rr_qe}.npz',
-                                      lsb=lsb)
+                                      lsb=lsb,
+                                      meas_len=readout_len,
+                                      smearing=smearing)
 
 
 discriminator.train(program=training, plot=True, dry_run=True,

@@ -116,12 +116,8 @@ class TimeDiffCalibrator:
         }
 
     @staticmethod
-    def calibrate(qmm, con_name):
+    def calibrate(qmm, con_name, res_freq):
         with program() as cal_phase:
-            I1 = declare(fixed)
-            Q1 = declare(fixed)
-            I2 = declare(fixed)
-            Q2 = declare(fixed)
             I = declare(fixed)
             Q = declare(fixed)
 
@@ -130,11 +126,11 @@ class TimeDiffCalibrator:
             save(I, 'I')
             save(Q, 'Q')
 
-        freq = 1.4567e6
+        freq = res_freq
+
         qm = qmm.open_qm(TimeDiffCalibrator._default_config(freq, con_name))
-        job = qm.simulate(cal_phase,
-                          SimulationConfig(500, simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1),
-                                                                                        ('con1', 2, 'con1', 2)])))
+
+        job = qm.execute(cal_phase)
 
         job.result_handles.wait_for_all_values()
         adc1 = job.result_handles.adc_input1.fetch_all()['value']
