@@ -242,7 +242,7 @@ print(cov)
 
 one_minus_p = 1 - pars[2]
 r_c = one_minus_p * (1 - 1 / 2**1)
-r_g = r_c / 1.875
+r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
 r_c_std = stdevs[2] * (1 - 1 / 2**1)
 r_g_std = r_c_std / 1.875
 
@@ -250,9 +250,9 @@ print("#########################")
 print("### Useful Parameters ###")
 print("#########################")
 print(
-    f"1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1}), "
-    f"r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1}), "
-    f"r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+    f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+    f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
 )
 
 np.savez("rb_values", value)
