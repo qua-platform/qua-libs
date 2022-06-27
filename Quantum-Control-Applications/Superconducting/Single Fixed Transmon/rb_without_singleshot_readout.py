@@ -1,5 +1,6 @@
 """
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity. This version is using directly the I
+& Q data and should be used when there is no single-shot readout
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -13,7 +14,7 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 delta_depth = 1
 num_of_sequences = 50
-n_avg = 20
+n_avg = 20000
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
 
@@ -120,57 +121,104 @@ with program() as rb:
     saved_gate = declare(int)
     m = declare(int)
     n = declare(int)
+    n_st = declare_stream()
     I = declare(fixed)
     Q = declare(fixed)
-    state = declare(bool)
-    state_st = declare_stream()
+    I_st = declare_stream()
+    Q_st = declare_stream()
 
-    with for_(m, 0, m < num_of_sequences, m + 1):
-        sequence_list, inv_gate_list = generate_sequence()
+    with for_(n, 0, n < n_avg, n + 1):
+        with for_(m, 0, m < num_of_sequences, m + 1):
+            sequence_list, inv_gate_list = generate_sequence()
 
-        with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
-            with for_(n, 0, n < n_avg, n + 1):
+            with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
                 # Replacing the last gate in the sequence with the sequence's inverse gate
                 # The original gate is saved in 'saved_gate' and is being restored at the end
                 assign(saved_gate, sequence_list[depth])
                 assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-                # Can replace by active reset
                 wait(cooldown_time, "resonator")
 
                 align("resonator", "qubit")
 
                 play_sequence(sequence_list, depth)
                 align("qubit", "resonator")
-                # Make sure you updated the ge_threshold
-                state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+                measure(
+                    "readout",
+                    "resonator",
+                    None,
+                    dual_demod.full("cos", "out1", "sin", "out2", I),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                )
 
-                save(state, state_st)
+                save(I, I_st)
+                save(Q, Q_st)
 
                 assign(sequence_list[depth], saved_gate)
+        save(n, n_st)
 
     with stream_processing():
-        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            num_of_sequences, max_circuit_depth
-        ).save("res")
+        I_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("I")
+        Q_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("Q")
 
 qm = qmm.open_qm(config)
 
 job = qm.execute(rb)
 res_handles = job.result_handles
-res_handles.wait_for_all_values()
-state = res_handles.res.fetch_all()
 
-value = 1 - np.average(state, axis=0)
+I_handle = res_handles.get("I")
+Q_handle = res_handles.get("Q")
+iteration_handle = res_handles.get("iteration")
+I_handle.wait_for_values(1)
+Q_handle.wait_for_values(1)
+iteration_handle.wait_for_values(1)
+next_percent = 0.1  # First time print 10%
+
+x = np.linspace(1, max_circuit_depth, max_circuit_depth)
+
+
+def on_close(event):
+    event.canvas.stop_event_loop()
+    job.halt()
+
+
+f = plt.figure()
+f.canvas.mpl_connect("close_event", on_close)
+print("Progress =", end=" ")
+
+while res_handles.is_processing():
+    plt.cla()
+    I = np.average(I_handle.fetch_all(), axis=0)
+    Q = np.average(Q_handle.fetch_all(), axis=0)
+    iteration = iteration_handle.fetch_all()
+    if iteration / n_avg > next_percent:
+        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
+        print(f"{percent}%", end=" ")
+        next_percent = percent / 100 + 0.1  # Print every 10%
+
+    plt.plot(x, I, ".", label="I")
+    plt.plot(x, Q, ".", label="Q")
+    plt.xlabel("Number of cliffords")
+
+    plt.legend()
+    plt.pause(0.1)
+
+plt.cla()
+I = np.average(I_handle.fetch_all(), axis=0)
+Q = np.average(Q_handle.fetch_all(), axis=0)
+iteration = iteration_handle.fetch_all()
+print(f"{round(iteration/n_avg * 100)}%")
+plt.plot(x, I, ".", label="I")
+plt.plot(x, Q, ".", label="Q")
+
+plt.legend()
+
+value = I  # Can change to Q
 
 
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
-
-x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-plt.xlabel("Number of cliffords")
-plt.ylabel("Sequence Fidelity")
 
 pars, cov = curve_fit(
     f=power_law,
