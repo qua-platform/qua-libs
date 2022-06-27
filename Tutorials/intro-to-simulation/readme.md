@@ -23,7 +23,7 @@ The simulation function is given the configuration, the program and the `Simulat
 simulation. i.e. how many clock cycles should the simulator simulate. The outcome of the simulator is a `job` object. 
 
 The examples also demonstrate how to obtain and plot the simulated output of the hardware. Finally, the first example also demonstrates
-how the simulator can simulate saving variables, as would occur in the real hardware. 
+how the simulator can simulate saving variables to a stream, as would occur in the real hardware. 
 
 Third Example
 ==============
@@ -32,7 +32,7 @@ The third example demonstrates a slightly more advanced usage. It shows how a lo
 to simulate acquisition and demodulation of ADC signals. In the example, a connection from analog output 1 of controller 1
 is connected to analog input 1 of controller 1. The example also shows that the demodulation and adc input can be simulated 
 and saved to the stream processing, which later can be fetched and analyzed. It is important to note that the data will only
-be available if the simulation duration was long enough to simulate it. FIn the current example, to "fill" the buffer in the stream processing, 
+be available if the simulation duration was long enough to simulate it. In the current example, to "fill" the buffer in the stream processing, 
 the simulation must simulate the entire program with all the loop's iterations.  
 
 [download script](intro-to-simulation.py)

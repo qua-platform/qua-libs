@@ -24,7 +24,7 @@ config = {
                 'const': 'const_pulse',
                 "readout": "readout_pulse",
             },
-            "time_of_flight": 36,
+            "time_of_flight": 24,
             "smearing": 0,
         },
         "qe2": {

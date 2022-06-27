@@ -2,8 +2,8 @@
 intro_to_simulation.py: Demonstrate usage of the simulation feature
 Author: Tomer Feld - Quantum Machines
 Created: 26/06/2022
-
 """
+
 import numpy as np
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -20,11 +20,14 @@ qmm = QuantumMachinesManager()
 with program() as prog1:
     a = declare(fixed)
     c = declare(fixed, value=0.4)
-
+    c_stream = declare_stream()
     with for_(a, 0.2, a < 0.9, a + 0.1):
         play("const" * amp(a), "qe1")
 
-    save(c, "c")
+    save(c, c_stream)
+
+    with stream_processing():
+        c_stream.with_timestamps().save_all('c')
 
 # simulate program
 simulated_job = qmm.simulate(config, prog1, SimulationConfig(
@@ -41,7 +44,6 @@ samples.con1.plot()
 res = simulated_job.result_handles
 c = res.c.fetch_all()
 print(c)  # prints a tuple of the value and timestamp
-
 
 ##
 # ## Example 2:
