@@ -47,13 +47,6 @@ with program() as benchmark:
 
     with for_(n, 0, n < n_runs, n + 1):
         discriminator.measure_state("readout", "out1", "out2", res=res, I=I, Q=Q)
-        # measure(
-        #     "readout",
-        #     "resonator",
-        #     adc_st,
-        #     dual_demod.full("cos", "out1", "sin", "out2", I),
-        #     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
-        # )
         save(I, I_st)
         save(Q, Q_st)
         save(res, res_st)
@@ -64,13 +57,6 @@ with program() as benchmark:
         play("x180", "qubit")
         align("qubit", "resonator")
         discriminator.measure_state("readout", "out1", "out2", res=res, I=I, Q=Q)
-        # measure(
-        #     "readout",
-        #     "resonator",
-        #     adc_st,
-        #     dual_demod.full("cos", "out1", "sin", "out2", I),
-        #     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
-        # )
         save(I, I_st)
         save(Q, Q_st)
         save(res, res_st)
@@ -101,12 +87,7 @@ plt.show()
 
 plt.figure()
 plt.plot(I, Q, '.')
-theta = np.linspace(0, 2 * np.pi, 100)
-for i in range(discriminator.num_of_states):
-    a = discriminator.sigma[i] * np.cos(theta) + discriminator.mu[i][0]
-    b = discriminator.sigma[i] * np.sin(theta) + discriminator.mu[i][1]
-    plt.plot([discriminator.mu[i][0]], [discriminator.mu[i][1]], 'o')
-    plt.plot(a, b)
+discriminator.plot_simga_mu()
 plt.axis('equal')
 
 p_s = np.zeros(shape=(2, 2))
@@ -119,9 +100,9 @@ plt.figure()
 ax = plt.subplot()
 sns.heatmap(p_s, annot=True, ax=ax, fmt='g', cmap='Blues')
 
-ax.set_xlabel('Predicted labels')
-ax.set_ylabel('Prepared labels')
-ax.set_title('Confusion Matrix')
+ax.set_xlabel('Prepared')
+ax.set_ylabel('Measured')
+ax.set_title('Fidelities')
 ax.xaxis.set_ticklabels(labels)
 ax.yaxis.set_ticklabels(labels)
 

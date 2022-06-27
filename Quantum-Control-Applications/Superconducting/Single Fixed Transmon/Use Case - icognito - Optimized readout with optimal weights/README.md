@@ -2,8 +2,6 @@
 
 _Author: Kevin Villegas Rosales_
 
-_Demonstrated in **incognito**_
-
 _Important note: The code in this folder is the exact code that we used
 to run the experiment, so it is tailored for the specific software environment
 and set up. Thus, this is code is for inspirational purposes._
@@ -51,7 +49,7 @@ The image below was generated using the analysis tool [`two_state_discriminator`
 In the *original data* subplot we can see the IQ blobs from the `|g> (blue)` and `|e> (orange)` demodulated
 in the FPGA. The `two_state_discriminator` further analyses the measured data, it rotates
 the blobs to project the separation between `|g>` and `|e>` in the `I-axis`. The analysis tool
-also displays the *1D Histogram* (after rotation). The Fidelity's are reported in the *confusion matrix*
+also displays the *1D Histogram* (after rotation). The Fidelity's are reported in the *Fidelities matrix*
 The readout fidelity is calculated as the average of `gg` and `ee` fidelities, thus
 resulting in a readout fidelity of `91.3 %`.
 
@@ -71,9 +69,15 @@ separation between the `|g>` and `|e>` states.
 There are two advantages of using *optimal weights*. First, when there is little to zero
 information to tell apart the `|g>` and `|e>` states, the assigned weights are close to
 zero, thus reducing the accumulation of noise in contrast to using constant weights.
-For example, the first `100 ns` of this measurement have a small contribution towards
-total demodulated signal. Second, the demodulated signal is projected along one axis
-in the IQ plane, thus allowing state discrimination with a single variable.
+For example, the first `100 ns` of this measurement (see *optimal weights* subplot) 
+have a small contribution towards total demodulated signal. Second, the demodulated 
+signal is projected along one axis in the IQ plane, thus allowing state discrimination
+with a single variable.
+
+Note that at the end of the measurement window the *optimal weights* does not end in zero.
+It is likely that more information can be obtained if the ring-down of the resonator 
+would be included in the measurement window. This can be achieved by tuning the `time of flight`
+and `smearing` parameters in the configuration.
 
 ### Step 2: Benchmarking
 
