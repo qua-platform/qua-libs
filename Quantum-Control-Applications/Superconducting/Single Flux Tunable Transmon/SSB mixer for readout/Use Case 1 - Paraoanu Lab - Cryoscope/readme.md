@@ -63,7 +63,7 @@ The QUA program consists of four distinct parts:
 Usually Cryoscope is implemented with a square flux pulse in order to get the step-response of the flux line.
 However for the sake of generality, we will show here how to generate arbitrary truncated pulses with a 1 ns time resolution using the baking tool.
 
-A tool called 'baking', available in the py-qua-tools (https://github.com/qua-platform/py-qua-tools) allows you to easily define pulses with a 1 ns time resolution.
+A tool called 'baking', available in the py-qua-tools (https://github.com/qua-platform/py-qua-tools) allows you to easily define pulses with a 1 ns time resolution or less.
 The function displayed below takes an arbitrary waveform as input and creates a list of waveforms, each of them being truncated 1 ns resolution later than the previous one.
 
 Each of these waveforms will be played successively in the main sequence.
