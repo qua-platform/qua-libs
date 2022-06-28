@@ -89,7 +89,7 @@ plt.show()
 
 plt.figure()
 plt.plot(I, Q, '.')
-discriminator.plot_simga_mu()
+discriminator.plot_sigma_mu()
 plt.axis('equal')
 
 p_s = np.zeros(shape=(2, 2))

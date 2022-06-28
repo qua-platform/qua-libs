@@ -102,7 +102,7 @@ class TwoStateDiscriminator(StateDiscriminator):
         data['sigma'] = self.sigma
         np.savez(self.path, **data)
 
-    def plot_simga_mu(self):
+    def plot_sigma_mu(self):
         theta = np.linspace(0, 2 * np.pi, 100)
         for i in range(self.num_of_states):
             a = self.sigma[i] * np.cos(theta) + self.mu[i][0]
