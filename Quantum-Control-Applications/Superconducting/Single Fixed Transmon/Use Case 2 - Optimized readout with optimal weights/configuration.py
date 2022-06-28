@@ -95,48 +95,60 @@ gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
 x180_len = 32
 x180_sigma = x180_len / 5
-x180_amp = 0.046 * 1.105 * 1.035 # *2 due to half time
-x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
-x180_der_wf = (-1)*x180_der_wf
+x180_amp = 0.046 * 1.105 * 1.035  # *2 due to half time
+x180_wf, x180_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+)
+x180_der_wf = (-1) * x180_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x180_len
 x90_sigma = x90_len / 5
-x90_amp = 0.027 * 0.97 * 1.004 #x180_amp / 2
-x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
-x90_der_wf = (-1)*x90_der_wf
+x90_amp = 0.027 * 0.97 * 1.004  # x180_amp / 2
+x90_wf, x90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+)
+x90_der_wf = (-1) * x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_x90_len = x180_len
 minus_x90_sigma = minus_x90_len / 5
 minus_x90_amp = -x90_amp
 minus_x90_wf, minus_x90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(minus_x90_amp, minus_x90_len, minus_x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+    drag_gaussian_pulse_waveforms(
+        minus_x90_amp, minus_x90_len, minus_x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det
+    )
 )
-minus_x90_der_wf = (-1)*minus_x90_der_wf
+minus_x90_der_wf = (-1) * minus_x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
-y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
-y180_der_wf =(1)*y180_der_wf # for the correct sign in config
+y180_wf, y180_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+)
+y180_der_wf = (1) * y180_der_wf  # for the correct sign in config
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_len = x180_len
 y90_sigma = y90_len / 5
-y90_amp = 0.027 * 0.97 * 1.004 # *2 due to 16 ns pulse
-y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
-y90_der_wf = (1)*y90_der_wf
+y90_amp = 0.027 * 0.97 * 1.004  # *2 due to 16 ns pulse
+y90_wf, y90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+)
+y90_der_wf = (1) * y90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_y90_len = y180_len
 minus_y90_sigma = minus_y90_len / 5
 minus_y90_amp = -y90_amp
 minus_y90_wf, minus_y90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+    drag_gaussian_pulse_waveforms(
+        minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det
+    )
 )
-minus_y90_der_wf = (1)*minus_y90_der_wf
+minus_y90_der_wf = (1) * minus_y90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
@@ -146,11 +158,11 @@ mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
 smearing = 0
-time_of_flight = 180 + 20*4
+time_of_flight = 180 + 20 * 4
 
 short_readout_len = 500
 short_readout_amp = 0.4
-readout_len = 380 #760
+readout_len = 380  # 760
 readout_amp = 0.06 * 1.5 * 1.1
 long_readout_len = 50000
 long_readout_amp = 0.004
@@ -160,7 +172,6 @@ rotation_angle = (-153.9 / 180) * np.pi
 ge_threshold = -3.170e-04
 
 
-
 config = {
     "version": 1,
     "controllers": {
@@ -168,14 +179,14 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # q0 I
                 2: {"offset": 0.0},  # q0 Q
-                3: {"offset": 0.0},  # 
-                4: {"offset": 0.0},  # 
+                3: {"offset": 0.0},  #
+                4: {"offset": 0.0},  #
                 5: {"offset": 0.0},  # resonator
                 6: {"offset": 0.0},  # resonator
                 7: {"offset": -0.27524204128326885},  # qo flux
-                8: {"offset": 0.0},  # 
-                9: {"offset": 0.0},  # 
-                10: {"offset": 0.0},  # 
+                8: {"offset": 0.0},  #
+                9: {"offset": 0.0},  #
+                10: {"offset": 0.0},  #
             },
             "digital_outputs": {},
             "analog_inputs": {

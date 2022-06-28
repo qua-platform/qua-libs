@@ -52,33 +52,40 @@ class StateDiscriminator:
             self._update_config()
 
     def _get_qe_freq(self, qe):
-        return self.config['elements'][qe]['intermediate_frequency']
+        return self.config["elements"][qe]["intermediate_frequency"]
 
     def _downconvert(self, qe, x, ts):
         if self.time_diff is None:
-            self.time_diff = TimeDiffCalibrator.calibrate(self.qmm, list(self.config['controllers'].keys())[0], self._get_qe_freq(qe))
+            self.time_diff = TimeDiffCalibrator.calibrate(
+                self.qmm, list(self.config["controllers"].keys())[0], self._get_qe_freq(qe)
+            )
         rr_freq = self._get_qe_freq(qe)
         sig = x * np.exp(-1j * 2 * np.pi * rr_freq * 1e-9 * (ts - self.time_diff))
         return sig
 
     def _get_traces(self, qe, correction_method, I_res, Q_res, seq0, sig, use_hann_filter):
-        if correction_method == 'gmm':
-            data = {'x': I_res, 'y': Q_res}
-            x = DataFrame(data, columns=['x', 'y'])
-            gmm = mixture.GaussianMixture(n_components=self.num_of_states, covariance_type='spherical', tol=1e-12,
-                                          reg_covar=1e-12).fit(x)
+        if correction_method == "gmm":
+            data = {"x": I_res, "y": Q_res}
+            x = DataFrame(data, columns=["x", "y"])
+            gmm = mixture.GaussianMixture(
+                n_components=self.num_of_states, covariance_type="spherical", tol=1e-12, reg_covar=1e-12
+            ).fit(x)
 
             pr_state = gmm.predict(x)
             mapping = [np.argmax(np.bincount(pr_state[seq0 == i])) for i in range(self.num_of_states)]
             traces = np.array([np.mean(sig[pr_state == mapping[i], :], axis=0) for i in range(self.num_of_states)])
 
-        elif correction_method == 'none' or correction_method == 'robust':
-            if correction_method == 'none':
+        elif correction_method == "none" or correction_method == "robust":
+            if correction_method == "none":
                 traces = np.array([np.mean(sig[seq0 == i, :], axis=0) for i in range(self.num_of_states)])
             else:
-                traces = np.array([np.median(np.real(sig[seq0 == i, :]), axis=0)
-                                   + 1j * np.median(np.imag(sig[seq0 == i, :]), axis=0)
-                                   for i in range(self.num_of_states)])
+                traces = np.array(
+                    [
+                        np.median(np.real(sig[seq0 == i, :]), axis=0)
+                        + 1j * np.median(np.imag(sig[seq0 == i, :]), axis=0)
+                        for i in range(self.num_of_states)
+                    ]
+                )
         else:
             raise Exception("unknown correction_method")
 
@@ -87,7 +94,7 @@ class StateDiscriminator:
             period_ns = int(1 / rr_freq * 1e9)
             hann = signal.hann(period_ns * 2, sym=True)
             hann = hann / np.sum(hann)
-            traces = np.array([np.convolve(traces[i, :], hann, 'same') for i in range(self.num_of_states)])
+            traces = np.array([np.convolve(traces[i, :], hann, "same") for i in range(self.num_of_states)])
         return traces
 
     @staticmethod
@@ -102,19 +109,19 @@ class StateDiscriminator:
         job = qm.execute(program, duration_limit=0, data_limit=0, **execute_args)
         res_handles = job.result_handles
         res_handles.wait_for_all_values()
-        I_res = res_handles.get("I").fetch_all()['value']
+        I_res = res_handles.get("I").fetch_all()["value"]
         I_res = np.concatenate([I_res[0::2], I_res[1::2]])
-        Q_res = res_handles.get("Q").fetch_all()['value']
+        Q_res = res_handles.get("Q").fetch_all()["value"]
         Q_res = np.concatenate([Q_res[0::2], Q_res[1::2]])
 
         if I_res.shape != Q_res.shape:
             raise RuntimeError("")
 
-        ts = res_handles.get("adc1").fetch_all()['value']['timestamp']
+        ts = res_handles.get("adc1").fetch_all()["value"]["timestamp"]
         ts = np.concatenate([ts[0::2], ts[1::2]])
-        in1 = res_handles.get("adc1").fetch_all()['value']['value']
+        in1 = res_handles.get("adc1").fetch_all()["value"]["value"]
         in1 = np.concatenate([in1[0::2], in1[1::2]])
-        in2 = res_handles.get("adc2").fetch_all()['value']
+        in2 = res_handles.get("adc2").fetch_all()["value"]
         in2 = np.concatenate([in2[0::2], in2[1::2]])
         if not self.lsb:
             x = in1 + 1j * in2
@@ -122,7 +129,7 @@ class StateDiscriminator:
             x = in1 - 1j * in2
         return I_res, Q_res, ts, x
 
-    def train(self, program, use_hann_filter=False, plot=False, correction_method='robust', **execute_args):
+    def train(self, program, use_hann_filter=False, plot=False, correction_method="robust", **execute_args):
         """
         The train procedure is used to calibrate the optimal weights and bias for each state. A file with the optimal
         parameters is generated during training, and it is used during the subsequent measure_state procedure.
@@ -154,10 +161,10 @@ class StateDiscriminator:
 
         norm = np.max(np.abs(weights))
         weights = weights / norm
-        bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2 ** -24) * 4
+        bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2**-24) * 4
 
         np.savez(self.path, weights=weights, bias=bias)
-        self.saved_data = {'weights': weights, 'bias': bias}
+        self.saved_data = {"weights": weights, "bias": bias}
         self.finish_train = 1
         self._update_config()
 
@@ -166,10 +173,10 @@ class StateDiscriminator:
             for i in range(self.num_of_states):
                 I_ = I_res[self.seq0 == i]
                 Q_ = Q_res[self.seq0 == i]
-                plt.plot(I_, Q_, '.', label=f'state {i}')
-                plt.axis('equal')
-            plt.xlabel('I')
-            plt.ylabel('Q')
+                plt.plot(I_, Q_, ".", label=f"state {i}")
+                plt.axis("equal")
+            plt.xlabel("I")
+            plt.ylabel("Q")
             plt.legend()
 
             plt.figure()
@@ -181,31 +188,32 @@ class StateDiscriminator:
             plt.figure()
             for i in range(self.num_of_states):
                 plt.plot(np.real(weights[i, :]), np.imag(weights[i, :]))
-                plt.axis('equal')
+                plt.axis("equal")
 
     def _add_iw_to_all_pulses(self, iw):
-        for pulse in self.config['pulses'].values():
-            if 'integration_weights' not in pulse:
-                pulse['integration_weights'] = {}
-            pulse['integration_weights'][iw] = iw
+        for pulse in self.config["pulses"].values():
+            if "integration_weights" not in pulse:
+                pulse["integration_weights"] = {}
+            pulse["integration_weights"][iw] = iw
 
     def _update_config(self):
-        weights = self.saved_data['weights']
+        weights = self.saved_data["weights"]
         for i in range(self.num_of_states):
-            self.config['integration_weights'][f'state_{i}_in1_{self.rr_qe}'] = {
-                'cosine': np.real(weights[i, :]).tolist(),
-                'sine': (-np.imag(weights[i, :])).tolist()
+            self.config["integration_weights"][f"state_{i}_in1_{self.rr_qe}"] = {
+                "cosine": np.real(weights[i, :]).tolist(),
+                "sine": (-np.imag(weights[i, :])).tolist(),
             }
-            self._add_iw_to_all_pulses(f'state_{i}_in1_{self.rr_qe}')
-            self.config['integration_weights'][f'state_{i}_in2_{self.rr_qe}'] = {
-                'cosine': np.imag(weights[i, :]).tolist(),
-                'sine': np.real(weights[i, :]).tolist()
+            self._add_iw_to_all_pulses(f"state_{i}_in1_{self.rr_qe}")
+            self.config["integration_weights"][f"state_{i}_in2_{self.rr_qe}"] = {
+                "cosine": np.imag(weights[i, :]).tolist(),
+                "sine": np.real(weights[i, :]).tolist(),
             }
-            self._add_iw_to_all_pulses(f'state_{i}_in2_{self.rr_qe}')
+            self._add_iw_to_all_pulses(f"state_{i}_in2_{self.rr_qe}")
             if self.update_tof or self.finish_train == 1:
-                self.config['elements'][self.rr_qe]['time_of_flight'] = self.config['elements'][self.rr_qe][
-                                                                            'time_of_flight'] - \
-                                                                        self.config['elements'][self.rr_qe]['smearing']
+                self.config["elements"][self.rr_qe]["time_of_flight"] = (
+                    self.config["elements"][self.rr_qe]["time_of_flight"]
+                    - self.config["elements"][self.rr_qe]["smearing"]
+                )
 
     def measure_state(self, pulse, out1, out2, res, adc=None):
         """
@@ -220,7 +228,7 @@ class StateDiscriminator:
         :param adc: (optional) the stream variable which the raw ADC data will be saved and will appear in result
         analysis scope.
         """
-        bias = self.saved_data['bias']
+        bias = self.saved_data["bias"]
         # currently it allows only 3 states
 
         d1_st0 = declare(fixed)
@@ -234,13 +242,17 @@ class StateDiscriminator:
         st1 = declare(fixed)
         st2 = declare(fixed)
 
-        measure(pulse, self.rr_qe, adc,
-                demod.full(f'state_0_in1_{self.rr_qe}', d1_st0, out1),
-                demod.full(f'state_0_in2_{self.rr_qe}', d2_st0, out2),
-                demod.full(f'state_1_in1_{self.rr_qe}', d1_st1, out1),
-                demod.full(f'state_1_in2_{self.rr_qe}', d2_st1, out2),
-                demod.full(f'state_2_in1_{self.rr_qe}', d1_st2, out1),
-                demod.full(f'state_2_in2_{self.rr_qe}', d2_st2, out2))
+        measure(
+            pulse,
+            self.rr_qe,
+            adc,
+            demod.full(f"state_0_in1_{self.rr_qe}", d1_st0, out1),
+            demod.full(f"state_0_in2_{self.rr_qe}", d2_st0, out2),
+            demod.full(f"state_1_in1_{self.rr_qe}", d1_st1, out1),
+            demod.full(f"state_1_in2_{self.rr_qe}", d2_st1, out2),
+            demod.full(f"state_2_in1_{self.rr_qe}", d1_st2, out1),
+            demod.full(f"state_2_in2_{self.rr_qe}", d2_st2, out2),
+        )
 
         assign(st0, d1_st0 + d2_st0 - bias[0])
         assign(st1, d1_st1 + d2_st1 - bias[1])

@@ -23,19 +23,21 @@ n_runs = 1000
 
 lsb = False
 
-rr_qe = 'resonator'
+rr_qe = "resonator"
 
 cooldown_time = 5 * qubit_T1 // 4
 
 
-discriminator = TwoStateDiscriminator(qmm=qmm,
-                                      config=config,
-                                      update_tof=False,
-                                      rr_qe=rr_qe,
-                                      path=f'ge_disc_params_{rr_qe}.npz',
-                                      lsb=lsb,
-                                      meas_len=readout_len,
-                                      smearing=smearing)
+discriminator = TwoStateDiscriminator(
+    qmm=qmm,
+    config=config,
+    update_tof=False,
+    rr_qe=rr_qe,
+    path=f"ge_disc_params_{rr_qe}.npz",
+    lsb=lsb,
+    meas_len=readout_len,
+    smearing=smearing,
+)
 
 with program() as benchmark:
     n = declare(int)
@@ -67,9 +69,9 @@ with program() as benchmark:
         seq0 = [0, 1] * n_runs
 
     with stream_processing():
-        res_st.boolean_to_int().save_all('res')
-        I_st.save_all('I')
-        Q_st.save_all('Q')
+        res_st.boolean_to_int().save_all("res")
+        I_st.save_all("I")
+        Q_st.save_all("Q")
 
 qm = qmm.open_qm(config)
 
@@ -77,36 +79,35 @@ job = qm.execute(benchmark)
 
 result_handles = job.result_handles
 result_handles.wait_for_all_values()
-res = result_handles.get('res').fetch_all()['value']
-I = result_handles.get('I').fetch_all()['value']
-Q = result_handles.get('Q').fetch_all()['value']
+res = result_handles.get("res").fetch_all()["value"]
+I = result_handles.get("I").fetch_all()["value"]
+Q = result_handles.get("Q").fetch_all()["value"]
 
 plt.figure()
 plt.hist(I[np.array(seq0) == 0], 50)
 plt.hist(I[np.array(seq0) == 1], 50)
-plt.plot([discriminator.get_threshold()] * 2, [0, 60], 'g')
+plt.plot([discriminator.get_threshold()] * 2, [0, 60], "g")
 plt.show()
 
 plt.figure()
-plt.plot(I, Q, '.')
+plt.plot(I, Q, ".")
 discriminator.plot_sigma_mu()
-plt.axis('equal')
+plt.axis("equal")
 
 p_s = np.zeros(shape=(2, 2))
 for i in range(2):
     res_i = res[np.array(seq0) == i]
     p_s[i, :] = np.array([np.mean(res_i == 0), np.mean(res_i == 1)])
 
-labels = ['g', 'e']
+labels = ["g", "e"]
 plt.figure()
 ax = plt.subplot()
-sns.heatmap(p_s, annot=True, ax=ax, fmt='g', cmap='Blues')
+sns.heatmap(p_s, annot=True, ax=ax, fmt="g", cmap="Blues")
 
-ax.set_xlabel('Prepared')
-ax.set_ylabel('Measured')
-ax.set_title('Fidelities')
+ax.set_xlabel("Prepared")
+ax.set_ylabel("Measured")
+ax.set_title("Fidelities")
 ax.xaxis.set_ticklabels(labels)
 ax.yaxis.set_ticklabels(labels)
 
 plt.show()
-

@@ -23,7 +23,7 @@ n_runs = 1000
 
 lsb = False
 
-rr_qe = 'resonator'
+rr_qe = "resonator"
 
 cooldown_time = 5 * qubit_T1 // 4
 
@@ -67,16 +67,17 @@ with program() as training:
         Q_st.save_all("Q")
         adc_st.input1().with_timestamps().save_all("adc1")
         adc_st.input2().save_all("adc2")
-        
-discriminator = TwoStateDiscriminator(qmm=qmm,
-                                      config=config,
-                                      update_tof=False,
-                                      rr_qe=rr_qe,
-                                      path=f'ge_disc_params_{rr_qe}.npz',
-                                      lsb=lsb,
-                                      meas_len=readout_len,
-                                      smearing=smearing)
+
+discriminator = TwoStateDiscriminator(
+    qmm=qmm,
+    config=config,
+    update_tof=False,
+    rr_qe=rr_qe,
+    path=f"ge_disc_params_{rr_qe}.npz",
+    lsb=lsb,
+    meas_len=readout_len,
+    smearing=smearing,
+)
 
 
-discriminator.train(program=training, plot=True, dry_run=True,
-                    correction_method='robust')
+discriminator.train(program=training, plot=True, dry_run=True, correction_method="robust")
