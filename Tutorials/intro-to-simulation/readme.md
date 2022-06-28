@@ -28,11 +28,19 @@ how the simulator can simulate saving variables to a stream, as would occur in t
 Third Example
 ==============
 
-The third example demonstrates a slightly more advanced usage. It shows how a loop-back connection can be defined, 
+The third example demonstrates a slightly more advanced usage. It shows how a loop-back connection can be defined,
 to simulate acquisition and demodulation of ADC signals. In the example, a connection from analog output 1 of controller 1
-is connected to analog input 1 of controller 1. The example also shows that the demodulation and adc input can be simulated 
+is connected to analog input 1 of controller 1. The example also shows that the demodulation and adc input can be simulated
 and saved to the stream processing, which later can be fetched and analyzed. It is important to note that the data will only
-be available if the simulation duration was long enough to simulate it. In the current example, to "fill" the buffer in the stream processing, 
+be available if the simulation duration was long enough to simulate it. In the current example, to "fill" the buffer in the stream processing,
 the simulation must simulate the entire program with all the loop's iterations.  
+
+Fourth Example
+=============
+
+The fourth example demonstrates a simulation of a multi-controllers system. This is done by specifying the connectivity between the different controllers.
+This is important since The exact timing of multi-controllers operations is dependent on that connectivity configuration.
+In the example we use a tool to create the controllers' connections in the format that is required by the simulator.
+The tool is available in our (very useful) repo [py-qua-tools](https://github.com/qua-platform/py-qua-tools).
 
 [download script](intro-to-simulation.py)

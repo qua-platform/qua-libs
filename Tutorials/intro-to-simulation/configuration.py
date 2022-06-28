@@ -13,7 +13,15 @@ config = {
             "analog_inputs": {
                 1: {"offset": +0.0},
             },
-        }
+        },
+        "con2": {
+            "analog_outputs": {
+                1: {"offset": +0.0},
+            },
+            "analog_inputs": {
+                1: {"offset": +0.0},
+            },
+        },
     },
     "elements": {
         "qe1": {
@@ -21,7 +29,7 @@ config = {
             "outputs": {"output1": ("con1", 1)},
             "intermediate_frequency": 100e6,
             "operations": {
-                'const': 'const_pulse',
+                "const": "const_pulse",
                 "readout": "readout_pulse",
             },
             "time_of_flight": 24,
@@ -31,7 +39,14 @@ config = {
             "singleInput": {"port": ("con1", 3)},
             "intermediate_frequency": 50e6,
             "operations": {
-                'const': 'const_pulse',
+                "const": "const_pulse",
+            },
+        },
+        "qe3": {
+            "singleInput": {"port": ("con2", 1)},
+            "intermediate_frequency": 50e6,
+            "operations": {
+                "const": "const_pulse",
             },
         },
     },
