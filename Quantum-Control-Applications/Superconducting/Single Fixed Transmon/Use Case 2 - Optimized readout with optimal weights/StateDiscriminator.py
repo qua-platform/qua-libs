@@ -163,8 +163,19 @@ class StateDiscriminator:
         weights = weights / norm
         bias = (np.linalg.norm(weights * norm, axis=1) ** 2) / norm / 2 * (2**-24) * 4
 
-        np.savez(self.path, weights=weights, bias=bias)
-        self.saved_data = {"weights": weights, "bias": bias}
+        np.savez(
+            self.path,
+            weights=weights,
+            bias=bias,
+            smearing=self.smearing,
+            meas_len=self.meas_len,
+        )
+        self.saved_data = {
+            "weights": weights,
+            "bias": bias,
+            "smearing": self.smearing,
+            "meas_len": self.meas_len,
+        }
         self.finish_train = 1
         self._update_config()
 

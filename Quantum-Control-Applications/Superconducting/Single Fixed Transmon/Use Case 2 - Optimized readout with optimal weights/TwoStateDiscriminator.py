@@ -14,6 +14,8 @@ class TwoStateDiscriminator(StateDiscriminator):
 
     def _update_config(self):
         weights = self.saved_data["weights"]
+        smearing = self.saved_data["smearing"]
+        meas_len = self.saved_data["meas_len"]
         if self.finish_train == 0:
             self.mu = self.saved_data["mu"].tolist()
             self.sigma = self.saved_data["sigma"].tolist()
@@ -26,7 +28,7 @@ class TwoStateDiscriminator(StateDiscriminator):
         w_minus_cos = []
 
         # assigning integration weights to list of tuples
-        for i in range(self.smearing // 4, (self.meas_len + self.smearing) // 4):
+        for i in range(smearing // 4, (meas_len + smearing) // 4):
             w_plus_cos.append((np.real(b_vec)[i], 4))
             w_minus_sin.append((np.imag(-b_vec)[i], 4))
             w_plus_sin.append((np.imag(b_vec)[i], 4))
