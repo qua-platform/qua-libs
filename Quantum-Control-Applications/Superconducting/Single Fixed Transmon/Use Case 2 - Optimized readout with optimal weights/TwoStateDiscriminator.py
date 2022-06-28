@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 
 class TwoStateDiscriminator(StateDiscriminator):
-    def __init__(self, qmm, config, update_tof, rr_qe, path, lsb, meas_len, smearing):
-        super().__init__(qmm, config, update_tof, rr_qe, path, lsb, meas_len, smearing)
+    def __init__(self, qmm, config, update_tof, rr_qe, path, meas_len, smearing, lsb):
+        super().__init__(qmm, config, update_tof, rr_qe, path, meas_len, smearing, lsb)
         self.num_of_states = 2
 
     def _update_config(self):
