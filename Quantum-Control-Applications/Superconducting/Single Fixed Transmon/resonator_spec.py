@@ -7,6 +7,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -52,25 +53,37 @@ with program() as resonator_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
+#######################
+# Simulate or execute #
+#######################
 
-qm = qmm.open_qm(config)
-job = qm.execute(resonator_spec)
-res_handles = job.result_handles
-res_handles.wait_for_all_values()
-I = res_handles.get("I").fetch_all()
-Q = res_handles.get("Q").fetch_all()
+simulate = True
 
-plt.figure()
-plt.title("resonator spectroscopy power")
-plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-# plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
-plt.xlabel("freq")
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)
+    job = qmm.simulate(config, resonator_spec, simulation_config)
+    job.get_simulated_samples().con1.plot()
 
-plt.figure()
-# detrend removes the linear increase of phase
-phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-plt.title("resonator spectroscopy phase")
-plt.plot(freqs, phase, ".")
-# plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
-plt.xlabel("freq")
-plt.show()
+else:
+    qm = qmm.open_qm(config)
+    job = qm.execute(resonator_spec)
+    res_handles = job.result_handles
+    res_handles.wait_for_all_values()
+    I = res_handles.get("I").fetch_all()
+    Q = res_handles.get("Q").fetch_all()
+
+    plt.figure()
+    plt.title("resonator spectroscopy power")
+    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
+    # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
+    plt.xlabel("freq")
+
+    plt.figure()
+    # detrend removes the linear increase of phase
+    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+    plt.title("resonator spectroscopy phase")
+    plt.plot(freqs, phase * (180 / np.pi), ".")
+    # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
+    plt.ylabel("phase (degrees)")
+    plt.xlabel("freq")
+    plt.show()
