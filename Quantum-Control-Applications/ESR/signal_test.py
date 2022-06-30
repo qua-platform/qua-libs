@@ -31,7 +31,7 @@ with program() as signal_test:
     with for_(n, 0, n < n_avg, n + 1):
 
         # initialization
-        play('initialization', 'green_laser')
+        play("initialization", "green_laser")
 
         # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'
         # with the same phase every run. Thus, when the analog traces are averaged they

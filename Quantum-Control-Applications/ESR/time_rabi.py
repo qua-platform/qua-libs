@@ -48,7 +48,7 @@ with program() as time_rabi:
         with for_(pulse1_len, pulse1_min, pulse1_len <= pulse1_max, pulse1_len + dpulse1):
 
             # initialization
-            play('initialization', 'green_laser')
+            play("initialization", "green_laser")
 
             align()
 
@@ -61,7 +61,7 @@ with program() as time_rabi:
             reset_phase("resonator")
             reset_frame("ensemble")
 
-            assign(pulse_delay, 2000 // 4 - Cast.mul_int_by_fixed(pulse1_len, 0.5) - pi_len*0.5 - 4)
+            assign(pulse_delay, 2000 // 4 - Cast.mul_int_by_fixed(pulse1_len, 0.5) - pi_len * 0.5 - 4)
 
             # we delay the switches because `duration` in digital pulses
             # takes less cycles to compute than in analog ones
@@ -197,9 +197,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(pulses1 * 4, I, label='I')
-    plt.plot(pulses1 * 4, Q, label='Q')
-    plt.xlabel('pi/2 pulse length [ns]')
-    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.plot(pulses1 * 4, I, label="I")
+    plt.plot(pulses1 * 4, Q, label="Q")
+    plt.xlabel("pi/2 pulse length [ns]")
+    plt.ylabel("Echo magnitude I & Q [a. u.]")
     plt.legend()
     plt.tight_layout()

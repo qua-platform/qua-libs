@@ -47,7 +47,7 @@ with program() as T1:
         with for_(wait_len, wait_min, wait_len <= wait_max, wait_len + dwait):
 
             # initialization
-            play('initialization', 'green_laser')
+            play("initialization", "green_laser")
 
             align()
 
@@ -196,9 +196,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(waits * 4, I, label='I')
-    plt.plot(waits * 4, Q, label='Q')
-    plt.xlabel('Decay time [ns]')
-    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.plot(waits * 4, I, label="I")
+    plt.plot(waits * 4, Q, label="Q")
+    plt.xlabel("Decay time [ns]")
+    plt.ylabel("Echo magnitude I & Q [a. u.]")
     plt.legend()
     plt.tight_layout()

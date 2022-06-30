@@ -44,7 +44,7 @@ with program() as T2:
         with for_(delay_len, delay_min, delay_len <= delay_max, delay_len + ddelay):
 
             # initialization
-            play('initialization', 'green_laser')
+            play("initialization", "green_laser")
 
             align()
 
@@ -195,9 +195,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(delays * 4, I, label='I')
-    plt.plot(delays * 4, Q, label='Q')
-    plt.xlabel('Delay before refocusing pulse [ns]')
-    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.plot(delays * 4, I, label="I")
+    plt.plot(delays * 4, Q, label="Q")
+    plt.xlabel("Delay before refocusing pulse [ns]")
+    plt.ylabel("Echo magnitude I & Q [a. u.]")
     plt.legend()
     plt.tight_layout()

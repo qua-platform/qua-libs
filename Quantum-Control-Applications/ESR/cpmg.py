@@ -15,7 +15,7 @@ from qm.simulate.credentials import create_credentials
 
 tau_min = 2000 // 4  # tau is half the time between pi pulses
 tau_max = 5e4 // 4  # tau is half the time between pi pulses
-tau_array = np.round(np.logspace(np.log10(tau_min), np.log10(tau_max),30))  # outputs results in float
+tau_array = np.round(np.logspace(np.log10(tau_min), np.log10(tau_max), 30))  # outputs results in float
 
 tau_array_int = tau_array.astype(int).tolist()
 
@@ -60,7 +60,7 @@ with program() as cpmg:
         with for_(i_tau, 0, i_tau < num_taus, i_tau + 1):
 
             # initialization
-            play('initialization', 'green_laser')
+            play("initialization", "green_laser")
 
             align()
 
@@ -246,9 +246,9 @@ else:
     tau = tau_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(i_echo, I, "o", label='I')
-    plt.plot(i_echo, Q, "o", label='Q')
-    plt.xlabel('Number of echoes [ns]')
-    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.plot(i_echo, I, "o", label="I")
+    plt.plot(i_echo, Q, "o", label="Q")
+    plt.xlabel("Number of echoes [ns]")
+    plt.ylabel("Echo magnitude I & Q [a. u.]")
     plt.legend()
     plt.tight_layout()
