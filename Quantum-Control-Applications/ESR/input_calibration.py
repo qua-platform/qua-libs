@@ -62,17 +62,19 @@ else:
     res_hand = job.result_handles
     res_hand.wait_for_all_values()
 
-    adc1 = res_hand.get("adc1").fetch_all()
-    adc2 = res_hand.get("adc2").fetch_all()
-    adc1_single_run = res_hand.get("adc1_single_run").fetch_all()
-    adc2_single_run = res_hand.get("adc2_single_run").fetch_all()
+    adc1 = res_hand.get("adc1").fetch_all() / 2**12
+    adc2 = res_hand.get("adc2").fetch_all() / 2**12
+    adc1_single_run = res_hand.get("adc1_single_run").fetch_all() / 2**12
+    adc2_single_run = res_hand.get("adc2_single_run").fetch_all() / 2**12
 
     plt.figure()
     plt.title("Single run (Check ADCs saturation)")
-    plt.plot(adc1_single_run / 2**12)
-    plt.plot(adc2_single_run / 2**12)
+    plt.plot(adc1_single_run)
+    plt.plot(adc2_single_run)
 
     plt.figure()
     plt.title("Averaged run")
-    plt.plot(adc1 / 2**12)
-    plt.plot(adc2 / 2**12)
+    plt.plot(adc1)
+    plt.plot(adc2)
+
+    print(f"Input1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")

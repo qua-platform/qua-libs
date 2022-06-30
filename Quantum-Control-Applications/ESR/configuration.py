@@ -24,7 +24,7 @@ qop_ip = "127.0.0.1"
 qop_port = 80
 
 # Frequencies
-resonator_if = -30e6  # in Hz
+resonator_IF = -30e6  # in Hz
 
 # ensemble_if = -30e6  # in Hz
 ensemble_if = 0e6  # in Hz

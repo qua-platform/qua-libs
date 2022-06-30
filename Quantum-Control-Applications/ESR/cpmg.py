@@ -86,6 +86,7 @@ with program() as cpmg:
 
             # the additional 27 cycles are added to compensate for the overhead of
             # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
+            # We use the simulator to make the adjustments and find `27`
             wait(tau - Cast.mul_int_by_fixed(pulse1_len, 1.5) - 27, "ensemble")
 
             align()
@@ -99,6 +100,7 @@ with program() as cpmg:
 
                 # the additional 5 cycles are added to compensate for the overhead of
                 # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
+                # We use the simulator to make the adjustments and find `5`
                 wait(tau - pulse1_len - Cast.mul_int_by_fixed(readout_len, 0.125) - 5, "switch_receiver", "resonator")
 
                 play("activate_resonator", "switch_receiver")
@@ -116,6 +118,7 @@ with program() as cpmg:
 
                 # the additional 66 cycles are added to compensate for the overhead of
                 # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
+                # We use the simulator to make the adjustments and find `66`
                 wait(tau - pulse1_len - Cast.mul_int_by_fixed(readout_len, 0.125) - 66, "switch_receiver", "resonator")
 
         save(n, n_st)
@@ -149,6 +152,8 @@ if simulate:
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
+    # the simulation is uses to assert the pulse positions and to make final adjustments
+    # to the QUA program
     job = qmm.simulate(config, cpmg, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 

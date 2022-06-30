@@ -65,6 +65,7 @@ with program() as time_rabi:
 
             # we delay the switches because `duration` in digital pulses
             # takes less cycles to compute than in analog ones
+            # We use the simulator to make the adjustments and find `8`
             wait(11, "switch_1", "switch_2")
             play("activate", "switch_1", duration=pulse1_len)
             play("activate", "switch_2", duration=pulse1_len)
@@ -120,6 +121,8 @@ if simulate:
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
+    # the simulation is uses to assert the pulse positions and to make final adjustments
+    # to the QUA program
     job = qmm.simulate(config, time_rabi, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
