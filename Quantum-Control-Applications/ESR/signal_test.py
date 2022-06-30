@@ -29,6 +29,11 @@ with program() as signal_test:
         # initialization
         play('initialization', 'green_laser')
 
+        # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'
+        # with the same phase every run. Thus, when the analog traces are averaged they
+        # do not wash out. Furthermore, because the control signal is associated with
+        # 'ensemble' and demodulated in 'resonator', we reset the phase of the 'resonator'
+        # as well so that there is no random phase in the demodulation stage
         reset_phase("ensemble")
         reset_phase("resonator")
         reset_frame("ensemble")
