@@ -1,3 +1,6 @@
+"""
+A script that measures the echo amplitude for a wide range of delays between pi pulses in a CPMG pulse sequence
+"""
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface

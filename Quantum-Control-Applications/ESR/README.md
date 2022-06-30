@@ -13,7 +13,7 @@ Use with care.
 2. [Mixer Calibration](mixer_cal.py) - A script used to calibrate the corrections for mixer imbalances
 3. [Input calibration](input_calibration.py) - A script to measure the analog signal when no drive is applied. Allows you to correct for offsets
 4. [Signal test](signal_test.py) - A script that mimics a `pi/2 - pi` pulse sequence but with arbitrary pulse duration. Helps you check if signal is being generated from your setup
-5. [Pi pulse calibration](pi_pulse calibration.py) - A script that changes the duration of the pulses send to the ensemble to determine which pulse duration maximizes the echo amplitude
+5. [Pi pulse calibration](pi_pulse_calibration.py) - A script that changes the duration of the pulses send to the ensemble to determine which pulse duration maximizes the echo amplitude
 6. [Time Rabi](time_rabi.py) - Having calibrated roughly a `pi` pulse this script allows you fix the `pi` pulse duration and change the duration of the first pulse to obtain Rabi oscillations 
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
 7. [T1](T1.py) - Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initialization

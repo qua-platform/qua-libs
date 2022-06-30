@@ -1,3 +1,7 @@
+"""
+A script used to calibrate the corrections for mixer imbalances
+"""
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface

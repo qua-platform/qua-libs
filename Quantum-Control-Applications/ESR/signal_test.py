@@ -1,3 +1,7 @@
+"""
+A script that mimics a pi/2 - pi pulse sequence but with arbitrary pulse duration.
+Helps you check if signal is being generated from your setup
+"""
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
