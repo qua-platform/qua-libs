@@ -152,6 +152,10 @@ else:
     I_handle.wait_for_values(1)
     Q_handle = res_handle.get("Q")
     Q_handle.wait_for_values(1)
+    echo1_handle = res_handle.get("echo1")
+    echo1_handle.wait_for_values(1)
+    echo2_handle = res_handle.get("echo2")
+    echo2_handle.wait_for_values(1)
     iteration_handle = res_handle.get("iteration")
     iteration_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
@@ -186,6 +190,8 @@ else:
     plt.cla()
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
+    echo1 = echo1_handle.fetch_all()
+    echo2 = echo1_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
