@@ -59,6 +59,8 @@ with program() as T1:
 
             echo = declare_stream(adc_trace=True)
 
+            # we delay the switches because `duration` in digital pulses
+            # takes less cycles to compute than in analog ones
             wait(8, "switch_1", "switch_2")
             play("activate", "switch_1", duration=pi_half_len)
             play("activate", "switch_2", duration=pi_half_len)

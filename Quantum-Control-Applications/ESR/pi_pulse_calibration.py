@@ -61,6 +61,8 @@ with program() as pi_pulse_cal:
                 2000 // 4 - Cast.mul_int_by_fixed(pulse2_len, 0.5) - Cast.mul_int_by_fixed(readout_len, 0.125) - 5,
             )
 
+            # we delay the switches because `duration` in digital pulses
+            # takes less cycles to compute than in analog ones
             wait(11, "switch_1", "switch_2")
             play("activate", "switch_1", duration=pulse1_len)
             play("activate", "switch_2", duration=pulse1_len)

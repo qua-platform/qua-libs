@@ -70,6 +70,8 @@ with program() as cpmg:
 
             assign(tau, tau_array_q[i_tau])
 
+            # we delay the switches because `duration` in digital pulses
+            # takes less cycles to compute than in analog ones
             wait(11, "switch_1", "switch_2")
             play("activate", "switch_1", duration=pulse1_len)
             play("activate", "switch_2", duration=pulse1_len)

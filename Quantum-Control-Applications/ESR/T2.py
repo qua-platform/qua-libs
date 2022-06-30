@@ -57,6 +57,8 @@ with program() as T2:
             assign(pulse_delay, delay_len - pi_half_len * 0.5 - pi_len * 0.5)
             assign(readout_delay, delay_len - pi_len * 0.5 - readout_len * 0.125 - 5)
 
+            # we delay the switches because `duration` in digital pulses
+            # takes less cycles to compute than in analog ones
             wait(8, "switch_1", "switch_2")
             play("activate", "switch_1", duration=pi_half_len)
             play("activate", "switch_2", duration=pi_half_len)
