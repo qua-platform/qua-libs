@@ -12,7 +12,7 @@ from qm.simulate.credentials import create_credentials
 
 tau_min = 2000 // 4  # tau is half the time between pi pulses
 tau_max = 5e4 // 4  # tau is half the time between pi pulses
-tau_array = np.round(np.exp(np.linspace(np.log(tau_min), np.log(tau_max), 30)))  # outputs results in float
+tau_array = np.round(np.logspace(np.log10(tau_min), np.log10(tau_max),30))  # outputs results in float
 
 tau_array_int = tau_array.astype(int).tolist()
 
