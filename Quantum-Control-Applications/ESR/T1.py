@@ -120,7 +120,7 @@ if simulate:
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
-    # the simulation is uses to assert the pulse positions and to make final adjustments
+    # the simulation is used to assert the pulse positions and to make final adjustments
     # to the QUA program
     job = qmm.simulate(config, T1, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
