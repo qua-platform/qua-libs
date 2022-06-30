@@ -195,5 +195,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(delays * 4, I)
-    plt.plot(delays * 4, Q)
+    plt.plot(delays * 4, I, label='I')
+    plt.plot(delays * 4, Q, label='Q')
+    plt.xlabel('Delay before refocusing pulse [ns]')
+    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.legend()
+    plt.tight_layout()

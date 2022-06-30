@@ -196,5 +196,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(waits * 4, I)
-    plt.plot(waits * 4, Q)
+    plt.plot(waits * 4, I, label='I')
+    plt.plot(waits * 4, Q, label='Q')
+    plt.xlabel('Decay time [ns]')
+    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.legend()
+    plt.tight_layout()

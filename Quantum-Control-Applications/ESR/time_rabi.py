@@ -197,5 +197,9 @@ else:
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(pulses1 * 4, I)
-    plt.plot(pulses1 * 4, Q)
+    plt.plot(pulses1 * 4, I, label='I')
+    plt.plot(pulses1 * 4, Q, label='Q')
+    plt.xlabel('pi/2 pulse length [ns]')
+    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.legend()
+    plt.tight_layout()

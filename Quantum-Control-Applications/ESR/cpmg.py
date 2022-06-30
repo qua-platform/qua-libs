@@ -246,4 +246,9 @@ else:
     tau = tau_handle.fetch_all()
     print(f"{round(iteration/n_avg * 100)}%")
 
-    plt.plot(i_echo, I, "o")
+    plt.plot(i_echo, I, "o", label='I')
+    plt.plot(i_echo, Q, "o", label='Q')
+    plt.xlabel('Number of echoes [ns]')
+    plt.ylabel('Echo magnitude I & Q [a. u.]')
+    plt.legend()
+    plt.tight_layout()
