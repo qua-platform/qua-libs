@@ -52,8 +52,8 @@ with program() as cpmg:
 
     echo = declare_stream(adc_trace=True)
 
-    pulse1_len = declare(int, value=240 // 4)  # 250 cycles = 1 us
-    pulse2_len = declare(int, value=480 // 4)
+    pulse1_len = declare(int, value=240 // 4)  # 240 and 480 ns are for now arbitrary but these should be
+    pulse2_len = declare(int, value=480 // 4)  # the calibrated pi/2 and pi pulses
 
     with for_(n, 0, n < n_avg, n + 1):
 
