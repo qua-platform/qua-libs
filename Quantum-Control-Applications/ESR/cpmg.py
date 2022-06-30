@@ -57,7 +57,7 @@ with program() as cpmg:
         with for_(i_tau, 0, i_tau < num_taus, i_tau + 1):
 
             # initialization
-            # wait(cooldown_time)
+            play('initialization', 'green_laser')
 
             reset_phase("ensemble")
             reset_phase("resonator")

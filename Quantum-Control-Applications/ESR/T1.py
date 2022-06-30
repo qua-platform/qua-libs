@@ -44,7 +44,9 @@ with program() as T1:
         with for_(wait_len, wait_min, wait_len <= wait_max, wait_len + dwait):
 
             # initialization
-            # wait(wait_len)
+            play('initialization', 'green_laser')
+
+            wait(wait_len)  # delay for T1 measurement
 
             reset_phase("ensemble")
             reset_phase("resonator")

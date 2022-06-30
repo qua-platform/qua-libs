@@ -37,7 +37,8 @@ with program() as pi_pulse_cal:
 
         with for_(pulse1_len, pulse1_min, pulse1_len <= pulse1_max, pulse1_len + dpulse1):
 
-            # wait(cooldown_time)
+            # initialization
+            play('initialization', 'green_laser')
 
             reset_phase("ensemble")
             reset_phase("resonator")

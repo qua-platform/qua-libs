@@ -26,7 +26,8 @@ with program() as signal_test:
 
     with for_(n, 0, n < n_avg, n + 1):
 
-        # wait(cooldown_time)
+        # initialization
+        play('initialization', 'green_laser')
 
         reset_phase("ensemble")
         reset_phase("resonator")

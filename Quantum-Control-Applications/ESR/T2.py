@@ -40,7 +40,8 @@ with program() as T2:
 
         with for_(delay_len, delay_min, delay_len <= delay_max, delay_len + ddelay):
 
-            # wait(cooldown_time)
+            # initialization
+            play('initialization', 'green_laser')
 
             reset_phase("ensemble")
             reset_phase("resonator")
