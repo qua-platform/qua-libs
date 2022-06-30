@@ -1,6 +1,9 @@
-# ESR experiments on an ensemble
+# Electron Spin Resonance (ESR) experiments
 
 ## Basic Files
+These ESR protocols can be used in a variety of ensemble of defects in solids
+such as NV.
+
 These files showcase various ESR experiments that can be done on an ensemble.
 These files were tested in a real setup, but are given as-is with no guarantee.
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
