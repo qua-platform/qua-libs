@@ -59,6 +59,8 @@ with program() as cpmg:
             # initialization
             play('initialization', 'green_laser')
 
+            align()
+
             # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'
             # with the same phase every run. Thus, when the analog traces are averaged they
             # do not wash out. Furthermore, because the control signal is associated with
@@ -79,6 +81,8 @@ with program() as cpmg:
 
             frame_rotation_2pi(-0.5, "ensemble")
 
+            # the additional 27 cycles are added to compensate for the overhead of
+            # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
             wait(tau - Cast.mul_int_by_fixed(pulse1_len, 1.5) - 27, "ensemble")
 
             align()

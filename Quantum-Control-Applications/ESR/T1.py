@@ -46,6 +46,8 @@ with program() as T1:
             # initialization
             play('initialization', 'green_laser')
 
+            align()
+
             wait(wait_len)  # delay for T1 measurement
 
             # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'

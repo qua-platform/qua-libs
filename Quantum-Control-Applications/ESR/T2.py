@@ -43,6 +43,8 @@ with program() as T2:
             # initialization
             play('initialization', 'green_laser')
 
+            align()
+
             # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'
             # with the same phase every run. Thus, when the analog traces are averaged they
             # do not wash out. Furthermore, because the control signal is associated with

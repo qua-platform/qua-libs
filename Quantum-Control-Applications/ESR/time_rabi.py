@@ -22,13 +22,15 @@ cooldown_time = int(10e6 // 4)
 
 n_avg = 100
 
+readout_delay_p = int(2000 // 4 - pi_len * 0.5 - readout_len * 0.125 - 5)
+
 with program() as time_rabi:
 
     n = declare(int)
     n_st = declare_stream()
     pulse1_len = declare(int)
     pulse_delay = declare(int)
-    readout_delay = declare(int)
+    readout_delay = declare(int, value=readout_delay_p)
 
     I = declare(fixed)
     Q = declare(fixed)
@@ -44,6 +46,8 @@ with program() as time_rabi:
             # initialization
             play('initialization', 'green_laser')
 
+            align()
+
             # we reset_phase the 'ensemble' to be able to collect signals with 'resonator'
             # with the same phase every run. Thus, when the analog traces are averaged they
             # do not wash out. Furthermore, because the control signal is associated with
@@ -53,13 +57,7 @@ with program() as time_rabi:
             reset_phase("resonator")
             reset_frame("ensemble")
 
-            assign(
-                pulse_delay, 2000 // 4 - Cast.mul_int_by_fixed(pulse1_len, 0.5) - Cast.mul_int_by_fixed(pi_len, 0.5) - 4
-            )
-            assign(
-                readout_delay,
-                2000 // 4 - Cast.mul_int_by_fixed(pi_len, 0.5) - Cast.mul_int_by_fixed(readout_len, 0.125) - 5,
-            )
+            assign(pulse_delay, 2000 // 4 - Cast.mul_int_by_fixed(pulse1_len, 0.5) - pi_len*0.5 - 4)
 
             # we delay the switches because `duration` in digital pulses
             # takes less cycles to compute than in analog ones
@@ -94,8 +92,8 @@ with program() as time_rabi:
     with stream_processing():
         echo.input1().buffer(len(pulses1)).average().save("echo1")
         echo.input2().buffer(len(pulses1)).average().save("echo2")
-        I_st.buffer(len(pulses1)).average().save("echo1")
-        Q_st.buffer(len(pulses1)).average().save("echo2")
+        I_st.buffer(len(pulses1)).average().save("I")
+        Q_st.buffer(len(pulses1)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -103,7 +101,7 @@ with program() as time_rabi:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager()
 
 #######################
 # Simulate or execute #
