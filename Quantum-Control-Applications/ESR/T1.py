@@ -119,17 +119,22 @@ if simulate:
     job = qmm.simulate(config, T1, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
+    # The lines of code below allow you to retrieve information from the simulated waveform to assert
+    # their position in time.
+
     analog_wf = job.simulated_analog_waveforms()
 
+    # ver_t1: center-to-center time between first two pulses arriving to 'ensemble'
     ver_t1 = (
         analog_wf["elements"]["ensemble"][2]["timestamp"] + (analog_wf["elements"]["ensemble"][2]["duration"] / 2)
     ) - (analog_wf["elements"]["ensemble"][0]["timestamp"] + (analog_wf["elements"]["ensemble"][0]["duration"] / 2))
-    ver_t3 = (
+    # ver_t2: center-to-center time between the readout window to the second pulse arriving to 'ensemble'
+    ver_t2 = (
         analog_wf["elements"]["resonator"][0]["timestamp"] + (analog_wf["elements"]["resonator"][0]["duration"] / 2)
     ) - (analog_wf["elements"]["ensemble"][2]["timestamp"] + (analog_wf["elements"]["ensemble"][2]["duration"] / 2))
 
     print("center to center time between 1st and 2nd pulse", ver_t1)
-    print("center to center time between readout and 2nd pulse", ver_t3)
+    print("center to center time between readout and 2nd pulse", ver_t2)
 
 else:
     qm = qmm.open_qm(config)
