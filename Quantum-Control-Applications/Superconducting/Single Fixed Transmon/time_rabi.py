@@ -6,6 +6,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -57,51 +58,57 @@ with program() as time_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
+simulate = True
 
-job = qm.execute(time_rabi)
-res_handles = job.result_handles
-I_handle = res_handles.get("I")
-Q_handle = res_handles.get("Q")
-iteration_handle = res_handles.get("iteration")
-I_handle.wait_for_values(1)
-Q_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-next_percent = 0.1  # First time print 10%
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
+    job = qmm.simulate(config, time_rabi, simulation_config)
+    job.get_simulated_samples().con1.plot()
 
+else:
 
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
+    qm = qmm.open_qm(config)
 
+    job = qm.execute(time_rabi)
+    res_handles = job.result_handles
+    I_handle = res_handles.get("I")
+    Q_handle = res_handles.get("Q")
+    iteration_handle = res_handles.get("iteration")
+    I_handle.wait_for_values(1)
+    Q_handle.wait_for_values(1)
+    iteration_handle.wait_for_values(1)
+    next_percent = 0.1  # First time print 10%
 
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-print("Progress =", end=" ")
+    def on_close(event):
+        event.canvas.stop_event_loop()
+        job.halt()
 
-while res_handles.is_processing():
+    f = plt.figure()
+    f.canvas.mpl_connect("close_event", on_close)
+    print("Progress =", end=" ")
+
+    while res_handles.is_processing():
+        plt.cla()
+        I = I_handle.fetch_all()
+        Q = Q_handle.fetch_all()
+        iteration = iteration_handle.fetch_all()
+        if iteration / n_avg > next_percent:
+            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
+            print(f"{percent}%", end=" ")
+            next_percent = percent / 100 + 0.1  # Print every 10%
+
+        plt.plot(4 * taus, I, ".", label="I")
+        plt.plot(4 * taus, Q, ".", label="Q")
+
+        plt.legend()
+        plt.pause(0.1)
+
     plt.cla()
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
-
+    print(f"{round(iteration/n_avg * 100)}%")
     plt.plot(4 * taus, I, ".", label="I")
     plt.plot(4 * taus, Q, ".", label="Q")
 
     plt.legend()
-    plt.pause(0.1)
-
-
-plt.cla()
-I = I_handle.fetch_all()
-Q = Q_handle.fetch_all()
-iteration = iteration_handle.fetch_all()
-print(f"{round(iteration/n_avg * 100)}%")
-plt.plot(4 * taus, I, ".", label="I")
-plt.plot(4 * taus, Q, ".", label="Q")
-
-plt.legend()

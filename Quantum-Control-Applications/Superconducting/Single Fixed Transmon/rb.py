@@ -8,6 +8,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+from qm import SimulationConfig
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
@@ -58,61 +59,61 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
             with case_(5):
                 play("x90", "qubit")
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(6):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
             with case_(7):
-                play("x270", "qubit")
-                play("y270", "qubit")
+                play("-x90", "qubit")
+                play("-y90", "qubit")
             with case_(8):
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(9):
                 play("y90", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(10):
-                play("y270", "qubit")
+                play("-y90", "qubit")
                 play("x90", "qubit")
             with case_(11):
-                play("y270", "qubit")
-                play("x270", "qubit")
+                play("-y90", "qubit")
+                play("-x90", "qubit")
             with case_(12):
                 play("x90", "qubit")
             with case_(13):
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(14):
                 play("y90", "qubit")
             with case_(15):
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(16):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(17):
-                play("x270", "qubit")
-                play("y270", "qubit")
+                play("-x90", "qubit")
+                play("-y90", "qubit")
                 play("x90", "qubit")
             with case_(18):
                 play("x180", "qubit")
                 play("y90", "qubit")
             with case_(19):
                 play("x180", "qubit")
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(20):
                 play("y180", "qubit")
                 play("x90", "qubit")
             with case_(21):
                 play("y180", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(22):
                 play("x90", "qubit")
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(23):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
 
 
 with program() as rb:
@@ -153,6 +154,7 @@ with program() as rb:
         state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
             num_of_sequences, max_circuit_depth
         ).save("res")
+
 
 qm = qmm.open_qm(config)
 

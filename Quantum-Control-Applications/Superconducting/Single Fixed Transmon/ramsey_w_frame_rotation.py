@@ -1,5 +1,5 @@
 """
-Performs a 1D frequency sweep on the qubit, measuring the resonator
+Measures T2*
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,34 +7,39 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from scipy import signal
 
 ###################
 # The QUA program #
 ###################
 
-n_avg = 10000
+tau_min = 4  # in clock cycles
+tau_max = 100  # in clock cycles
+dtau = 2  # in clock cycles
+taus = np.arange(tau_min, tau_max + 0.1, dtau)  # + 0.1 to add tau_max to taus
 
+n_avg = 1e4
 cooldown_time = 5 * qubit_T1 // 4
 
-f_min = 20e6
-f_max = 100e6
-df = 0.1e6
-freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
+detuning = 1e6  # in Hz
 
-with program() as qubit_spec:
+with program() as ramsey:
     n = declare(int)
     n_st = declare_stream()
-    f = declare(int)
     I = declare(fixed)
-    Q = declare(fixed)
     I_st = declare_stream()
+    Q = declare(fixed)
     Q_st = declare_stream()
+    tau = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
-            update_frequency("qubit", f)
-            play("saturation", "qubit")
+        # Notice it's <= to include t_max (This is only for integers!)
+        with for_(tau, tau_min, tau <= tau_max, tau + dtau):
+            play("pi_half", "qubit")
+            wait(tau, "qubit")
+            frame_rotation_2pi(
+                Cast.mul_fixed_by_int(detuning, 4 * tau), "qubit"
+            )  # 4*tau because tau was in clock cycles
+            play("pi_half", "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",
@@ -46,11 +51,12 @@ with program() as qubit_spec:
             save(I, I_st)
             save(Q, Q_st)
             wait(cooldown_time, "resonator")
+            reset_frame("qubit")
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(freqs)).average().save("I")
-        Q_st.buffer(len(freqs)).average().save("Q")
+        I_st.buffer(len(taus)).average().save("I")
+        Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -58,22 +64,20 @@ with program() as qubit_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-###########################
-# Run or Simulate Program #
-###########################
+#######################
+# Simulate or execute #
+#######################
 
 simulate = True
 
 if simulate:
-    simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, qubit_spec, simulation_config)
+    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
+    job = qmm.simulate(config, ramsey, simulation_config)
     job.get_simulated_samples().con1.plot()
-
 else:
     qm = qmm.open_qm(config)
 
-    job = qm.execute(qubit_spec)
-
+    job = qm.execute(ramsey)
     res_handles = job.result_handles
     I_handle = res_handles.get("I")
     Q_handle = res_handles.get("Q")
@@ -96,33 +100,26 @@ else:
         I = I_handle.fetch_all()
         Q = Q_handle.fetch_all()
         iteration = iteration_handle.fetch_all()
-        # If we want to plot the phase
-        phase = np.unwrap(np.angle(I + 1j * Q))
-
         if iteration / n_avg > next_percent:
             percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
             print(f"{percent}%", end=" ")
             next_percent = percent / 100 + 0.1  # Print every 10%
 
-        plt.plot(freqs, phase * (180 / np.pi), ".-")
-        # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-        # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
+        plt.plot(taus, I, ".", label="I")
+        plt.plot(taus, Q, ".", label="Q")
+        plt.xlabel("Time in the equator")
+        plt.title("Ramsey freq detuning")
 
+        plt.legend()
         plt.pause(0.1)
 
     plt.cla()
     I = I_handle.fetch_all()
     Q = Q_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
-    phase = np.unwrap(np.angle(I + 1j * Q))
     print(f"{round(iteration/n_avg * 100)}%")
-    plt.plot(freqs, phase * (180 / np.pi), ".-")
-    plt.ylabel("phase (degrees)")
-    plt.xlabel("freqs [Hz]")
-    # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
-
-    plt.figure()
-    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    plt.title("qubit spectroscopy magnitude")
-    plt.xlabel("freqs [Hz]")
+    plt.plot(taus, I, ".", label="I")
+    plt.plot(taus, Q, ".", label="Q")
+    plt.xlabel("Time in the equator")
+    plt.title("Ramsey freq detuning")
+    plt.legend()
