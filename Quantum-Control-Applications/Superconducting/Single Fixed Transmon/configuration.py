@@ -353,7 +353,7 @@ config = {
         "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
         "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
         "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
-        "minus_y90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_y90_wf": {"type": "arbitrary", "samples": minus_y90_wf.tolist()},
         "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_y90_der_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
