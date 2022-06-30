@@ -90,6 +90,8 @@ with program() as cpmg:
 
                 align()  # global align
 
+                # the additional 5 cycles are added to compensate for the overhead of
+                # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
                 wait(tau - pulse1_len - Cast.mul_int_by_fixed(readout_len, 0.125) - 5, "switch_receiver", "resonator")
 
                 play("activate_resonator", "switch_receiver")
@@ -105,6 +107,8 @@ with program() as cpmg:
                 save(tau, tau_st)
                 save(i_echo, i_echo_st)
 
+                # the additional 66 cycles are added to compensate for the overhead of
+                # real time calculations such as Cast.mul_int_by_fixed(readout_len, 0.125)
                 wait(tau - pulse1_len - Cast.mul_int_by_fixed(readout_len, 0.125) - 66, "switch_receiver", "resonator")
 
         save(n, n_st)
