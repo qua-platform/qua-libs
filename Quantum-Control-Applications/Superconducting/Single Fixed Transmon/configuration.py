@@ -81,7 +81,7 @@ square_pi_len = 100
 square_pi_amp = 0.1
 
 drag_coef = 0
-drag_detun = 0
+anharmonicity = 0
 
 gauss_len = 20
 gauss_sigma = gauss_len / 5
@@ -112,14 +112,14 @@ y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
 y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, delta=1))
-y180_der_wf =(-1)*y180_der_wf
+y180_der_wf = (-1) * y180_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = y180_amp / 2
 y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, delta=1))
-y90_der_wf = (-1)*y90_der_wf
+y90_der_wf = (-1) * y90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_y90_len = y180_len
@@ -128,7 +128,7 @@ minus_y90_amp = -y90_amp
 minus_y90_wf, minus_y90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, delta=1)
 )
-minus_y90_der_wf = (-1)*minus_y90_der_wf
+minus_y90_der_wf = (-1) * minus_y90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator

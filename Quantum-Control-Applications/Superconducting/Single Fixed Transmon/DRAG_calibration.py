@@ -1,5 +1,7 @@
 """
-An experiment to calibrate the DRAG coefficient
+An experiment to calibrate the DRAG coefficient: drag_coef
+This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
+This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -16,9 +18,9 @@ n_avg = 1000
 
 cooldown_time = 5 * qubit_T1 // 4
 
-a_min = -0.1
-a_max = 0.3
-da = 0.005
+a_min = 0.0
+a_max = 1.0
+da = 0.1
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
 
 with program() as drag:
@@ -30,43 +32,29 @@ with program() as drag:
     I_st = declare_stream()
     Q_st = declare_stream()
     state = declare(bool)
-    state_st = declare_stream()
+    state1_st = declare_stream()
     state2_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's + da/2 to include a_max (This is only for fixed!)
         with for_(a, a_min, a < a_max + da / 2, a + da):
-            play('x180' * amp(1, 0, 0, a), 'qubit')
-            play('y90' * amp(a, 0, 0, 1), 'qubit')
+            play("x180" * amp(1, 0, 0, a), "qubit")
+            play("y90" * amp(a, 0, 0, 1), "qubit")
             align("qubit", "resonator")
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-            )
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
             save(I, I_st)
             save(Q, Q_st)
-            assign(state, I > ge_threshold)
-            save(state, state_st)
+            save(state, state1_st)
             wait(cooldown_time, "resonator")
 
             align()
 
-            play('y180' * amp(a, 0, 0, 1), 'qubit')
-            play('x90' * amp(1, 0, 0, a), 'qubit')
+            play("y180" * amp(a, 0, 0, 1), "qubit")
+            play("x90" * amp(1, 0, 0, a), "qubit")
             align("qubit", "resonator")
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-            )
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
             save(I, I_st)
             save(Q, Q_st)
-            assign(state, I > ge_threshold)
             save(state, state2_st)
             wait(cooldown_time, "resonator")
         save(n, n_st)
@@ -75,7 +63,7 @@ with program() as drag:
         I_st.buffer(len(amps)).average().save("I")
         Q_st.buffer(len(amps)).average().save("Q")
         n_st.save("iteration")
-        state_st.boolean_to_int().buffer(len(amps)).average().save("state")
+        state1_st.boolean_to_int().buffer(len(amps)).average().save("state1")
         state2_st.boolean_to_int().buffer(len(amps)).average().save("state2")
 
 #####################################
@@ -101,9 +89,9 @@ else:
     I_handle.wait_for_values(1)
     Q_handle.wait_for_values(1)
     iteration_handle.wait_for_values(1)
-    state_handle = res_handles.get('state')
+    state_handle = res_handles.get("state1")
     state_handle.wait_for_values(1)
-    state2_handle = res_handles.get('state2')
+    state2_handle = res_handles.get("state2")
     state2_handle.wait_for_values(1)
     next_percent = 0.1  # First time print 10%
 
@@ -129,8 +117,8 @@ else:
     state2 = state2_handle.fetch_all()
     iteration = iteration_handle.fetch_all()
     print(f"{round(iteration / n_avg * 100)}%")
-    plt.plot(amps * drag_coef, state, label='x180y90')
-    plt.plot(amps * drag_coef, state2, label='y180x90')
-    plt.xlabel("drag coef")
+    plt.plot(amps * drag_coef, state, label="x180y90")
+    plt.plot(amps * drag_coef, state2, label="y180x90")
+    plt.xlabel("Drag coef")
     plt.legend()
-
+    plt.tight_layout()
