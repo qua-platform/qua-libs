@@ -14,6 +14,9 @@ from qm import SimulationConfig
 # The QUA program #
 ###################
 
+# set the drag_coef in the configuration
+drag_coef = 1
+
 n_avg = 1000
 
 cooldown_time = 5 * qubit_T1 // 4
