@@ -8,21 +8,22 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qualang_tools.loops import from_array
 
 ##############################
 # Program-specific variables #
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = 5 * qubit_T1 // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Resonator cooldown time in clock cycles (4ns)
 
 # Frequency sweep in Hz (Needs to be a list of int)
-freq_span = 1e6
+freq_span = 1 * u.MHz
 n_freq = 41
 freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
 
 # Idle time sweep (Needs to be a list of int)
-delay_max = 4e-6 / 1e-9
+delay_max = 4 * u.us
 n_delay = 101
 delay_array = np.round(np.linspace(0, delay_max, n_delay) / 4).astype(int)
 if len(np.where((delay_array > 0) & (delay_array < 4))[0]) > 0:
@@ -40,8 +41,8 @@ with program() as ramsey_freq_duration:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_each_(delay, delay_array.tolist()):
-            with for_each_(f, freq_array.tolist()):
+        with for_(*from_array(delay, delay_array)):
+            with for_(*from_array(f, freq_array)):
                 # Update the resonator frequency
                 update_frequency("qubit", f)
                 # Adjust the idle time
@@ -68,8 +69,8 @@ with program() as ramsey_freq_duration:
                 save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(n_delay, n_freq).average().save("I")
-        Q_st.buffer(n_delay, n_freq).average().save("Q")
+        I_st.buffer(n_freq).buffer(n_delay).average().save("I")
+        Q_st.buffer(n_freq).buffer(n_delay).average().save("Q")
 
 
 #####################################
@@ -87,30 +88,25 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(ramsey_freq_duration)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q"], mode="live")
     # Live plotting
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-
+    while job.result_handles.is_processing():
+        # Fetch results
+        I, Q = results.fetch_all()
+        # Plot results
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy power")
-        plt.pcolor((freq_array - qubit_IF) / 1e6, delay_array * 4, np.sqrt(I**2 + Q**2))
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
         plt.xlabel("freq [MHz]")
         plt.ylabel("flux amplitude [a.u.]")
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
-        plt.pcolor((freq_array - qubit_IF) / 1e6, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
         plt.xlabel("freq [MHz]")
         plt.ylabel("flux amplitude [a.u.]")
         plt.pause(0.1)

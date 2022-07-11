@@ -13,7 +13,7 @@ import numpy as np
 # Program-specific variables #
 ##############################
 n_avg = 1000  # Number of averaging loops
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
 
 # Phase scan parameters in units of 2pi
 n_phases = 101
@@ -80,32 +80,15 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(rabi_amp_freq)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-    Ie_handles = res_handles.get("Ie")
-    Qe_handles = res_handles.get("Qe")
-    Ie_handles.wait_for_values(1)
-    Qe_handles.wait_for_values(1)
-    Ig_handles = res_handles.get("Ig")
-    Qg_handles = res_handles.get("Qg")
-    Ig_handles.wait_for_values(1)
-    Qg_handles.wait_for_values(1)
-
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
     # Live plotting
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = phase_array * 2 * np.pi
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-        Ie = Ie_handles.fetch_all()
-        Qe = Qe_handles.fetch_all()
-        Ig = Ig_handles.fetch_all()
-        Qg = Qg_handles.fetch_all()
+    while job.result_handles.is_processing():
+        # Fetch results
+        I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
 
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
@@ -119,7 +102,7 @@ else:
         plt.subplot(311)
         plt.cla()
         plt.plot(xplot, np.sqrt(I**2 + Q**2))
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd pi/2 phase-shift [rad]")
         plt.ylabel("Readout amplitude")
         plt.subplot(312)
         plt.cla()

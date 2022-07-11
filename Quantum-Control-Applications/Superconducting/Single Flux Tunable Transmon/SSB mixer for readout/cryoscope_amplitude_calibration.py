@@ -9,6 +9,7 @@ from configuration import *
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
 import numpy as np
+from qualang_tools.loops import from_array
 
 
 ###################
@@ -16,7 +17,7 @@ import numpy as np
 ###################
 
 n_avg = 10000  # Number of averages
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
 # Flux amplitude sweep (as a prefactor of the flux amplitude)
 n_flux_amp = 401
 flux_amp_array = np.linspace(0, -0.2, n_flux_amp)
@@ -34,7 +35,7 @@ with program() as cryoscope_amp:
     Ig_st, Qg_st, Ie_st, Qe_st = ge_averaged_measurement(cooldown_time, n_avg)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_each_(flux_amp, flux_amp_array.tolist()):
+        with for_(*from_array(flux_amp, flux_amp_array)):
             with for_each_(flag, [True, False]):
                 wait(int(const_len / 4 * 2 + const_flux_len / 4), "resonator")
                 # Play first X/2
@@ -62,8 +63,8 @@ with program() as cryoscope_amp:
                 save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(n_flux_amp, 2).average().save("I")
-        Q_st.buffer(n_flux_amp, 2).average().save("Q")
+        I_st.buffer(2).buffer(n_flux_amp).average().save("I")
+        Q_st.buffer(2).buffer(n_flux_amp).average().save("Q")
         Ig_st.average().save("Ig")
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")
@@ -84,33 +85,16 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(cryoscope_amp)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-    Ie_handles = res_handles.get("Ie")
-    Qe_handles = res_handles.get("Qe")
-    Ie_handles.wait_for_values(1)
-    Qe_handles.wait_for_values(1)
-    Ig_handles = res_handles.get("Ig")
-    Qg_handles = res_handles.get("Qg")
-    Ig_handles.wait_for_values(1)
-    Qg_handles.wait_for_values(1)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
 
     # Live plotting
-
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-        Ie = Ie_handles.fetch_all()
-        Qe = Qe_handles.fetch_all()
-        Ig = Ig_handles.fetch_all()
-        Qg = Qg_handles.fetch_all()
+    while job.result_handles.is_processing():
+        # Fetch results
+        I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
 
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)

@@ -14,13 +14,13 @@ from scipy import signal
 ##############################
 n_avg = 100  # Number of averaging loops
 
-cooldown_time = 2000 // 4  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = 10000 // 4  # Flux settle time in clock cycles (4ns)
+cooldown_time = u.to_clock_cycles(2 * u.us)  # Resonator cooldown time in clock cycles (4ns)
+flux_settle_time = u.to_clock_cycles(10 * u.us)  # Flux settle time in clock cycles (4ns)
 
 # Frequency sweep in Hz
-f_min = 55e6
-f_max = 65e6
-df = 0.01e6
+f_min = 55 * u.MHz
+f_max = 65 * u.MHz
+df = 100 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
 
 ###################
@@ -106,23 +106,23 @@ else:
     # Plots
     plt.figure(figsize=(15, 15))
     plt.subplot(221)
-    plt.plot(freqs / 1e6, np.sqrt(Ig**2 + Qg**2), "b.")
-    plt.plot(freqs / 1e6, np.sqrt(Ie**2 + Qe**2), "r.")
+    plt.plot(freqs / u.MHz, np.sqrt(Ig**2 + Qg**2), "b.")
+    plt.plot(freqs / u.MHz, np.sqrt(Ie**2 + Qe**2), "r.")
     plt.xlabel("freq [MHz]")
     plt.ylabel("resonator spectroscopy amplitude")
     plt.subplot(222)
     # detrend removes the linear increase of phase
     phase_g = signal.detrend(np.unwrap(np.angle(Ig + 1j * Qg)))
     phase_e = signal.detrend(np.unwrap(np.angle(Ie + 1j * Qe)))
-    plt.plot(freqs / 1e6, phase_g, "b.")
-    plt.plot(freqs / 1e6, phase_e, "r.")
+    plt.plot(freqs / u.MHz, phase_g, "b.")
+    plt.plot(freqs / u.MHz, phase_e, "r.")
     plt.xlabel("freq [MHz]")
     plt.ylabel("resonator spectroscopy phase")
     plt.subplot(223)
-    plt.plot(freqs / 1e6, np.sqrt(Ig**2 + Qg**2) - np.sqrt(Ie**2 + Qe**2))
+    plt.plot(freqs / u.MHz, np.sqrt(Ig**2 + Qg**2) - np.sqrt(Ie**2 + Qe**2))
     plt.xlabel("freq [MHz]")
     plt.ylabel("Difference between g and e (amplitude)")
     plt.subplot(224)
-    plt.plot(freqs / 1e6, phase_g - phase_e)
+    plt.plot(freqs / u.MHz, phase_g - phase_e)
     plt.xlabel("freq [MHz]")
     plt.ylabel("Difference between g and e (phase)")
