@@ -107,11 +107,13 @@ angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie,
 # count = declare(int)
 # cont_condition = declare(bool)
 # assign(cont_condition, ((I > threshold) & (count < 3)))
+# assign(count, 0)
 # with while_(cont_condition):
 #     play("pi", "qubit")
 #     align("qubit", "resonator")
 #     measure("readout", "resonator", None,
 #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
 #     assign(count, count + 1)
+#     assign(cont_condition, ((I > threshold) & (count < 3)))
 #
 #########################################
