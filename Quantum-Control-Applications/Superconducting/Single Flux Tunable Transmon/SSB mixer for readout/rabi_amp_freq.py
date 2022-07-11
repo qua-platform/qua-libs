@@ -38,6 +38,7 @@ with program() as rabi_amp_freq:
     a = declare(fixed)  # Pulse amplitude
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
@@ -62,10 +63,12 @@ with program() as rabi_amp_freq:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(n_freq).buffer(n_a).average().save("I")
         Q_st.buffer(n_freq).buffer(n_a).average().save("Q")
+        n_st.save("iteration")
 
 
 #####################################
@@ -90,7 +93,9 @@ else:
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while job.result_handles.is_processing():
         # Fetch results
-        I, Q = results.fetch_all()
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
         # Plot results
         plt.subplot(211)
         plt.cla()

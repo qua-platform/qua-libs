@@ -28,6 +28,7 @@ with program() as rabi_amp_freq:
     phase = declare(fixed)  # Sweeping phase
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
@@ -56,6 +57,7 @@ with program() as rabi_amp_freq:
             # Save data to the stream processing
             save(I, I_st)
             save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(n_phases).average().save("I")
@@ -64,6 +66,7 @@ with program() as rabi_amp_freq:
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")
         Qe_st.average().save("Qe")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -81,15 +84,16 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(rabi_amp_freq)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = phase_array * 2 * np.pi
     while job.result_handles.is_processing():
         # Fetch results
-        I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
-
+        I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
         phase_e = np.angle(Ie + 1j * Qe)

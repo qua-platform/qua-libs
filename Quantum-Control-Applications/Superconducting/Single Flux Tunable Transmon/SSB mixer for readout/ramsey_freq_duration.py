@@ -37,6 +37,7 @@ with program() as ramsey_freq_duration:
     delay = declare(int)  # Idle time
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
@@ -67,10 +68,12 @@ with program() as ramsey_freq_duration:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(n_freq).buffer(n_delay).average().save("I")
         Q_st.buffer(n_freq).buffer(n_delay).average().save("Q")
+        n_st.save("iteration")
 
 
 #####################################
@@ -89,13 +92,15 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(ramsey_freq_duration)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while job.result_handles.is_processing():
         # Fetch results
-        I, Q = results.fetch_all()
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
         # Plot results
         plt.subplot(211)
         plt.cla()
