@@ -12,7 +12,7 @@ from scipy import signal
 ##############################
 # Program-specific variables #
 ##############################
-n_avg = 100  # Number of averaging loops
+n_avg = 1000  # Number of averaging loops
 
 cooldown_time = u.to_clock_cycles(2 * u.us)  # Resonator cooldown time in clock cycles (4ns)
 flux_settle_time = u.to_clock_cycles(10 * u.us)  # Flux settle time in clock cycles (4ns)
@@ -104,7 +104,7 @@ else:
     Qe = res_handles.get("Q").fetch_all()
 
     # Plots
-    plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(8, 12))
     plt.subplot(221)
     plt.plot(freqs / u.MHz, np.sqrt(Ig**2 + Qg**2), "b.")
     plt.plot(freqs / u.MHz, np.sqrt(Ie**2 + Qe**2), "r.")
@@ -126,3 +126,4 @@ else:
     plt.plot(freqs / u.MHz, phase_g - phase_e)
     plt.xlabel("freq [MHz]")
     plt.ylabel("Difference between g and e (phase)")
+    plt.tight_layout()

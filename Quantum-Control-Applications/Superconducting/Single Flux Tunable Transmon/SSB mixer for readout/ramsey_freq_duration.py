@@ -18,7 +18,7 @@ n_avg = 1000  # Number of averaging loops
 cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Resonator cooldown time in clock cycles (4ns)
 
 # Frequency sweep in Hz (Needs to be a list of int)
-freq_span = 1 * u.MHz
+freq_span = 10 * u.MHz
 n_freq = 41
 freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
 
@@ -57,7 +57,7 @@ with program() as ramsey_freq_duration:
                 align("qubit", "resonator")
                 # Measure the resonator
                 measure(
-                    "short_readout",
+                    "readout",
                     "resonator",
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I),
@@ -97,21 +97,43 @@ else:
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while job.result_handles.is_processing():
-        # Fetch results
-        I, Q, iteration = results.fetch_all()
-        # Progress bar
-        progress_counter(iteration, n_avg)
-        # Plot results
-        plt.subplot(211)
-        plt.cla()
-        plt.title("resonator spectroscopy power")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [a.u.]")
-        plt.subplot(212)
-        plt.cla()
-        plt.title("resonator spectroscopy phase")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [a.u.]")
-        plt.pause(0.1)
+        try:
+            # Fetch results
+            I, Q, iteration = results.fetch_all()
+            # Progress bar
+            progress_counter(iteration, n_avg)
+            # Plot results
+            plt.subplot(211)
+            plt.cla()
+            plt.title("resonator spectroscopy amplitude")
+            plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
+            plt.xlabel("freq [MHz]")
+            plt.ylabel("Idle time [ns]")
+            plt.subplot(212)
+            plt.cla()
+            plt.title("resonator spectroscopy phase")
+            plt.pcolor(
+                (freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+            )
+            plt.xlabel("freq [MHz]")
+            plt.ylabel("Idle time [ns]")
+            plt.tight_layout()
+            plt.pause(0.01)
+        except (Exception,):
+            pass
+    # Fetch results
+    I, Q, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    # Plot results
+    plt.subplot(211)
+    plt.title("resonator spectroscopy amplitude")
+    plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
+    plt.xlabel("freq [MHz]")
+    plt.ylabel("Idle time [ns]")
+    plt.subplot(212)
+    plt.title("resonator spectroscopy phase")
+    plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+    plt.xlabel("freq [MHz]")
+    plt.ylabel("Idle time [ns]")
+    plt.tight_layout()

@@ -46,7 +46,7 @@ with program() as rabi_amp_freq:
             align("qubit", "resonator")
             # Measure the resonator
             measure(
-                "short_readout",
+                "readout",
                 "resonator",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
@@ -86,7 +86,7 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(8, 12))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = phase_array * 2 * np.pi
     while job.result_handles.is_processing():
@@ -106,16 +106,17 @@ else:
         plt.subplot(311)
         plt.cla()
         plt.plot(xplot, np.sqrt(I**2 + Q**2))
-        plt.xlabel("2nd pi/2 phase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Readout amplitude")
         plt.subplot(312)
         plt.cla()
         plt.plot(xplot, phase)
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Readout phase [rad]")
         plt.subplot(313)
         plt.cla()
         plt.plot(xplot, pop)
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Population")
+        plt.tight_layout()
         plt.pause(0.1)

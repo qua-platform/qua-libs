@@ -31,6 +31,7 @@ def IQ_imbalance(g, phi):
 u = unit()
 
 qop_ip = "127.0.0.1"
+qop_ip = "172.16.2.103"
 
 # Qubits
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
@@ -38,10 +39,10 @@ qubit_IF = 110 * u.MHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
-qubit_T1 = int(10*u.us)
+qubit_T1 = int(10 * u.us)
 
 const_len = 100
-const_amp = 50*u.mV
+const_amp = 50 * u.mV
 
 pi_len = 100
 pi_amp = 0.05

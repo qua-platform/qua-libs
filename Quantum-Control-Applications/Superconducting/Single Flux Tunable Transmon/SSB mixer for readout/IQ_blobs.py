@@ -7,6 +7,7 @@ from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 from macros import ge_singleshot_measurement
 import matplotlib.pyplot as plt
+from qualang_tools.analysis import two_state_discriminator
 
 ##############################
 # Program-specific variables #
@@ -75,7 +76,7 @@ with program() as singleshot:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
@@ -97,7 +98,7 @@ else:
     Qg_handles.wait_for_values(1)
 
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(7, 5))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while res_handles.is_processing():
         I_e = Ie_handles.fetch_all()["value"]
@@ -112,3 +113,4 @@ else:
         plt.ylabel("Q")
         plt.legend(["Ground", "Excited"])
         plt.pause(0.1)
+angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
