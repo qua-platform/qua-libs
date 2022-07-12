@@ -105,9 +105,9 @@ angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie,
 #
 # # Repeat until success active reset, up to 3 iterations
 # count = declare(int)
+# assign(count, 0)
 # cont_condition = declare(bool)
 # assign(cont_condition, ((I > threshold) & (count < 3)))
-# assign(count, 0)
 # with while_(cont_condition):
 #     play("pi", "qubit")
 #     align("qubit", "resonator")
