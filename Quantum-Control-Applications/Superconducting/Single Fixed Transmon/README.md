@@ -21,11 +21,11 @@ and the fidelity are good enough, gives the parameters needed for active reset
 11. [T1](T1.py) - Measures T1
 12. [ALLXY](allxy.py) - Performs an ALLXY experiment to correct for gates imperfections
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-13. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
-fidelity
-14. [State Tomography](state_tomography.py) - A template to perform state tomography 
-15. [DRAG calibration](DRAG_calibration.py) - Performs `x180y90` and `y180x90` pulses to obtain 
+13. [DRAG calibration](DRAG_calibration.py) - Performs `x180y90` and `y180x90` pulses to obtain 
 the DRAG coefficient `$\alpha$` (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
+14. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
+fidelity
+15. [State Tomography](state_tomography.py) - A template to perform state tomography
 
 ## Use Cases
 
