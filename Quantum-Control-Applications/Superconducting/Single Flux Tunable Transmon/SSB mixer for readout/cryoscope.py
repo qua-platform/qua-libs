@@ -128,7 +128,7 @@ else:
     fig = plt.figure(figsize=(9, 5))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = range(const_flux_len)
-    while job.result_handles.is_processing():
+    while results.is_processing():
         try:
             # Fetch results
             I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()

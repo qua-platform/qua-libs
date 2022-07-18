@@ -92,7 +92,7 @@ else:
     fig = plt.figure(figsize=(9, 5))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
-    while job.result_handles.is_processing():
+    while results.is_processing():
         try:
             # Fetch results
             I, Q, Ie, Qe, Ig, Qg = results.fetch_all()

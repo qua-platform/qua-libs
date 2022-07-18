@@ -89,7 +89,7 @@ else:
     fig = plt.figure(figsize=(8, 12))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = phase_array * 2 * np.pi
-    while job.result_handles.is_processing():
+    while results.is_processing():
         # Fetch results
         I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
         # Progress bar

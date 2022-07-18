@@ -96,7 +96,7 @@ else:
     # Live plotting
     fig = plt.figure(figsize=(15, 15))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while job.result_handles.is_processing():
+    while results.is_processing():
         try:
             # Fetch results
             I, Q, iteration = results.fetch_all()
