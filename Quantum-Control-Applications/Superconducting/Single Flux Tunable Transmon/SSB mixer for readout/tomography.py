@@ -13,7 +13,7 @@ import numpy as np
 # Program-specific variables #
 ##############################
 n_avg = 1000  # Number of averaging loops
-cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 # Phase scan parameters in units of 2pi
 n_phases = 101

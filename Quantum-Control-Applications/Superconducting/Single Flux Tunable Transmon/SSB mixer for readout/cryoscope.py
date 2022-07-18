@@ -17,7 +17,7 @@ from scipy import signal
 ###################
 
 n_avg = 10000  # Number of averages
-cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 # FLux pulse waveform generation
 flux_amp = -0.1

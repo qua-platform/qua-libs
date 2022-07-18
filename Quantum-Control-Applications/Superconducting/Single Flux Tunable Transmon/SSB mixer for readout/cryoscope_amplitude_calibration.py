@@ -17,7 +17,7 @@ from qualang_tools.loops import from_array
 ###################
 
 n_avg = 10000  # Number of averages
-cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 # Flux amplitude sweep (as a prefactor of the flux amplitude)
 n_flux_amp = 401
 flux_amp_array = np.linspace(0, -0.2, n_flux_amp)

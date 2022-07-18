@@ -15,7 +15,7 @@ from qualang_tools.loops import from_array
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4  # Resonator cooldown time in clock cycles (4ns)
 
 # Frequency sweep in Hz (Needs to be a list of int)
 freq_span = 10 * u.MHz

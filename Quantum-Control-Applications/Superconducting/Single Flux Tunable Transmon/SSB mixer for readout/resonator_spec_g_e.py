@@ -14,8 +14,8 @@ from scipy import signal
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = u.to_clock_cycles(2 * u.us)  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = u.to_clock_cycles(10 * u.us)  # Flux settle time in clock cycles (4ns)
+cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+flux_settle_time = 10 * u.us // 4  # Flux settle time in clock cycles (4ns)
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz

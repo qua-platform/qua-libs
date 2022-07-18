@@ -15,7 +15,7 @@ from qualang_tools.analysis import two_state_discriminator
 threshold = -9.4e-4  # Threshold for active feedback
 n_shot = 10000  # Number of acquired shots
 max_count = 100  # Maximum number of tries for active reset (no feedback if set to 0)
-cooldown_time = u.to_clock_cycles(5 * qubit_T1)  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 ###################
 # The QUA program #
