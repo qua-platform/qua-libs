@@ -14,7 +14,7 @@ from qualang_tools.loops import from_array
 # Program-specific variables #
 ##############################
 
-n_avg = 300  # Number of averaging loops
+n_avg = 3000  # Number of averaging loops
 
 cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 flux_settle_time = 4 * u.us // 4  # Flux settle time in clock cycles (4ns)
@@ -137,47 +137,46 @@ else:
     fig = plt.figure(figsize=(8, 11))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while job.result_handles.is_processing():
-        try:
-            # Fetch results
-            # I = I_handles.fetch_all()
-            # Q = Q_handles.fetch_all()
-            # iteration = iteration_handles.fetch_all()
-            I, Q, iteration = results.fetch_all()
-            # Progress bar
-            progress_counter(iteration, n_avg)
-            # 1D spectroscopy plot
-            if len(I.shape) == 1:
-                plt.subplot(211)
-                plt.cla()
-                plt.title("resonator spectroscopy amplitude")
-                plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-                plt.xlabel("freq [MHz]")
-                plt.subplot(212)
-                plt.cla()
-                # detrend removes the linear increase of phase
-                phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-                plt.title("resonator spectroscopy phase")
-                plt.plot(freqs / u.MHz, phase, ".")
-                plt.xlabel("freq [MHz]")
-                plt.tight_layout()
-            # 2D spectroscopy plot
-            elif len(I.shape) == 2:
-                plt.subplot(211)
-                plt.cla()
-                plt.title("resonator spectroscopy amplitude")
-                plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
-                plt.xlabel("freq [MHz]")
-                plt.ylabel("flux amplitude [V]")
-                plt.subplot(212)
-                plt.cla()
-                plt.title("resonator spectroscopy phase")
-                plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-                plt.xlabel("freq [MHz]")
-                plt.ylabel("flux amplitude [V]")
-                plt.pause(0.1)
-                plt.tight_layout()
-        except (Exception,):
-            pass
+        # Fetch results
+        # I = I_handles.fetch_all()
+        # Q = Q_handles.fetch_all()
+        # iteration = iteration_handles.fetch_all()
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # 1D spectroscopy plot
+        if len(I.shape) == 1:
+            plt.subplot(211)
+            plt.cla()
+            plt.title("resonator spectroscopy amplitude")
+            plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
+            plt.xlabel("freq [MHz]")
+            plt.subplot(212)
+            plt.cla()
+            # detrend removes the linear increase of phase
+            phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+            plt.title("resonator spectroscopy phase")
+            plt.plot(freqs / u.MHz, phase, ".")
+            plt.xlabel("freq [MHz]")
+            plt.pause(0.1)
+            plt.tight_layout()
+        # 2D spectroscopy plot
+        elif len(I.shape) == 2:
+            plt.subplot(211)
+            plt.cla()
+            plt.title("resonator spectroscopy amplitude")
+            plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
+            plt.xlabel("freq [MHz]")
+            plt.ylabel("flux amplitude [V]")
+            plt.subplot(212)
+            plt.cla()
+            plt.title("resonator spectroscopy phase")
+            plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+            plt.xlabel("freq [MHz]")
+            plt.ylabel("flux amplitude [V]")
+            plt.pause(0.1)
+            plt.tight_layout()
+
     # Fetch results
     I, Q, iteration = results.fetch_all()
     # Convert I & Q to Volts

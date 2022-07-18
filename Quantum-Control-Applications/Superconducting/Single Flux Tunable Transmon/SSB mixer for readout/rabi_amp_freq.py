@@ -92,30 +92,28 @@ else:
     fig = plt.figure(figsize=(7, 5))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while results.is_processing():
-        try:
-            # Fetch results
-            I, Q, iteration = results.fetch_all()
-            # Progress bar
-            progress_counter(iteration, n_avg)
-            # Plot results
-            plt.subplot(211)
-            plt.cla()
-            plt.title("Resonator spectroscopy amplitude")
-            plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, np.sqrt(I**2 + Q**2))
-            plt.xlabel("Freq [MHz]")
-            plt.ylabel("Flux amplitude [a.u.]")
-            plt.subplot(212)
-            plt.cla()
-            plt.title("Resonator spectroscopy phase")
-            plt.pcolor(
-                (freq_array - qubit_IF) / u.MHz, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-            )
-            plt.xlabel("Freq [MHz]")
-            plt.ylabel("Pulse amplitude [a.u.]")
-            plt.tight_layout()
-            plt.pause(0.01)
-        except (Exception,):
-            pass
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot results
+        plt.subplot(211)
+        plt.cla()
+        plt.title("Resonator spectroscopy amplitude")
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, np.sqrt(I**2 + Q**2))
+        plt.xlabel("Freq [MHz]")
+        plt.ylabel("Flux amplitude [a.u.]")
+        plt.subplot(212)
+        plt.cla()
+        plt.title("Resonator spectroscopy phase")
+        plt.pcolor(
+            (freq_array - qubit_IF) / u.MHz, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+        )
+        plt.xlabel("Freq [MHz]")
+        plt.ylabel("Pulse amplitude [a.u.]")
+        plt.tight_layout()
+        plt.pause(0.01)
+
     # Fetch results
     I, Q, iteration = results.fetch_all()
     # Progress bar
