@@ -104,6 +104,8 @@ const_flux_amp = 0.45
 
 # IQ Plane Angle
 rotation_angle = (0 / 180) * np.pi
+# Threshold for single shot g-e discrimination
+ge_threshold = 0.0
 
 config = {
     "version": 1,

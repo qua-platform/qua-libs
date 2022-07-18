@@ -134,7 +134,7 @@ else:
     pop = (phase - phase_g) / (phase_e - phase_g)
     plt.subplot(311)
     plt.cla()
-    plt.plot(xplot, np.sqrt(I ** 2 + Q ** 2))
+    plt.plot(xplot, np.sqrt(I**2 + Q**2))
     plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
     plt.ylabel("Readout amplitude")
     plt.subplot(312)

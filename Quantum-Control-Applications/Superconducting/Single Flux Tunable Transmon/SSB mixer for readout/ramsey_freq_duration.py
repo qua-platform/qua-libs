@@ -111,9 +111,7 @@ else:
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
-        plt.pcolor(
-            (freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-        )
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
         plt.xlabel("freq [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()

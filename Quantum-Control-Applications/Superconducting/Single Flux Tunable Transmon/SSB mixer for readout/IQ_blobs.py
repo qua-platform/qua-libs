@@ -12,7 +12,7 @@ from qualang_tools.analysis import two_state_discriminator
 ##############################
 # Program-specific variables #
 ##############################
-threshold = -9.4e-4  # Threshold for active feedback
+threshold = ge_threshold  # Threshold for active feedback
 n_shot = 10000  # Number of acquired shots
 max_count = 100  # Maximum number of tries for active reset (no feedback if set to 0)
 cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
@@ -86,31 +86,20 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(singleshot)
-    res_handles = job.result_handles
-
-    Ie_handles = res_handles.get("Ie")
-    Qe_handles = res_handles.get("Qe")
-    Ie_handles.wait_for_values(1)
-    Qe_handles.wait_for_values(1)
-    Ig_handles = res_handles.get("Ig")
-    Qg_handles = res_handles.get("Qg")
-    Ig_handles.wait_for_values(1)
-    Qg_handles.wait_for_values(1)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["Ie", "Qe", "Ig", "Qg"], mode="wait_for_all")
 
     # Live plotting
     fig = plt.figure(figsize=(7, 5))
-    interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while res_handles.is_processing():
-        I_e = Ie_handles.fetch_all()["value"]
-        Q_e = Qe_handles.fetch_all()["value"]
-        I_g = Ig_handles.fetch_all()["value"]
-        Q_g = Qg_handles.fetch_all()["value"]
-        plt.cla()
-        plt.scatter(I_g[: min(len(I_g), len(Q_g))], Q_g[: min(len(I_g), len(Q_g))], color="b", alpha=0.1)
-        plt.scatter(I_e[: min(len(I_e), len(Q_e))], Q_e[: min(len(I_e), len(Q_e))], color="r", alpha=0.1)
-        plt.axis("equal")
-        plt.xlabel("I")
-        plt.ylabel("Q")
-        plt.legend(["Ground", "Excited"])
-        plt.pause(0.1)
-angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
+
+    # Fetch results
+    Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+    plt.cla()
+    plt.scatter(I_g[: min(len(I_g), len(Q_g))], Q_g[: min(len(I_g), len(Q_g))], color="b", alpha=0.1)
+    plt.scatter(I_e[: min(len(I_e), len(Q_e))], Q_e[: min(len(I_e), len(Q_e))], color="r", alpha=0.1)
+    plt.axis("equal")
+    plt.xlabel("I")
+    plt.ylabel("Q")
+    plt.legend(["Ground", "Excited"])
+
+    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
