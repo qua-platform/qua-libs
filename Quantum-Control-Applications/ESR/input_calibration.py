@@ -7,20 +7,19 @@ from qm import LoopbackInterface
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
-from qm.simulate.credentials import create_credentials
 
 ###################
 # The QUA program #
 ###################
+n_avg = 5000
 
 with program() as input_cal:
 
     n = declare(int)
-
     adc_st = declare_stream(adc_trace=True)
 
-    with for_(n, 0, n < 5000, n + 1):
-        play("activate", "switch_receiver", duration=500)
+    with for_(n, 0, n < n_avg, n + 1):
+        play("activate", "switch_receiver")
         wait(150, "resonator")
         reset_phase("resonator")
         measure("readout", "resonator", adc_st)
@@ -37,13 +36,13 @@ with program() as input_cal:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(qop_ip)
 
 #######################
 # Simulate or execute #
 #######################
 
-simulate = False
+simulate = True
 
 if simulate:
     # simulation properties
@@ -62,19 +61,25 @@ else:
     res_hand = job.result_handles
     res_hand.wait_for_all_values()
 
-    adc1 = res_hand.get("adc1").fetch_all() / 2**12
-    adc2 = res_hand.get("adc2").fetch_all() / 2**12
-    adc1_single_run = res_hand.get("adc1_single_run").fetch_all() / 2**12
-    adc2_single_run = res_hand.get("adc2_single_run").fetch_all() / 2**12
+    adc1 = u.raw2volts(res_hand.get("adc1").fetch_all())
+    adc2 = u.raw2volts(res_hand.get("adc2").fetch_all())
+    adc1_single_run = u.raw2volts(res_hand.get("adc1_single_run").fetch_all())
+    adc2_single_run = u.raw2volts(res_hand.get("adc2_single_run").fetch_all())
 
     plt.figure()
+    plt.subplot(121)
     plt.title("Single run (Check ADCs saturation)")
     plt.plot(adc1_single_run)
     plt.plot(adc2_single_run)
+    plt.xlabel("Time [ns]")
+    plt.ylabel("Signal amplitude [V]")
 
-    plt.figure()
+    plt.subplot(122)
     plt.title("Averaged run")
     plt.plot(adc1)
     plt.plot(adc2)
+    plt.xlabel("Time [ns]")
+    plt.ylabel("Signal amplitude [V]")
+    plt.tight_layout()
 
     print(f"Input1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
