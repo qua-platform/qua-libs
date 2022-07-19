@@ -1,5 +1,10 @@
-from scipy.signal.windows import gaussian
 import numpy as np
+from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
+from qualang_tools.units import unit
+
+# These packages are imported here so that we don't have to import them in all the other files
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import progress_counter, fetching_tool
 
 
 # Used to correct for IQ mixer imbalances
@@ -10,35 +15,28 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-def gaussian_rise(amp, pulse_len, flat_top, sigma):
-    gauss_length = int((pulse_len - flat_top) * 2)
-    gauss = (amp * gaussian(gauss_length, sigma)).tolist()
-    return gauss[: gauss_length // 2] + [amp] * flat_top
-
-
 #############
 # VARIABLES #
 #############
-
+# API allowing the use of unit and data conversion
+u = unit()
+# IP address of the Quantum Orchestration Platform
 qop_ip = "127.0.0.1"
-qop_port = 80
 
 # Frequencies
-resonator_IF = -30e6  # in Hz
+resonator_IF = -30 * u.MHz  # in Hz
+ensemble_IF = -30 * u.MHz  # in Hz
 
-# ensemble_if = -30e6  # in Hz
-ensemble_if = 0e6  # in Hz
 mixer_ensemble_g = 0.0
 mixer_ensemble_phi = 0.0
-# ensemble_if = 37e6  # in Hz
 
 # LOs are used in plots. They can also be used marking mixer elements in the config.
 # On top of that they can also be used for setting LO sources (this make sure that everything is in sync)
-ensemble_LO = 2.8e9  # in Hz
+ensemble_LO = 2.8 * u.GHz  # in Hz
 
 # Readout parameters
 const_amp = 0.1  # in V
-const_len = 60  # in ns
+const_len = 320  # in ns
 
 short_readout_len = 80  # in ns
 short_readout_amp = 0.4  # in V
@@ -46,38 +44,42 @@ short_readout_amp = 0.4  # in V
 readout_len = 400  # in ns
 readout_amp = 0.4  # in V
 
-long_readout_len = 70000  # in ns
+long_readout_len = 70 * u.us  # in ns
 long_readout_amp = 0.1  # in V
 
 time_of_flight = 160  # Time it takes the pulses to go through the RF chain, including the device.
+safe_delay = u.to_clock_cycles(2 * u.us)  # Dealy to safely avoid pulses during readout window
 
 # Qubit parameters:
 saturation_amp = 0.2  # in V
-saturation_len = 50000  # Needs to be several T1 so that the final state is an equal population of |0> and |1>
+saturation_len = 50 * u.us  # Needs to be several T1 so that the final state is an equal population of |0> and |1>
 
 # Pi pulse parameters
-pi_len = 48  # in units of ns
+pi_len = 320  # in units of ns
 pi_amp = 0.3  # in units of volts
-pi_wf = (pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])).tolist()  # waveform
-minus_pi_wf = ((-1) * pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-1])).tolist()  # waveform
+pi_wf, pi_der_wf = drag_gaussian_pulse_waveforms(
+    pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+)
+minus_pi_wf, minus_pi_der_wf = drag_gaussian_pulse_waveforms(
+    -pi_amp, pi_len, pi_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+)
 
 # Pi_half pulse parameters
 pi_half_len = int(pi_len / 2)  # in units of ns
 pi_half_amp = pi_amp  # in units of volts
-pi_half_wf = (
-    pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])
-).tolist()  # waveform
-minus_pi_half_wf = (
-    (-1) * pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])
-).tolist()  # waveform
+pi_half_wf, pi_half_der_wf = drag_gaussian_pulse_waveforms(
+    pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+)
+minus_pi_half_wf, minus_pi_half_der_wf = drag_gaussian_pulse_waveforms(
+    -pi_half_amp, pi_half_len, pi_half_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+)
 
 # Subtracted Gaussian pulse parameters
 gauss_amp = 0.3  # The gaussian is used when calibrating pi and pi_half pulses
 gauss_len = 20  # The gaussian is used when calibrating pi and pi_half pulses
-gauss_wf = (
-    gauss_amp * (gaussian(gauss_len, gauss_len / 5) - gaussian(gauss_len, gauss_len / 5)[-1])
-).tolist()  # waveform
-
+gauss_wf, gauss_der_wf = drag_gaussian_pulse_waveforms(
+    gauss_amp, gauss_len, gauss_len / 5, alpha=0, delta=1, detuning=0, subtracted=True
+)
 # Note: a subtracted Gaussian pulse has a more narrow spectral density than a regular gaussian
 # it becomes useful in short pulses to reduce leakage to higher energy states
 
@@ -87,8 +89,8 @@ minus_square_flux_amp = -0.3
 triangle_flux_amp = 0.3
 triangle_wf = [triangle_flux_amp * i / 7 for i in range(8)] + [triangle_flux_amp * (1 - i / 7) for i in range(8)]
 
-initialization_len = 1000  # in ns
-activation_len = 500  # in ns
+initialization_len = 1 * u.us  # in ns
+activation_len = 320  # in ns
 
 config = {
     "version": 1,
@@ -122,7 +124,7 @@ config = {
                 "lo_frequency": ensemble_LO,
                 "mixer": "mixer_ensemble",
             },
-            "intermediate_frequency": ensemble_if,
+            "intermediate_frequency": ensemble_IF,
             "operations": {
                 "const": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -139,7 +141,7 @@ config = {
         },
         "resonator": {
             "singleInput": {"port": ("con1", 3)},
-            "intermediate_frequency": resonator_if,
+            "intermediate_frequency": resonator_IF,
             "operations": {
                 "short_readout": "short_readout_pulse",
                 "readout": "readout_pulse",
@@ -430,7 +432,7 @@ config = {
     "mixers": {
         "mixer_ensemble": [
             {
-                "intermediate_frequency": ensemble_if,
+                "intermediate_frequency": ensemble_IF,
                 "lo_frequency": ensemble_LO,
                 "correction": IQ_imbalance(mixer_ensemble_g, mixer_ensemble_phi),
             },

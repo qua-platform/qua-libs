@@ -6,8 +6,7 @@ from qm.qua import *
 from qm import LoopbackInterface
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
-import matplotlib.pyplot as plt
-from qm.simulate.credentials import create_credentials
+
 
 ###################
 # The QUA program #
@@ -56,13 +55,14 @@ with program() as hello_qua:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+# qmm = QuantumMachinesManager(host=qop_ip, port="80")
+qmm = QuantumMachinesManager(qop_ip)
 
 #######################
 # Simulate or execute #
 #######################
 
-simulate = False
+simulate = True
 
 if simulate:
     # simulation properties
