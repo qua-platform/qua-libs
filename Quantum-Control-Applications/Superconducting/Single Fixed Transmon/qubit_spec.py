@@ -97,7 +97,7 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy amplitude")
-        plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+        plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
         plt.xlabel("freq [MHz]")
         plt.subplot(212)
         plt.cla()
@@ -121,7 +121,7 @@ else:
     plt.clf()
     plt.subplot(211)
     plt.title("resonator spectroscopy amplitude [V]")
-    plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
     plt.xlabel("freq [MHz]")
     plt.subplot(212)
     # detrend removes the linear increase of phase

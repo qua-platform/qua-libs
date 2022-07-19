@@ -8,7 +8,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from qm import SimulationConfig
+from macros import readout_macro
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)

@@ -10,7 +10,7 @@ from configuration import *
 ###################
 with program() as cw_output:
     with infinite_loop_():
-        play("cw"*amp(0), "qubit")
+        play("cw" * amp(0), "qubit")
 
 #####################################
 #  Open Communication with the QOP  #
