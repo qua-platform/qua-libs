@@ -9,6 +9,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
+from macros import readout_macro
 
 ###################
 # The QUA program #
@@ -89,48 +90,31 @@ else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(drag)
-    res_handles = job.result_handles
-    I1_handle = res_handles.get("I1")
-    Q1_handle = res_handles.get("Q1")
-    I2_handle = res_handles.get("I2")
-    Q2_handle = res_handles.get("Q2")
-    iteration_handle = res_handles.get("iteration")
-    I1_handle.wait_for_values(1)
-    Q1_handle.wait_for_values(1)
-    I2_handle.wait_for_values(1)
-    Q2_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
-    state_handle = res_handles.get("state1")
-    state_handle.wait_for_values(1)
-    state2_handle = res_handles.get("state2")
-    state2_handle.wait_for_values(1)
-    next_percent = 0.1  # First time print 10%
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I1", "I2", "Q1", "Q2", "state1", "state2", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-    def on_close(event):
-        event.canvas.stop_event_loop()
-        job.halt()
-
-    f = plt.figure()
-    f.canvas.mpl_connect("close_event", on_close)
-    print("Progress =", end=" ")
-
-    while res_handles.is_processing():
-        iteration = iteration_handle.fetch_all()
-        if iteration / n_avg > next_percent:
-            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-            print(f"{percent}%", end=" ")
-            next_percent = percent / 100 + 0.1  # Print every 10%
+    while results.is_processing():
+        # Fetch results
+        _, _, _, _, state1, state2, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot results
+        plt.cla()
+        plt.plot(amps * drag_coef, state1, label="x180y90")
+        plt.plot(amps * drag_coef, state2, label="y180x90")
+        plt.xlabel("Drag coef")
+        plt.legend()
+        plt.tight_layout()
 
     plt.cla()
-    I1 = I1_handle.fetch_all()
-    Q1 = Q1_handle.fetch_all()
-    I2 = I2_handle.fetch_all()
-    Q2 = Q2_handle.fetch_all()
-    state = state_handle.fetch_all()
-    state2 = state2_handle.fetch_all()
-    iteration = iteration_handle.fetch_all()
-    print(f"{round(iteration / n_avg * 100)}%")
-    plt.plot(amps * drag_coef, state, label="x180y90")
+    # Fetch results
+    _, _, _, _, state1, state2, iteration = results.fetch_all()
+    # Plot results
+    plt.cla()
+    plt.plot(amps * drag_coef, state1, label="x180y90")
     plt.plot(amps * drag_coef, state2, label="y180x90")
     plt.xlabel("Drag coef")
     plt.legend()
