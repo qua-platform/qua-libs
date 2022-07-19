@@ -94,6 +94,8 @@ x180_amp = 0.35
 x180_wf, x180_der_wf = np.array(
     drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=drag_coef, delta=anharmonicity)
 )
+x180_I_wf = x180_wf
+x180_Q_wf = x180_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x180_len
@@ -102,6 +104,8 @@ x90_amp = x180_amp / 2
 x90_wf, x90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=drag_coef, delta=anharmonicity)
 )
+x90_I_wf = x90_wf
+x90_Q_wf = x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_x90_len = x180_len
@@ -110,6 +114,8 @@ minus_x90_amp = -x90_amp
 minus_x90_wf, minus_x90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(minus_x90_amp, minus_x90_len, minus_x90_sigma, alpha=drag_coef, delta=anharmonicity)
 )
+minus_x90_I_wf = minus_x90_wf
+minus_x90_Q_wf = minus_x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_len = x180_len
@@ -118,7 +124,8 @@ y180_amp = x180_amp
 y180_wf, y180_der_wf = np.array(
     drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, delta=anharmonicity)
 )
-y180_der_wf = (-1) * y180_der_wf
+y180_I_wf = (-1) * y180_der_wf
+y180_Q_wf = y180_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_len = x180_len
@@ -127,7 +134,8 @@ y90_amp = y180_amp / 2
 y90_wf, y90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, delta=anharmonicity)
 )
-y90_der_wf = (-1) * y90_der_wf
+y90_I_wf = (-1) * y90_der_wf
+y90_Q_wf = y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_y90_len = y180_len
@@ -136,7 +144,8 @@ minus_y90_amp = -y90_amp
 minus_y90_wf, minus_y90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, delta=anharmonicity)
 )
-minus_y90_der_wf = (-1) * minus_y90_der_wf
+minus_y90_I_wf = (-1) * minus_y90_der_wf
+minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
@@ -255,48 +264,48 @@ config = {
             "operation": "control",
             "length": x90_len,
             "waveforms": {
-                "I": "x90_wf",
-                "Q": "x90_der_wf",
+                "I": "x90_I_wf",
+                "Q": "x90_Q_wf",
             },
         },
         "x180_pulse": {
             "operation": "control",
             "length": x180_len,
             "waveforms": {
-                "I": "x180_wf",
-                "Q": "x180_der_wf",
+                "I": "x180_I_wf",
+                "Q": "x180_Q_wf",
             },
         },
         "-x90_pulse": {
             "operation": "control",
             "length": minus_x90_len,
             "waveforms": {
-                "I": "minus_x90_wf",
-                "Q": "minus_x90_der_wf",
+                "I": "minus_x90_I_wf",
+                "Q": "minus_x90_Q_wf",
             },
         },
         "y90_pulse": {
             "operation": "control",
             "length": y90_len,
             "waveforms": {
-                "I": "y90_der_wf",
-                "Q": "y90_wf",
+                "I": "y90_I_wf",
+                "Q": "y90_Q_wf",
             },
         },
         "y180_pulse": {
             "operation": "control",
             "length": y180_len,
             "waveforms": {
-                "I": "y180_der_wf",
-                "Q": "y180_wf",
+                "I": "y180_I_wf",
+                "Q": "y180_Q_wf",
             },
         },
         "-y90_pulse": {
             "operation": "control",
             "length": minus_y90_len,
             "waveforms": {
-                "I": "minus_y90_der_wf",
-                "Q": "minus_y90_wf",
+                "I": "minus_y90_I_wf",
+                "Q": "minus_y90_Q_wf",
             },
         },
         "short_readout_pulse": {
@@ -357,18 +366,18 @@ config = {
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
-        "x90_wf": {"type": "arbitrary", "samples": x90_wf.tolist()},
-        "x90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
-        "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
-        "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
-        "minus_x90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_der_wf.tolist()},
-        "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
-        "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
-        "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
-        "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
-        "minus_y90_wf": {"type": "arbitrary", "samples": minus_y90_wf.tolist()},
-        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_y90_der_wf.tolist()},
+        "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
+        "x90_Q_wf": {"type": "arbitrary", "samples": x90_Q_wf.tolist()},
+        "x180_I_wf": {"type": "arbitrary", "samples": x180_I_wf.tolist()},
+        "x180_Q_wf": {"type": "arbitrary", "samples": x180_Q_wf.tolist()},
+        "minus_x90_I_wf": {"type": "arbitrary", "samples": minus_x90_I_wf.tolist()},
+        "minus_x90_Q_wf": {"type": "arbitrary", "samples": minus_x90_Q_wf.tolist()},
+        "y90_Q_wf": {"type": "arbitrary", "samples": y90_Q_wf.tolist()},
+        "y90_I_wf": {"type": "arbitrary", "samples": y90_I_wf.tolist()},
+        "y180_Q_wf": {"type": "arbitrary", "samples": y180_Q_wf.tolist()},
+        "y180_I_wf": {"type": "arbitrary", "samples": y180_I_wf.tolist()},
+        "minus_y90_Q_wf": {"type": "arbitrary", "samples": minus_y90_Q_wf.tolist()},
+        "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
         "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
         "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
