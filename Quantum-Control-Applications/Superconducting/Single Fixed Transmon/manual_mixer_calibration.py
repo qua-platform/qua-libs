@@ -1,14 +1,20 @@
 """
-Calibration for mixer imperfections
+manual_mixer_calibration.py: Calibration for mixer imperfections
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
+###################
+# The QUA program #
+###################
 with program() as cw_output:
     with infinite_loop_():
-        play("cw", "qubit")
+        play("cw"*amp(0), "qubit")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
 qmm = QuantumMachinesManager(qop_ip)
 qm = qmm.open_qm(config)
 
@@ -16,7 +22,7 @@ job = qm.execute(cw_output)
 
 # When done, the halt command can be called and the offsets can be written directly into the config file.
 
-# job.halt
+# job.halt()
 
 # These are the 2 commands used to correct for mixer imperfections. The first is used to set the DC of the `I` and `Q`
 # channels to compensate for the LO leakage. The 2nd command is used to correct for the phase and amplitude mismatches

@@ -1,5 +1,5 @@
 """
-Performs a 1D frequency sweep on the resonator
+resonator_spec.py: performs the 1D resonator spectroscopy
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,7 +15,7 @@ from qm import SimulationConfig
 
 n_avg = 100
 
-cooldown_time = 10000 // 4
+cooldown_time = 10 * u.mus // 4
 
 f_min = 30e6
 f_max = 70e6
@@ -67,23 +67,52 @@ if simulate:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(resonator_spec)
+
+    # Get results from QUA program
     res_handles = job.result_handles
-    res_handles.wait_for_all_values()
+    I_handles = res_handles.get("I")
+    Q_handles = res_handles.get("Q")
+    I_handles.wait_for_values(1)
+    Q_handles.wait_for_values(1)
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while job.result_handles.is_processing():
+        # Fetch results
+        I = res_handles.get("I").fetch_all()
+        Q = res_handles.get("Q").fetch_all()
+        # Plot results
+        plt.subplot(211)
+        plt.cla()
+        plt.title("resonator spectroscopy amplitude")
+        plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+        plt.xlabel("freq [MHz]")
+        plt.subplot(212)
+        plt.cla()
+        # detrend removes the linear increase of phase
+        phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+        plt.title("resonator spectroscopy phase")
+        plt.plot(freqs / u.MHz, phase, ".")
+        plt.xlabel("freq [MHz]")
+        plt.pause(0.1)
+        plt.tight_layout()
+
+    # Fetch results
     I = res_handles.get("I").fetch_all()
     Q = res_handles.get("Q").fetch_all()
-
-    plt.figure()
-    plt.title("resonator spectroscopy power")
-    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
-    plt.xlabel("freq")
-
-    plt.figure()
+    # Convert I & Q to Volts
+    I = u.demod2volts(I, readout_len)
+    Q = u.demod2volts(Q, readout_len)
+    # 1D spectroscopy plot
+    plt.clf()
+    plt.subplot(211)
+    plt.title("resonator spectroscopy amplitude [V]")
+    plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.xlabel("freq [MHz]")
+    plt.subplot(212)
     # detrend removes the linear increase of phase
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-    plt.title("resonator spectroscopy phase")
-    plt.plot(freqs, phase * (180 / np.pi), ".")
-    # plt.plot(freqs + resonator_LO, np.sqrt(I**2 + Q**2), '.')
-    plt.ylabel("phase (degrees)")
-    plt.xlabel("freq")
-    plt.show()
+    plt.title("resonator spectroscopy phase [rad]")
+    plt.plot(freqs / u.MHz, phase, ".")
+    plt.xlabel("freq [MHz]")
+    plt.tight_layout()

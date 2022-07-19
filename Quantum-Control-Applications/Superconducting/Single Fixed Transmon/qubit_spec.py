@@ -1,13 +1,13 @@
 """
-Performs a 1D frequency sweep on the qubit, measuring the resonator
+qubit_spec.py: Performs a 1D frequency sweep on the qubit, measuring the resonator
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
-from qm import SimulationConfig
 from scipy import signal
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -73,56 +73,60 @@ else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(qubit_spec)
-
-    res_handles = job.result_handles
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    iteration_handle = res_handles.get("iteration")
-    I_handle.wait_for_values(1)
-    Q_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
-    next_percent = 0.1  # First time print 10%
-
-    def on_close(event):
-        event.canvas.stop_event_loop()
-        job.halt()
-
-    f = plt.figure()
-    f.canvas.mpl_connect("close_event", on_close)
-    print("Progress =", end=" ")
-
-    while res_handles.is_processing():
+    # Get results from QUA program
+    # res_handles = job.result_handles
+    # I_handle = res_handles.get("I")
+    # Q_handle = res_handles.get("Q")
+    # iteration_handle = res_handles.get("iteration")
+    # I_handle.wait_for_values(1)
+    # Q_handle.wait_for_values(1)
+    # iteration_handle.wait_for_values(1)
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
         plt.cla()
-        I = I_handle.fetch_all()
-        Q = Q_handle.fetch_all()
-        iteration = iteration_handle.fetch_all()
-        # If we want to plot the phase
-        phase = np.unwrap(np.angle(I + 1j * Q))
-
-        if iteration / n_avg > next_percent:
-            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-            print(f"{percent}%", end=" ")
-            next_percent = percent / 100 + 0.1  # Print every 10%
-
-        plt.plot(freqs, phase * (180 / np.pi), ".-")
-        # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-        # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
-
+        # I = I_handle.fetch_all()
+        # Q = Q_handle.fetch_all()
+        # iteration = iteration_handle.fetch_all()
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot results
+        plt.subplot(211)
+        plt.cla()
+        plt.title("resonator spectroscopy amplitude")
+        plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+        plt.xlabel("freq [MHz]")
+        plt.subplot(212)
+        plt.cla()
+        # detrend removes the linear increase of phase
+        phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+        plt.title("resonator spectroscopy phase")
+        plt.plot(freqs / u.MHz, phase, ".")
+        plt.xlabel("freq [MHz]")
         plt.pause(0.1)
+        plt.tight_layout()
 
     plt.cla()
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    iteration = iteration_handle.fetch_all()
-    phase = np.unwrap(np.angle(I + 1j * Q))
-    print(f"{round(iteration/n_avg * 100)}%")
-    plt.plot(freqs, phase * (180 / np.pi), ".-")
-    plt.ylabel("phase (degrees)")
-    plt.xlabel("freqs [Hz]")
-    # plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    # plt.plot(freqs + qubit_LO, np.sqrt(I**2 + Q**2), '.')
-
-    plt.figure()
-    plt.plot(freqs, np.sqrt(I**2 + Q**2), ".")
-    plt.title("qubit spectroscopy magnitude")
-    plt.xlabel("freqs [Hz]")
+    # I = I_handle.fetch_all()
+    # Q = Q_handle.fetch_all()
+    # iteration = iteration_handle.fetch_all()
+    I, Q, iteration = results.fetch_all()
+    # Convert I & Q to Volts
+    I = u.demod2volts(I, readout_len)
+    Q = u.demod2volts(Q, readout_len)
+    # 1D spectroscopy plot
+    plt.clf()
+    plt.subplot(211)
+    plt.title("resonator spectroscopy amplitude [V]")
+    plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.xlabel("freq [MHz]")
+    plt.subplot(212)
+    # detrend removes the linear increase of phase
+    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+    plt.title("resonator spectroscopy phase [rad]")
+    plt.plot(freqs / u.MHz, phase, ".")
+    plt.xlabel("freq [MHz]")
+    plt.tight_layout()
