@@ -1,5 +1,5 @@
 """
-A Rabi experiment sweeping the duration of the MW pulse
+time_rabi.py: A Rabi experiment sweeping the duration of the MW pulse
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -70,45 +70,30 @@ else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(time_rabi)
-    res_handles = job.result_handles
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    iteration_handle = res_handles.get("iteration")
-    I_handle.wait_for_values(1)
-    Q_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
-    next_percent = 0.1  # First time print 10%
-
-    def on_close(event):
-        event.canvas.stop_event_loop()
-        job.halt()
-
-    f = plt.figure()
-    f.canvas.mpl_connect("close_event", on_close)
-    print("Progress =", end=" ")
-
-    while res_handles.is_processing():
-        plt.cla()
-        I = I_handle.fetch_all()
-        Q = Q_handle.fetch_all()
-        iteration = iteration_handle.fetch_all()
-        if iteration / n_avg > next_percent:
-            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-            print(f"{percent}%", end=" ")
-            next_percent = percent / 100 + 0.1  # Print every 10%
-
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot results
         plt.plot(4 * taus, I, ".", label="I")
         plt.plot(4 * taus, Q, ".", label="Q")
-
+        plt.xlabel("Rabi pulse duration [ns]")
+        plt.ylabel("I & Q amplitude [a.u.]")
+        plt.cla()
         plt.legend()
         plt.pause(0.1)
 
-    plt.cla()
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    iteration = iteration_handle.fetch_all()
-    print(f"{round(iteration/n_avg * 100)}%")
+    # Fetch results
+    I, Q, iteration = results.fetch_all()
     plt.plot(4 * taus, I, ".", label="I")
     plt.plot(4 * taus, Q, ".", label="Q")
-
+    plt.xlabel("Rabi pulse duration [ns]")
+    plt.ylabel("I & Q amplitude [a.u.]")
     plt.legend()
+    plt.title("Time Rabi")

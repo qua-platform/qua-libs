@@ -44,3 +44,4 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
     if threshold is not None:
         assign(state, I > threshold)
     return state, I, Q
+

@@ -1,5 +1,6 @@
 """
-Performs a wide 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source.
+qubit_spec_wide_range.py: Performs a wide 1D frequency sweep on the qubit, measuring the resonator while also sweeping
+an external LO source.
 In this version, the external LO source is being swept in the external loop in order to minimize run time.
 """
 from time import sleep
