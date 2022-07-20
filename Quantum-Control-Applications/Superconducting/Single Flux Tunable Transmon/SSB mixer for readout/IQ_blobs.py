@@ -23,40 +23,14 @@ cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 with program() as singleshot:
     n = declare(int)  # Averaging index
-    counter = declare(int)  # Number of tries for active reset
-
     Ig_st = declare_stream()
     Qg_st = declare_stream()
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
     with for_(n, 0, n < n_shot, n + 1):
-        # Reset the number of tries
-        assign(counter, 0)
         # Measure the g and e states
         I_g, Q_g, I_e, Q_e = ge_singleshot_measurement(cooldown_time)
-
-        # Perform active feedback
-        align()  # This align is not needed and  can be removed. It is just here to check the timmings with the simulator.
-        # Use the single conditional play statement for integrating active reset in other protocols
-        play("pi", "qubit", condition=(I_g < threshold))
-
-        # Use a while loop and counter for other protocols and tests
-        with while_((I_g < threshold) & (counter < max_count)):
-            # Measure the resonator
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g),
-            )
-            # Play a pi pulse to get back to the ground state
-            play("pi", "qubit", condition=(I_g < threshold))
-            # Wait for the resonator to cooldown
-            wait(cooldown_time, "resonator", "qubit")
-            # Increment the number of tries
-            assign(counter, counter + 1)
 
         # Save data to the stream processing
         save(I_g, Ig_st)
@@ -88,18 +62,7 @@ else:
     job = qm.execute(singleshot)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["Ie", "Qe", "Ig", "Qg"], mode="wait_for_all")
-
-    # Live plotting
-    fig = plt.figure(figsize=(7, 5))
-
     # Fetch results
-    Ie, Qe, Ig, Qg, iteration = results.fetch_all()
-    plt.cla()
-    plt.scatter(I_g[: min(len(I_g), len(Q_g))], Q_g[: min(len(I_g), len(Q_g))], color="b", alpha=0.1)
-    plt.scatter(I_e[: min(len(I_e), len(Q_e))], Q_e[: min(len(I_e), len(Q_e))], color="r", alpha=0.1)
-    plt.axis("equal")
-    plt.xlabel("I")
-    plt.ylabel("Q")
-    plt.legend(["Ground", "Excited"])
-
+    I_e, Q_e, I_g, Q_g = results.fetch_all()
+    # Plot data
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
