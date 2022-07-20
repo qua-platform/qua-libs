@@ -1,6 +1,6 @@
 """
-Plays a MW pulse during a laser pulse, while performing time tagging throughout the sequence. This allows measuring all
-the delays in the system, as well as the NV initialization duration.
+calibrate_delays.py: Plays a MW pulse during a laser pulse, while performing time tagging throughout the sequence.
+This allows measuring all the delays in the system, as well as the NV initialization duration.
 If the counts are too high, the program might hang. In this case reduce the resolution or use
 calibrate_delays_python_histogram.py if high resolution is needed.
 """
@@ -59,43 +59,27 @@ qmm = QuantumMachinesManager(qop_ip)
 qm = qmm.open_qm(config)
 
 job = qm.execute(calib_delays)
+# Get results from QUA program
+results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
+# Live plotting
+fig = plt.figure(figsize=(8, 11))
+interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-res_handles = job.result_handles
-times_hist_handle = res_handles.get("times_hist")
-iteration_handle = res_handles.get("iteration")
-times_hist_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-
-
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
-
-
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-next_percent = 0.1  # First time print 10%
-print("Progress =", end=" ")
-
-b_cont = res_handles.is_processing()
+b_cont = results.is_processing()
 b_last = not b_cont
 
 while b_cont or b_last:
+    # Fetch results
+    times_hist, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    # Plot data
     plt.cla()
-    times_hist = times_hist_handle.fetch_all()
-    iteration = iteration_handle.fetch_all() + 1
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
-
-    plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution * 1e-9) / iteration)
+    plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
     plt.xlabel("t [ns]")
     plt.ylabel(f"counts [kcps / {resolution}ns]")
     plt.title("Delays")
     plt.pause(0.1)
 
-    b_cont = res_handles.is_processing()
+    b_cont = results.is_processing()
     b_last = not (b_cont or b_last)
-
-print("")

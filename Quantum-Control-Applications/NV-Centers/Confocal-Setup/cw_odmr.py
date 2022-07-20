@@ -1,5 +1,5 @@
 """
-Counts photons while sweeping the frequency of the applied MW.
+cw_odmr.py: Counts photons while sweeping the frequency of the applied MW.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
@@ -10,9 +10,9 @@ from configuration import *
 # The QUA program #
 ###################
 
-f_min = -30e6  # start of freq sweep
-f_max = 70e6  # end of freq sweep
-df = 2e6  # freq step
+f_min = -30 * u.MHz  # start of freq sweep
+f_max = 70 * u.MHz  # end of freq sweep
+df = 2 * u.MHz  # freq step
 f_vec = np.arange(f_min, f_max + 0.1, df)  # f_max + 0.1 so that f_max is included
 n_avg = 1e6  # number of averages
 
@@ -49,36 +49,33 @@ qm = qmm.open_qm(config)
 
 job = qm.execute(cw_odmr)  # execute QUA program
 
-res_handles = job.result_handles  # get access to handles
-counts_handle = res_handles.get("counts")
-iteration_handle = res_handles.get("iteration")
-counts_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
+# res_handles = job.result_handles  # get access to handles
+# counts_handle = res_handles.get("counts")
+# iteration_handle = res_handles.get("iteration")
+# counts_handle.wait_for_values(1)
+# iteration_handle.wait_for_values(1)
 
+# Get results from QUA program
+results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+# Live plotting
+fig = plt.figure(figsize=(8, 11))
+interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
-
-
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-next_percent = 0.1  # First time print 10%
-print("Progress =", end=" ")
-
-b_cont = res_handles.is_processing()
+b_cont = results.is_processing()
 b_last = not b_cont
 
-ax1 = f.add_subplot(111)
+ax1 = fig.add_subplot(111)
 while b_cont or b_last:
-    ax1.cla()
-    counts_handle.fetch_all()
-    iteration = iteration_handle.fetch_all() + 1
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
 
+    # counts = counts_handle.fetch_all()
+    # iteration = iteration_handle.fetch_all()
+
+    # Fetch results
+    counts, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    # Plot data
+    ax1.cla()
     ax1.plot(NV_LO_freq + f_vec, counts / 1000 / (long_meas_len * 1e-9))
     ax1.xlabel("Frequency [Hz]")
     ax1.ylabel("Intensity [kcps]")
@@ -88,7 +85,5 @@ while b_cont or b_last:
     ax2.xlabel("Intermediate Frequency [Hz]")
     plt.pause(0.1)
 
-    b_cont = res_handles.is_processing()
+    b_cont = results.is_processing()
     b_last = not (b_cont or b_last)
-
-print("")
