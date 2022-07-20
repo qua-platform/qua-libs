@@ -26,3 +26,4 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 9. [Tomography](tomography.py) - Performs the qubit tomography by scanning the phase of the 2nd pi/2 pulse.
 10. [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
 11. [Cryoscope](cryoscope.py) - Performs the cryoscope measurement.
+12. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file.
