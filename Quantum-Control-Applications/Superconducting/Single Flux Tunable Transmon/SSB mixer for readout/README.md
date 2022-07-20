@@ -20,7 +20,9 @@ Use with care.
 4. [Rabi_amp_freq](rabi_amp_freq.py) - Acquires the 2D (pulse amplitude & frequency sweeps) Rabi oscillations.
 5. [ramsey_freq_duration](ramsey_freq_duration.py) - Acquires the 2D (idle time & pulse frequency sweeps) Ramsey oscillations.
 6. [Resonator_spec_g_e](resonator_spec_g_e.py) -  Performs the 1D resonator spectroscopy for a ground and excited qubit (with IO values).
-7. [IQ_blobs](IQ_blobs.py) - Performs a single shot discrimination and active reset.
-8. [Tomography](tomography.py) - Performs the qubit tomography by scanning the phase of the 2nd pi/2 pulse.
-9. [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
-10. [Cryoscope](cryoscope.py) - Performs the cryoscope measurement.
+7. [IQ_blobs](IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
+and the fidelity are good enough, gives the parameters needed for active reset.
+8. [Active Reset](active_reset.py) - Demonstrates the active reset protocol.
+9. [Tomography](tomography.py) - Performs the qubit tomography by scanning the phase of the 2nd pi/2 pulse.
+10. [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
+11. [Cryoscope](cryoscope.py) - Performs the cryoscope measurement.
