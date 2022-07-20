@@ -28,43 +28,44 @@ my_calib = QUA_calibrations(
     outputs=outs,
 )
 
+# Set scan parameters
+#############################################################
 n_avg = 1000
 # Resonator spectroscopy scan
-scans = [
+scans_resonator_spectroscopy = [
     ("frequency", np.arange(100e6, 300e6, step=0.1e6)),
+    ("amplitude", np.linspace(0.1, 1.5, num=51)),
 ]
-my_calib.set_resonator_spectroscopy(scan_variables=scans, iterations=n_avg, cooldown_time=0)
-
 # Rabi scan
-scans = [
+scans_rabi = [
     ("duration", np.arange(40, 4000, step=100)),
     ("amplitude", np.linspace(0.5, 1.99, num=51)),
 ]
-# my_calib.set_rabi(scan_variables=scans, iterations=n_avg, cooldown_time=0)
-
 # T1 scan
-scans = [
-    ("duration", np.arange(5, 4000, step=10)),
-]
-# my_calib.set_T1(scan_variables=scans, iterations=n_avg, cooldown_time=0)
-
-
+scans_T1 = [("duration", np.arange(5, 4000, step=10))]
 # Ramsey scan
-scans = [
+scans_ramsey = [
     ("frequency", np.linspace(100e6, 200e6, num=101)),
     ("duration", np.arange(40, 4000, step=10)),
 ]
-# my_calib.set_ramsey(scan_variables=scans, iterations=n_avg, cooldown_time=0, idle_time=10)
 
-# Raw traces
+# Set calibrations | Just uncomment the calibrations you want to run
+#############################################################
+# --> Raw traces
 # my_calib.set_raw_traces(iterations=n_avg, cooldown_time=0)
-
-# Time of flight
+# --> Time of flight
 # my_calib.set_time_of_flight(iterations=n_avg, cooldown_time=0)
+# --> Resonator spectroscopy scan
+# my_calib.set_resonator_spectroscopy(scan_variables=scans_resonator_spectroscopy, iterations=n_avg, cooldown_time=0)
+# --> Rabi scan
+# my_calib.set_rabi(scan_variables=scans_rabi, iterations=n_avg, cooldown_time=0)
+# --> T1 scan
+# my_calib.set_T1(scan_variables=scans_T1, iterations=n_avg, cooldown_time=0)
+# --> Ramsey scan
+# my_calib.set_ramsey(scan_variables=scans_ramsey, iterations=n_avg, cooldown_time=0, idle_time=10)
 
-################################
-# Open communication with QOP  #
-################################
+# Open communication with QOP
+#############################################################
 qmm = QuantumMachinesManager(qop_ip)
 qm = qmm.open_qm(config)
 
