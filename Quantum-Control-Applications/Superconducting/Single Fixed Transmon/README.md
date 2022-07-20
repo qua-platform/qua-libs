@@ -28,6 +28,7 @@ the DRAG coefficient `$\alpha$` (see [Reed's Thesis](https://rsl.yale.edu/sites/
 16. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity
 17. [State Tomography](state_tomography.py) - A template to perform state tomography
+18. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
 
 ## Use Cases
 
