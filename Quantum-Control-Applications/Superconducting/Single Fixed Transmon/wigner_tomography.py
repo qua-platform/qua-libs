@@ -12,10 +12,11 @@ from qm import SimulationConfig, LoopbackInterface
 ##############################
 # Program-specific variables #
 ##############################
+cavity_element = "resonator"
 threshold = ge_threshold
-cooldown_time = 5 * qubit_T1 // 4       # Cooldown time in clock cycles (4ns)
-chi = 10 * u.MHz / u.GHz                       # cavity  coupling strength in GHz
-revival_time = int(np.pi / chi) // 4    # Revival time in multiples of 4 ns
+cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+chi = 10 * u.MHz / u.GHz  # cavity  coupling strength in GHz
+revival_time = int(np.pi / chi) // 4  # Revival time in multiples of 4 ns
 # range to sample alpha
 n_points = 6
 alpha = np.linspace(-2, 2, n_points)
@@ -45,8 +46,8 @@ with program() as wigner_tomo:
             assign(excited, 0)
             with for_(n, 0, n < n_avg, n + 1):
                 # Displace the cavity
-                play("displace" * amp(amp_dis[r], 0, 0, amp_dis[i]), "cavity")
-                align("cavity", "qubit")
+                play("displace" * amp(amp_dis[r], 0, 0, amp_dis[i]), cavity_element)
+                align(cavity_element, "qubit")
                 # Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
                 wait(revival_time, "qubit")
@@ -58,7 +59,7 @@ with program() as wigner_tomo:
                     "resonator",
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q)
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Single shot detection and ground/excited state assignement
                 with if_(I < threshold):
@@ -66,7 +67,7 @@ with program() as wigner_tomo:
                 with else_():
                     assign(excited, excited + 1)
                 # wait and let all elements relax
-                wait(cooldown_time, "cavity", "qubit", "resonator")
+                wait(cooldown_time, cavity_element, "qubit", "resonator")
             save(ground, ground_st)
             save(excited, excited_st)
 
@@ -88,7 +89,7 @@ if simulate:
         simulation_interface=LoopbackInterface(
             [("con1", 1, "con1", 1), ("con1", 2, "con1", 2)],
             latency=200,
-            noisePower=0.05 ** 2,
+            noisePower=0.05**2,
         ),
     )
     job = qm.simulate(wigner_tomo, simulation_config)
@@ -106,11 +107,11 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg)
         # Plot results
-        parity = excited - ground           # derive the parity
-        wigner = 2 / np.pi * parity / n_avg # derive the average wigner function
+        parity = excited - ground  # derive the parity
+        wigner = 2 / np.pi * parity / n_avg  # derive the average wigner function
         plt.cla()
         ax = plt.subplot()
-        pos=ax.imshow(
+        pos = ax.imshow(
             wigner,
             cmap="Blues",
             vmin=-2 / np.pi,
@@ -118,20 +119,20 @@ else:
         )
         fig.colorbar(pos, ax=ax)
         ax.set_xticks(range(len(alpha)))
-        ax.set_xticklabels(f"{alpha[i]:.2f}"for i in range(len(alpha)))
+        ax.set_xticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
         ax.set_yticks(range(len(alpha)))
-        ax.set_yticklabels(f"{alpha[i]:.2f}"for i in range(len(alpha)))
+        ax.set_yticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
         ax.set_xlabel("Im(alpha)")
         ax.set_ylabel("Re(alpha)")
         ax.set_title("Wigner function")
     # Fetch results
     ground, excited, iteration = results.fetch_all()
     # Plot results
-    parity = excited - ground           # derive the parity
-    wigner = 2 / np.pi * parity / n_avg # derive the average wigner function
+    parity = excited - ground  # derive the parity
+    wigner = 2 / np.pi * parity / n_avg  # derive the average wigner function
     plt.cla()
     ax = plt.subplot()
-    pos=ax.imshow(
+    pos = ax.imshow(
         wigner,
         cmap="Blues",
         vmin=-2 / np.pi,
@@ -139,9 +140,9 @@ else:
     )
     fig.colorbar(pos, ax=ax)
     ax.set_xticks(range(len(alpha)))
-    ax.set_xticklabels(f"{alpha[i]:.2f}"for i in range(len(alpha)))
+    ax.set_xticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
     ax.set_yticks(range(len(alpha)))
-    ax.set_yticklabels(f"{alpha[i]:.2f}"for i in range(len(alpha)))
+    ax.set_yticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
     ax.set_xlabel("Im(alpha)")
     ax.set_ylabel("Re(alpha)")
     ax.set_title("Wigner function")
