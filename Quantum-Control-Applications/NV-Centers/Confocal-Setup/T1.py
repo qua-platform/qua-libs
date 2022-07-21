@@ -3,6 +3,7 @@ T1.py: Measures T1. Can measure the decay from either |1> or |0>.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
@@ -16,7 +17,7 @@ t_max = 1000 // 4  # in clock cycles units
 dt = 40 // 4  # in clock cycles units
 t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
 n_avg = 1e6
-start_from_one = True
+start_from_one = False
 
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
@@ -70,30 +71,39 @@ with program() as T1:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
-# execute QUA program
-job = qm.execute(T1)
-# Get results from QUA program
-results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
-# Live plotting
-fig = plt.figure(figsize=(8, 11))
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-b_cont = results.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    # Fetch results
-    counts1, counts2, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.cla()
-    plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
-    plt.xlabel("Tau [ns]")
-    plt.ylabel("Intensity [kcps]")
-    plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
-    plt.pause(0.1)
+simulate = False
+if simulate:
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
+    )
+    job = qmm.simulate(config, T1, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
+    # execute QUA program
+    job = qm.execute(T1)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        # Fetch results
+        counts1, counts2, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.cla()
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
+        plt.xlabel("Tau [ns]")
+        plt.ylabel("Intensity [kcps]")
+        plt.legend(("counts 1", "counts 2"))
+        plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
+        plt.pause(0.1)
+
+        b_cont = results.is_processing()
+        b_last = not (b_cont or b_last)

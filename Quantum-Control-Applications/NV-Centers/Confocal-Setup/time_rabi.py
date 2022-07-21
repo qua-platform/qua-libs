@@ -3,6 +3,7 @@ A Rabi experiment sweeping the duration of the MW pulse.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 
@@ -46,30 +47,38 @@ with program() as time_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
-# execute QUA program
-job = qm.execute(time_rabi)
-# Get results from QUA program
-results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
-# Live plotting
-fig = plt.figure(figsize=(8, 11))
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-b_cont = results.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    # Fetch results
-    counts, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.cla()
-    plt.plot(4 * t_vec, counts / 1000 / (meas_len / u.s))
-    plt.xlabel("Tau [ns]")
-    plt.ylabel("Intensity [kcps]")
-    plt.title("Time Rabi")
-    plt.pause(0.1)
+simulate = True
+if simulate:
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
+    )
+    job = qmm.simulate(config, time_rabi, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
+    # execute QUA program
+    job = qm.execute(time_rabi)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        # Fetch results
+        counts, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.cla()
+        plt.plot(4 * t_vec, counts / 1000 / (meas_len / u.s))
+        plt.xlabel("Tau [ns]")
+        plt.ylabel("Intensity [kcps]")
+        plt.title("Time Rabi")
+        plt.pause(0.1)
+
+        b_cont = results.is_processing()
+        b_last = not (b_cont or b_last)

@@ -15,6 +15,8 @@ not saturated and defining the threshold for time tagging
 5. [CW ODMR](cw_odmr.py) - Counts photons while sweeping the frequency of the applied MW
 6. [Calibrate Delays](calibrate_delays.py) - Plays a MW pulse during a laser pulse, while performing time tagging 
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
+    * [Calibrate Delays Python Histogram](calibrate_delays_python_histogram.py) - This version process the data in 
+Python, which makes it slower but works better when the counts are high.
 7. [Time Rabi](time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse
 8. [Power Rabi](power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse
 9. [Ramsey](ramsey.py) - Measures T2*

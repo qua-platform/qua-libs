@@ -6,6 +6,7 @@ calibrate_delays_python_histogram.py if high resolution is needed.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 
@@ -56,30 +57,38 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
+simulate = True
+if simulate:
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
+    )
+    job = qmm.simulate(config, calib_delays, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
 
-job = qm.execute(calib_delays)
-# Get results from QUA program
-results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
-# Live plotting
-fig = plt.figure(figsize=(8, 11))
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-b_cont = results.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    # Fetch results
-    times_hist, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.cla()
-    plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
-    plt.xlabel("t [ns]")
-    plt.ylabel(f"counts [kcps / {resolution}ns]")
-    plt.title("Delays")
-    plt.pause(0.1)
+    job = qm.execute(calib_delays)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        # Fetch results
+        times_hist, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.cla()
+        plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
+        plt.xlabel("t [ns]")
+        plt.ylabel(f"counts [kcps / {resolution}ns]")
+        plt.title("Delays")
+        plt.pause(0.1)
+
+        b_cont = results.is_processing()
+        b_last = not (b_cont or b_last)

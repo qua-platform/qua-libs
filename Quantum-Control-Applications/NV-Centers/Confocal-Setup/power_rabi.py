@@ -3,6 +3,7 @@ power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
@@ -28,8 +29,6 @@ with program() as power_rabi:
     play("laser_ON", "AOM")
     wait(100, "AOM")
     with for_(n, 0, n < n_avg, n + 1):
-        # Notice it's + da/2 to include a_max (This is only for fixed!)
-        # with for_(a, a_min, a < a_max + da / 2, a + da):
         with for_(*from_array(a, a_vec)):
             play("pi" * amp(a), "NV")  # pulse of varied amplitude
             align()
@@ -49,30 +48,38 @@ with program() as power_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
-# execute QUA program
-job = qm.execute(power_rabi)
-# Get results from QUA program
-results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
-# Live plotting
-fig = plt.figure(figsize=(8, 11))
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-b_cont = results.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    # Fetch results
-    counts, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.cla()
-    plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len * 1e-9))
-    plt.xlabel("Amplitude [volts]")
-    plt.ylabel("Intensity [kcps]")
-    plt.title("Power Rabi")
-    plt.pause(0.1)
+simulate = True
+if simulate:
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
+    )
+    job = qmm.simulate(config, power_rabi, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
+    # execute QUA program
+    job = qm.execute(power_rabi)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        # Fetch results
+        counts, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.cla()
+        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len * 1e-9))
+        plt.xlabel("Amplitude [volts]")
+        plt.ylabel("Intensity [kcps]")
+        plt.title("Power Rabi")
+        plt.pause(0.1)
+
+        b_cont = results.is_processing()
+        b_last = not (b_cont or b_last)

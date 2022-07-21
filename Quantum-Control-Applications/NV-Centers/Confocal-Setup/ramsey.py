@@ -3,6 +3,7 @@ ramsey.py: Measures T2*.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig, LoopbackInterface
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
@@ -70,30 +71,39 @@ with program() as ramsey:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
-# execute QUA program
-job = qm.execute(ramsey)
-# Get results from QUA program
-results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
-# Live plotting
-fig = plt.figure(figsize=(8, 11))
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
-b_cont = results.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    # Fetch results
-    counts1, counts2, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.cla()
-    plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
-    plt.xlabel("Tau [ns]")
-    plt.ylabel("Intensity [kcps]")
-    plt.title("Ramsey")
-    plt.pause(0.1)
+simulate = True
+if simulate:
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
+    )
+    job = qmm.simulate(config, ramsey, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
+    # execute QUA program
+    job = qm.execute(ramsey)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure(figsize=(8, 11))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        # Fetch results
+        counts1, counts2, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.cla()
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
+        plt.xlabel("Dephasing time [ns]")
+        plt.ylabel("Intensity [kcps]")
+        plt.legend(("counts 1", "counts 2"))
+        plt.title("Ramsey")
+        plt.pause(0.1)
+
+        b_cont = results.is_processing()
+        b_last = not (b_cont or b_last)

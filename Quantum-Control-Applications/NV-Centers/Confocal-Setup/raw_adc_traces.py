@@ -24,10 +24,8 @@ with program() as TimeTagging_calibration:
     with stream_processing():
         # Will save average:
         adc_st.input1().average().save("adc1")
-        adc_st.input2().average().save("adc2")
         # Will save only last run:
         adc_st.input1().save("adc1_single_run")
-        adc_st.input2().save("adc2_single_run")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -43,15 +41,12 @@ res_handles = job.result_handles
 res_handles.wait_for_all_values()
 # Fetch results and convert traces to volts
 adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
 adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
 # Plot data
 plt.figure()
 plt.subplot(121)
 plt.title("Single run")
 plt.plot(adc1_single_run, label="Input 1")
-plt.plot(adc2_single_run, label="Input 2")
 plt.xlabel("Time [ns]")
 plt.ylabel("Signal amplitude [V]")
 plt.legend()
@@ -59,9 +54,8 @@ plt.legend()
 plt.subplot(122)
 plt.title("Averaged run")
 plt.plot(adc1, label="Input 1")
-plt.plot(adc2, label="Input 2")
 plt.xlabel("Time [ns]")
 plt.legend()
 plt.tight_layout()
 
-print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+print(f"\nInput1 mean: {np.mean(adc1)} V")

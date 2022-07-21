@@ -12,7 +12,7 @@ from configuration import *
 ###################
 
 total_integration_time = int(100 * u.ms)  # 100ms
-single_integration_time_ns = int(500 * u.mus)  # 500us
+single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 n_count = int(total_integration_time / single_integration_time_ns)
 
