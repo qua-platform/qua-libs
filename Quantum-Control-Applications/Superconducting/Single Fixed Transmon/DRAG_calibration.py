@@ -79,7 +79,7 @@ with program() as drag:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles
@@ -91,14 +91,14 @@ else:
 
     job = qm.execute(drag)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I1", "I2", "Q1", "Q2", "state1", "state2", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["state1", "state2", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure(figsize=(8, 11))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        _, _, _, _, state1, state2, iteration = results.fetch_all()
+        state1, state2, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg)
         # Plot results
@@ -111,7 +111,7 @@ else:
 
     plt.cla()
     # Fetch results
-    _, _, _, _, state1, state2, iteration = results.fetch_all()
+    state1, state2, iteration = results.fetch_all()
     # Plot results
     plt.cla()
     plt.plot(amps * drag_coef, state1, label="x180y90")
