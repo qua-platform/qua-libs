@@ -5,16 +5,13 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
-from macros import ge_singleshot_measurement
-import matplotlib.pyplot as plt
+from macros import singleshot_measurement, reset_qubit
 from qualang_tools.analysis import two_state_discriminator
 
 ##############################
 # Program-specific variables #
 ##############################
-threshold = ge_threshold  # Threshold for active feedback
 n_shot = 10000  # Number of acquired shots
-max_count = 100  # Maximum number of tries for active reset (no feedback if set to 0)
 cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 ###################
@@ -29,9 +26,18 @@ with program() as IQ_blob:
     Qe_st = declare_stream()
 
     with for_(n, 0, n < n_shot, n + 1):
-        # Measure the g and e states
-        I_g, Q_g, I_e, Q_e = ge_singleshot_measurement(cooldown_time)
-
+        # Reset qubit state
+        reset_qubit("cooldown_time", cooldown_time=cooldown_time)
+        # Measure the ground state
+        align("qubit", "resonator")
+        I_g, Q_g = singleshot_measurement()
+        # Reset qubit state
+        reset_qubit("cooldown_time", cooldown_time=cooldown_time)
+        # Excited state measurement
+        align("qubit", "resonator")
+        play("pi", "qubit")
+        # Measure the excited state
+        I_e, Q_e = singleshot_measurement()
         # Save data to the stream processing
         save(I_g, Ig_st)
         save(Q_g, Qg_st)
@@ -66,3 +72,4 @@ else:
     I_e, Q_e, I_g, Q_g = results.fetch_all()
     # Plot data
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
+    # If the readout fidelity is satisfactory enough, then the angle and threshold can be updated in the config file.
