@@ -127,7 +127,13 @@ else:
     Q = np.array(Q)
 
     plt.figure()
-    plt.plot(I)
-    plt.plot(Q)
-
-    plt.xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=90)
+    ax1 = plt.subplot(211)
+    ax1.plot(I)
+    ax1.set_ylabel("I quadrature [a.u.]")
+    ax1.set_xticklabels("")
+    ax2 = plt.subplot(212)
+    ax2.plot(Q)
+    ax2.set_ylabel("Q quadrature [a.u.]")
+    ax2.set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
+    plt.suptitle("All XY")
+    plt.tight_layout()
