@@ -21,7 +21,7 @@ def reset_qubit(method, **kwargs):
 
     If method is 'active', then 3 parameters are available as listed below.
 
-    **Example**: reset_qubit('active', threshold=-0.003, max_tries=1)
+    **Example**: reset_qubit('active', threshold=-0.003, max_tries=3)
 
     :param method: Method the reset the qubit state. Can be either 'cooldown' or 'active'.
     :type method: str
@@ -51,8 +51,6 @@ def reset_qubit(method, **kwargs):
             raise Exception("'max_tries' must be an integer > 0.")
         # Check Ig
         Ig = kwargs.get("Ig", None)
-        if Ig is None:
-            raise Exception("'threshold' must be specified for active reset.")
         # Reset qubit state
         return active_reset(threshold, max_tries=max_tries, Ig=Ig)
 
@@ -71,7 +69,7 @@ def active_reset(threshold, max_tries=1, Ig=None):
         Ig = declare(fixed)
     if (max_tries < 1) or (not float(max_tries).is_integer()):
         raise Exception("max_count must be an integer >= 1.")
-    # Initialize Ig to be < threshold
+    # Initialize Ig to be > threshold
     assign(Ig, threshold + 2**-28)
     # Number of tries for active reset
     counter = declare(int)
