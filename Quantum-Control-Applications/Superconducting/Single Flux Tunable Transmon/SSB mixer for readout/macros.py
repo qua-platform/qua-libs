@@ -95,7 +95,7 @@ def active_reset(threshold, max_tries=1, Ig=None):
 
 
 # Macro for measuring the qubit state with single shot
-def singleshot_measurement(threshold=None, state=None, I=None, Q=None):
+def single_measurement(threshold=None, state=None, I=None, Q=None):
     """
     A macro for performing the singleshot readout, with the ability to perform state discrimination.
     If `threshold` is given, the information in the `I` quadrature will be compared against the threshold and `state`

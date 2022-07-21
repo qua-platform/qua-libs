@@ -5,7 +5,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
-from macros import singleshot_measurement, active_reset, reset_qubit
+from macros import single_measurement, active_reset, reset_qubit
 import matplotlib.pyplot as plt
 
 ##############################
@@ -32,7 +32,7 @@ with program() as active_reset_prog:
         I_g, total_tries = active_reset(threshold=threshold, max_tries=max_tries, Ig=None)
         # I_g, total_tries = reset_qubit(method='active', threshold=threshold, max_tries=max_tries, Ig=I_g)
         # Check active feedback by measuring again
-        ground, I_g, Q_g = singleshot_measurement(threshold=threshold, state=None, I=I_g, Q=None)
+        ground, I_g, Q_g = single_measurement(threshold=threshold, state=None, I=I_g, Q=None)
         # Save data to the stream processing
         save(I_g, Ig_st)
         save(Q_g, Qg_st)
