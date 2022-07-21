@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from macros import readout_macro
+from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
@@ -42,8 +43,7 @@ with program() as drag:
     state2_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        # Notice it's + da/2 to include a_max (This is only for fixed!)
-        with for_(a, a_min, a < a_max + da / 2, a + da):
+        with for_(*from_array(a, amps)):
             play("x180" * amp(1, 0, 0, a), "qubit")
             play("y90" * amp(a, 0, 0, 1), "qubit")
             align("qubit", "resonator")

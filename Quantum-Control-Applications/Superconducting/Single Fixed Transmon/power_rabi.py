@@ -33,8 +33,6 @@ with program() as power_rabi:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        # Notice it's + da/2 to include a_max (This is only for fixed!)
-        # with for_(a, a_min, a < a_max + da / 2, a + da):
         with for_(*from_array(a, amps)):
             play("gauss" * amp(a), "qubit", duration=x180_len // 4)
             align("qubit", "resonator")

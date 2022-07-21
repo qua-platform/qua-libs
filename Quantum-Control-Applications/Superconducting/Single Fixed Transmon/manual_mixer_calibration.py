@@ -10,7 +10,7 @@ from configuration import *
 ###################
 with program() as cw_output:
     with infinite_loop_():
-        play("cw" * amp(0), "qubit")
+        play("cw" * amp(0), "qubit") # It is best to calibrate LO leakage first and without any power played (cf. note below)
 
 #####################################
 #  Open Communication with the QOP  #
@@ -37,5 +37,5 @@ job = qm.execute(cw_output)
 # qm.set_mixer_correction('mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance(0.015, 0.01))
 
 # Note that the LO leakage (DC Offset) depends on the I & Q powers, it is advised to run this step with no input power.
-# This will ensure that there is no LO leakage while the pulses are not played.
+# This will ensure that there is no LO leakage while the pulses are not played in the case where the is no switch.
 # This can be achieved by changing the line above to `play("cw" * amp(0), "qubit")`
