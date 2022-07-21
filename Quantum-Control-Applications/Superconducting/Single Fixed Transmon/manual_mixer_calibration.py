@@ -10,7 +10,8 @@ from configuration import *
 ###################
 with program() as cw_output:
     with infinite_loop_():
-        play("cw" * amp(0), "qubit") # It is best to calibrate LO leakage first and without any power played (cf. note below)
+        # It is best to calibrate LO leakage first and without any power played (cf. note below)
+        play("cw" * amp(0), "qubit")
 
 #####################################
 #  Open Communication with the QOP  #
