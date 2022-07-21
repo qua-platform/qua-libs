@@ -8,6 +8,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qualang_tools.loops import from_array
 
 ##############################
 # Program-specific variables #
@@ -17,7 +18,7 @@ n_avg = 200  # Number of averaging loops
 cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 
 # Frequency sweep in Hz (Needs to be a list of int)
-freq_span = 20e6
+freq_span = 20 * u.MHz
 n_freq = 41
 freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
 
@@ -37,12 +38,13 @@ with program() as rabi_amp_freq:
     a = declare(fixed)  # Pulse amplitude
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_each_(a, a_array.tolist()):
-            with for_each_(f, freq_array.tolist()):
+        with for_(*from_array(a, a_array)):
+            with for_(*from_array(f, freq_array)):
                 # Update the resonator frequency
                 update_frequency("qubit", f)
                 # Adjust the pulse amplitude
@@ -61,10 +63,12 @@ with program() as rabi_amp_freq:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(n_a, n_freq).average().save("I")
-        Q_st.buffer(n_a, n_freq).average().save("Q")
+        I_st.buffer(n_freq).buffer(n_a).average().save("I")
+        Q_st.buffer(n_freq).buffer(n_a).average().save("Q")
+        n_st.save("iteration")
 
 
 #####################################
@@ -82,31 +86,48 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(rabi_amp_freq)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(7, 5))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot results
         plt.subplot(211)
         plt.cla()
-        plt.title("resonator spectroscopy power")
-        plt.pcolor((freq_array - qubit_IF) / 1e6, a_array * pi_amp, np.sqrt(I**2 + Q**2))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [a.u.]")
+        plt.title("Resonator spectroscopy amplitude")
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, np.sqrt(I**2 + Q**2))
+        plt.xlabel("Freq [MHz]")
+        plt.ylabel("Flux amplitude [a.u.]")
         plt.subplot(212)
         plt.cla()
-        plt.title("resonator spectroscopy phase")
-        plt.pcolor((freq_array - qubit_IF) / 1e6, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [a.u.]")
-        plt.show()
+        plt.title("Resonator spectroscopy phase")
+        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.xlabel("Freq [MHz]")
+        plt.ylabel("Pulse amplitude [a.u.]")
+        plt.tight_layout()
         plt.pause(0.01)
+
+    # Fetch results
+    I, Q, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    # Plot results
+    plt.subplot(211)
+    plt.cla()
+    plt.title("Resonator spectroscopy amplitude")
+    plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, np.sqrt(I**2 + Q**2))
+    plt.xlabel("Freq [MHz]")
+    plt.ylabel("Pulse amplitude [a.u.]")
+    plt.subplot(212)
+    plt.cla()
+    plt.title("Resonator spectroscopy phase")
+    plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+    plt.xlabel("Freq [MHz]")
+    plt.ylabel("Pulse amplitude [a.u.]")
+    plt.tight_layout()
+    plt.pause(0.01)

@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
+from qualang_tools.units import unit
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import progress_counter, fetching_tool
 
 
 #######################
@@ -22,32 +25,23 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-# Live plotting
-def interrupt_on_close(figure, current_job):
-    def on_close(event):
-        print("Execution stopped by user!")
-        current_job.halt()
-        event.canvas.stop_event_loop()
-
-    figure.canvas.mpl_connect("close_event", on_close)
-
-
 #############
 # VARIABLES #
 #############
+u = unit()
 
 qop_ip = "127.0.0.1"
 
 # Qubits
-qubit_LO = 7.4e9  # Used only for mixer correction and frequency rescaling for plots or computation
-qubit_IF = 110e6
+qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_IF = 110 * u.MHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
-qubit_T1 = int(10e3)
+qubit_T1 = int(10 * u.us)
 
 const_len = 100
-const_amp = 50e-3
+const_amp = 50 * u.mV
 
 pi_len = 100
 pi_amp = 0.05
@@ -94,8 +88,8 @@ y270_wf, y270_der_wf = np.array(drag_gaussian_pulse_waveforms(y270_amp, y270_len
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
-resonator_LO = 4.8e9  # Used only for mixer correction and frequency rescaling for plots or computation
-resonator_IF = 60e6
+resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
@@ -110,6 +104,8 @@ const_flux_amp = 0.45
 
 # IQ Plane Angle
 rotation_angle = (0 / 180) * np.pi
+# Threshold for single shot g-e discrimination
+ge_threshold = 0.0
 
 config = {
     "version": 1,

@@ -28,6 +28,7 @@ with program() as rabi_amp_freq:
     phase = declare(fixed)  # Sweeping phase
     I = declare(fixed)
     Q = declare(fixed)
+    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
 
@@ -45,7 +46,7 @@ with program() as rabi_amp_freq:
             align("qubit", "resonator")
             # Measure the resonator
             measure(
-                "short_readout",
+                "readout",
                 "resonator",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
@@ -56,6 +57,7 @@ with program() as rabi_amp_freq:
             # Save data to the stream processing
             save(I, I_st)
             save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(n_phases).average().save("I")
@@ -64,6 +66,7 @@ with program() as rabi_amp_freq:
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")
         Qe_st.average().save("Qe")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -80,33 +83,17 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(rabi_amp_freq)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-    Ie_handles = res_handles.get("Ie")
-    Qe_handles = res_handles.get("Qe")
-    Ie_handles.wait_for_values(1)
-    Qe_handles.wait_for_values(1)
-    Ig_handles = res_handles.get("Ig")
-    Qg_handles = res_handles.get("Qg")
-    Ig_handles.wait_for_values(1)
-    Qg_handles.wait_for_values(1)
-
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(8, 12))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = phase_array * 2 * np.pi
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-        Ie = Ie_handles.fetch_all()
-        Qe = Qe_handles.fetch_all()
-        Ig = Ig_handles.fetch_all()
-        Qg = Qg_handles.fetch_all()
-
+    while results.is_processing():
+        # Fetch results
+        I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
         phase_e = np.angle(Ie + 1j * Qe)
@@ -119,16 +106,45 @@ else:
         plt.subplot(311)
         plt.cla()
         plt.plot(xplot, np.sqrt(I**2 + Q**2))
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Readout amplitude")
         plt.subplot(312)
         plt.cla()
         plt.plot(xplot, phase)
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Readout phase [rad]")
         plt.subplot(313)
         plt.cla()
         plt.plot(xplot, pop)
-        plt.xlabel("2nd pi/2 hhase-shift [rad]")
+        plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
         plt.ylabel("Population")
+        plt.tight_layout()
         plt.pause(0.1)
+
+    # Fetch results
+    I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    # Phase of ground and excited states
+    phase_g = np.angle(Ig + 1j * Qg)
+    phase_e = np.angle(Ie + 1j * Qe)
+    # Qubit phase
+    phase = np.unwrap(np.angle(I + 1j * Q))
+    # Population in excited state
+    pop = (phase - phase_g) / (phase_e - phase_g)
+    plt.subplot(311)
+    plt.cla()
+    plt.plot(xplot, np.sqrt(I**2 + Q**2))
+    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
+    plt.ylabel("Readout amplitude")
+    plt.subplot(312)
+    plt.cla()
+    plt.plot(xplot, phase)
+    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
+    plt.ylabel("Readout phase [rad]")
+    plt.subplot(313)
+    plt.cla()
+    plt.plot(xplot, pop)
+    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
+    plt.ylabel("Population")
+    plt.tight_layout()

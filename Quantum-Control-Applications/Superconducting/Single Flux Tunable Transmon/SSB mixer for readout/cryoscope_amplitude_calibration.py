@@ -9,6 +9,7 @@ from configuration import *
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
 import numpy as np
+from qualang_tools.loops import from_array
 
 
 ###################
@@ -34,7 +35,7 @@ with program() as cryoscope_amp:
     Ig_st, Qg_st, Ie_st, Qe_st = ge_averaged_measurement(cooldown_time, n_avg)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_each_(flux_amp, flux_amp_array.tolist()):
+        with for_(*from_array(flux_amp, flux_amp_array)):
             with for_each_(flag, [True, False]):
                 wait(int(const_len / 4 * 2 + const_flux_len / 4), "resonator")
                 # Play first X/2
@@ -62,8 +63,8 @@ with program() as cryoscope_amp:
                 save(Q, Q_st)
 
     with stream_processing():
-        I_st.buffer(n_flux_amp, 2).average().save("I")
-        Q_st.buffer(n_flux_amp, 2).average().save("Q")
+        I_st.buffer(2).buffer(n_flux_amp).average().save("I")
+        Q_st.buffer(2).buffer(n_flux_amp).average().save("Q")
         Ig_st.average().save("Ig")
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")
@@ -84,33 +85,16 @@ if simulation:
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(cryoscope_amp)
-    res_handles = job.result_handles
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-    Ie_handles = res_handles.get("Ie")
-    Qe_handles = res_handles.get("Qe")
-    Ie_handles.wait_for_values(1)
-    Qe_handles.wait_for_values(1)
-    Ig_handles = res_handles.get("Ig")
-    Qg_handles = res_handles.get("Qg")
-    Ig_handles.wait_for_values(1)
-    Qg_handles.wait_for_values(1)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
 
     # Live plotting
-
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(9, 5))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
-    while res_handles.is_processing():
-
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
-        Ie = Ie_handles.fetch_all()
-        Qe = Qe_handles.fetch_all()
-        Ig = Ig_handles.fetch_all()
-        Qg = Qg_handles.fetch_all()
+    while results.is_processing():
+        # Fetch results
+        I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
 
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
@@ -158,4 +142,49 @@ else:
         plt.xlabel("Flux pulse amplitude [V]")
         plt.ylabel("Averaged detuning [Hz]")
         plt.legend(("data", "Fit"), loc="upper right")
+        plt.tight_layout()
         plt.pause(0.1)
+
+    # Fetch results
+    I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
+    # Phase of ground and excited states
+    phase_g = np.angle(Ig + 1j * Qg)
+    phase_e = np.angle(Ie + 1j * Qe)
+    # Phase of cryoscope measurement
+    phase = np.unwrap(np.angle(I + 1j * Q))
+    # Population in excited state
+    pop = (phase - phase_g) / (phase_e - phase_g)
+    # Bloch vector Sx + iSy
+    qubit_state = (pop[:, 0] * 2 - 1) + 1j * (pop[:, 1] * 2 - 1)
+    # Accumulated phase: angle between Sx and Sy
+    qubit_phase = np.unwrap(np.angle(qubit_state))
+    # qubit_phase = qubit_phase - qubit_phase[-1]
+    detuning = qubit_phase / (2 * np.pi * const_flux_len) * 1000
+    # Qubit coherence: |Sx+iSy|
+    qubit_coherence = np.abs(qubit_state)
+    # Quadratic fit of detuning versus flux pulse amplitude
+    pol = np.polyfit(xplot, qubit_phase, deg=2)
+    # Plot results
+    plt.figure()
+    plt.subplot(221)
+    plt.plot(xplot, np.sqrt(I**2 + Q**2))
+    plt.xlabel("Flux pulse amplitude [V]")
+    plt.ylabel("Readout amplitude [a.u.]")
+    plt.legend(("X", "Y"), loc="lower right")
+    plt.subplot(222)
+    plt.plot(xplot, phase)
+    plt.xlabel("Flux pulse amplitude [V]")
+    plt.ylabel("Readout phase [rad]")
+    plt.legend(("X", "Y"), loc="lower right")
+    plt.subplot(223)
+    plt.plot(xplot, pop)
+    plt.xlabel("Flux pulse amplitude [V]")
+    plt.ylabel("Excited state population")
+    plt.legend(("X", "Y"), loc="lower right")
+    plt.subplot(224)
+    plt.plot(xplot, detuning, "bo")
+    plt.plot(xplot, np.polyval(pol, xplot), "r-")
+    plt.xlabel("Flux pulse amplitude [V]")
+    plt.ylabel("Averaged detuning [Hz]")
+    plt.legend(("data", "Fit"), loc="upper right")
+    plt.tight_layout()

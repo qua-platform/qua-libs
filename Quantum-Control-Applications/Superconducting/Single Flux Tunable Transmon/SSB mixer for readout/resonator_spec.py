@@ -8,20 +8,21 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qualang_tools.loops import from_array
 
 ##############################
 # Program-specific variables #
 ##############################
 
-n_avg = 30  # Number of averaging loops
+n_avg = 3000  # Number of averaging loops
 
-cooldown_time = 2000 // 4  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = 4000 // 4  # Flux settle time in clock cycles (4ns)
+cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+flux_settle_time = 4 * u.us // 4  # Flux settle time in clock cycles (4ns)
 
 # Frequency sweep in Hz
-f_min = 55e6
-f_max = 65e6
-df = 0.05e6
+f_min = 55 * u.MHz
+f_max = 65 * u.MHz
+df = 50 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
 # Flux amplitude sweep (as a prefactor of the flux amplitude)
 a_min = -1
@@ -40,6 +41,7 @@ with program() as resonator_spec_1D:
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
@@ -61,10 +63,12 @@ with program() as resonator_spec_1D:
             # Save data to the stream processing
             save(I, I_st)
             save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(len(freqs)).average().save("I")
         Q_st.buffer(len(freqs)).average().save("Q")
+        n_st.save("iteration")
 
 with program() as resonator_spec_2D:
     n = declare(int)  # Averaging index
@@ -74,10 +78,11 @@ with program() as resonator_spec_2D:
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
-            with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+            with for_(*from_array(f, freqs)):
                 # Update the resonator frequency
                 update_frequency("resonator", f)
                 # Adjust the flux line
@@ -96,10 +101,12 @@ with program() as resonator_spec_2D:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(flux), len(freqs)).average().save("I")
-        Q_st.buffer(len(flux), len(freqs)).average().save("Q")
+        I_st.buffer(len(freqs)).buffer(len(flux)).average().save("I")
+        Q_st.buffer(len(freqs)).buffer(len(flux)).average().save("Q")
+        n_st.save("iteration")
 
 
 #####################################
@@ -116,46 +123,90 @@ if simulation:
     job.get_simulated_samples().con1.plot()
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(resonator_spec_2D)
-    res_handles = job.result_handles
-
-    I_handles = res_handles.get("I")
-    Q_handles = res_handles.get("Q")
-    I_handles.wait_for_values(1)
-    Q_handles.wait_for_values(1)
-
+    job = qm.execute(resonator_spec_1D)
+    # Get results from QUA program
+    # res_handles = job.result_handles
+    # I_handles = res_handles.get("I")
+    # Q_handles = res_handles.get("Q")
+    # iteration_handles = res_handles.get("iteration")
+    # I_handles.wait_for_values(1)
+    # Q_handles.wait_for_values(1)
+    # iteration_handles.wait_for_values(1)
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(8, 11))
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while res_handles.is_processing():
-        I = I_handles.fetch_all()
-        Q = Q_handles.fetch_all()
+    while job.result_handles.is_processing():
+        # Fetch results
+        # I = I_handles.fetch_all()
+        # Q = Q_handles.fetch_all()
+        # iteration = iteration_handles.fetch_all()
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg)
         # 1D spectroscopy plot
         if len(I.shape) == 1:
             plt.subplot(211)
             plt.cla()
             plt.title("resonator spectroscopy amplitude")
-            plt.plot(freqs / 1e6, np.sqrt(I**2 + Q**2), ".")
+            plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
             plt.xlabel("freq [MHz]")
             plt.subplot(212)
             plt.cla()
             # detrend removes the linear increase of phase
             phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
             plt.title("resonator spectroscopy phase")
-            plt.plot(freqs / 1e6, phase, ".")
+            plt.plot(freqs / u.MHz, phase, ".")
             plt.xlabel("freq [MHz]")
+            plt.pause(0.1)
+            plt.tight_layout()
         # 2D spectroscopy plot
         elif len(I.shape) == 2:
             plt.subplot(211)
             plt.cla()
             plt.title("resonator spectroscopy amplitude")
-            plt.pcolor(freqs / 1e6, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
+            plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
             plt.xlabel("freq [MHz]")
             plt.ylabel("flux amplitude [V]")
             plt.subplot(212)
             plt.cla()
             plt.title("resonator spectroscopy phase")
-            plt.pcolor(freqs / 1e6, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+            plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
             plt.xlabel("freq [MHz]")
             plt.ylabel("flux amplitude [V]")
             plt.pause(0.1)
+            plt.tight_layout()
+
+    # Fetch results
+    I, Q, iteration = results.fetch_all()
+    # Convert I & Q to Volts
+    I = u.demod2volts(I, readout_len)
+    Q = u.demod2volts(Q, readout_len)
+    # 1D spectroscopy plot
+    plt.clf()
+    if len(I.shape) == 1:
+        plt.subplot(211)
+        plt.title("resonator spectroscopy amplitude [V]")
+        plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
+        plt.xlabel("freq [MHz]")
+        plt.subplot(212)
+        # detrend removes the linear increase of phase
+        phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+        plt.title("resonator spectroscopy phase [rad]")
+        plt.plot(freqs / u.MHz, phase, ".")
+        plt.xlabel("freq [MHz]")
+        plt.tight_layout()
+    # 2D spectroscopy plot
+    elif len(I.shape) == 2:
+        plt.subplot(211)
+        plt.title("resonator spectroscopy amplitude")
+        plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
+        plt.xlabel("freq [MHz]")
+        plt.ylabel("flux amplitude [V]")
+        plt.subplot(212)
+        plt.title("resonator spectroscopy phase")
+        plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.xlabel("freq [MHz]")
+        plt.ylabel("flux amplitude [V]")
+        plt.pause(0.1)
+        plt.tight_layout()
