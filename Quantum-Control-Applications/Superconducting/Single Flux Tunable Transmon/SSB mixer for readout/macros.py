@@ -37,7 +37,7 @@ def active_reset_single(threshold=None, Ig=None):
 
 
 # Macro for performing active reset until succesfull for a gicen number of tries.
-def active_reset_until_success(threshold=None, max_tries=1, Ig=None):
+def active_reset_until_success(threshold, max_tries=1, Ig=None):
     """Macro for performing active reset until succesfull for a gicen number of tries.
 
     :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.
@@ -48,9 +48,7 @@ def active_reset_until_success(threshold=None, max_tries=1, Ig=None):
     """
     if Ig is None:
         Ig = declare(fixed)
-    if threshold is None:
-        raise Exception("A threshold needs to be specified to perform active reset.")
-    elif threshold > 0:
+    if threshold > 0:
         assign(Ig, threshold / 10)
     elif threshold < 0:
         assign(Ig, 2 * threshold)

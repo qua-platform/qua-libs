@@ -21,7 +21,7 @@ cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 # The QUA program #
 ###################
 
-with program() as singleshot:
+with program() as IQ_blob:
     n = declare(int)  # Averaging index
     Ig_st = declare_stream()
     Qg_st = declare_stream()
@@ -55,11 +55,11 @@ if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
     )
-    job = qmm.simulate(config, singleshot, simulation_config)
+    job = qmm.simulate(config, IQ_blob, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(singleshot)
+    job = qm.execute(IQ_blob)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["Ie", "Qe", "Ig", "Qg"], mode="wait_for_all")
     # Fetch results
