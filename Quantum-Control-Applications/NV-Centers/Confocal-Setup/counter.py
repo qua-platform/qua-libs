@@ -56,7 +56,7 @@ else:
     time = []
     counts = []
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while res_handles.is_processing():
         new_counts = counts_handle.fetch_all()

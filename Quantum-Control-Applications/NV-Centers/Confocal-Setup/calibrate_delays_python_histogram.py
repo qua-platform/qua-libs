@@ -70,7 +70,7 @@ counts_vec = np.zeros(meas_len, int)
 old_count = 0
 
 # Live plotting
-fig = plt.figure(figsize=(8, 11))
+fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 b_cont = res_handles.is_processing()

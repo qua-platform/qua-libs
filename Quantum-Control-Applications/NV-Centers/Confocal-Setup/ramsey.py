@@ -83,7 +83,7 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = results.is_processing()
