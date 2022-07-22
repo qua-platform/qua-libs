@@ -29,7 +29,6 @@ with program() as cw_odmr:
         with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
             update_frequency("NV", f)  # update frequency
             align()  # align all elements
-            wait(20, "NV", "AOM")  # Used to synchronize AOM and SPCM (from simulation)
             play("cw", "NV", duration=int(long_meas_len // 4))  # play microwave pulse
             play("laser_ON", "AOM", duration=int(long_meas_len // 4))
             measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
