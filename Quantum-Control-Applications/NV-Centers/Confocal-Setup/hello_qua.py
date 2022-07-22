@@ -2,7 +2,7 @@
 hello_qua.py: template for basic qua program demonstration
 """
 import time
-from qm import SimulationConfig
+from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -26,7 +26,9 @@ qmm = QuantumMachinesManager(qop_ip)
 simulate = True
 
 if simulate:
-    simulation_config = SimulationConfig(duration=400)  # in clock cycles
+    simulation_config = SimulationConfig(
+        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])  # in clock cycle
+    )
     job_sim = qmm.simulate(config, hello_QUA, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()

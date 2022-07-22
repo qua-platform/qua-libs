@@ -3,7 +3,7 @@ T1.py: Measures T1. Can measure the decay from either |1> or |0>.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
@@ -73,9 +73,7 @@ qmm = QuantumMachinesManager(qop_ip)
 
 simulate = False
 if simulate:
-    simulation_config = SimulationConfig(
-        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    )
+    simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, T1, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:

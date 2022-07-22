@@ -3,7 +3,7 @@ cw_odmr.py: Counts photons while sweeping the frequency of the applied MW.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 
@@ -47,9 +47,7 @@ qmm = QuantumMachinesManager(qop_ip)
 
 simulate = True
 if simulate:
-    simulation_config = SimulationConfig(
-        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    )
+    simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, cw_odmr, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
