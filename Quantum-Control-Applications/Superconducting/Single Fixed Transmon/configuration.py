@@ -1,8 +1,9 @@
 import numpy as np
-from qm.qua import declare, fixed, measure, dual_demod, assign
 from scipy.signal.windows import gaussian
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
-
+from qualang_tools.units import unit
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import progress_counter, fetching_tool
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -24,45 +25,10 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-# Readout macro
-def readout_macro(threshold=None, state=None, I=None, Q=None):
-    """
-    A macro for performing the readout, with the ability to perform state discrimination.
-    If `threshold` is given, the information in the `I` quadrature will be compared against the threshold and `state`
-    would be `True` if `I > threshold`.
-    Note that it is assumed that the results are rotated such that all the information is in the `I` quadrature.
-
-    :param threshold: Optional. The threshold to compare `I` against.
-    :param state: A QUA variable for the state information, only used when a threshold is given.
-        Should be of type `bool`. If not given, a new variable will be created
-    :param I: A QUA variable for the information in the `I` quadrature. Should be of type `Fixed`. If not given, a new
-        variable will be created
-    :param Q: A QUA variable for the information in the `Q` quadrature. Should be of type `Fixed`. If not given, a new
-        variable will be created
-    :return: Three QUA variables populated with the results of the readout: (`state`, `I`, `Q`)
-    """
-    if I is None:
-        I = declare(fixed)
-    if Q is None:
-        Q = declare(fixed)
-    if threshold is not None and state is None:
-        state = declare(bool)
-    measure(
-        "readout",
-        "resonator",
-        None,
-        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-    )
-    if threshold is not None:
-        assign(state, I > threshold)
-    return state, I, Q
-
-
 #############
 # VARIABLES #
 #############
-
+u = unit()
 qop_ip = "127.0.0.1"
 
 # Qubits
@@ -87,6 +53,11 @@ gauss_len = 20
 gauss_sigma = gauss_len / 5
 gauss_amp = 0.35
 gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
+
+displace_len = 40
+displace_sigma = displace_len / 5
+displace_amp = 0.35
+displace_wf = displace_amp * gaussian(displace_len, displace_sigma)
 
 x180_len = 40
 x180_sigma = x180_len / 5
@@ -218,6 +189,7 @@ config = {
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",
+                "displace": "displace_pulse",
                 "short_readout": "short_readout_pulse",
                 "readout": "readout_pulse",
                 "long_readout": "long_readout_pulse",
@@ -258,6 +230,14 @@ config = {
             "waveforms": {
                 "I": "gauss_wf",
                 "Q": "zero_wf",
+            },
+        },
+        "displace_pulse": {
+            "operation": "control",
+            "length": displace_len,
+            "waveforms": {
+                "I": "displace_wf",
+                "Q": "displace_wf",
             },
         },
         "x90_pulse": {
@@ -364,6 +344,7 @@ config = {
         "const_wf": {"type": "constant", "sample": const_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
+        "displace_wf": {"type": "arbitrary", "samples": displace_wf.tolist()},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},

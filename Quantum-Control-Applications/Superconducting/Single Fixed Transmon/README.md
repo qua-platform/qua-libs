@@ -12,6 +12,8 @@ Use with care.
 is not saturated, correct for DC offsets and define the time of flight
 4. [Resonator Spectroscopy](resonator_spec.py) - Performs a 1D frequency sweep on the resonator
 5. [Qubit Spectroscopy](qubit_spec.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator
+   * [Qubit Spectroscopy Wide Range](qubit_spec_wide_range.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop
+   * [Qubit Spectroscopy Wide Range Inner Loop](qubit_spec_wide_range_inner_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the inner loop
 6. [Time Rabi](time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse
 7. [Power Rabi](power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse
 8. [IQ Blobs](IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
@@ -26,6 +28,7 @@ the DRAG coefficient `$\alpha$` (see [Reed's Thesis](https://rsl.yale.edu/sites/
 14. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity
 15. [State Tomography](state_tomography.py) - A template to perform state tomography
+16. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
 
 ## Use Cases
 

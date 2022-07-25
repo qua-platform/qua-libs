@@ -1,12 +1,13 @@
 """
 A template to perform state tomography
 """
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from macros import readout_macro
 
 ###################
 # The QUA program #
@@ -29,17 +30,17 @@ with program() as state_tomography:
                 with case_(0):  # projection along X
                     play("-x90", "qubit")
                     align("qubit", "resonator")
-                    state = readout_macro(threshold=ge_threshold, state=state)
+                    state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
                     wait(cooldown_time, "qubit", "resonator")
                 with case_(1):  # projection along Y
                     play("x90", "qubit")
                     align("qubit", "resonator")
-                    state = readout_macro(threshold=ge_threshold, state=state)
+                    state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
                     wait(cooldown_time, "qubit")
                 with case_(2):  # projection along Z
-                    state = readout_macro(threshold=ge_threshold, state=state)
+                    state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
                     wait(cooldown_time, "qubit")
         save(n, n_st)
@@ -67,7 +68,6 @@ else:
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
 
-    plt.cla()
     states = res_handles.get("states").fetch_all()
     states = -2 * (states - 0.5)  # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>
 
@@ -78,4 +78,4 @@ else:
 
     # Zero order approximation
     rho = 0.5 * (I + states[0] * sigma_x + states[1] * sigma_y + states[2] * sigma_z)
-    print(f"The density matrix is: {rho}")
+    print(f"The density matrix is:\n{rho}")

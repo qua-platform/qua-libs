@@ -59,61 +59,61 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
             with case_(5):
                 play("x90", "qubit")
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(6):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
             with case_(7):
-                play("x270", "qubit")
-                play("y270", "qubit")
+                play("-x90", "qubit")
+                play("-y90", "qubit")
             with case_(8):
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(9):
                 play("y90", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(10):
-                play("y270", "qubit")
+                play("-y90", "qubit")
                 play("x90", "qubit")
             with case_(11):
-                play("y270", "qubit")
-                play("x270", "qubit")
+                play("-y90", "qubit")
+                play("-x90", "qubit")
             with case_(12):
                 play("x90", "qubit")
             with case_(13):
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(14):
                 play("y90", "qubit")
             with case_(15):
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(16):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(17):
-                play("x270", "qubit")
-                play("y270", "qubit")
+                play("-x90", "qubit")
+                play("-y90", "qubit")
                 play("x90", "qubit")
             with case_(18):
                 play("x180", "qubit")
                 play("y90", "qubit")
             with case_(19):
                 play("x180", "qubit")
-                play("y270", "qubit")
+                play("-y90", "qubit")
             with case_(20):
                 play("y180", "qubit")
                 play("x90", "qubit")
             with case_(21):
                 play("y180", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
             with case_(22):
                 play("x90", "qubit")
                 play("y90", "qubit")
                 play("x90", "qubit")
             with case_(23):
-                play("x270", "qubit")
+                play("-x90", "qubit")
                 play("y90", "qubit")
-                play("x270", "qubit")
+                play("-x90", "qubit")
 
 
 with program() as rb:
@@ -160,60 +160,33 @@ with program() as rb:
     with stream_processing():
         I_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("I")
         Q_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("Q")
+        n_st.save("iteration")
 
 qm = qmm.open_qm(config)
 
 job = qm.execute(rb)
-res_handles = job.result_handles
 
-I_handle = res_handles.get("I")
-Q_handle = res_handles.get("Q")
-iteration_handle = res_handles.get("iteration")
-I_handle.wait_for_values(1)
-Q_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-next_percent = 0.1  # First time print 10%
+# Get results from QUA program
+results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+# Live plotting
+fig = plt.figure()
+interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-
-
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
-
-
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-print("Progress =", end=" ")
-
-while res_handles.is_processing():
+while results.is_processing():
+    # Fetch results
+    I, Q, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg, start_time=results.get_start_time())
+    # Plot results
     plt.cla()
-    I = np.average(I_handle.fetch_all(), axis=0)
-    Q = np.average(Q_handle.fetch_all(), axis=0)
-    iteration = iteration_handle.fetch_all()
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
-
     plt.plot(x, I, ".", label="I")
     plt.plot(x, Q, ".", label="Q")
     plt.xlabel("Number of cliffords")
-
     plt.legend()
     plt.pause(0.1)
 
-plt.cla()
-I = np.average(I_handle.fetch_all(), axis=0)
-Q = np.average(Q_handle.fetch_all(), axis=0)
-iteration = iteration_handle.fetch_all()
-print(f"{round(iteration/n_avg * 100)}%")
-plt.plot(x, I, ".", label="I")
-plt.plot(x, Q, ".", label="Q")
-
-plt.legend()
-
-value = I  # Can change to Q
+value = np.average(I, axis=0)  # Can change to Q
 
 
 def power_law(m, a, b, p):

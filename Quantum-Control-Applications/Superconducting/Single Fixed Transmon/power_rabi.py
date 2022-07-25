@@ -1,5 +1,5 @@
 """
-A Rabi experiment sweeping the amplitude of the MW pulse
+power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,6 +7,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
+from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
@@ -32,8 +33,7 @@ with program() as power_rabi:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        # Notice it's + da/2 to include a_max (This is only for fixed!)
-        with for_(a, a_min, a < a_max + da / 2, a + da):
+        with for_(*from_array(a, amps)):
             play("gauss" * amp(a), "qubit", duration=x180_len // 4)
             align("qubit", "resonator")
             measure(
@@ -69,47 +69,21 @@ else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(power_rabi)
-    res_handles = job.result_handles
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    iteration_handle = res_handles.get("iteration")
-    I_handle.wait_for_values(1)
-    Q_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
-    next_percent = 0.1  # First time print 10%
-
-    def on_close(event):
-        event.canvas.stop_event_loop()
-        job.halt()
-
-    f = plt.figure()
-    f.canvas.mpl_connect("close_event", on_close)
-    print("Progress =", end=" ")
-
-    while res_handles.is_processing():
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plot results
         plt.cla()
-        I = I_handle.fetch_all()
-        Q = Q_handle.fetch_all()
-        iteration = iteration_handle.fetch_all()
-        if iteration / n_avg > next_percent:
-            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-            print(f"{percent}%", end=" ")
-            next_percent = percent / 100 + 0.1  # Print every 10%
-
         plt.plot(amps * gauss_amp, I, ".", label="I")
         plt.plot(amps * gauss_amp, Q, ".", label="Q")
-        plt.xlabel("Pi amp [volts]")
-
+        plt.xlabel("Rabi pulse aplitude [V]")
+        plt.ylabel("I & Q amplitude [a.u.]")
         plt.legend()
         plt.pause(0.1)
-
-    plt.cla()
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    iteration = iteration_handle.fetch_all()
-    print(f"{round(iteration/n_avg * 100)}%")
-    plt.plot(amps * gauss_amp, I, ".", label="I")
-    plt.plot(amps * gauss_amp, Q, ".", label="Q")
-    plt.xlabel("Pi amp [volts]")
-
-    plt.legend()

@@ -1,5 +1,5 @@
 """
-Measures T2
+echo.py: Measures T2
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,6 +7,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
+from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
@@ -30,8 +31,7 @@ with program() as echo:
     tau = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
-        # Notice it's <= to include t_max (This is only for integers!)
-        with for_(tau, tau_min, tau <= tau_max, tau + dtau):
+        with for_(*from_array(tau, taus)):
             play("pi_half", "qubit")
             wait(tau, "qubit")
             play("pi", "qubit")
@@ -75,45 +75,22 @@ else:
 
     qm = qmm.open_qm(config)
     job = qm.execute(echo)
-    res_handles = job.result_handles
-    I_handle = res_handles.get("I")
-    Q_handle = res_handles.get("Q")
-    iteration_handle = res_handles.get("iteration")
-    I_handle.wait_for_values(1)
-    Q_handle.wait_for_values(1)
-    iteration_handle.wait_for_values(1)
-    next_percent = 0.1  # First time print 10%
-
-    def on_close(event):
-        event.canvas.stop_event_loop()
-        job.halt()
-
-    f = plt.figure()
-    f.canvas.mpl_connect("close_event", on_close)
-    print("Progress =", end=" ")
-
-    while res_handles.is_processing():
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plot results
         plt.cla()
-        I = I_handle.fetch_all()
-        Q = Q_handle.fetch_all()
-        iteration = iteration_handle.fetch_all()
-        if iteration / n_avg > next_percent:
-            percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-            print(f"{percent}%", end=" ")
-            next_percent = percent / 100 + 0.1  # Print every 10%
-
         plt.plot(2 * taus, I, ".", label="I")
         plt.plot(2 * taus, Q, ".", label="Q")
-
+        plt.xlabel("Echo time [ns]")
+        plt.ylabel("I & Q amplitude [a.u.]")
+        plt.title("Ramsey with spin echo")
         plt.legend()
         plt.pause(0.1)
-
-    plt.cla()
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    iteration = iteration_handle.fetch_all()
-    print(f"{round(iteration/n_avg * 100)}%")
-    plt.plot(2 * taus, I, ".", label="I")
-    plt.plot(2 * taus, Q, ".", label="Q")
-
-    plt.legend()
