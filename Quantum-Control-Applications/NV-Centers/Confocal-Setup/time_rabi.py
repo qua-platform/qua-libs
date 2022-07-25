@@ -3,6 +3,7 @@ A Rabi experiment sweeping the duration of the MW pulse.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 
@@ -10,9 +11,9 @@ from configuration import *
 # The QUA program #
 ###################
 
-t_min = 4  # in clock cycles units (must be >= 4)
-t_max = 100  # in clock cycles units
-dt = 1  # in clock cycles units
+t_min = 16 // 4  # in clock cycles units (must be >= 4)
+t_max = 400 // 4  # in clock cycles units
+dt = 4 // 4  # in clock cycles units
 t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
 n_avg = 1e6
 
@@ -46,46 +47,30 @@ with program() as time_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-qm = qmm.open_qm(config)
+simulate = True
+if simulate:
+    simulation_config = SimulationConfig(duration=28000)
+    job = qmm.simulate(config, time_rabi, simulation_config)
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
+    # execute QUA program
+    job = qm.execute(time_rabi)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-job = qm.execute(time_rabi)  # execute QUA program
-
-res_handles = job.result_handles  # get access to handles
-counts_handle = res_handles.get("counts")
-iteration_handle = res_handles.get("iteration")
-counts_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-
-
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
-
-
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-next_percent = 0.1  # First time print 10%
-print("Progress =", end=" ")
-
-b_cont = res_handles.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    plt.cla()
-    counts = counts_handle.fetch_all()
-    iteration = iteration_handle.fetch_all() + 1
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
-
-    plt.plot(4 * t_vec, counts / 1000 / (meas_len * 1e-9))
-    plt.xlabel("Tau [ns]")
-    plt.ylabel("Intensity [kcps]")
-    plt.title("Time Rabi")
-    plt.pause(0.1)
-
-    b_cont = res_handles.is_processing()
-    b_last = not (b_cont or b_last)
-
-print("")
+    while results.is_processing():
+        # Fetch results
+        counts, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plot data
+        plt.cla()
+        plt.plot(4 * t_vec, counts / 1000 / (meas_len / u.s))
+        plt.xlabel("Tau [ns]")
+        plt.ylabel("Intensity [kcps]")
+        plt.title("Time Rabi")
+        plt.pause(0.1)

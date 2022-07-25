@@ -69,16 +69,9 @@ iteration_handle.wait_for_values(1)
 counts_vec = np.zeros(meas_len, int)
 old_count = 0
 
-
-def on_close(event):
-    event.canvas.stop_event_loop()
-    job.halt()
-
-
-f = plt.figure()
-f.canvas.mpl_connect("close_event", on_close)
-next_percent = 0.1  # First time print 10%
-print("Progress =", end=" ")
+# Live plotting
+fig = plt.figure()
+interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 b_cont = res_handles.is_processing()
 b_last = not b_cont
@@ -87,10 +80,8 @@ while b_cont or b_last:
     plt.cla()
     new_count = times_handle.count_so_far()
     iteration = iteration_handle.fetch_all() + 1
-    if iteration / n_avg > next_percent:
-        percent = 10 * round(iteration / n_avg * 10)  # Round to nearest 10%
-        print(f"{percent}%", end=" ")
-        next_percent = percent / 100 + 0.1  # Print every 10%
+    # Progress bar
+    progress_counter(iteration, n_avg)
 
     if new_count > old_count:
         times = times_handle.fetch(slice(old_count, new_count))["value"]
@@ -107,5 +98,3 @@ while b_cont or b_last:
 
     b_cont = res_handles.is_processing()
     b_last = not (b_cont or b_last)
-
-print("")
