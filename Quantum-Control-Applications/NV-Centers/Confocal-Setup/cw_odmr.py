@@ -67,10 +67,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-    b_cont = results.is_processing()
-    b_last = not b_cont
-
-    while b_cont or b_last:
+    while results.is_processing():
 
         # counts = counts_handle.fetch_all()
         # iteration = iteration_handle.fetch_all()
@@ -78,7 +75,7 @@ else:
         # Fetch results
         counts, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot((NV_LO_freq * 0 + f_vec) / u.MHz, counts / 1000 / (long_meas_len * 1e-9))
@@ -87,6 +84,3 @@ else:
         plt.title("ODMR")
 
         plt.pause(0.1)
-
-        b_cont = results.is_processing()
-        b_last = not (b_cont or b_last)

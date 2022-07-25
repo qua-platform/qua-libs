@@ -86,14 +86,11 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
-    b_cont = results.is_processing()
-    b_last = not b_cont
-
-    while b_cont or b_last:
+    while results.is_processing():
         # Fetch results
         counts1, counts2, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
@@ -102,6 +99,3 @@ else:
         plt.legend(("counts 1", "counts 2"))
         plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
         plt.pause(0.1)
-
-        b_cont = results.is_processing()
-        b_last = not (b_cont or b_last)
