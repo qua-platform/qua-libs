@@ -72,27 +72,18 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
+        plt.cla()
         plt.plot(amps * gauss_amp, I, ".", label="I")
         plt.plot(amps * gauss_amp, Q, ".", label="Q")
         plt.xlabel("Rabi pulse aplitude [V]")
         plt.ylabel("I & Q amplitude [a.u.]")
-        plt.cla()
         plt.legend()
         plt.pause(0.1)
-
-    # Fetch results
-    I, Q, iteration = results.fetch_all()
-    plt.plot(amps * gauss_amp, I, ".", label="I")
-    plt.plot(amps * gauss_amp, Q, ".", label="Q")
-    plt.xlabel("Rabi pulse aplitude [V]")
-    plt.ylabel("I & Q amplitude [a.u.]")
-    plt.legend()
-    plt.title("Power Rabi")

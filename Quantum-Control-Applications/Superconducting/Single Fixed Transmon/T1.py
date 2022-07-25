@@ -69,34 +69,25 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
-
     qm = qmm.open_qm(config)
 
     job = qm.execute(T1)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
+        plt.cla()
         plt.plot(4 * taus, I, ".", label="I")
         plt.plot(4 * taus, Q, ".", label="Q")
         plt.xlabel("Decay time [ns]")
         plt.ylabel("I & Q amplitude [a.u.]")
-        plt.cla()
+        plt.title("T1 measurement")
         plt.legend()
         plt.pause(0.1)
-
-    # Fetch results
-    I, Q, iteration = results.fetch_all()
-    plt.plot(4 * taus, I, ".", label="I")
-    plt.plot(4 * taus, Q, ".", label="Q")
-    plt.xlabel("Decay time [ns]")
-    plt.ylabel("I & Q amplitude [a.u.]")
-    plt.legend()
-    plt.title("T1 measurement")

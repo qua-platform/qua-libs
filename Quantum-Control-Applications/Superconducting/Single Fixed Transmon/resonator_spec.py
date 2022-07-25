@@ -15,7 +15,7 @@ from qm import SimulationConfig
 
 n_avg = 100
 
-cooldown_time = 10 * u.mus // 4
+cooldown_time = 10 * u.us // 4
 
 f_min = 30e6
 f_max = 70e6
@@ -75,7 +75,7 @@ else:
     I_handles.wait_for_values(1)
     Q_handles.wait_for_values(1)
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while job.result_handles.is_processing():
         # Fetch results
@@ -86,14 +86,16 @@ else:
         plt.cla()
         plt.title("resonator spectroscopy amplitude")
         plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
         plt.subplot(212)
         plt.cla()
         # detrend removes the linear increase of phase
         phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
         plt.title("resonator spectroscopy phase")
         plt.plot(freqs / u.MHz, phase, ".")
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()
 
@@ -108,11 +110,13 @@ else:
     plt.subplot(211)
     plt.title("resonator spectroscopy amplitude [V]")
     plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-    plt.xlabel("freq [MHz]")
+    plt.xlabel("frequency [MHz]")
+    plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
     plt.subplot(212)
     # detrend removes the linear increase of phase
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
     plt.title("resonator spectroscopy phase [rad]")
     plt.plot(freqs / u.MHz, phase, ".")
-    plt.xlabel("freq [MHz]")
+    plt.xlabel("frequency [MHz]")
+    plt.ylabel("Phase [rad]")
     plt.tight_layout()

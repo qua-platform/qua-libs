@@ -83,7 +83,7 @@ else:
     # iteration_handle.wait_for_values(1)
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         plt.cla()
@@ -92,41 +92,21 @@ else:
         # iteration = iteration_handle.fetch_all()
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy amplitude")
         plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
         plt.subplot(212)
         plt.cla()
         # detrend removes the linear increase of phase
         phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
         plt.title("resonator spectroscopy phase")
         plt.plot(freqs / u.MHz, phase, ".")
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()
-
-    plt.cla()
-    # I = I_handle.fetch_all()
-    # Q = Q_handle.fetch_all()
-    # iteration = iteration_handle.fetch_all()
-    I, Q, iteration = results.fetch_all()
-    # Convert I & Q to Volts
-    I = u.demod2volts(I, readout_len)
-    Q = u.demod2volts(Q, readout_len)
-    # 1D spectroscopy plot
-    plt.clf()
-    plt.subplot(211)
-    plt.title("resonator spectroscopy amplitude [V]")
-    plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-    plt.xlabel("freq [MHz]")
-    plt.subplot(212)
-    # detrend removes the linear increase of phase
-    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-    plt.title("resonator spectroscopy phase [rad]")
-    plt.plot(freqs / u.MHz, phase, ".")
-    plt.xlabel("freq [MHz]")
-    plt.tight_layout()

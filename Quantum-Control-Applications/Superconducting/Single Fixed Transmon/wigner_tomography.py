@@ -18,11 +18,11 @@ cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 chi = 10 * u.MHz / u.GHz  # cavity  coupling strength in GHz
 revival_time = int(np.pi / chi) // 4  # Revival time in multiples of 4 ns
 # range to sample alpha
-n_points = 6
+n_points = 20
 alpha = np.linspace(-2, 2, n_points)
 # scale alpha to get the required power amplitude for the pulse
 amp_displace = list(-alpha / np.sqrt(2 * np.pi) / 4)
-n_avg = 10
+n_avg = 100
 
 ###################
 # The QUA program #
@@ -82,7 +82,7 @@ qmm = QuantumMachinesManager(qop_ip)
 
 qm = qmm.open_qm(config)
 
-simulate = False
+simulate = True
 if simulate:
     simulation_config = SimulationConfig(
         duration=int(2e5),  # need to run the simulation for long enough to get all points
@@ -97,37 +97,11 @@ if simulate:
 else:
     job = qm.execute(wigner_tomo)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["ground", "excited", "iteration"], mode="live")
-    # Live plotting
-    fig = plt.figure(figsize=(8, 11))
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
-        # Fetch results
-        ground, excited, iteration = results.fetch_all()
-        # Progress bar
-        progress_counter(iteration, n_avg)
-        # Plot results
-        parity = excited - ground  # derive the parity
-        wigner = 2 / np.pi * parity / n_avg  # derive the average wigner function
-        plt.cla()
-        ax = plt.subplot()
-        pos = ax.imshow(
-            wigner,
-            cmap="Blues",
-            vmin=-2 / np.pi,
-            vmax=2 / np.pi,
-        )
-        fig.colorbar(pos, ax=ax)
-        ax.set_xticks(range(len(alpha)))
-        ax.set_xticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
-        ax.set_yticks(range(len(alpha)))
-        ax.set_yticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
-        ax.set_xlabel("Im(alpha)")
-        ax.set_ylabel("Re(alpha)")
-        ax.set_title("Wigner function")
+    results = fetching_tool(job, data_list=["ground", "excited"], mode="wait_for_all")
     # Fetch results
-    ground, excited, iteration = results.fetch_all()
+    ground, excited = results.fetch_all()
     # Plot results
+    fig = plt.figure()
     parity = excited - ground  # derive the parity
     wigner = 2 / np.pi * parity / n_avg  # derive the average wigner function
     plt.cla()
@@ -140,9 +114,15 @@ else:
     )
     fig.colorbar(pos, ax=ax)
     ax.set_xticks(range(len(alpha)))
-    ax.set_xticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
+    ax.set_xticklabels(
+        f"{alpha[i]:.2f}" if ((i / (len(alpha) / 5)).is_integer() or (i == len(alpha) - 1)) else ""
+        for i in range(len(alpha))
+    )
     ax.set_yticks(range(len(alpha)))
-    ax.set_yticklabels(f"{alpha[i]:.2f}" for i in range(len(alpha)))
+    ax.set_yticklabels(
+        f"{alpha[i]:.2f}" if ((i / (len(alpha) / 5)).is_integer() or (i == len(alpha) - 1)) else ""
+        for i in range(len(alpha))
+    )
     ax.set_xlabel("Im(alpha)")
     ax.set_ylabel("Re(alpha)")
     ax.set_title("Wigner function")
