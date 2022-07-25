@@ -19,7 +19,6 @@ cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 n_phases = 101
 phase_array = np.linspace(-0.5, 0.5, n_phases)
 
-
 ###################
 # The QUA program #
 ###################
@@ -93,7 +92,7 @@ else:
         # Fetch results
         I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
         phase_e = np.angle(Ie + 1j * Qe)
@@ -120,31 +119,3 @@ else:
         plt.ylabel("Population")
         plt.tight_layout()
         plt.pause(0.1)
-
-    # Fetch results
-    I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Phase of ground and excited states
-    phase_g = np.angle(Ig + 1j * Qg)
-    phase_e = np.angle(Ie + 1j * Qe)
-    # Qubit phase
-    phase = np.unwrap(np.angle(I + 1j * Q))
-    # Population in excited state
-    pop = (phase - phase_g) / (phase_e - phase_g)
-    plt.subplot(311)
-    plt.cla()
-    plt.plot(xplot, np.sqrt(I**2 + Q**2))
-    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
-    plt.ylabel("Readout amplitude")
-    plt.subplot(312)
-    plt.cla()
-    plt.plot(xplot, phase)
-    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
-    plt.ylabel("Readout phase [rad]")
-    plt.subplot(313)
-    plt.cla()
-    plt.plot(xplot, pop)
-    plt.xlabel("2nd $\pi/2$ phase-shift [rad]")
-    plt.ylabel("Population")
-    plt.tight_layout()

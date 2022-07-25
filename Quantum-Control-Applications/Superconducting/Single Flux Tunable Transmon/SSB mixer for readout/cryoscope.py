@@ -125,14 +125,14 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(9, 5))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = range(const_flux_len)
     while results.is_processing():
         # Fetch results
         I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
         phase_e = np.angle(Ie + 1j * Qe)
@@ -181,47 +181,3 @@ else:
         plt.legend(("exp", "theory"), loc="upper right")
         plt.tight_layout()
         plt.pause(0.1)
-
-    # Fetch results
-    I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
-    # Phase of ground and excited states
-    phase_g = np.angle(Ig + 1j * Qg)
-    phase_e = np.angle(Ie + 1j * Qe)
-    # Phase of cryoscope measurement
-    phase = np.unwrap(np.angle(I + 1j * Q))
-    # Population in excited state
-    pop = (phase - phase_g) / (phase_e - phase_g)
-    # Bloch vector Sx + iSy
-    qubit_state = (pop[:, 0] * 2 - 1) + 1j * (pop[:, 1] * 2 - 1)
-    # Accumulated phase: angle between Sx and Sy
-    qubit_phase = np.unwrap(np.angle(qubit_state))
-    qubit_phase = qubit_phase - qubit_phase[-1]
-    # Filtering and derivative of the phase to get the averaged frequency
-    d_qubit_phase = scipy.signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
-    # Qubit coherence: |Sx+iSy|
-    qubit_coherence = np.abs(qubit_state)
-
-    # Plots
-    plt.figure()
-    plt.subplot(221)
-    plt.plot(xplot, np.sqrt(I**2 + Q**2))
-    plt.xlabel("Pulse duration [ns]")
-    plt.ylabel("Readout amplitude [a.u.]")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(222)
-    plt.plot(xplot, phase)
-    plt.xlabel("Pulse duration [ns]")
-    plt.ylabel("Readout phase [rad]")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(223)
-    plt.plot(xplot, pop)
-    plt.xlabel("Pulse duration [ns]")
-    plt.ylabel("Excited state population")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(224)
-    plt.plot(xplot, d_qubit_phase, "b.")
-    plt.plot(xplot, theory, "r--", lw=3)
-    plt.xlabel("Pulse duration [ns]")
-    plt.ylabel("Qubit detuning [MHz]")
-    plt.legend(("exp", "theory"), loc="upper right")
-    plt.tight_layout()

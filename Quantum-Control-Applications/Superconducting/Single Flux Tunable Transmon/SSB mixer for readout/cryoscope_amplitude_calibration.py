@@ -89,7 +89,7 @@ else:
     results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
 
     # Live plotting
-    fig = plt.figure(figsize=(9, 5))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
     while results.is_processing():
@@ -144,47 +144,3 @@ else:
         plt.legend(("data", "Fit"), loc="upper right")
         plt.tight_layout()
         plt.pause(0.1)
-
-    # Fetch results
-    I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
-    # Phase of ground and excited states
-    phase_g = np.angle(Ig + 1j * Qg)
-    phase_e = np.angle(Ie + 1j * Qe)
-    # Phase of cryoscope measurement
-    phase = np.unwrap(np.angle(I + 1j * Q))
-    # Population in excited state
-    pop = (phase - phase_g) / (phase_e - phase_g)
-    # Bloch vector Sx + iSy
-    qubit_state = (pop[:, 0] * 2 - 1) + 1j * (pop[:, 1] * 2 - 1)
-    # Accumulated phase: angle between Sx and Sy
-    qubit_phase = np.unwrap(np.angle(qubit_state))
-    # qubit_phase = qubit_phase - qubit_phase[-1]
-    detuning = qubit_phase / (2 * np.pi * const_flux_len) * 1000
-    # Qubit coherence: |Sx+iSy|
-    qubit_coherence = np.abs(qubit_state)
-    # Quadratic fit of detuning versus flux pulse amplitude
-    pol = np.polyfit(xplot, qubit_phase, deg=2)
-    # Plot results
-    plt.figure()
-    plt.subplot(221)
-    plt.plot(xplot, np.sqrt(I**2 + Q**2))
-    plt.xlabel("Flux pulse amplitude [V]")
-    plt.ylabel("Readout amplitude [a.u.]")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(222)
-    plt.plot(xplot, phase)
-    plt.xlabel("Flux pulse amplitude [V]")
-    plt.ylabel("Readout phase [rad]")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(223)
-    plt.plot(xplot, pop)
-    plt.xlabel("Flux pulse amplitude [V]")
-    plt.ylabel("Excited state population")
-    plt.legend(("X", "Y"), loc="lower right")
-    plt.subplot(224)
-    plt.plot(xplot, detuning, "bo")
-    plt.plot(xplot, np.polyval(pol, xplot), "r-")
-    plt.xlabel("Flux pulse amplitude [V]")
-    plt.ylabel("Averaged detuning [Hz]")
-    plt.legend(("data", "Fit"), loc="upper right")
-    plt.tight_layout()
