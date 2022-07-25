@@ -163,23 +163,12 @@ else:
         I = u.demod2volts(I, readout_len)
         Q = u.demod2volts(Q, readout_len)
         # Display progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
+        plt.cla()
         plt.plot(pulse1_vec * 4, I, label="I")
         plt.plot(pulse1_vec * 4, Q, label="Q")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Signal amplitude [V]")
         plt.legend()
         plt.pause(0.2)
-
-    # Fetch results
-    I, Q, iteration = results.fetch_all()
-    # Convert I & Q to Volts
-    I = u.demod2volts(I, readout_len)
-    Q = u.demod2volts(Q, readout_len)
-    plt.cla()
-    plt.plot(pulse1_vec * 4, I, label="I")
-    plt.plot(pulse1_vec * 4, Q, label="Q")
-    plt.xlabel("Pulse duration [ns]")
-    plt.ylabel("Signal amplitude [V]")
-    plt.legend()

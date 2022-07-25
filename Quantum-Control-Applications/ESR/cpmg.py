@@ -181,7 +181,7 @@ else:
         # Fetch results
         i_echo, tau, I, Q, iteration = results.fetch_all()
         # Display progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot(i_echo, I, ".", label="I")
@@ -192,15 +192,3 @@ else:
         plt.tight_layout()
         plt.title(f"iteration: {iteration}")
         plt.pause(0.2)
-        plt.clf()
-
-    # Fetch results
-    i_echo, tau, I, Q, iteration = results.fetch_all()
-    # Plot data
-    plt.cla()
-    plt.plot(i_echo, I, ".", label="I")
-    plt.plot(i_echo, Q, ".", label="Q")
-    plt.xlabel("Number of echoes")
-    plt.ylabel("Echo magnitude I & Q [a. u.]")
-    plt.legend()
-    plt.tight_layout()
