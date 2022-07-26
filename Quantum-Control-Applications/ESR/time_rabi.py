@@ -148,8 +148,9 @@ else:
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
+        plt.cla()
         plt.plot(pulse1_vec * 4, I, label="I")
         plt.plot(pulse1_vec * 4, Q, label="Q")
         plt.title(f"iteration: {iteration}")
@@ -158,16 +159,3 @@ else:
         plt.legend()
         plt.tight_layout()
         plt.pause(0.2)
-        plt.clf()
-
-    # Fetch results
-    echo1, echo2, I, Q, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot data
-    plt.plot(pulse1_vec * 4, I, label="I")
-    plt.plot(pulse1_vec * 4, Q, label="Q")
-    plt.xlabel("pi/2 pulse length [ns]")
-    plt.ylabel("Echo magnitude I & Q [a. u.]")
-    plt.legend()
-    plt.tight_layout()
