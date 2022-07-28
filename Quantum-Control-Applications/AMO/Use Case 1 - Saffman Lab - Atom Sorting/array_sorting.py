@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 ########################################
 # Define target matrix and frequencies #
 ########################################
-collision_free = True  # Enables the collision fre sorting algorithm
+collision_free = True  # Enables the collision free sorting algorithm
 piecewise_chirp = False  # Enables the piecewise chirp decomposition for minimal jerk trajectory
 analog_occupation_matrix = False  # Reads the current occupation matrix via analog readout
 raw_adc_acquisition = True  # Acquires chirp tones to plot spectrograms - output should be connected to OPX analog input
