@@ -98,8 +98,8 @@ with program() as cryoscope:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(const_flux_len, 2).average().save("I")
-        Q_st.buffer(const_flux_len, 2).average().save("Q")
+        I_st.buffer(const_flux_len + 1, 2).average().save("I")
+        Q_st.buffer(const_flux_len + 1, 2).average().save("Q")
         Ig_st.average().save("Ig")
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")
@@ -127,7 +127,7 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    xplot = range(const_flux_len)
+    xplot = range(const_flux_len + 1)
     while results.is_processing():
         # Fetch results
         I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
