@@ -16,11 +16,13 @@ This repo is where we share particularly useful tools and protocols
 which can jump start many common tasks in and around QUA. 
 
 It includes:
-* The "Tutorials" folder contains various tutorials and guides for working with the OPX.
+* The ["Tutorials"](https://github.com/qua-platform/qua-libs/tree/main/Tutorials) folder contains various tutorials and guides for working with the OPX.
 
-* The "Quantum Control Applications" folder contains scripts and examples for different qubits types, all the way
-  from basic to advanced protocols. 
-  It also includes various examples and results from labs. [link]
+* The ["Quantum Control Applications"](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications) 
+  folder contains scripts and examples for different qubits types, all the way from basic to advanced protocols. 
+  It also includes various examples and results from labs.
+  Note that several codes there make use of the [py_qua_tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
+  It is thus advised to download the last version.
 
 ## Support and Contribution
 This is a beta version of the repo, and thus, if you see quirks and inaccuracies please tell us! 
