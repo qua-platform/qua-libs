@@ -21,7 +21,7 @@ It includes:
 * The ["Quantum Control Applications"](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications) 
   folder contains scripts and examples for different qubits types, all the way from basic to advanced protocols. 
   It also includes various examples and results from labs.
-  Note that several codes there make use of the [py_qua_tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
+  Note that several codes there make use of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
   It is thus advised to download the last version.
 
 ## Support and Contribution
