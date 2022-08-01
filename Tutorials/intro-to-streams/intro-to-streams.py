@@ -4,7 +4,6 @@ Author: Gal Winer - Quantum Machines
 Created: 31/12/2020
 Revised by Tomer Feld - Quantum Machines
 Revision date: 04/04/2022
-Created on QUA version: 0.6.393
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -13,7 +12,8 @@ from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 
 # Open communication with the server.
-qmm = QuantumMachinesManager(host="127.0.0.1", port=9510)
+qop_ip = None
+qmm = QuantumMachinesManager(host=qop_ip)
 
 with program() as measureProg:
     ind = declare(int)

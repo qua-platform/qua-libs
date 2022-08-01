@@ -1,10 +1,17 @@
+"""
+chirp.py: Introduction to timing in QUA
+Author: Michal Goldenshtein - Quantum Machines
+Created: 17/05/2022
+"""
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 
-qmm = QuantumMachinesManager()
+qop_ip = None
+qmm = QuantumMachinesManager(host=qop_ip)
 
 with program() as example1:
     play("cw1", "qubit")

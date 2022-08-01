@@ -12,7 +12,7 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 
-qop_ip = "127.0.0.1"
+qop_ip = None
 qmm = QuantumMachinesManager(qop_ip)
 
 ##
