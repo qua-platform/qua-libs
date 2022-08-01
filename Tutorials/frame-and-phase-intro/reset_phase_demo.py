@@ -4,7 +4,6 @@ Author: Gal Winer - Quantum Machines
 Created: 8/11/2020
 Revised by Tomer Feld - Quantum Machines
 Revision date: 04/04/2022
-Created on QUA version: 0.5.138
 """
 
 import matplotlib.pyplot as plt
@@ -15,7 +14,8 @@ import numpy as np
 from configuration import *
 from scipy.optimize import leastsq
 
-qmm = QuantumMachinesManager(port=9510)
+qop_ip = None
+qmm = QuantumMachinesManager(host=qop_ip)
 
 # Create a quantum machine based on the configuration.
 

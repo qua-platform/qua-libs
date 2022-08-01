@@ -4,7 +4,6 @@ Author: Gal Winer - Quantum Machines
 Created: 17/01/2021
 Revised by Tomer Feld - Quantum Machines
 Revision date: 04/04/2022
-Created on QUA version: 0.8.477
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,7 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from configuration import *
 
-qmm = QuantumMachinesManager()
+qop_ip = None
+qmm = QuantumMachinesManager(host=qop_ip)
 
 ### First example - Linear chirp
 

@@ -4,7 +4,6 @@ Author: Gal Winer - Quantum Machines
 Created: 6/1/2021
 Revised by Tomer Feld
 Revision date: 04/04/2022
-Created on QUA version: 0.6.393
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,7 +11,8 @@ from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
 
-qmm = QuantumMachinesManager()
+qop_ip = None
+qmm = QuantumMachinesManager(host=qop_ip)
 
 with program() as prog:
     play("const", "qe1")
