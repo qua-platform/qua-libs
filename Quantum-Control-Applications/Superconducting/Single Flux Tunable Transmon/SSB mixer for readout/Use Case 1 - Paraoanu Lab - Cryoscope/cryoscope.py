@@ -9,6 +9,7 @@ from configuration_SSB import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery import baking
+from qualang_tools.plot import interrupt_on_close
 from scipy import signal
 
 ###################
@@ -145,8 +146,8 @@ with program() as cryoscope:
     Ig_st, Qg_st, Ie_st, Qe_st = ge_calibration(n_avg)
 
     with stream_processing():
-        I_st.buffer(const_flux_len, 2).average().save("I")
-        Q_st.buffer(const_flux_len, 2).average().save("Q")
+        I_st.buffer(const_flux_len + 1, 2).average().save("I")
+        Q_st.buffer(const_flux_len + 1, 2).average().save("Q")
         Ig_st.average().save("Ig")
         Qg_st.average().save("Qg")
         Ie_st.average().save("Ie")

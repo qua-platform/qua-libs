@@ -134,30 +134,30 @@ else:
     # iteration_handles.wait_for_values(1)
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(8, 11))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    while job.result_handles.is_processing():
+    while results.is_processing():
         # Fetch results
         # I = I_handles.fetch_all()
         # Q = Q_handles.fetch_all()
         # iteration = iteration_handles.fetch_all()
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # 1D spectroscopy plot
         if len(I.shape) == 1:
             plt.subplot(211)
             plt.cla()
             plt.title("resonator spectroscopy amplitude")
             plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-            plt.xlabel("freq [MHz]")
+            plt.xlabel("frequency [MHz]")
             plt.subplot(212)
             plt.cla()
             # detrend removes the linear increase of phase
             phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
             plt.title("resonator spectroscopy phase")
             plt.plot(freqs / u.MHz, phase, ".")
-            plt.xlabel("freq [MHz]")
+            plt.xlabel("frequency [MHz]")
             plt.pause(0.1)
             plt.tight_layout()
         # 2D spectroscopy plot
@@ -166,47 +166,13 @@ else:
             plt.cla()
             plt.title("resonator spectroscopy amplitude")
             plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
-            plt.xlabel("freq [MHz]")
+            plt.xlabel("frequency [MHz]")
             plt.ylabel("flux amplitude [V]")
             plt.subplot(212)
             plt.cla()
             plt.title("resonator spectroscopy phase")
             plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-            plt.xlabel("freq [MHz]")
+            plt.xlabel("frequency [MHz]")
             plt.ylabel("flux amplitude [V]")
             plt.pause(0.1)
             plt.tight_layout()
-
-    # Fetch results
-    I, Q, iteration = results.fetch_all()
-    # Convert I & Q to Volts
-    I = u.demod2volts(I, readout_len)
-    Q = u.demod2volts(Q, readout_len)
-    # 1D spectroscopy plot
-    plt.clf()
-    if len(I.shape) == 1:
-        plt.subplot(211)
-        plt.title("resonator spectroscopy amplitude [V]")
-        plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-        plt.xlabel("freq [MHz]")
-        plt.subplot(212)
-        # detrend removes the linear increase of phase
-        phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-        plt.title("resonator spectroscopy phase [rad]")
-        plt.plot(freqs / u.MHz, phase, ".")
-        plt.xlabel("freq [MHz]")
-        plt.tight_layout()
-    # 2D spectroscopy plot
-    elif len(I.shape) == 2:
-        plt.subplot(211)
-        plt.title("resonator spectroscopy amplitude")
-        plt.pcolor(freqs / u.MHz, flux * const_flux_amp, np.sqrt(I**2 + Q**2))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [V]")
-        plt.subplot(212)
-        plt.title("resonator spectroscopy phase")
-        plt.pcolor(freqs / u.MHz, flux * const_flux_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("freq [MHz]")
-        plt.ylabel("flux amplitude [V]")
-        plt.pause(0.1)
-        plt.tight_layout()

@@ -94,42 +94,25 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
-    fig = plt.figure(figsize=(15, 15))
+    fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg)
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy amplitude")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("freq [MHz]")
+        plt.xlabel("frequency [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()
         plt.pause(0.01)
-
-    # Fetch results
-    I, Q, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg)
-    # Plot results
-    plt.subplot(211)
-    plt.title("resonator spectroscopy amplitude")
-    plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
-    plt.xlabel("freq [MHz]")
-    plt.ylabel("Idle time [ns]")
-    plt.subplot(212)
-    plt.title("resonator spectroscopy phase")
-    plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-    plt.xlabel("freq [MHz]")
-    plt.ylabel("Idle time [ns]")
-    plt.tight_layout()
