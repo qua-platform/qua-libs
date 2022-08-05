@@ -20,6 +20,7 @@ Note that for them to work, you would need to download the latest version of the
 * [DRAG Pulse Calibration]().
 
 ## AMO Qubits
+### Rydberg Arrays
 * [2D Atom Sorting](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO/Use%20Case%201%20-%20Saffman%20Lab%20-%20Atom%20Sorting#atom-sorting-with-the-opx)
   performed in the lab of Prof. Mark Saffman in the University of Wisconsin-Madison.
 
@@ -29,3 +30,7 @@ Note that for them to work, you would need to download the latest version of the
   performed in the lab of Prof. Sekhar at Darmouth College.
 
 ### Confocal set-up
+
+## Quantum-dots
+* [Fast 2D Scans Using a Spiral Pattern]()
+  performed in the lab of Prof. ? at ?.
