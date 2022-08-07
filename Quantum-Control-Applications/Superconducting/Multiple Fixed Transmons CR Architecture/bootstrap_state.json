@@ -1,0 +1,420 @@
+{
+  "OPX_config": {
+    "controllers": {
+      "con1": {
+        "analog_outputs": {
+          "1": {
+            "offset": 0.0
+          },
+          "2": {
+            "offset": 0.0
+          },
+          "3": {
+            "offset": 0.0
+          },
+          "4": {
+            "offset": 0.0
+          },
+          "9": {
+            "offset": 0.0
+          },
+          "10": {
+            "offset": 0.0
+          }
+        },
+        "digital_outputs": {},
+        "analog_inputs": {
+          "1": {
+            "offset": 0.0,
+            "gain_db": 0
+          },
+          "2": {
+            "offset": 0.0,
+            "gain_db": 0
+          }
+        }
+      }
+    },
+    "elements": {},
+    "pulses": {
+      "const_pulse": {
+        "operation": "control",
+        "length": 100,
+        "waveforms": {
+          "I": "const_wf",
+          "Q": "zero_wf"
+        }
+      },
+      "saturation_pulse": {
+        "operation": "control",
+        "length": 100,
+        "waveforms": {
+          "I": "saturation_drive_wf",
+          "Q": "zero_wf"
+        }
+      }
+    },
+    "waveforms": {
+      "const_wf": {
+        "type": "constant",
+        "sample": 0.2
+      },
+      "saturation_drive_wf": {
+        "type": "constant",
+        "sample": 0.2
+      },
+      "zero_wf": {
+        "type": "constant",
+        "sample": 0.0
+      }
+    },
+    "digital_waveforms": {
+      "ON": {
+        "samples": [
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    },
+    "integration_weights": {
+      "cosine_weights": {
+        "cosine": [
+          [
+            1.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "sine_weights": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            1.0,
+            100
+          ]
+        ]
+      },
+      "minus_sine_weights": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            -1.0,
+            100
+          ]
+        ]
+      },
+      "rotated_cosine_weights_rr0": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "rotated_cosine_weights_rr1": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "rotated_sine_weights_rr0": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "rotated_sine_weights_rr1": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "rotated_minus_sine_weights_rr0": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      },
+      "rotated_minus_sine_weights_rr1": {
+        "cosine": [
+          [
+            0.0,
+            100
+          ]
+        ],
+        "sine": [
+          [
+            0.0,
+            100
+          ]
+        ]
+      }
+    },
+    "mixers": {}
+  },
+  "readout_resonators": [
+    {
+      "f_res": 6452180000.0,
+      "q_factor": null,
+      "readout_length": 2e-06,
+      "readout_regime": "low_power",
+      "readout_amplitude": 0.2,
+      "opt_readout_frequency": 4525030000.0,
+      "rotation_angle": 41.3,
+      "readout_fidelity": 0.84,
+      "chi": 1000000.0,
+      "wiring": {
+        "time_of_flight": 260,
+        "lo_freq": 6570000000.0,
+        "I": [
+          "con1",
+          9
+        ],
+        "Q": [
+          "con1",
+          10
+        ],
+        "correction_matrix": [
+          1,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "f_res": 6532690000.0,
+      "q_factor": null,
+      "readout_length": 2e-06,
+      "readout_regime": "low_power",
+      "readout_amplitude": 0.2,
+      "opt_readout_frequency": 4525030000.0,
+      "rotation_angle": 41.3,
+      "readout_fidelity": 0.84,
+      "chi": 1000000.0,
+      "wiring": {
+        "time_of_flight": 260,
+        "lo_freq": 6570000000.0,
+        "I": [
+          "con1",
+          9
+        ],
+        "Q": [
+          "con1",
+          10
+        ],
+        "correction_matrix": [
+          1,
+          0,
+          0,
+          1
+        ]
+      }
+    }
+  ],
+  "qubits": [
+    {
+      "f_01": 4525030000.0,
+      "anharmonicity": null,
+      "rabi_freq": null,
+      "t1": 1.8e-05,
+      "t2": null,
+      "t2*": 5e-06,
+      "driving": {
+        "gate_len": 6e-08,
+        "gate_sigma": 2e-08,
+        "gate_shape": "gaussian",
+        "angle2volt": {
+          "90": 0.1,
+          "180": 0.2
+        }
+      },
+      "wiring": {
+        "lo_freq": 4590000000.0,
+        "I": [
+          "con1",
+          1
+        ],
+        "Q": [
+          "con1",
+          2
+        ],
+        "correction_matrix": [
+          1,
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "f_01": 4650970000.0,
+      "anharmonicity": null,
+      "rabi_freq": null,
+      "t1": 1.8e-05,
+      "t2": null,
+      "t2*": 5e-06,
+      "driving": {
+        "gate_len": 6e-08,
+        "gate_sigma": 2e-08,
+        "gate_shape": "gaussian",
+        "angle2volt": {
+          "90": 0.1,
+          "180": 0.2
+        }
+      },
+      "wiring": {
+        "lo_freq": 4720000000.0,
+        "I": [
+          "con1",
+          3
+        ],
+        "Q": [
+          "con1",
+          4
+        ],
+        "correction_matrix": [
+          1,
+          0,
+          0,
+          1
+        ]
+      }
+    }
+  ],
+  "single_qubit_operations": [
+    {
+      "direction": "x",
+      "angle": 180
+    },
+    {
+      "direction": "x",
+      "angle": -180
+    },
+    {
+      "direction": "x",
+      "angle": 90
+    },
+    {
+      "direction": "x",
+      "angle": -90
+    },
+    {
+      "direction": "y",
+      "angle": 180
+    },
+    {
+      "direction": "y",
+      "angle": -180
+    },
+    {
+      "direction": "y",
+      "angle": 90
+    },
+    {
+      "direction": "y",
+      "angle": -90
+    }
+  ],
+  "two_qubit_gates": {
+    "cr_c0t1": {
+      "control": 0,
+      "target": 1,
+      "gate_time": null,
+      "interaction strength": {
+        "ix": null,
+        "iy": null,
+        "iz": null,
+        "zx": null,
+        "zy": null,
+        "zz": null
+      },
+      "correction_matrix": [
+        1,
+        0,
+        0,
+        1
+      ]
+    },
+    "cr_c1t0": {
+      "control": 1,
+      "target": 0,
+      "gate_time": null,
+      "interaction strength": {
+        "ix": null,
+        "iy": null,
+        "iz": null,
+        "zx": null,
+        "zy": null,
+        "zz": null
+      },
+      "correction_matrix": [
+        1,
+        0,
+        0,
+        1
+      ]
+    }
+  },
+  "running strategy": {
+    "running": true,
+    "start": [],
+    "end": []
+  }
+}
