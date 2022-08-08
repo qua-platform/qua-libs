@@ -166,6 +166,7 @@ state = res_handles.res.fetch_all()
 value = 1 - np.average(state, axis=0)
 error = np.std(state, axis=0)
 
+
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
@@ -184,7 +185,7 @@ pars, cov = curve_fit(
 )
 
 plt.figure()
-plt.errorbar(x, value, yerr=error, marker='.')
+plt.errorbar(x, value, yerr=error, marker=".")
 plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
 stdevs = np.sqrt(np.diag(cov))

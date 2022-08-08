@@ -190,6 +190,7 @@ while results.is_processing():
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
+
 for data in [I, Q]:
     value = np.average(data, axis=0)  # Can change to Q
     error = np.std(data, axis=0)
@@ -202,7 +203,7 @@ for data in [I, Q]:
         maxfev=2000,
     )
     plt.figure()
-    plt.errorbar(x, value, yerr=error, marker='.')
+    plt.errorbar(x, value, yerr=error, marker=".")
     plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
     stdevs = np.sqrt(np.diag(cov))
