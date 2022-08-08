@@ -13,7 +13,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 delta_depth = 1
-num_of_sequences = 50
+num_of_sequences = 5
 n_avg = 20000
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
@@ -180,8 +180,8 @@ while results.is_processing():
     progress_counter(iteration, n_avg, start_time=results.get_start_time())
     # Plot results
     plt.cla()
-    plt.plot(x, I, ".", label="I")
-    plt.plot(x, Q, ".", label="Q")
+    plt.plot(x, np.average(I, axis=0), ".", label="I")
+    plt.plot(x, np.average(Q, axis=0), ".", label="Q")
     plt.xlabel("Number of cliffords")
     plt.legend()
     plt.pause(0.1)
