@@ -13,7 +13,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 delta_depth = 1
-num_of_sequences = 5
+num_of_sequences = 50
 n_avg = 20000
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
@@ -186,46 +186,47 @@ while results.is_processing():
     plt.legend()
     plt.pause(0.1)
 
-value = np.average(I, axis=0)  # Can change to Q
-
 
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
+for data in [I, Q]:
+    value = np.average(data, axis=0)  # Can change to Q
+    error = np.std(data, axis=0)
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
+    plt.figure()
+    plt.errorbar(x, value, yerr=error, marker='.')
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
-pars, cov = curve_fit(
-    f=power_law,
-    xdata=x,
-    ydata=value,
-    p0=[0.5, 0.5, 0.9],
-    bounds=(-np.inf, np.inf),
-    maxfev=2000,
-)
+    stdevs = np.sqrt(np.diag(cov))
 
-plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    print("#########################")
+    print("### Fitted Parameters ###")
+    print("#########################")
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+    print("Covariance Matrix")
+    print(cov)
 
-stdevs = np.sqrt(np.diag(cov))
+    one_minus_p = 1 - pars[2]
+    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
+    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_g_std = r_c_std / 1.875
 
-print("#########################")
-print("### Fitted Parameters ###")
-print("#########################")
-print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
-print("Covariance Matrix")
-print(cov)
+    print("#########################")
+    print("### Useful Parameters ###")
+    print("#########################")
+    print(
+        f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+        f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+        f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    )
 
-one_minus_p = 1 - pars[2]
-r_c = one_minus_p * (1 - 1 / 2**1)
-r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-r_c_std = stdevs[2] * (1 - 1 / 2**1)
-r_g_std = r_c_std / 1.875
-
-print("#########################")
-print("### Useful Parameters ###")
-print("#########################")
-print(
-    f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-    f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-    f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-)
-
-np.savez("rb_values", value)
+    np.savez("rb_values", value)
