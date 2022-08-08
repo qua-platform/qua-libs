@@ -14,9 +14,16 @@ qmm = QuantumMachinesManager(
 
 with program() as hello_qua:
 
+    a = declare(fixed)
+
+    play("x180", "q0", duration=10000)
+    # with for_(a, 0.1, a<1.0, a+0.1):
+    #     play("x180"*amp(a), "q0")
+    #     play("x180"*amp(1.0-a), "q0")
+
     I = declare(fixed)
 
-    for q in [0]:
+    for q in [0, 1]:
 
         update_frequency(f"q{q}", int(100e6))
 
@@ -55,5 +62,5 @@ with program() as hello_qua:
             dual_demod.full("cos", "out1", "sin", "out2", I),
         )
 
-job = qmm.simulate(build_config(state), hello_qua, SimulationConfig(1500))
+job = qmm.simulate(build_config(state), hello_qua, SimulationConfig(11000))
 job.get_simulated_samples().con1.plot()

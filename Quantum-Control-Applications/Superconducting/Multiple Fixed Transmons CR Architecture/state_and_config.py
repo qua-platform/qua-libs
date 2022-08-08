@@ -12,6 +12,20 @@ from typing import List, Dict
 from scipy.signal.windows import gaussian
 from scipy import interpolate
 
+# IQ imbalance matrix
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+
 # layer 1: bare state
 state = {
     "OPX_config": {
@@ -22,6 +36,10 @@ state = {
                     "2": {"offset": 0.0},  # q1 Q
                     "3": {"offset": 0.0},  # q2 Q
                     "4": {"offset": 0.0},  # q2 Q
+                    "5": {"offset": 0.0},  # q2 Q
+                    "6": {"offset": 0.0},  # q2 Q
+                    "7": {"offset": 0.0},  # q2 Q
+                    "8": {"offset": 0.0},  # q2 Q
                     "9": {"offset": 0.0},  # I rrs
                     "10": {"offset": 0.0},  # Q rrs
                 },
@@ -44,7 +62,7 @@ state = {
             },
             "saturation_pulse": {
                 "operation": "control",
-                "length": 100,
+                "length": 100000,
                 "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
             },
         },
@@ -56,48 +74,15 @@ state = {
         "digital_waveforms": {
             "ON": {"samples": [(1, 0)]},
         },
-        "integration_weights": {
-            "cosine_weights": {
-                "cosine": [(1.0, 100)],
-                "sine": [(0.0, 100)],
-            },
-            "sine_weights": {
-                "cosine": [(0.0, 100)],
-                "sine": [(1.0, 100)],
-            },
-            "minus_sine_weights": {
-                "cosine": [(0.0, 100)],
-                "sine": [(-1.0, 100)],
-            },
-            **{
-                f"rotated_cosine_weights_rr{r}": {
-                    "cosine": [(0.0, 100)],
-                    "sine": [(0.0, 100)],
-                }
-                for r in [0, 1]
-            },
-            **{
-                f"rotated_sine_weights_rr{r}": {
-                    "cosine": [(0.0, 100)],
-                    "sine": [(0.0, 100)],
-                }
-                for r in [0, 1]
-            },
-            **{
-                f"rotated_minus_sine_weights_rr{r}": {
-                    "cosine": [(0.0, 100)],
-                    "sine": [(0.0, 100)],
-                }
-                for r in [0, 1]
-            },
-        },
+        "integration_weights": {},
         "mixers": {},
     },
+    "readout_length": 2e-6,  # Sec
+    "readout_lo_freq":  6.57e9,
     "readout_resonators": [
         {
-            "f_res":  6.45218e9,  # Hz
+            "f_res": 6.45218e9,  # Hz
             "q_factor": None,
-            "readout_length": 2e-6,  # Sec
             "readout_regime": "low_power",
             "readout_amplitude": 0.2,
             "opt_readout_frequency": 4.52503e9,
@@ -106,10 +91,9 @@ state = {
             "chi": 1e6,
             "wiring": {
                 "time_of_flight": 260,
-                "lo_freq": 6.57e9,
                 "I": ["con1", 9],
                 "Q": ["con1", 10],
-                "correction_matrix": [1, 0, 0, 1],
+                "correction_matrix": IQ_imbalance(0, 0),
             },
         },
         {
@@ -124,10 +108,9 @@ state = {
             "chi": 1e6,
             "wiring": {
                 "time_of_flight": 260,
-                "lo_freq": 6.57e9,
                 "I": ["con1", 9],
                 "Q": ["con1", 10],
-                "correction_matrix": [1, 0, 0, 1],
+                "correction_matrix": IQ_imbalance(0, 0),
             },
         },
     ],
@@ -149,7 +132,7 @@ state = {
                 "lo_freq": 4.59e9,
                 "I": ["con1", 1],
                 "Q": ["con1", 2],
-                "correction_matrix": [1, 0, 0, 1],
+                "correction_matrix": IQ_imbalance(0, 0),
             },
         },
         {
@@ -169,7 +152,7 @@ state = {
                 "lo_freq": 4.72e9,
                 "I": ["con1", 3],
                 "Q": ["con1", 4],
-                "correction_matrix": [1, 0, 0, 1],
+                "correction_matrix": IQ_imbalance(0, 0),
             },
         },
     ],
@@ -188,6 +171,7 @@ state = {
             "control": 0,
             "target": 1,
             "gate_time": None,
+            "correction_matrix": IQ_imbalance(0, 0),
             "interaction strength": {
                 "ix": None,
                 "iy": None,
@@ -196,12 +180,12 @@ state = {
                 "zy": None,
                 "zz": None,
             },
-            "correction_matrix": [1, 0, 0, 1],
         },
         "cr_c1t0": {
             "control": 1,
             "target": 0,
             "gate_time": None,
+            "correction_matrix": IQ_imbalance(0, 0),
             "interaction strength": {
                 "ix": None,
                 "iy": None,
@@ -210,7 +194,6 @@ state = {
                 "zy": None,
                 "zz": None,
             },
-            "correction_matrix": [1, 0, 0, 1],
         },
     },
     "running strategy": {"running": True, "start": [], "end": []},
@@ -257,16 +240,16 @@ def add_qubits(state: Dict, config: Dict):
 
 
 def add_readout_resonators(state, config):
-    for r, v in enumerate(state["readout_resonators"]): # r - idx, v - value
+    for r, v in enumerate(state["readout_resonators"]):  # r - idx, v - value
         config["elements"][f"rr{r}"] = {
             "mixInputs": {
                 "I": (v["wiring"]["I"][0], v["wiring"]["I"][1]),
                 "Q": (v["wiring"]["Q"][0], v["wiring"]["Q"][1]),
-                "lo_frequency": round(v["wiring"]["lo_freq"]),
+                "lo_frequency": round(state["readout_lo_freq"]),
                 "mixer": "mixer_rr",
             },
             "intermediate_frequency": round(
-                v["f_res"] - v["wiring"]["lo_freq"]
+                v["f_res"] - state["readout_lo_freq"]
             ),
             "operations": {
                 "cw": "const_pulse",
@@ -284,9 +267,9 @@ def add_readout_resonators(state, config):
         config["mixers"]["mixer_rr"].append(
             {
                 "intermediate_frequency": round(
-                    v["f_res"] - v["wiring"]["lo_freq"]
+                    v["f_res"] - state["readout_lo_freq"]
                 ),
-                "lo_frequency": v["wiring"]["lo_freq"],
+                "lo_frequency": state["readout_lo_freq"],
                 "correction": v["wiring"]["correction_matrix"],
             }
         )
@@ -296,7 +279,7 @@ def add_readout_resonators(state, config):
         }
         config["pulses"][f"readout_pulse_rr{r}"] = {
             "operation": "measurement",
-            "length": round(v["readout_length"] * 1e9),
+            "length": round(state["readout_length"] * 1e9),
             "waveforms": {
                 "I": f"readout_wf_rr{r}",
                 "Q": "zero_wf",
@@ -310,6 +293,31 @@ def add_readout_resonators(state, config):
                 "rotated_minus_sin": f"rotated_minus_sine_weights_rr{r}",
             },
             "digital_marker": "ON",
+        }
+        rot_angle_in_pi = v["rotation_angle"] / 180. * np.pi
+        config["integration_weights"]["cosine_weights"] = {
+            "cosine": [(1.0, round(state["readout_length"] * 1e9))],
+            "sine": [(0.0, round(state["readout_length"] * 1e9))],
+        }
+        config["integration_weights"]["sine_weights"] = {
+            "cosine": [(0.0, round(state["readout_length"] * 1e9))],
+            "sine": [(1.0, round(state["readout_length"] * 1e9))],
+        }
+        config["integration_weights"]["minus_sine_weights"] = {
+            "cosine": [(0.0, round(state["readout_length"] * 1e9))],
+            "sine": [(-1.0, round(state["readout_length"] * 1e9))],
+        }
+        config["integration_weights"][f"rotated_cosine_weights_rr{r}"] = {
+            "cosine": [(np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "sine": [(-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+        }
+        config["integration_weights"][f"rotated_sine_weights_rr{r}"] = {
+            "cosine": [(np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "sine": [(np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+        }
+        config["integration_weights"][f"rotated_minus_sine_weights_rr{r}"] = {
+            "cosine": [(-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "sine": [(-np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
         }
 
 
@@ -354,24 +362,32 @@ def add_qb_rot(
     if len(wf_I) != len(wf_Q):
         raise ValueError("wf_I and wf_Q should have same lengths!")
 
-    wv = np.sign(
-        angle
-    ) * (wf_I * np.cos(direction_angle) + wf_Q * np.sin(direction_angle))
-    if np.all((wv==0)):
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "constant"}
+    wv = np.sign(angle) * (
+        wf_I * np.cos(direction_angle) + wf_Q * np.sin(direction_angle)
+    )
+    if np.all((wv == 0)):
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
+            "type": "constant"
+        }
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "arbitrary"}
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
+            "type": "arbitrary"
+        }
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["samples"] = wv
 
-    wv =  np.sign(
-        angle
-    ) * ((-wf_I) * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
+    wv = np.sign(angle) * (
+        (-wf_I) * np.sin(direction_angle) + wf_Q * np.cos(direction_angle)
+    )
     if np.all((wv == 0)):
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "constant"}
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
+            "type": "constant"
+        }
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "arbitrary"}
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
+            "type": "arbitrary"
+        }
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["samples"] = wv
 
     config["pulses"][f"{direction}{angle}_pulse_q{q}"] = {
@@ -432,36 +448,6 @@ def build_config(state):
         "controllers": {
             "con1": {
                 "analog_outputs": {
-                    1: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["1"]["offset"]
-                    },  # q1 I
-                    2: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["2"]["offset"]
-                    },  # q1 Q
-                    3: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["3"]["offset"]
-                    },  # q2 Q
-                    4: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["4"]["offset"]
-                    },  # q2 Q
-                    9: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["9"]["offset"]
-                    },  # I rrs
-                    10: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_outputs"
-                        ]["10"]["offset"]
-                    },  # Q rrs
                 },
                 "digital_outputs": {},
                 "analog_inputs": {
@@ -522,139 +508,15 @@ def build_config(state):
         "digital_waveforms": {
             "ON": {"samples": [(1, 0)]},
         },
-        "integration_weights": {
-            "cosine_weights": {
-                "cosine": [
-                    (
-                        1.0,
-                        state["OPX_config"]["integration_weights"][
-                            "cosine_weights"
-                        ]["cosine"][0][1],
-                    )
-                ],
-                "sine": [
-                    (
-                        0.0,
-                        state["OPX_config"]["integration_weights"][
-                            "cosine_weights"
-                        ]["sine"][0][1],
-                    )
-                ],
-            },
-            "sine_weights": {
-                "cosine": [
-                    (
-                        0.0,
-                        state["OPX_config"]["integration_weights"][
-                            "sine_weights"
-                        ]["cosine"][0][1],
-                    )
-                ],
-                "sine": [
-                    (
-                        1.0,
-                        state["OPX_config"]["integration_weights"][
-                            "sine_weights"
-                        ]["sine"][0][1],
-                    )
-                ],
-            },
-            "minus_sine_weights": {
-                "cosine": [
-                    (
-                        0.0,
-                        state["OPX_config"]["integration_weights"][
-                            "minus_sine_weights"
-                        ]["cosine"][0][1],
-                    )
-                ],
-                "sine": [
-                    (
-                        -1.0,
-                        state["OPX_config"]["integration_weights"][
-                            "minus_sine_weights"
-                        ]["sine"][0][1],
-                    )
-                ],
-            },
-            **{
-                f"rotated_cosine_weights_rr{r}": {
-                    "cosine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_cosine_weights_rr{r}"
-                            ]["cosine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_cosine_weights_rr{r}"
-                            ]["cosine"][0][1],
-                        )
-                    ],
-                    "sine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_cosine_weights_rr{r}"
-                            ]["sine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_cosine_weights_rr{r}"
-                            ]["sine"][0][1],
-                        )
-                    ],
-                }
-                for r in [0, 1]
-            },
-            **{
-                f"rotated_sine_weights_rr{r}": {
-                    "cosine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_sine_weights_rr{r}"
-                            ]["cosine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_sine_weights_rr{r}"
-                            ]["cosine"][0][1],
-                        )
-                    ],
-                    "sine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_sine_weights_rr{r}"
-                            ]["sine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_sine_weights_rr{r}"
-                            ]["sine"][0][1],
-                        )
-                    ],
-                }
-                for r in [0, 1]
-            },
-            **{
-                f"rotated_minus_sine_weights_rr{r}": {
-                    "cosine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_minus_sine_weights_rr{r}"
-                            ]["cosine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_minus_sine_weights_rr{r}"
-                            ]["cosine"][0][1],
-                        )
-                    ],
-                    "sine": [
-                        (
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_minus_sine_weights_rr{r}"
-                            ]["sine"][0][0],
-                            state["OPX_config"]["integration_weights"][
-                                f"rotated_minus_sine_weights_rr{r}"
-                            ]["sine"][0][1],
-                        )
-                    ],
-                }
-                for r in [0, 1]
-            },
-        },
+        "integration_weights": {},
         "mixers": {},
     }
+    for key, value in state["OPX_config"]["controllers"]["con1"]["analog_outputs"].items():
+        config["controllers"]["con1"]["analog_outputs"][key] = {
+            "offset": state["OPX_config"]["controllers"]["con1"][
+                "analog_outputs"
+            ][key]["offset"]
+        }
 
     add_qubits(state, config)
 
@@ -705,9 +567,10 @@ def generate_bootstrap_state():
                 return obj.tolist()
             return json.JSONEncoder.default(self, obj)
 
-    with open('configuration_parsed.json', 'w') as fp:
+    with open("configuration_parsed.json", "w") as fp:
         json.dump(build_config(state), fp, cls=NumpyEncoder, indent=2)
-        #convert_file.write(json.dumps(build_config(state)))
+        # convert_file.write(json.dumps(build_config(state)))
+
 
 if __name__ == "__main__":
     generate_bootstrap_state()

@@ -16,16 +16,14 @@ with program() as mixer_cal:
 
     with infinite_loop_():
 
-        # for q in [0, 1]:
-        #     play("cw", f"q{q}")
+        for q in [0, 1]:
+            play("cw", f"q{q}")
 
-        # for c in [[1, 0]]:
+        # for c in [[1, 0], [0, 1]]:
         #     play("cw", f"cr_c{c[0]}t{c[1]}")
         #
-        for r in [0]:
-            play("cw", f"rr{r}")
+        # for r in [0, 1]:
+        #     play("readout", f"rr{r}")
 
 job = qmm.simulate(build_config(state), mixer_cal, SimulationConfig(1500))
 job.get_simulated_samples().con1.plot()
-
-

@@ -22,11 +22,6 @@ n_avg = 1
 u = unit()
 cooldown_time = 10 * u.us // 4
 
-f_min = 30e6
-f_max = 70e6
-df = 30e6
-freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
-
 with program() as resonator_spec:
     n = declare(int)
     f = declare(int)
@@ -38,6 +33,10 @@ with program() as resonator_spec:
     idx = 0
     for q in qubits:
         align()
+        f_min = round(state["redout_resonator"][q]["f_res"]-state["readout_lo_freq"]) - 10e6
+        f_max = round(state["redout_resonator"][q]["f_res"]-state["readout_lo_freq"]) + 10e6
+        df = 30e6
+        freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
 
         with for_(n, 0, n < n_avg, n + 1):
             with for_(
@@ -113,6 +112,3 @@ for q in qubits:
     plt.xlabel("frequency [MHz]")
     plt.ylabel("Phase [rad]")
     plt.tight_layout()
-
-
-

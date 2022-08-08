@@ -36,7 +36,7 @@ with program() as raw_adc_traces:
 
     with for_(n, 0, n < n_avg, n + 1):
         idx = 0
-        for q in [0, 1]:
+        for q in qubits:
             # [0]\[1]: raw traces of rr0\rr1.
             # [0,1]: raw traces of multiplex singal from both rr0 and rr1
             reset_phase(f"rr{q}")
