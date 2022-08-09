@@ -1,7 +1,9 @@
 """
 resonator_spec.py: performs 1D resonator spectroscopy for multiple qubits
 """
+import matplotlib
 
+matplotlib.use("TKagg")
 from state_and_config import build_config, state
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.simulate.credentials import create_credentials
@@ -33,8 +35,20 @@ with program() as resonator_spec:
     idx = 0
     for q in qubits:
         align()
-        f_min = round(state["redout_resonator"][q]["f_res"]-state["readout_lo_freq"]) - 10e6
-        f_max = round(state["redout_resonator"][q]["f_res"]-state["readout_lo_freq"]) + 10e6
+        f_min = (
+            round(
+                state["readout_resonators"][q]["f_res"]
+                - state["readout_lo_freq"]
+            )
+            - 10e6
+        )
+        f_max = (
+            round(
+                state["readout_resonators"][q]["f_res"]
+                - state["readout_lo_freq"]
+            )
+            + 10e6
+        )
         df = 30e6
         freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
 
@@ -88,27 +102,52 @@ else:
 
 # Get results from QUA program
 res_handles = job.result_handles
-res_handles.wait_for_all_values()
+# res_handles.wait_for_all_values()
+# I = res_handles.get(f"I_q{q}").fetch_all()
 
-for q in qubits:
+fig, axs = plt.subplots(len(qubits), 2)
+first_plot = True
+ploted_data = []
+for q in range(len(qubits)):
+    ax = axs[q, 0]
+    ax.set_title(f"rr{q} spectroscopy amplitude")
+    ax.set_xlabel("frequency [MHz]")
+    ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+    ploted_data.append(None)
+    ax = axs[q, 1]
+    ax.set_title(f"rr{q} spectroscopy phase")
+    ax.set_xlabel("frequency [MHz]")
+    ax.set_ylabel("Phase [rad]")
+    ploted_data.append(None)
+plt.tight_layout()
 
-    plt.figure()
-    I = res_handles.get(f"I_q{q}").fetch_all()
-    Q = res_handles.get(f"Q_q{q}").fetch_all()
-    # Plot results
-    x = 211
-    plt.subplot(x)
-    plt.cla()
-    plt.title(f"rr{q} spectroscopy amplitude")
-    plt.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
-    plt.xlabel("frequency [MHz]")
-    plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
-    plt.subplot(212)
-    plt.cla()
-    # detrend removes the linear increase of phase
-    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-    plt.title(f"rr{q} spectroscopy phase")
-    plt.plot(freqs / u.MHz, phase, ".")
-    plt.xlabel("frequency [MHz]")
-    plt.ylabel("Phase [rad]")
-    plt.tight_layout()
+while job.result_handles.is_processing() or first_plot:
+    for q in range(len(qubits)):
+        if (
+            res_handles.get(f"I_q{q}").count_so_far()
+            * res_handles.get(f"Q_q{q}").count_so_far()
+            != 0
+        ):
+            I = res_handles.get(f"I_q{q}").fetch_all()
+            Q = res_handles.get(f"Q_q{q}").fetch_all()
+            # Plot results
+            ax = axs[q, 0]
+            if ploted_data[2*q] is not None: ploted_data[2*q].remove()
+            # ax.cla()
+            # ax.set_title(f"rr{q} spectroscopy amplitude")
+            ploted_data[2*q], = ax.plot(freqs / u.MHz, np.sqrt(I**2 + Q**2), ".")
+            # ax.set_xlabel("frequency [MHz]")
+            # ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+            # detrend removes the linear increase of phase
+            ax = axs[q, 1]
+            # ax.cla()
+            if ploted_data[2 * q+1] is not None: ploted_data[2 * q+1].remove()
+            phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+            # ax.set_title(f"rr{q} spectroscopy phase")
+            ploted_data[2*q +1], = ax.plot(freqs / u.MHz, phase, ".")
+            # ax.set_xlabel("frequency [MHz]")
+            # ax.set_ylabel("Phase [rad]")
+            # plt.tight_layout()
+
+    first_plot = False
+    plt.pause(1.0)
