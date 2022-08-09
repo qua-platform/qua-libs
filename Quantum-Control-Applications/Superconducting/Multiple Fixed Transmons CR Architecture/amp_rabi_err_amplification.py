@@ -2,6 +2,8 @@
 amp_spec.py: performs the 1D amp rabi for multiple qubits.
 """
 # todo: fitting
+import matplotlib
+matplotlib.use('TKAgg')
 from state_and_config import build_config, state
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.simulate.credentials import create_credentials
@@ -12,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from qualang_tools.units import unit
+from analysis_utils import _fit
 
 ###################
 # The QUA program #
@@ -107,17 +110,34 @@ for q in qubits:
     plt.subplot(x)
     plt.cla()
     plt.title(
-        f"q{q} amp rabi, X{repeated_pulses} ERR amplification - amplitude"
+        f"q{q} amp rabi, X{repeated_pulses} ERR amplification - I"
     )
-    plt.plot(amps, np.sqrt(I**2 + Q**2), ".")
+    plt.plot(amps, I, ".")
     plt.xlabel("amplitude [a.u]")
-    plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+    plt.ylabel(r"I [a.u.]")
     plt.subplot(212)
     plt.cla()
     # detrend removes the linear increase of phase
-    phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-    plt.title(f"q{q} amp rabi, X{repeated_pulses} ERR amplification - phase")
-    plt.plot(amps / u.MHz, phase, ".")
+    plt.title(f"q{q} amp rabi, X{repeated_pulses} ERR amplification - Q")
+    plt.plot(amps, Q, ".")
     plt.xlabel("amplitude [a.u]")
-    plt.ylabel("Phase [rad]")
+    plt.ylabel("I [a.u]")
     plt.tight_layout()
+
+
+# ======= analysis ======= #
+
+############ fit ############
+# plt.figure()
+# plt.plot(a, I, '.')
+# out = _fit(a, I)
+# n = 2  # peak number
+# print(out["f"])
+# peak_location = (n - out["phase"] / (2 * np.pi)) / out["f"]
+# plt.plot(peak_location, out["fit_func"](peak_location), "og")
+# print(peak_location)
+
+#### manually picking peak ####
+# plt.figure()
+# a_peaked = pick_sample(a, I)
+# print(a_peaked)
