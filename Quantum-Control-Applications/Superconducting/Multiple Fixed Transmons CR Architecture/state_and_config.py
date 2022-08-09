@@ -12,6 +12,7 @@ from typing import List, Dict
 from scipy.signal.windows import gaussian
 from scipy import interpolate
 
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -24,7 +25,11 @@ def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+    return [
+        float(N * x)
+        for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]
+    ]
+
 
 # layer 1: bare state
 state = {
@@ -78,7 +83,7 @@ state = {
         "mixers": {},
     },
     "readout_length": 2e-6,  # Sec
-    "readout_lo_freq":  6.57e9,
+    "readout_lo_freq": 6.57e9,
     "readout_resonators": [
         {
             "f_res": 6.45218e9,  # Hz
@@ -294,7 +299,7 @@ def add_readout_resonators(state, config):
             },
             "digital_marker": "ON",
         }
-        rot_angle_in_pi = v["rotation_angle"] / 180. * np.pi
+        rot_angle_in_pi = v["rotation_angle"] / 180.0 * np.pi
         config["integration_weights"]["cosine_weights"] = {
             "cosine": [(1.0, round(state["readout_length"] * 1e9))],
             "sine": [(0.0, round(state["readout_length"] * 1e9))],
@@ -308,16 +313,28 @@ def add_readout_resonators(state, config):
             "sine": [(-1.0, round(state["readout_length"] * 1e9))],
         }
         config["integration_weights"][f"rotated_cosine_weights_rr{r}"] = {
-            "cosine": [(np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
-            "sine": [(-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "cosine": [
+                (np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
+            "sine": [
+                (-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
         }
         config["integration_weights"][f"rotated_sine_weights_rr{r}"] = {
-            "cosine": [(np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
-            "sine": [(np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "cosine": [
+                (np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
+            "sine": [
+                (np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
         }
         config["integration_weights"][f"rotated_minus_sine_weights_rr{r}"] = {
-            "cosine": [(-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
-            "sine": [(-np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))],
+            "cosine": [
+                (-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
+            "sine": [
+                (-np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
+            ],
         }
 
 
@@ -441,14 +458,42 @@ def add_cross_resonance_gates(state, config):
             }
         )
 
+def add_control_operation_single(config, element, operation_name, wf):
+    pulse_name = element + "_" + operation_name + "_in"
+    config["waveforms"][pulse_name + "_single"] = {
+        "type": "arbitrary",
+        "samples": list(wf),
+    }
+    config["pulses"][pulse_name] = {
+        "operation": "control",
+        "length": len(wf),
+        "waveforms": {"single": pulse_name + "_single"},
+    }
+    config["elements"][element]["operations"][operation_name] = pulse_name
+
+def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
+    pulse_name = element + "_" + operation_name + "_in"
+    config["waveforms"][pulse_name + "_i"] = {
+        "type": "arbitrary",
+        "samples": list(wf_i),
+    }
+    config["waveforms"][pulse_name + "_q"] = {
+        "type": "arbitrary",
+        "samples": list(wf_q),
+    }
+    config["pulses"][pulse_name] = {
+        "operation": "control",
+        "length": len(wf_i),
+        "waveforms": {"I": pulse_name + "_i", "Q": pulse_name + "_q"},
+    }
+    config["elements"][element]["operations"][operation_name] = pulse_name
 
 def build_config(state):
     config = {
         "version": 1,
         "controllers": {
             "con1": {
-                "analog_outputs": {
-                },
+                "analog_outputs": {},
                 "digital_outputs": {},
                 "analog_inputs": {
                     1: {
@@ -511,7 +556,9 @@ def build_config(state):
         "integration_weights": {},
         "mixers": {},
     }
-    for key, value in state["OPX_config"]["controllers"]["con1"]["analog_outputs"].items():
+    for key, value in state["OPX_config"]["controllers"]["con1"][
+        "analog_outputs"
+    ].items():
         config["controllers"]["con1"]["analog_outputs"][key] = {
             "offset": state["OPX_config"]["controllers"]["con1"][
                 "analog_outputs"
