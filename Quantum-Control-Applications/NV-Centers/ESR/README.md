@@ -19,3 +19,14 @@ throughout the sequence. This allows measuring all the delays in the system, as 
 7. [T1](T1.py) - Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initialization
 8. [T2](T2.py) - A script that measures T2 after initialization of the ensemble
 9. [CPMG](cpmg.py) - A script that measures the echo amplitude for a wide range of delays between `pi` pulses in a CPMG pulse sequence
+
+## Use Cases
+
+These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
+a specific setup and would require changes to run on different setups. 
+
+Current use-cases:
+
+* [Sekhar Lab - CPMG](./Use%20case%201%20-%20Sekhar%20Lab%20-%20CPMG)
+The goal of this measurement is to obtain the decoherence time of an ensemble of NV centers with a CPMG-based dynamical decoupling
+sequence.
