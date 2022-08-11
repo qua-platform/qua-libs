@@ -151,8 +151,8 @@ with program() as rb:
                 assign(sequence_list[depth], saved_gate)
 
     with stream_processing():
-        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            num_of_sequences, max_circuit_depth
+        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
+            num_of_sequences
         ).save("res")
 
 
@@ -164,6 +164,7 @@ res_handles.wait_for_all_values()
 state = res_handles.res.fetch_all()
 
 value = 1 - np.average(state, axis=0)
+error = np.std(state, axis=0)
 
 
 def power_law(m, a, b, p):
@@ -183,6 +184,8 @@ pars, cov = curve_fit(
     maxfev=2000,
 )
 
+plt.figure()
+plt.errorbar(x, value, yerr=error, marker=".")
 plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
 stdevs = np.sqrt(np.diag(cov))

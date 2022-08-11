@@ -180,52 +180,54 @@ while results.is_processing():
     progress_counter(iteration, n_avg, start_time=results.get_start_time())
     # Plot results
     plt.cla()
-    plt.plot(x, I, ".", label="I")
-    plt.plot(x, Q, ".", label="Q")
+    plt.plot(x, np.average(I, axis=0), ".", label="I")
+    plt.plot(x, np.average(Q, axis=0), ".", label="Q")
     plt.xlabel("Number of cliffords")
     plt.legend()
     plt.pause(0.1)
-
-value = np.average(I, axis=0)  # Can change to Q
 
 
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
 
-pars, cov = curve_fit(
-    f=power_law,
-    xdata=x,
-    ydata=value,
-    p0=[0.5, 0.5, 0.9],
-    bounds=(-np.inf, np.inf),
-    maxfev=2000,
-)
+for data in [I, Q]:
+    value = np.average(data, axis=0)  # Can change to Q
+    error = np.std(data, axis=0)
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
+    plt.figure()
+    plt.errorbar(x, value, yerr=error, marker=".")
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
-plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    stdevs = np.sqrt(np.diag(cov))
 
-stdevs = np.sqrt(np.diag(cov))
+    print("#########################")
+    print("### Fitted Parameters ###")
+    print("#########################")
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+    print("Covariance Matrix")
+    print(cov)
 
-print("#########################")
-print("### Fitted Parameters ###")
-print("#########################")
-print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
-print("Covariance Matrix")
-print(cov)
+    one_minus_p = 1 - pars[2]
+    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
+    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_g_std = r_c_std / 1.875
 
-one_minus_p = 1 - pars[2]
-r_c = one_minus_p * (1 - 1 / 2**1)
-r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-r_c_std = stdevs[2] * (1 - 1 / 2**1)
-r_g_std = r_c_std / 1.875
+    print("#########################")
+    print("### Useful Parameters ###")
+    print("#########################")
+    print(
+        f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+        f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+        f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    )
 
-print("#########################")
-print("### Useful Parameters ###")
-print("#########################")
-print(
-    f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-    f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-    f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-)
-
-np.savez("rb_values", value)
+    np.savez("rb_values", value)

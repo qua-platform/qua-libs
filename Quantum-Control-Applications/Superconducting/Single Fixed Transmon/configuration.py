@@ -32,12 +32,12 @@ u = unit()
 qop_ip = "127.0.0.1"
 
 # Qubits
-qubit_IF = 50e6
-qubit_LO = 7e9
+qubit_IF = 50 * u.MHz
+qubit_LO = 7 * u.GHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
-qubit_T1 = int(10e3)
+qubit_T1 = int(10 * u.us)
 
 saturation_len = 1000
 saturation_amp = 0.1
@@ -47,7 +47,7 @@ square_pi_len = 100
 square_pi_amp = 0.1
 
 drag_coef = 0
-anharmonicity = -200e6
+anharmonicity = -200 * u.MHz
 
 gauss_len = 20
 gauss_sigma = gauss_len / 5
@@ -120,8 +120,8 @@ minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
-resonator_IF = 60e6
-resonator_LO = 5.5e9
+resonator_IF = 60 * u.MHz
+resonator_LO = 5.5 * u.GHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
