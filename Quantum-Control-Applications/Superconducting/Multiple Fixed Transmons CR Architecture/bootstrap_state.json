@@ -1,100 +1,130 @@
 {
-  "OPX_config": {
-    "controllers": {
-      "con1": {
-        "analog_outputs": {
-          "1": {
-            "offset": 0.0
-          },
-          "2": {
-            "offset": 0.0
-          },
-          "3": {
-            "offset": 0.0
-          },
-          "4": {
-            "offset": 0.0
-          },
-          "5": {
-            "offset": 0.0
-          },
-          "6": {
-            "offset": 0.0
-          },
-          "7": {
-            "offset": 0.0
-          },
-          "8": {
-            "offset": 0.0
-          },
-          "9": {
-            "offset": 0.0
-          },
-          "10": {
-            "offset": 0.0
-          }
-        },
-        "digital_outputs": {},
-        "analog_inputs": {
-          "1": {
-            "offset": 0.0,
-            "gain_db": 0
-          },
-          "2": {
-            "offset": 0.0,
-            "gain_db": 0
-          }
-        }
-      }
+  "analog_outputs": [
+    {
+      "controller": "con1",
+      "output": 1,
+      "offset": 0.0
     },
-    "elements": {},
-    "pulses": {
-      "const_pulse": {
-        "operation": "control",
-        "length": 100,
-        "waveforms": {
-          "I": "const_wf",
-          "Q": "zero_wf"
-        }
-      },
-      "saturation_pulse": {
-        "operation": "control",
-        "length": 100,
-        "waveforms": {
-          "I": "saturation_drive_wf",
-          "Q": "zero_wf"
-        }
-      }
+    {
+      "controller": "con1",
+      "output": 2,
+      "offset": 0.0
     },
-    "waveforms": {
-      "const_wf": {
-        "type": "constant",
-        "sample": 0.2
-      },
-      "saturation_drive_wf": {
-        "type": "constant",
-        "sample": 0.2
-      },
-      "zero_wf": {
-        "type": "constant",
-        "sample": 0.0
-      }
+    {
+      "controller": "con1",
+      "output": 3,
+      "offset": 0.0
     },
-    "digital_waveforms": {
-      "ON": {
-        "samples": [
-          [
-            1,
-            0
-          ]
+    {
+      "controller": "con1",
+      "output": 4,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 5,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 6,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 7,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 8,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 9,
+      "offset": 0.0
+    },
+    {
+      "controller": "con1",
+      "output": 10,
+      "offset": 0.0
+    }
+  ],
+  "analog_inputs": [
+    {
+      "controller": "con1",
+      "input": 1,
+      "offset": 0.0,
+      "gain_db": 0
+    },
+    {
+      "controller": "con1",
+      "input": 2,
+      "offset": 0.0,
+      "gain_db": 0
+    }
+  ],
+  "analog_waveforms": [
+    {
+      "name": "const_wf",
+      "type": "constant",
+      "samples": [
+        0.2
+      ]
+    },
+    {
+      "name": "saturation_drive_wf",
+      "type": "constant",
+      "samples": [
+        0.2
+      ]
+    },
+    {
+      "name": "zero_wf",
+      "type": "constant",
+      "samples": [
+        0.0
+      ]
+    }
+  ],
+  "digital_waveforms": [
+    {
+      "name": "ON",
+      "samples": [
+        [
+          1,
+          0
         ]
+      ]
+    }
+  ],
+  "pulses": [
+    {
+      "name": "const_pulse",
+      "operation": "control",
+      "length": 100,
+      "waveforms": {
+        "I": "const_wf",
+        "Q": "zero_wf"
       }
     },
-    "integration_weights": {},
-    "mixers": {}
-  },
-  "readout_length": 2e-06,
-  "readout_lo_freq": 6570000000.0,
+    {
+      "name": "saturation_pulse",
+      "operation": "control",
+      "length": 100000,
+      "waveforms": {
+        "I": "saturation_drive_wf",
+        "Q": "zero_wf"
+      }
+    }
+  ],
+  "readout_lines": [
+    {
+      "length": 2e-06,
+      "lo_freq": 6570000000.0
+    }
+  ],
   "readout_resonators": [
     {
       "f_res": 6452180000.0,
@@ -106,6 +136,7 @@
       "readout_fidelity": 0.84,
       "chi": 1000000.0,
       "wiring": {
+        "readout_line_index": 0,
         "time_of_flight": 260,
         "I": [
           "con1",
@@ -126,7 +157,6 @@
     {
       "f_res": 6532690000.0,
       "q_factor": null,
-      "readout_length": 2e-06,
       "readout_regime": "low_power",
       "readout_amplitude": 0.2,
       "opt_readout_frequency": 4525030000.0,
@@ -134,6 +164,7 @@
       "readout_fidelity": 0.84,
       "chi": 1000000.0,
       "wiring": {
+        "readout_line_index": 0,
         "time_of_flight": 260,
         "I": [
           "con1",

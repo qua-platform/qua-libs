@@ -25,65 +25,76 @@ def IQ_imbalance(g, phi):
     c = np.cos(phi)
     s = np.sin(phi)
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [
-        float(N * x)
-        for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]
-    ]
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
 # layer 1: bare state
 state = {
-    "OPX_config": {
-        "controllers": {
-            "con1": {
-                "analog_outputs": {
-                    "1": {"offset": 0.0},  # q1 I
-                    "2": {"offset": 0.0},  # q1 Q
-                    "3": {"offset": 0.0},  # q2 Q
-                    "4": {"offset": 0.0},  # q2 Q
-                    "5": {"offset": 0.0},  # q2 Q
-                    "6": {"offset": 0.0},  # q2 Q
-                    "7": {"offset": 0.0},  # q2 Q
-                    "8": {"offset": 0.0},  # q2 Q
-                    "9": {"offset": 0.0},  # I rrs
-                    "10": {"offset": 0.0},  # Q rrs
-                },
-                "digital_outputs": {},
-                "analog_inputs": {
-                    "1": {"offset": 0.0, "gain_db": 0},
-                    "2": {"offset": 0.0, "gain_db": 0},
-                },
-            }
+    "analog_outputs": [
+        {
+            "controller": "con1",
+            "output": 1,
+            "offset": 0.0,
         },
-        "elements": {},
-        "pulses": {
-            "const_pulse": {
-                "operation": "control",
-                "length": 100,
-                "waveforms": {
-                    "I": "const_wf",
-                    "Q": "zero_wf",
-                },
+        {
+            "controller": "con1",
+            "output": 2,
+            "offset": 0.0,
+        },
+        {
+            "controller": "con1",
+            "output": 3,
+            "offset": 0.0,
+        },
+        {
+            "controller": "con1",
+            "output": 4,
+            "offset": 0.0,
+        },
+        {"controller": "con1", "output": 5, "offset": 0.0},
+        {"controller": "con1", "output": 6, "offset": 0.0},
+        {"controller": "con1", "output": 7, "offset": 0.0},
+        {"controller": "con1", "output": 8, "offset": 0.0},
+        {"controller": "con1", "output": 9, "offset": 0.0},
+        {"controller": "con1", "output": 10, "offset": 0.0},
+    ],
+    "analog_inputs": [
+        {"controller": "con1", "input": 1, "offset": 0.0, "gain_db": 0},
+        {"controller": "con1", "input": 2, "offset": 0.0, "gain_db": 0},
+    ],
+    "analog_waveforms": [
+        {"name": "const_wf", "type": "constant", "samples": [0.2]},
+        {"name": "saturation_drive_wf", "type": "constant", "samples": [0.2]},
+        {
+            "name": "zero_wf",
+            "type": "constant",
+            "samples": [0.0],
+        },
+    ],
+    "digital_waveforms": [{"name": "ON", "samples": [(1, 0)]}],
+    "pulses": [
+        {
+            "name": "const_pulse",
+            "operation": "control",
+            "length": 100,
+            "waveforms": {
+                "I": "const_wf",
+                "Q": "zero_wf",
             },
-            "saturation_pulse": {
-                "operation": "control",
-                "length": 100000,
-                "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
-            },
         },
-        "waveforms": {
-            "const_wf": {"type": "constant", "sample": 0.2},
-            "saturation_drive_wf": {"type": "constant", "sample": 0.2},
-            "zero_wf": {"type": "constant", "sample": 0.0},
+        {
+            "name": "saturation_pulse",
+            "operation": "control",
+            "length": 100000,
+            "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
         },
-        "digital_waveforms": {
-            "ON": {"samples": [(1, 0)]},
-        },
-        "integration_weights": {},
-        "mixers": {},
-    },
-    "readout_length": 2e-6,  # Sec
-    "readout_lo_freq": 6.57e9,
+    ],
+    "readout_lines": [
+        {
+            "length": 2e-6,  # Sec
+            "lo_freq": 6.57e9,
+        }
+    ],
     "readout_resonators": [
         {
             "f_res": 6.45218e9,  # Hz
@@ -95,6 +106,7 @@ state = {
             "readout_fidelity": 0.84,
             "chi": 1e6,
             "wiring": {
+                "readout_line_index": 0,
                 "time_of_flight": 260,
                 "I": ["con1", 9],
                 "Q": ["con1", 10],
@@ -104,7 +116,6 @@ state = {
         {
             "f_res": 6.53269e9,  # Hz
             "q_factor": None,
-            "readout_length": 2e-6,  # Sec
             "readout_regime": "low_power",
             "readout_amplitude": 0.2,
             "opt_readout_frequency": 4.52503e9,
@@ -112,6 +123,7 @@ state = {
             "readout_fidelity": 0.84,
             "chi": 1e6,
             "wiring": {
+                "readout_line_index": 0,
                 "time_of_flight": 260,
                 "I": ["con1", 9],
                 "Q": ["con1", 10],
@@ -225,8 +237,7 @@ def add_qubits(state: Dict, config: Dict):
                 "lo_frequency": wiring["lo_freq"],
                 "mixer": f"mixer_q{q}",
             },
-            "intermediate_frequency": round(state["qubits"][q]["f_01"])
-            - wiring["lo_freq"],
+            "intermediate_frequency": round(state["qubits"][q]["f_01"]) - wiring["lo_freq"],
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -236,8 +247,7 @@ def add_qubits(state: Dict, config: Dict):
             config["mixers"][f"mixer_q{q}"] = []
         config["mixers"][f"mixer_q{q}"].append(
             {
-                "intermediate_frequency": round(state["qubits"][q]["f_01"])
-                - wiring["lo_freq"],
+                "intermediate_frequency": round(state["qubits"][q]["f_01"]) - wiring["lo_freq"],
                 "lo_frequency": wiring["lo_freq"],
                 "correction": wiring["correction_matrix"],
             }
@@ -246,16 +256,16 @@ def add_qubits(state: Dict, config: Dict):
 
 def add_readout_resonators(state, config):
     for r, v in enumerate(state["readout_resonators"]):  # r - idx, v - value
+        readout_line = state["readout_lines"][v["wiring"]["readout_line_index"]]
+
         config["elements"][f"rr{r}"] = {
             "mixInputs": {
                 "I": (v["wiring"]["I"][0], v["wiring"]["I"][1]),
                 "Q": (v["wiring"]["Q"][0], v["wiring"]["Q"][1]),
-                "lo_frequency": round(state["readout_lo_freq"]),
+                "lo_frequency": round(readout_line["lo_freq"]),
                 "mixer": "mixer_rr",
             },
-            "intermediate_frequency": round(
-                v["f_res"] - state["readout_lo_freq"]
-            ),
+            "intermediate_frequency": round(v["f_res"] - readout_line["lo_freq"]),
             "operations": {
                 "cw": "const_pulse",
                 "readout": f"readout_pulse_rr{r}",
@@ -271,10 +281,8 @@ def add_readout_resonators(state, config):
             config["mixers"]["mixer_rr"] = []
         config["mixers"]["mixer_rr"].append(
             {
-                "intermediate_frequency": round(
-                    v["f_res"] - state["readout_lo_freq"]
-                ),
-                "lo_frequency": state["readout_lo_freq"],
+                "intermediate_frequency": round(v["f_res"] - readout_line["lo_freq"]),
+                "lo_frequency": readout_line["lo_freq"],
                 "correction": v["wiring"]["correction_matrix"],
             }
         )
@@ -284,7 +292,7 @@ def add_readout_resonators(state, config):
         }
         config["pulses"][f"readout_pulse_rr{r}"] = {
             "operation": "measurement",
-            "length": round(state["readout_length"] * 1e9),
+            "length": round(readout_line["length"] * 1e9),
             "waveforms": {
                 "I": f"readout_wf_rr{r}",
                 "Q": "zero_wf",
@@ -301,40 +309,28 @@ def add_readout_resonators(state, config):
         }
         rot_angle_in_pi = v["rotation_angle"] / 180.0 * np.pi
         config["integration_weights"]["cosine_weights"] = {
-            "cosine": [(1.0, round(state["readout_length"] * 1e9))],
-            "sine": [(0.0, round(state["readout_length"] * 1e9))],
+            "cosine": [(1.0, round(readout_line["length"] * 1e9))],
+            "sine": [(0.0, round(readout_line["length"] * 1e9))],
         }
         config["integration_weights"]["sine_weights"] = {
-            "cosine": [(0.0, round(state["readout_length"] * 1e9))],
-            "sine": [(1.0, round(state["readout_length"] * 1e9))],
+            "cosine": [(0.0, round(readout_line["length"] * 1e9))],
+            "sine": [(1.0, round(readout_line["length"] * 1e9))],
         }
         config["integration_weights"]["minus_sine_weights"] = {
-            "cosine": [(0.0, round(state["readout_length"] * 1e9))],
-            "sine": [(-1.0, round(state["readout_length"] * 1e9))],
+            "cosine": [(0.0, round(readout_line["length"] * 1e9))],
+            "sine": [(-1.0, round(readout_line["length"] * 1e9))],
         }
         config["integration_weights"][f"rotated_cosine_weights_rr{r}"] = {
-            "cosine": [
-                (np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
-            "sine": [
-                (-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
+            "cosine": [(np.cos(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
+            "sine": [(-np.sin(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
         }
         config["integration_weights"][f"rotated_sine_weights_rr{r}"] = {
-            "cosine": [
-                (np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
-            "sine": [
-                (np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
+            "cosine": [(np.sin(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
+            "sine": [(np.cos(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
         }
         config["integration_weights"][f"rotated_minus_sine_weights_rr{r}"] = {
-            "cosine": [
-                (-np.sin(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
-            "sine": [
-                (-np.cos(rot_angle_in_pi), round(state["readout_length"] * 1e9))
-            ],
+            "cosine": [(-np.sin(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
+            "sine": [(-np.cos(rot_angle_in_pi), round(readout_line["length"] * 1e9))],
         }
 
 
@@ -359,13 +355,9 @@ def add_qb_rot(
         wf_Q: Optional, Q waveform
     """
     if direction not in ["x", "y"]:
-        raise ValueError(
-            f"Only x and y are accepted directions, received {direction}"
-        )
+        raise ValueError(f"Only x and y are accepted directions, received {direction}")
     if q >= len(state["qubits"]):
-        raise ValueError(
-            f"Qubit {q} is not configured in state. Please add qubit q first."
-        )
+        raise ValueError(f"Qubit {q} is not configured in state. Please add qubit q first.")
     if type(angle) != int:
         raise ValueError("Only integers are accepted as angle.")
 
@@ -379,32 +371,20 @@ def add_qb_rot(
     if len(wf_I) != len(wf_Q):
         raise ValueError("wf_I and wf_Q should have same lengths!")
 
-    wv = np.sign(angle) * (
-        wf_I * np.cos(direction_angle) + wf_Q * np.sin(direction_angle)
-    )
+    wv = np.sign(angle) * (wf_I * np.cos(direction_angle) + wf_Q * np.sin(direction_angle))
     if np.all((wv == 0)):
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
-            "type": "constant"
-        }
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
-            "type": "arbitrary"
-        }
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "arbitrary"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["samples"] = wv
 
-    wv = np.sign(angle) * (
-        (-wf_I) * np.sin(direction_angle) + wf_Q * np.cos(direction_angle)
-    )
+    wv = np.sign(angle) * ((-wf_I) * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
     if np.all((wv == 0)):
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
-            "type": "constant"
-        }
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
-            "type": "arbitrary"
-        }
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "arbitrary"}
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["samples"] = wv
 
     config["pulses"][f"{direction}{angle}_pulse_q{q}"] = {
@@ -415,9 +395,7 @@ def add_qb_rot(
             "Q": f"{direction}{angle}_Q_wf_q{q}",
         },
     }
-    config["elements"][f"q{q}"]["operations"][
-        f"{direction}{angle}"
-    ] = f"{direction}{angle}_pulse_q{q}"
+    config["elements"][f"q{q}"]["operations"][f"{direction}{angle}"] = f"{direction}{angle}_pulse_q{q}"
 
 
 def add_cross_resonance_gates(state, config):
@@ -432,14 +410,10 @@ def add_cross_resonance_gates(state, config):
                     config["elements"][f"q{v['control']}"]["mixInputs"]["Q"][0],
                     config["elements"][f"q{v['control']}"]["mixInputs"]["Q"][1],
                 ),
-                "lo_frequency": config["elements"][f"q{v['control']}"][
-                    "mixInputs"
-                ]["lo_frequency"],
+                "lo_frequency": config["elements"][f"q{v['control']}"]["mixInputs"]["lo_frequency"],
                 "mixer": f"mixer_q{v['control']}",
             },
-            "intermediate_frequency": round(
-                state["qubits"][v["target"]]["f_01"]
-            )
+            "intermediate_frequency": round(state["qubits"][v["target"]]["f_01"])
             - state["qubits"][v["control"]]["wiring"]["lo_freq"],
             "operations": {
                 "cw": "const_pulse",
@@ -447,16 +421,13 @@ def add_cross_resonance_gates(state, config):
         }
         config["mixers"][f"mixer_q{v['control']}"].append(
             {
-                "intermediate_frequency": round(
-                    state["qubits"][v["target"]]["f_01"]
-                )
+                "intermediate_frequency": round(state["qubits"][v["target"]]["f_01"])
                 - state["qubits"][v["control"]]["wiring"]["lo_freq"],
-                "lo_frequency": state["qubits"][v["control"]]["wiring"][
-                    "lo_freq"
-                ],
+                "lo_frequency": state["qubits"][v["control"]]["wiring"]["lo_freq"],
                 "correction": v["correction_matrix"],
             }
         )
+
 
 def add_control_operation_single(config, element, operation_name, wf):
     pulse_name = element + "_" + operation_name + "_in"
@@ -470,6 +441,7 @@ def add_control_operation_single(config, element, operation_name, wf):
         "waveforms": {"single": pulse_name + "_single"},
     }
     config["elements"][element]["operations"][operation_name] = pulse_name
+
 
 def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
     pulse_name = element + "_" + operation_name + "_in"
@@ -488,6 +460,62 @@ def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
     }
     config["elements"][element]["operations"][operation_name] = pulse_name
 
+
+def add_analog_outputs(state, config):
+    for o in state["analog_outputs"]:
+        if o["controller"] not in config["controllers"]:
+            config["controllers"][o["controller"]] = {}
+        if "analog_outputs" not in config["controllers"][o["controller"]]:
+            config["controllers"][o["controller"]]["analog_outputs"] = {}
+        config["controllers"][o["controller"]]["analog_outputs"][str(o["output"])] = {"offset": o["offset"]}
+
+
+def add_analog_inputs(state, config):
+    for i in state["analog_inputs"]:
+        if i["controller"] not in config["controllers"]:
+            config["controllers"][i["controller"]] = {}
+        if "analog_inputs" not in config["controllers"][i["controller"]]:
+            config["controllers"][i["controller"]]["analog_inputs"] = {}
+        config["controllers"][i["controller"]]["analog_inputs"][str(i["input"])] = {
+            "offset": i["offset"],
+            "gain_db": i["gain_db"],
+        }
+
+
+def add_analog_waveforms(state, config):
+    for wf in state["analog_waveforms"]:
+        if wf["type"] == "constant":
+            if len(wf["samples"]) != 1:
+                raise ValueError(
+                    f'Constant analog waveform {state["name"]} has to have samples length of 1 (currently {len(wf["samples"])})'
+                )
+
+            config["waveforms"][wf["name"]] = {"type": wf["type"], "sample": wf["samples"][0]}
+        else:
+            if len(wf["samples"]) <= 1:
+                raise ValueError(
+                    f'Analog waveform {state["name"]} has single sample, and should be then of type "constant" instead of {wf["type"]}.'
+                )
+            config["waveforms"][wf["name"]] = {"type": wf["type"], "samples": wf["samples"]}
+
+
+def add_digital_waveforms(state, config):
+    for wf in state["digital_waveforms"]:
+        config["digital_waveforms"][wf["name"]] = {"samples": wf["samples"]}
+
+
+def add_pulses(state, config):
+    for pulse in state["pulses"]:
+        config["pulses"][pulse["name"]] = {
+            "operation": pulse["operation"],
+            "length": pulse["length"],
+            "waveforms": {
+                "I": pulse["waveforms"]["I"],
+                "Q": pulse["waveforms"]["Q"],
+            },
+        }
+
+
 def build_config(state):
     config = {
         "version": 1,
@@ -495,75 +523,26 @@ def build_config(state):
             "con1": {
                 "analog_outputs": {},
                 "digital_outputs": {},
-                "analog_inputs": {
-                    1: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_inputs"
-                        ]["1"]["offset"],
-                        "gain_db": state["OPX_config"]["controllers"]["con1"][
-                            "analog_inputs"
-                        ]["1"]["gain_db"],
-                    },
-                    2: {
-                        "offset": state["OPX_config"]["controllers"]["con1"][
-                            "analog_inputs"
-                        ]["2"]["offset"],
-                        "gain_db": state["OPX_config"]["controllers"]["con1"][
-                            "analog_inputs"
-                        ]["2"]["gain_db"],
-                    },
-                },
+                "analog_inputs": {},
             }
         },
         "elements": {},
-        "pulses": {
-            "const_pulse": {
-                "operation": "control",
-                "length": state["OPX_config"]["pulses"]["const_pulse"][
-                    "length"
-                ],
-                "waveforms": {
-                    "I": "const_wf",
-                    "Q": "zero_wf",
-                },
-            },
-            "saturation_pulse": {
-                "operation": "control",
-                "length": state["OPX_config"]["pulses"]["saturation_pulse"][
-                    "length"
-                ],
-                "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
-            },
-        },
-        "waveforms": {
-            "const_wf": {
-                "type": "constant",
-                "sample": state["OPX_config"]["waveforms"]["const_wf"][
-                    "sample"
-                ],
-            },
-            "saturation_drive_wf": {
-                "type": "constant",
-                "sample": state["OPX_config"]["waveforms"][
-                    "saturation_drive_wf"
-                ]["sample"],
-            },
-            "zero_wf": {"type": "constant", "sample": 0.0},
-        },
-        "digital_waveforms": {
-            "ON": {"samples": [(1, 0)]},
-        },
+        "pulses": {},
+        "waveforms": {},
+        "digital_waveforms": {},
         "integration_weights": {},
         "mixers": {},
     }
-    for key, value in state["OPX_config"]["controllers"]["con1"][
-        "analog_outputs"
-    ].items():
-        config["controllers"]["con1"]["analog_outputs"][key] = {
-            "offset": state["OPX_config"]["controllers"]["con1"][
-                "analog_outputs"
-            ][key]["offset"]
-        }
+
+    add_analog_outputs(state, config)
+
+    add_analog_inputs(state, config)
+
+    add_analog_waveforms(state, config)
+
+    add_digital_waveforms(state, config)
+
+    add_pulses(state, config)
 
     add_qubits(state, config)
 
@@ -578,20 +557,14 @@ def build_config(state):
                     q,
                     single_qubit_operation["angle"],
                     single_qubit_operation["direction"],
-                    state["qubits"][q]["driving"]["angle2volt"][
-                        str(abs(single_qubit_operation["angle"]))
-                    ]
+                    state["qubits"][q]["driving"]["angle2volt"][str(abs(single_qubit_operation["angle"]))]
                     * gaussian(
                         round(state["qubits"][q]["driving"]["gate_len"] * 1e9),
-                        round(
-                            state["qubits"][q]["driving"]["gate_sigma"] * 1e9
-                        ),
+                        round(state["qubits"][q]["driving"]["gate_sigma"] * 1e9),
                     ),
                 )  # +180 and -180 have same amplitude
             else:
-                raise ValueError(
-                    f'Gate shape {state["qubits"][q]["driving"]["gate_shape"]} not recognized.'
-                )
+                raise ValueError(f'Gate shape {state["qubits"][q]["driving"]["gate_shape"]} not recognized.')
 
     add_cross_resonance_gates(state, config)
     return config
