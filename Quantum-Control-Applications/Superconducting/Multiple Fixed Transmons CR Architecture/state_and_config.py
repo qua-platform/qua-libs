@@ -371,7 +371,7 @@ def add_qb_rot(
     if len(wf_I) != len(wf_Q):
         raise ValueError("wf_I and wf_Q should have same lengths!")
 
-    wv = np.sign(angle) * (wf_I * np.cos(direction_angle) + wf_Q * np.sin(direction_angle))
+    wv = np.sign(angle) * (wf_I * np.cos(direction_angle) - wf_Q * np.sin(direction_angle))
     if np.all((wv == 0)):
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["sample"] = 0
@@ -379,7 +379,7 @@ def add_qb_rot(
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "arbitrary"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["samples"] = wv
 
-    wv = np.sign(angle) * ((-wf_I) * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
+    wv = np.sign(angle) * (wf_I * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
     if np.all((wv == 0)):
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["sample"] = 0
