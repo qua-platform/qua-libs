@@ -105,6 +105,6 @@ which is something that was invaluable to searching for spin physics.
 The figure displayed below shows the stability diagrams acquired using the spiral pattern where backward (right) and 
 forward (left) pulses were applied for each pixel, without (up) and with a perpendicular magnetic field of 30 mT (down).
 
- <img src="../_images/data.PNG" alt="raster_unfiltered" style="zoom: 67%;" />
+ <img src="./_images/data.PNG" alt="raster_unfiltered" style="zoom: 67%;" />
 
 <a id="1">[1]</a> Jirovec, D., Hofmann, A., Ballabio, A. et al. A singlet-triplet hole spin qubit in planar Ge. Nat. Mater. 20, 1106–1112 (2021). https://doi.org/10.1038/s41563-021-01022-2
