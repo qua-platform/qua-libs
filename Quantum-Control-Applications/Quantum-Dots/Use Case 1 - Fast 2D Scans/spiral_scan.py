@@ -37,12 +37,8 @@ y_element = "RB"
 x_amp = 0.1  # The scan is defined as +/- x_amp/2
 y_amp = 0.1  # The scan is defined as +/- y_amp/2
 resolution = 11  # Number of points along x and y, it must be odd to form a spiral
-x_axis = np.linspace(-x_amp / 2, x_amp / 2, resolution) * config["waveforms"][
-    "jump"
-].get("sample")
-y_axis = np.linspace(-y_amp / 2, y_amp / 2, resolution) * config["waveforms"][
-    "jump"
-].get("sample")
+x_axis = np.linspace(-x_amp / 2, x_amp / 2, resolution) * config["waveforms"]["jump"].get("sample")
+y_axis = np.linspace(-y_amp / 2, y_amp / 2, resolution) * config["waveforms"]["jump"].get("sample")
 
 # Perturbation parameters
 ramp_to_zero_duration = 100
@@ -107,9 +103,7 @@ with program() as spiral_scan:
         with while_(completed_moves < resolution * (resolution - 1)):
             # for_ loop to move the required number of moves in the x direction
             with for_(i, 0, i < moves_per_edge, i + 1):
-                assign(
-                    x, x + movement_direction * x_step_size * 0.5
-                )  # updating the x location
+                assign(x, x + movement_direction * x_step_size * 0.5)  # updating the x location
                 save(x, x_st)
                 save(y, y_st)
                 # if the x coordinate should be 0, ramp to zero to remove fixed point arithmetic errors accumulating
@@ -182,21 +176,13 @@ with program() as spiral_scan:
                     )
 
             # updating the variables
-            assign(
-                completed_moves, completed_moves + 2 * moves_per_edge
-            )  # * 2 because moves in both x and y
-            assign(
-                movement_direction, movement_direction * -1
-            )  # *-1 as subsequent steps in the opposite direction
-            assign(
-                moves_per_edge, moves_per_edge + 1
-            )  # moving one row/column out so need one more move_per_edge
+            assign(completed_moves, completed_moves + 2 * moves_per_edge)  # * 2 because moves in both x and y
+            assign(movement_direction, movement_direction * -1)  # *-1 as subsequent steps in the opposite direction
+            assign(moves_per_edge, moves_per_edge + 1)  # moving one row/column out so need one more move_per_edge
 
         # filling in the final x row, which was not covered by the previous for_ loop
         with for_(i, 0, i < moves_per_edge - 1, i + 1):
-            assign(
-                x, x + movement_direction * x_step_size * 0.5
-            )  # updating the x location
+            assign(x, x + movement_direction * x_step_size * 0.5)  # updating the x location
             save(x, x_st)
             save(y, y_st)
             # if the x coordinate should be 0, ramp to zero to remove fixed point arithmetic errors accumulating
@@ -304,9 +290,7 @@ if simulation is True:
     plt.figure()
     plt.plot(V)
     plt.plot(V_filter)
-    print(
-        f"Averaged error per step: {np.average(np.abs(V-V_filter)[:130000])*1000:.2f} mV"
-    )
+    print(f"Averaged error per step: {np.average(np.abs(V-V_filter)[:130000])*1000:.2f} mV")
 
 else:
     # Open a quantum machine
