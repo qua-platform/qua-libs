@@ -12,11 +12,11 @@ from macros import readout_macro
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
-delta_depth = 1
 num_of_sequences = 50
 n_avg = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
+delta_clifford = 10
 
 qmm = QuantumMachinesManager(qop_ip)
 
@@ -125,35 +125,48 @@ with program() as rb:
     Q = declare(fixed)
     state = declare(bool)
     state_st = declare_stream()
+    depth_target = declare(int)
 
     with for_(m, 0, m < num_of_sequences, m + 1):
         sequence_list, inv_gate_list = generate_sequence()
 
-        with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
-            with for_(n, 0, n < n_avg, n + 1):
-                # Replacing the last gate in the sequence with the sequence's inverse gate
-                # The original gate is saved in 'saved_gate' and is being restored at the end
-                assign(saved_gate, sequence_list[depth])
-                assign(sequence_list[depth], inv_gate_list[depth - 1])
+        assign(depth_target, 0)
 
-                # Can replace by active reset
-                wait(cooldown_time, "resonator")
+        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+            # Replacing the last gate in the sequence with the sequence's inverse gate
+            # The original gate is saved in 'saved_gate' and is being restored at the end
+            assign(saved_gate, sequence_list[depth])
+            assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-                align("resonator", "qubit")
+            with if_((depth == 1) | (depth == depth_target)):
 
-                play_sequence(sequence_list, depth)
-                align("qubit", "resonator")
-                # Make sure you updated the ge_threshold
-                state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+                with for_(n, 0, n < n_avg, n + 1):
 
-                save(state, state_st)
+                    # Can replace by active reset
+                    wait(cooldown_time, "resonator")
 
-                assign(sequence_list[depth], saved_gate)
+                    align("resonator", "qubit")
+
+                    play_sequence(sequence_list, depth)
+                    align("qubit", "resonator")
+                    # Make sure you updated the ge_threshold
+                    state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+
+                    save(state, state_st)
+
+                assign(depth_target, depth_target + delta_clifford)
+
+            assign(sequence_list[depth], saved_gate)
 
     with stream_processing():
-        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
-            num_of_sequences
-        ).save("res")
+        # saves a 2D array of depth and random pulse sequences
+        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            max_circuit_depth / delta_clifford + 1
+        ).buffer(num_of_sequences).save("res")
+        # returns a 1D array of averaged random pulse sequences vs depth of circuit
+        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            max_circuit_depth / delta_clifford + 1
+        ).average().save("res2")
 
 
 qm = qmm.open_qm(config)
@@ -161,31 +174,35 @@ qm = qmm.open_qm(config)
 job = qm.execute(rb)
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
-state = res_handles.res.fetch_all()
+state = res_handles.res.fetch_all()  # 2D array (depth, random sequences)
+state2 = res_handles.res2.fetch_all()  # 1D array vs depth, averaged random sequences in SP
 
 value = 1 - np.average(state, axis=0)
 error = np.std(state, axis=0)
+value2 = 1 - state2
+error2 = np.std(state2)
 
 
 def power_law(m, a, b, p):
     return a * (p**m) + b
 
 
-x = np.linspace(1, max_circuit_depth, max_circuit_depth)
+x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
 plt.xlabel("Number of cliffords")
 plt.ylabel("Sequence Fidelity")
 
 pars, cov = curve_fit(
     f=power_law,
     xdata=x,
-    ydata=value,
+    ydata=value2,
     p0=[0.5, 0.5, 0.9],
     bounds=(-np.inf, np.inf),
     maxfev=2000,
 )
 
 plt.figure()
-plt.errorbar(x, value, yerr=error, marker=".")
+plt.errorbar(x, value2, yerr=error2, marker=".")
 plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
 stdevs = np.sqrt(np.diag(cov))

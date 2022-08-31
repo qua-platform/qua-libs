@@ -37,8 +37,8 @@ with program() as ramsey:
             play("pi_half", "qubit")
             wait(tau, "qubit")
             frame_rotation_2pi(
-                Cast.mul_fixed_by_int(detuning, 4 * tau), "qubit"
-            )  # 4*tau because tau was in clock cycles
+                Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau), "qubit"
+            )  # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
             play("pi_half", "qubit")
             align("qubit", "resonator")
             measure(
