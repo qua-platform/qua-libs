@@ -25,8 +25,9 @@ and the fidelity are good enough, gives the parameters needed for active reset
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
 13. [DRAG calibration](DRAG_calibration.py) - Performs `x180y90` and `y180x90` pulses to obtain 
 the DRAG coefficient `$\alpha$` (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-14. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
+14. [Single Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity
+    * [Interleaved Randomized Benchmarking](interleaved_rb.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
 15. [State Tomography](state_tomography.py) - A template to perform state tomography
 16. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
 
