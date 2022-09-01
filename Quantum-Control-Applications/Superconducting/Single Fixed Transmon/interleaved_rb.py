@@ -18,7 +18,7 @@ from macros import readout_macro
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-interleaved_gate_index = 2 # index from play_sequence() of the gate under study
+interleaved_gate_index = 2  # index from play_sequence() of the gate under study
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 num_of_sequences = 5
 n_avg = 10
@@ -37,7 +37,7 @@ def generate_sequence(interleaved_gate_index):
     rand = Random(seed=seed)
 
     assign(current_state, 0)
-    with for_(i, 0, i < 2*max_circuit_depth, i + 2):
+    with for_(i, 0, i < 2 * max_circuit_depth, i + 2):
         assign(step, rand.rand_int(24))
         assign(current_state, cayley[current_state * 24 + step])
         assign(sequence[i], step)
@@ -145,7 +145,7 @@ with program() as rb:
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
         assign(depth_target, 2)
-        with for_(depth, 1, depth <= 2*max_circuit_depth, depth + 1):
+        with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
@@ -203,7 +203,6 @@ else:
     def power_law(m, a, b, p):
         return a * (p**m) + b
 
-
     plt.figure()
     x = np.linspace(1, max_circuit_depth, max_circuit_depth)
     plt.xlabel("Number of cliffords")
@@ -217,7 +216,6 @@ else:
         bounds=(-np.inf, np.inf),
         maxfev=2000,
     )
-
 
     plt.errorbar(x, value, yerr=error, marker=".")
     plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
