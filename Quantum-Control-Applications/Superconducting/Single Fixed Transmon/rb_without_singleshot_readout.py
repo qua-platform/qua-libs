@@ -12,7 +12,6 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
-delta_depth = 1
 num_of_sequences = 50
 n_avg = 20000
 seed = 345324
@@ -131,7 +130,7 @@ with program() as rb:
         with for_(m, 0, m < num_of_sequences, m + 1):
             sequence_list, inv_gate_list = generate_sequence()
 
-            with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
+            with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
                 # Replacing the last gate in the sequence with the sequence's inverse gate
                 # The original gate is saved in 'saved_gate' and is being restored at the end
                 assign(saved_gate, sequence_list[depth])
