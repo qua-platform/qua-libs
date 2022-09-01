@@ -17,8 +17,11 @@ from macros import readout_macro
 #############################################
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-
-interleaved_gate_index = 2  # index from play_sequence() of the gate under study
+# index from play_sequence() function defined below of the gate under study
+# Correspondence table:
+#  0: identity |  1: x180 |  2: y180
+# 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
+interleaved_gate_index = 2
 max_circuit_depth = int(3 * qubit_T1 / x180_len)
 num_of_sequences = 5
 n_avg = 10
@@ -139,9 +142,9 @@ with program() as rb:
     state = declare(bool)
     state_st = declare_stream()
     depth_target = declare(int)
-    update_frequency("qubit", 0)
+
     with for_(m, 0, m < num_of_sequences, m + 1):
-        # input the index (from play_sequence()) of the gate you want to characterize
+        # Generates the RB sequence with a gate interleaved after each Clifford
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
         assign(depth_target, 2)
