@@ -23,12 +23,20 @@ and the fidelity are good enough, gives the parameters needed for active reset
 11. [T1](T1.py) - Measures T1
 12. [ALLXY](allxy.py) - Performs an ALLXY experiment to correct for gates imperfections
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-13. [DRAG calibration](DRAG_calibration.py) - Performs `x180y90` and `y180x90` pulses to obtain 
-the DRAG coefficient `$\alpha$` (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-14. [1 Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
+13. **DRAG calibration** -  Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
+    * [Google method](DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
+the DRAG coefficient `$\alpha$`
+    * [Yale method](DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain 
+the DRAG coefficient `$\alpha$`
+    * [2D](AC_Stark_2Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
+    * [1D](AC_Stark_1Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by scanning the DRAG pulse detuning for a given number of pulses.
+
+15. [Single Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity
-15. [State Tomography](state_tomography.py) - A template to perform state tomography
-16. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
+    * [Interleaved Randomized Benchmarking](interleaved_rb.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
+    * [Randomized Benchmarking without Single Shot readout](rb_without_singleshot_readout.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity without single shot readout.
+16. [State Tomography](state_tomography.py) - A template to perform state tomography
+17. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
 
 ## Use Cases
 
