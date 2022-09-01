@@ -34,6 +34,7 @@ the DRAG coefficient `$\alpha$`
 15. [Single Qubit Randomized Benchmarking](rb.py) - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity
     * [Interleaved Randomized Benchmarking](interleaved_rb.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
+    * [Randomized Benchmarking without Single Shot readout](rb_without_singleshot_readout.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity without single shot readout.
 16. [State Tomography](state_tomography.py) - A template to perform state tomography
 17. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
 
