@@ -46,45 +46,95 @@ const_amp = 50 * u.mV
 pi_len = 100
 pi_amp = 0.05
 
+drag_coef = 0
+anharmonicity = -200 * u.MHz
+AC_stark_detuning = 0 * u.MHz
+
 gauss_len = 200
 gauss_sigma = gauss_len / 5
 gauss_amp = 0.25
 gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
-x180_len = 100
+x180_len = 40
 x180_sigma = x180_len / 5
-x180_amp = 0.15
-x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=0, delta=1))
+x180_amp = 0.35
+x180_wf, x180_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        x180_amp, x180_len, x180_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
+    )
+)
+x180_I_wf = x180_wf
+x180_Q_wf = x180_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=0, delta=1))
+x90_wf, x90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        x90_amp, x90_len, x90_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
+    )
+)
+x90_I_wf = x90_wf
+x90_Q_wf = x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-x270_len = x180_len
-x270_sigma = x270_len / 5
-x270_amp = -x90_amp
-x270_wf, x270_der_wf = np.array(drag_gaussian_pulse_waveforms(x270_amp, x270_len, x270_sigma, alpha=0, delta=1))
+minus_x90_len = x180_len
+minus_x90_sigma = minus_x90_len / 5
+minus_x90_amp = -x90_amp
+minus_x90_wf, minus_x90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        minus_x90_amp,
+        minus_x90_len,
+        minus_x90_sigma,
+        alpha=drag_coef,
+        anharmonicity=anharmonicity,
+        detuning=AC_stark_detuning,
+    )
+)
+minus_x90_I_wf = minus_x90_wf
+minus_x90_Q_wf = minus_x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
-y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=0, delta=1))
+y180_wf, y180_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        y180_amp, y180_len, y180_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
+    )
+)
+y180_I_wf = (-1) * y180_der_wf
+y180_Q_wf = y180_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = y180_amp / 2
-y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=0, delta=1))
+y90_wf, y90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        y90_amp, y90_len, y90_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
+    )
+)
+y90_I_wf = (-1) * y90_der_wf
+y90_Q_wf = y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-y270_len = x180_len
-y270_sigma = y270_len / 5
-y270_amp = -y90_amp
-y270_wf, y270_der_wf = np.array(drag_gaussian_pulse_waveforms(y270_amp, y270_len, y270_sigma, alpha=0, delta=1))
+minus_y90_len = y180_len
+minus_y90_sigma = minus_y90_len / 5
+minus_y90_amp = -y90_amp
+minus_y90_wf, minus_y90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        minus_y90_amp,
+        minus_y90_len,
+        minus_y90_sigma,
+        alpha=drag_coef,
+        anharmonicity=anharmonicity,
+        detuning=AC_stark_detuning,
+    )
+)
+minus_y90_I_wf = (-1) * minus_y90_der_wf
+minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
@@ -143,10 +193,10 @@ config = {
                 "pi_half": "pi_half_pulse",
                 "x180": "x180_pulse",
                 "x90": "x90_pulse",
-                "x270": "x270_pulse",
+                "-x90": "-x90_pulse",
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
-                "y270": "y270_pulse",
+                "-y90": "-y90_pulse",
             },
         },
         "resonator": {
@@ -241,12 +291,12 @@ config = {
                 "Q": "x180_der_wf",
             },
         },
-        "x270_pulse": {
+        "-x90_pulse": {
             "operation": "control",
-            "length": x270_len,
+            "length": minus_x90_len,
             "waveforms": {
-                "I": "x270_wf",
-                "Q": "x270_der_wf",
+                "I": "minus_x90_wf",
+                "Q": "minus_x90_der_wf",
             },
         },
         "y90_pulse": {
@@ -265,12 +315,12 @@ config = {
                 "Q": "y180_wf",
             },
         },
-        "y270_pulse": {
+        "-y90_pulse": {
             "operation": "control",
-            "length": y270_len,
+            "length": minus_y90_len,
             "waveforms": {
-                "I": "y270_der_wf",
-                "Q": "y270_wf",
+                "I": "minus_y90_der_wf",
+                "Q": "minus_y90_wf",
             },
         },
         "gaussian_pulse": {
@@ -310,14 +360,14 @@ config = {
         "x90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
         "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
         "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
-        "x270_wf": {"type": "arbitrary", "samples": x270_wf.tolist()},
-        "x270_der_wf": {"type": "arbitrary", "samples": x270_der_wf.tolist()},
+        "minus_x90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
+        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_der_wf.tolist()},
         "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
         "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
         "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
         "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
-        "y270_wf": {"type": "arbitrary", "samples": y270_wf.tolist()},
-        "y270_der_wf": {"type": "arbitrary", "samples": y270_der_wf.tolist()},
+        "minus_y90_wf": {"type": "arbitrary", "samples": minus_y90_wf.tolist()},
+        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_y90_der_wf.tolist()},
         "readout_wf": {"type": "constant", "sample": readout_amp},
     },
     "digital_waveforms": {
