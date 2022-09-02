@@ -6,8 +6,8 @@ It also includes various examples and results from labs as listed below.
 Note that for them to work, you would need to download the latest version of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools#installation).
 
 ## Superconducting Qubits
-### Multi flux tunable transmons
-* [SWAP spectroscopy improved with predistortion digital filters]().
+### Multiple flux tunable transmons
+* [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 
 ### Single fixed frequency transmon
 * [Qubit Frequency Tracking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon/Use%20Case%201%20-%20Schuster%20Lab%20-%20Qubit%20Frequency%20Tracking#qubit-frequency-tracking) 
@@ -15,9 +15,9 @@ Note that for them to work, you would need to download the latest version of the
 * [Optimized readout with optimal weights](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon/Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights#optimized-readout-with-optimal-weights).
 
 ### Single flux tunable transmon
-* [Cryoscope](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/SSB%20mixer%20for%20readout/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope#cryoscope) 
+* [Cryoscope](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope) 
   performed in the lab of Prof. Sorin Paraoanu in Aalto University.
-* [DRAG Pulse Calibration]().
+* [DRAG Pulse Calibration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration).
 
 ## AMO Qubits
 ### Rydberg Arrays
@@ -25,12 +25,16 @@ Note that for them to work, you would need to download the latest version of the
   performed in the lab of Prof. Mark Saffman in the University of Wisconsin-Madison.
 
 ## NV-Centers
+
+### Cryogenic nanophotonic cavity
+* [High resolution time-tagging](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/NV-Centers/Cryogenic%20nanophotonic%20cavity/Use%20case%201%20-%20Faraon%20Lab%20-%20sub-ns%20timetagging)
+  performed in the lab of Prof. Faraon at Caltech.
 ### Electron Spin Resonance set-up
-* [CPMG]()
+* [CPMG](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/NV-Centers/ESR/Use%20case%201%20-%20Sekhar%20Lab%20-%20CPMG)
   performed in the lab of Prof. Sekhar at Darmouth College.
 
 ### Confocal set-up
 
 ## Quantum-dots
-* [Fast 2D Scans Using a Spiral Pattern]()
-  performed in the lab of Prof. ? at ?.
+* [Fast 2D scans using a spiral pattern]()
+  performed in the lab of Prof. Natalia Ares in the University of Oxford.
