@@ -191,4 +191,4 @@ The absence of these two features on the right picture shows the validity of the
 
 <a id="2">[2]</a> [Cryoscope with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/SSB%20mixer%20for%20readout/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope)
 
-<a id="3">[3]</a> [DRAG pulse optimization with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/DRAG_use_case/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon/Use%20Case%203%20-%20DRAG%20calibration)
+<a id="3">[3]</a> [DRAG pulse optimization with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration)
