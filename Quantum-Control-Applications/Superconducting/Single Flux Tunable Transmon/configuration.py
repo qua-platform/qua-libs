@@ -114,8 +114,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator (SSB mixer)
-                4: {"offset": 0.0},  # flux line
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
+                5: {"offset": 0.0},  # flux line
             },
             "digital_outputs": {
                 1: {},
@@ -149,12 +150,15 @@ config = {
             },
         },
         "resonator": {
-            "singleInput": {
-                "port": ("con1", 3),
+            "mixInputs": {
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
+                "lo_frequency": resonator_LO,
+                "mixer": "mixer_resonator",
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
-                "cw": "const_single_pulse",
+                "cw": "const_pulse",
                 "readout": "readout_pulse",
             },
             "outputs": {
@@ -166,7 +170,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 4),
+                "port": ("con1", 5),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -174,7 +178,7 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 4),
+                "port": ("con1", 5),
             },
             "hold_offset": {"duration": 1},  # in clock cycles (4ns)
             "operations": {
@@ -281,7 +285,8 @@ config = {
             "operation": "measurement",
             "length": readout_len,
             "waveforms": {
-                "single": "readout_wf",
+                "I": "readout_wf",
+                "Q": "zero_wf",
             },
             "integration_weights": {
                 "cos": "cosine_weights",
