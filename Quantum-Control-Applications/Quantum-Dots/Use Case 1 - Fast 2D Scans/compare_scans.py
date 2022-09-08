@@ -33,23 +33,20 @@ if N < 10:
 # Derive output voltages without and with high pass filtering
 output_1 = np.full(shape=(N**2 + 2, measurement_time), fill_value=0.0)
 output_2 = np.full(shape=(N**2 + 2, measurement_time), fill_value=0.0)
-output_3 = np.full(shape=(N**2 + 2, measurement_time), fill_value=0.0)
 
 for i, values in enumerate(X):
     for j, num in enumerate(values):
         output_1[num + 1, :] = np.full(measurement_time, fill_value=(i - (N - 1) / 2) / (N - 1))
         output_2[num + 1, :] = np.full(measurement_time, fill_value=(j - (N - 1) / 2) / (N - 1))
-        output_3[num + 1, :] = np.concatenate([np.zeros(200), np.sin(np.linspace(0, 50, 600)) / 2, np.zeros(200)])
 if N < 10:
     plt.subplot(122)
 
-plt.plot(output_1.flatten()[::100] + 1.1, label="analog output 1")
-plt.plot(output_2.flatten()[::100], label="analog output 2")
-plt.plot(output_3.flatten()[::100] - 1.1, label="analog output 3")
+plt.plot(output_1.flatten()[::100] + 1.1, 'b', label="V_rg")
+plt.plot(output_2.flatten()[::100], 'r', label="V_lg")
 output_1_filter = high_pass(output_1.flatten(), tau_biasT)
 output_2_filter = high_pass(output_2.flatten(), tau_biasT)
-plt.plot(output_1_filter.flatten()[::100] + 1.1, label="analog output 1 filtered")
-plt.plot(output_2_filter.flatten()[::100], label="analog output 2 filtered")
+plt.plot(output_1_filter.flatten()[::100] + 1.1, 'c--', label="V_rg filtered")
+plt.plot(output_2_filter.flatten()[::100], 'm--', label="V_lg filtered")
 
 plt.xlabel("time (ns)")
 plt.ylabel("output voltage (V)")
@@ -105,23 +102,20 @@ if N < 10:
 # Derive output voltages without and with high pass filtering
 output_1 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
 output_2 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
-output_3 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
 
 for i, values in enumerate(order):
     for j, num in enumerate(values):
         output_1[num, :] = np.full(measurement_time, fill_value=(i - (N - 1) / 2) / (N - 1))
         output_2[num, :] = np.full(measurement_time, fill_value=(j - (N - 1) / 2) / (N - 1))
-        output_3[num, :] = np.concatenate([np.zeros(200), np.sin(np.linspace(0, 50, 600)) / 2, np.zeros(200)])
 
 if N < 10:
     plt.subplot(122)
-plt.plot(output_1.flatten()[::100] + 1.1, label="analog output 1")
-plt.plot(output_2.flatten()[::100], label="analog output 2")
-plt.plot(output_3.flatten()[::100] - 1.1, label="analog output 3")
+plt.plot(output_1.flatten()[::100] + 1.1, 'b', label="V_rg")
+plt.plot(output_2.flatten()[::100], 'r', label="V_lg")
 output_1_filter = high_pass(output_1.flatten(), tau_biasT)
 output_2_filter = high_pass(output_2.flatten(), tau_biasT)
-plt.plot(output_1_filter.flatten()[::100] + 1.1, label="analog output 1 filtered")
-plt.plot(output_2_filter.flatten()[::100], label="analog output 2 filtered")
+plt.plot(output_1_filter.flatten()[::100] + 1.1, 'c--', label="V_rg filtered")
+plt.plot(output_2_filter.flatten()[::100], 'm--', label="V_lg filtered")
 plt.xlabel("time (ns)")
 plt.ylabel("output voltage (V)")
 plt.legend()
@@ -208,22 +202,19 @@ if N < 10:
 # Derive output voltages without and with high pass filtering
 output_1 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
 output_2 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
-output_3 = np.full(shape=(N**2 + 1, measurement_time), fill_value=0.0)
 
 for i, values in enumerate(order):
     for j, num in enumerate(values):
         output_1[num, :] = np.full(measurement_time, fill_value=(i - (N - 1) / 2) / (N - 1))
         output_2[num, :] = np.full(measurement_time, fill_value=(j - (N - 1) / 2) / (N - 1))
-        output_3[num, :] = np.concatenate([np.zeros(200), np.sin(np.linspace(0, 50, 600)) / 2, np.zeros(200)])
 if N < 10:
     plt.subplot(122)
-plt.plot(output_1.flatten()[::100] + 1.1, label="analog output 1")
-plt.plot(output_2.flatten()[::100], label="analog output 2")
-plt.plot(output_3.flatten()[::100] - 1.1, label="analog output 3")
+plt.plot(output_1.flatten()[::100] + 1.1, 'b', label="V_rg")
+plt.plot(output_2.flatten()[::100], 'r', label="V_lg")
 output_1_filter = high_pass(output_1.flatten(), tau_biasT)
 output_2_filter = high_pass(output_2.flatten(), tau_biasT)
-plt.plot(output_1_filter.flatten()[::100] + 1.1, label="analog output 1 filtered")
-plt.plot(output_2_filter.flatten()[::100], label="analog output 2 filtered")
+plt.plot(output_1_filter.flatten()[::100] + 1.1, 'c--', label="V_rg filtered")
+plt.plot(output_2_filter.flatten()[::100], 'm--', label="V_lg filtered")
 plt.xlabel("time (ns)")
 plt.ylabel("output voltage (V)")
 plt.legend()

@@ -89,7 +89,13 @@ For a scan of $N \times N$  pixels where time $\tau$ is spent at each pixel, the
 pattern is $f=1/(2N\tau)$ whereas for a Raster scan it was $f=1/(N^2\tau)$.
 
 Thus allowing much greater resolutions and/or time spent at each pixel before the high pass filtering effect becomes an issue. 
-Shown below is the effect of a high pass filter with a time constant of 200µs on the waveforms needed to create 101x101 raster and spiral scans with a measurement time of 1us. 
+Shown below is the effect of a high pass filter with a time constant of 200µs (5 kHz) on the waveforms needed to create 
+101x101 raster and spiral scans with a total measurement time of 1us.
+For the raster scan, the effect of high pass filtering is clearly visible on the "slow" gate voltage performing the sweep along the rows.
+The mean difference between the filtered (dashed lines) and non-filtered (plain lines) data is about 8%.
+On the other hand, the fast voltage change rate and the interplay between positive and negative values make the spiral 
+scan much more robust against the bias-tee high pass filtering. 
+The mean difference between the filtered (dashed lines) and non-filtered (plain lines) data is reduced to 0.2%.
 
 
 | <img src="./_images/raster_wo_w_filter.png" alt="raster_wo_w_filter" style="zoom: 67%;" /> | <img src="./_images/spiral_wo_w_filter.png" alt="spiral_wo_w_filter" style="zoom: 67%;" /> |
