@@ -36,5 +36,5 @@ Note that for them to work, you would need to download the latest version of the
 ### Confocal set-up
 
 ## Quantum-dots
-* [Fast 2D scans using a spiral pattern]()
+* [Fast 2D scans using a spiral pattern](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Quantum-Dots/Use%20Case%201%20-%20Fast%202D%20Scans)
   performed in the lab of Prof. Natalia Ares in the University of Oxford.
