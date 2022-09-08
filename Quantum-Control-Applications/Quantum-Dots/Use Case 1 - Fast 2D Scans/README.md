@@ -97,9 +97,9 @@ On the other hand, the fast voltage change rate and the interplay between positi
 scan (right figure) much more robust against the bias-tee high pass filtering. 
 The mean difference between the filtered (dashed lines) and non-filtered (plain lines) data is reduced to 0.2%.
 
-
-| <img src="./_images/raster_wo_w_filter.png" alt="raster_wo_w_filter" style="zoom: 67%;" /> | <img src="./_images/spiral_wo_w_filter.png" alt="spiral_wo_w_filter" style="zoom: 67%;" /> |
+|                                        Raster scan                                         |                                        Spiral scan                                         |
 |:------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------:|
+| <img src="./_images/raster_wo_w_filter.png" alt="raster_wo_w_filter" style="zoom: 67%;" /> | <img src="./_images/spiral_wo_w_filter.png" alt="spiral_wo_w_filter" style="zoom: 67%;" /> |
 |                    $<\sqrt{(V_{perfect}-V_{filter})^2}> \approx 8.2$ %                     |                    $<\sqrt{(V_{perfect}-V_{filter})^2}> \approx 0.2$ %                     |
 
 ### Experimental implementation with interleaved pulse sequence
