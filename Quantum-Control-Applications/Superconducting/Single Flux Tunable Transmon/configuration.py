@@ -59,9 +59,7 @@ x180_len = 40
 x180_sigma = x180_len / 5
 x180_amp = 0.35
 x180_wf, x180_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        x180_amp, x180_len, x180_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
-    )
+    drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
 x180_I_wf = x180_wf
 x180_Q_wf = x180_der_wf
@@ -71,9 +69,7 @@ x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
 x90_wf, x90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        x90_amp, x90_len, x90_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
-    )
+    drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
 x90_I_wf = x90_wf
 x90_Q_wf = x90_der_wf
@@ -87,9 +83,9 @@ minus_x90_wf, minus_x90_der_wf = np.array(
         minus_x90_amp,
         minus_x90_len,
         minus_x90_sigma,
-        alpha=drag_coef,
-        anharmonicity=anharmonicity,
-        detuning=AC_stark_detuning,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
     )
 )
 minus_x90_I_wf = minus_x90_wf
@@ -100,9 +96,7 @@ y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
 y180_wf, y180_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        y180_amp, y180_len, y180_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
-    )
+    drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
 y180_I_wf = (-1) * y180_der_wf
 y180_Q_wf = y180_wf
@@ -112,9 +106,7 @@ y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = y180_amp / 2
 y90_wf, y90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        y90_amp, y90_len, y90_sigma, alpha=drag_coef, anharmonicity=anharmonicity, detuning=AC_stark_detuning
-    )
+    drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
 y90_I_wf = (-1) * y90_der_wf
 y90_Q_wf = y90_wf
@@ -128,9 +120,9 @@ minus_y90_wf, minus_y90_der_wf = np.array(
         minus_y90_amp,
         minus_y90_len,
         minus_y90_sigma,
-        alpha=drag_coef,
-        anharmonicity=anharmonicity,
-        detuning=AC_stark_detuning,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
     )
 )
 minus_y90_I_wf = (-1) * minus_y90_der_wf
