@@ -55,6 +55,11 @@ gauss_sigma = gauss_len / 5
 gauss_amp = 0.25
 gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
+displace_len = 40
+displace_sigma = displace_len / 5
+displace_amp = 0.35
+displace_wf = displace_amp * gaussian(displace_len, displace_sigma)
+
 x180_len = 40
 x180_sigma = x180_len / 5
 x180_amp = 0.35
