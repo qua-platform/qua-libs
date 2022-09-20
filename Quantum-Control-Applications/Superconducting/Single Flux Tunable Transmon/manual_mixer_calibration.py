@@ -25,7 +25,7 @@ job = qm.execute(cw_output)
 
 # When done, the halt command can be called and the offsets can be written directly into the config file.
 
-# job.halt
+# job.halt()
 
 # These are the 2 commands used to correct for mixer imperfections. The first is used to set the DC of the `I` and `Q`
 # channels to compensate for the LO leakage. Since this compensation depends on the I & Q powers, it is advised to
