@@ -1,6 +1,5 @@
 from scipy.optimize import curve_fit
 import numpy as np
-import random
 import matplotlib.pyplot as plt
 
 
@@ -19,7 +18,7 @@ y_dummy = y_dummy + noise
 plt.figure()
 plt.plot(x_dummy, y_dummy, ".")
 plt.title("Dummy data")
-plt.xlabel("Number of cliffords")
+plt.xlabel("Number of Clifford gates")
 plt.ylabel("Sequence Fidelity")
 
 pars, cov = curve_fit(

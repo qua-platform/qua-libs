@@ -48,7 +48,7 @@ with program() as wigner_tomo:
                 # Displace the cavity
                 play("displace" * amp(amp_dis[r], 0, 0, amp_dis[i]), cavity_element)
                 align(cavity_element, "qubit")
-                # Ramsey sequence with idle time set to pi / chi
+                # The Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
                 wait(revival_time, "qubit")
                 play("x90", "qubit")
@@ -61,7 +61,7 @@ with program() as wigner_tomo:
                     dual_demod.full("cos", "out1", "sin", "out2", I),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
-                # Single shot detection and ground/excited state assignement
+                # Single shot detection and ground/excited state assignment
                 with if_(I < threshold):
                     assign(ground, ground + 1)
                 with else_():

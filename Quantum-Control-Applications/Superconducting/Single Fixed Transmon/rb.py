@@ -189,7 +189,7 @@ def power_law(m, a, b, p):
 
 x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
 x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
-plt.xlabel("Number of cliffords")
+plt.xlabel("Number of Clifford gates")
 plt.ylabel("Sequence Fidelity")
 
 pars, cov = curve_fit(

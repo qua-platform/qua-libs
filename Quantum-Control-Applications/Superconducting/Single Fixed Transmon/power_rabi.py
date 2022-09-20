@@ -83,7 +83,7 @@ else:
         plt.cla()
         plt.plot(amps * gauss_amp, I, ".", label="I")
         plt.plot(amps * gauss_amp, Q, ".", label="Q")
-        plt.xlabel("Rabi pulse aplitude [V]")
+        plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("I & Q amplitude [a.u.]")
         plt.legend()
         plt.pause(0.1)

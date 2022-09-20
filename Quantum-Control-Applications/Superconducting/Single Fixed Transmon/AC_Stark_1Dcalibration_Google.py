@@ -1,5 +1,5 @@
 """
-An experiment to calibrate the AC stark shift: ac_stark_shift_coef
+An experiment to calibrate the AC stark shift using DRAG waveforms
 This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 """
 from qm.qua import *
@@ -9,14 +9,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from macros import readout_macro
-from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
 ###################
-
-# set the ac_stark_shift_coef in the configuration
-ac_stark_shift_coef = 1
 
 n_avg = 1000
 
@@ -38,7 +34,7 @@ with program() as ac_stark_shift:
     pulses = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(it, 0, it < 20, it + 1):
+        with for_(it, 0, it < number_of_pulses, it + 1):
             play("x180" * amp(1), "qubit")
             play("x180" * amp(-1), "qubit")
         align("qubit", "resonator")

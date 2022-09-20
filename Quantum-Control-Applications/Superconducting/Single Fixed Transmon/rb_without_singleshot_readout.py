@@ -1,6 +1,6 @@
 """
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity. This version is using directly the I
-& Q data and should be used when there is no single-shot readout
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity. This version is using directly the 'I'
+& 'Q' data and should be used when there is no single-shot readout
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -181,7 +181,7 @@ while results.is_processing():
     plt.cla()
     plt.plot(x, np.average(I, axis=0), ".", label="I")
     plt.plot(x, np.average(Q, axis=0), ".", label="Q")
-    plt.xlabel("Number of cliffords")
+    plt.xlabel("Number of Clifford gates")
     plt.legend()
     plt.pause(0.1)
 
