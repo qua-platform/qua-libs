@@ -1,5 +1,5 @@
 """
-cryoscope_amplitude_calibration.py: template for performing the detuning vs flux pulse amplitude calibration prior to the cryoscope
+cryoscope_amplitude_calibration.py: template for performing the detuning vs flux pulse amplitude calibration prior to Cryoscope
 protocol.
 """
 from qm.qua import *
@@ -18,20 +18,20 @@ from qualang_tools.loops import from_array
 
 n_avg = 10000  # Number of averages
 cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
-# Flux amplitude sweep (as a prefactor of the flux amplitude)
+# Flux amplitude sweep (as a pre-factor of the flux amplitude)
 n_flux_amp = 401
 flux_amp_array = np.linspace(0, -0.2, n_flux_amp)
 
 with program() as cryoscope_amp:
     n = declare(int)  # Averaging index
     flag = declare(bool)  # X/2 or Y/2 flag
-    flux_amp = declare(fixed)  # Flux amplitude prefactor
+    flux_amp = declare(fixed)  # Flux amplitude pre-factor
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
 
-    # Calibrate the ground and excited states readout for deriving the Bloch vector
+    # Calibrate the ground and excited states' readout for deriving the Bloch vector
     Ig_st, Qg_st, Ie_st, Qe_st = ge_averaged_measurement(cooldown_time, n_avg)
 
     with for_(n, 0, n < n_avg, n + 1):
@@ -99,7 +99,7 @@ else:
         # Phase of ground and excited states
         phase_g = np.angle(Ig + 1j * Qg)
         phase_e = np.angle(Ie + 1j * Qe)
-        # Phase of cryoscope measurement
+        # Phase of Cryoscope measurement
         phase = np.unwrap(np.angle(I + 1j * Q))
         # Population in excited state
         pop = (phase - phase_g) / (phase_e - phase_g)

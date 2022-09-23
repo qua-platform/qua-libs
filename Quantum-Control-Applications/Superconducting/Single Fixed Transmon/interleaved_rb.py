@@ -208,7 +208,7 @@ else:
 
     plt.figure()
     x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-    plt.xlabel("Number of cliffords")
+    plt.xlabel("Number of Clifford gates")
     plt.ylabel("Sequence Fidelity")
 
     pars, cov = curve_fit(

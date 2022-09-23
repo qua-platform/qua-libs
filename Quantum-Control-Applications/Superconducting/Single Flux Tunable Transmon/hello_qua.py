@@ -12,7 +12,7 @@ from configuration import *
 # The QUA program #
 ###################
 with program() as hello_qua:
-    play("const", "qubit")
+    play("cw", "qubit")
 
 
 #####################################

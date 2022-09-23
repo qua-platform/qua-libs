@@ -1,5 +1,5 @@
 """
-An experiment to calibrate the AC stark shift: ac_stark_shift_coef
+An experiment to calibrate the AC stark shift using DRAG waveforms
 This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 """
 from qm.qua import *
@@ -14,9 +14,6 @@ from qualang_tools.loops import from_array
 ###################
 # The QUA program #
 ###################
-
-# set the ac_stark_shift_coef in the configuration
-ac_stark_shift_coef = 1
 
 n_avg = 1000
 

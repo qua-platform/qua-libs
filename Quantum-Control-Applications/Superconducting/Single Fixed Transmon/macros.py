@@ -1,7 +1,7 @@
 """
 This file contains useful QUA macros meant to simplify and ease QUA programs.
 All the macros below have been written and tested with the basic configuration. If you modify this configuration
-(elements, operations, integration weigths...) these macros will need to be modified accordingly.
+(elements, operations, integration weights...) these macros will need to be modified accordingly.
 """
 
 from qm.qua import declare, fixed, measure, dual_demod, assign

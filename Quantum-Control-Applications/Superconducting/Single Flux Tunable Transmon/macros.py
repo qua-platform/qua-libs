@@ -1,7 +1,7 @@
 """
 This file contains useful QUA macros meant to simplify and ease QUA programs.
 All the macros below have been written and tested with the basic configuration. If you modify this configuration
-(elements, operations, integration weigths...) these macros will need to be modified accordingly.
+(elements, operations, integration weights...) these macros will need to be modified accordingly.
 """
 
 from qm.qua import *
@@ -55,9 +55,9 @@ def reset_qubit(method, **kwargs):
         return active_reset(threshold, max_tries=max_tries, Ig=Ig)
 
 
-# Macro for performing active reset until succesfull for a given number of tries.
+# Macro for performing active reset until successful for a given number of tries.
 def active_reset(threshold, max_tries=1, Ig=None):
-    """Macro for performing active reset until succesfull for a gicen number of tries.
+    """Macro for performing active reset until successful for a given number of tries.
 
     :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.
     :param max_tries: python integer for the maximum number of tries used to perform active reset. Must >= 1.
@@ -97,7 +97,7 @@ def active_reset(threshold, max_tries=1, Ig=None):
 # Macro for measuring the qubit state with single shot
 def single_measurement(threshold=None, state=None, I=None, Q=None):
     """
-    A macro for performing the singleshot readout, with the ability to perform state discrimination.
+    A macro for performing the single-shot readout, with the ability to perform state discrimination.
     If `threshold` is given, the information in the `I` quadrature will be compared against the threshold and `state`
     would be `True` if `I > threshold`.
     Note that it is assumed that the results are rotated such that all the information is in the `I` quadrature.
@@ -138,7 +138,7 @@ def ge_averaged_measurement(cooldown_time, n_avg):
 
     :param cooldown_time: cooldown time between two successive qubit state measurements in clock cycle unit (4ns).
     :param n_avg: number of averaging iterations. Must be a python integer.
-    :return: streams for the I and Q data for the ground and excited states respectively: [Ig_st, Qg_st, Ie_st, Qe_st].
+    :return: streams for the 'I' and 'Q' data for the ground and excited states respectively: [Ig_st, Qg_st, Ie_st, Qe_st].
     """
     n = declare(int)
     I = declare(fixed)
