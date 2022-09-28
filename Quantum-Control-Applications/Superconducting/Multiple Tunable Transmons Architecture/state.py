@@ -284,7 +284,7 @@ state = {
             ]
         },
         {
-            "f_01": 4.65097e9,
+            "f_01": 4.63097e9,
             "f_01_docs": "01 transition frequency (Hz)",
             "anharmonicity": 0.0,
             "rabi_freq": 1.0e6,

@@ -21,7 +21,7 @@ def add_qubits(state: QuAM, config: dict):
                 "lo_frequency": lo_freq,
                 "mixer": f"mixer_drive_line{q}",
             },
-            "intermediate_frequency": round(state.qubits[0].f_01)
+            "intermediate_frequency": round(state.qubits[q].f_01)
                                       - lo_freq,
             "operations": {
                 "cw": "const_pulse",

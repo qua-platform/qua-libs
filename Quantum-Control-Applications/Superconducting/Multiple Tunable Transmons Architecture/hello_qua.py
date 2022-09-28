@@ -31,7 +31,7 @@ with program() as hello_QUA:
 machine = QuAM("quam_bootstrap_state.json")
 config = machine.build_config()
 
-qmm = QuantumMachinesManager(host='172.16.2.103', port='80')
+qmm = QuantumMachinesManager(host='172.16.2.103', port='85')
 simulation_duration = 2400  # clock cycle units - 4ns
 job_sim = qmm.simulate(config, hello_QUA, SimulationConfig(simulation_duration))
 job_sim.get_simulated_samples().con1.plot()
