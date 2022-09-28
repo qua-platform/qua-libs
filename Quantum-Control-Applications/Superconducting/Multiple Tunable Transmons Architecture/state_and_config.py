@@ -767,7 +767,6 @@ def add_qb_rot(
     ] = f"{direction}{angle}_pulse_q{q}"
 
 
-
 def add_control_operation_single(config, element, operation_name, wf):
     pulse_name = element + "_" + operation_name + "_in"
     config["waveforms"][pulse_name + "_single"] = {
