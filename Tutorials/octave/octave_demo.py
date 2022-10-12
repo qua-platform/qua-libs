@@ -37,9 +37,7 @@ qm.octave.set_rf_output_mode(element, RFOutputMode.on)
 qm.octave.set_lo_source(element, OctaveLOSource.LO1)
 
 qm.octave.calibrate_element(element, [(lo_freq, if_freq)])
-qm = qmm.open_qm(
-    config
-)  # Calibration closes the QM so another one should be opened again after calibration is done
+qm = qmm.open_qm(config)  # Calibration closes the QM so another one should be opened again after calibration is done
 
 qm.octave.set_qua_element_octave_rf_in_port(element, "octave1", 1)
 qm.octave.set_downconversion(element)
