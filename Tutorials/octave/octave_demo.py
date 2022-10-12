@@ -5,13 +5,13 @@ from qm.octave import *
 from qm.qua import *
 from configuration import *
 
-opx_ip = 'xxx.xxx.xxx.xxx'
+opx_ip = "xxx.xxx.xxx.xxx"
 opx_port = 80
-octave_ip = 'xxx.xxx.xxx.xxx'
+octave_ip = "xxx.xxx.xxx.xxx"
 octave_port = 80
 
 octave_config = QmOctaveConfig()
-octave_config.add_device_info('octave1', octave_ip, octave_port)
+octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 octave_config.set_opx_octave_mapping([("con1", "octave1")])
 
@@ -24,11 +24,11 @@ qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
 
 with program() as prog:
     with infinite_loop_():
-        play('readout', 'qe1')
+        play("readout", "qe1")
 
 qm = qmm.open_qm(config)
 
-element = 'q1'
+element = "q1"
 
 qm.octave.set_lo_frequency(element, lo_freq)
 qm.octave.set_rf_output_gain(element, -10)
@@ -37,7 +37,9 @@ qm.octave.set_rf_output_mode(element, RFOutputMode.on)
 qm.octave.set_lo_source(element, OctaveLOSource.LO1)
 
 qm.octave.calibrate_element(element, [(lo_freq, if_freq)])
-qm = qmm.open_qm(config)  # Calibration closes the QM so another one should be opened again after calibration is done
+qm = qmm.open_qm(
+    config
+)  # Calibration closes the QM so another one should be opened again after calibration is done
 
 qm.octave.set_qua_element_octave_rf_in_port(element, "octave1", 1)
 qm.octave.set_downconversion(element)
