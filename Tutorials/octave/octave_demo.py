@@ -1,10 +1,8 @@
 import os
-import time
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.octave import *
 from qm.qua import *
-import numpy as np
 from configuration import *
 
 opx_ip = 'xxx.xxx.xxx.xxx'
@@ -41,7 +39,7 @@ qm.octave.set_lo_source(element, OctaveLOSource.LO1)
 qm.octave.calibrate_element(element, [(lo_freq, if_freq)])
 qm = qmm.open_qm(config)  # Calibration closes the QM so another one should be opened again after calibration is done
 
-qm.octave.set_qua_element_octave_rf_in_port(element,"octave1", 1)
+qm.octave.set_qua_element_octave_rf_in_port(element, "octave1", 1)
 qm.octave.set_downconversion(element)
 
 # This is for the case you want to use an external LO source
