@@ -9,6 +9,16 @@ from configuration import *
 import matplotlib.pyplot as plt
 
 
+# Add SPCM2 to the config if it is not already there
+from copy import deepcopy as _deepcopy
+
+config["controllers"]["con1"]["analog_inputs"][2] = {"offset": 0}  # Add analog input 2
+config["controllers"]["con1"]["digital_outputs"][3] = {}  # Add digital output 3
+config["elements"]["SPCM2"] = _deepcopy(config["elements"]["SPCM"])  # Copy SPCM element
+config["elements"]["SPCM2"]["outputs"] = {"out1": ("con1", 2)}  # Map SPCM2 to analog input 2
+config["elements"]["SPCM2"]["digitalInputs"]["marker"]["port"] = ("con1", 3)  # Map SPCM2 to digital output 3
+
+
 def MZI_g2(times1, counts1, times2, counts2, correlation_window: int):
     """
     Calculate the second order correlation of click times between two counting channels
@@ -36,12 +46,16 @@ def MZI_g2(times1, counts1, times2, counts2, correlation_window: int):
                 assign(j, counts2 + 1)
             with elif_((diff < correlation_window) & (diff > -correlation_window)):
                 assign(diff_ind, diff + correlation_window)
-                assign(g2[diff_ind], g2[diff_ind] + 1)
+                assign(g2_vector[diff_ind], g2_vector[diff_ind] + 1)
             # Track and evolve the lower bound forward every time a photon falls behind the lower bound
             with elif_(diff < -correlation_window):
                 assign(lower_index_tracker, lower_index_tracker + 1)
     return g2_vector
 
+
+###################
+# The QUA program #
+###################
 
 # Scan Parameters
 n_avg = 1e4
@@ -84,11 +98,12 @@ with program() as g2_two_channel:
         total_counts_st.save("total_counts")
         n_st.save("iteration")
 
-host = "172.16.2.103"
-port = "85"
-qmm = QuantumMachinesManager(host=host, port=port)
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(qop_ip)
 
-simulate = False
+simulate = True
 if simulate:
     simulation_config = SimulationConfig(duration=12000)
     job = qmm.simulate(config, g2_two_channel, simulation_config)

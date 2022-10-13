@@ -20,7 +20,6 @@ def single_channel_g2(time_vector, count_number, correlation_window: int):
     :param correlation_window: (int) - Relevant correlation window to analyze data
     :return: (QUA array of type int) - Updated g2
     """
-
     g2_vector = declare(int, value=[0 for _ in range(correlation_window)])  # array for g2 to be saved
     j = declare(int)
     k = declare(int)
@@ -29,13 +28,17 @@ def single_channel_g2(time_vector, count_number, correlation_window: int):
         with for_(j, k + 1, j < count_number, j + 1):
             assign(difference, time_vector[j] - time_vector[k])
             with if_(difference < correlation_window):
-                assign(g2[difference], g2[difference] + 1)
+                assign(g2_vector[difference], g2_vector[difference] + 1)
             # If the remaining photons are outside the correlation window, go to the next click
             # This is equivalent to 'break'
             with else_():
                 assign(j, count_number)
     return g2_vector
 
+
+###################
+# The QUA program #
+###################
 
 # Scan Parameters
 n_avg = 1e6
@@ -75,10 +78,10 @@ with program() as g2_single_channel:
         total_counts_st.save("total_counts")
         n_st.save("iteration")
 
-
-host = "172.16.2.103"
-port = "85"
-qmm = QuantumMachinesManager(host=host, port=port)
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(qop_ip)
 
 simulate = True
 if simulate:
