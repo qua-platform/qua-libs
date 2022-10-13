@@ -18,8 +18,7 @@ def single_channel_g2(g2, times, counts, correlation_width: int):
     """
     Calculate the second order correlation of click times at a single counting channel
 
-    :param g2: (QUA array of type int) - g2 measurement from the previous iteration.
-    The size must be greater than correlation width.
+    :param g2: (QUA array of type int) - g2 measurement from the previous iteration. The size must be greater than correlation width.
     :param times: (QUA array of type int) - Click times in nanoseconds
     :param counts: (QUA int) - Number of total clicks
     :param correlation_width: (int) - Relevant correlation window to analyze data
@@ -35,7 +34,7 @@ def single_channel_g2(g2, times, counts, correlation_width: int):
                 assign(g2[difference], g2[difference] + 1)
             # If the remaining photons are outside the correlation window, go to the next click
             # This is equivalent to 'break'
-            with if_(difference >= correlation_width):
+            with else_():
                 assign(j, counts)
     return g2
 
