@@ -375,6 +375,31 @@ def add_pulses(state: QuAM, config: dict):
             },
         }
 
+def add_sideband(state: QuAM, config: dict):
+    for r, v in enumerate(state.sideband):  # r - idx, v - value
+
+        config["elements"][f"sb{r}"] = {
+            "mixInputs": {
+                "I": (v.wiring.I[0], v.wiring.I[1]),
+                "Q": (v.wiring.Q[0], v.wiring.Q[1]),
+                "lo_frequency": round(v.LO),
+                "mixer": "mixer_sb",
+            },
+            "intermediate_frequency": round(v.IF),
+            "operations": {
+                "cw": "const_pulse",
+            },
+        }
+        if "mixer_sb" not in config["mixers"]:
+            config["mixers"]["mixer_sb"] = []
+        config["mixers"]["mixer_sb"].append(
+            {
+                "intermediate_frequency": round(v.IF),
+                "lo_frequency": round(v.LO),
+                "correction": v.wiring.correction_matrix,
+            }
+        )
+
 
 def build_config(state: QuAM):
     config = {

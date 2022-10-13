@@ -3891,6 +3891,433 @@ class Running_strategy(object):
         object.__setattr__(self, key, value)
 
 
+class Wiring3(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def I(self) -> List[Union[str, int, float, bool, list]]:
+        """"""
+        
+        if self._quam._record_updates:
+            return _List(
+                self._quam,
+                self._path + "I",
+                self._index,
+                self._schema
+            )
+        
+        value = self._quam._json[self._path + "I"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @I.setter
+    def I(self, value: List[Union[str, int, float, bool, list]]):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "I")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "I"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "I"] = value
+
+    @property
+    def Q(self) -> List[Union[str, int, float, bool, list]]:
+        """"""
+        
+        if self._quam._record_updates:
+            return _List(
+                self._quam,
+                self._path + "Q",
+                self._index,
+                self._schema
+            )
+        
+        value = self._quam._json[self._path + "Q"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @Q.setter
+    def Q(self, value: List[Union[str, int, float, bool, list]]):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "Q")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "Q"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "Q"] = value
+
+    @property
+    def correction_matrix(self) -> List[Union[str, int, float, bool, list]]:
+        """"""
+        
+        if self._quam._record_updates:
+            return _List(
+                self._quam,
+                self._path + "correction_matrix",
+                self._index,
+                self._schema
+            )
+        
+        value = self._quam._json[self._path + "correction_matrix"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @correction_matrix.setter
+    def correction_matrix(self, value: List[Union[str, int, float, bool, list]]):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "correction_matrix")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "correction_matrix"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "correction_matrix"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class Sideband(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def f_res(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "f_res"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @f_res.setter
+    def f_res(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "f_res")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "f_res"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "f_res"] = value
+
+    @property
+    def LO(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "LO"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @LO.setter
+    def LO(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "LO")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "LO"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "LO"] = value
+
+    @property
+    def IF(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "IF"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @IF.setter
+    def IF(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "IF")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "IF"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "IF"] = value
+
+    @property
+    def sideband_amplitude(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "sideband_amplitude"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @sideband_amplitude.setter
+    def sideband_amplitude(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "sideband_amplitude")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "sideband_amplitude"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "sideband_amplitude"] = value
+
+    @property
+    def wiring(self) -> Wiring3:
+        """"""
+        return Wiring3(
+            self._quam, self._path + "wiring/", self._index,
+            self._schema["properties"]["wiring"]
+        )
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class SidebandList(object):
+
+    def __init__(self, quam, path, index, schema):
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    def __getitem__(self, key) -> Sideband:
+        return Sideband(
+            self._quam,
+            self._path + "[]/",
+            self._index + [key],
+            self._schema["items"]
+        )
+
+    def __iter__(self):
+        for i in range(self.__len__()):
+            yield self.__getitem__(i)
+
+    def __len__(self):
+        length = self._quam._json[self._path + "[]_len"]
+        for i in range(len(self._index)):
+            length = length[self._index[i]]
+        return length
+
+    def _json_view(self):
+        result = []
+        for i in range(self.__len__()):
+            result.append(self.__getitem__(i)._json_view())
+        return result
+
+    def append(self, json_item:dict):
+        """Adds a new sideband by adding a JSON dictionary with following schema
+{
+  "f_res": {
+    "type": "number"
+  },
+  "LO": {
+    "type": "number"
+  },
+  "IF": {
+    "type": "number"
+  },
+  "sideband_amplitude": {
+    "type": "number"
+  },
+  "wiring": {
+    "type": "object",
+    "title": "wiring",
+    "properties": {
+      "I": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "Q": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "correction_matrix": {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    "required": [
+      "I",
+      "Q",
+      "correction_matrix"
+    ]
+  }
+}"""
+        import quam_sdk.crud
+        self._schema["items"]["additionalProperties"] = False
+        quam_sdk.crud.validate_input(json_item, self._schema["items"])
+        if self._quam._record_updates:
+            self._quam._updates["items"].append([json_item, self._path, self._index])
+        quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
+        self._quam._json[f"{self._path}[]_len"] += 1
+
+    def __str__(self) -> str:
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
 class QuAM(object):
 
     def __init__(self, flat_json: Union[None, str, dict] = None):
@@ -3907,8 +4334,8 @@ class QuAM(object):
         else:
             self._json = None
         self._updates = {"keys":[], "indexes":[], "values":[], "items":[]}
-        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'analog_outputs[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'analog_inputs[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'analog_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'digital_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'pulses[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'pulses_single[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'drive_line[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'single_qubit_operations[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}}, 'additionalProperties': False}
-        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'analog_outputs': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_output', 'properties': {'controller': {'type': 'string'}, 'output': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'output', 'offset']}}, 'analog_inputs': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_input', 'properties': {'controller': {'type': 'string'}, 'input': {'type': 'integer'}, 'offset': {'type': 'number'}, 'gain_db': {'type': 'integer'}}, 'required': ['controller', 'input', 'offset', 'gain_db']}}, 'analog_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_waveform', 'properties': {'name': {'type': 'string'}, 'type': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'type', 'samples']}}, 'digital_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'digital_waveform', 'properties': {'name': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'samples']}}, 'pulses': {'type': 'array', 'items': {'type': 'object', 'title': 'pulse', 'properties': {'name': {'type': 'string'}, 'operation': {'type': 'string'}, 'length': {'type': 'integer'}, 'waveforms': {'type': 'object', 'title': 'waveforms', 'properties': {'I': {'type': 'string'}, 'Q': {'type': 'string'}}, 'required': ['I', 'Q']}}, 'required': ['name', 'operation', 'length', 'waveforms']}}, 'pulses_single': {'type': 'array', 'items': {'type': 'object', 'title': 'pulses_single', 'properties': {'name': {'type': 'string'}, 'operation': {'type': 'string'}, 'length': {'type': 'integer'}, 'waveforms': {'type': 'object', 'title': 'waveforms', 'properties': {'single': {'type': 'string'}}, 'required': ['single']}}, 'required': ['name', 'operation', 'length', 'waveforms']}}, 'readout_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_line', 'properties': {'length': {'type': 'number', 'description': 'readout time (seconds) on this drive line'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency for readout line'}}, 'required': ['length', 'lo_freq']}}, 'readout_resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_resonator', 'properties': {'f_res': {'type': 'number', 'description': 'resonator frequency (Hz)'}, 'q_factor': {'type': 'number'}, 'readout_regime': {'type': 'string'}, 'readout_amplitude': {'type': 'number'}, 'opt_readout_frequency': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'readout_fidelity': {'type': 'number'}, 'chi': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'readout_line_index': {'type': 'integer'}, 'time_of_flight': {'type': 'integer'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'correction_matrix': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['readout_line_index', 'time_of_flight', 'I', 'Q', 'correction_matrix']}}, 'required': ['f_res', 'q_factor', 'readout_regime', 'readout_amplitude', 'opt_readout_frequency', 'rotation_angle', 'readout_fidelity', 'chi', 'wiring']}}, 'crosstalk_matrix': {'type': 'object', 'title': 'crosstalk_matrix', 'properties': {'static': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'crosstalk matrix for slow flux lines'}, 'fast': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'crosstalk matrix for fast flux lines'}}, 'required': ['static', 'fast']}, 'drive_line': {'type': 'array', 'items': {'type': 'object', 'title': 'drive_line', 'properties': {'qubits': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'qubits associated with this drive line'}, 'freq': {'type': 'number', 'description': 'LO frequency'}, 'power': {'type': 'integer', 'description': 'LO power to mixer'}}, 'required': ['qubits', 'freq', 'power']}}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'f_01': {'type': 'number', 'description': '01 transition frequency (Hz)'}, 'anharmonicity': {'type': 'number'}, 'rabi_freq': {'type': 'number'}, 't1': {'type': 'number'}, 't2': {'type': 'number'}, 't2star': {'type': 'number'}, 'driving': {'type': 'object', 'title': 'driving', 'properties': {'gate_len': {'type': 'number', 'description': '(seconds)'}, 'gate_sigma': {'type': 'number'}, 'gate_shape': {'type': 'string'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['gate_len', 'gate_sigma', 'gate_shape', 'angle2volt']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'correction_matrix': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'flux_line': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'controller port associated with fast flux line'}, 'flux_filter_coef': {'type': 'object', 'title': 'flux_filter_coef', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}}, 'required': ['I', 'Q', 'correction_matrix', 'flux_line', 'flux_filter_coef']}, 'sequence_states': {'type': 'array', 'items': {'type': 'object', 'title': 'sequence_state', 'properties': {'name': {'type': 'string'}, 'amplitude': {'type': 'number'}, 'length': {'type': 'integer'}}, 'required': ['name', 'amplitude', 'length']}}}, 'required': ['f_01', 'anharmonicity', 'rabi_freq', 't1', 't2', 't2star', 'driving', 'wiring', 'sequence_states']}}, 'single_qubit_operations': {'type': 'array', 'items': {'type': 'object', 'title': 'single_qubit_operation', 'properties': {'direction': {'type': 'string'}, 'angle': {'type': 'integer'}}, 'required': ['direction', 'angle']}}, 'running_strategy': {'type': 'object', 'title': 'running_strategy', 'properties': {'running': {'type': 'boolean'}, 'start': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'end': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['running', 'start', 'end']}}, 'required': ['analog_outputs', 'analog_inputs', 'analog_waveforms', 'digital_waveforms', 'pulses', 'pulses_single', 'readout_lines', 'readout_resonators', 'crosstalk_matrix', 'drive_line', 'qubits', 'single_qubit_operations', 'running_strategy']}
+        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'analog_outputs[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'analog_inputs[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'analog_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'digital_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'pulses[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'pulses_single[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'drive_line[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'single_qubit_operations[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'sideband[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}}, 'additionalProperties': False}
+        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'analog_outputs': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_output', 'properties': {'controller': {'type': 'string'}, 'output': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'output', 'offset']}}, 'analog_inputs': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_input', 'properties': {'controller': {'type': 'string'}, 'input': {'type': 'integer'}, 'offset': {'type': 'number'}, 'gain_db': {'type': 'integer'}}, 'required': ['controller', 'input', 'offset', 'gain_db']}}, 'analog_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'analog_waveform', 'properties': {'name': {'type': 'string'}, 'type': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'type', 'samples']}}, 'digital_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'digital_waveform', 'properties': {'name': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'samples']}}, 'pulses': {'type': 'array', 'items': {'type': 'object', 'title': 'pulse', 'properties': {'name': {'type': 'string'}, 'operation': {'type': 'string'}, 'length': {'type': 'integer'}, 'waveforms': {'type': 'object', 'title': 'waveforms', 'properties': {'I': {'type': 'string'}, 'Q': {'type': 'string'}}, 'required': ['I', 'Q']}}, 'required': ['name', 'operation', 'length', 'waveforms']}}, 'pulses_single': {'type': 'array', 'items': {'type': 'object', 'title': 'pulses_single', 'properties': {'name': {'type': 'string'}, 'operation': {'type': 'string'}, 'length': {'type': 'integer'}, 'waveforms': {'type': 'object', 'title': 'waveforms', 'properties': {'single': {'type': 'string'}}, 'required': ['single']}}, 'required': ['name', 'operation', 'length', 'waveforms']}}, 'readout_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_line', 'properties': {'length': {'type': 'number', 'description': 'readout time (seconds) on this drive line'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency for readout line'}}, 'required': ['length', 'lo_freq']}}, 'readout_resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_resonator', 'properties': {'f_res': {'type': 'number', 'description': 'resonator frequency (Hz)'}, 'q_factor': {'type': 'number'}, 'readout_regime': {'type': 'string'}, 'readout_amplitude': {'type': 'number'}, 'opt_readout_frequency': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'readout_fidelity': {'type': 'number'}, 'chi': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'readout_line_index': {'type': 'integer'}, 'time_of_flight': {'type': 'integer'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'correction_matrix': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['readout_line_index', 'time_of_flight', 'I', 'Q', 'correction_matrix']}}, 'required': ['f_res', 'q_factor', 'readout_regime', 'readout_amplitude', 'opt_readout_frequency', 'rotation_angle', 'readout_fidelity', 'chi', 'wiring']}}, 'crosstalk_matrix': {'type': 'object', 'title': 'crosstalk_matrix', 'properties': {'static': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'crosstalk matrix for slow flux lines'}, 'fast': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'crosstalk matrix for fast flux lines'}}, 'required': ['static', 'fast']}, 'drive_line': {'type': 'array', 'items': {'type': 'object', 'title': 'drive_line', 'properties': {'qubits': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'qubits associated with this drive line'}, 'freq': {'type': 'number', 'description': 'LO frequency'}, 'power': {'type': 'integer', 'description': 'LO power to mixer'}}, 'required': ['qubits', 'freq', 'power']}}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'f_01': {'type': 'number', 'description': '01 transition frequency (Hz)'}, 'anharmonicity': {'type': 'number'}, 'rabi_freq': {'type': 'number'}, 't1': {'type': 'number'}, 't2': {'type': 'number'}, 't2star': {'type': 'number'}, 'driving': {'type': 'object', 'title': 'driving', 'properties': {'gate_len': {'type': 'number', 'description': '(seconds)'}, 'gate_sigma': {'type': 'number'}, 'gate_shape': {'type': 'string'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['gate_len', 'gate_sigma', 'gate_shape', 'angle2volt']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'correction_matrix': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'flux_line': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'controller port associated with fast flux line'}, 'flux_filter_coef': {'type': 'object', 'title': 'flux_filter_coef', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}}, 'required': ['I', 'Q', 'correction_matrix', 'flux_line', 'flux_filter_coef']}, 'sequence_states': {'type': 'array', 'items': {'type': 'object', 'title': 'sequence_state', 'properties': {'name': {'type': 'string'}, 'amplitude': {'type': 'number'}, 'length': {'type': 'integer'}}, 'required': ['name', 'amplitude', 'length']}}}, 'required': ['f_01', 'anharmonicity', 'rabi_freq', 't1', 't2', 't2star', 'driving', 'wiring', 'sequence_states']}}, 'single_qubit_operations': {'type': 'array', 'items': {'type': 'object', 'title': 'single_qubit_operation', 'properties': {'direction': {'type': 'string'}, 'angle': {'type': 'integer'}}, 'required': ['direction', 'angle']}}, 'running_strategy': {'type': 'object', 'title': 'running_strategy', 'properties': {'running': {'type': 'boolean'}, 'start': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'end': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['running', 'start', 'end']}, 'sideband': {'type': 'array', 'items': {'type': 'object', 'title': 'sideband', 'properties': {'f_res': {'type': 'number'}, 'LO': {'type': 'number'}, 'IF': {'type': 'number'}, 'sideband_amplitude': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'correction_matrix': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['I', 'Q', 'correction_matrix']}}, 'required': ['f_res', 'LO', 'IF', 'sideband_amplitude', 'wiring']}}}, 'required': ['analog_outputs', 'analog_inputs', 'analog_waveforms', 'digital_waveforms', 'pulses', 'pulses_single', 'readout_lines', 'readout_resonators', 'crosstalk_matrix', 'drive_line', 'qubits', 'single_qubit_operations', 'running_strategy', 'sideband']}
         self._freeze_attributes = True
 
     def _reset_update_record(self):
@@ -4031,6 +4458,14 @@ class QuAM(object):
         return Single_qubit_operationsList(
             self._quam, self._path + "single_qubit_operations", self._index,
             self._schema["properties"]["single_qubit_operations"]
+        )
+
+    @property
+    def sideband(self) -> SidebandList:
+        """"""
+        return SidebandList(
+            self._quam, self._path + "sideband", self._index,
+            self._schema["properties"]["sideband"]
         )
 
     @property

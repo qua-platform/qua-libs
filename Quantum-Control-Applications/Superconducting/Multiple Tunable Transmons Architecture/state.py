@@ -581,6 +581,32 @@ state = {
         {"direction": "y", "angle": -90},
     ],
     "running_strategy": {"running": True, "start": [], "end": []},
+    "sideband": [
+        {
+            "f_res": sideband_control['IF_freqs'][0] + sideband_control['LO'][0],  # Hz
+            "LO": sideband_control['LO'][0],
+            'IF': sideband_control['IF_freqs'][0],
+            "sideband_amplitude": sideband_control['sideband_amp'][0],
+            "wiring": {
+                "I": sideband_control['sideband_line'][0]['I'],
+                "Q": sideband_control['sideband_line'][0]['Q'],
+                "correction_matrix": sideband_control['correction_matrix'][0],
+            },
+        },
+
+        {
+            "f_res": sideband_control['IF_freqs'][1] + sideband_control['LO'][1],  # Hz
+            "LO": sideband_control['LO'][1],
+            'IF': sideband_control['IF_freqs'][1],
+            "sideband_amplitude": sideband_control['sideband_amp'][1],
+            "wiring": {
+                "I": sideband_control['sideband_line'][1]['I'],
+                "Q": sideband_control['sideband_line'][1]['Q'],
+                "correction_matrix": sideband_control['correction_matrix'][1],
+            },
+        },
+    ],
+
 }
 
 # Now we use QuAM SDK
