@@ -5,12 +5,11 @@ from configuration import *
 import matplotlib.pyplot as plt
 
 
-def MZI_g2(g2, times_1, counts_1, times_2, counts_2, correlation_width):
+def MZI_g2(g2, times_1, counts_1, times_2, counts_2, correlation_width: int):
     """
     Calculate the second order correlation of click times between two counting channels
 
-    :param g2: (QUA array of type int) - g2 measurement from the previous iteration.
-    The size must be greater than correlation width.
+    :param g2: (QUA array of type int) - g2 measurement from the previous iteration. The size must be greater than correlation width.
     :param times_1: (QUA array of type int) - Click times in nanoseconds from channel 1
     :param counts_1: (QUA int) - Number of total clicks at channel 1
     :param times_2: (QUA array of type int) - Click times in nanoseconds from channel 2
@@ -51,7 +50,7 @@ with program() as g2_two_channel:
     times_1 = declare(int, size=expected_counts)  # array of count clicks on SPCM1
     times_2 = declare(int, size=expected_counts)  # array of count clicks on SPCM2
 
-    g2 = declare(int, value=np.zeros(2 * correlation_width).astype(int).tolist())  # array for g2 to be saved
+    g2 = declare(int, value=[0 for _ in range(2 * correlation_width)])  # array for g2 to be saved
     total_counts = declare(int)
 
     # Streamables

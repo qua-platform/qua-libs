@@ -12,7 +12,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 plt.ion()
 
-def single_channel_g2(g2, times, counts, correlation_width):
+def single_channel_g2(g2, times, counts, correlation_width: int):
     """
     Calculate the second order correlation of click times at a single counting channel
 
@@ -29,7 +29,7 @@ def single_channel_g2(g2, times, counts, correlation_width):
     with for_(k, 0, k < counts, k + 1):
         with for_(j, k + 1, j < counts, j + 1):
             assign(difference, times[j] - times[k])
-            with if_((difference < correlation_width)):
+            with if_(difference < correlation_width):
                 assign(g2[difference], g2[difference] + 1)
             # If the remaining photons are outside the correlation window, go to the next click
             # This is equivalent to 'break'
@@ -47,7 +47,7 @@ with program() as g2_single_channel:
     counts = declare(int)  # variable for the number of counts on SPCM1
     times = declare(int, size=expected_counts)  # array of count clicks on SPCM1
 
-    g2 = declare(int, value=np.zeros(correlation_width).astype(int).tolist())  # array for g2 to be saved
+    g2 = declare(int, value=[0 for _ in range(correlation_width)])  # array for g2 to be saved
     total_counts = declare(int)
 
     # Streamables
