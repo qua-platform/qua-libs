@@ -81,8 +81,8 @@ with program() as g2_two_channel:
         total_counts_st.save("total_counts")
         n_st.save("iteration")
 
-host = '172.16.2.103'
-port = '85'
+host = "172.16.2.103"
+port = "85"
 qmm = QuantumMachinesManager(host=host, port=port)
 
 simulate = False

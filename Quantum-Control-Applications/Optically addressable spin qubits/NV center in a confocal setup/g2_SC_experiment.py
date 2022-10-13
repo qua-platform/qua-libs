@@ -10,7 +10,9 @@ from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
+
 plt.ion()
+
 
 def single_channel_g2(g2, times, counts, correlation_width: int):
     """
@@ -37,9 +39,10 @@ def single_channel_g2(g2, times, counts, correlation_width: int):
                 assign(j, counts)
     return g2
 
+
 # Scan Parameters
 n_avg = 1e6
-correlation_width = 200*u.ns
+correlation_width = 200 * u.ns
 expected_counts = 15
 
 
@@ -78,8 +81,8 @@ with program() as g2_single_channel:
         n_st.save("iteration")
 
 
-host = '172.16.2.103'
-port = '85'
+host = "172.16.2.103"
+port = "85"
 qmm = QuantumMachinesManager(host=host, port=port)
 
 simulate = True
@@ -101,7 +104,7 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot Data
         plt.cla()
-        x_ind = np.arange(correlation_width)+1
+        x_ind = np.arange(correlation_width) + 1
         x_ind = np.concatenate((x_ind[::-1] * -1, x_ind))
         g2_corr = np.concatenate((g2_corr[::-1], g2_corr))
         plt.plot(x_ind, g2_corr)
