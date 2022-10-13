@@ -1,5 +1,5 @@
 import quam_sdk.constructor
-
+from scipy.signal.windows import gaussian
 import numpy as np
 
 
@@ -19,6 +19,80 @@ def IQ_imbalance(g, phi):
         float(N * x)
         for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]
     ]
+
+
+# Gaussian pulse parameters
+gauss_amp = 0.4  # The gaussian is used when calibrating pi and pi_half pulses
+gauss_len = 80  # The gaussian is used when calibrating pi and pi_half pulses
+gauss_wf = (gauss_amp * (gaussian(gauss_len, gauss_len / 5) -
+                         gaussian(gauss_len, gauss_len / 5)[-1])).tolist()  # waveform / subtracted gaussian
+
+qubit_control = {
+
+    # individual qubit RF control para #
+    'LO': [4.75e9]*4,
+    'IF_freqs': [-150e6, -150e6, -150e6, -150e6],
+    'pi_amp' : [0.4398157,  0.38254119, 0.38919345, 0.41357646],
+    'gaussian_amp': [gauss_amp]*4,
+    'gaussian_len': [gauss_len]*4,  # ns
+    'gaussian_sigma': [gauss_len/5]*4,  # ns
+    # Drive wiring and mixer cal #
+    'drive_line': [ {"I": ["con1", 1], "Q": ["con1", 2]},
+                    {"I": ["con1", 1], "Q": ["con1", 2]},
+                    {"I": ["con1", 1], "Q": ["con1", 2]},
+                    {"I": ["con1", 1], "Q": ["con1", 2]},
+                    ],
+    'correction_matrix': IQ_imbalance(0.003, 0.045),
+    # flux line #
+    'flux_line':
+        {"f0": ["con2", 5],
+         "f1": ["con2", 6],
+         "f2": ["con2", 7],
+         "f3": ["con2", 8],
+         },
+    "crosstalk_matrix": {
+        "static": [  # index 0, 1 -> correspond to qubit0 talking to qubit1
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0]
+        ],
+        "fast": [  # in unit of GHz/V, column vector is the normalized fast flux vector
+            [-0.6161186, -0.05305659, -0.09892138, -0.03762675],
+            [-0.11224173,  0.32837944, -0.09124057, -0.04864316],
+            [-0.14225446,  0.06075035,  0.39291193, -0.10490801],
+            [-0.27958306,  0.13788062,  0.16568033,  0.65200215]
+        ],
+    },
+}
+readout_control = {
+    'LO':  [6.37e9]*4,
+    'IF_freqs': [-52.9e6, -94.5e6, -137.35e6, -197.00e6],
+    'read_amp': [0.3]*4,
+    'readout_len': [2000]*4,   # ns
+    'tof': [272]*4,            # ns
+
+    # Mixer Cal #
+    'readout_line': [{"I": ["con1", 3], "Q": ["con1", 4]},
+                    {"I": ["con1", 3], "Q": ["con1", 4]},
+                    {"I": ["con1", 3], "Q": ["con1", 4]},
+                    {"I": ["con1", 3], "Q": ["con1", 4]},
+                    ],
+    'correction_matrix': IQ_imbalance(0.006, 0.017),
+}
+sideband_control = {
+    'LO' : [11e9, 1.8e9],
+    'IF_freqs': [-183e6, -300e6],
+    'sideband_amp': [0.3, 0.3],
+    'sideband_line': [
+        {"I": ["con1", 7], "Q": ["con1", 8]},
+        {"I": ["con1", 9], "Q": ["con1", 10]},
+                    ],
+    'correction_matrix': [
+        IQ_imbalance(0.0, -0.02),
+        IQ_imbalance(0.03, 0.101),
+    ],
+}
 
 
 state = {
@@ -64,11 +138,8 @@ state = {
     "analog_waveforms": [
         {"name": "const_wf", "type": "constant", "samples": [0.2]},
         {"name": "saturation_drive_wf", "type": "constant", "samples": [0.2]},
-        {
-            "name": "zero_wf",
-            "type": "constant",
-            "samples": [0.0],
-        },
+        {"name": "zero_wf", "type": "constant", "samples": [0.0]},
+        {"name": "gaussian_wf", "type": "arbitrary", "samples": gauss_wf},
     ],
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
     "pulses": [
