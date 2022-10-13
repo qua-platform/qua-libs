@@ -1,3 +1,7 @@
+"""
+g2_MZI_experiment.py: Single NVs confocal microscopy - Intensity auto-correlation g2 using 2 channels in a Mach-Zender Interferometer.
+"""
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -5,18 +9,18 @@ from configuration import *
 import matplotlib.pyplot as plt
 
 
-def MZI_g2(g2, times_1, counts_1, times_2, counts_2, correlation_width: int):
+def MZI_g2(times1, counts1, times2, counts2, correlation_window: int):
     """
     Calculate the second order correlation of click times between two counting channels
 
-    :param g2: (QUA array of type int) - g2 measurement from the previous iteration. The size must be greater than correlation width.
-    :param times_1: (QUA array of type int) - Click times in nanoseconds from channel 1
-    :param counts_1: (QUA int) - Number of total clicks at channel 1
-    :param times_2: (QUA array of type int) - Click times in nanoseconds from channel 2
-    :param counts_2: (QUA int) - Number of total clicks at channel 2
-    :param correlation_width: (int) - Relevant correlation window to analyze data
+    :param times1: (QUA array of type int) - Click times in nanoseconds from channel 1
+    :param counts1: (QUA int) - Number of total clicks at channel 1
+    :param times2: (QUA array of type int) - Click times in nanoseconds from channel 2
+    :param counts2: (QUA int) - Number of total clicks at channel 2
+    :param correlation_window: (int) - Relevant correlation window to analyze data
     :return: (QUA array of type int) - Updated g2
     """
+    g2_vector = declare(int, value=[0 for _ in range(2 * correlation_window)])  # array for g2 to be saved
     j = declare(int)
     k = declare(int)
     diff = declare(int)
@@ -24,19 +28,19 @@ def MZI_g2(g2, times_1, counts_1, times_2, counts_2, correlation_width: int):
     lower_index_tracker = declare(int)
     # set the lower index tracker for each dataset
     assign(lower_index_tracker, 0)
-    with for_(k, 0, k <= counts_1, k + 1):
-        with for_(j, lower_index_tracker, j <= counts_2, j + 1):
-            assign(diff, times_2[j] - times_1[k])
+    with for_(k, 0, k <= counts1, k + 1):
+        with for_(j, lower_index_tracker, j <= counts2, j + 1):
+            assign(diff, times2[j] - times1[k])
             # if correlation is outside the relevant window move to the next photon
-            with if_(diff > correlation_width):
-                assign(j, counts_2 + 1)
-            with elif_((diff < correlation_width) & (diff > -correlation_width)):
-                assign(diff_ind, diff + correlation_width)
+            with if_(diff > correlation_window):
+                assign(j, counts2 + 1)
+            with elif_((diff < correlation_window) & (diff > -correlation_window)):
+                assign(diff_ind, diff + correlation_window)
                 assign(g2[diff_ind], g2[diff_ind] + 1)
             # Track and evolve the lower bound forward every time a photon falls behind the lower bound
-            with elif_(diff < -correlation_width):
+            with elif_(diff < -correlation_window):
                 assign(lower_index_tracker, lower_index_tracker + 1)
-    return g2
+    return g2_vector
 
 
 # Scan Parameters
@@ -50,7 +54,6 @@ with program() as g2_two_channel:
     times_1 = declare(int, size=expected_counts)  # array of count clicks on SPCM1
     times_2 = declare(int, size=expected_counts)  # array of count clicks on SPCM2
 
-    g2 = declare(int, value=[0 for _ in range(2 * correlation_width)])  # array for g2 to be saved
     total_counts = declare(int)
 
     # Streamables
@@ -66,7 +69,7 @@ with program() as g2_two_channel:
         play("laser_ON", "AOM", duration=long_meas_len // 4)
         measure("long_readout", "SPCM", None, time_tagging.analog(times_1, long_meas_len, counts_1))
         measure("long_readout", "SPCM2", None, time_tagging.analog(times_2, long_meas_len, counts_2))
-        g2 = MZI_g2(g2, times_1, counts_1, times_2, counts_2, correlation_width)
+        g2 = MZI_g2(times_1, counts_1, times_2, counts_2, correlation_width)
 
         with for_(p, 0, p < g2.length(), p + 1):
             save(g2[p], g2_st)

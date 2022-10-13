@@ -1,8 +1,5 @@
 """
-Pulsed_ODMR.py: Single NVs confocal microscopy: Intensity autocorrelation g2 using 1-channel
-Author: Berk Kovos - Quantum Machines
-Created: 15/08/2022
-Created on QUA version: 0.1.0
+g2_SC_experiment.py: Single NVs confocal microscopy - Intensity auto-correlation g2 using 1-channel
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -14,29 +11,30 @@ import matplotlib.pyplot as plt
 plt.ion()
 
 
-def single_channel_g2(g2, times, counts, correlation_width: int):
+def single_channel_g2(time_vector, count_number, correlation_window: int):
     """
     Calculate the second order correlation of click times at a single counting channel
 
-    :param g2: (QUA array of type int) - g2 measurement from the previous iteration. The size must be greater than correlation width.
-    :param times: (QUA array of type int) - Click times in nanoseconds
-    :param counts: (QUA int) - Number of total clicks
-    :param correlation_width: (int) - Relevant correlation window to analyze data
+    :param time_vector: (QUA array of type int) - Click times in nanoseconds
+    :param count_number: (QUA int) - Number of total clicks
+    :param correlation_window: (int) - Relevant correlation window to analyze data
     :return: (QUA array of type int) - Updated g2
     """
+
+    g2_vector = declare(int, value=[0 for _ in range(correlation_window)])  # array for g2 to be saved
     j = declare(int)
     k = declare(int)
     difference = declare(int)
-    with for_(k, 0, k < counts, k + 1):
-        with for_(j, k + 1, j < counts, j + 1):
-            assign(difference, times[j] - times[k])
-            with if_(difference < correlation_width):
+    with for_(k, 0, k < count_number, k + 1):
+        with for_(j, k + 1, j < count_number, j + 1):
+            assign(difference, time_vector[j] - time_vector[k])
+            with if_(difference < correlation_window):
                 assign(g2[difference], g2[difference] + 1)
             # If the remaining photons are outside the correlation window, go to the next click
             # This is equivalent to 'break'
             with else_():
-                assign(j, counts)
-    return g2
+                assign(j, count_number)
+    return g2_vector
 
 
 # Scan Parameters
@@ -48,8 +46,6 @@ expected_counts = 15
 with program() as g2_single_channel:
     counts = declare(int)  # variable for the number of counts on SPCM1
     times = declare(int, size=expected_counts)  # array of count clicks on SPCM1
-
-    g2 = declare(int, value=[0 for _ in range(correlation_width)])  # array for g2 to be saved
     total_counts = declare(int)
 
     # Streamables
@@ -64,7 +60,7 @@ with program() as g2_single_channel:
     with for_(n, 0, n < n_avg, n + 1):
         play("laser_ON", "AOM", duration=long_meas_len // 4)
         measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
-        g2 = single_channel_g2(g2, times, counts, correlation_width)
+        g2 = single_channel_g2(times, counts, correlation_width)
 
         with for_(p, 0, p < g2.length(), p + 1):
             save(g2[p], g2_st)
