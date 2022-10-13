@@ -344,7 +344,7 @@ def add_analog_waveforms(state: QuAM, config):
                 raise ValueError(
                     f'Analog waveform {wf.name} has single sample, and should be then of type "constant" instead of {wf.type}.'
                 )
-            config["waveforms"][wf["name"]] = {
+            config["waveforms"][wf.name] = {
                 "type": wf.type,
                 "samples": wf.samples,
             }
