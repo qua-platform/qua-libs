@@ -17,8 +17,11 @@ not saturated and defining the threshold for time tagging
 throughout the sequence. This allows measuring all the delays in the system, as well as the NV initialization duration
     * [Calibrate Delays Python Histogram](calibrate_delays_python_histogram.py) - This version process the data in 
 Python, which makes it slower but works better when the counts are high.
-7. [Time Rabi](time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse
-8. [Power Rabi](power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse
-9. [Ramsey](ramsey.py) - Measures T2*
-10. [Hahn Echo](hahn_echo.py) - Measures T2
-11. [T1](T1.py) - Measures T1. Can measure the decay from either |1> or |0>
+7. __g2 correlation measurement:__
+    * [g2_SC_experiment](g2_SC_experiment.py) Intensity auto-correlation g2 using 1-channel.
+    * [g2_MZI_experiment](g2_MZI_experiment.py) Intensity auto-correlation g2 using 2 channels in a Mach-Zender Interferometer.
+8. [Time Rabi](time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse
+9. [Power Rabi](power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse
+10. [Ramsey](ramsey.py) - Measures T2*
+11. [Hahn Echo](hahn_echo.py) - Measures T2
+12. [T1](T1.py) - Measures T1. Can measure the decay from either |1> or |0>
