@@ -17,17 +17,18 @@ u = unit()
 ###################
 # The QUA program #
 ###################
-
-n_avg = 20000
-
-cooldown_time = 10 * u.us // 4
-
-f_min = 30e6
-f_max = 70e6
-df = 0.5e6
-freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
-
 num_qubits = 4
+
+n_avg = 1e3
+
+cooldown_time = 5 * u.us // 4
+
+f_min = [-70e6, -110e6, -150e6, -210e6]
+f_max = [-40e6, -80e6, -130e6, -190e6]
+df = 0.05e6
+
+freqs = [np.arange(f_min[i], f_max[i]+0.1, df) for i in range(num_qubits)]
+
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(num_qubits)]
@@ -40,7 +41,7 @@ with program() as resonator_spec:
 
     for i in range(num_qubits):
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+            with for_(f, f_min[i], f <= f_max[i], f + df):  # Notice it's <= to include f_max (This is only for integers!)
                 update_frequency(f"rr{i}", f)
                 measure(
                     "readout",
@@ -58,8 +59,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(num_qubits):
-            I_st[i].buffer(len(freqs)).average().save(f"I{i}")
-            Q_st[i].buffer(len(freqs)).average().save(f"Q{i}")
+            I_st[i].buffer(len(freqs[i])).average().save(f"I{i}")
+            Q_st[i].buffer(len(freqs[i])).average().save(f"Q{i}")
             n_st[i].save(f'iteration{i}')
 
 #####################################
@@ -118,7 +119,7 @@ else:
     plt.subplot(211)
     plt.cla()
     plt.title("resonator spectroscopy amplitude")
-    plt.plot(freqs / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs[0] / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
     plt.subplot(212)
@@ -126,7 +127,7 @@ else:
     # detrend removes the linear increase of phase
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
     plt.title("resonator spectroscopy phase")
-    plt.plot(freqs / u.MHz, phase, ".")
+    plt.plot(freqs[0] / u.MHz, phase, ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel("Phase [rad]")
     plt.pause(0.1)
