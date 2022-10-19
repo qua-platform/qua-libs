@@ -1,0 +1,1 @@
+{"name": "ResSpecAnalysisNode", "description": "finds resonator spectroscopy", "command": "python3", "bin": "node_res_spec_analysis.py", "icon": "", "inputs": [{"description": {"IQ": "measurement data"}, "units": {"IQ": "list"}, "type": {"IQ": 2}}], "outputs": [{"description": {"state": "updated state"}, "units": {"state": "JSON"}, "retention": {"state": 0}}]}
