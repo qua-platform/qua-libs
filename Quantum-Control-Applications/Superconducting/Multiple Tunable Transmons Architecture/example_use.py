@@ -5,4 +5,4 @@ from quam import QuAM
 from rich import print
 
 machine = QuAM("quam_bootstrap_state.json")
-print(machine.build_config())
+config = machine.build_config()
