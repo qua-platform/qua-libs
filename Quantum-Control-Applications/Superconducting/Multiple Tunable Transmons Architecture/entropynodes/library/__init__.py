@@ -1,1 +1,1 @@
-from .NameForThisNodeClass import NameForThisNodeClass
+from .ResSpecNode import ResSpecNode

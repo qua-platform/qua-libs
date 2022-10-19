@@ -1,0 +1,1 @@
+{"name": "ResSpecNode", "description": "does resonator spec", "command": "python3", "bin": "node_res_spec.py", "icon": "", "inputs": [{"description": {"freq_init": "initial frequency"}, "units": {"freq_init": "int"}, "type": {"freq_init": 2}}], "outputs": [{"description": {}, "units": {}, "retention": {}}]}

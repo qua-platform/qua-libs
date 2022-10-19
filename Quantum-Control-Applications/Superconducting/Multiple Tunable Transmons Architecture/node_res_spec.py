@@ -2,11 +2,16 @@
 import nodeio
 
 nodeio.context(
-    name="NameForThisNodeClass",
-    description="what it does"
+    name="ResSpecNode",
+    description="does resonator spec"
 )
 
 inputs = nodeio.Inputs()
+inputs.stream(
+    'freq_init',
+    units='int',
+    description='initial frequency'
+)
 
 outputs = nodeio.Outputs()
 
@@ -15,6 +20,7 @@ nodeio.register()
 # ==================== DRY RUN DATA ====================
 
 # set inputs data for dry-run of the node
+inputs.set(freq_init=-70e6)
 
 # =============== RUN NODE STATE MACHINE ===============
 
@@ -36,6 +42,8 @@ u = unit()
 
 while nodeio.status.active:
 
+    freq_init = inputs.get('freq_init')
+
     ###################
     # The QUA program #
     ###################
@@ -45,7 +53,7 @@ while nodeio.status.active:
 
     cooldown_time = 5 * u.us // 4
 
-    f_min = [-70e6, -110e6, -150e6, -210e6]
+    f_min = [freq_init, -110e6, -150e6, -210e6]
     f_max = [-40e6, -80e6, -130e6, -190e6]
     df = 0.05e6
 
