@@ -5,9 +5,8 @@ from qm.octave import *
 from qm.qua import *
 from configuration import *
 
-opx_ip = "xxx.xxx.xxx.xxx"
+qop_ip = "xxx.xxx.xxx.xxx"
 opx_port = 80
-octave_ip = "xxx.xxx.xxx.xxx"
 octave_port = 80
 
 octave_config = QmOctaveConfig()
