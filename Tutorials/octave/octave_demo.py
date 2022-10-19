@@ -10,7 +10,7 @@ opx_port = 80
 octave_port = 80
 
 octave_config = QmOctaveConfig()
-octave_config.add_device_info("octave1", octave_ip, octave_port)
+octave_config.add_device_info("octave1", qop_ip, octave_port)
 
 octave_config.set_opx_octave_mapping([("con1", "octave1")])
 
