@@ -45,10 +45,10 @@ qubit_control = {
     'correction_matrix': IQ_imbalance(0.003, 0.045),
     # flux line #
     'flux_line':
-        {"f0": ["con2", 5],
-         "f1": ["con2", 6],
-         "f2": ["con2", 7],
-         "f3": ["con2", 8],
+        {"f0": ["con1", 5],
+         "f1": ["con1", 6],
+         "f2": ["con1", 7],
+         "f3": ["con1", 8],
          },
     "crosstalk_matrix": {
         "static": [  # index 0, 1 -> correspond to qubit0 talking to qubit1
@@ -98,37 +98,20 @@ sideband_control = {
 state = {
     "_func": ["config.build_config"],
     "analog_outputs": [
-        {
-            "controller": "con1",
-            "output": 1,
-            "offset": 0.0,
-        },
-        {
-            "controller": "con1",
-            "output": 2,
-            "offset": 0.0,
-        },
-        {
-            "controller": "con1",
-            "output": 3,
-            "offset": 0.0,
-        },
-        {
-            "controller": "con1",
-            "output": 4,
-            "offset": 0.0,
-        },
-        {"controller": "con1", "output": 5, "offset": 0.0},
-        {"controller": "con1", "output": 6, "offset": 0.0},
-        {"controller": "con1", "output": 7, "offset": 0.0},
-        {"controller": "con1", "output": 8, "offset": 0.0},
-        {"controller": "con1", "output": 9, "offset": 0.0},
-        {"controller": "con1", "output": 10, "offset": 0.0},
-        {"controller": "con2", "output": 1, "offset": 0.0},
-        {"controller": "con2", "output": 2, "offset": 0.0},
-        {"controller": "con2", "output": 3, "offset": 0.0},
-        {"controller": "con2", "output": 4, "offset": 0.0},
-        {"controller": "con2", "output": 5, "offset": 0.0},
+        {"controller": "con1", "output": 1, "offset": +0.0156}, # qubit I
+        {"controller": "con1", "output": 2, "offset": +0.0060}, # qubit Q
+        {"controller": "con1", "output": 3, "offset": -0.0366}, # Resonator I
+        {"controller": "con1", "output": 4, "offset": +0.0044}, # Resonator Q
+        {"controller": "con1", "output": 5, "offset": +0.0044}, # Resonator Q
+        {"controller": "con1", "output": 6, "offset": +0.0044}, # Resonator Q
+        {"controller": "con1", "output": 7, "offset": +0.0140}, # Blue sideband I
+        {"controller": "con1", "output": 8, "offset": -0.0100}, # Blue sideband Q
+        {"controller": "con1", "output": 9, "offset": +0.0500}, # RED sideband I 0.0410
+        {"controller": "con1", "output": 10, "offset": +0.0175}, # RED sideband Q 0.0150
+        # {"controller": "con2", "output": 5, "offset": 0.0}, # Fast Flux for Q1
+        # {"controller": "con2", "output": 6, "offset": 0.0}, # Fast Flux for Q2
+        # {"controller": "con2", "output": 7, "offset": 0.0}, # Fast Flux for Q3
+        # {"controller": "con2", "output": 8, "offset": 0.0}, # Fast Flux for Q4
     ],
     "analog_inputs": [
         {"controller": "con1", "input": 1, "offset": 0.0, "gain_db": 0},
@@ -295,8 +278,8 @@ state = {
                 "flux_line": qubit_control['flux_line']['f0'],
                 "flux_line_docs": "controller port associated with fast flux line",
                 "flux_filter_coef": {
-                    "feedforward": [0.932282, -0.92300557],
-                    "feedback": [0.99072356]
+                    "feedforward": [],
+                    "feedback": []
                 },
                 "flux_filter_coef_docs": "filter taps IIR and FIR to fast flux line",
             },
