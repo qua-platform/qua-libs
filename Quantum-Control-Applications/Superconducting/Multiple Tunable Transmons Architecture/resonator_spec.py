@@ -104,6 +104,13 @@ else:
         if (iteration3 is not None) and (iteration3 < n_avg - 1):
             progress_counter(iteration3, n_avg, start_time=my_results.get_start_time())
 
+    my_results = fetching_tool(job, data_list=['iteration0', 'iteration1', 'iteration2', 'iteration3'])
+    iteration0, iteration1, iteration2, iteration3 = my_results.fetch_all()
+    progress_counter(iteration0, n_avg)
+    progress_counter(iteration1, n_avg)
+    progress_counter(iteration2, n_avg)
+    progress_counter(iteration3, n_avg)
+
     my_results = fetching_tool(job, data_list=['I0', 'Q0'])
     I, Q = my_results.fetch_all()
     fig = plt.figure()
