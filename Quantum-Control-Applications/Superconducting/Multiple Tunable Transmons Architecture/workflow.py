@@ -5,8 +5,6 @@ wf = Workflow("ResSpecDemo", description="res spec -> analysis")
 
 # now start workflow description
 
-# rabi -> ramsey -> check state ->  ... back to rabi
-
 res_spec = nodes.ResSpecNode("node_res_spec")
 res_spec_analysis = nodes.ResSpecAnalysisNode("node_res_spec_analysis", IQ=res_spec.o.IQ)
 

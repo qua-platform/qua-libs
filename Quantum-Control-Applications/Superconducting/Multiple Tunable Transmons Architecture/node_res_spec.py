@@ -49,6 +49,8 @@ while nodeio.status.active:
 
     state = inputs.get('state')
 
+    print('Doing resonator spectroscopy...')
+
     ###################
     # The QUA program #
     ###################
@@ -63,6 +65,8 @@ while nodeio.status.active:
     df = 0.05e6
 
     freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
+
+    freqs = [freqs[i].tolist() for i in range(num_qubits)]
 
     with program() as resonator_spec:
         n = [declare(int) for _ in range(num_qubits)]
@@ -150,5 +154,9 @@ while nodeio.status.active:
         my_results = fetching_tool(job, data_list=['I0', 'Q0'])
         I, Q = my_results.fetch_all()
 
-        data = [I.tolist(), Q.tolist()]
+        ## implement save data here
+
+        data = [I.tolist(), Q.tolist(), freqs]
+        print('Resonator spectroscopy finished...')
         outputs.set(IQ=data)
+

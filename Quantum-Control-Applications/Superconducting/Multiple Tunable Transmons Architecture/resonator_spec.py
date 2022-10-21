@@ -19,7 +19,7 @@ u = unit()
 ###################
 num_qubits = 4
 
-n_avg = 1e3
+n_avg = 4e3
 
 cooldown_time = 5 * u.us // 4
 

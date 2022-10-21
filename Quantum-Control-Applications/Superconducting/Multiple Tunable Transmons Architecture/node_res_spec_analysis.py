@@ -39,7 +39,9 @@ freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
 I = np.arange(f_min[0], f_max[0] + 0.1, df)
 Q = np.arange(f_min[0], f_max[0] + 0.1, df)
 
-data = [I.tolist(), Q.tolist()]
+freqs = [freqs[i].tolist() for i in range(num_qubits)]
+
+data = [I.tolist(), Q.tolist(), freqs]
 inputs.set(IQ=data)
 # =============== RUN NODE STATE MACHINE ===============
 
@@ -56,15 +58,18 @@ while nodeio.status.active:
 
     IQ = inputs.get('IQ')
 
+    print('Doing resonator spec analysis...')
+
     I = np.array(IQ[0])
     Q = np.array(IQ[1])
+    freqs_dem = np.array(IQ[2][0])
 
     fig = plt.figure()
     # Plot results
     plt.subplot(211)
     plt.cla()
     plt.title("resonator spectroscopy amplitude")
-    plt.plot(freqs[0] / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs_dem / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
     plt.subplot(212)
@@ -72,10 +77,12 @@ while nodeio.status.active:
     # detrend removes the linear increase of phase
     phase = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
     plt.title("resonator spectroscopy phase")
-    plt.plot(freqs[0] / u.MHz, phase, ".")
+    plt.plot(freqs_dem / u.MHz, phase, ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel("Phase [rad]")
     plt.pause(0.1)
     plt.tight_layout()
 
     time.sleep(2)
+
+    print('Res spec analysis finished...')
