@@ -27,6 +27,11 @@ with program() as prog:
 
 qm = qmm.open_qm(config)
 
+# When using internal clock
+qm.octave.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
+# When using external clock. the frequency can be 10, 100 or 1000 MHz
+# qm.octave.set_clock("octave1",ClockType.External,ClockFrequency.MHZ_1000)
+
 element = "q1"
 
 qm.octave.set_lo_frequency(element, lo_freq)
