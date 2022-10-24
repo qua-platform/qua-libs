@@ -19,7 +19,7 @@ octave_config.set_opx_octave_mapping([("con1", "octave1")])
 
 octave_config.set_calibration_db(os.getcwd())
 
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, octave=octave_config)
 
 with program() as prog:
     with infinite_loop_():
