@@ -1,1 +1,1 @@
-{"node_res_spec": {"IQ": true, "IQ_time": true}}
+{"node_res_spec": {"IQ": true, "IQ_time": true}, "node_qubit_spec": {"IQ": true, "IQ_time": true}}

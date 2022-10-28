@@ -15,6 +15,11 @@ inputs.stream(
     units='list',
     description='measurement data'
 )
+inputs.stream(
+    'state',
+    units='JSON',
+    description='machine used by res spec'
+)
 
 outputs = nodeio.Outputs()
 outputs.define(
@@ -28,6 +33,7 @@ nodeio.register()
 # ==================== DRY RUN DATA ====================
 
 import numpy as np
+from quam import QuAM
 
 # set inputs data for dry-run of the node
 num_qubits = 4
@@ -44,18 +50,20 @@ freqs = [freqs[i].tolist() for i in range(num_qubits)]
 
 data = [I.tolist(), Q.tolist(), freqs]
 inputs.set(IQ=data)
+inputs.set(state="quam_bootstrap_state.json")
+
 # =============== RUN NODE STATE MACHINE ===============
 
 import matplotlib.pyplot as plt
 from qualang_tools.units import unit
 from scipy import signal
-from quam import QuAM
 
 u = unit()
 
 while nodeio.status.active:
 
     IQ = inputs.get('IQ')
+    state = inputs.get('state')
 
     print('Doing resonator spec analysis...')
 
@@ -85,7 +93,7 @@ while nodeio.status.active:
     time.sleep(2)
 
     # Update machine after analysis
-    machine = QuAM("quam_bootstrap_state.json")
+    machine = QuAM(state)
 
     for _ in range(len(machine.readout_resonators)):
         print(f'New rr{_}', machine.readout_resonators[_].f_res - 100e6)
@@ -97,5 +105,3 @@ while nodeio.status.active:
     print('Res spec analysis finished...')
 
     outputs.set(state=machine._json)
-
-    nodeio.terminate_workflow()
