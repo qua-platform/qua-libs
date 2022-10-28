@@ -8,9 +8,6 @@ wf = Workflow("ResSpecDemo", description="res spec -> analysis")
 res_spec = nodes.ResSpecNode("node_res_spec")
 res_spec_analysis = nodes.ResSpecAnalysisNode("node_res_spec_analysis", IQ=res_spec.o.IQ)
 
-res_spec.i.state = res_spec_analysis.o.state
-
-
 # end of workflow description
 
 wf.register()

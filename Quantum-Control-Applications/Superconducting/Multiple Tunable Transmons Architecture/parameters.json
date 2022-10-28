@@ -1,3 +1,5 @@
 {
-
+  "node_res_spec": {
+    "state": "quam_bootstrap_state.json"
+  }
 }

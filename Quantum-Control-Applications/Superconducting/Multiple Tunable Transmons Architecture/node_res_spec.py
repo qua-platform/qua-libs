@@ -17,7 +17,8 @@ outputs = nodeio.Outputs()
 outputs.define(
     'IQ',
     units='list',
-    description='IQ from measurement'
+    description='IQ from measurement',
+    retention=2,  # dumps the data into hdf5 file
 )
 
 nodeio.register()
@@ -116,6 +117,9 @@ while nodeio.status.active:
     machine = QuAM(state)
     config = machine.build_config()
 
+    for _ in range(len(machine.readout_resonators)):
+        print(f'Previous rr{_}', machine.readout_resonators[_].f_res)
+
     if simulate:
         simulation_config = SimulationConfig(duration=1000)
         job = qmm.simulate(config, resonator_spec, simulation_config)
@@ -153,8 +157,6 @@ while nodeio.status.active:
 
         my_results = fetching_tool(job, data_list=['I0', 'Q0'])
         I, Q = my_results.fetch_all()
-
-        ## implement save data here
 
         data = [I.tolist(), Q.tolist(), freqs]
         print('Resonator spectroscopy finished...')

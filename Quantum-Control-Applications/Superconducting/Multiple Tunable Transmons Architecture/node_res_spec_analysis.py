@@ -1,4 +1,5 @@
 # ==================== DEFINE NODE ====================
+import json
 import time
 
 import nodeio
@@ -54,8 +55,6 @@ u = unit()
 
 while nodeio.status.active:
 
-    outputs.set(state="quam_bootstrap_state.json")
-
     IQ = inputs.get('IQ')
 
     print('Doing resonator spec analysis...')
@@ -85,4 +84,18 @@ while nodeio.status.active:
 
     time.sleep(2)
 
+    # Update machine after analysis
+    machine = QuAM("quam_bootstrap_state.json")
+
+    for _ in range(len(machine.readout_resonators)):
+        print(f'New rr{_}', machine.readout_resonators[_].f_res - 100e6)
+
+    # # save JSON file if needed for historical reason
+    # with open('quam_res_spec.json', 'w') as file:
+    #     json.dump(machine._json, file, indent=2)
+
     print('Res spec analysis finished...')
+
+    outputs.set(state=machine._json)
+
+    nodeio.terminate_workflow()
