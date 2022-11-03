@@ -4,29 +4,14 @@ import time
 
 import nodeio
 
-nodeio.context(
-    name="ResSpecAnalysisNode",
-    description="finds resonator spectroscopy"
-)
+nodeio.context(name="ResSpecAnalysisNode", description="finds resonator spectroscopy")
 
 inputs = nodeio.Inputs()
-inputs.stream(
-    'IQ',
-    units='list',
-    description='measurement data'
-)
-inputs.stream(
-    'state',
-    units='JSON',
-    description='machine used by res spec'
-)
+inputs.stream("IQ", units="list", description="measurement data")
+inputs.stream("state", units="JSON", description="machine used by res spec")
 
 outputs = nodeio.Outputs()
-outputs.define(
-    'state',
-    units='JSON',
-    description='updated state'
-)
+outputs.define("state", units="JSON", description="updated state")
 
 nodeio.register()
 
@@ -62,10 +47,10 @@ u = unit()
 
 while nodeio.status.active:
 
-    IQ = inputs.get('IQ')
-    state = inputs.get('state')
+    IQ = inputs.get("IQ")
+    state = inputs.get("state")
 
-    print('Doing resonator spec analysis...')
+    print("Doing resonator spec analysis...")
 
     I = np.array(IQ[0])
     Q = np.array(IQ[1])
@@ -76,7 +61,7 @@ while nodeio.status.active:
     plt.subplot(211)
     plt.cla()
     plt.title("resonator spectroscopy amplitude")
-    plt.plot(freqs_dem / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs_dem / u.MHz, np.sqrt(I**2 + Q**2), ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
     plt.subplot(212)
@@ -96,12 +81,14 @@ while nodeio.status.active:
     machine = QuAM(state)
 
     for _ in range(len(machine.readout_resonators)):
-        print(f'New rr{_}', machine.readout_resonators[_].f_res - 100e6)
+        print(f"New rr{_}", machine.readout_resonators[_].f_res - 100e6)
+
+    machine.readout_resonators[0].f_res = machine.readout_resonators[0].f_res - 100e6
 
     # # save JSON file if needed for historical reason
     # with open('quam_res_spec.json', 'w') as file:
     #     json.dump(machine._json, file, indent=2)
 
-    print('Res spec analysis finished...')
+    print("Res spec analysis finished...")
 
     outputs.set(state=machine._json)

@@ -27,7 +27,7 @@ f_min = [-70e6, -110e6, -150e6, -210e6]
 f_max = [-40e6, -80e6, -130e6, -190e6]
 df = 0.05e6
 
-freqs = [np.arange(f_min[i], f_max[i]+0.1, df) for i in range(num_qubits)]
+freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
 
 
 with program() as resonator_spec:
@@ -41,7 +41,9 @@ with program() as resonator_spec:
 
     for i in range(num_qubits):
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(f, f_min[i], f <= f_max[i], f + df):  # Notice it's <= to include f_max (This is only for integers!)
+            with for_(
+                f, f_min[i], f <= f_max[i], f + df
+            ):  # Notice it's <= to include f_max (This is only for integers!)
                 update_frequency(f"rr{i}", f)
                 measure(
                     "readout",
@@ -61,12 +63,12 @@ with program() as resonator_spec:
         for i in range(num_qubits):
             I_st[i].buffer(len(freqs[i])).average().save(f"I{i}")
             Q_st[i].buffer(len(freqs[i])).average().save(f"Q{i}")
-            n_st[i].save(f'iteration{i}')
+            n_st[i].save(f"iteration{i}")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host='172.16.2.103', port='85')
+qmm = QuantumMachinesManager(host="172.16.2.103", port="85")
 
 #######################
 # Simulate or execute #
@@ -87,16 +89,16 @@ else:
     job = qm.execute(resonator_spec)
 
     # Get results from QUA program
-    my_results = fetching_tool(job, data_list=['I0', 'Q0', 'iteration0'], mode='live')
+    my_results = fetching_tool(job, data_list=["I0", "Q0", "iteration0"], mode="live")
 
     while job.result_handles.is_processing():
         # Fetch results
         I, Q, iteration = my_results.fetch_all()
-        iteration1 = job.result_handles.get('iteration1').fetch_all()
-        iteration2 = job.result_handles.get('iteration2').fetch_all()
-        iteration3 = job.result_handles.get('iteration3').fetch_all()
+        iteration1 = job.result_handles.get("iteration1").fetch_all()
+        iteration2 = job.result_handles.get("iteration2").fetch_all()
+        iteration3 = job.result_handles.get("iteration3").fetch_all()
         # Progress bar
-        if iteration < n_avg-1:
+        if iteration < n_avg - 1:
             progress_counter(iteration, n_avg, start_time=my_results.get_start_time())
         if (iteration1 is not None) and (iteration1 < n_avg - 1):
             progress_counter(iteration1, n_avg, start_time=my_results.get_start_time())
@@ -105,21 +107,21 @@ else:
         if (iteration3 is not None) and (iteration3 < n_avg - 1):
             progress_counter(iteration3, n_avg, start_time=my_results.get_start_time())
 
-    my_results = fetching_tool(job, data_list=['iteration0', 'iteration1', 'iteration2', 'iteration3'])
+    my_results = fetching_tool(job, data_list=["iteration0", "iteration1", "iteration2", "iteration3"])
     iteration0, iteration1, iteration2, iteration3 = my_results.fetch_all()
     progress_counter(iteration0, n_avg)
     progress_counter(iteration1, n_avg)
     progress_counter(iteration2, n_avg)
     progress_counter(iteration3, n_avg)
 
-    my_results = fetching_tool(job, data_list=['I0', 'Q0'])
+    my_results = fetching_tool(job, data_list=["I0", "Q0"])
     I, Q = my_results.fetch_all()
     fig = plt.figure()
     # Plot results
     plt.subplot(211)
     plt.cla()
     plt.title("resonator spectroscopy amplitude")
-    plt.plot(freqs[0] / u.MHz, np.sqrt(I ** 2 + Q ** 2), ".")
+    plt.plot(freqs[0] / u.MHz, np.sqrt(I**2 + Q**2), ".")
     plt.xlabel("frequency [MHz]")
     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
     plt.subplot(212)

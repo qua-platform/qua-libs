@@ -21,8 +21,7 @@ def add_qubits(state: QuAM, config: dict):
                 "lo_frequency": lo_freq,
                 "mixer": f"mixer_drive_line{q}",
             },
-            "intermediate_frequency": round(state.qubits[q].f_01)
-                                      - lo_freq,
+            "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -31,9 +30,7 @@ def add_qubits(state: QuAM, config: dict):
 
         # add flux element
         config["elements"][f"q{q}_flux"] = {
-            "singleInput": {
-                "port": (wiring.flux_line[0], wiring.flux_line[1])
-            },
+            "singleInput": {"port": (wiring.flux_line[0], wiring.flux_line[1])},
             "operations": {
                 "cw": "const_flux_pulse",
             },
@@ -46,9 +43,7 @@ def add_qubits(state: QuAM, config: dict):
             config["pulses"][f"q{q}_flux_{op.name}"] = {
                 "operation": "control",
                 "length": op.length,
-                "waveforms": {
-                    "single": f"q{q}_flux_{op.name}_wf"
-                },
+                "waveforms": {"single": f"q{q}_flux_{op.name}_wf"},
             }
             config["waveforms"][f"q{q}_flux_{op.name}_wf"] = {
                 "type": "constant",
@@ -56,7 +51,7 @@ def add_qubits(state: QuAM, config: dict):
             }
         config["controllers"][wiring.flux_line[0]]["analog_outputs"][str(wiring.flux_line[1])]["filter"] = {
             "feedforward": wiring.flux_filter_coef.feedforward,
-            "feedback": wiring.flux_filter_coef.feedback
+            "feedback": wiring.flux_filter_coef.feedback,
         }
 
     # add cross talk
@@ -67,7 +62,8 @@ def add_qubits(state: QuAM, config: dict):
             q_j = state.qubits[j]
             crosstalk[q_j.wiring.flux_line[1]] = state.crosstalk_matrix.fast[i][j]
         config["controllers"][q_i.wiring.flux_line[0]]["analog_outputs"][str(q_i.wiring.flux_line[1])][
-            "crosstalk"] = crosstalk
+            "crosstalk"
+        ] = crosstalk
 
 
 def add_mixers(state: QuAM, config: dict):
@@ -80,8 +76,7 @@ def add_mixers(state: QuAM, config: dict):
         for j in state.drive_line[q].qubits:
             config["mixers"][f"mixer_drive_line{q}"].append(
                 {
-                    "intermediate_frequency": round(state.qubits[j].f_01)
-                                              - lo_freq,
+                    "intermediate_frequency": round(state.qubits[j].f_01) - lo_freq,
                     "lo_frequency": lo_freq,
                     "correction": state.qubits[j].wiring.correction_matrix,
                 }
@@ -103,9 +98,7 @@ def add_readout_resonators(state: QuAM, config: dict):
                 "lo_frequency": round(readout_line.lo_freq),
                 "mixer": "mixer_rr",
             },
-            "intermediate_frequency": round(
-                v.f_res - readout_line.lo_freq
-            ),
+            "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
             "operations": {
                 "cw": "const_pulse",
                 "readout": f"readout_pulse_rr{r}",
@@ -121,9 +114,7 @@ def add_readout_resonators(state: QuAM, config: dict):
             config["mixers"]["mixer_rr"] = []
         config["mixers"]["mixer_rr"].append(
             {
-                "intermediate_frequency": round(
-                    v.f_res - readout_line.lo_freq
-                ),
+                "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
                 "lo_frequency": readout_line.lo_freq,
                 "correction": v.wiring.correction_matrix,
             }
@@ -163,39 +154,27 @@ def add_readout_resonators(state: QuAM, config: dict):
             "sine": [(-1.0, round(readout_line.length * 1e9))],
         }
         config["integration_weights"][f"rotated_cosine_weights_rr{r}"] = {
-            "cosine": [
-                (np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
-            "sine": [
-                (-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
+            "cosine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            "sine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
         }
         config["integration_weights"][f"rotated_sine_weights_rr{r}"] = {
-            "cosine": [
-                (np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
-            "sine": [
-                (np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
+            "cosine": [(np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            "sine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
         }
         config["integration_weights"][f"rotated_minus_sine_weights_rr{r}"] = {
-            "cosine": [
-                (-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
-            "sine": [
-                (-np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))
-            ],
+            "cosine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            "sine": [(-np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
         }
 
 
 def add_qb_rot(
-        state: QuAM,
-        config: dict,
-        q: int,
-        angle: int,
-        direction: str,
-        wf_I: list,
-        wf_Q: list = None,
+    state: QuAM,
+    config: dict,
+    q: int,
+    angle: int,
+    direction: str,
+    wf_I: list,
+    wf_Q: list = None,
 ):
     """Add single qubit operation
 
@@ -209,13 +188,9 @@ def add_qb_rot(
         wf_Q: Optional, Q waveform
     """
     if direction not in ["x", "y"]:
-        raise ValueError(
-            f"Only x and y are accepted directions, received {direction}"
-        )
+        raise ValueError(f"Only x and y are accepted directions, received {direction}")
     if q >= len(state.qubits):
-        raise ValueError(
-            f"Qubit {q} is not configured in state. Please add qubit q first."
-        )
+        raise ValueError(f"Qubit {q} is not configured in state. Please add qubit q first.")
     if type(angle) != int:
         raise ValueError("Only integers are accepted as angle.")
 
@@ -229,32 +204,20 @@ def add_qb_rot(
     if len(wf_I) != len(wf_Q):
         raise ValueError("wf_I and wf_Q should have same lengths!")
 
-    wv = np.sign(angle) * (
-            wf_I * np.cos(direction_angle) - wf_Q * np.sin(direction_angle)
-    )
+    wv = np.sign(angle) * (wf_I * np.cos(direction_angle) - wf_Q * np.sin(direction_angle))
     if np.all((wv == 0)):
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
-            "type": "constant"
-        }
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {
-            "type": "arbitrary"
-        }
+        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "arbitrary"}
         config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["samples"] = wv
 
-    wv = np.sign(angle) * (
-            wf_I * np.sin(direction_angle) + wf_Q * np.cos(direction_angle)
-    )
+    wv = np.sign(angle) * (wf_I * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
     if np.all((wv == 0)):
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
-            "type": "constant"
-        }
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "constant"}
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["sample"] = 0
     else:
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {
-            "type": "arbitrary"
-        }
+        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "arbitrary"}
         config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["samples"] = wv
 
     config["pulses"][f"{direction}{angle}_pulse_q{q}"] = {
@@ -265,9 +228,7 @@ def add_qb_rot(
             "Q": f"{direction}{angle}_Q_wf_q{q}",
         },
     }
-    config["elements"][f"q{q}"]["operations"][
-        f"{direction}{angle}"
-    ] = f"{direction}{angle}_pulse_q{q}"
+    config["elements"][f"q{q}"]["operations"][f"{direction}{angle}"] = f"{direction}{angle}_pulse_q{q}"
 
 
 def add_control_operation_single(config, element, operation_name, wf):
@@ -308,9 +269,7 @@ def add_analog_outputs(state: QuAM, config: dict):
             config["controllers"][o.controller] = {}
         if "analog_outputs" not in config["controllers"][o.controller]:
             config["controllers"][o.controller]["analog_outputs"] = {}
-        config["controllers"][o.controller]["analog_outputs"][
-            str(o.output)
-        ] = {"offset": o.offset}
+        config["controllers"][o.controller]["analog_outputs"][str(o.output)] = {"offset": o.offset}
 
 
 def add_analog_inputs(state: QuAM, config: dict):
@@ -319,9 +278,7 @@ def add_analog_inputs(state: QuAM, config: dict):
             config["controllers"][i.controller] = {}
         if "analog_inputs" not in config["controllers"][i.controller]:
             config["controllers"][i.controller]["analog_inputs"] = {}
-        config["controllers"][i.controller]["analog_inputs"][
-            str(i.input)
-        ] = {
+        config["controllers"][i.controller]["analog_inputs"][str(i.input)] = {
             "offset": i.offset,
             "gain_db": i.gain_db,
         }
@@ -332,7 +289,7 @@ def add_analog_waveforms(state: QuAM, config):
         if wf.type == "constant":
             if len(wf.samples) != 1:
                 raise ValueError(
-                    f'Constant analog waveform {wf.name} has to have samples length of 1 (currently {len(wf.samples)})'
+                    f"Constant analog waveform {wf.name} has to have samples length of 1 (currently {len(wf.samples)})"
                 )
 
             config["waveforms"][wf.name] = {
@@ -370,10 +327,9 @@ def add_pulses(state: QuAM, config: dict):
         config["pulses"][pulse.name] = {
             "operation": pulse.operation,
             "length": pulse.length,
-            "waveforms": {
-                "single": pulse.waveforms.single
-            },
+            "waveforms": {"single": pulse.waveforms.single},
         }
+
 
 def add_sideband(state: QuAM, config: dict):
     for r, v in enumerate(state.sideband):  # r - idx, v - value
@@ -443,10 +399,7 @@ def build_config(state: QuAM):
                 elif abs(single_qubit_operation.angle) == 90:
                     amplitude = state.qubits[q].driving.angle2volt.deg90
                 else:
-                    raise ValueError(
-                        "Unknown angle for single qubit operation"
-                        f" {single_qubit_operation.angle}"
-                    )
+                    raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
                 add_qb_rot(
                     state,
                     config,
@@ -456,15 +409,11 @@ def build_config(state: QuAM):
                     amplitude
                     * gaussian(
                         round(state.qubits[q].driving.gate_len * 1e9),
-                        round(
-                            state.qubits[q].driving.gate_sigma * 1e9
-                        ),
+                        round(state.qubits[q].driving.gate_sigma * 1e9),
                     ),
                 )  # +180 and -180 have same amplitude
             else:
-                raise ValueError(
-                    f'Gate shape {state.qubits[q].driving.gate_shape} not recognized.'
-                )
+                raise ValueError(f"Gate shape {state.qubits[q].driving.gate_shape} not recognized.")
 
     return config
 
