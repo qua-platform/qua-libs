@@ -27,7 +27,7 @@ NUMBER_OF_QUBITS_PER_DRIVE_LINE = 1
 # layer 1: bare state QUantum Abstract Machine
 state = {
     # Make these functions directly available from the machine to be called in specific programs
-    "_func": ["config.build_config", "config.save", "config.get_sequence_state"],
+    "_func": ["config.build_config", "config.save", "config.get_wiring", "config.get_sequence_state"],
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
@@ -139,12 +139,9 @@ state = {
     ],
     # measure qubit 1 while playing a flux to qubit 0
     "crosstalk_matrix": {
-        "static": [  # index 0, 1 -> correspond to qubit0 talking to qubit1
-            [1.0, 0.0],
-            [0.0, 1.0],
-        ],
-        "fast": [[1.0, 0.0],
-                 [0.0, 1.0]],
+        # index 0, 1 -> correspond to qubit0 talking to qubit1
+        "static": [[1.0 if i==j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
+        "fast": [[1.0 if i==j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
     },
     "single_qubit_operations": [
         {"direction": "x", "angle": 180},

@@ -4130,6 +4130,12 @@ class QuAM(object):
             import config
         return config.save(self, filename, reuse_existing_values)
 
+    def get_wiring(self):
+        """"""
+        with _add_path(os.path.dirname(os.path.abspath(__file__))):
+            import config
+        return config.get_wiring(self)
+
     def get_sequence_state(self, qubit_index: int, sequence_state: str):
         """
     Get the sequence state object.

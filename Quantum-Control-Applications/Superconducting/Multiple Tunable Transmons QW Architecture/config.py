@@ -571,8 +571,38 @@ def get_sequence_state(state: QuAM, qubit_index: int, sequence_state: str):
     print("Error")
 
 
+def get_wiring(state: QuAM):
+    """
+    Print the state connectivity.
+    """
+    s = " "*40 + "STATE WIRING\n"
+    s += "-" * 110 + "\n"
+    for d in range(len(state.drive_lines)):
+        s += f"drive line {d} connected to channel {state.drive_lines[d].I.channel} (I) and {state.drive_lines[d].Q.channel} (Q) of controller '{state.drive_lines[d].I.controller}' "
+        s += f"with qubits "
+        qq = []
+        for q in range(len(state.qubits)):
+            if d == state.qubits[q].wiring.drive_line_index:
+                qq.append(q)
+        s += str(qq) + "\n"
+    s+= "-"*110 + "\n"
+    for r in range(len(state.readout_lines)):
+        s += f"readout line {r} connected to channel {state.readout_lines[r].I_up.channel} (I) and {state.readout_lines[r].Q_up.channel} (Q) of controller '{state.readout_lines[r].I_up.controller}' "
+        s += f"with readout resonators "
+        rrr = []
+        for rr in range(len(state.readout_resonators)):
+            if r == state.readout_resonators[rr].wiring.readout_line_index:
+                rrr.append(rr)
+        s += str(rrr) + "\n"
+    s += "-" * 110 + "\n"
+    for q in range(len(state.qubits)):
+        s += f"flux line {q} connected to channel {state.qubits[q].wiring.flux_line.channel} of controller '{state.qubits[q].wiring.flux_line.controller}'\n"
+    print(s)
+
+
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok
     machine = QuAM("quam_bootstrap_state.json")
     configuration = build_config(machine)
     qprint(machine)
+    machine.get_wiring()
