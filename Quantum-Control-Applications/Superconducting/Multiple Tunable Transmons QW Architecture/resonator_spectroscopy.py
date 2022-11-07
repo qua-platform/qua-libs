@@ -68,16 +68,20 @@ with program() as resonator_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
+
 qmm = QuantumMachinesManager(host="172.16.2.103", port="85")
 
 #######################
 # Simulate or execute #
 #######################
 
+debug = False
 simulate = False
-
+outputs = [1, 2, 3, 4, 7, 8, 9, 10]
+inputs = [1, 2]
+digital = []
 machine = QuAM("quam_bootstrap_state.json")
-config = machine.build_config()
+config = machine.build_config(outputs, digital, inputs)
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
@@ -91,8 +95,9 @@ else:
     # Initialize dataset
     qubit_data = [{} for _ in range(num_qubits)]
     # Live plotting
-    fig = plt.figure()
-    interrupt_on_close(fig, job)
+    if debug:
+        fig = plt.figure()
+        interrupt_on_close(fig, job)
     for q in range(num_qubits):
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
@@ -107,17 +112,18 @@ else:
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
-            plt.subplot(2, num_qubits, 1 + q)
-            plt.cla()
-            plt.title(f"resonator spectroscopy qubit {q}")
-            plt.plot(freqs[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
-            plt.xlabel("frequency [MHz]")
-            plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
-            plt.subplot(2, num_qubits, num_qubits + 1 + q)
-            plt.cla()
-            phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-            plt.plot(freqs[q] / u.MHz, phase, ".")
-            plt.xlabel("frequency [MHz]")
-            plt.ylabel("Phase [rad]")
-            plt.pause(0.1)
-            plt.tight_layout()
+            if debug:
+                plt.subplot(2, num_qubits, 1 + q)
+                plt.cla()
+                plt.title(f"resonator spectroscopy qubit {q}")
+                plt.plot(freqs[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
+                plt.xlabel("frequency [MHz]")
+                plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+                plt.subplot(2, num_qubits, num_qubits + 1 + q)
+                plt.cla()
+                phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+                plt.plot(freqs[q] / u.MHz, phase, ".")
+                plt.xlabel("frequency [MHz]")
+                plt.ylabel("Phase [rad]")
+                plt.pause(0.1)
+                plt.tight_layout()

@@ -35,7 +35,9 @@ print(len(machine.qubits))
 # machine.save("quam_bootstrap_state.json")
 
 z = [i for i in range(1, 11)]
-config = machine.build_config(a_out=z, d_out=z, a_in=z)
+qbts = [0, 1]
+rrs = [0, 1]
+config = machine.build_config(d_out=z, qbts=qbts, rrs=rrs)
 
 # qmm = QuantumMachinesManager()
 #

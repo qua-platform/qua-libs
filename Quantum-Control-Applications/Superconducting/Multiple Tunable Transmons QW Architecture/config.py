@@ -39,84 +39,86 @@ def find_lo_freq(state: QuAM, qubit_index: int):
     raise ValueError(f"Qubit {qubit_index} is not associated with any lo in state!")
 
 
-def add_qubits(state: QuAM, config: Dict):
+def add_qubits(state: QuAM, config: Dict, qb_list: list):
     for q in range(len(state.qubits)):
-        wiring = state.qubits[q].wiring
-        lo_freq = find_lo_freq(state, q)
-        config["elements"][f"q{q}"] = {
-            "mixInputs": {
-                "I": (
-                    state.drive_lines[wiring.drive_line_index].I.controller,
-                    state.drive_lines[wiring.drive_line_index].I.channel,
-                ),
-                "Q": (
-                    state.drive_lines[wiring.drive_line_index].Q.controller,
-                    state.drive_lines[wiring.drive_line_index].Q.channel,
-                ),
-                "lo_frequency": lo_freq,
-                "mixer": f"mixer_drive_line{q}",
-            },
-            "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-            },
-        }
-        # add offsets
-        config["controllers"][state.drive_lines[wiring.drive_line_index].I.controller]["analog_outputs"][
-            str(state.drive_lines[wiring.drive_line_index].I.channel)
-        ]["offset"] = state.drive_lines[wiring.drive_line_index].I.offset
-        config["controllers"][state.drive_lines[wiring.drive_line_index].Q.controller]["analog_outputs"][
-            str(state.drive_lines[wiring.drive_line_index].Q.channel)
-        ]["offset"] = state.drive_lines[wiring.drive_line_index].Q.offset
+        for i in range(len(qb_list)):
+            if q == qb_list[i]:
+                wiring = state.qubits[q].wiring
+                lo_freq = find_lo_freq(state, q)
+                config["elements"][f"q{q}"] = {
+                    "mixInputs": {
+                        "I": (
+                            state.drive_lines[wiring.drive_line_index].I.controller,
+                            state.drive_lines[wiring.drive_line_index].I.channel,
+                        ),
+                        "Q": (
+                            state.drive_lines[wiring.drive_line_index].Q.controller,
+                            state.drive_lines[wiring.drive_line_index].Q.channel,
+                        ),
+                        "lo_frequency": lo_freq,
+                        "mixer": f"mixer_drive_line{q}",
+                    },
+                    "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                    },
+                }
+                # add offsets
+                config["controllers"][state.drive_lines[wiring.drive_line_index].I.controller]["analog_outputs"][
+                    str(state.drive_lines[wiring.drive_line_index].I.channel)
+                ]["offset"] = state.drive_lines[wiring.drive_line_index].I.offset
+                config["controllers"][state.drive_lines[wiring.drive_line_index].Q.controller]["analog_outputs"][
+                    str(state.drive_lines[wiring.drive_line_index].Q.channel)
+                ]["offset"] = state.drive_lines[wiring.drive_line_index].Q.offset
 
-        # if f"mixer_q{q}" not in config["mixers"]:
-        #     config["mixers"][f"mixer_q{q}"] = []
-        # config["mixers"][f"mixer_q{q}"].append(
-        #     {
-        #         "intermediate_frequency": round(state.qubits"][q]["f_01"])
-        #         - lo_freq,
-        #         "lo_frequency": lo_freq,
-        #         "correction": wiring["correction_matrix"],
-        #     }
-        # )
+                # if f"mixer_q{q}" not in config["mixers"]:
+                #     config["mixers"][f"mixer_q{q}"] = []
+                # config["mixers"][f"mixer_q{q}"].append(
+                #     {
+                #         "intermediate_frequency": round(state.qubits"][q]["f_01"])
+                #         - lo_freq,
+                #         "lo_frequency": lo_freq,
+                #         "correction": wiring["correction_matrix"],
+                #     }
+                # )
 
-        # add flux element
-        config["elements"][f"q{q}_flux"] = {
-            "singleInput": {
-                "port": (
-                    wiring.flux_line.controller,
-                    wiring.flux_line.channel,
-                )
-            },
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
-            },
-        }
-        # add operations for flux line
-        for op in state.qubits[q].sequence_states:
-            config["elements"][f"q{q}_flux"]["operations"][op.name] = f"q{q}_flux_{op.name}"
+                # add flux element
+                config["elements"][f"q{q}_flux"] = {
+                    "singleInput": {
+                        "port": (
+                            wiring.flux_line.controller,
+                            wiring.flux_line.channel,
+                        )
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                    },
+                }
+                # add operations for flux line
+                for op in state.qubits[q].sequence_states:
+                    config["elements"][f"q{q}_flux"]["operations"][op.name] = f"q{q}_flux_{op.name}"
 
-            # add pulse
-            config["pulses"][f"q{q}_flux_{op.name}"] = {
-                "operation": "control",
-                "length": op.length,
-                "waveforms": {"single": f"q{q}_flux_{op.name}_wf"},
-            }
-            config["waveforms"][f"q{q}_flux_{op.name}_wf"] = {
-                "type": "constant",
-                "sample": op.amplitude,
-            }
-        # add filters
-        config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
-            "filter"
-        ] = {
-            "feedforward": wiring.flux_filter_coef.feedforward,
-            "feedback": wiring.flux_filter_coef.feedback,
-        }
-        # add offsets
-        config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
-            "offset"
-        ] = wiring.flux_line.offset
+                    # add pulse
+                    config["pulses"][f"q{q}_flux_{op.name}"] = {
+                        "operation": "control",
+                        "length": op.length,
+                        "waveforms": {"single": f"q{q}_flux_{op.name}_wf"},
+                    }
+                    config["waveforms"][f"q{q}_flux_{op.name}_wf"] = {
+                        "type": "constant",
+                        "sample": op.amplitude,
+                    }
+                # add filters
+                config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
+                    "filter"
+                ] = {
+                    "feedforward": wiring.flux_filter_coef.feedforward,
+                    "feedback": wiring.flux_filter_coef.feedback,
+                }
+                # add offsets
+                config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
+                    "offset"
+                ] = wiring.flux_line.offset
 
     # add cross talk
     for i in range(len(state.crosstalk_matrix.fast)):
@@ -366,7 +368,7 @@ def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
     config["elements"][element]["operations"][operation_name] = pulse_name
 
 
-def add_controllers(state: QuAM, config, a_outputs: list, d_outputs: list, a_inputs: list):
+def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, rr_list: list):
     for con in state.controllers:
         config["controllers"][con] = {}
         config["controllers"][con]["analog_outputs"] = {}
@@ -376,14 +378,20 @@ def add_controllers(state: QuAM, config, a_outputs: list, d_outputs: list, a_inp
         for i in d_outputs:
             config["controllers"][con]["digital_outputs"][str(i)] = {}
 
-        for i in a_outputs:
-            config["controllers"][con]["analog_outputs"][str(i)] = {"offset": 0.0}
+        for i in qb_list:
+            wiring = state.qubits[i].wiring
+            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].I.channel)] = {"offset": 0.0}
+            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {"offset": 0.0}
+            config["controllers"][con]["analog_outputs"][str(wiring.flux_line.channel)] = {"offset": 0.0}
 
-        for i in a_inputs:
-            config["controllers"][con]["analog_inputs"][str(i)] = {
-                "offset": 0.0,
-                "gain_db": 0,
-            }
+        for r, v in enumerate(state.readout_resonators):  # r - idx, v - value
+            for z in rr_list:
+                if r == z:
+                    readout_line = state.readout_lines[v.wiring.readout_line_index]
+                    config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {"offset": 0.0, "gain_db": 0}
+                    config["controllers"][con]["analog_inputs"][str(readout_line.Q_down.channel)] = {"offset": 0.0, "gain_db": 0}
+                    config["controllers"][con]["analog_outputs"][str(readout_line.I_up.channel)] = {"offset": 0.0}
+                    config["controllers"][con]["analog_outputs"][str(readout_line.Q_up.channel)] = {"offset": 0.0}
 
 
 def add_digital_waveforms(state: QuAM, config):
@@ -417,7 +425,7 @@ def add_common_operation(state: QuAM, config: dict):
     }
 
 
-def build_config(state, a_out: list, d_out: list, a_in: list):
+def build_config(state, d_out: list, qbts: list, rrs: list):
     config = {
         "version": 1,
         "controllers": {
@@ -435,13 +443,13 @@ def build_config(state, a_out: list, d_out: list, a_in: list):
         "mixers": {},
     }
 
-    add_controllers(state, config, a_outputs=a_out, d_outputs=d_out, a_inputs=a_in)
+    add_controllers(state, config, d_outputs=d_out, qb_list=qbts, rr_list=rrs)
 
     add_common_operation(state, config)
 
     add_digital_waveforms(state, config)
 
-    add_qubits(state, config)
+    add_qubits(state, config, qb_list=qbts)
 
     add_readout_resonators(state, config)
 
