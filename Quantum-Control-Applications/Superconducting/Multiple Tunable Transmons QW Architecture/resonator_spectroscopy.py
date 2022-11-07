@@ -77,11 +77,11 @@ qmm = QuantumMachinesManager(host="172.16.2.103", port="85")
 
 debug = False
 simulate = False
-outputs = [1, 2, 3, 4, 7, 8, 9, 10]
-inputs = [1, 2]
+qbts = [0, 1]
+rrs = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
-config = machine.build_config(outputs, digital, inputs)
+config = machine.build_config(digital, qbts, rrs)
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)

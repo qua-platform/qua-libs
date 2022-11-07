@@ -457,11 +457,11 @@ def build_config(state, d_out: list, qbts: list, rrs: list):
 
     for single_qubit_operation in state.single_qubit_operations:
         for q in range(len(state.qubits)):
-            if state.qubits[q].driving.gate_shape == "gaussian":
+            if state.qubits[q].driving.pulse.gate_shape == "gaussian":
                 if abs(single_qubit_operation.angle) == 180:
-                    amplitude = state.qubits[q].driving.angle2volt.deg180
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg180
                 elif abs(single_qubit_operation.angle) == 90:
-                    amplitude = state.qubits[q].driving.angle2volt.deg90
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg90
                 else:
                     raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
                 add_qb_rot(
@@ -472,11 +472,11 @@ def build_config(state, d_out: list, qbts: list, rrs: list):
                     single_qubit_operation.direction,
                     amplitude
                     * gaussian(
-                        round(state.qubits[q].driving.gate_len * 1e9),
-                        round(state.qubits[q].driving.gate_sigma * 1e9),
+                        round(state.qubits[q].driving.pulse.gate_len * 1e9),
+                        round(state.qubits[q].driving.pulse.gate_sigma * 1e9),
                     ),
                 )  # +180 and -180 have same amplitude
-            elif state.qubits[q].driving.gate_shape == "drag_gaussian":
+            elif state.qubits[q].driving.pulse.gate_shape == "drag_gaussian":
                 from qualang_tools.config.waveform_tools import (
                     drag_gaussian_pulse_waveforms,
                 )
@@ -484,17 +484,17 @@ def build_config(state, d_out: list, qbts: list, rrs: list):
                 drag_I, drag_Q = np.array(
                     drag_gaussian_pulse_waveforms(
                         1,
-                        round(state.qubits[q].driving.gate_len * 1e9),
-                        round(state.qubits[q].driving.gate_sigma * 1e9),
-                        alpha=state.qubits[q].driving.alpha,
-                        detuning=state.qubits[q].driving.detuning,
+                        round(state.qubits[q].driving.pulse.gate_len * 1e9),
+                        round(state.qubits[q].driving.pulse.gate_sigma * 1e9),
+                        alpha=state.qubits[q].driving.pulse.alpha,
+                        detuning=state.qubits[q].driving.pulse.detuning,
                         anharmonicity=state.qubits[q].anharmonicity,
                     )
                 )
                 if abs(single_qubit_operation.angle) == 180:
-                    amplitude = state.qubits[q].driving.angle2volt.deg180
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg180
                 elif abs(single_qubit_operation.angle) == 90:
-                    amplitude = state.qubits[q].driving.angle2volt.deg90
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg90
                 else:
                     raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
                 add_qb_rot(
@@ -506,7 +506,7 @@ def build_config(state, d_out: list, qbts: list, rrs: list):
                     amplitude * drag_I,
                     amplitude * drag_Q,
                 )  # +180 and -180 have same amplitude
-            elif state.qubits[q].driving.gate_shape == "drag_cosine":
+            elif state.qubits[q].driving.pulse.gate_shape == "drag_cosine":
                 from qualang_tools.config.waveform_tools import (
                     drag_cosine_pulse_waveforms,
                 )
@@ -514,16 +514,16 @@ def build_config(state, d_out: list, qbts: list, rrs: list):
                 drag_I, drag_Q = np.array(
                     drag_cosine_pulse_waveforms(
                         1,
-                        round(state.qubits[q].driving.gate_len * 1e9),
-                        alpha=state.qubits[q].driving.alpha,
-                        detuning=state.qubits[q].driving.detuning,
+                        round(state.qubits[q].driving.pulse.gate_len * 1e9),
+                        alpha=state.qubits[q].driving.pulse.alpha,
+                        detuning=state.qubits[q].driving.pulse.detuning,
                         anharmonicity=state.qubits[q].anharmonicity,
                     )
                 )
                 if abs(single_qubit_operation.angle) == 180:
-                    amplitude = state.qubits[q].driving.angle2volt.deg180
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg180
                 elif abs(single_qubit_operation.angle) == 90:
-                    amplitude = state.qubits[q].driving.angle2volt.deg90
+                    amplitude = state.qubits[q].driving.pulse.angle2volt.deg90
                 else:
                     raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
                 add_qb_rot(
@@ -609,6 +609,9 @@ def get_wiring(state: QuAM):
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok
     machine = QuAM("quam_bootstrap_state.json")
-    configuration = build_config(machine)
+    qbts = [0, 1]
+    rrs = [0, 1]
+    digital = []
+    configuration = build_config(machine, digital, qbts, rrs)
     qprint(machine)
     machine.get_wiring()
