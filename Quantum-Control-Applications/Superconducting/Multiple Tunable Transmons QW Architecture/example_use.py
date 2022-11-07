@@ -34,32 +34,32 @@ print(len(machine.qubits))
 
 # machine.save("quam_bootstrap_state.json")
 
-config = machine.build_config()
+z = [i for i in range(1, 11)]
+config = machine.build_config(a_out=z, d_out=z, a_in=z)
 
-
-qmm = QuantumMachinesManager()
-
-with program() as hello_qua:
-    update_frequency("q0", 0)
-    update_frequency("q1", 0)
-    play("const", "rr0")
-    wait(25, "q0_flux")
-    play("const", "q0_flux", duration=200)
-    align()
-    play("x180", "q0")
-    play("x90", "q0")
-    play("x-90", "q0")
-    play("x-180", "q0")
-    play("y-180", "q0")
-    play("y-90", "q0")
-    play("y90", "q0")
-    play("y180", "q0")
-
-
-
-
-
-
-job = qmm.simulate(config, hello_qua, SimulationConfig(500))
-job.get_simulated_samples().con1.plot()
-plt.show()
+# qmm = QuantumMachinesManager()
+#
+# with program() as hello_qua:
+#     update_frequency("q0", 0)
+#     update_frequency("q1", 0)
+#     play("const", "rr0")
+#     wait(25, "q0_flux")
+#     play("const", "q0_flux", duration=200)
+#     align()
+#     play("x180", "q0")
+#     play("x90", "q0")
+#     play("x-90", "q0")
+#     play("x-180", "q0")
+#     play("y-180", "q0")
+#     play("y-90", "q0")
+#     play("y90", "q0")
+#     play("y180", "q0")
+#
+#
+#
+#
+#
+#
+# job = qmm.simulate(config, hello_qua, SimulationConfig(500))
+# job.get_simulated_samples().con1.plot()
+# plt.show()

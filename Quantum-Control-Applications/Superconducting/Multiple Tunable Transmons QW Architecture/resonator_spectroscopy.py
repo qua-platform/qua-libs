@@ -98,7 +98,7 @@ else:
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
         my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"iteration{q}"], mode="live")
-        while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg-1:
+        while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
             # Fetch results
             data = my_results.fetch_all()
             qubit_data[q]["I"] = data[0]
@@ -107,7 +107,7 @@ else:
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
-            plt.subplot(2, num_qubits, 1+q)
+            plt.subplot(2, num_qubits, 1 + q)
             plt.cla()
             plt.title(f"resonator spectroscopy qubit {q}")
             plt.plot(freqs[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")

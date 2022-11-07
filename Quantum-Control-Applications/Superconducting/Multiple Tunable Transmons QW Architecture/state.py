@@ -32,12 +32,12 @@ state = {
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
     # Just put standard pulses; qubit, readout & flux drives will be added later
-    "common_operation":{
-            "_docs": "an operation which is common to all elements",
-            "name": "const",
-            "duration": 100e-9,
-            "amplitude": 0.2
-        },
+    "common_operation": {
+        "_docs": "an operation which is common to all elements",
+        "name": "const",
+        "duration": 100e-9,
+        "amplitude": 0.2,
+    },
     # Readout lines containing information about the readout length, LO frequency and power,
     # and connectivity for the up- and down-conversion sides
     "readout_lines": [
@@ -75,19 +75,21 @@ state = {
                 "time_of_flight_docs": "Time of flight for this resonator [ns].",
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
             },
-        } for i in range(READOUT_RESONATORS_PER_FEED_LINE)
+        }
+        for i in range(READOUT_RESONATORS_PER_FEED_LINE)
     ],
     "drive_lines": [
         {
-            "qubits": [i*NUMBER_OF_QUBITS_PER_DRIVE_LINE+j for j in range(NUMBER_OF_QUBITS_PER_DRIVE_LINE)],
+            "qubits": [i * NUMBER_OF_QUBITS_PER_DRIVE_LINE + j for j in range(NUMBER_OF_QUBITS_PER_DRIVE_LINE)],
             "qubits_docs": "qubits associated with this drive line",
             "lo_freq": 4.5e9,  # Hz
             "lo_freq_docs": "LO frequency [Hz]",
             "lo_power": 15,  # dB
             "lo_power_docs": "LO power to drive line [dBm]",
-            "I": {"controller": "con1", "channel": 1 + 2*i, "offset": 0.0},
-            "Q": {"controller": "con1", "channel": 2 + 2*i, "offset": 0.0},
-        } for i in range(NUMBER_OF_DRIVE_LINES)
+            "I": {"controller": "con1", "channel": 1 + 2 * i, "offset": 0.0},
+            "Q": {"controller": "con1", "channel": 2 + 2 * i, "offset": 0.0},
+        }
+        for i in range(NUMBER_OF_DRIVE_LINES)
     ],
     "qubits": [
         {
@@ -119,9 +121,9 @@ state = {
                 "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
             },
             "wiring": {
-                "drive_line_index": int(np.floor(i/NUMBER_OF_QUBITS_PER_DRIVE_LINE)),
+                "drive_line_index": int(np.floor(i / NUMBER_OF_QUBITS_PER_DRIVE_LINE)),
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
-                "flux_line": {"controller": "con1", "channel": 8-i, "offset": 0.0},
+                "flux_line": {"controller": "con1", "channel": 8 - i, "offset": 0.0},
                 "flux_filter_coef": {
                     "feedforward": [],
                     "feedback": [],
@@ -135,13 +137,14 @@ state = {
                 {"name": "Readout", "amplitude": 0.35, "length": 1000},
                 {"name": "flux_balancing", "amplitude": -0.35, "length": 400},
             ],
-        } for i in range(NUMBER_OF_QUBITS)
+        }
+        for i in range(NUMBER_OF_QUBITS)
     ],
     # measure qubit 1 while playing a flux to qubit 0
     "crosstalk_matrix": {
         # index 0, 1 -> correspond to qubit0 talking to qubit1
-        "static": [[1.0 if i==j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
-        "fast": [[1.0 if i==j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
+        "static": [[1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
+        "fast": [[1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
     },
     "single_qubit_operations": [
         {"direction": "x", "angle": 180},
@@ -153,9 +156,7 @@ state = {
         {"direction": "y", "angle": 90},
         {"direction": "y", "angle": -90},
     ],
-    "two_qubit_gates": [
-
-    ],
+    "two_qubit_gates": [],
     "running_strategy": {"running": True, "start": [], "end": []},
 }
 
