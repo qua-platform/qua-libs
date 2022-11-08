@@ -37,7 +37,8 @@ print(len(machine.qubits))
 z = [i for i in range(1, 11)]
 qbts = [0, 1]
 rrs = [0, 1]
-config = machine.build_config(d_out=z, qbts=qbts, rrs=rrs)
+gate_shape = 'pulse1'
+config = machine.build_config(d_out=z, qbts=qbts, rrs=rrs, gate_shape=gate_shape)
 
 # qmm = QuantumMachinesManager()
 #
