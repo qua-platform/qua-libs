@@ -42,7 +42,7 @@ bias_min = [-0.4, -0.4]
 bias_max = [0.4, 0.4]
 dbias = 0.02
 
-amps = np.arange(a_min, a_max + da/2, da)
+amps = np.arange(a_min, a_max + da / 2, da)
 bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
 
 with program() as resonator_spec:
@@ -124,7 +124,11 @@ else:
                 plt.subplot(2, len(qubit_list), 1 + q)
                 plt.cla()
                 plt.title(f"Qubit spectroscopy qubit {q}")
-                plt.pcolor(amps * machine.get_driving(gate_shape, q).angle2volt.deg180, bias[q], np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2))
+                plt.pcolor(
+                    amps * machine.get_driving(gate_shape, q).angle2volt.deg180,
+                    bias[q],
+                    np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2),
+                )
                 plt.xlabel("Microwave drive amplitude [V]")
                 plt.ylabel("Bias amplitude [V]")
                 cbar = plt.colorbar()
@@ -135,7 +139,7 @@ else:
                 plt.pcolor(amps * machine.get_driving(gate_shape, q).angle2volt.deg180, bias[q], phase)
                 plt.xlabel("Microwave drive amplitude [V]")
                 plt.ylabel("Bias amplitude [V]")
-                cbar=plt.colorbar()
+                cbar = plt.colorbar()
                 cbar.set_label("Phase [rad]", rotation=270)
                 plt.pause(0.1)
                 plt.tight_layout()
