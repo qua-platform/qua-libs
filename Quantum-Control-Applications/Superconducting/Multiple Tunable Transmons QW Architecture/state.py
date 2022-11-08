@@ -28,6 +28,7 @@ NUMBER_OF_QUBITS_PER_DRIVE_LINE = 1
 state = {
     # Make these functions directly available from the machine to be called in specific programs
     "_func": ["config.build_config", "config.save", "config.get_wiring", "config.get_sequence_state"],
+    "network": {"qop_ip": "172.16.2.103", "port": 85},
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
