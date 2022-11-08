@@ -34,6 +34,7 @@ state = {
         "config.get_sequence_state",
         "config.get_qubit",
         "config.get_resonator",
+        "config.get_driving",
     ],
     "network": {"qop_ip": "172.16.2.103", "port": 85},
     "controllers": ["con1"],
@@ -64,7 +65,7 @@ state = {
     ],
     "readout_resonators": [
         {
-            "resonator_index": i,
+            "index": i,
             "name": f"resonator_{i}",
             "f_res": 7.1e9,  # Hz
             "f_res_docs": "Resonator frequency [Hz]",
@@ -73,6 +74,8 @@ state = {
             "readout_amplitude_docs": "Readout amplitude for this resonator [V]. Must be within [-0.5, 0.5).",
             "rotation_angle": 41.3,  # degrees
             "rotation_angle_docs": "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees].",
+            "ge_threshold": 0.0,  # degrees
+            "ge_threshold_docs": "Threshold along the 'I' quadrature discriminating between qubit ground and excited states.",
             "opt_readout_frequency": 6.52503e9,
             "readout_fidelity": 0.84,
             "q_factor": 1e4,
@@ -102,7 +105,7 @@ state = {
     ],
     "qubits": [
         {
-            "qubit_index": i,
+            "index": i,
             "name": f"qubit_{i}",
             "f_01": 4.52503e9,  # Hz
             "f_01_docs": "0-1 transition frequency [Hz]",

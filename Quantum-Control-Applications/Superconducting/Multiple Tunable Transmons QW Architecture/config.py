@@ -33,17 +33,17 @@ def IQ_imbalance(g, phi):
 
 
 # get pulse
-def get_pulse(state: QuAM, pulse, q: int):
+def get_driving(state: QuAM, pulse, q: int):
     for z in state.qubits[q].driving.__dict__.get("_schema").get("required"):
         if z == pulse:
             return state.qubits[q].driving.__getattribute__(pulse)
 
 
-def find_lo_freq(state: QuAM, qubit_index: int):
+def find_lo_freq(state: QuAM, index: int):
     for x in state.drive_lines:
-        if qubit_index in x.qubits:
+        if index in x.qubits:
             return x.lo_freq
-    raise ValueError(f"Qubit {qubit_index} is not associated with any lo in state!")
+    raise ValueError(f"Qubit {index} is not associated with any lo in state!")
 
 
 def add_qubits(state: QuAM, config: Dict, qb_list: list):
@@ -123,7 +123,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         for j in range(len(state.crosstalk_matrix.fast[i])):
             q_j = state.qubits[j]
             crosstalk[q_j.wiring.flux_line.channel] = state.crosstalk_matrix.fast[i][j]
-        if q_i.qubit_index in qb_list and q_j.qubit_index in qb_list:
+        if q_i.index in qb_list and q_j.index in qb_list:
             config["controllers"][q_i.wiring.flux_line.controller]["analog_outputs"][str(q_i.wiring.flux_line.channel)][
                 "crosstalk"
             ] = crosstalk
@@ -467,7 +467,7 @@ def build_config(state, d_out: list, qbts: list, gate_shape: str):
         for q in qbts:
             for z in state.qubits[q].driving.__dict__.get("_schema").get("required"):
                 if z == gate_shape:
-                    pulse = get_pulse(state, z, q)
+                    pulse = get_driving(state, z, q)
                     if pulse.gate_shape == "gaussian":
                         if abs(single_qubit_operation.angle) == 180:
                             amplitude = pulse.angle2volt.deg180
@@ -580,15 +580,15 @@ def save(state: QuAM, filename: str, reuse_existing_values: bool = False):
         json.dump(state._json, file)
 
 
-def get_sequence_state(state: QuAM, qubit_index: int, sequence_state: str):
+def get_sequence_state(state: QuAM, index: int, sequence_state: str):
     """
     Get the sequence state object.
 
-    :param qubit_index: index of the qubit to be retrieved.
+    :param index: index of the qubit to be retrieved.
     :param sequence_state: name of the sequence.
     :return: the sequence state object.
     """
-    for seq in state.qubits[qubit_index].sequence_states:
+    for seq in state.qubits[index].sequence_states:
         if seq.name == sequence_state:
             return seq
     raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
