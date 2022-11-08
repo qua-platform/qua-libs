@@ -572,8 +572,31 @@ def get_sequence_state(state: QuAM, qubit_index: int, sequence_state: str):
     for seq in state.qubits[qubit_index].sequence_states:
         if seq.name == sequence_state:
             return seq
-    print("Error")
+    raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
 
+def get_qubit(state, qubit_name):
+    """
+    Get the qubit object corresponding to the specified qubit name.
+
+    :param qubit_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+    for q in range(len(state.qubits)):
+        if machine.qubits[q].name == qubit_name:
+            return machine.qubits[q]
+    raise ValueError(f"The qubit '{qubit_name}' is not defined in the state.")
+
+def get_resonator(state, resonator_name):
+    """
+    Get the readout resonator object corresponding to the specified resonator name.
+
+    :param resonator_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+    for q in range(len(state.qubits)):
+        if machine.readout_resonators[q].name == resonator_name:
+            return machine.qubits[q]
+    raise ValueError(f"The readout resonator '{resonator_name}' is not defined in the state.")
 
 def get_wiring(state: QuAM):
     """
