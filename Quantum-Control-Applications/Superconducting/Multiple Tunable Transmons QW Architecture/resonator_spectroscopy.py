@@ -21,7 +21,7 @@ simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
-gate_shape = 'drag_cosine'
+gate_shape = "drag_cosine"
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################

@@ -90,15 +90,17 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         }
         # add operations for flux line
         for op in state.qubits[q].sequence_states:
-            config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = state.qubits[q].name + f"_flux_{op.name}"
+            config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = (
+                state.qubits[q].name + f"_flux_{op.name}"
+            )
 
             # add pulse
             config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
                 "length": op.length,
-                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}"+"_wf"},
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
             }
-            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}"+"_wf"] = {
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
                 "type": "constant",
                 "sample": op.amplitude,
             }
@@ -172,7 +174,7 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                 "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
                 "operations": {
                     state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-                    "readout": f"readout_pulse_"+ state.readout_resonators[r].name,
+                    "readout": f"readout_pulse_" + state.readout_resonators[r].name,
                 },
                 "outputs": {
                     "out1": (
@@ -329,7 +331,9 @@ def add_qb_rot(
             "Q": f"{direction}{angle}_Q_wf_" + state.qubits[q].name,
         },
     }
-    config["elements"][state.qubits[q].name]["operations"][f"{direction}{angle}"] = f"{direction}{angle}_pulse_" + state.qubits[q].name
+    config["elements"][state.qubits[q].name]["operations"][f"{direction}{angle}"] = (
+        f"{direction}{angle}_pulse_" + state.qubits[q].name
+    )
 
 
 def add_control_operation_single(config, element, operation_name, wf):
@@ -377,17 +381,26 @@ def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list):
         for i in qb_list:
             # Add qubit channels
             wiring = state.qubits[i].wiring
-            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].I.channel)] = {"offset": 0.0}
-            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {"offset": 0.0}
+            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].I.channel)] = {
+                "offset": 0.0
+            }
+            config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {
+                "offset": 0.0
+            }
             config["controllers"][con]["analog_outputs"][str(wiring.flux_line.channel)] = {"offset": 0.0}
             # Add resonator channels
             readout_line = state.readout_lines[state.readout_resonators[i].wiring.readout_line_index]
-            config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {"offset": 0.0,
-                                                                                             "gain_db": 0}
-            config["controllers"][con]["analog_inputs"][str(readout_line.Q_down.channel)] = {"offset": 0.0,
-                                                                                             "gain_db": 0}
+            config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {
+                "offset": 0.0,
+                "gain_db": 0,
+            }
+            config["controllers"][con]["analog_inputs"][str(readout_line.Q_down.channel)] = {
+                "offset": 0.0,
+                "gain_db": 0,
+            }
             config["controllers"][con]["analog_outputs"][str(readout_line.I_up.channel)] = {"offset": 0.0}
             config["controllers"][con]["analog_outputs"][str(readout_line.Q_up.channel)] = {"offset": 0.0}
+
 
 def add_digital_waveforms(state: QuAM, config):
     for wf in state.digital_waveforms:
@@ -461,7 +474,9 @@ def build_config(state, d_out: list, qbts: list, gate_shape: str):
                         elif abs(single_qubit_operation.angle) == 90:
                             amplitude = pulse.angle2volt.deg90
                         else:
-                            raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
+                            raise ValueError(
+                                "Unknown angle for single qubit operation" f" {single_qubit_operation.angle}"
+                            )
                         add_qb_rot(
                             state,
                             config,
@@ -494,7 +509,9 @@ def build_config(state, d_out: list, qbts: list, gate_shape: str):
                         elif abs(single_qubit_operation.angle) == 90:
                             amplitude = pulse.angle2volt.deg90
                         else:
-                            raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
+                            raise ValueError(
+                                "Unknown angle for single qubit operation" f" {single_qubit_operation.angle}"
+                            )
                         add_qb_rot(
                             state,
                             config,
@@ -523,7 +540,9 @@ def build_config(state, d_out: list, qbts: list, gate_shape: str):
                         elif abs(single_qubit_operation.angle) == 90:
                             amplitude = pulse.angle2volt.deg90
                         else:
-                            raise ValueError("Unknown angle for single qubit operation" f" {single_qubit_operation.angle}")
+                            raise ValueError(
+                                "Unknown angle for single qubit operation" f" {single_qubit_operation.angle}"
+                            )
                         add_qb_rot(
                             state,
                             config,
@@ -574,6 +593,7 @@ def get_sequence_state(state: QuAM, qubit_index: int, sequence_state: str):
             return seq
     raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
 
+
 def get_qubit(state: QuAM, qubit_name: str):
     """
     Get the qubit object corresponding to the specified qubit name.
@@ -586,6 +606,7 @@ def get_qubit(state: QuAM, qubit_name: str):
             return state.qubits[q]
     raise ValueError(f"The qubit '{qubit_name}' is not defined in the state.")
 
+
 def get_resonator(state: QuAM, resonator_name: str):
     """
     Get the readout resonator object corresponding to the specified resonator name.
@@ -597,6 +618,7 @@ def get_resonator(state: QuAM, resonator_name: str):
         if state.readout_resonators[q].name == resonator_name:
             return state.qubits[q]
     raise ValueError(f"The readout resonator '{resonator_name}' is not defined in the state.")
+
 
 def get_wiring(state: QuAM):
     """
@@ -630,8 +652,8 @@ def get_wiring(state: QuAM):
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok
     machine = QuAM("quam_bootstrap_state.json")
-    qbts = [1]
+    qubit_list = [0, 1]
     digital = []
-    configuration = build_config(machine, digital, qbts, gate_shape="drag_cosine")
+    configuration = build_config(machine, digital, qubit_list, gate_shape="drag_cosine")
     qprint(machine)
     machine.get_wiring()

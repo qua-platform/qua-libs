@@ -1,64 +1,36 @@
-
 # ==================== DEFINE NODE ====================
 import nodeio
 
-nodeio.context(
-    name="res_spec_node",
-    description="res spec and analysis"
-)
+nodeio.context(name="res_spec_node", description="res spec and analysis")
 
 inputs = nodeio.Inputs()
 inputs.stream(
-    'state',
-    units='JSON',
-    description='boostrap state',
+    "state",
+    units="JSON",
+    description="boostrap state",
 )
-inputs.stream(
-    'resources',
-    units='list',
-    description='contains digital outputs, qubits, and resonators to be used'
-)
-inputs.stream(
-    'debug',
-    units='boolean',
-    description='triggers live plot visualization for debug purposes'
-)
-inputs.stream(
-    'gate_shape',
-    units='str',
-    description='gate shape to be used during experiment, e.g., drag_gaussian'
-)
+inputs.stream("resources", units="list", description="contains digital outputs, qubits, and resonators to be used")
+inputs.stream("debug", units="boolean", description="triggers live plot visualization for debug purposes")
+inputs.stream("gate_shape", units="str", description="gate shape to be used during experiment, e.g., drag_gaussian")
 
 outputs = nodeio.Outputs()
 outputs.define(
-    'state',
-    units='JSON',
-    description='state with updated res freqs',
+    "state",
+    units="JSON",
+    description="state with updated res freqs",
 )
-outputs.define(
-    'resources',
-    units='list',
-    description='qubits to be used'
-)
-outputs.define(
-    'debug',
-    units='boolean',
-    description='to live plot'
-)
-outputs.define(
-    'gate_shape',
-    units='str',
-    description='gate shape to be used during experiment, e.g., drag_gaussian'
-)
+outputs.define("resources", units="list", description="qubits to be used")
+outputs.define("debug", units="boolean", description="to live plot")
+outputs.define("gate_shape", units="str", description="gate shape to be used during experiment, e.g., drag_gaussian")
 
 nodeio.register()
 
 # ==================== DRY RUN DATA ====================
 # set inputs data for dry-run of the node
-inputs.set(state='quam_bootstrap_state.json')
+inputs.set(state="quam_bootstrap_state.json")
 inputs.set(resources=[[], [0, 1], [0, 1]])
 inputs.set(debug=False)
-inputs.set(gate_shape='pulse1')
+inputs.set(gate_shape="pulse1")
 
 # =============== RUN NODE STATE MACHINE ===============
 
@@ -78,11 +50,11 @@ from qualang_tools.results import progress_counter, fetching_tool
 
 while nodeio.status.active:
 
-    state = inputs.get('state')
-    resources = inputs.get('resources')
-    debug = inputs.get('debug')
-    gate_shape = inputs.get('gate_shape')
-    if debug == 'True':
+    state = inputs.get("state")
+    resources = inputs.get("resources")
+    debug = inputs.get("debug")
+    gate_shape = inputs.get("gate_shape")
+    if debug == "True":
         debug = True
     else:
         debug = False

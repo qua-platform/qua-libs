@@ -21,7 +21,7 @@ simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
-gate_shape = 'drag_cosine'
+gate_shape = "drag_cosine"
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -42,7 +42,7 @@ bias_max = [0.4, 0.4]
 dbias = 0.05
 
 freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
-bias = [np.arange(bias_min[i], bias_max[i]+dbias/2, dbias) for i in range(len(qubit_list))]
+bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -56,8 +56,8 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(b, bias_min[i], b < bias_max[i] + dbias/2, b + dbias):
-                set_dc_offset(machine.qubits[i].name + "_flux", 'single', b)
+            with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
+                set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                 wait(250)  # wait for 1 us
                 with for_(
                     f, f_min[i], f <= f_max[i], f + df

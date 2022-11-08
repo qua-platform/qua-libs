@@ -1,51 +1,31 @@
-
 # ==================== DEFINE NODE ====================
 import nodeio
 
-nodeio.context(
-    name="res_spec_flux",
-    description="flux map of resonator spec"
-)
+nodeio.context(name="res_spec_flux", description="flux map of resonator spec")
 
 inputs = nodeio.Inputs()
 inputs.stream(
-    'state',
-    units='JSON',
-    description='boostrap state',
+    "state",
+    units="JSON",
+    description="boostrap state",
 )
-inputs.stream(
-    'resources',
-    units='list',
-    description='contains digital outputs, qubits, and resonators to be used'
-)
-inputs.stream(
-    'debug',
-    units='boolean',
-    description='triggers live plot visualization for debug purposes'
-)
-inputs.stream(
-    'gate_shape',
-    units='str',
-    description='gate shape to be used during experiment, e.g., drag_gaussian'
-)
+inputs.stream("resources", units="list", description="contains digital outputs, qubits, and resonators to be used")
+inputs.stream("debug", units="boolean", description="triggers live plot visualization for debug purposes")
+inputs.stream("gate_shape", units="str", description="gate shape to be used during experiment, e.g., drag_gaussian")
 
 
 outputs = nodeio.Outputs()
-outputs.define(
-    'state',
-    units='JSON',
-    description='state with updated res freqs'
-)
+outputs.define("state", units="JSON", description="state with updated res freqs")
 
 nodeio.register()
 
 # ==================== DRY RUN DATA ====================
 
 # set inputs data for dry-run of the node
-inputs.set(state='quam_bootstrap_state.json')
+inputs.set(state="quam_bootstrap_state.json")
 inputs.set(resources=[[], [0, 1], [0, 1]])
 inputs.set(debug=False)
-inputs.set(gate_shape='pulse1')
+inputs.set(gate_shape="pulse1")
 
 # =============== RUN NODE STATE MACHINE ===============
 
@@ -66,10 +46,10 @@ from qualang_tools.results import progress_counter, fetching_tool
 
 while nodeio.status.active:
 
-    state = inputs.get('state')
-    resources = inputs.get('resources')
-    debug = inputs.get('debug')
-    gate_shape = inputs.get('gate_shape')
+    state = inputs.get("state")
+    resources = inputs.get("resources")
+    debug = inputs.get("debug")
+    gate_shape = inputs.get("gate_shape")
 
     u = unit()
 
@@ -91,7 +71,7 @@ while nodeio.status.active:
     dbias = 0.05
 
     freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
-    bias = [np.arange(bias_min[i], bias_max[i]+dbias/2, dbias) for i in range(num_qubits)]
+    bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(num_qubits)]
 
     with program() as resonator_spec:
         n = [declare(int) for _ in range(num_qubits)]
@@ -105,8 +85,8 @@ while nodeio.status.active:
 
         for i in range(num_qubits):
             with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-                with for_(b, bias_min[i], b < bias_max[i] + dbias/2, b + dbias):
-                    set_dc_offset(f'q{i}_flux', 'single', b)
+                with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
+                    set_dc_offset(f"q{i}_flux", "single", b)
                     wait(250)  # wait for 1 us
                     with for_(
                         f, f_min[i], f <= f_max[i], f + df
@@ -200,6 +180,6 @@ while nodeio.status.active:
 
         outputs.set(state=machine._json)
 
-        machine.save('quam_1108_calibration.json')
+        machine.save("quam_1108_calibration.json")
 
     nodeio.terminate_workflow()

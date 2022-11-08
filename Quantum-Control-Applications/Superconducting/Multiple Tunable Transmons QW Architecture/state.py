@@ -27,7 +27,14 @@ NUMBER_OF_QUBITS_PER_DRIVE_LINE = 1
 # layer 1: bare state QUantum Abstract Machine
 state = {
     # Make these functions directly available from the machine to be called in specific programs
-    "_func": ["config.build_config", "config.save", "config.get_wiring", "config.get_sequence_state", "config.get_qubit", "config.get_resonator"],
+    "_func": [
+        "config.build_config",
+        "config.save",
+        "config.get_wiring",
+        "config.get_sequence_state",
+        "config.get_qubit",
+        "config.get_resonator",
+    ],
     "network": {"qop_ip": "172.16.2.103", "port": 85},
     "controllers": ["con1"],
     # Standard digital waveforms
