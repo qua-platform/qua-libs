@@ -50,7 +50,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
     for q in qb_list:
         wiring = state.qubits[q].wiring
         lo_freq = find_lo_freq(state, q)
-        config["elements"][f"q{q}"] = {
+        config["elements"][state.qubits[q].name] = {
             "mixInputs": {
                 "I": (
                     state.drive_lines[wiring.drive_line_index].I.controller,
@@ -77,7 +77,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         ]["offset"] = state.drive_lines[wiring.drive_line_index].Q.offset
 
         # add flux element
-        config["elements"][f"q{q}_flux"] = {
+        config["elements"][state.qubits[q].name + "_flux"] = {
             "singleInput": {
                 "port": (
                     wiring.flux_line.controller,
@@ -90,15 +90,15 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         }
         # add operations for flux line
         for op in state.qubits[q].sequence_states:
-            config["elements"][f"q{q}_flux"]["operations"][op.name] = f"q{q}_flux_{op.name}"
+            config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = state.qubits[q].name + f"_flux_{op.name}"
 
             # add pulse
-            config["pulses"][f"q{q}_flux_{op.name}"] = {
+            config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
                 "length": op.length,
                 "waveforms": {"single": f"q{q}_flux_{op.name}_wf"},
             }
-            config["waveforms"][f"q{q}_flux_{op.name}_wf"] = {
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}"+"_wf"] = {
                 "type": "constant",
                 "sample": op.amplitude,
             }
@@ -148,14 +148,14 @@ def add_mixers(state: QuAM, config: Dict, qb_list: list):
         for z in range(len(state.qubits)):
             for t in range(len(state.drive_lines[q].qubits)):
                 if z == state.drive_lines[q].qubits[t] and z in qb_list:
-                    config["elements"][f"q{z}"]["mixInputs"]["mixer"] = f"mixer_drive_line{q}"
+                    config["elements"][state.qubits[z].name]["mixInputs"]["mixer"] = f"mixer_drive_line{q}"
 
 
 def add_readout_resonators(state: QuAM, config):
     for r, v in enumerate(state.readout_resonators):  # r - idx, v - value
         readout_line = state.readout_lines[v.wiring.readout_line_index]
 
-        config["elements"][f"rr{r}"] = {
+        config["elements"][state.readout_resonators[r].name] = {
             "mixInputs": {
                 "I": (
                     readout_line.I_up.controller,
@@ -171,7 +171,7 @@ def add_readout_resonators(state: QuAM, config):
             "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
             "operations": {
                 state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-                "readout": f"readout_pulse_rr{r}",
+                "readout": f"readout_pulse_"+ state.readout_resonators[r].name,
             },
             "outputs": {
                 "out1": (

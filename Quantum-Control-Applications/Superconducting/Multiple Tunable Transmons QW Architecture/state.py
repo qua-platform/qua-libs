@@ -58,6 +58,7 @@ state = {
     "readout_resonators": [
         {
             "resonator_index": i,
+            "name": f"resonator_{i}",
             "f_res": 7.1e9,  # Hz
             "f_res_docs": "Resonator frequency [Hz]",
             "readout_regime": "low_power",
@@ -95,6 +96,7 @@ state = {
     "qubits": [
         {
             "qubit_index": i,
+            "name": f"qubit_{i}",
             "f_01": 4.52503e9,  # Hz
             "f_01_docs": "0-1 transition frequency [Hz]",
             "anharmonicity": 350e6,
@@ -108,7 +110,7 @@ state = {
             "t2star": 1e-6,
             "t2star_docs": "Dephasing time T2* [s]",
             "driving": {
-                "pulse1": {
+                "drag_gaussian": {
                     "gate_len": 60e-9,  # Sec
                     "gate_len_docs": "The pulse length [s]",
                     "gate_sigma": 10e-9,
@@ -122,7 +124,7 @@ state = {
                     "angle2volt": {"deg90": 0.1, "deg180": 0.2},
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
-                "pulse2": {
+                "drag_cosine": {
                     "gate_len": 60e-9,  # Sec
                     "gate_len_docs": "The pulse length [s]",
                     "alpha": 0.0,
