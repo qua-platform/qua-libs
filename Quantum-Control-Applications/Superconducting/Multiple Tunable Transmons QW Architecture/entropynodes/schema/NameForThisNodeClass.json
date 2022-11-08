@@ -1,0 +1,1 @@
+{"name": "NameForThisNodeClass", "description": "what it does", "command": "python3", "bin": "node_res_spec.py", "icon": "", "inputs": [{"description": {}, "units": {}, "type": {}}], "outputs": [{"description": {}, "units": {}, "retention": {}}]}

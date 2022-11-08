@@ -1,0 +1,17 @@
+{
+  "res_spec_node": {
+    "debug": "False",
+    "resources": [
+      [],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "state": "quam_bootstrap_state.json"
+  }
+}
