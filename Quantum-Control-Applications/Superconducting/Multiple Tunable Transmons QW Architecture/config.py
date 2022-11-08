@@ -96,7 +96,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
                 "length": op.length,
-                "waveforms": {"single": f"q{q}_flux_{op.name}_wf"},
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}"+"_wf"},
             }
             config["waveforms"][state.qubits[q].name + f"_flux_{op.name}"+"_wf"] = {
                 "type": "constant",
@@ -151,118 +151,119 @@ def add_mixers(state: QuAM, config: Dict, qb_list: list):
                     config["elements"][state.qubits[z].name]["mixInputs"]["mixer"] = f"mixer_drive_line{q}"
 
 
-def add_readout_resonators(state: QuAM, config):
+def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
     for r, v in enumerate(state.readout_resonators):  # r - idx, v - value
-        readout_line = state.readout_lines[v.wiring.readout_line_index]
+        if r in qb_list:
+            readout_line = state.readout_lines[v.wiring.readout_line_index]
 
-        config["elements"][state.readout_resonators[r].name] = {
-            "mixInputs": {
-                "I": (
-                    readout_line.I_up.controller,
-                    readout_line.I_up.channel,
-                ),
-                "Q": (
-                    readout_line.Q_up.controller,
-                    readout_line.Q_up.channel,
-                ),
-                "lo_frequency": round(readout_line.lo_freq),
-                "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
-            },
-            "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-                "readout": f"readout_pulse_"+ state.readout_resonators[r].name,
-            },
-            "outputs": {
-                "out1": (
-                    readout_line.I_down.controller,
-                    readout_line.I_down.channel,
-                ),
-                "out2": (
-                    readout_line.Q_down.controller,
-                    readout_line.Q_down.channel,
-                ),
-            },
-            "time_of_flight": v.wiring.time_of_flight,
-            "smearing": 0,
-        }
-        # add mixers
-        if f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}" not in config["mixers"]:
-            config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"] = []
-        config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"].append(
-            {
+            config["elements"][state.readout_resonators[r].name] = {
+                "mixInputs": {
+                    "I": (
+                        readout_line.I_up.controller,
+                        readout_line.I_up.channel,
+                    ),
+                    "Q": (
+                        readout_line.Q_up.controller,
+                        readout_line.Q_up.channel,
+                    ),
+                    "lo_frequency": round(readout_line.lo_freq),
+                    "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
+                },
                 "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
-                "lo_frequency": readout_line.lo_freq,
-                "correction": IQ_imbalance(v.wiring.correction_matrix.gain, v.wiring.correction_matrix.phase),
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                    "readout": f"readout_pulse_"+ state.readout_resonators[r].name,
+                },
+                "outputs": {
+                    "out1": (
+                        readout_line.I_down.controller,
+                        readout_line.I_down.channel,
+                    ),
+                    "out2": (
+                        readout_line.Q_down.controller,
+                        readout_line.Q_down.channel,
+                    ),
+                },
+                "time_of_flight": v.wiring.time_of_flight,
+                "smearing": 0,
             }
-        )
-        # add offset
-        config["controllers"][readout_line.I_up.controller]["analog_outputs"][str(readout_line.I_up.channel)][
-            "offset"
-        ] = readout_line.I_up.offset
-        config["controllers"][readout_line.Q_up.controller]["analog_outputs"][str(readout_line.Q_up.channel)][
-            "offset"
-        ] = readout_line.Q_up.offset
-        config["controllers"][readout_line.I_down.controller]["analog_inputs"][str(readout_line.I_down.channel)][
-            "offset"
-        ] = readout_line.I_down.offset
-        config["controllers"][readout_line.Q_down.controller]["analog_inputs"][str(readout_line.Q_down.channel)][
-            "offset"
-        ] = readout_line.Q_down.offset
-        # add gain
-        config["controllers"][readout_line.I_down.controller]["analog_inputs"][str(readout_line.I_down.channel)][
-            "gain_db"
-        ] = readout_line.I_down.gain_db
-        config["controllers"][readout_line.Q_down.controller]["analog_inputs"][str(readout_line.Q_down.channel)][
-            "gain_db"
-        ] = readout_line.Q_down.gain_db
+            # add mixers
+            if f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}" not in config["mixers"]:
+                config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"] = []
+            config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"].append(
+                {
+                    "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
+                    "lo_frequency": readout_line.lo_freq,
+                    "correction": IQ_imbalance(v.wiring.correction_matrix.gain, v.wiring.correction_matrix.phase),
+                }
+            )
+            # add offset
+            config["controllers"][readout_line.I_up.controller]["analog_outputs"][str(readout_line.I_up.channel)][
+                "offset"
+            ] = readout_line.I_up.offset
+            config["controllers"][readout_line.Q_up.controller]["analog_outputs"][str(readout_line.Q_up.channel)][
+                "offset"
+            ] = readout_line.Q_up.offset
+            config["controllers"][readout_line.I_down.controller]["analog_inputs"][str(readout_line.I_down.channel)][
+                "offset"
+            ] = readout_line.I_down.offset
+            config["controllers"][readout_line.Q_down.controller]["analog_inputs"][str(readout_line.Q_down.channel)][
+                "offset"
+            ] = readout_line.Q_down.offset
+            # add gain
+            config["controllers"][readout_line.I_down.controller]["analog_inputs"][str(readout_line.I_down.channel)][
+                "gain_db"
+            ] = readout_line.I_down.gain_db
+            config["controllers"][readout_line.Q_down.controller]["analog_inputs"][str(readout_line.Q_down.channel)][
+                "gain_db"
+            ] = readout_line.Q_down.gain_db
 
-        config["waveforms"][f"readout_wf_rr{r}"] = {
-            "type": "constant",
-            "sample": v.readout_amplitude,
-        }
-        config["pulses"][f"readout_pulse_rr{r}"] = {
-            "operation": "measurement",
-            "length": round(readout_line.length * 1e9),
-            "waveforms": {
-                "I": f"readout_wf_rr{r}",
-                "Q": "zero_wf",
-            },
-            "integration_weights": {
-                "cos": "cosine_weights",
-                "sin": "sine_weights",
-                "minus_sin": "minus_sine_weights",
-                "rotated_cos": f"rotated_cosine_weights_rr{r}",
-                "rotated_sin": f"rotated_sine_weights_rr{r}",
-                "rotated_minus_sin": f"rotated_minus_sine_weights_rr{r}",
-            },
-            "digital_marker": "ON",
-        }
-        rot_angle_in_pi = v.rotation_angle / 180.0 * np.pi
-        config["integration_weights"]["cosine_weights"] = {
-            "cosine": [(1.0, round(readout_line.length * 1e9))],
-            "sine": [(0.0, round(readout_line.length * 1e9))],
-        }
-        config["integration_weights"]["sine_weights"] = {
-            "cosine": [(0.0, round(readout_line.length * 1e9))],
-            "sine": [(1.0, round(readout_line.length * 1e9))],
-        }
-        config["integration_weights"]["minus_sine_weights"] = {
-            "cosine": [(0.0, round(readout_line.length * 1e9))],
-            "sine": [(-1.0, round(readout_line.length * 1e9))],
-        }
-        config["integration_weights"][f"rotated_cosine_weights_rr{r}"] = {
-            "cosine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
-            "sine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
-        }
-        config["integration_weights"][f"rotated_sine_weights_rr{r}"] = {
-            "cosine": [(np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
-            "sine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
-        }
-        config["integration_weights"][f"rotated_minus_sine_weights_rr{r}"] = {
-            "cosine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
-            "sine": [(-np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
-        }
+            config["waveforms"][f"readout_wf_" + state.readout_resonators[r].name] = {
+                "type": "constant",
+                "sample": v.readout_amplitude,
+            }
+            config["pulses"][f"readout_pulse_" + state.readout_resonators[r].name] = {
+                "operation": "measurement",
+                "length": round(readout_line.length * 1e9),
+                "waveforms": {
+                    "I": f"readout_wf_" + state.readout_resonators[r].name,
+                    "Q": "zero_wf",
+                },
+                "integration_weights": {
+                    "cos": "cosine_weights",
+                    "sin": "sine_weights",
+                    "minus_sin": "minus_sine_weights",
+                    "rotated_cos": f"rotated_cosine_weights_" + state.readout_resonators[r].name,
+                    "rotated_sin": f"rotated_sine_weights_" + state.readout_resonators[r].name,
+                    "rotated_minus_sin": f"rotated_minus_sine_weights_" + state.readout_resonators[r].name,
+                },
+                "digital_marker": "ON",
+            }
+            rot_angle_in_pi = v.rotation_angle / 180.0 * np.pi
+            config["integration_weights"]["cosine_weights"] = {
+                "cosine": [(1.0, round(readout_line.length * 1e9))],
+                "sine": [(0.0, round(readout_line.length * 1e9))],
+            }
+            config["integration_weights"]["sine_weights"] = {
+                "cosine": [(0.0, round(readout_line.length * 1e9))],
+                "sine": [(1.0, round(readout_line.length * 1e9))],
+            }
+            config["integration_weights"]["minus_sine_weights"] = {
+                "cosine": [(0.0, round(readout_line.length * 1e9))],
+                "sine": [(-1.0, round(readout_line.length * 1e9))],
+            }
+            config["integration_weights"][f"rotated_cosine_weights_" + state.readout_resonators[r].name] = {
+                "cosine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
+                "sine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            }
+            config["integration_weights"][f"rotated_sine_weights_" + state.readout_resonators[r].name] = {
+                "cosine": [(np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
+                "sine": [(np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            }
+            config["integration_weights"][f"rotated_minus_sine_weights_" + state.readout_resonators[r].name] = {
+                "cosine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
+                "sine": [(-np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
+            }
 
 
 def add_qb_rot(
@@ -306,29 +307,29 @@ def add_qb_rot(
 
     wv = np.sign(angle) * (wf_I * np.cos(direction_angle) - wf_Q * np.sin(direction_angle))
     if np.all((wv == wv[0])):
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "constant"}
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["sample"] = wv[0]
+        config["waveforms"][f"{direction}{angle}_I_wf_" + state.qubits[q].name] = {"type": "constant"}
+        config["waveforms"][f"{direction}{angle}_I_wf_" + state.qubits[q].name]["sample"] = wv[0]
     else:
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"] = {"type": "arbitrary"}
-        config["waveforms"][f"{direction}{angle}_I_wf_q{q}"]["samples"] = wv
+        config["waveforms"][f"{direction}{angle}_I_wf_" + state.qubits[q].name] = {"type": "arbitrary"}
+        config["waveforms"][f"{direction}{angle}_I_wf_" + state.qubits[q].name]["samples"] = wv
 
     wv = np.sign(angle) * (wf_I * np.sin(direction_angle) + wf_Q * np.cos(direction_angle))
     if np.all((wv == wv[0])):
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "constant"}
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["sample"] = wv[0]
+        config["waveforms"][f"{direction}{angle}_Q_wf_" + state.qubits[q].name] = {"type": "constant"}
+        config["waveforms"][f"{direction}{angle}_Q_wf_" + state.qubits[q].name]["sample"] = wv[0]
     else:
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"] = {"type": "arbitrary"}
-        config["waveforms"][f"{direction}{angle}_Q_wf_q{q}"]["samples"] = wv
+        config["waveforms"][f"{direction}{angle}_Q_wf_" + state.qubits[q].name] = {"type": "arbitrary"}
+        config["waveforms"][f"{direction}{angle}_Q_wf_" + state.qubits[q].name]["samples"] = wv
 
-    config["pulses"][f"{direction}{angle}_pulse_q{q}"] = {
+    config["pulses"][f"{direction}{angle}_pulse_" + state.qubits[q].name] = {
         "operation": "control",
         "length": len(wf_I),
         "waveforms": {
-            "I": f"{direction}{angle}_I_wf_q{q}",
-            "Q": f"{direction}{angle}_Q_wf_q{q}",
+            "I": f"{direction}{angle}_I_wf_" + state.qubits[q].name,
+            "Q": f"{direction}{angle}_Q_wf_" + state.qubits[q].name,
         },
     }
-    config["elements"][f"q{q}"]["operations"][f"{direction}{angle}"] = f"{direction}{angle}_pulse_q{q}"
+    config["elements"][state.qubits[q].name]["operations"][f"{direction}{angle}"] = f"{direction}{angle}_pulse_" + state.qubits[q].name
 
 
 def add_control_operation_single(config, element, operation_name, wf):
@@ -363,31 +364,30 @@ def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
     config["elements"][element]["operations"][operation_name] = pulse_name
 
 
-def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, rr_list: list):
+def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list):
     for con in state.controllers:
         config["controllers"][con] = {}
         config["controllers"][con]["analog_outputs"] = {}
         config["controllers"][con]["analog_inputs"] = {}
         config["controllers"][con]["digital_outputs"] = {}
-
+        # Add digital output channels
         for i in d_outputs:
             config["controllers"][con]["digital_outputs"][str(i)] = {}
-
+        # Add qubit and readout resonator channels
         for i in qb_list:
+            # Add qubit channels
             wiring = state.qubits[i].wiring
             config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].I.channel)] = {"offset": 0.0}
             config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {"offset": 0.0}
             config["controllers"][con]["analog_outputs"][str(wiring.flux_line.channel)] = {"offset": 0.0}
-
-        for r, v in enumerate(state.readout_resonators):  # r - idx, v - value
-            for z in rr_list:
-                if r == z:
-                    readout_line = state.readout_lines[v.wiring.readout_line_index]
-                    config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {"offset": 0.0, "gain_db": 0}
-                    config["controllers"][con]["analog_inputs"][str(readout_line.Q_down.channel)] = {"offset": 0.0, "gain_db": 0}
-                    config["controllers"][con]["analog_outputs"][str(readout_line.I_up.channel)] = {"offset": 0.0}
-                    config["controllers"][con]["analog_outputs"][str(readout_line.Q_up.channel)] = {"offset": 0.0}
-
+            # Add resonator channels
+            readout_line = state.readout_lines[state.readout_resonators[i].wiring.readout_line_index]
+            config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {"offset": 0.0,
+                                                                                             "gain_db": 0}
+            config["controllers"][con]["analog_inputs"][str(readout_line.Q_down.channel)] = {"offset": 0.0,
+                                                                                             "gain_db": 0}
+            config["controllers"][con]["analog_outputs"][str(readout_line.I_up.channel)] = {"offset": 0.0}
+            config["controllers"][con]["analog_outputs"][str(readout_line.Q_up.channel)] = {"offset": 0.0}
 
 def add_digital_waveforms(state: QuAM, config):
     for wf in state.digital_waveforms:
@@ -420,7 +420,7 @@ def add_common_operation(state: QuAM, config: dict):
     }
 
 
-def build_config(state, d_out: list, qbts: list, rrs: list, gate_shape: str):
+def build_config(state, d_out: list, qbts: list, gate_shape: str):
     config = {
         "version": 1,
         "controllers": {
@@ -438,7 +438,7 @@ def build_config(state, d_out: list, qbts: list, rrs: list, gate_shape: str):
         "mixers": {},
     }
 
-    add_controllers(state, config, d_outputs=d_out, qb_list=qbts, rr_list=rrs)
+    add_controllers(state, config, d_outputs=d_out, qb_list=qbts)
 
     add_common_operation(state, config)
 
@@ -446,7 +446,7 @@ def build_config(state, d_out: list, qbts: list, rrs: list, gate_shape: str):
 
     add_qubits(state, config, qb_list=qbts)
 
-    add_readout_resonators(state, config)
+    add_readout_resonators(state, config, qb_list=qbts)
 
     add_mixers(state, config, qb_list=qbts)
 
@@ -631,8 +631,7 @@ if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok
     machine = QuAM("quam_bootstrap_state.json")
     qbts = [1]
-    rrs = [0]
     digital = []
-    configuration = build_config(machine, digital, qbts, rrs, gate_shape="pulse1")
+    configuration = build_config(machine, digital, qbts, gate_shape="drag_cosine")
     qprint(machine)
     machine.get_wiring()

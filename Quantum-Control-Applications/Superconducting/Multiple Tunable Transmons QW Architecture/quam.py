@@ -4603,11 +4603,11 @@ class QuAM(object):
             self._schema["properties"]["running_strategy"]
         )
 
-    def build_config(self, d_out: list, qbts: list, rrs: list, gate_shape: str):
+    def build_config(self, d_out: list, qbts: list, gate_shape: str):
         """"""
         with _add_path(os.path.dirname(os.path.abspath(__file__))):
             import config
-        return config.build_config(self, d_out, qbts, rrs, gate_shape)
+        return config.build_config(self, d_out, qbts, gate_shape)
 
     def save(self, filename: str, reuse_existing_values: bool = False):
         """Saves quam data to file
