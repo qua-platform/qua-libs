@@ -4641,6 +4641,28 @@ class QuAM(object):
             import config
         return config.get_sequence_state(self, qubit_index, sequence_state)
 
+    def get_qubit(self, qubit_name):
+        """
+    Get the qubit object corresponding to the specified qubit name.
+
+    :param qubit_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+        with _add_path(os.path.dirname(os.path.abspath(__file__))):
+            import config
+        return config.get_qubit(self, qubit_name)
+
+    def get_resonator(self, resonator_name):
+        """
+    Get the readout resonator object corresponding to the specified resonator name.
+
+    :param resonator_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+        with _add_path(os.path.dirname(os.path.abspath(__file__))):
+            import config
+        return config.get_resonator(self, resonator_name)
+
     def _json_view(self):
         result = {}
         for v in [func for func in dir(self) if not func.startswith("_")]:
