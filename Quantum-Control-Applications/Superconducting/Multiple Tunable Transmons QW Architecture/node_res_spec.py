@@ -23,12 +23,17 @@ inputs.stream(
     units='boolean',
     description='triggers live plot visualization for debug purposes'
 )
+inputs.stream(
+    'gate_shape',
+    units='str',
+    description='gate shape to be used during experiment, e.g., drag_gaussian'
+)
 
 outputs = nodeio.Outputs()
 outputs.define(
     'state',
     units='JSON',
-    description='state with updated res freqs'
+    description='state with updated res freqs',
 )
 outputs.define(
     'resources',
@@ -40,6 +45,11 @@ outputs.define(
     units='boolean',
     description='to live plot'
 )
+outputs.define(
+    'gate_shape',
+    units='str',
+    description='gate shape to be used during experiment, e.g., drag_gaussian'
+)
 
 nodeio.register()
 
@@ -48,6 +58,7 @@ nodeio.register()
 inputs.set(state='quam_bootstrap_state.json')
 inputs.set(resources=[[], [0, 1], [0, 1]])
 inputs.set(debug=False)
+inputs.set(gate_shape='pulse1')
 
 # =============== RUN NODE STATE MACHINE ===============
 
@@ -70,6 +81,7 @@ while nodeio.status.active:
     state = inputs.get('state')
     resources = inputs.get('resources')
     debug = inputs.get('debug')
+    gate_shape = inputs.get('gate_shape')
     if debug == 'True':
         debug = True
     else:
@@ -140,7 +152,7 @@ while nodeio.status.active:
     simulate = False
 
     machine = QuAM(state)
-    config = machine.build_config(resources[0], resources[1], resources[2])
+    config = machine.build_config(resources[0], resources[1], resources[2], gate_shape)
 
     if simulate:
         simulation_config = SimulationConfig(duration=1000)
@@ -196,3 +208,4 @@ while nodeio.status.active:
         outputs.set(state=machine._json)
         outputs.set(resources=resources)
         outputs.set(debug=debug)
+        outputs.set(gate_shape=gate_shape)

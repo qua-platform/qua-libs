@@ -90,7 +90,8 @@ qbts = [0, 1]
 rrs = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
-config = machine.build_config(digital, qbts, rrs)
+gate_shape = 'pulse1'
+config = machine.build_config(digital, qbts, rrs, gate_shape)
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)

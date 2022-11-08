@@ -1,6 +1,7 @@
 {
   "res_spec_node": {
     "debug": "True",
+    "gate_shape": "pulse1",
     "resources": [
       [],
       [

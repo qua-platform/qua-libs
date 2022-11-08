@@ -9,12 +9,14 @@ class res_spec_node(object):
     def __init__(self, workflow_node_unique_name,
         state=None,
         resources=None,
-        debug=None):
+        debug=None,
+        gate_shape=None):
         """res spec and analysis
         
         :param state: (JSON - STREAM) boostrap state
         :param resources: (list - STREAM) contains digital outputs, qubits, and resonators to be used
         :param debug: (boolean - STREAM) triggers live plot visualization for debug purposes
+        :param gate_shape: (str - STREAM) gate shape to be used during experiment, e.g., drag_gaussian
         """
         self._command = "python3"
         self._bin = "node_res_spec.py"
@@ -23,7 +25,8 @@ class res_spec_node(object):
         self._inputs = _Inputs(
         state=state,
         resources=resources,
-        debug=debug,)
+        debug=debug,
+        gate_shape=gate_shape,)
         self._outputs = _Outputs(self._name)
         self._host = {}
         Workflow._register_node(self)  # register the node in the workflow context
@@ -56,7 +59,8 @@ class _Inputs(object):
     def __init__(self,
         state=None,
         resources=None,
-        debug=None):
+        debug=None,
+        gate_shape=None):
         self._inputs = Inputs()
         
         self._inputs.state("state", description="boostrap state", units="JSON")
@@ -67,6 +71,9 @@ class _Inputs(object):
         
         self._inputs.state("debug", description="triggers live plot visualization for debug purposes", units="boolean")
         self._inputs.set(debug=debug)
+        
+        self._inputs.state("gate_shape", description="gate shape to be used during experiment, e.g., drag_gaussian", units="str")
+        self._inputs.set(gate_shape=gate_shape)
         
     
     
@@ -100,6 +107,16 @@ class _Inputs(object):
         """Input: triggers live plot visualization for debug purposes (boolean)"""
         self._inputs.set(debug=value)
     
+    @property
+    def gate_shape(self):
+        """Input: gate shape to be used during experiment, e.g., drag_gaussian (str)"""
+        return self._inputs.get("gate_shape")
+        
+    @gate_shape.setter
+    def gate_shape(self, value):
+        """Input: gate shape to be used during experiment, e.g., drag_gaussian (str)"""
+        self._inputs.set(gate_shape=value)
+    
 
 class _Outputs(object):
 
@@ -108,7 +125,8 @@ class _Outputs(object):
         self._outputs = [
             "state",
             "resources",
-            "debug",]
+            "debug",
+            "gate_shape",]
 
     
     @property
@@ -131,5 +149,12 @@ class _Outputs(object):
         :return: (boolean)
         """
         return "#" + self._name + "/debug"
+    
+    @property
+    def gate_shape(self):
+        """Output: gate shape to be used during experiment, e.g., drag_gaussian
+        :return: (str)
+        """
+        return "#" + self._name + "/gate_shape"
     
     
