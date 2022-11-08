@@ -3,8 +3,8 @@
 import nodeio
 
 nodeio.context(
-    name="res_spec_node",
-    description="res spec and analysis"
+    name="res_spec_flux",
+    description="flux map of resonator spec"
 )
 
 inputs = nodeio.Inputs()
@@ -30,26 +30,18 @@ outputs.define(
     units='JSON',
     description='state with updated res freqs'
 )
-outputs.define(
-    'resources',
-    units='list',
-    description='qubits to be used'
-)
-outputs.define(
-    'debug',
-    units='boolean',
-    description='to live plot'
-)
 
 nodeio.register()
 
 # ==================== DRY RUN DATA ====================
+
 # set inputs data for dry-run of the node
 inputs.set(state='quam_bootstrap_state.json')
 inputs.set(resources=[[], [0, 1], [0, 1]])
 inputs.set(debug=False)
 
 # =============== RUN NODE STATE MACHINE ===============
+
 
 """
 resonator_spec.py: performs the 1D resonator spectroscopy
@@ -70,10 +62,6 @@ while nodeio.status.active:
     state = inputs.get('state')
     resources = inputs.get('resources')
     debug = inputs.get('debug')
-    if debug == 'True':
-        debug = True
-    else:
-        debug = False
 
     u = unit()
 
@@ -82,7 +70,7 @@ while nodeio.status.active:
     ###################
     num_qubits = 2
 
-    n_avg = 4e3
+    n_avg = 4e2
 
     cooldown_time = 5 * u.us // 4
 
@@ -90,7 +78,12 @@ while nodeio.status.active:
     f_max = [-40e6, -80e6, -120e6, -180e6]
     df = 0.05e6
 
+    bias_min = [-0.4, -0.4]
+    bias_max = [0.4, 0.4]
+    dbias = 0.05
+
     freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
+    bias = [np.arange(bias_min[i], bias_max[i]+dbias/2, dbias) for i in range(num_qubits)]
 
     with program() as resonator_spec:
         n = [declare(int) for _ in range(num_qubits)]
@@ -100,31 +93,35 @@ while nodeio.status.active:
         Q = [declare(fixed) for _ in range(num_qubits)]
         I_st = [declare_stream() for _ in range(num_qubits)]
         Q_st = [declare_stream() for _ in range(num_qubits)]
+        b = declare(fixed)
 
         for i in range(num_qubits):
             with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-                with for_(
-                    f, f_min[i], f <= f_max[i], f + df
-                ):  # Notice it's <= to include f_max (This is only for integers!)
-                    update_frequency(f"rr{i}", f)
-                    measure(
-                        "readout",
-                        f"rr{i}",
-                        None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
-                    )
-                    wait(cooldown_time, f"rr{i}")
-                    save(I[i], I_st[i])
-                    save(Q[i], Q_st[i])
+                with for_(b, bias_min[i], b < bias_max[i] + dbias/2, b + dbias):
+                    set_dc_offset(f'q{i}_flux', 'single', b)
+                    wait(250)  # wait for 1 us
+                    with for_(
+                        f, f_min[i], f <= f_max[i], f + df
+                    ):  # Notice it's <= to include f_max (This is only for integers!)
+                        update_frequency(f"rr{i}", f)
+                        measure(
+                            "readout",
+                            f"rr{i}",
+                            None,
+                            dual_demod.full("cos", "out1", "sin", "out2", I[i]),
+                            dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        )
+                        wait(cooldown_time, f"rr{i}")
+                        save(I[i], I_st[i])
+                        save(Q[i], Q_st[i])
                 save(n[i], n_st[i])
 
             align()
 
         with stream_processing():
             for i in range(num_qubits):
-                I_st[i].buffer(len(freqs[i])).average().save(f"I{i}")
-                Q_st[i].buffer(len(freqs[i])).average().save(f"Q{i}")
+                I_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"I{i}")
+                Q_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"Q{i}")
                 n_st[i].save(f"iteration{i}")
 
     #####################################
@@ -175,24 +172,24 @@ while nodeio.status.active:
                     plt.subplot(2, num_qubits, 1 + q)
                     plt.cla()
                     plt.title(f"resonator spectroscopy qubit {q}")
-                    plt.plot(freqs[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
+                    plt.pcolor(freqs[q] / u.MHz, bias[q], np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2))
                     plt.xlabel("frequency [MHz]")
                     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
                     plt.subplot(2, num_qubits, num_qubits + 1 + q)
                     plt.cla()
                     phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                    plt.plot(freqs[q] / u.MHz, phase, ".")
+                    plt.pcolor(freqs[q] / u.MHz, bias[q], phase)
                     plt.xlabel("frequency [MHz]")
                     plt.ylabel("Phase [rad]")
                     plt.pause(0.1)
                     plt.tight_layout()
 
         # do data analysis
-        # as a basic/fast step we can choose to search for minima and maxima
+        # choose flux nearby crossing to achieve large chi for better discrimination
 
         for i in range(len(machine.qubits)):
             machine.readout_resonators[i].f_res = machine.readout_resonators[i].f_res - 50e6
 
         outputs.set(state=machine._json)
-        outputs.set(resources=resources)
-        outputs.set(debug=debug)
+
+    nodeio.terminate_workflow()

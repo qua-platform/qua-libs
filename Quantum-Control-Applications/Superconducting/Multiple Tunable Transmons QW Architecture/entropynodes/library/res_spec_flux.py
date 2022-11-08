@@ -1,23 +1,23 @@
 from nodeio.inputs import Inputs
 from flame.workflow import Workflow
 
-__all__=["res_spec_node"]
+__all__=["res_spec_flux"]
 
-class res_spec_node(object):
+class res_spec_flux(object):
 
     
     def __init__(self, workflow_node_unique_name,
         state=None,
         resources=None,
         debug=None):
-        """res spec and analysis
+        """flux map of resonator spec
         
         :param state: (JSON - STREAM) boostrap state
         :param resources: (list - STREAM) contains digital outputs, qubits, and resonators to be used
         :param debug: (boolean - STREAM) triggers live plot visualization for debug purposes
         """
         self._command = "python3"
-        self._bin = "node_res_spec.py"
+        self._bin = "node_res_spec_vs_flux.py"
         self._name = workflow_node_unique_name
         self._icon = ""
         self._inputs = _Inputs(
@@ -106,9 +106,7 @@ class _Outputs(object):
     def __init__(self, name):
         self._name = name 
         self._outputs = [
-            "state",
-            "resources",
-            "debug",]
+            "state",]
 
     
     @property
@@ -117,19 +115,5 @@ class _Outputs(object):
         :return: (JSON)
         """
         return "#" + self._name + "/state"
-    
-    @property
-    def resources(self):
-        """Output: qubits to be used
-        :return: (list)
-        """
-        return "#" + self._name + "/resources"
-    
-    @property
-    def debug(self):
-        """Output: to live plot
-        :return: (boolean)
-        """
-        return "#" + self._name + "/debug"
     
     

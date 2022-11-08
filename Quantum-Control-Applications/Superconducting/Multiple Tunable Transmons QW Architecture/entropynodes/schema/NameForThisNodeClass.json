@@ -1,1 +1,1 @@
-{"name": "NameForThisNodeClass", "description": "what it does", "command": "python3", "bin": "node_res_spec.py", "icon": "", "inputs": [{"description": {}, "units": {}, "type": {}}], "outputs": [{"description": {}, "units": {}, "retention": {}}]}
+{"name": "NameForThisNodeClass", "description": "what it does", "command": "python3", "bin": "node_res_spec_vs_flux.py", "icon": "", "inputs": [{"description": {}, "units": {}, "type": {}}], "outputs": [{"description": {}, "units": {}, "retention": {}}]}

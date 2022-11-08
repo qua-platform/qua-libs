@@ -11,7 +11,7 @@ class NameForThisNodeClass(object):
         
         """
         self._command = "python3"
-        self._bin = "node_res_spec.py"
+        self._bin = "node_res_spec_vs_flux.py"
         self._name = workflow_node_unique_name
         self._icon = ""
         self._inputs = _Inputs()

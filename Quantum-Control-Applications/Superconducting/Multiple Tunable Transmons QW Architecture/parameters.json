@@ -1,6 +1,6 @@
 {
   "res_spec_node": {
-    "debug": "False",
+    "debug": "True",
     "resources": [
       [],
       [
