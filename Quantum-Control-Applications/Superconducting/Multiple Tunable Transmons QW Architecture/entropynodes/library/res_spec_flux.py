@@ -9,7 +9,7 @@ class res_spec_flux(object):
         """flux map of resonator spec
 
         :param state: (JSON - STREAM) boostrap state
-        :param resources: (list - STREAM) contains digital outputs, qubits, and resonators to be used
+        :param resources: (list - STREAM) contains a list of the digital outputs and qubits to be used for this experiment, e.g. [[2], [1, 5, 6]]
         :param debug: (boolean - STREAM) triggers live plot visualization for debug purposes
         :param gate_shape: (str - STREAM) gate shape to be used during experiment, e.g., drag_gaussian
         """
@@ -55,7 +55,9 @@ class _Inputs(object):
         self._inputs.set(state=state)
 
         self._inputs.state(
-            "resources", description="contains digital outputs, qubits, and resonators to be used", units="list"
+            "resources",
+            description="contains a list of the digital outputs and qubits to be used for this experiment, e.g. [[2], [1, 5, 6]]",
+            units="list",
         )
         self._inputs.set(resources=resources)
 
@@ -79,12 +81,12 @@ class _Inputs(object):
 
     @property
     def resources(self):
-        """Input: contains digital outputs, qubits, and resonators to be used (list)"""
+        """Input: contains a list of the digital outputs and qubits to be used for this experiment, e.g. [[2], [1, 5, 6]] (list)"""
         return self._inputs.get("resources")
 
     @resources.setter
     def resources(self, value):
-        """Input: contains digital outputs, qubits, and resonators to be used (list)"""
+        """Input: contains a list of the digital outputs and qubits to be used for this experiment, e.g. [[2], [1, 5, 6]] (list)"""
         self._inputs.set(resources=value)
 
     @property
@@ -117,7 +119,7 @@ class _Outputs(object):
 
     @property
     def state(self):
-        """Output: state with updated res freqs
+        """Output: state with updated resonance frequencies
         :return: (JSON)
         """
         return "#" + self._name + "/state"

@@ -43,13 +43,7 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
-
-
-def convert_to_bool(string: str):
-    if string == "True":
-        return True
-    else:
-        return False
+from utils import convert_to_bool
 
 
 while nodeio.status.active:
@@ -60,7 +54,6 @@ while nodeio.status.active:
     qubit_list = resources[1]
     debug = convert_to_bool(str(inputs.get("debug")))
     gate_shape = str(inputs.get("gate_shape"))
-    print(type(gate_shape))
 
     ##################
     # State and QuAM #

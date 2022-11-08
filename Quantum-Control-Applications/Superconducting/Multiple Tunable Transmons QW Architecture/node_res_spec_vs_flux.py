@@ -4,18 +4,18 @@ import nodeio
 nodeio.context(name="res_spec_flux", description="flux map of resonator spec")
 
 inputs = nodeio.Inputs()
+inputs.stream("state", units="JSON", description="boostrap state")
 inputs.stream(
-    "state",
-    units="JSON",
-    description="boostrap state",
+    "resources",
+    units="list",
+    description="contains a list of the digital outputs and qubits to be used for this experiment, e.g. [[2], [1, 5, 6]]",
 )
-inputs.stream("resources", units="list", description="contains digital outputs, qubits, and resonators to be used")
 inputs.stream("debug", units="boolean", description="triggers live plot visualization for debug purposes")
 inputs.stream("gate_shape", units="str", description="gate shape to be used during experiment, e.g., drag_gaussian")
 
 
 outputs = nodeio.Outputs()
-outputs.define("state", units="JSON", description="state with updated res freqs")
+outputs.define("state", units="JSON", description="state with updated resonance frequencies")
 
 nodeio.register()
 
@@ -23,16 +23,11 @@ nodeio.register()
 
 # set inputs data for dry-run of the node
 inputs.set(state="quam_bootstrap_state.json")
-inputs.set(resources=[[], [0, 1], [0, 1]])
+inputs.set(resources=[[], [0, 1]])
 inputs.set(debug=False)
-inputs.set(gate_shape="pulse1")
+inputs.set(gate_shape="drag_cosine")
 
 # =============== RUN NODE STATE MACHINE ===============
-
-
-"""
-resonator_spec.py: performs the 1D resonator spectroscopy
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
@@ -43,20 +38,28 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+from utils import convert_to_bool
 
 while nodeio.status.active:
 
     state = inputs.get("state")
     resources = inputs.get("resources")
-    debug = inputs.get("debug")
-    gate_shape = inputs.get("gate_shape")
+    digital = resources[0]
+    qubit_list = resources[1]
+    debug = convert_to_bool(str(inputs.get("debug")))
+    gate_shape = str(inputs.get("gate_shape"))
 
-    u = unit()
+    ##################
+    # State and QuAM #
+    ##################
+    simulate = False
+    machine = QuAM("quam_bootstrap_state.json")
+    config = machine.build_config(digital, qubit_list, gate_shape)
 
     ###################
     # The QUA program #
     ###################
-    num_qubits = 2
+    u = unit()
 
     n_avg = 4e2
 
@@ -70,36 +73,36 @@ while nodeio.status.active:
     bias_max = [0.4, 0.4]
     dbias = 0.05
 
-    freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(num_qubits)]
-    bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(num_qubits)]
+    freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
+    bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
 
     with program() as resonator_spec:
-        n = [declare(int) for _ in range(num_qubits)]
-        n_st = [declare_stream() for _ in range(num_qubits)]
+        n = [declare(int) for _ in range(len(qubit_list))]
+        n_st = [declare_stream() for _ in range(len(qubit_list))]
         f = declare(int)
-        I = [declare(fixed) for _ in range(num_qubits)]
-        Q = [declare(fixed) for _ in range(num_qubits)]
-        I_st = [declare_stream() for _ in range(num_qubits)]
-        Q_st = [declare_stream() for _ in range(num_qubits)]
+        I = [declare(fixed) for _ in range(len(qubit_list))]
+        Q = [declare(fixed) for _ in range(len(qubit_list))]
+        I_st = [declare_stream() for _ in range(len(qubit_list))]
+        Q_st = [declare_stream() for _ in range(len(qubit_list))]
         b = declare(fixed)
 
-        for i in range(num_qubits):
+        for i in range(len(qubit_list)):
             with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
                 with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
-                    set_dc_offset(f"q{i}_flux", "single", b)
+                    set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                     wait(250)  # wait for 1 us
                     with for_(
                         f, f_min[i], f <= f_max[i], f + df
                     ):  # Notice it's <= to include f_max (This is only for integers!)
-                        update_frequency(f"rr{i}", f)
+                        update_frequency(machine.readout_resonators[i].name, f)
                         measure(
                             "readout",
-                            f"rr{i}",
+                            machine.readout_resonators[i].name,
                             None,
                             dual_demod.full("cos", "out1", "sin", "out2", I[i]),
                             dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
                         )
-                        wait(cooldown_time, f"rr{i}")
+                        wait(cooldown_time, machine.readout_resonators[i].name)
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
                 save(n[i], n_st[i])
@@ -107,7 +110,7 @@ while nodeio.status.active:
             align()
 
         with stream_processing():
-            for i in range(num_qubits):
+            for i in range(len(qubit_list)):
                 I_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"I{i}")
                 Q_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"Q{i}")
                 n_st[i].save(f"iteration{i}")
@@ -115,18 +118,11 @@ while nodeio.status.active:
     #####################################
     #  Open Communication with the QOP  #
     #####################################
-
-    qmm = QuantumMachinesManager(host="172.16.2.103", port="85")
+    qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 
     #######################
     # Simulate or execute #
     #######################
-
-    simulate = False
-
-    machine = QuAM(state)
-    config = machine.build_config(resources[0], resources[1], resources[2], gate_shape)
-
     if simulate:
         simulation_config = SimulationConfig(duration=1000)
         job = qmm.simulate(config, resonator_spec, simulation_config)
@@ -137,12 +133,12 @@ while nodeio.status.active:
         job = qm.execute(resonator_spec)
 
         # Initialize dataset
-        qubit_data = [{} for _ in range(num_qubits)]
+        qubit_data = [{} for _ in range(len(qubit_list))]
         # Live plotting
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
-        for q in range(num_qubits):
+        for q in range(len(qubit_list)):
             print("Qubit " + str(q))
             qubit_data[q]["iteration"] = 0
             # Get results from QUA program
@@ -157,13 +153,13 @@ while nodeio.status.active:
                 progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
                 # live plot
                 if debug:
-                    plt.subplot(2, num_qubits, 1 + q)
+                    plt.subplot(2, len(qubit_list), 1 + q)
                     plt.cla()
                     plt.title(f"resonator spectroscopy qubit {q}")
                     plt.pcolor(freqs[q] / u.MHz, bias[q], np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2))
                     plt.xlabel("frequency [MHz]")
                     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
-                    plt.subplot(2, num_qubits, num_qubits + 1 + q)
+                    plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
                     plt.cla()
                     phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
                     plt.pcolor(freqs[q] / u.MHz, bias[q], phase)
