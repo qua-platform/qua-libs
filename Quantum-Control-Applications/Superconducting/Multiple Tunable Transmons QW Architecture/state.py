@@ -131,7 +131,7 @@ state = {
                     "detuning_docs": "The frequency shift to correct for AC stark shift [Hz].",
                     "gate_shape": "drag_gaussian",
                     "gate_shape_docs": "Shape of the gate",
-                    "angle2volt": {"deg90": 0.1, "deg180": 0.2},
+                    "angle2volt": {"deg90": 0.25, "deg180": 0.49},
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
                 "drag_cosine": {
@@ -143,7 +143,7 @@ state = {
                     "detuning_docs": "The frequency shift to correct for AC stark shift [Hz].",
                     "gate_shape": "drag_cosine",
                     "gate_shape_docs": "Shape of the gate",
-                    "angle2volt": {"deg90": 0.1, "deg180": 0.2},
+                    "angle2volt": {"deg90": 0.25, "deg180": 0.49},
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
             },
