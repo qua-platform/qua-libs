@@ -1,6 +1,12 @@
 """
 Created on 30/10/2022
 @author jdh
+
+Performs a raster scan over QDAC (or other DAC) values. At each point, performs an OPX raster
+scan over the same axes. These plots are averaged and reshaped to return a large 2D dataset of the
+OPX scans patched together.
+
+
 """
 
 import matplotlib

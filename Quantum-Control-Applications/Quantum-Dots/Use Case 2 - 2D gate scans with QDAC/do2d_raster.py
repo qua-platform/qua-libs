@@ -1,6 +1,20 @@
 """
 Created on 30/10/2022
 @author jdh
+
+Performs a two-dimensional raster scan for a stability diagram measurement, for instance.
+
+The x_amplitude and y_amplitude variables are set to the desired output of the OPX
+channels. The amplitude of the waveform configured in the config is taken into account
+and rescaled to make it the desired value set in these variables.
+
+The program performs the measurement around the present dc set point, i.e. the measurement is from
+-1/2 x_amplitude to +1/2 x_amplitude (likewise for y).
+
+For each of the innermost iterations, we move to the next voltage value and play the measurement
+pulse at this location. To prevent the first value of each axis from being skipped, there is a flag for
+each axis that denotes whether the measurement is the first in the list. If so, the voltage update
+step is skipped.
 """
 
 import matplotlib
@@ -76,12 +90,13 @@ with program() as do2d:
         # set the x axis to the starting value
         play('constant' * amp(x_axis[0]), 'G1_sticky')
 
-        # assign the x flag to false (do not move for first iteration)
+        # assign the x flag to false (= do not move for first iteration)
         assign(x_move_flag, False)
 
         with for_(*from_array(x, x_axis)):
             play('constant' * amp(dx), 'G1_sticky', condition=x_move_flag)
 
+            # put the y axis at the initial value
             play('constant' * amp(y_axis[0]), 'G2_sticky')
             assign(y_move_flag, False)
 
@@ -90,6 +105,7 @@ with program() as do2d:
                 if wait_time >= 4:  # if logic to enable wait_time = 0 without error
                     wait(wait_time, "RF")
 
+                # update the y axis to the next value
                 play("constant" * amp(dy), "G2_sticky", condition=y_move_flag)
 
                 measure(
