@@ -28,20 +28,24 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 
 machine.qubits[0].sequence_states.constant.append({"name": "cryoscope_bias", "amplitude": 0.1, "length": 160})
 machine.qubits[0].sequence_states.constant.append({"name": "flux_insensitive_point", "amplitude": -0.1, "length": 160})
-machine.qubits[0].sequence_states.constant.append({"name": "flux_zero_frequency_point", "amplitude": 0.05, "length": 160})
-machine.qubits[1].sequence_states.constant.append({"name": "flux_zero_frequency_point", "amplitude": 0.05, "length": 160})
+machine.qubits[0].sequence_states.constant.append(
+    {"name": "flux_zero_frequency_point", "amplitude": 0.05, "length": 160}
+)
+machine.qubits[1].sequence_states.constant.append(
+    {"name": "flux_zero_frequency_point", "amplitude": 0.05, "length": 160}
+)
 q = 0
 ###################
 # The QUA program #
 ###################
 
 n_avg = 1  # Number of averages
-cooldown_time = 16+0*5 * int(machine.qubits[q].t1*1e9) // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 16 + 0 * 5 * int(machine.qubits[q].t1 * 1e9) // 4  # Cooldown time in clock cycles (4ns)
 
 # FLux pulse waveform generation
 flux_amp = -0.1
 flux_len = 160
-flux_waveform = np.array([flux_amp] * (flux_len+1))
+flux_waveform = np.array([flux_amp] * (flux_len + 1))
 gate_len = np.round(machine.get_length(q, gate_shape) * 1e9)
 # signal.triang(flux_len)
 # np.cos(2 * np.pi * 10e6 * np.arange(0,flux_len)*1e-9)**2
@@ -80,15 +84,21 @@ with program() as cryoscope:
     Q_st = declare_stream()
     n_st = declare_stream()
 
-
-
     for k in qubit_list:
         if k != q:
             # Kill the other qubits (zero-frequency point)
-            set_dc_offset(machine.qubits[k].name + "_flux", "single", machine.get_sequence_state(k, "flux_zero_frequency_point").amplitude)
+            set_dc_offset(
+                machine.qubits[k].name + "_flux",
+                "single",
+                machine.get_sequence_state(k, "flux_zero_frequency_point").amplitude,
+            )
         else:
             # Place the qubit under study to its flux insensitive point
-            set_dc_offset(machine.qubits[k].name + "_flux", "single", machine.get_sequence_state(k, "flux_insensitive_point").amplitude)
+            set_dc_offset(
+                machine.qubits[k].name + "_flux",
+                "single",
+                machine.get_sequence_state(k, "flux_insensitive_point").amplitude,
+            )
     # Calibrate the ground and excited states readout for deriving the Bloch vector
     Ig_st, Qg_st, Ie_st, Qe_st = ge_averaged_measurement(machine, q, cooldown_time, n_avg)
 

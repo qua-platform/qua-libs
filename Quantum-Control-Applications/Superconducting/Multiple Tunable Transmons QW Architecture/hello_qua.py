@@ -21,11 +21,7 @@ config = machine.build_config(digital_out=[], qubits=[0, 1], gate_shape="drag_co
 
 
 # qmm = QuantumMachinesManager()
-qmm = QuantumMachinesManager(
-    host="theo-4c195fa0.dev.quantum-machines.co",
-    port=443,
-    credentials=create_credentials())
-
+qmm = QuantumMachinesManager(host="theo-4c195fa0.dev.quantum-machines.co", port=443, credentials=create_credentials())
 
 
 with program() as hello_qua:
@@ -39,7 +35,6 @@ with program() as hello_qua:
     ramp_to_zero("qubit_0_flux_sticky")
     align()
     play("readout", "resonator_0")
-
 
 
 job = qmm.simulate(config, hello_qua, SimulationConfig(500))

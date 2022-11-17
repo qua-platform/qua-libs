@@ -129,12 +129,12 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             "operations": {
                 state.common_operation.name: f"{state.common_operation.name}_single_pulse",
             },
-            "hold_offset""":{"duration": 1},
+            "hold_offset" "": {"duration": 1},
         }
         # add operations for flux line
         for op in state.qubits[q].sequence_states.constant:
             config["elements"][state.qubits[q].name + "_flux_sticky"]["operations"][op.name] = (
-                    state.qubits[q].name + f"_flux_{op.name}"
+                state.qubits[q].name + f"_flux_{op.name}"
             )
 
             # add pulse
@@ -653,11 +653,14 @@ def get_sequence_state(state: QuAM, index: int, sequence_state: str):
             return seq
     raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
 
-def get_flux_bias_point(state: QuAM, index:int, flux_bias_point):
+
+def get_flux_bias_point(state: QuAM, index: int, flux_bias_point):
     for bias in state.qubits[index].flux_bias_points:
         if bias.name == flux_bias_point:
             return bias
     raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}.")
+
+
 def get_length(state: QuAM, index, operation):
 
     try:
@@ -671,6 +674,7 @@ def get_length(state: QuAM, index, operation):
         return state.get_qubit_gate(index, operation).gate_len
     except AttributeError:
         raise AttributeError(f"The operation '{operation}' is not defined in state fro qubit {index}.")
+
 
 def set_length(state: QuAM, index, operation, length):
 
@@ -748,6 +752,7 @@ def get_qubit_gate(state: QuAM, index, gate_shape):
         return qubit.driving.__getattribute__(gate_shape)
     except AttributeError:
         raise AttributeError(f"The gate shape '{gate_shape}' is not defined in the state for qubit {index}.")
+
 
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok

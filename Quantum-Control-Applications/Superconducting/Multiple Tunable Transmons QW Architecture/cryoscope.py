@@ -80,9 +80,17 @@ with program() as cryoscope:
     # Set the flux line offset of the other qubit to 0
     for k in qubit_list:
         if k == q:
-            set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(k, "flux_insensitive_point").value)
+            set_dc_offset(
+                machine.qubits[q].name + "_flux",
+                "single",
+                machine.get_flux_bias_point(k, "flux_insensitive_point").value,
+            )
         else:
-            set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(k, "flux_zero_frequency_point").value)
+            set_dc_offset(
+                machine.qubits[q].name + "_flux",
+                "single",
+                machine.get_flux_bias_point(k, "flux_zero_frequency_point").value,
+            )
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
@@ -226,6 +234,7 @@ def filter_calc(exponential):
         feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
 
     return feedforward_taps, feedback_taps
+
 
 ## Fit step response with exponential
 [A, tau], _ = scipy.optimize.curve_fit(

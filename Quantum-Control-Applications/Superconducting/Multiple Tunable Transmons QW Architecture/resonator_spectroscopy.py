@@ -115,7 +115,9 @@ else:
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Fitting
-            fit = Fit.transmission_resonator_spectroscopy(freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"]))))
+            fit = Fit.transmission_resonator_spectroscopy(
+                freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+            )
             # live plot
             if debug:
                 plt.subplot(2, len(qubit_list), 1 + q)
@@ -136,7 +138,9 @@ else:
 
         # Update state with new resonance frequency
         print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
-        machine.readout_resonators[q].f_res = fit['f'][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+        machine.readout_resonators[q].f_res = (
+            fit["f"][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+        )
         print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
 machine.save("state_after_" + experiment + ".json")
