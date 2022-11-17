@@ -57,7 +57,7 @@ with program() as resonator_spec:
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
         machine.nullify_qubits(True, qubit_list, i)
-        
+
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)

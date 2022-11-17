@@ -18,7 +18,7 @@ from qualang_tools.loops import from_array
 # State and QuAM #
 ##################
 debug = True
-simulate = True
+simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
@@ -34,21 +34,21 @@ n_avg = 4e2
 
 cooldown_time = 5 * u.us // 4
 
-a_min = 0.2
-a_max = 1
-da = 0.5
+f_min = [-70e6, -110e6]
+f_max = [-40e6, -80e6]
+df = 0.05e6
 
 bias_min = [-0.4, -0.4]
 bias_max = [0.4, 0.4]
 dbias = 0.02
 
-amps = np.arange(a_min, a_max + da / 2, da)
+freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
 bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
-    a = declare(fixed)
+    f = declare(int)
     I = [declare(fixed) for _ in range(len(qubit_list))]
     Q = [declare(fixed) for _ in range(len(qubit_list))]
     I_st = [declare_stream() for _ in range(len(qubit_list))]
@@ -63,8 +63,11 @@ with program() as resonator_spec:
             with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                 wait(250, machine.qubits[i].name)  # wait for 1 us
-                with for_(*from_array(a, amps)):
-                    play("x180"*amp(a), machine.qubits[i].name)
+                with for_(
+                    f, f_min[i], f <= f_max[i], f + df
+                ):  # Notice it's <= to include f_max (This is only for integers!)
+                    update_frequency(machine.qubits[i].name, f)
+                    play("const", machine.qubits[i].name)
                     align()
                     measure(
                         "readout",
@@ -82,8 +85,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(amps)).buffer(len(bias[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(amps)).buffer(len(bias[i])).average().save(f"Q{i}")
+            I_st[i].buffer(len(freqs)).buffer(len(bias[i])).average().save(f"I{i}")
+            Q_st[i].buffer(len(freqs)).buffer(len(bias[i])).average().save(f"Q{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -128,7 +131,7 @@ else:
                 plt.cla()
                 plt.title(f"Qubit spectroscopy qubit {q}")
                 plt.pcolor(
-                    amps * machine.get_driving(gate_shape, q).angle2volt.deg180,
+                    freqs[q],
                     bias[q],
                     np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2),
                 )
@@ -139,7 +142,7 @@ else:
                 plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                plt.pcolor(amps * machine.get_driving(gate_shape, q).angle2volt.deg180, bias[q], phase)
+                plt.pcolor(freqs[q], bias[q], phase)
                 plt.xlabel("Microwave drive amplitude [V]")
                 plt.ylabel("Bias amplitude [V]")
                 cbar = plt.colorbar()
