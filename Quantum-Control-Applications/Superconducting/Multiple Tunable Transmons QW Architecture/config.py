@@ -15,6 +15,7 @@ from scipy.signal.windows import gaussian
 import json
 import os
 from quam_sdk.viewers import qprint
+from qm.qua import set_dc_offset
 
 
 # IQ imbalance matrix
@@ -752,6 +753,15 @@ def get_qubit_gate(state: QuAM, index, gate_shape):
         return qubit.driving.__getattribute__(gate_shape)
     except AttributeError:
         raise AttributeError(f"The gate shape '{gate_shape}' is not defined in the state for qubit {index}.")
+
+
+def nullify_qubits(state: QuAM, cond: bool, q_list: list, indx: int):
+    if cond:
+        for r in q_list:
+            if r == indx:
+                pass
+            else:
+                set_dc_offset(state.qubits[r].name + "_flux", "single", state.qubits[r].flux_bias_points[1].value)
 
 
 if __name__ == "__main__":

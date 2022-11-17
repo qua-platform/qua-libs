@@ -18,9 +18,10 @@ from fitting import Fit
 # State and QuAM #
 ##################
 experiment = "resonator_spectroscopy"
-debug = True
+debug = False
 simulate = False
-qubit_list = [0]
+fit_data = False
+qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
@@ -34,8 +35,8 @@ u = unit()
 n_avg = 4e3
 cooldown_time = 5 * u.us // 4
 
-f_min = [-70e6, -110e6, -170e6, -210e6]
-f_max = [-40e6, -80e6, -120e6, -180e6]
+f_min = [-70e6, -110e6]
+f_max = [-40e6, -80e6]
 df = 0.05e6
 
 freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
@@ -115,9 +116,10 @@ else:
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Fitting
-            fit = Fit.transmission_resonator_spectroscopy(
-                freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-            )
+            if fit_data:
+                fit = Fit.transmission_resonator_spectroscopy(
+                    freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+                )
             # live plot
             if debug:
                 plt.subplot(2, len(qubit_list), 1 + q)
@@ -130,17 +132,19 @@ else:
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
                 plt.plot(freqs[q] / u.MHz, phase, ".")
-                plt.plot(freqs[q] / u.MHz, fit["fit_func"](freqs[q] / u.MHz))
+                if fit_data:
+                    plt.plot(freqs[q] / u.MHz, fit["fit_func"](freqs[q] / u.MHz))
                 plt.xlabel("frequency [MHz]")
                 plt.ylabel("Phase [rad]")
                 plt.pause(0.1)
                 plt.tight_layout()
 
         # Update state with new resonance frequency
-        print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
-        machine.readout_resonators[q].f_res = (
-            fit["f"][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
-        )
-        print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+        if fit_data:
+            print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+            machine.readout_resonators[q].f_res = (
+                fit["f"][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+            )
+            print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
 machine.save("state_after_" + experiment + ".json")

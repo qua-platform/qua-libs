@@ -40,6 +40,7 @@ state = {
         "config.get_length",
         "config.set_length",
         "config.get_flux_bias_point",
+        "config.nullify_qubits",
     ],
     "network": {"qop_ip": "172.16.2.103", "port": 85},
     "controllers": ["con1"],

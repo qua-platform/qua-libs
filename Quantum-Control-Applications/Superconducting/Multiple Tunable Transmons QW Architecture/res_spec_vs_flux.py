@@ -12,11 +12,10 @@ from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 
-
 ##################
 # State and QuAM #
 ##################
-debug = False
+debug = True
 simulate = False
 qubit_list = [0, 1]
 digital = []
@@ -33,8 +32,8 @@ n_avg = 4e2
 
 cooldown_time = 5 * u.us // 4
 
-f_min = [-70e6, -110e6, -170e6, -210e6]
-f_max = [-40e6, -80e6, -120e6, -180e6]
+f_min = [-70e6, -110e6]
+f_max = [-40e6, -80e6]
 df = 0.05e6
 
 bias_min = [-0.4, -0.4]
@@ -43,6 +42,7 @@ dbias = 0.05
 
 freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
 bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
+
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -55,6 +55,9 @@ with program() as resonator_spec:
     b = declare(fixed)
 
     for i in range(len(qubit_list)):
+        # bring other qubits to zero frequency
+        machine.nullify_qubits(True, qubit_list, i)
+        
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
