@@ -9,6 +9,7 @@ The process to generate the initial state and the build config function:
 """
 import quam_sdk.constructor
 import numpy as np
+from scipy.signal.windows import dpss
 
 
 """
@@ -156,7 +157,8 @@ state = {
                     "feedback": [],
                 },
             },
-            "sequence_states": [
+            "sequence_states": {
+                "constant":[
                 {"name": "dissipative_stabilization", "amplitude": 0.2, "length": 200},
                 {"name": "Excitation", "amplitude": 0.3, "length": 80},
                 {"name": "Free_evolution", "amplitude": 0.2, "length": 200},
@@ -164,6 +166,10 @@ state = {
                 {"name": "Readout", "amplitude": 0.35, "length": 1000},
                 {"name": "flux_balancing", "amplitude": -0.35, "length": 400},
             ],
+            "arbitrary":[
+                {"name": "slepian", "waveform": (dpss(200,5)*0.5)[:100].tolist()}
+            ]
+            },
         }
         for i in range(NUMBER_OF_QUBITS)
     ],

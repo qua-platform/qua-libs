@@ -89,11 +89,10 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             },
         }
         # add operations for flux line
-        for op in state.qubits[q].sequence_states:
+        for op in state.qubits[q].sequence_states.constant:
             config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = (
                 state.qubits[q].name + f"_flux_{op.name}"
             )
-
             # add pulse
             config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
@@ -104,34 +103,21 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "type": "constant",
                 "sample": op.amplitude,
             }
-            # add flux element
-            config["elements"][state.qubits[q].name + "_flux"] = {
-                "singleInput": {
-                    "port": (
-                        wiring.flux_line.controller,
-                        wiring.flux_line.channel,
-                    )
-                },
-                "operations": {
-                    state.common_operation.name: f"{state.common_operation.name}_single_pulse",
-                },
+        for op in state.qubits[q].sequence_states.arbitrary:
+            config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = (
+                state.qubits[q].name + f"_flux_{op.name}"
+            )
+            # add pulse
+            config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
+                "operation": "control",
+                "length": len(op.waveform),
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
             }
-            # add operations for flux line
-            for op in state.qubits[q].sequence_states:
-                config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = (
-                        state.qubits[q].name + f"_flux_{op.name}"
-                )
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
+                "type": "arbitrary",
+                "samples": op.waveform,
+            }
 
-                # add pulse
-                config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
-                    "operation": "control",
-                    "length": op.length,
-                    "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
-                }
-                config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
-                    "type": "constant",
-                    "sample": op.amplitude,
-                }
         # add flux element sticky
         config["elements"][state.qubits[q].name + "_flux_sticky"] = {
             "singleInput": {
@@ -146,7 +132,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             "hold_offset""":{"duration": 1},
         }
         # add operations for flux line
-        for op in state.qubits[q].sequence_states:
+        for op in state.qubits[q].sequence_states.constant:
             config["elements"][state.qubits[q].name + "_flux_sticky"]["operations"][op.name] = (
                     state.qubits[q].name + f"_flux_{op.name}"
             )
@@ -160,6 +146,20 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
                 "type": "constant",
                 "sample": op.amplitude,
+            }
+        for op in state.qubits[q].sequence_states.arbitrary:
+            config["elements"][state.qubits[q].name + "_flux_sticky"]["operations"][op.name] = (
+                state.qubits[q].name + f"_flux_{op.name}"
+            )
+            # add pulse
+            config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
+                "operation": "control",
+                "length": len(op.waveform),
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
+            }
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
+                "type": "arbitrary",
+                "samples": op.waveform,
             }
         # add filters
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
