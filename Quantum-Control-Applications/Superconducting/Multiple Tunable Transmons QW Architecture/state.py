@@ -45,12 +45,14 @@ state = {
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
-    # Just put standard pulses; qubit, readout & flux drives will be added later
+    # Just put conventional pulses to all elements; qubit, readout & flux drives will be added later
     "common_operation": {
         "_docs": "an operation which is common to all elements",
         "name": "const",
-        "duration": 100e-9,
-        "amplitude": 0.2,
+        "duration": 100e-9,  # sec
+        "duration_docs": "pulse length [s]",
+        "amplitude": 0.2,  # Volt
+        "amplitude_docs": "pulse amplitude [V]",
     },
     # Readout lines containing information about the readout length, LO frequency and power,
     # and connectivity for the up- and down-conversion sides
@@ -79,7 +81,7 @@ state = {
             "readout_amplitude_docs": "Readout amplitude for this resonator [V]. Must be within [-0.5, 0.5).",
             "rotation_angle": 41.3,  # degrees
             "rotation_angle_docs": "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees].",
-            "ge_threshold": 0.0,  # degrees
+            "ge_threshold": 0.0,  # demod units
             "ge_threshold_docs": "Threshold along the 'I' quadrature discriminating between qubit ground and excited states.",
             "opt_readout_frequency": 6.52503e9,
             "readout_fidelity": 0.84,
@@ -114,15 +116,15 @@ state = {
             "name": f"qubit_{i}",
             "f_01": 4.52503e9,  # Hz
             "f_01_docs": "0-1 transition frequency [Hz]",
-            "anharmonicity": 350e6,
-            "anharmonicity_docs": "Qubit anharmonicity defined as the difference in energy between the 2-1 and the 1-0 energy levels [Hz]",
+            "anharmonicity": 350e6,  # Hz
+            "anharmonicity_docs": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy differences [Hz]",
             "rabi_freq": 0,
             "rabi_freq_docs": "Qubit Rabi frequency [Hz]",
-            "t1": 18e-6,
+            "t1": 18e-6,  # secs
             "t1_docs": "Relaxation time T1 [s]",
-            "t2": 5e-6,
+            "t2": 5e-6,  # secs
             "t2_docs": "Dephasing time T2 [s]",
-            "t2star": 1e-6,
+            "t2star": 1e-6,  # secs
             "t2star_docs": "Dephasing time T2* [s]",
             "driving": {
                 "drag_gaussian": {
@@ -162,20 +164,68 @@ state = {
                 },
             },
             "flux_bias_points": [
-                {"name": "flux_insensitive_point", "value": 0.1},
-                {"name": "flux_zero_frequency_point", "value": 0.1},
-                {"name": "anti_crossing", "value": 0.1},
+                {
+                    "name": "flux_insensitive_point",
+                    "value": 0.1,
+                    "value_docs": "Bias voltage to set qubit to maximal frequency [V]",
+                },
+                {
+                    "name": "flux_zero_frequency_point",
+                    "value": 0.1,
+                    "value_docs": "Bias voltage that nullifies the qubit frequency [V]",
+                },
+                {
+                    "name": "near_anti_crossing",
+                    "value": 0.1,
+                    "value_docs": "Bias voltage near rr-qb anticrossing used for easy state discrimination [V]",
+                },
             ],
             "sequence_states": {
                 "constant": [
-                    {"name": "dissipative_stabilization", "amplitude": 0.2, "length": 200},
-                    {"name": "Excitation", "amplitude": 0.3, "length": 80},
-                    {"name": "Free_evolution", "amplitude": 0.2, "length": 200},
-                    {"name": "Jump", "amplitude": 0.4, "length": 16},
-                    {"name": "Readout", "amplitude": 0.35, "length": 1000},
-                    {"name": "flux_balancing", "amplitude": -0.35, "length": 400},
+                    {
+                        "name": "dissipative_stabilization",
+                        "amplitude": 0.2,
+                        "amplitude_docs": "[V]",
+                        "length": 200,
+                        "length_docs": "[ns]",
+                    },
+                    {
+                        "name": "Excitation",
+                        "amplitude": 0.3,
+                        "amplitude_docs": "[V]",
+                        "length": 80,
+                        "length_docs": "[ns]",
+                    },
+                    {
+                        "name": "Free_evolution",
+                        "amplitude": 0.2,
+                        "amplitude_docs": "[V]",
+                        "length": 200,
+                        "length_docs": "[ns]",
+                    },
+                    {"name": "Jump", "amplitude": 0.4, "amplitude_docs": "[V]", "length": 16, "length_docs": "[ns]"},
+                    {
+                        "name": "Readout",
+                        "amplitude": 0.35,
+                        "amplitude_docs": "[V]",
+                        "length": 1000,
+                        "length_docs": "[ns]",
+                    },
+                    {
+                        "name": "flux_balancing",
+                        "amplitude": -0.35,
+                        "amplitude_docs": "[V]",
+                        "length": 400,
+                        "length_docs": "[ns]",
+                    },
                 ],
-                "arbitrary": [{"name": "slepian", "waveform": (dpss(200, 5) * 0.5)[:100].tolist()}],
+                "arbitrary": [
+                    {
+                        "name": "slepian",
+                        "waveform": (dpss(200, 5) * 0.5)[:100].tolist(),
+                        "waveform_docs": "points describing the waveform shape",
+                    }
+                ],
             },
         }
         for i in range(NUMBER_OF_QUBITS)
