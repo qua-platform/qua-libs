@@ -14,8 +14,9 @@ import matplotlib.pyplot as plt
 
 machine = QuAM("quam_bootstrap_state.json")
 
-machine.qubits[0].sequence_states.arbitrary.append({"name": "slepian", "waveform": (dpss(48,5)*0.5)[:24].tolist()})
-
+# machine.qubits[0].sequence_states.arbitrary.append({"name": "slepian", "waveform": (dpss(48,5)*0.5)[:24].tolist()})
+# machine.readout_lines[0].length = 1e-6
+# machine.save("quam_bootstrap_state.json")
 config = machine.build_config(digital_out=[], qubits=[0, 1], gate_shape="drag_cosine")
 
 

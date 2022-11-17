@@ -11,14 +11,16 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+from fitting import Fit
 
 
 ##################
 # State and QuAM #
 ##################
-debug = False
+experiment = "resonator_spectroscopy"
+debug = True
 simulate = False
-qubit_list = [0, 1]
+qubit_list = [0]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
@@ -93,6 +95,8 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
+    # Create the fitting object
+    Fit = Fit()
     # Live plotting
     if debug:
         fig = plt.figure()
@@ -110,6 +114,8 @@ else:
             qubit_data[q]["iteration"] = data[2]
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
+            # Fitting
+            fit = Fit.transmission_resonator_spectroscopy(freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"]))))
             # live plot
             if debug:
                 plt.subplot(2, len(qubit_list), 1 + q)
@@ -122,7 +128,15 @@ else:
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
                 plt.plot(freqs[q] / u.MHz, phase, ".")
+                plt.plot(freqs[q] / u.MHz, fit["fit_func"](freqs[q] / u.MHz))
                 plt.xlabel("frequency [MHz]")
                 plt.ylabel("Phase [rad]")
                 plt.pause(0.1)
                 plt.tight_layout()
+
+        # Update state with new resonance frequency
+        print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+        machine.readout_resonators[q].f_res = fit['f'][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+        print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+
+machine.save("state_after_" + experiment + ".json")
