@@ -645,10 +645,46 @@ def get_sequence_state(state: QuAM, index: int, sequence_state: str):
     :param sequence_state: name of the sequence.
     :return: the sequence state object.
     """
-    for seq in state.qubits[index].sequence_states:
+    for seq in state.qubits[index].sequence_states.arbitrary:
+        if seq.name == sequence_state:
+            return seq
+    for seq in state.qubits[index].sequence_states.constant:
         if seq.name == sequence_state:
             return seq
     raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
+
+def get_flux_bias_point(state: QuAM, index:int, flux_bias_point):
+    for bias in state.qubits[index].flux_bias_points:
+        if bias.name == flux_bias_point:
+            return bias
+    raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}.")
+def get_length(state: QuAM, index, operation):
+
+    try:
+        return state.get_sequence_state(index, operation).length
+    except AttributeError:
+        return len(state.get_sequence_state(index, operation).waveform) * 1e-9
+    except ValueError:
+        pass
+
+    try:
+        return state.get_qubit_gate(index, operation).gate_len
+    except AttributeError:
+        raise AttributeError(f"The operation '{operation}' is not defined in state fro qubit {index}.")
+
+def set_length(state: QuAM, index, operation, length):
+
+    try:
+        state.get_sequence_state(index, operation).length = length
+    except AttributeError:
+        return len(state.get_sequence_state(index, operation).waveform) * 1e-9
+    except ValueError:
+        pass
+
+    try:
+        state.get_qubit_gate(index, operation).gate_len = length
+    except AttributeError:
+        raise AttributeError(f"The operation '{operation}' is not defined in state fro qubit {index}.")
 
 
 def get_qubit(state: QuAM, qubit_name: str):
@@ -705,6 +741,13 @@ def get_wiring(state: QuAM):
         s += f"flux line {q} connected to channel {state.qubits[q].wiring.flux_line.channel} of controller '{state.qubits[q].wiring.flux_line.controller}'\n"
     print(s)
 
+
+def get_qubit_gate(state: QuAM, index, gate_shape):
+    qubit = state.qubits[index]
+    try:
+        return qubit.driving.__getattribute__(gate_shape)
+    except AttributeError:
+        raise AttributeError(f"The gate shape '{gate_shape}' is not defined in the state for qubit {index}.")
 
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok

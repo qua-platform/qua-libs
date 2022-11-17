@@ -36,6 +36,10 @@ state = {
         "config.get_qubit",
         "config.get_resonator",
         "config.get_driving",
+        "config.get_qubit_gate",
+        "config.get_length",
+        "config.set_length",
+        "config.get_flux_bias_point"
     ],
     "network": {"qop_ip": "172.16.2.103", "port": 85},
     "controllers": ["con1"],
@@ -157,6 +161,11 @@ state = {
                     "feedback": [],
                 },
             },
+            "flux_bias_points":[
+                {"name": "flux_insensitive_point", "value": 0.1},
+                {"name": "flux_zero_frequency_point", "value": 0.1},
+                {"name": "anti_crossing", "value": 0.1},
+            ],
             "sequence_states": {
                 "constant":[
                 {"name": "dissipative_stabilization", "amplitude": 0.2, "length": 200},
