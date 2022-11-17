@@ -318,7 +318,11 @@ class Digital_waveformsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -1229,7 +1233,11 @@ class Readout_linesList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -1860,7 +1868,11 @@ class Readout_resonatorsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -2348,7 +2360,11 @@ class Drive_linesList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -3456,7 +3472,11 @@ class ConstantList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -3633,7 +3653,11 @@ class ArbitraryList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -4315,7 +4339,11 @@ class QubitsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -4568,7 +4596,11 @@ class Single_qubit_operationsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
-        self._quam._json[f"{self._path}[]_len"] += 1
+        quam_sdk.crud.bump_list_length(
+            self._quam._json,
+            f"{self._path}[]_len",
+            self._index
+        )
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
