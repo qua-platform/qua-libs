@@ -104,6 +104,63 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "type": "constant",
                 "sample": op.amplitude,
             }
+            # add flux element
+            config["elements"][state.qubits[q].name + "_flux"] = {
+                "singleInput": {
+                    "port": (
+                        wiring.flux_line.controller,
+                        wiring.flux_line.channel,
+                    )
+                },
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                },
+            }
+            # add operations for flux line
+            for op in state.qubits[q].sequence_states:
+                config["elements"][state.qubits[q].name + "_flux"]["operations"][op.name] = (
+                        state.qubits[q].name + f"_flux_{op.name}"
+                )
+
+                # add pulse
+                config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
+                    "operation": "control",
+                    "length": op.length,
+                    "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
+                }
+                config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
+                    "type": "constant",
+                    "sample": op.amplitude,
+                }
+        # add flux element sticky
+        config["elements"][state.qubits[q].name + "_flux_sticky"] = {
+            "singleInput": {
+                "port": (
+                    wiring.flux_line.controller,
+                    wiring.flux_line.channel,
+                )
+            },
+            "operations": {
+                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+            },
+            "hold_offset""":{"duration": 1},
+        }
+        # add operations for flux line
+        for op in state.qubits[q].sequence_states:
+            config["elements"][state.qubits[q].name + "_flux_sticky"]["operations"][op.name] = (
+                    state.qubits[q].name + f"_flux_{op.name}"
+            )
+
+            # add pulse
+            config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
+                "operation": "control",
+                "length": op.length,
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
+            }
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
+                "type": "constant",
+                "sample": op.amplitude,
+            }
         # add filters
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
             "filter"
@@ -433,7 +490,7 @@ def add_common_operation(state: QuAM, config: dict):
     }
 
 
-def build_config(state, d_out: list, qbts: list, gate_shape: str):
+def build_config(state, digital_out: list, qubits: list, gate_shape: str):
     config = {
         "version": 1,
         "controllers": {
@@ -451,20 +508,20 @@ def build_config(state, d_out: list, qbts: list, gate_shape: str):
         "mixers": {},
     }
 
-    add_controllers(state, config, d_outputs=d_out, qb_list=qbts)
+    add_controllers(state, config, d_outputs=digital_out, qb_list=qubits)
 
     add_common_operation(state, config)
 
     add_digital_waveforms(state, config)
 
-    add_qubits(state, config, qb_list=qbts)
+    add_qubits(state, config, qb_list=qubits)
 
-    add_readout_resonators(state, config, qb_list=qbts)
+    add_readout_resonators(state, config, qb_list=qubits)
 
-    add_mixers(state, config, qb_list=qbts)
+    add_mixers(state, config, qb_list=qubits)
 
     for single_qubit_operation in state.single_qubit_operations:
-        for q in qbts:
+        for q in qubits:
             for z in state.qubits[q].driving.__dict__.get("_schema").get("required"):
                 if z == gate_shape:
                     pulse = get_driving(state, z, q)
