@@ -18,7 +18,7 @@ from qualang_tools.loops import from_array
 # State and QuAM #
 ##################
 debug = True
-simulate = False
+simulate = True
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
@@ -44,8 +44,8 @@ bias_span = 0.3
 dbias = 0.05
 bias = [
     np.arange(
-        machine.get_flux_bias_point(i, "flux_zero_frequency_point").value - bias_span,
-        machine.get_flux_bias_point(i, "flux_zero_frequency_point").value + bias_span + dbias / 2,
+        machine.get_flux_bias_point(i, "zero_frequency_point").value - bias_span,
+        machine.get_flux_bias_point(i, "zero_frequency_point").value + bias_span + dbias / 2,
         dbias,
     )
     for i in range(len(qubit_list))
@@ -64,14 +64,20 @@ with program() as resonator_spec:
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
         machine.nullify_qubits(True, qubit_list, i)
+        set_dc_offset(
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+        )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, bias[i])):
-                set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
-                wait(250, machine.qubits[i].name)  # wait for 1 us
                 with for_(*from_array(f, freq[i])):
+                    play("const" * amp(b), machine.qubits[i].name + "_flux_sticky")
+                    wait(100, machine.qubits[i].name)
                     update_frequency(machine.qubits[i].name, f)
-                    play("const", machine.qubits[i].name)
+                    play("x180", machine.qubits[i].name)
+                    align()
+                    wait(16, machine.qubits[i].name + "_flux_sticky")
+                    ramp_to_zero(machine.qubits[i].name + "_flux_sticky")
                     align()
                     measure(
                         "readout",
@@ -89,8 +95,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(freq)).buffer(len(bias[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(freq)).buffer(len(bias[i])).average().save(f"Q{i}")
+            I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{i}")
+            Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################

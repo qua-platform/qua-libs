@@ -772,7 +772,9 @@ def nullify_qubits(state: QuAM, cond: bool, q_list: list, indx: int):
             if r == indx:
                 pass
             else:
-                set_dc_offset(state.qubits[r].name + "_flux", "single", state.qubits[r].flux_bias_points[1].value)
+                set_dc_offset(
+                    state.qubits[r].name + "_flux", "single", state.get_flux_bias_point(r, "zero_frequency_point").value
+                )
 
 
 if __name__ == "__main__":

@@ -168,12 +168,12 @@ state = {
             },
             "flux_bias_points": [
                 {
-                    "name": "flux_insensitive_point",
+                    "name": "insensitive_point",
                     "value": 0.1,
                     "value_docs": "Bias voltage to set qubit to maximal frequency [V]",
                 },
                 {
-                    "name": "flux_zero_frequency_point",
+                    "name": "zero_frequency_point",
                     "value": 0.1,
                     "value_docs": "Bias voltage that nullifies the qubit frequency [V]",
                 },

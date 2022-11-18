@@ -129,7 +129,7 @@ else:
                     f"resonator spectroscopy qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
-                    plot_options={"marker":'.'}
+                    plot_options={"marker": "."},
                 )
 
         # Update state with new resonance frequency

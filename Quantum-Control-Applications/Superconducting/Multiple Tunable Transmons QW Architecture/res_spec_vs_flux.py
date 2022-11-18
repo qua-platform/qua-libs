@@ -216,4 +216,3 @@ else:
                     plot_options={"cmap": "magma"},
                     fig=fig,
                 )
-

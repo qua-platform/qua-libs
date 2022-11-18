@@ -58,13 +58,19 @@ with program() as resonator_spec:
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
         machine.nullify_qubits(True, qubit_list, i)
+        set_dc_offset(
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+        )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, bias[i])):
-                set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
-                wait(250, machine.qubits[i].name)  # wait for 1 us
                 with for_(*from_array(a, amps)):
+                    play("const" * amp(b), machine.qubits[i].name + "_flux_sticky")
+                    wait(100, machine.qubits[i].name)
                     play("x180" * amp(a), machine.qubits[i].name)
+                    align()
+                    wait(16, machine.qubits[i].name + "_flux_sticky")
+                    ramp_to_zero(machine.qubits[i].name + "_flux_sticky")
                     align()
                     measure(
                         "readout",
