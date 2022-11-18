@@ -9,7 +9,7 @@ import numpy as np
 from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
+from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 
@@ -60,7 +60,7 @@ with program() as resonator_spec:
         machine.nullify_qubits(True, qubit_list, i)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
+            with for_(*from_array(b, bias[i])):
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                 wait(250, machine.qubits[i].name)  # wait for 1 us
                 with for_(*from_array(a, amps)):
@@ -135,7 +135,7 @@ else:
                 plt.xlabel("Microwave drive amplitude [V]")
                 plt.ylabel("Bias amplitude [V]")
                 cbar = plt.colorbar()
-                cbar.set_label(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270)
+                cbar.ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270, labelpad=20)
                 plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
@@ -143,6 +143,6 @@ else:
                 plt.xlabel("Microwave drive amplitude [V]")
                 plt.ylabel("Bias amplitude [V]")
                 cbar = plt.colorbar()
-                cbar.set_label("Phase [rad]", rotation=270)
+                cbar.set_label("Phase [rad]", rotation=270, labelpad=20)
                 plt.pause(0.1)
                 plt.tight_layout()

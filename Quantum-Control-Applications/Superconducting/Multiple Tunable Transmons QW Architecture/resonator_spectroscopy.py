@@ -9,10 +9,9 @@ import numpy as np
 from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
+from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
-from fitting import Fit
 
 
 ##################
@@ -96,12 +95,13 @@ else:
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
     # Create the fitting object
-    Fit = Fit()
-    # Live plotting
-    if debug:
-        fig = plt.figure()
-        interrupt_on_close(fig, job)
+    Fit = fitting.Fit()
+
     for q in range(len(qubit_list)):
+        # Live plotting
+        if debug:
+            fig = plt.figure()
+            interrupt_on_close(fig, job)
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
@@ -121,22 +121,16 @@ else:
                 )
             # live plot
             if debug:
-                plt.subplot(2, len(qubit_list), 1 + q)
-                plt.cla()
-                plt.title(f"resonator spectroscopy qubit {q}")
-                plt.plot(freq[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
-                plt.xlabel("frequency [MHz]")
-                plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
-                plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
-                plt.cla()
-                phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                plt.plot(freq[q] / u.MHz, phase, ".")
-                if fit_data:
-                    plt.plot(freq[q] / u.MHz, fit["fit_func"](freq[q] / u.MHz))
-                plt.xlabel("frequency [MHz]")
-                plt.ylabel("Phase [rad]")
-                plt.pause(0.1)
-                plt.tight_layout()
+                plot_demodulated_data_1d(
+                    freq[q] / u.MHz,
+                    qubit_data[q]["I"],
+                    qubit_data[q]["Q"],
+                    "frequency [MHz]",
+                    f"resonator spectroscopy qubit {q}",
+                    amp_and_phase=True,
+                    fig=fig,
+                    plot_options={"marker":'.'}
+                )
 
         # Update state with new resonance frequency
         if fit_data:
