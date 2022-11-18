@@ -166,8 +166,8 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
             "filter"
         ] = {
-            "feedforward": wiring.flux_filter_coefficient.feedforward,
-            "feedback": wiring.flux_filter_coefficient.feedback,
+            "feedforward": wiring.flux_filter_coefficients.feedforward,
+            "feedback": wiring.flux_filter_coefficients.feedback,
         }
         # add offsets
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][

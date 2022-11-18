@@ -11,6 +11,8 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+from macros import qua_declaration
+from qualang_tools.loops import from_array
 
 ##################
 # State and QuAM #
@@ -29,29 +31,31 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 u = unit()
 
 n_avg = 4e2
-
 cooldown_time = 5 * u.us // 4
 
-f_min = [-70e6, -110e6]
-f_max = [-40e6, -80e6]
-df = 0.05e6
-
-bias_min = [-0.4, -0.4]
-bias_max = [0.4, 0.4]
+# Frequency scan
+freq_span = 25e6
+df = 0.5e6
+freq = [
+    np.arange(machine.get_readout_IF(i) - freq_span, machine.get_readout_IF(i) + freq_span + df / 2, df)
+    for i in qubit_list
+]
+# Bias scan
+bias_span = 0.3
 dbias = 0.05
-
-freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
-bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
+bias = [
+    np.arange(
+        machine.get_flux_bias_point(i, "flux_zero_frequency_point").value - bias_span,
+        machine.get_flux_bias_point(i, "flux_zero_frequency_point").value + bias_span + dbias / 2,
+        dbias,
+    )
+    for i in range(len(qubit_list))
+]
 
 
 with program() as resonator_spec:
-    n = [declare(int) for _ in range(len(qubit_list))]
-    n_st = [declare_stream() for _ in range(len(qubit_list))]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
     f = declare(int)
-    I = [declare(fixed) for _ in range(len(qubit_list))]
-    Q = [declare(fixed) for _ in range(len(qubit_list))]
-    I_st = [declare_stream() for _ in range(len(qubit_list))]
-    Q_st = [declare_stream() for _ in range(len(qubit_list))]
     b = declare(fixed)
 
     for i in range(len(qubit_list)):
@@ -59,12 +63,10 @@ with program() as resonator_spec:
         machine.nullify_qubits(True, qubit_list, i)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(b, bias_min[i], b < bias_max[i] + dbias / 2, b + dbias):
+            with for_(*from_array(b, bias[i])):
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                 wait(250)  # wait for 1 us
-                with for_(
-                    f, f_min[i], f <= f_max[i], f + df
-                ):  # Notice it's <= to include f_max (This is only for integers!)
+                with for_(*from_array(f, freq[i])):
                     update_frequency(machine.readout_resonators[i].name, f)
                     measure(
                         "readout",
@@ -82,8 +84,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(freqs[i])).buffer(len(bias[i])).average().save(f"Q{i}")
+            I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{i}")
+            Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -127,14 +129,18 @@ else:
                 plt.subplot(2, len(qubit_list), 1 + q)
                 plt.cla()
                 plt.title(f"resonator spectroscopy qubit {q}")
-                plt.pcolor(freqs[q] / u.MHz, bias[q], np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2))
+                plt.pcolor(freq[q] / u.MHz, bias[q], np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2))
                 plt.xlabel("frequency [MHz]")
-                plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+                plt.ylabel("Flux bias [V]")
+                cbar = plt.colorbar()
+                cbar.ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270, labelpad=20)
                 plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                plt.pcolor(freqs[q] / u.MHz, bias[q], phase)
+                plt.pcolor(freq[q] / u.MHz, bias[q], phase)
                 plt.xlabel("frequency [MHz]")
-                plt.ylabel("Phase [rad]")
+                plt.ylabel("Flux bias [V]")
+                cbar = plt.colorbar()
+                cbar.set_label("Phase [rad]", rotation=270, labelpad=20)
                 plt.pause(0.1)
                 plt.tight_layout()

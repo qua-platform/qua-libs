@@ -1537,7 +1537,7 @@ class Readout_resonator(object):
 
     @property
     def ge_threshold(self) -> float:
-        """Threshold along the 'I' quadrature discriminating between qubit ground and excited states."""
+        """Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states."""
 
         value = self._quam._json[self._path + "ge_threshold"]
         for i in range(len(self._index)):
@@ -1546,7 +1546,7 @@ class Readout_resonator(object):
 
     @ge_threshold.setter
     def ge_threshold(self, value: float):
-        """Threshold along the 'I' quadrature discriminating between qubit ground and excited states."""
+        """Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states."""
         if self._quam._record_updates:
             self._quam._updates["keys"].append(self._path + "ge_threshold")
             self._quam._updates["indexes"].append(self._index)
@@ -1742,7 +1742,7 @@ class Readout_resonatorsList(object):
           },
           "ge_threshold": {
             "type": "number",
-            "description": "Threshold along the 'I' quadrature discriminating between qubit ground and excited states."
+            "description": "Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states."
           },
           "opt_readout_frequency": {
             "type": "number"
@@ -3009,7 +3009,7 @@ class Flux_line(object):
         object.__setattr__(self, key, value)
 
 
-class Flux_filter_coef(object):
+class Flux_filter_coefficients(object):
     def __init__(self, quam, path, index, schema):
         """"""
         self._quam = quam
@@ -3147,10 +3147,13 @@ class Wiring2(object):
         return Flux_line(self._quam, self._path + "flux_line/", self._index, self._schema["properties"]["flux_line"])
 
     @property
-    def flux_filter_coef(self) -> Flux_filter_coef:
+    def flux_filter_coefficients(self) -> Flux_filter_coefficients:
         """"""
-        return Flux_filter_coef(
-            self._quam, self._path + "flux_filter_coef/", self._index, self._schema["properties"]["flux_filter_coef"]
+        return Flux_filter_coefficients(
+            self._quam,
+            self._path + "flux_filter_coefficients/",
+            self._index,
+            self._schema["properties"]["flux_filter_coefficients"],
         )
 
     def _json_view(self):
@@ -3807,7 +3810,7 @@ class Qubit(object):
 
     @property
     def anharmonicity(self) -> float:
-        """Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy differences [Hz]"""
+        """Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]"""
 
         value = self._quam._json[self._path + "anharmonicity"]
         for i in range(len(self._index)):
@@ -3816,7 +3819,7 @@ class Qubit(object):
 
     @anharmonicity.setter
     def anharmonicity(self, value: float):
-        """Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy differences [Hz]"""
+        """Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]"""
         if self._quam._record_updates:
             self._quam._updates["keys"].append(self._path + "anharmonicity")
             self._quam._updates["indexes"].append(self._index)
@@ -4020,7 +4023,7 @@ class QubitsList(object):
           },
           "anharmonicity": {
             "type": "number",
-            "description": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy differences [Hz]"
+            "description": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]"
           },
           "rabi_freq": {
             "type": "integer",
@@ -4186,9 +4189,9 @@ class QubitsList(object):
                   "offset"
                 ]
               },
-              "flux_filter_coef": {
+              "flux_filter_coefficients": {
                 "type": "object",
-                "title": "flux_filter_coef",
+                "title": "flux_filter_coefficients",
                 "properties": {
                   "feedforward": {
                     "type": "array",
@@ -4245,7 +4248,7 @@ class QubitsList(object):
               "drive_line_index",
               "correction_matrix",
               "flux_line",
-              "flux_filter_coef"
+              "flux_filter_coefficients"
             ]
           },
           "flux_bias_points": {
@@ -4887,7 +4890,7 @@ class QuAM(object):
                             },
                             "ge_threshold": {
                                 "type": "number",
-                                "description": "Threshold along the 'I' quadrature discriminating between qubit ground and excited states.",
+                                "description": "Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states.",
                             },
                             "opt_readout_frequency": {"type": "number"},
                             "readout_fidelity": {"type": "number"},
@@ -4987,7 +4990,7 @@ class QuAM(object):
                             "f_01": {"type": "number", "description": "0-1 transition frequency [Hz]"},
                             "anharmonicity": {
                                 "type": "number",
-                                "description": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy differences [Hz]",
+                                "description": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]",
                             },
                             "rabi_freq": {"type": "integer", "description": "Qubit Rabi frequency [Hz]"},
                             "t1": {"type": "number", "description": "Relaxation time T1 [s]"},
@@ -5078,9 +5081,9 @@ class QuAM(object):
                                         },
                                         "required": ["controller", "channel", "offset"],
                                     },
-                                    "flux_filter_coef": {
+                                    "flux_filter_coefficients": {
                                         "type": "object",
-                                        "title": "flux_filter_coef",
+                                        "title": "flux_filter_coefficients",
                                         "properties": {
                                             "feedforward": {
                                                 "type": "array",
@@ -5110,7 +5113,12 @@ class QuAM(object):
                                         "required": ["feedforward", "feedback"],
                                     },
                                 },
-                                "required": ["drive_line_index", "correction_matrix", "flux_line", "flux_filter_coef"],
+                                "required": [
+                                    "drive_line_index",
+                                    "correction_matrix",
+                                    "flux_line",
+                                    "flux_filter_coefficients",
+                                ],
                             },
                             "flux_bias_points": {
                                 "type": "array",

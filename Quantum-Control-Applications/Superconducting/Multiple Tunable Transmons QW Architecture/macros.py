@@ -11,6 +11,16 @@ from qm.qua import *
 ##############
 
 
+def qua_declaration(qubit_list):
+    n = [declare(int) for _ in range(len(qubit_list))]
+    n_st = [declare_stream() for _ in range(len(qubit_list))]
+    I = [declare(fixed) for _ in range(len(qubit_list))]
+    Q = [declare(fixed) for _ in range(len(qubit_list))]
+    I_st = [declare_stream() for _ in range(len(qubit_list))]
+    Q_st = [declare_stream() for _ in range(len(qubit_list))]
+    return I, I_st, Q, Q_st, n, n_st
+
+
 def reset_qubit(machine, method, qubit_index, **kwargs):
     """
     Macro to reset the qubit state.

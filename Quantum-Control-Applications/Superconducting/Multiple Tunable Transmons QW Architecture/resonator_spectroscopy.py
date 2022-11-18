@@ -27,7 +27,6 @@ digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
 
-
 machine.readout_resonators[0].f_res = 6.6457e9
 machine.readout_resonators[1].f_res = 6.7057e9
 config = machine.build_config(digital, qubit_list, gate_shape)
@@ -42,7 +41,7 @@ cooldown_time = 5 * u.us // 4
 
 span = 50e6
 df = 0.5e6
-freqs = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
+freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -55,7 +54,7 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(f, freqs[i])):
+            with for_(*from_array(f, freq[i])):
                 update_frequency(machine.readout_resonators[i].name, f)
                 measure(
                     "readout",
@@ -73,8 +72,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(freqs[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(freqs[i])).average().save(f"Q{i}")
+            I_st[i].buffer(len(freq[i])).average().save(f"I{i}")
+            Q_st[i].buffer(len(freq[i])).average().save(f"Q{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -118,22 +117,22 @@ else:
             # Fitting
             if fit_data:
                 fit = Fit.transmission_resonator_spectroscopy(
-                    freqs[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+                    freq[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
                 )
             # live plot
             if debug:
                 plt.subplot(2, len(qubit_list), 1 + q)
                 plt.cla()
                 plt.title(f"resonator spectroscopy qubit {q}")
-                plt.plot(freqs[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
+                plt.plot(freq[q] / u.MHz, np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2), ".")
                 plt.xlabel("frequency [MHz]")
                 plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
                 plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
                 plt.cla()
                 phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                plt.plot(freqs[q] / u.MHz, phase, ".")
+                plt.plot(freq[q] / u.MHz, phase, ".")
                 if fit_data:
-                    plt.plot(freqs[q] / u.MHz, fit["fit_func"](freqs[q] / u.MHz))
+                    plt.plot(freq[q] / u.MHz, fit["fit_func"](freq[q] / u.MHz))
                 plt.xlabel("frequency [MHz]")
                 plt.ylabel("Phase [rad]")
                 plt.pause(0.1)
