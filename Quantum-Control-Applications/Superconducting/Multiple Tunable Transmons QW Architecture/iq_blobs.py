@@ -27,8 +27,6 @@ qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
-now = datetime.now()
-now = now.strftime("%m%d%Y_%H%M%S")
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
