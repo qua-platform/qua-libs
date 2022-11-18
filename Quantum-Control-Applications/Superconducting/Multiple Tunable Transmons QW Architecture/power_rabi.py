@@ -17,7 +17,7 @@ from qualang_tools.loops import from_array
 ##################
 # State and QuAM #
 ##################
-experiment = "resonator_spectroscopy"
+experiment = "power_rabi"
 debug = True
 simulate = False
 fit_data = True
@@ -26,8 +26,8 @@ digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
 
-machine.readout_resonators[0].f_res = 6.6457e9
-machine.readout_resonators[1].f_res = 6.7057e9
+machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
+machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -36,29 +36,36 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 u = unit()
 
 n_avg = 4e3
+
 cooldown_time = 5 * u.us // 4
 
-span = 50e6
-df = 0.5e6
-freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
+a_min = 0.2
+a_max = 1
+da = 0.01
+
+amps = np.arange(a_min, a_max + da / 2, da)
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
-    f = declare(int)
+    a = declare(fixed)
     I = [declare(fixed) for _ in range(len(qubit_list))]
     Q = [declare(fixed) for _ in range(len(qubit_list))]
     I_st = [declare_stream() for _ in range(len(qubit_list))]
     Q_st = [declare_stream() for _ in range(len(qubit_list))]
+    b = declare(fixed)
 
     for i in range(len(qubit_list)):
-        # bring other qubits than `i` to zero frequency
+        # bring other qubits to zero frequency
         machine.nullify_qubits(True, qubit_list, i)
-        set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
+        set_dc_offset(
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+        )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(f, freq[i])):
-                update_frequency(machine.readout_resonators[i].name, f)
+            with for_(*from_array(a, amps)):
+                play("x180" * amp(a), machine.qubits[i].name)
+                align()
                 measure(
                     "readout",
                     machine.readout_resonators[i].name,
@@ -75,8 +82,8 @@ with program() as resonator_spec:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(freq[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(freq[i])).average().save(f"Q{i}")
+            I_st[i].buffer(len(amps)).average().save(f"I{i}")
+            Q_st[i].buffer(len(amps)).average().save(f"Q{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -98,6 +105,7 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
+
     # Create the fitting object
     Fit = fitting.Fit()
 
@@ -120,28 +128,27 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Fitting
             if fit_data:
-                fit = Fit.transmission_resonator_spectroscopy(
-                    freq[q] / u.MHz, signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+                fit = Fit.rabi(
+                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"]
                 )
             # live plot
             if debug:
                 plot_demodulated_data_1d(
-                    freq[q] / u.MHz,
+                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
-                    "frequency [MHz]",
-                    f"resonator spectroscopy qubit {q}",
-                    amp_and_phase=True,
+                    "x180 amplitude [V]",
+                    f"Power rabi {q}",
+                    amp_and_phase=False,
                     fig=fig,
                     plot_options={"marker": "."},
                 )
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
-            machine.readout_resonators[q].f_res = (
-                np.round(fit["f"][q] * 1e6)
-                + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+            print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
+            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = (
+                np.round(fit["amp"][q])
             )
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
