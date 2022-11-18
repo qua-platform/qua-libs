@@ -141,4 +141,5 @@ else:
             )
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
-machine.save("state_after_" + experiment + ".json")
+machine.save("./labnotebook/state_after_" + experiment + ".json")
+machine.save("latest_" + experiment + ".json")
