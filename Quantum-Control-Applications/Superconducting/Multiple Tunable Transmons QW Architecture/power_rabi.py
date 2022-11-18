@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 1D resonator spectroscopy
+power_rabi.py: performs power rabi
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -130,9 +130,7 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Fitting
             if fit_data:
-                fit = Fit.rabi(
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"]
-                )
+                fit = Fit.rabi(amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"])
             # live plot
             if debug:
                 plot_demodulated_data_1d(
@@ -149,9 +147,7 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
-            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = (
-                np.round(fit["amp"][0])
-            )
+            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit["amp"][0])
             print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")

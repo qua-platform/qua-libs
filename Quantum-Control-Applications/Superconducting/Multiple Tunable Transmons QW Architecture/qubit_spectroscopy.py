@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 1D resonator spectroscopy
+qubit_spec.py: performs the 1D qubit spectroscopy
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -60,7 +60,7 @@ with program() as qubit_spec:
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
                 update_frequency(machine.qubits[i].name, f)
-                play('x180', machine.qubits[i].name)
+                play("x180", machine.qubits[i].name)
                 align()
                 measure(
                     "readout",
@@ -143,8 +143,7 @@ else:
         if fit_data:
             print(f"Previous resonance frequency: {machine.qubits[q].f_01:.1f} Hz")
             machine.readout_resonators[q].f_res = (
-                np.round(fit["f"][0] * 1e6)
-                + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq
+                np.round(fit["f"][0] * 1e6) + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq
             )
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 

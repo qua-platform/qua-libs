@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 1D resonator spectroscopy
+qubit_spec_amp_vs_flux.py: performs the 2D qubit spec as func of amp and flux
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -21,7 +21,7 @@ debug = True
 simulate = True
 qubit_list = [0, 1]
 digital = []
-machine = QuAM("quam_bootstrap_state.json")
+machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 config = machine.build_config(digital, qubit_list, gate_shape)
 
