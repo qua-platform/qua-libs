@@ -12,7 +12,7 @@ from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
-
+from datetime import datetime
 
 ##################
 # State and QuAM #
@@ -23,8 +23,10 @@ simulate = False
 fit_data = True
 qubit_list = [0, 1]
 digital = []
-machine = QuAM("quam_bootstrap_state.json")
+machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+now = datetime.now()
+now = now.strftime("%m%d%Y_%H%M%S")
 
 machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
 machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
@@ -45,7 +47,7 @@ da = 0.01
 
 amps = np.arange(a_min, a_max + da / 2, da)
 
-with program() as resonator_spec:
+with program() as power_rabi:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
     a = declare(fixed)
@@ -96,12 +98,12 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 #######################
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, resonator_spec, simulation_config)
+    job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(resonator_spec)
+    job = qm.execute(power_rabi)
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
@@ -148,9 +150,9 @@ else:
         if fit_data:
             print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
             machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = (
-                np.round(fit["amp"][q])
+                np.round(fit["amp"][0])
             )
-            print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+            print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
-machine.save("./labnotebook/state_after_" + experiment + ".json")
+machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

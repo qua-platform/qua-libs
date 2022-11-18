@@ -17,7 +17,7 @@ from datetime import datetime
 ##################
 # State and QuAM #
 ##################
-experiment = "res_spec"
+experiment = "qb_spec"
 debug = True
 simulate = False
 fit_data = True
@@ -27,10 +27,6 @@ machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 now = datetime.now()
 now = now.strftime("%m%d%Y_%H%M%S")
-
-machine.readout_lines[0].lo_freq = 6.5e9
-machine.readout_resonators[0].f_res = 6.6457e9
-machine.readout_resonators[1].f_res = 6.7057e9
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
@@ -44,9 +40,9 @@ cooldown_time = 5 * u.us // 4
 
 span = 50e6
 df = 0.5e6
-freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
+freq = [np.arange(machine.get_qubit_IF(i) - span, machine.get_qubit_IF(i) + span + df / 2, df) for i in qubit_list]
 
-with program() as resonator_spec:
+with program() as qubit_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
     f = declare(int)
@@ -63,7 +59,9 @@ with program() as resonator_spec:
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
-                update_frequency(machine.readout_resonators[i].name, f)
+                update_frequency(machine.qubits[i].name, f)
+                play('x180', machine.qubits[i].name)
+                align()
                 measure(
                     "readout",
                     machine.readout_resonators[i].name,
@@ -94,12 +92,12 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 #######################
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, resonator_spec, simulation_config)
+    job = qmm.simulate(config, qubit_spec, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(resonator_spec)
+    job = qm.execute(qubit_spec)
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
@@ -143,10 +141,10 @@ else:
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
+            print(f"Previous resonance frequency: {machine.qubits[q].f_01:.1f} Hz")
             machine.readout_resonators[q].f_res = (
                 np.round(fit["f"][0] * 1e6)
-                + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+                + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq
             )
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 

@@ -15,81 +15,6 @@ from macros import qua_declaration
 from qualang_tools.loops import from_array
 
 
-def plot_demodulated_data_2d(
-    x,
-    y,
-    I,
-    Q,
-    x_label: str = None,
-    y_label: str = None,
-    title: str = None,
-    amp_and_phase: bool = True,
-    fig=None,
-    plot_options: dict = None,
-):
-    """
-    Plots 2D maps of either 'I' and 'Q' or the corresponding amplitude and phase in a single figure.
-    :param x: 1D numpy array representing the x-axis.
-    :param y: 1D numpy array representing the y-axis.
-    :param I: 2D numpy array representing the 'I' quadrature.
-    :param Q: 2D numpy array representing the 'Q' quadrature.
-    :param x_label: name for the x-axis label.
-    :param y_label: name for the y-axis label.
-    :param title: title of the plot.
-    :param amp_and_phase: if True, plots the amplitude [np.sqrt(I**2 + Q**2)] and phase [signal.detrend(np.unwrap(np.angle(I + 1j * Q)))] instead of I and Q.
-    :param fig: a matplotlib figure. If `none` (default), will create a new one.
-    :param plot_options: dictionary containing various plotting options. Defaults are ['fontsize': 14, 'cmap': `magma`, 'figsize': None].
-    :return: the matplotlib figure object.
-    """
-    _plot_options = {
-        "fontsize": 14,
-        "cmap": "magma",
-        "figsize": None,
-    }
-    if plot_options is not None:
-        for key in plot_options:
-            if key in _plot_options.keys():
-                _plot_options[key] = plot_options[key]
-            else:
-                raise ValueError(
-                    f"The key {key} in 'plot_options' doesn't exists. The available options are {[option for option in _plot_options.keys()]}"
-                )
-    if amp_and_phase:
-        z1 = np.sqrt(I**2 + Q**2)
-        z2 = signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
-        z1_label = "Amplitude [a.u.]"
-        z2_label = "Phase [rad]"
-    else:
-        z1 = I
-        z2 = Q
-        z1_label = "I [a.u.]"
-        z2_label = "Q [a.u.]"
-
-    if fig is None:
-        fig = plt.figure(figsize=_plot_options["figsize"])
-    plt.suptitle(title, fontsize=_plot_options["fontsize"] + 2)
-    ax1 = plt.subplot(211)
-    plt.cla()
-    plt.title(z1_label, fontsize=_plot_options["fontsize"])
-    plt.pcolor(x, y, z1, cmap=_plot_options["cmap"])
-    plt.ylabel(y_label, fontsize=_plot_options["fontsize"])
-    plt.xticks(fontsize=_plot_options["fontsize"])
-    plt.yticks(fontsize=_plot_options["fontsize"])
-    plt.colorbar()
-    plt.subplot(212, sharex=ax1)
-    plt.cla()
-    plt.title(z2_label, fontsize=_plot_options["fontsize"])
-    plt.pcolor(x, y, z2, cmap=_plot_options["cmap"])
-    plt.xlabel(x_label, fontsize=_plot_options["fontsize"])
-    plt.ylabel(y_label, fontsize=_plot_options["fontsize"])
-    plt.xticks(fontsize=_plot_options["fontsize"])
-    plt.yticks(fontsize=_plot_options["fontsize"])
-    plt.colorbar()
-    plt.pause(0.01)
-    plt.tight_layout()
-    return fig
-
-
 ##################
 # State and QuAM #
 ##################
@@ -99,6 +24,11 @@ qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
+
+machine.readout_lines[0].lo_freq = 6.5e9
+machine.readout_resonators[0].f_res = 6.6457e9
+machine.readout_resonators[1].f_res = 6.7057e9
+
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
