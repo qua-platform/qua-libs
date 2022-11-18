@@ -11,6 +11,7 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
 from fitting import Fit
 
 
@@ -18,13 +19,17 @@ from fitting import Fit
 # State and QuAM #
 ##################
 experiment = "resonator_spectroscopy"
-debug = False
+debug = True
 simulate = False
-fit_data = False
+fit_data = True
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
+
+
+machine.readout_resonators[0].f_res = 6.6457e9
+machine.readout_resonators[1].f_res = 6.7057e9
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -35,12 +40,9 @@ u = unit()
 n_avg = 4e3
 cooldown_time = 5 * u.us // 4
 
-f_min = [-70e6, -110e6]
-f_max = [-40e6, -80e6]
-df = 0.05e6
-
-freqs = [np.arange(f_min[i], f_max[i] + 0.1, df) for i in range(len(qubit_list))]
-
+span = 50e6
+df = 0.5e6
+freqs = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -53,9 +55,7 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(
-                f, f_min[i], f <= f_max[i], f + df
-            ):  # Notice it's <= to include f_max (This is only for integers!)
+            with for_(*from_array(f, freqs[i])):
                 update_frequency(machine.readout_resonators[i].name, f)
                 measure(
                     "readout",
@@ -143,7 +143,8 @@ else:
         if fit_data:
             print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
             machine.readout_resonators[q].f_res = (
-                fit["f"][0] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+                np.round(fit["f"][0] * 1e6)
+                + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
             )
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 

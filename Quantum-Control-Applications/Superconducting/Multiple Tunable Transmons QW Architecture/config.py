@@ -166,8 +166,8 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
             "filter"
         ] = {
-            "feedforward": wiring.flux_filter_coef.feedforward,
-            "feedback": wiring.flux_filter_coef.feedback,
+            "feedforward": wiring.flux_filter_coefficient.feedforward,
+            "feedback": wiring.flux_filter_coefficient.feedback,
         }
         # add offsets
         config["controllers"][wiring.flux_line.controller]["analog_outputs"][str(wiring.flux_line.channel)][
@@ -753,6 +753,17 @@ def get_qubit_gate(state: QuAM, index, gate_shape):
         return qubit.driving.__getattribute__(gate_shape)
     except AttributeError:
         raise AttributeError(f"The gate shape '{gate_shape}' is not defined in the state for qubit {index}.")
+
+
+def get_readout_IF(state: QuAM, index):
+    return (
+        state.readout_resonators[index].f_res
+        - state.readout_lines[state.readout_resonators[index].wiring.readout_line_index].lo_freq
+    )
+
+
+def get_qubit_IF(state: QuAM, index):
+    return state.qubits[index].f_01 - state.drive_lines[state.qubits[index].wiring.drive_line_index].lo_freq
 
 
 def nullify_qubits(state: QuAM, cond: bool, q_list: list, indx: int):

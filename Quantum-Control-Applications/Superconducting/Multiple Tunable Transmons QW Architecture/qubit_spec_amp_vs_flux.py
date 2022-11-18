@@ -64,7 +64,7 @@ with program() as resonator_spec:
                 set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
                 wait(250, machine.qubits[i].name)  # wait for 1 us
                 with for_(*from_array(a, amps)):
-                    play("x180"*amp(a), machine.qubits[i].name)
+                    play("x180" * amp(a), machine.qubits[i].name)
                     align()
                     measure(
                         "readout",
