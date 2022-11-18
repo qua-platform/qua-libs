@@ -135,7 +135,7 @@ with program() as resonator_spec:
     b = declare(fixed)
 
     for i in range(len(qubit_list)):
-        # bring other qubits to zero frequency
+        # bring other qubits than `i` to zero frequency
         machine.nullify_qubits(True, qubit_list, i)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):

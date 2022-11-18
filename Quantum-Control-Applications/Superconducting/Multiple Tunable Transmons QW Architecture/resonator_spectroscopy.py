@@ -52,6 +52,10 @@ with program() as resonator_spec:
     Q_st = [declare_stream() for _ in range(len(qubit_list))]
 
     for i in range(len(qubit_list)):
+        # bring other qubits than `i` to zero frequency
+        machine.nullify_qubits(True, qubit_list, i)
+        set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
+
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
                 update_frequency(machine.readout_resonators[i].name, f)

@@ -182,6 +182,11 @@ state = {
                     "value": 0.1,
                     "value_docs": "Bias voltage near rr-qb anti-crossing used for easy state discrimination [V]",
                 },
+                {
+                    "name": "working_point",
+                    "value": 0.1,
+                    "value_docs": "Arbitrary bias voltage for your own desired working point",
+                },
             ],
             "sequence_states": {
                 "constant": [
