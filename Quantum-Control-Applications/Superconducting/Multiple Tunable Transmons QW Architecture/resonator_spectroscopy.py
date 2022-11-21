@@ -148,6 +148,7 @@ else:
                 np.round(fit["f"][0] * 1e6)
                 + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
             )
+            machine.readout_resonators[q].f_opt = machine.readout_resonators[q].f_res
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")

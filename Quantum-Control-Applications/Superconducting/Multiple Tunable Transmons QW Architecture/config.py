@@ -229,7 +229,7 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                     "lo_frequency": round(readout_line.lo_freq),
                     "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
                 },
-                "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
+                "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
                 "operations": {
                     state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
                     "readout": f"readout_pulse_" + state.readout_resonators[r].name,
@@ -252,7 +252,7 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                 config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"] = []
             config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"].append(
                 {
-                    "intermediate_frequency": round(v.f_res - readout_line.lo_freq),
+                    "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
                     "lo_frequency": readout_line.lo_freq,
                     "correction": IQ_imbalance(v.wiring.correction_matrix.gain, v.wiring.correction_matrix.phase),
                 }
@@ -757,7 +757,7 @@ def get_qubit_gate(state: QuAM, index, gate_shape):
 
 def get_readout_IF(state: QuAM, index):
     return (
-        state.readout_resonators[index].f_res
+        state.readout_resonators[index].f_opt
         - state.readout_lines[state.readout_resonators[index].wiring.readout_line_index].lo_freq
     )
 
