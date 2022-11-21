@@ -130,9 +130,18 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Fitting
             if fit_data:
-                fit = Fit.rabi(amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"])
+                plt.subplot(211)
+                plt.cla()
+                fit_I = Fit.rabi(
+                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
+                )
+                plt.subplot(212)
+                plt.cla()
+                fit_Q = Fit.rabi(
+                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
+                )
             # live plot
-            if debug:
+            if debug and not fit_data:
                 plot_demodulated_data_1d(
                     amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
                     qubit_data[q]["I"],
@@ -147,7 +156,7 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
-            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit["amp"][0])
+            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit_I["amp"][0])
             print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
