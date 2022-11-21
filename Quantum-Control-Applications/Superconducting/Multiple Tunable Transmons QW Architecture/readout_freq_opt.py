@@ -182,14 +182,14 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Derive SNR
             Z = (qubit_data[q]["I_e_avg"] - qubit_data[q]["I_g_avg"]) + 1j * (
-                    qubit_data[q]["Q_e_avg"] - qubit_data[q]["I_e_avg"]
+                qubit_data[q]["Q_e_avg"] - qubit_data[q]["I_e_avg"]
             )
             var = (
-                          qubit_data[q]["I_g_var"]
-                          + qubit_data[q]["Q_g_var"]
-                          + qubit_data[q]["I_e_var"]
-                          + qubit_data[q]["Q_e_var"]
-                  ) / 4
+                qubit_data[q]["I_g_var"]
+                + qubit_data[q]["Q_g_var"]
+                + qubit_data[q]["I_e_var"]
+                + qubit_data[q]["Q_e_var"]
+            ) / 4
             SNR = ((np.abs(Z)) ** 2) / (2 * var)
             if debug:
                 plt.cla()
@@ -202,8 +202,12 @@ else:
         # Find the readout frequency that maximizes the SNR
         f_opt = freq[q][np.argmax(SNR)]
         SNR_opt = SNR[np.argmax(SNR)]
-        print(f"Previous optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR[len(freq[q])//2+1]:.2f}")
-        machine.readout_resonators[q].f_opt = f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+        print(
+            f"Previous optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR[len(freq[q])//2+1]:.2f}"
+        )
+        machine.readout_resonators[q].f_opt = (
+            f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+        )
         print(f"New optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR_opt:.2f}")
     machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
     machine.save("latest_quam.json")
