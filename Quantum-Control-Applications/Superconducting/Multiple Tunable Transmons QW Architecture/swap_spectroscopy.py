@@ -48,6 +48,7 @@ flux_len = cz.flux_pulse.constant.length
 flux_amp = cz.flux_pulse.constant.amplitude
 flux_waveform = np.array([flux_amp] * flux_len)  # The variable flux_len is defined in the configuration
 
+
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
@@ -62,6 +63,7 @@ def baked_waveform(waveform, pulse_duration):
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
+
 
 # Baked flux pulse segments
 square_pulse_segments = baked_waveform(flux_waveform, flux_len)
@@ -102,7 +104,9 @@ with program() as SWAP_spectroscopy:
                 with switch_(segment):
                     for j in range(0, flux_len + 1):
                         with case_(j):
-                            square_pulse_segments[j].run(amp_array=[(machine.qubits[cz.conditional_qubit].name + "_flux", a)])
+                            square_pulse_segments[j].run(
+                                amp_array=[(machine.qubits[cz.conditional_qubit].name + "_flux", a)]
+                            )
                 # global align
                 align()
                 # Wait some additional time to be sure that the pulses don't overlap, this can be calibrated

@@ -260,24 +260,17 @@ state = {
         {"direction": "y", "angle": -90},
     ],
     "two_qubit_gates": {
-        "CZ":[
+        "CZ": [
             {
                 "conditional_qubit": i,
                 "target_qubit": CENTRAL_QUBIT_INDEX,
-                "flux_pulse":{
-                    "constant":{
-                        "name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}",
-                        "amplitude": 0.23,
-                        "length": 136
-                    },
-                    "arbitrary":{
-                        "name": "cz_0_1",
-                        "amplitude": 0.23,
-                        "length": 136
-                    },
-                }
+                "flux_pulse": {
+                    "constant": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "amplitude": 0.23, "length": 136},
+                    "arbitrary": {"name": "cz_0_1", "amplitude": 0.23, "length": 136},
+                },
             }
-            for i in range(NUMBER_OF_QUBITS) if i != CENTRAL_QUBIT_INDEX
+            for i in range(NUMBER_OF_QUBITS)
+            if i != CENTRAL_QUBIT_INDEX
         ],
     },
     "running_strategy": {"running": True, "start": [], "end": []},
