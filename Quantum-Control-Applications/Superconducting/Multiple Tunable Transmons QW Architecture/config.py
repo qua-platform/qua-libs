@@ -118,6 +118,20 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "type": "arbitrary",
                 "samples": op.waveform,
             }
+        for op in state.two_qubit_gates.CZ:
+            config["elements"][state.qubits[q].name + "_flux"]["operations"][op.flux_pulse.constant.name] = (
+                state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}"
+            )
+            # add pulse
+            config["pulses"][state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}"] = {
+                "operation": "control",
+                "length": op.flux_pulse.constant.length,
+                "waveforms": {"single": state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}" + "_wf"},
+            }
+            config["waveforms"][state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}" + "_wf"] = {
+                "type": "constant",
+                "sample": op.flux_pulse.constant.amplitude,
+            }
 
         # add flux element sticky
         config["elements"][state.qubits[q].name + "_flux_sticky"] = {

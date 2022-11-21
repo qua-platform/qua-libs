@@ -20,9 +20,11 @@ For 1 OPX we have:
 
 READOUT_RESONATORS_PER_FEED_LINE = 2
 
-NUMBER_OF_QUBITS = 2
-NUMBER_OF_DRIVE_LINES = 2
+NUMBER_OF_QUBITS = 5
+NUMBER_OF_DRIVE_LINES = 5
 NUMBER_OF_QUBITS_PER_DRIVE_LINE = 1
+
+CENTRAL_QUBIT_INDEX = 0
 
 
 # layer 1: bare state QUantum Abstract Machine
@@ -193,7 +195,7 @@ state = {
             "sequence_states": {
                 "constant": [
                     {
-                        "name": "dissipative_stabilization",
+                        "name": "CZ_gate",
                         "amplitude": 0.2,
                         "amplitude_docs": "[V]",
                         "length": 200,
@@ -232,6 +234,8 @@ state = {
                 "arbitrary": [
                     {
                         "name": "slepian",
+                        "amplitude": 0.2,
+                        "length": 136,
                         "waveform": (dpss(200, 5) * 0.5)[:100].tolist(),
                         "waveform_docs": "points describing the waveform shape",
                     }
@@ -255,7 +259,27 @@ state = {
         {"direction": "y", "angle": 90},
         {"direction": "y", "angle": -90},
     ],
-    "two_qubit_gates": [],
+    "two_qubit_gates": {
+        "CZ":[
+            {
+                "conditional_qubit": i,
+                "target_qubit": CENTRAL_QUBIT_INDEX,
+                "flux_pulse":{
+                    "constant":{
+                        "name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}",
+                        "amplitude": 0.23,
+                        "length": 136
+                    },
+                    "arbitrary":{
+                        "name": "cz_0_1",
+                        "amplitude": 0.23,
+                        "length": 136
+                    },
+                }
+            }
+            for i in range(NUMBER_OF_QUBITS) if i != CENTRAL_QUBIT_INDEX
+        ],
+    },
     "running_strategy": {"running": True, "start": [], "end": []},
 }
 

@@ -1,21 +1,19 @@
 """
 readout_freq_opt.py: uses IQ blobs measurements to find optimal readout frequency
 """
-import time
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from datetime import datetime
-from qualang_tools.analysis.discriminator import two_state_discriminator
+
 
 ##################
 # State and QuAM #
