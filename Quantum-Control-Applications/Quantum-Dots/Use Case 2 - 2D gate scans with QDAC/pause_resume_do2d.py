@@ -6,7 +6,13 @@ Performs a raster scan over QDAC (or other DAC) values. At each point, performs 
 scan over the same axes. These plots are averaged and reshaped to return a large 2D dataset of the
 OPX scans patched together.
 
+The program makes use of the pause/resume functionality of the opx. The program is compiled, loaded, and launched
+on the opx. When we need to send a command to the opx, the program is paused. In the mean time, a python program running
+on the local pc is polling the opx to check the state of the program. When the program is paused, the local python
+program sends a VISA command to the qdac, and then runs job.resume() to resume the program. The structure of the QUA
+and python programs is the same so the correct commands are sent to the qdac.
 
+A triggered version of this program is available in triggered_large_scan.py.
 
 """
 
@@ -66,8 +72,6 @@ qdac_y_vals = np.linspace(0.4, 0.9, qdac_y_resolution)
 wait_time = 16 // 4
 
 
-
-
 def reshape_and_stitch(data):
     """
     Reorder the data as measured into an array of
@@ -102,10 +106,12 @@ with program() as do_large_2d:
 
     with for_(*from_array(qdac_x, qdac_x_vals)):
 
+        # this pauses the program. A command will be sent to the qdac to set it to qdac_x, and the program will be
+        # resumed.
         pause()
 
         with for_(*from_array(qdac_y, qdac_y_vals)):
-
+            # the python program will set qdac_y and resume the program after this line:
             pause()
 
             do2d('G1_sticky', opx_x_amplitude, opx_x_resolution,
@@ -149,7 +155,7 @@ if simulation:
 
     )
 
-
+    # this is commented out because pause/resume does not work on the simulator at the time of writing
     # # pause/resume program
     #
     # for qdac_x_val in qdac_x_vals:

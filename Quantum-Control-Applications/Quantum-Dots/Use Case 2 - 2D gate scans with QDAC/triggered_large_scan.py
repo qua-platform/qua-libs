@@ -1,7 +1,21 @@
 """
 Created on 31/10/2022
 @author jdh
+
+Performs a large 2d scan using both the op-x and the qdac in triggered list mode.
+
+A list of voltages is sent to each qdac channel. These voltages are a grid; at each point in this grid, the opx
+will perform a 2d scan. The scans are then stitched together to create an overall large scan.
+
+To use, the size of the opx scan at the device and the deltas in the voltages sent to the qdac must be calibrated.
+If not, there will be data missing or regions around the perimeter of the opx scans will be measured multiple times
+(in multiple opx scans).
+
+This file includes functions for setting up the qdac to the correct settings. 
+
 """
+
+
 
 import matplotlib
 import numpy as np

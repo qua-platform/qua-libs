@@ -95,6 +95,15 @@ def do2d(x_element, x_amplitude, x_resolution,
          n_averages, I, Q, I_stream, Q_stream,
          x_stream, y_stream, wait_time):
 
+    """
+    Performs a two-dimensional raster scan for a stability diagram measurement, for instance.
+
+    The x_amplitude and y_amplitude variables are set to the desired output of the OPX
+    channels. The amplitude of the waveform configured in the config is taken into account
+    and rescaled to make it the desired value set in these variables.
+
+    """
+
     x_axis = np.linspace(-x_amplitude / 2, x_amplitude / 2, x_resolution)
     y_axis = np.linspace(-y_amplitude / 2, y_amplitude / 2, y_resolution)
 
