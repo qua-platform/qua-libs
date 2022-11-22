@@ -234,8 +234,6 @@ state = {
                 "arbitrary": [
                     {
                         "name": "slepian",
-                        "amplitude": 0.2,
-                        "length": 136,
                         "waveform": (dpss(200, 5) * 0.5)[:100].tolist(),
                         "waveform_docs": "points describing the waveform shape",
                     }
@@ -265,8 +263,8 @@ state = {
                 "conditional_qubit": i,
                 "target_qubit": CENTRAL_QUBIT_INDEX,
                 "flux_pulse": {
-                    "constant": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "amplitude": 0.23, "length": 136},
-                    "arbitrary": {"name": "cz_0_1", "amplitude": 0.23, "length": 136},
+                    "constant": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "amplitude": 0.23, "length": 16},
+                    "arbitrary": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "waveform": lambda a,t: (dpss(t, 5) * a)}
                 },
             }
             for i in range(NUMBER_OF_QUBITS)

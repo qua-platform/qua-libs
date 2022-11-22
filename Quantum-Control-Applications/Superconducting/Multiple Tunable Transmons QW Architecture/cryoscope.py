@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 import scipy.optimize
-
+from datetime import datetime
 from qualang_tools.bakery import baking
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
@@ -17,8 +17,10 @@ debug = False
 simulate = True
 qubit_list = [0, 1]
 digital = []
-machine = QuAM("quam_bootstrap_state.json")
+machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+now = datetime.now()
+now = now.strftime("%m%d%Y_%H%M%S")
 
 for q in qubit_list:
     machine.qubits[q].flux_bias_points.append({"name": "jump", "value": 0.05})

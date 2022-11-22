@@ -7,6 +7,7 @@ from qm import SimulationConfig
 from scipy.optimize import curve_fit
 from quam import QuAM
 import matplotlib.pyplot as plt
+from datetime import datetime
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 
@@ -15,13 +16,16 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 # State and QuAM #
 ##################
 debug = False
-simulate = False
+simulate = True
 qubit_list = [0, 1]
 digital = []
-machine = QuAM("quam_bootstrap_state.json")
+machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
-config = machine.build_config(digital, qubit_list, gate_shape)
+now = datetime.now()
+now = now.strftime("%m%d%Y_%H%M%S")
 
+config = machine.build_config(digital, qubit_list, gate_shape)
+qubit_index = 0
 #############################################
 # Program dependent variables and functions #
 #############################################
@@ -31,10 +35,10 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # Correspondence table:
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
-interleaved_gate_index = 1
+interleaved_gate_index = 0
 max_circuit_depth = 300
 num_of_sequences = 5
-n_avg = 1
+n_avg = 2
 seed = 345324
 cooldown_time = 16
 
@@ -152,49 +156,47 @@ with program() as rb:
     I = declare(fixed)
     Q = declare(fixed)
     state = declare(bool)
-    state_st = [declare_stream() for _ in range(len(qubit_list))]
-    depth_target = declare(int)
+    state_st = declare_stream()
+    even_depth = declare(int)
 
-    for i in range(len(qubit_list)):
-        with for_(m, 0, m < num_of_sequences, m + 1):
-            # Generates the RB sequence with a gate interleaved after each Clifford
-            sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
-            # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
-            assign(depth_target, 2)
-            with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
-                # Replacing the last gate in the sequence with the sequence's inverse gate
-                # The original gate is saved in 'saved_gate' and is being restored at the end
-                assign(saved_gate, sequence_list[depth])
-                assign(sequence_list[depth], inv_gate_list[depth - 1])
+    with for_(m, 0, m < num_of_sequences, m + 1):
+        # Generates the RB sequence with a gate interleaved after each Clifford
+        sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
+        # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
+        assign(even_depth, 2)
+        with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
+            # Replacing the last gate in the sequence with the sequence's inverse gate
+            # The original gate is saved in 'saved_gate' and is being restored at the end
+            assign(saved_gate, sequence_list[depth])
+            assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-                with if_(depth == depth_target):
-                    with for_(n, 0, n < n_avg, n + 1):
-                        # Can replace by active reset
-                        wait(cooldown_time, machine.qubits[i].name)
+            with if_(depth == even_depth):
+                with for_(n, 0, n < n_avg, n + 1):
+                    # Can replace by active reset
+                    wait(cooldown_time, machine.qubits[qubit_index].name)
 
-                        align(machine.readout_resonators[i].name, machine.qubits[i].name)
+                    align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
 
-                        play_sequence(sequence_list, depth, machine.qubits[i].name)
-                        align(machine.readout_resonators[i].name, machine.qubits[i].name)
-                        # Make sure you updated the ge_threshold
-                        measure(
-                            "readout",
-                            machine.readout_resonators[i].name,
-                            None,
-                            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-                        )
-                        assign(state, I > machine.readout_resonators[i].ge_threshold)
-                        save(state, state_st[i])
-                    # always play the random gate followed by the interleaved gate
-                    assign(depth_target, depth_target + 2)
-                assign(sequence_list[depth], saved_gate)
+                    play_sequence(sequence_list, depth, machine.qubits[qubit_index].name)
+                    align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
+                    # Make sure you updated the ge_threshold
+                    measure(
+                        "readout",
+                        machine.readout_resonators[qubit_index].name,
+                        None,
+                        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    )
+                    assign(state, I > machine.readout_resonators[qubit_index].ge_threshold)
+                    save(state, state_st)
+                # always play the random gate followed by the interleaved gate
+                assign(even_depth, even_depth + 2)
+            assign(sequence_list[depth], saved_gate)
 
     with stream_processing():
-        for i in range(len(qubit_list)):
-            state_st[i].boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
-                num_of_sequences
-            ).save(f"res{i}")
+        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
+            num_of_sequences
+        ).save(f"res")
 
 
 #####################################
@@ -216,56 +218,55 @@ else:
     job = qm.execute(rb)
     res_handles = job.result_handles
     res_handles.wait_for_all_values()
-    for i in range(len(qubit_list)):
-        state = res_handles.get(f"res{i}").fetch_all()
+    state = res_handles.get(f"res").fetch_all()
 
-        value = 1 - np.average(state, axis=0)
-        error = np.std(state, axis=0)
+    value = 1 - np.average(state, axis=0)
+    error = np.std(state, axis=0)
 
-        def power_law(m, a, b, p):
-            return a * (p**m) + b
+    def power_law(m, a, b, p):
+        return a * (p**m) + b
 
-        plt.figure()
-        x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-        plt.xlabel("Number of Clifford gates")
-        plt.ylabel("Sequence Fidelity")
+    plt.figure()
+    x = np.linspace(1, max_circuit_depth, max_circuit_depth)
+    plt.xlabel("Number of Clifford gates")
+    plt.ylabel("Sequence Fidelity")
 
-        pars, cov = curve_fit(
-            f=power_law,
-            xdata=x,
-            ydata=value,
-            p0=[0.5, 0.5, 0.9],
-            bounds=(-np.inf, np.inf),
-            maxfev=2000,
-        )
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
 
-        plt.errorbar(x, value, yerr=error, marker=".")
-        plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    plt.errorbar(x, value, yerr=error, marker=".")
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
-        stdevs = np.sqrt(np.diag(cov))
+    stdevs = np.sqrt(np.diag(cov))
 
-        print("#########################")
-        print("### Fitted Parameters ###")
-        print("#########################")
-        print(
-            f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-        )
-        print("Covariance Matrix")
-        print(cov)
+    print("#########################")
+    print("### Fitted Parameters ###")
+    print("#########################")
+    print(
+        f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+    )
+    print("Covariance Matrix")
+    print(cov)
 
-        one_minus_p = 1 - pars[2]
-        r_c = one_minus_p * (1 - 1 / 2**1)
-        r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-        r_c_std = stdevs[2] * (1 - 1 / 2**1)
-        r_g_std = r_c_std / 1.875
+    one_minus_p = 1 - pars[2]
+    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
+    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_g_std = r_c_std / 1.875
 
-        print("#########################")
-        print("### Useful Parameters ###")
-        print("#########################")
-        print(
-            f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-            f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-            f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-        )
+    print("#########################")
+    print("### Useful Parameters ###")
+    print("#########################")
+    print(
+        f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+        f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+        f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    )
 
-        np.savez("rb_values", value)
+    np.savez("rb_values", value)

@@ -20,7 +20,7 @@ from qualang_tools.loops import from_array
 ##################
 experiment = "readout_opt"
 debug = True
-simulate = True
+simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
@@ -30,17 +30,16 @@ now = now.strftime("%m%d%Y_%H%M%S")
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
+cz = machine.two_qubit_gates.CZ[0]
+print(f"SWAP spectroscopy with target qubit {cz.target_qubit} and conditional qubit {cz.conditional_qubit}")
 ##############################
 # Program-specific variables #
 ##############################
 # FLux pulse amplitude pre-factor
 span = 0.2
-da = 0.001
+da = 0.01
 # Number of averages
-n_avg = 1e3
-
-cz = machine.two_qubit_gates.CZ[0]
-print(f"SWAP spectroscopy with target qubit {cz.target_qubit} and conditional qubit {cz.conditional_qubit}")
+n_avg = 100
 
 # The flux amplitude is chosen to reach the 02-11 avoided crossing found by performing a flux versus frequency spectroscopy
 # FLux pulse waveform generation
@@ -68,7 +67,7 @@ def baked_waveform(waveform, pulse_duration):
 # Baked flux pulse segments
 square_pulse_segments = baked_waveform(flux_waveform, flux_len)
 # Amplitude scan
-amps = np.arange(flux_amp - span, flux_amp + span + da / 2, da)
+amps = np.arange(1 - span, 1 + span + da / 2, da)
 # Qubit cooldown time
 cooldown_time = int(5 * machine.qubits[cz.target_qubit].t1 * 1e9 // 4)
 
@@ -91,15 +90,15 @@ with program() as SWAP_spectroscopy:
             # Notice it's <= to include t_max (This is only for integers!)
             with for_(segment, 0, segment <= flux_len, segment + 1):
                 # Cooldown to have the qubit in the ground state
-                # wait(cooldown_time)
+                wait(cooldown_time)
                 # CZ 02-11 protocol
                 # Play pi on both qubits
                 play("x180", machine.qubits[cz.conditional_qubit].name)
-                play("x90", machine.qubits[cz.target_qubit].name)
+                play("x180", machine.qubits[cz.target_qubit].name)
                 # global align
                 align()
                 # Wait some additional time to be sure that the pulses don't overlap, this can be calibrated
-                wait(20)
+                # wait(4)
                 # Play flux pulse with 1ns resolution
                 with switch_(segment):
                     for j in range(0, flux_len + 1):
@@ -110,7 +109,7 @@ with program() as SWAP_spectroscopy:
                 # global align
                 align()
                 # Wait some additional time to be sure that the pulses don't overlap, this can be calibrated
-                wait(20)
+                # wait(20)
                 # q0 state readout
                 measure(
                     "readout",
@@ -160,3 +159,4 @@ else:
         plt.xlabel("Flux pulse time [ns]")
         plt.ylabel("Flux voltage wrt sweet spot [V]")
         plt.title("02-11 conditional on q1, measurement on q0")
+        plt.pause(0.01)
