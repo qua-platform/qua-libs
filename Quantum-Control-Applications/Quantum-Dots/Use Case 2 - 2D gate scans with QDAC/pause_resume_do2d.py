@@ -241,7 +241,7 @@ else:
                 job.resume()
 
     # fetch the data
-    results = fetching_tool(job, ["I", "Q", 'x', 'y'], mode="live")
+    results = fetching_tool(job, ["I", "Q", 'x', 'y', 'iteration'], mode="live")
 
     # Live plot
     fig = plt.figure()

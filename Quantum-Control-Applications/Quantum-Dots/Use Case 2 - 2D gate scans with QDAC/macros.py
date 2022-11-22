@@ -162,3 +162,6 @@ def do2d(x_element, x_amplitude, x_resolution,
 
         ramp_to_zero(x_element)
 
+def generic_macro(*args):
+
+    pass
