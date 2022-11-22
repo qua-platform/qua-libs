@@ -264,7 +264,11 @@ state = {
                 "target_qubit": CENTRAL_QUBIT_INDEX,
                 "flux_pulse": {
                     "constant": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "amplitude": 0.23, "length": 16},
-                    "arbitrary": {"name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}", "waveform": lambda a,t: (dpss(t, 5) * a)}
+                    "arbitrary": {
+                        "name": f"cz_{i}_{CENTRAL_QUBIT_INDEX}",
+                        "waveform": (dpss(200, 5) * 0.5)[:100].tolist(),
+                        "waveform_docs": "points describing the waveform shape",
+                    },
                 },
             }
             for i in range(NUMBER_OF_QUBITS)

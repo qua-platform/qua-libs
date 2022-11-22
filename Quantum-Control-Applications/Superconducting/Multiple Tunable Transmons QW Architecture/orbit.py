@@ -26,6 +26,7 @@ now = now.strftime("%m%d%Y_%H%M%S")
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 qubit_index = 0
+config["elements"][f"qubit_{qubit_index}_ghost"] = config["elements"][f"qubit_{qubit_index}"]
 #############################################
 # Program dependent variables and functions #
 #############################################
@@ -37,7 +38,7 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 1
 depth_target = 10
-max_circuit_depth = depth_target+0*300
+max_circuit_depth = depth_target + 0 * 300
 num_of_sequences = 5
 n_avg = 2
 seed = 345324
@@ -63,7 +64,7 @@ def generate_sequence(interleaved_gate_index):
         # interleaved gate
         assign(step, interleaved_gate_index)
         assign(current_state, cayley[current_state * 24 + step])
-        assign(sequence[i + 1], step+24)
+        assign(sequence[i + 1], step + 24)
         assign(inv_gate[i + 1], inv_list[current_state])
 
     return sequence, inv_gate
@@ -77,93 +78,110 @@ def play_sequence(sequence_list, depth, qubit_name, a):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
                 wait(x180_len // 4, qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(1):
                 play("x180", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(2):
                 play("y180", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(3):
                 play("y180", qubit_name)
                 play("x180", qubit_name)
+                wait(2 * x180_len // 4, qubit_name + "_ghost")
             with case_(4):
                 play("x90", qubit_name)
                 play("y90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(5):
                 play("x90", qubit_name)
                 play("y-90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(6):
                 play("x-90", qubit_name)
                 play("y90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(7):
                 play("x-90", qubit_name)
                 play("y-90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(8):
                 play("y90", qubit_name)
                 play("x90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(9):
                 play("y90", qubit_name)
                 play("x-90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(10):
                 play("y-90", qubit_name)
                 play("x90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(11):
                 play("y-90", qubit_name)
                 play("x-90", qubit_name)
+                wait(x180_len // 4, qubit_name + "_ghost")
             with case_(12):
                 play("x90", qubit_name)
+                wait(x180_len // 8, qubit_name + "_ghost")
             with case_(13):
                 play("x-90", qubit_name)
+                wait(x180_len // 8, qubit_name + "_ghost")
             with case_(14):
                 play("y90", qubit_name)
+                wait(x180_len // 8, qubit_name + "_ghost")
             with case_(15):
                 play("y-90", qubit_name)
+                wait(x180_len // 8, qubit_name + "_ghost")
             with case_(16):
                 play("x-90", qubit_name)
                 play("y90", qubit_name)
                 play("x90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(17):
                 play("x-90", qubit_name)
                 play("y-90", qubit_name)
                 play("x90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(18):
                 play("x180", qubit_name)
                 play("y90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(19):
                 play("x180", qubit_name)
                 play("y-90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(20):
                 play("y180", qubit_name)
                 play("x90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(21):
                 play("y180", qubit_name)
                 play("x-90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(22):
                 play("x90", qubit_name)
                 play("y90", qubit_name)
                 play("x90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
             with case_(23):
                 play("x-90", qubit_name)
                 play("y90", qubit_name)
                 play("x-90", qubit_name)
+                wait(3 * x180_len // 8, qubit_name + "_ghost")
 
-            with case_(1+24):
-                wait(4, qubit_name)
-                play("x180"*amp(a), qubit_name)
-            with case_(2+24):
-                wait(4, qubit_name)
-                play("y180"*amp(a), qubit_name)
-            with case_(12+24):
-                wait(4, qubit_name)
-                play("x90"*amp(a), qubit_name)
-            with case_(13+24):
-                wait(4, qubit_name)
-                play("x-90"*amp(a), qubit_name)
-            with case_(14+24):
-                wait(4, qubit_name)
-                play("y90"*amp(a), qubit_name)
-            with case_(15+24):
-                wait(4, qubit_name)
-                play("y-90"*amp(a), qubit_name)
-
+            with case_(1 + 24):
+                play("x180" * amp(a), qubit_name + "_ghost")
+            with case_(2 + 24):
+                play("y180" * amp(a), qubit_name + "_ghost")
+            with case_(12 + 24):
+                play("x90" * amp(a), qubit_name + "_ghost")
+            with case_(13 + 24):
+                play("x-90" * amp(a), qubit_name + "_ghost")
+            with case_(14 + 24):
+                play("y90" * amp(a), qubit_name + "_ghost")
+            with case_(15 + 24):
+                play("y-90" * amp(a), qubit_name + "_ghost")
 
 
 ###################
@@ -192,15 +210,23 @@ with program() as rb:
             assign(sequence_list[depth], inv_gate_list[depth - 1])
 
             with if_(depth == even_depth):
-                with if_(depth == 2*depth_target):
+                with if_(depth == 2 * depth_target):
                     with for_(n, 0, n < n_avg, n + 1):
                         # Can replace by active reset
                         wait(cooldown_time, machine.qubits[qubit_index].name)
 
-                        align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
+                        align(
+                            machine.readout_resonators[qubit_index].name,
+                            machine.qubits[qubit_index].name,
+                            machine.qubits[qubit_index].name + "_ghost",
+                        )
 
                         play_sequence(sequence_list, depth, machine.qubits[qubit_index].name, 1.5)
-                        align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
+                        align(
+                            machine.readout_resonators[qubit_index].name,
+                            machine.qubits[qubit_index].name,
+                            machine.qubits[qubit_index].name + "_ghost",
+                        )
                         # Make sure you updated the ge_threshold
                         measure(
                             "readout",
@@ -270,9 +296,7 @@ else:
     print("#########################")
     print("### Fitted Parameters ###")
     print("#########################")
-    print(
-        f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-    )
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
     print("Covariance Matrix")
     print(cov)
 
