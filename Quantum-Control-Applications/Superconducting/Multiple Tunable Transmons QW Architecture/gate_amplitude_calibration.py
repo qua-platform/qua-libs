@@ -17,7 +17,8 @@ from datetime import datetime
 ##################
 # State and QuAM #
 ##################
-experiment = "drag_cal"
+gate = "x90"
+experiment = gate + "_cal"
 debug = True
 simulate = False
 fit_data = True
@@ -28,12 +29,18 @@ gate_shape = "drag_cosine"
 now = datetime.now()
 now = now.strftime("%m%d%Y_%H%M%S")
 
-machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
-machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
-config = machine.build_config(digital, qubit_list, gate_shape)
+# Set gate amplitude to max
+base_amp = []
+if gate == "x90":
+    for i in qubit_list:
+        machine.qubits[i].driving.drag_cosine.angle2volt.deg90 = 0.3
+        base_amp.append(machine.qubits[i].driving.drag_cosine.angle2volt.deg90)
+elif gate == "x180":
+    for i in qubit_list:
+        machine.qubits[i].driving.drag_cosine.angle2volt.deg180 = 0.49
+        base_amp.append(machine.qubits[i].driving.drag_cosine.angle2volt.deg180)
 
-# set the drag_coef in the configuration
-drag_coef = 1
+config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -47,15 +54,11 @@ cooldown_time = 5 * u.us // 4
 a_min = 0.2
 a_max = 1
 da = 0.01
-
 amps = np.arange(a_min, a_max + da / 2, da)
 
-iter_min = 0
-iter_max = 25
-d = 1
-iters = np.arange(iter_min, iter_max + 0.1, d)
+n_pulse_max = 13
 
-with program() as drag_cal:
+with program() as gate_cal:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
     a = declare(fixed)
@@ -66,6 +69,7 @@ with program() as drag_cal:
     b = declare(fixed)
     it = declare(int)
     pulses = declare(int)
+    n_pulse = declare(int)
     state = [declare(bool) for _ in range(len(qubit_list))]
     state_st = [declare_stream() for _ in range(len(qubit_list))]
 
@@ -77,11 +81,10 @@ with program() as drag_cal:
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(a, amps)):
-                with for_(*from_array(it, iters)):
-                    with for_(pulses, iter_min, pulses <= it, pulses + d):
-                        play("x180" * amp(1, 0, 0, a), machine.qubits[i].name)
-                        play("x180" * amp(-1, 0, 0, -a), machine.qubits[i].name)
+            with for_(n_pulse, 1, n_pulse < n_pulse_max + 1, n_pulse + 1):
+                with for_(*from_array(a, amps)):
+                    with for_(pulses, 0, pulses < n_pulse, pulses + 1):
+                        play(gate * amp(a), machine.qubits[i].name)
                     align()
                     measure(
                         "readout",
@@ -95,15 +98,15 @@ with program() as drag_cal:
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
                     save(state[i], state_st[i])
-            save(n[i], n_st[i])
+                save(n[i], n_st[i])
 
         align()
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(iters)).buffer(len(amps)).average().save(f"I{i}")
-            Q_st[i].buffer(len(iters)).buffer(len(amps)).average().save(f"Q{i}")
-            state_st[i].boolean_to_int().buffer(len(iters)).buffer(len(amps)).average().save(f"state{i}")
+            I_st[i].buffer(n_pulse_max).buffer(len(amps)).average().save(f"I{i}")
+            Q_st[i].buffer(n_pulse_max).buffer(len(amps)).average().save(f"Q{i}")
+            state_st[i].boolean_to_int().buffer(n_pulse_max).buffer(len(amps)).average().save(f"state{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -116,12 +119,12 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 #######################
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, drag_cal, simulation_config)
+    job = qmm.simulate(config, gate_cal, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(drag_cal)
+    job = qm.execute(gate_cal)
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
@@ -150,51 +153,34 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    iters,
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                    np.arange(1, n_pulse_max + 1),
+                    amps * base_amp,
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
-                    "Number of iterations",
-                    "x180 amplitude [V]",
-                    f"DRAG coefficient calibration for qubit {q}",
+                    "Number of pulses",
+                    gate + " amplitude [V]" f"{gate} amp calibration for qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
                     plot_options={"cmap": "magma"},
                 )
         fig = plt.figure()
-        for it in [iter_min, int(0.25 * iter_max), int(0.5 * iter_max), int(0.75 * iter_max), iter_max]:
-            z_I = np.polyfit(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"][iters == it]
-            )
-            z_Q = np.polyfit(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["Q"][iters == it]
-            )
-
+        for it in [1, int(0.25 * n_pulse_max), int(0.5 * n_pulse_max), int(0.75 * n_pulse_max), n_pulse_max]:
             plot_demodulated_data_1d(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                qubit_data[q]["I"][iters == it],
-                qubit_data[q]["Q"][iters == it],
+                amps * base_amp,
+                qubit_data[q]["I"][it],
+                qubit_data[q]["Q"][it],
                 "x180 amplitude [V]",
                 f"Power rabi {q}",
                 amp_and_phase=True,
                 fig=fig,
                 plot_options={"marker": "."},
             )
-            plt.plot(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                np.poly1d(z_I),
-                label=f"drag={-z_I[1]/2/z_I[0]}",
-            )
-            plt.plot(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                np.poly1d(z_Q),
-                label=f"drag={-z_Q[1]/2/z_Q[0]}",
-            )
+
         # Update state with new DRAG coefficient
-        print(f"Previous DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
+        print(f"Previous {gate} amplitude: {base_amp:.1f} V")
         # Chose I, Q or amp...
-        machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
-        print(f"New xDRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
+        # machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
+        print(f"New {gate} amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")
