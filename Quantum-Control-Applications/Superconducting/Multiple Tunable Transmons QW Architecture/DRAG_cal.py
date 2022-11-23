@@ -32,15 +32,12 @@ machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
 machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
 config = machine.build_config(digital, qubit_list, gate_shape)
 
-# set the drag_coef in the configuration
-drag_coef = 1
-
 ###################
 # The QUA program #
 ###################
 u = unit()
 
-n_avg = 4e3
+n_avg = 1000
 
 cooldown_time = 5 * u.us // 4
 
@@ -48,7 +45,7 @@ a_min = 0.2
 a_max = 1
 da = 0.01
 
-amps = np.arange(a_min, a_max + da / 2, da)
+alpha = np.arange(a_min, a_max + da / 2, da)
 
 iter_min = 0
 iter_max = 25
@@ -77,7 +74,7 @@ with program() as drag_cal:
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(a, amps)):
+            with for_(*from_array(a, alpha)):
                 with for_(*from_array(it, iters)):
                     with for_(pulses, iter_min, pulses <= it, pulses + d):
                         play("x180" * amp(1, 0, 0, a), machine.qubits[i].name)
@@ -101,9 +98,9 @@ with program() as drag_cal:
 
     with stream_processing():
         for i in range(len(qubit_list)):
-            I_st[i].buffer(len(iters)).buffer(len(amps)).average().save(f"I{i}")
-            Q_st[i].buffer(len(iters)).buffer(len(amps)).average().save(f"Q{i}")
-            state_st[i].boolean_to_int().buffer(len(iters)).buffer(len(amps)).average().save(f"state{i}")
+            I_st[i].buffer(len(iters)).buffer(len(alpha)).average().save(f"I{i}")
+            Q_st[i].buffer(len(iters)).buffer(len(alpha)).average().save(f"Q{i}")
+            state_st[i].boolean_to_int().buffer(len(iters)).buffer(len(alpha)).average().save(f"state{i}")
             n_st[i].save(f"iteration{i}")
 
 #####################################
@@ -137,7 +134,7 @@ else:
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
-        my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"state{i}", f"iteration{q}"], mode="live")
+        my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"state{q}", f"iteration{q}"], mode="live")
         while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
             # Fetch results
             data = my_results.fetch_all()
@@ -151,50 +148,45 @@ else:
             if debug:
                 plot_demodulated_data_2d(
                     iters,
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                    alpha,
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
                     "Number of iterations",
-                    "x180 amplitude [V]",
+                    "DRAG coefficient",
                     f"DRAG coefficient calibration for qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
                     plot_options={"cmap": "magma"},
                 )
         fig = plt.figure()
+        colors = ["b", "r", "g", "m", "c"]
+        i = 0
         for it in [iter_min, int(0.25 * iter_max), int(0.5 * iter_max), int(0.75 * iter_max), iter_max]:
-            z_I = np.polyfit(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"][iters == it]
+            z_I = np.polyfit(alpha, qubit_data[q]["I"][:, iters == it], 2)
+            z_Q = np.polyfit(alpha, qubit_data[q]["Q"][:, iters == it], 2)
+            plt.subplot(211)
+            plt.plot(alpha, qubit_data[q]["I"][:, iters == it], colors[i] + ".", label=f"{it} iterations")
+            plt.plot(
+                alpha, np.poly1d(np.squeeze(z_I))(alpha), colors[i] + "-", label=f"drag={(-z_I[1]/2/z_I[0])[0]:.3f}"
             )
-            z_Q = np.polyfit(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["Q"][iters == it]
+            plt.ylabel("I [a.u.]")
+            plt.subplot(212)
+            plt.plot(alpha, qubit_data[q]["Q"][:, iters == it], colors[i] + ".", label=f"{it} iterations")
+            plt.plot(
+                alpha, np.poly1d(np.squeeze(z_Q))(alpha), colors[i] + "-", label=f"drag={(-z_Q[1]/2/z_Q[0])[0]:.3f}"
             )
+            plt.xlabel("DRAG coefficient alpha")
+            plt.ylabel("Q [a.u.]")
+            plt.title(f"DRAG calibration for qubit {q}")
 
-            plot_demodulated_data_1d(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                qubit_data[q]["I"][iters == it],
-                qubit_data[q]["Q"][iters == it],
-                "x180 amplitude [V]",
-                f"Power rabi {q}",
-                amp_and_phase=True,
-                fig=fig,
-                plot_options={"marker": "."},
-            )
-            plt.plot(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                np.poly1d(z_I),
-                label=f"drag={-z_I[1]/2/z_I[0]}",
-            )
-            plt.plot(
-                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-                np.poly1d(z_Q),
-                label=f"drag={-z_Q[1]/2/z_Q[0]}",
-            )
+            plt.tight_layout()
+            i += 1
+        plt.legend(ncol=i)
         # Update state with new DRAG coefficient
-        print(f"Previous DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
+        print(f"Previous DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.3f}")
         # Chose I, Q or amp...
-        machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
-        print(f"New xDRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
+        machine.qubits[q].driving.drag_cosine.alpha = (-z_I[1] / 2 / z_I[0])[0]
+        print(f"New DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.3f}")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

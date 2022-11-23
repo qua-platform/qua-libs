@@ -47,13 +47,13 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 ###################
 u = unit()
 
-n_avg = 4e3
+n_avg = 4e4
 
 cooldown_time = 5 * u.us // 4
 
 a_min = 0.2
 a_max = 1
-da = 0.01
+da = 0.05
 amps = np.arange(a_min, a_max + da / 2, da)
 
 n_pulse_max = 13
@@ -118,7 +118,7 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 # Simulate or execute #
 #######################
 if simulate:
-    simulation_config = SimulationConfig(duration=1000)
+    simulation_config = SimulationConfig(duration=10000)
     job = qmm.simulate(config, gate_cal, simulation_config)
     job.get_simulated_samples().con1.plot()
 
@@ -140,10 +140,11 @@ else:
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
-        my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"state{i}", f"iteration{q}"], mode="live")
+        my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"state{q}", f"iteration{q}"], mode="live")
         while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
             # Fetch results
             data = my_results.fetch_all()
+
             qubit_data[q]["I"] = data[0]
             qubit_data[q]["Q"] = data[1]
             qubit_data[q]["state"] = data[2]
@@ -154,21 +155,22 @@ else:
             if debug:
                 plot_demodulated_data_2d(
                     np.arange(1, n_pulse_max + 1),
-                    amps * base_amp,
+                    amps * base_amp[q],
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
                     "Number of pulses",
-                    gate + " amplitude [V]" f"{gate} amp calibration for qubit {q}",
+                    gate + " amplitude [V]",
+                    f"{gate} amp calibration for qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
                     plot_options={"cmap": "magma"},
                 )
         fig = plt.figure()
-        for it in [1, int(0.25 * n_pulse_max), int(0.5 * n_pulse_max), int(0.75 * n_pulse_max), n_pulse_max]:
+        for it in [1, int(0.25 * n_pulse_max), int(0.5 * n_pulse_max), int(0.75 * n_pulse_max), n_pulse_max - 1]:
             plot_demodulated_data_1d(
-                amps * base_amp,
-                qubit_data[q]["I"][it],
-                qubit_data[q]["Q"][it],
+                amps * base_amp[q],
+                qubit_data[q]["I"][:, it],
+                qubit_data[q]["Q"][:, it],
                 "x180 amplitude [V]",
                 f"Power rabi {q}",
                 amp_and_phase=True,
@@ -177,7 +179,7 @@ else:
             )
 
         # Update state with new DRAG coefficient
-        print(f"Previous {gate} amplitude: {base_amp:.1f} V")
+        print(f"Previous {gate} amplitude: {base_amp[q]:.1f} V")
         # Chose I, Q or amp...
         # machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
         print(f"New {gate} amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")

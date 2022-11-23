@@ -46,7 +46,7 @@ state = {
         "config.get_qubit_IF",
         "config.nullify_qubits",
     ],
-    "network": {"qop_ip": "172.16.2.103", "port": 85},
+    "network": {"qop_ip": "172.16.2.103", "port": 80},
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
