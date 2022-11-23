@@ -248,9 +248,7 @@ else:
     print("#########################")
     print("### Fitted Parameters ###")
     print("#########################")
-    print(
-        f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-    )
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
     print("Covariance Matrix")
     print(cov)
 

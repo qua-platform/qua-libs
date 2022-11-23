@@ -16,7 +16,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 # State and QuAM #
 ##################
 debug = False
-simulate = True
+simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
