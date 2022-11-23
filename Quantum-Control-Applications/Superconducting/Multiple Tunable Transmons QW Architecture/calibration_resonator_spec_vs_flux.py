@@ -145,5 +145,7 @@ else:
 
     # need to update quam with important flux bias points in the console
     # machine.get_flux_bias_point(0, "zero_frequency_point").value = 0.115
+    # And choose three points on the resonator frequency vs flux parabola to fit it and get the f_res vs flux correspondence
+    # machine.set_f_res_vs_flux_vertex(0, [(-0.1, 4.46e9), (0, 4.45e9), (0.1, 4.465e9)])
     # machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
     # machine.save("latest_quam.json")

@@ -45,6 +45,8 @@ state = {
         "config.get_readout_IF",
         "config.get_qubit_IF",
         "config.nullify_qubits",
+        "config.set_f_res_vs_flux_vertex",
+        "config.get_f_res_from_flux",
     ],
     "network": {"qop_ip": "172.16.2.103", "port": 80},
     "controllers": ["con1"],
@@ -94,6 +96,12 @@ state = {
             "readout_fidelity": 0.84,
             "q_factor": 1e4,
             "chi": 1e6,
+            "f_res_vs_flux": {
+                "a": 0.0,
+                "b": 0.0,
+                "c": 0.0,
+            },
+            "f_res_vs_flux_docs": "Vertex of the resonator frequency vs flux bias parabola as a * bias**2 + b * bias + c",
             "wiring": {
                 "readout_line_index": 0,
                 "readout_line_index_docs": "Index of the readout line connected to this resonator.",

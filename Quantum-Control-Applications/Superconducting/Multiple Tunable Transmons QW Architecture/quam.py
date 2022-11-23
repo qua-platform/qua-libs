@@ -1203,6 +1203,116 @@ class Readout_linesList(object):
         object.__setattr__(self, key, value)
 
 
+class F_res_vs_flux(object):
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def a(self) -> float:
+        """"""
+
+        value = self._quam._json[self._path + "a"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @a.setter
+    def a(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "a")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if len(self._index) > 0:
+            value_ref = self._quam._json[self._path + "a"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "a"] = value
+
+    @property
+    def b(self) -> float:
+        """"""
+
+        value = self._quam._json[self._path + "b"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @b.setter
+    def b(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "b")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if len(self._index) > 0:
+            value_ref = self._quam._json[self._path + "b"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "b"] = value
+
+    @property
+    def c(self) -> float:
+        """"""
+
+        value = self._quam._json[self._path + "c"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @c.setter
+    def c(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "c")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if len(self._index) > 0:
+            value_ref = self._quam._json[self._path + "c"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "c"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self, v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) " "has been loaded. Aborting printing.")
+        import json
+
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(
+                f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor"
+            )
+        object.__setattr__(self, key, value)
+
+
 class Correction_matrix(object):
     def __init__(self, quam, path, index, schema):
         """"""
@@ -1680,6 +1790,13 @@ class Readout_resonator(object):
             self._quam._json[self._path + "chi"] = value
 
     @property
+    def f_res_vs_flux(self) -> F_res_vs_flux:
+        """Vertex of the resonator frequency vs flux bias parabola as a * bias**2 + b * bias + c"""
+        return F_res_vs_flux(
+            self._quam, self._path + "f_res_vs_flux/", self._index, self._schema["properties"]["f_res_vs_flux"]
+        )
+
+    @property
     def wiring(self) -> Wiring:
         """"""
         return Wiring(self._quam, self._path + "wiring/", self._index, self._schema["properties"]["wiring"])
@@ -1783,6 +1900,26 @@ class Readout_resonatorsList(object):
           },
           "chi": {
             "type": "number"
+          },
+          "f_res_vs_flux": {
+            "type": "object",
+            "title": "f_res_vs_flux",
+            "properties": {
+              "a": {
+                "type": "number"
+              },
+              "b": {
+                "type": "number"
+              },
+              "c": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "a",
+              "b",
+              "c"
+            ]
           },
           "wiring": {
             "type": "object",
@@ -5491,6 +5628,16 @@ class QuAM(object):
                             "readout_fidelity": {"type": "number"},
                             "q_factor": {"type": "number"},
                             "chi": {"type": "number"},
+                            "f_res_vs_flux": {
+                                "type": "object",
+                                "title": "f_res_vs_flux",
+                                "properties": {
+                                    "a": {"type": "number"},
+                                    "b": {"type": "number"},
+                                    "c": {"type": "number"},
+                                },
+                                "required": ["a", "b", "c"],
+                            },
                             "wiring": {
                                 "type": "object",
                                 "title": "wiring",
@@ -5526,6 +5673,7 @@ class QuAM(object):
                             "readout_fidelity",
                             "q_factor",
                             "chi",
+                            "f_res_vs_flux",
                             "wiring",
                         ],
                     },
@@ -6186,6 +6334,18 @@ class QuAM(object):
         with _add_path(os.path.dirname(os.path.abspath(__file__))):
             import config
         return config.nullify_qubits(self, cond, q_list, indx)
+
+    def set_f_res_vs_flux_vertex(self, index: int, three_points: List):
+        """"""
+        with _add_path(os.path.dirname(os.path.abspath(__file__))):
+            import config
+        return config.set_f_res_vs_flux_vertex(self, index, three_points)
+
+    def get_f_res_from_flux(self, index: int, flux_bias: float):
+        """"""
+        with _add_path(os.path.dirname(os.path.abspath(__file__))):
+            import config
+        return config.get_f_res_from_flux(self, index, flux_bias)
 
     def _json_view(self):
         result = {}

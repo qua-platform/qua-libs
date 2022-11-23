@@ -679,6 +679,34 @@ def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None):
     raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}.")
 
 
+def _calc_parabola_vertex(x1, y1, x2, y2, x3, y3):
+    denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
+    A = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
+    B = (x3 * x3 * (y1 - y2) + x2 * x2 * (y3 - y1) + x1 * x1 * (y2 - y3)) / denom
+    C = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + x1 * x2 * (x1 - x2) * y3) / denom
+
+    return A, B, C
+
+
+def set_f_res_vs_flux_vertex(state: QuAM, index: int, three_points: List):
+    a, b, c = _calc_parabola_vertex(
+        three_points[0][0],
+        three_points[0][1],
+        three_points[1][0],
+        three_points[1][1],
+        three_points[2][0],
+        three_points[2][1],
+    )
+    state.readout_resonators[index].f_res_vs_flux.a = a
+    state.readout_resonators[index].f_res_vs_flux.b = b
+    state.readout_resonators[index].f_res_vs_flux.c = c
+
+
+def get_f_res_from_flux(state: QuAM, index: int, flux_bias: float):
+    vertex = state.readout_resonators[index].f_res_vs_flux
+    return vertex.a * flux_bias**2 + vertex.b * flux_bias + vertex.c
+
+
 def get_length(state: QuAM, index, operation):
 
     try:
