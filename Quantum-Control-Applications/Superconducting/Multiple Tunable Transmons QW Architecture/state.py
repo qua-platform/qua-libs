@@ -134,7 +134,7 @@ state = {
             "t2star": 1e-6,
             "t2star_docs": "Dephasing time T2* [s]",
             "ramsey_det": 10e6,
-            "ramsey_det_dcos": "Detuning to observer ramsey fringes [Hz]",
+            "ramsey_det_dcos": "Detuning to observe ramsey fringes [Hz]",
             "driving": {
                 "drag_gaussian": {
                     "gate_len": 60e-9,

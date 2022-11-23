@@ -9,7 +9,7 @@ import numpy as np
 from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
+from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from datetime import datetime
@@ -148,23 +148,52 @@ else:
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
-        #     if debug and not fit_data:
-        #         plot_demodulated_data_1d(
-        #             amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
-        #             qubit_data[q]["I"],
-        #             qubit_data[q]["Q"],
-        #             "x180 amplitude [V]",
-        #             f"Power rabi {q}",
-        #             amp_and_phase=False,
-        #             fig=fig,
-        #             plot_options={"marker": "."},
-        #         )
-        #
-        # # Update state with new resonance frequency
-        # if fit_data:
-        #     print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
-        #     machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit_I["amp"][0])
-        #     print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
+            if debug:
+                plot_demodulated_data_2d(
+                    iters,
+                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                    qubit_data[q]["I"],
+                    qubit_data[q]["Q"],
+                    "x180 amplitude [V]",
+                    f"Power rabi {q}",
+                    amp_and_phase=True,
+                    fig=fig,
+                    plot_options={"cmap": "magma"},
+                )
+        fig = plt.figure()
+        for it in [iter_min, int(0.25 * iter_max), int(0.5 * iter_max), int(0.75 * iter_max), iter_max]:
+            z_I = np.polyfit(
+                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"][iters == it]
+            )
+            z_Q = np.polyfit(
+                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["Q"][iters == it]
+            )
+
+            plot_demodulated_data_1d(
+                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                qubit_data[q]["I"][iters == it],
+                qubit_data[q]["Q"][iters == it],
+                "x180 amplitude [V]",
+                f"Power rabi {q}",
+                amp_and_phase=True,
+                fig=fig,
+                plot_options={"marker": "."},
+            )
+            plt.plot(
+                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                np.poly1d(z_I),
+                label=f"drag={-z_I[1]/2/z_I[0]}",
+            )
+            plt.plot(
+                amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                np.poly1d(z_Q),
+                label=f"drag={-z_Q[1]/2/z_Q[0]}",
+            )
+        # Update state with new DRAG coefficient
+        print(f"Previous DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
+        # Chose I, Q or amp...
+        machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
+        print(f"New xDRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.1f} V")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")
