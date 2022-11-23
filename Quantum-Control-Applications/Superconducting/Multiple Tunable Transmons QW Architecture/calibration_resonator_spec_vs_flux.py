@@ -6,7 +6,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
@@ -24,10 +23,6 @@ qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
 gate_shape = "drag_cosine"
-
-machine.readout_lines[0].lo_freq = 6.5e9
-machine.readout_resonators[0].f_res = 6.6457e9
-machine.readout_resonators[1].f_res = 6.7057e9
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
