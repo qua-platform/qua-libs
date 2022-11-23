@@ -6163,7 +6163,7 @@ class QuAM(object):
             import config
         return config.set_length(self, index, operation, length)
 
-    def get_flux_bias_point(self, index: int, flux_bias_point):
+    def get_flux_bias_point(self, index: int, flux_bias_point: str = None):
         """"""
         with _add_path(os.path.dirname(os.path.abspath(__file__))):
             import config

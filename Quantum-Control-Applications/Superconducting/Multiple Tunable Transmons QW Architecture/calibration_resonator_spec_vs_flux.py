@@ -17,8 +17,9 @@ from qualang_tools.loops import from_array
 ##################
 # State and QuAM #
 ##################
+experiment = "_resonator_spectroscopy_vs_flux"
 debug = True
-simulate = False
+simulate = True
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("quam_bootstrap_state.json")
@@ -32,11 +33,11 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 u = unit()
 
 n_avg = 1e3
-cooldown_time = 5 * u.us // 4
+cooldown_time = 16 + 0 * 5 * u.us // 4
 
 # Frequency scan
 freq_span = 25e6
-df = 0.5e6
+df = 10e6
 freq = [
     np.arange(machine.get_readout_IF(i) - freq_span, machine.get_readout_IF(i) + freq_span + df / 2, df)
     for i in qubit_list
@@ -98,7 +99,7 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 # Simulate or execute #
 #######################
 if simulate:
-    simulation_config = SimulationConfig(duration=1000)
+    simulation_config = SimulationConfig(duration=10000)
     job = qmm.simulate(config, resonator_spec, simulation_config)
     job.get_simulated_samples().con1.plot()
 
@@ -143,3 +144,6 @@ else:
                 )
 
     # need to update quam with important flux bias points in the console
+    # machine.get_flux_bias_point(0, "zero_frequency_point").value = 0.115
+    # machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+    # machine.save("latest_quam.json")

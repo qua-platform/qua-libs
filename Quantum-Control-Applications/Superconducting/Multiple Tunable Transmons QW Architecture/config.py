@@ -669,7 +669,10 @@ def get_sequence_state(state: QuAM, index: int, sequence_state: str):
     raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
 
 
-def get_flux_bias_point(state: QuAM, index: int, flux_bias_point):
+def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None):
+    if flux_bias_point is None:
+        qprint(state.qubits[index].flux_bias_points)
+        return state.qubits[index].flux_bias_points
     for bias in state.qubits[index].flux_bias_points:
         if bias.name == flux_bias_point:
             return bias
