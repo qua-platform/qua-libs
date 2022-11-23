@@ -303,7 +303,7 @@ class Digital_waveformsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -1186,7 +1186,7 @@ class Readout_linesList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -1827,7 +1827,7 @@ class Readout_resonatorsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -2296,7 +2296,7 @@ class Drive_linesList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -3344,7 +3344,7 @@ class Flux_bias_pointsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -3520,7 +3520,7 @@ class ConstantList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -3569,54 +3569,6 @@ class Arbitrary(object):
             value_ref[self._index[-1]] = value
         else:
             self._quam._json[self._path + "name"] = value
-
-    @property
-    def amplitude(self) -> float:
-        """"""
-
-        value = self._quam._json[self._path + "amplitude"]
-        for i in range(len(self._index)):
-            value = value[self._index[i]]
-        return value
-
-    @amplitude.setter
-    def amplitude(self, value: float):
-        """"""
-        if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "amplitude")
-            self._quam._updates["indexes"].append(self._index)
-            self._quam._updates["values"].append(value)
-        if len(self._index) > 0:
-            value_ref = self._quam._json[self._path + "amplitude"]
-            for i in range(len(self._index) - 1):
-                value_ref = value_ref[self._index[i]]
-            value_ref[self._index[-1]] = value
-        else:
-            self._quam._json[self._path + "amplitude"] = value
-
-    @property
-    def length(self) -> int:
-        """"""
-
-        value = self._quam._json[self._path + "length"]
-        for i in range(len(self._index)):
-            value = value[self._index[i]]
-        return value
-
-    @length.setter
-    def length(self, value: int):
-        """"""
-        if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "length")
-            self._quam._updates["indexes"].append(self._index)
-            self._quam._updates["values"].append(value)
-        if len(self._index) > 0:
-            value_ref = self._quam._json[self._path + "length"]
-            for i in range(len(self._index) - 1):
-                value_ref = value_ref[self._index[i]]
-            value_ref[self._index[-1]] = value
-        else:
-            self._quam._json[self._path + "length"] = value
 
     @property
     def waveform(self) -> List[Union[str, int, float, bool, list]]:
@@ -3707,12 +3659,6 @@ class ArbitraryList(object):
           "name": {
             "type": "string"
           },
-          "amplitude": {
-            "type": "number"
-          },
-          "length": {
-            "type": "integer"
-          },
           "waveform": {
             "type": "array",
             "items": {
@@ -3744,7 +3690,7 @@ class ArbitraryList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -4011,6 +3957,54 @@ class Qubit(object):
             self._quam._json[self._path + "t2star"] = value
 
     @property
+    def ramsey_det(self) -> float:
+        """"""
+
+        value = self._quam._json[self._path + "ramsey_det"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @ramsey_det.setter
+    def ramsey_det(self, value: float):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "ramsey_det")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if len(self._index) > 0:
+            value_ref = self._quam._json[self._path + "ramsey_det"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "ramsey_det"] = value
+
+    @property
+    def ramsey_det_dcos(self) -> str:
+        """"""
+
+        value = self._quam._json[self._path + "ramsey_det_dcos"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @ramsey_det_dcos.setter
+    def ramsey_det_dcos(self, value: str):
+        """"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "ramsey_det_dcos")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if len(self._index) > 0:
+            value_ref = self._quam._json[self._path + "ramsey_det_dcos"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "ramsey_det_dcos"] = value
+
+    @property
     def flux_bias_points(self) -> Flux_bias_pointsList:
         """"""
         return Flux_bias_pointsList(
@@ -4122,6 +4116,12 @@ class QubitsList(object):
           "t2star": {
             "type": "number",
             "description": "Dephasing time T2* [s]"
+          },
+          "ramsey_det": {
+            "type": "number"
+          },
+          "ramsey_det_dcos": {
+            "type": "string"
           },
           "driving": {
             "type": "object",
@@ -4391,12 +4391,6 @@ class QubitsList(object):
                     "name": {
                       "type": "string"
                     },
-                    "amplitude": {
-                      "type": "number"
-                    },
-                    "length": {
-                      "type": "integer"
-                    },
                     "waveform": {
                       "type": "array",
                       "items": {
@@ -4423,8 +4417,6 @@ class QubitsList(object):
                   },
                   "required": [
                     "name",
-                    "amplitude",
-                    "length",
                     "waveform"
                   ]
                 }
@@ -4443,7 +4435,7 @@ class QubitsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -4682,7 +4674,7 @@ class Single_qubit_operationsList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -4843,52 +4835,31 @@ class Arbitrary2(object):
             self._quam._json[self._path + "name"] = value
 
     @property
-    def amplitude(self) -> float:
+    def waveform(self) -> List[Union[str, int, float, bool, list]]:
         """"""
 
-        value = self._quam._json[self._path + "amplitude"]
+        if self._quam._record_updates:
+            return _List(self._quam, self._path + "waveform", self._index, self._schema)
+
+        value = self._quam._json[self._path + "waveform"]
         for i in range(len(self._index)):
             value = value[self._index[i]]
         return value
 
-    @amplitude.setter
-    def amplitude(self, value: float):
+    @waveform.setter
+    def waveform(self, value: List[Union[str, int, float, bool, list]]):
         """"""
         if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "amplitude")
+            self._quam._updates["keys"].append(self._path + "waveform")
             self._quam._updates["indexes"].append(self._index)
             self._quam._updates["values"].append(value)
         if len(self._index) > 0:
-            value_ref = self._quam._json[self._path + "amplitude"]
+            value_ref = self._quam._json[self._path + "waveform"]
             for i in range(len(self._index) - 1):
                 value_ref = value_ref[self._index[i]]
             value_ref[self._index[-1]] = value
         else:
-            self._quam._json[self._path + "amplitude"] = value
-
-    @property
-    def length(self) -> int:
-        """"""
-
-        value = self._quam._json[self._path + "length"]
-        for i in range(len(self._index)):
-            value = value[self._index[i]]
-        return value
-
-    @length.setter
-    def length(self, value: int):
-        """"""
-        if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "length")
-            self._quam._updates["indexes"].append(self._index)
-            self._quam._updates["values"].append(value)
-        if len(self._index) > 0:
-            value_ref = self._quam._json[self._path + "length"]
-            for i in range(len(self._index) - 1):
-                value_ref = value_ref[self._index[i]]
-            value_ref[self._index[-1]] = value
-        else:
-            self._quam._json[self._path + "length"] = value
+            self._quam._json[self._path + "waveform"] = value
 
     def _json_view(self):
         result = {}
@@ -5125,17 +5096,33 @@ class CZList(object):
                   "name": {
                     "type": "string"
                   },
-                  "amplitude": {
-                    "type": "number"
-                  },
-                  "length": {
-                    "type": "integer"
+                  "waveform": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "array"
+                        }
+                      ]
+                    },
+                    "description": "points describing the waveform shape"
                   }
                 },
                 "required": [
                   "name",
-                  "amplitude",
-                  "length"
+                  "waveform"
                 ]
               }
             },
@@ -5152,7 +5139,7 @@ class CZList(object):
         if self._quam._record_updates:
             self._quam._updates["items"].append([json_item, self._path, self._index])
         quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path + "[]/", self._index, new_item=True)
-        quam_sdk.crud.bump_list_length(self._quam._json, f"{self._path}[]_len", self._index)
+        self._quam._json[f"{self._path}[]_len"] += 1
 
     def __str__(self) -> str:
         return json.dumps(self._json_view())
@@ -5605,6 +5592,8 @@ class QuAM(object):
                             "t1": {"type": "number", "description": "Relaxation time T1 [s]"},
                             "t2": {"type": "number", "description": "Dephasing time T2 [s]"},
                             "t2star": {"type": "number", "description": "Dephasing time T2* [s]"},
+                            "ramsey_det": {"type": "number"},
+                            "ramsey_det_dcos": {"type": "string"},
                             "driving": {
                                 "type": "object",
                                 "title": "driving",
@@ -5768,8 +5757,6 @@ class QuAM(object):
                                             "title": "arbitrary",
                                             "properties": {
                                                 "name": {"type": "string"},
-                                                "amplitude": {"type": "number"},
-                                                "length": {"type": "integer"},
                                                 "waveform": {
                                                     "type": "array",
                                                     "items": {
@@ -5784,7 +5771,7 @@ class QuAM(object):
                                                     "description": "points describing the waveform shape",
                                                 },
                                             },
-                                            "required": ["name", "amplitude", "length", "waveform"],
+                                            "required": ["name", "waveform"],
                                         },
                                     },
                                 },
@@ -5800,6 +5787,8 @@ class QuAM(object):
                             "t1",
                             "t2",
                             "t2star",
+                            "ramsey_det",
+                            "ramsey_det_dcos",
                             "driving",
                             "wiring",
                             "flux_bias_points",
@@ -5878,10 +5867,21 @@ class QuAM(object):
                                                 "title": "arbitrary",
                                                 "properties": {
                                                     "name": {"type": "string"},
-                                                    "amplitude": {"type": "number"},
-                                                    "length": {"type": "integer"},
+                                                    "waveform": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "anyOf": [
+                                                                {"type": "integer"},
+                                                                {"type": "number"},
+                                                                {"type": "string"},
+                                                                {"type": "boolean"},
+                                                                {"type": "array"},
+                                                            ]
+                                                        },
+                                                        "description": "points describing the waveform shape",
+                                                    },
                                                 },
-                                                "required": ["name", "amplitude", "length"],
+                                                "required": ["name", "waveform"],
                                             },
                                         },
                                         "required": ["constant", "arbitrary"],
