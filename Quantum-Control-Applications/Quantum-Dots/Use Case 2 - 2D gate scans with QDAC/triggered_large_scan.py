@@ -66,6 +66,7 @@ qdac_y_resolution = 10
 
 qdac_x_vals = np.linspace(0.5, 1, qdac_x_resolution)
 qdac_y_vals = np.linspace(0.4, 0.9, qdac_y_resolution)
+qdac_wait_time = 2000 //4  # in clock cycles
 
 wait_time = 16 // 4
 
@@ -129,6 +130,7 @@ with program() as do_large_2d:
         with for_(*from_array(qdac_y, qdac_y_vals)):
 
             play('trig', 'trigger_y')
+            wait(qdac_wait_time)
 
             # will save x and y streams for opx set values
             do2d('G1_sticky', opx_x_amplitude, opx_x_resolution,
