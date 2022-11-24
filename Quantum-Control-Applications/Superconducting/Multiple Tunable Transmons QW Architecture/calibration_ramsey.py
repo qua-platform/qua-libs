@@ -142,12 +142,15 @@ else:
                 plt.subplot(311)
                 plt.cla()
                 fit_I = Fit.ramsey(4 * taus, qubit_data[q]["I"], plot=debug)
+                plt.ylabel("I")
                 plt.subplot(312)
                 plt.cla()
                 fit_Q = Fit.ramsey(4 * taus, qubit_data[q]["I"], plot=debug)
+                plt.ylabel("Q")
                 plt.subplot(313)
                 plt.cla()
                 fit_state = Fit.ramsey(4 * taus, qubit_data[q]["state"], plot=debug)
+                plt.ylabel("qubit state")
             # live plot
             if debug and not fit_data:
                 plot_demodulated_data_1d(

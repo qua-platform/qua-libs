@@ -70,9 +70,12 @@ def baked_waveform(waveform, pulse_duration):
 # Baked flux pulse segments
 square_pulse_segments = baked_waveform(flux_waveform, flux_len)
 # Amplitude scan
-amps = np.arange(1 - span, 1 + span + da / 2, da)
+amps = np.arange(0 - span, 0 + span + da / 2, da)
 # Qubit cooldown time
-cooldown_time = int(5 * machine.qubits[cz.target_qubit].t1 * 1e9 // 4)
+if simulate:
+    cooldown_time = 16
+else:
+    cooldown_time = int(5 * machine.qubits[cz.target_qubit].t1 * 1e9 // 4)
 
 
 ###################
@@ -95,9 +98,9 @@ with program() as SWAP_spectroscopy:
         "single",
         machine.get_flux_bias_point(qubit_index, "working_point").value,
     )
-
+    pre_factors = amps / flux_amp
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(a, amps)):
+        with for_(*from_array(a, pre_factors)):
             # Notice it's <= to include t_max (This is only for integers!)
             with for_(segment, 0, segment <= flux_len, segment + 1):
                 # Cooldown to have the qubit in the ground state
@@ -166,7 +169,7 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.pcolor(xplot, amps * flux_amp, state, cmap="magma")
+        plt.pcolor(xplot, amps, state, cmap="magma")
         plt.xlabel("Flux pulse time [ns]")
         plt.ylabel("Flux voltage wrt sweet spot [V]")
         plt.title("02-11 conditional on q1, measurement on q0")
