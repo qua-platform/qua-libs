@@ -36,7 +36,7 @@ cooldown_time = 5 * u.us // 4
 
 a_min = 0.2
 a_max = 1
-da = 0.5
+da = 0.1
 
 bias_min = [-0.4, -0.4]
 bias_max = [0.4, 0.4]
@@ -57,9 +57,9 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -111,13 +111,13 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
-    # Live plotting
-    if debug:
-        fig = plt.figure()
-        interrupt_on_close(fig, job)
     for q in range(len(qubit_list)):
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
+        # Live plotting
+        if debug:
+            fig = plt.figure()
+            interrupt_on_close(fig, job)
         # Get results from QUA program
         my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"iteration{q}"], mode="live")
         while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
@@ -130,25 +130,37 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
-                plt.subplot(2, len(qubit_list), 1 + q)
-                plt.cla()
-                plt.title(f"Qubit spectroscopy qubit {q}")
-                plt.pcolor(
-                    amps * machine.get_driving(gate_shape, q).angle2volt.deg180,
+                plot_demodulated_data_2d(
+                    amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
                     bias[q],
-                    np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2),
+                    qubit_data[q]["I"],
+                    qubit_data[q]["Q"],
+                    "Microwave drive amplitude [V]",
+                    "Flux bias [V]",
+                    f"Qubit spectroscopy qubit {q}",
+                    amp_and_phase=True,
+                    fig=fig,
+                    plot_options={"cmap": "magma"},
                 )
-                plt.xlabel("Microwave drive amplitude [V]")
-                plt.ylabel("Bias amplitude [V]")
-                cbar = plt.colorbar()
-                cbar.ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270, labelpad=20)
-                plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
-                plt.cla()
-                phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                plt.pcolor(amps * machine.get_driving(gate_shape, q).angle2volt.deg180, bias[q], phase)
-                plt.xlabel("Microwave drive amplitude [V]")
-                plt.ylabel("Bias amplitude [V]")
-                cbar = plt.colorbar()
-                cbar.set_label("Phase [rad]", rotation=270, labelpad=20)
-                plt.pause(0.1)
-                plt.tight_layout()
+                # plt.subplot(2, len(qubit_list), 1 + q)
+                # plt.cla()
+                # plt.title(f"Qubit spectroscopy qubit {q}")
+                # plt.pcolor(
+                #     amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
+                #     bias[q],
+                #     np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2),
+                # )
+                # plt.xlabel("Microwave drive amplitude [V]")
+                # plt.ylabel("Bias amplitude [V]")
+                # cbar = plt.colorbar()
+                # cbar.ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270, labelpad=20)
+                # plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
+                # plt.cla()
+                # phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
+                # plt.pcolor(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, bias[q], phase)
+                # plt.xlabel("Microwave drive amplitude [V]")
+                # plt.ylabel("Bias amplitude [V]")
+                # cbar = plt.colorbar()
+                # cbar.set_label("Phase [rad]", rotation=270, labelpad=20)
+                # plt.pause(0.1)
+                # plt.tight_layout()

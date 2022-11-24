@@ -76,60 +76,69 @@ job = qm.execute(cw_output)
 # qm.set_mixer_correction('mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance(0.015, 0.01))
 
 # Automatic LO leakage correction
-# centers = [0.5, 0]
-# span = 0.1
-#
-# plt.figure()
-# for n in range(3):
-#     offset_i = np.linspace(centers[0] - span, centers[0] + span, 21)
-#     offset_q = np.linspace(centers[1] - span, centers[1] + span, 31)
-#     lo_leakage = np.zeros((len(offset_q), len(offset_i)))
-#     for i in range(len(offset_i)):
-#         for q in range(len(offset_q)):
-#             qm.set_output_dc_offset_by_element(element, ("I", "Q"), (offset_i[i], offset_q[q]))
-#             sleep(0.01)
-#             # Write functions to extract the lo leakage from the spectrum analyzer
-#             # lo_leakage[q][i] =
-#     minimum = np.argwhere(lo_leakage == np.min(lo_leakage))[0]
-#     centers = [offset_i[minimum[0]], offset_q[minimum[1]]]
-#     span = span / 10
-#     plt.subplot(131)
-#     plt.pcolor(offset_i, offset_q, lo_leakage.transpose())
-#     plt.xlabel("I offset [V]")
-#     plt.ylabel("Q offset [V]")
-#     plt.title(
-#         f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {lo_leakage[minimum[0]][minimum[1]]:.1f} dBm"
-#     )
-# plt.suptitle(f"LO leakage correction for {element}")
+centers = [0.5, 0]
+span = 0.1
+
+plt.figure()
+for n in range(3):
+    offset_i = np.linspace(centers[0] - span, centers[0] + span, 21)
+    offset_q = np.linspace(centers[1] - span, centers[1] + span, 31)
+    lo_leakage = np.zeros((len(offset_q), len(offset_i)))
+    for i in range(len(offset_i)):
+        for q in range(len(offset_q)):
+            qm.set_output_dc_offset_by_element(element, ("I", "Q"), (offset_i[i], offset_q[q]))
+            sleep(0.01)
+            # Write functions to extract the lo leakage from the spectrum analyzer
+            # lo_leakage[q][i] =
+    minimum = np.argwhere(lo_leakage == np.min(lo_leakage))[0]
+    centers = [offset_i[minimum[0]], offset_q[minimum[1]]]
+    span = span / 10
+    plt.subplot(131)
+    plt.pcolor(offset_i, offset_q, lo_leakage.transpose())
+    plt.xlabel("I offset [V]")
+    plt.ylabel("Q offset [V]")
+    plt.title(
+        f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {lo_leakage[minimum[0]][minimum[1]]:.1f} dBm"
+    )
+plt.suptitle(f"LO leakage correction for {element}")
+
+machine.drive_lines[machine.qubits[qubit_index].wiring.drive_line_index].I.offset = centers[0]
+machine.drive_lines[machine.qubits[qubit_index].wiring.drive_line_index].Q.offset = centers[1]
 
 # Automatic image cancellation
-# centers = [0.5, 0]
-# span = [0.2, 0.5]
-#
-# plt.figure()
-# for n in range(3):
-#     gain = np.linspace(centers[0] - span, centers[0] + span, 21)
-#     phase = np.linspace(centers[1] - span, centers[1] + span, 31)
-#     image = np.zeros((len(phase), len(gain)))
-#     for g in range(len(gain)):
-#         for p in range(len(phase)):
-#             qm.set_mixer_correction(
-#                 config["elements"][element]["mixInputs"]["mixer"],
-#                 int(config["elements"][element]["intermediate_frequency"]),
-#                 int(config["elements"][element]["mixInputs"]["lo_frequency"]),
-#                 IQ_imbalance(gain[g], phase[p]),
-#             )
-#             sleep(0.01)
-#             # Write functions to extract the image from the spectrum analyzer
-#             # image[q][i] =
-#     minimum = np.argwhere(image == np.min(image))[0]
-#     centers = [gain[minimum[0]], phase[minimum[1]]]
-#     span = (np.array(span) / 10).tolist()
-#     plt.subplot(131)
-#     plt.pcolor(gain, phase, image.transpose())
-#     plt.xlabel("Gain")
-#     plt.ylabel("Phase imbalance [rad]")
-#     plt.title(
-#         f"Minimum at (I={gain[centers[0]]:.3f}, Q={phase[centers[1]]:.3f}) = {image[centers[0]][centers[1]]:.1f} dBm"
-#     )
-# plt.suptitle(f"Image cancellation for {element}")
+centers = [0.5, 0]
+span = [0.2, 0.5]
+
+plt.figure()
+for n in range(3):
+    gain = np.linspace(centers[0] - span, centers[0] + span, 21)
+    phase = np.linspace(centers[1] - span, centers[1] + span, 31)
+    image = np.zeros((len(phase), len(gain)))
+    for g in range(len(gain)):
+        for p in range(len(phase)):
+            qm.set_mixer_correction(
+                config["elements"][element]["mixInputs"]["mixer"],
+                int(config["elements"][element]["intermediate_frequency"]),
+                int(config["elements"][element]["mixInputs"]["lo_frequency"]),
+                IQ_imbalance(gain[g], phase[p]),
+            )
+            sleep(0.01)
+            # Write functions to extract the image from the spectrum analyzer
+            # image[q][i] =
+    minimum = np.argwhere(image == np.min(image))[0]
+    centers = [gain[minimum[0]], phase[minimum[1]]]
+    span = (np.array(span) / 10).tolist()
+    plt.subplot(131)
+    plt.pcolor(gain, phase, image.transpose())
+    plt.xlabel("Gain")
+    plt.ylabel("Phase imbalance [rad]")
+    plt.title(
+        f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {image[minimum[0]][minimum[1]]:.1f} dBm"
+    )
+plt.suptitle(f"Image cancellation for {element}")
+
+machine.qubits[qubit_index].wiring.correction_matrix.gain = centers[0]
+machine.qubits[qubit_index].wiring.correction_matrix.phase = centers[1]
+
+machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
+machine.save("latest_quam.json")

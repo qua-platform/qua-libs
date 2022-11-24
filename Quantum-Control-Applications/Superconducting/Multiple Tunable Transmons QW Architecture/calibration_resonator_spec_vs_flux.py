@@ -47,8 +47,8 @@ bias_span = 0.3
 dbias = 0.05
 bias = [
     np.arange(
-        machine.get_flux_bias_point(i, "zero_frequency_point").value - bias_span,
-        machine.get_flux_bias_point(i, "zero_frequency_point").value + bias_span + dbias / 2,
+        machine.get_flux_bias_point(i, "zero_frequency_point") - bias_span,
+        machine.get_flux_bias_point(i, "zero_frequency_point") + bias_span + dbias / 2,
         dbias,
     )
     for i in range(len(qubit_list))

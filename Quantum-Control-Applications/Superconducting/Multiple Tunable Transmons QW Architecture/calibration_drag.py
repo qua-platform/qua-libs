@@ -1,15 +1,14 @@
 """
-DRAG_cal.py: performs power drag calibration
+Perform power drag calibration
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d, plot_demodulated_data_2d
+from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from datetime import datetime
@@ -20,7 +19,6 @@ from datetime import datetime
 experiment = "drag_cal"
 debug = True
 simulate = False
-fit_data = True
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
@@ -28,8 +26,6 @@ gate_shape = "drag_cosine"
 now = datetime.now()
 now = now.strftime("%m%d%Y_%H%M%S")
 
-machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
-machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -68,9 +64,9 @@ with program() as drag_cal:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -170,6 +166,7 @@ else:
                 alpha, np.poly1d(np.squeeze(z_I))(alpha), colors[i] + "-", label=f"drag={(-z_I[1]/2/z_I[0])[0]:.3f}"
             )
             plt.ylabel("I [a.u.]")
+            plt.title(f"DRAG calibration for qubit {q}")
             plt.subplot(212)
             plt.plot(alpha, qubit_data[q]["Q"][:, iters == it], colors[i] + ".", label=f"{it} iterations")
             plt.plot(
@@ -177,10 +174,12 @@ else:
             )
             plt.xlabel("DRAG coefficient alpha")
             plt.ylabel("Q [a.u.]")
-            plt.title(f"DRAG calibration for qubit {q}")
 
             plt.tight_layout()
             i += 1
+        plt.subplot(211)
+        plt.legend(ncol=i)
+        plt.subplot(212)
         plt.legend(ncol=i)
         # Update state with new DRAG coefficient
         print(f"Previous DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.3f}")
@@ -188,5 +187,5 @@ else:
         machine.qubits[q].driving.drag_cosine.alpha = (-z_I[1] / 2 / z_I[0])[0]
         print(f"New DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.3f}")
 
-machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

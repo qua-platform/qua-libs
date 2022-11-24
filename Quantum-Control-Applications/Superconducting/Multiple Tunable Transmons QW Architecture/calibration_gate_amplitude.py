@@ -6,7 +6,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d, plot_demodulated_data_2d
@@ -21,7 +20,6 @@ gate = "x90"
 experiment = gate + "_cal"
 debug = True
 simulate = False
-fit_data = True
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
@@ -47,7 +45,7 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 ###################
 u = unit()
 
-n_avg = 4e4
+n_avg = 4e3
 
 cooldown_time = 5 * u.us // 4
 
@@ -75,9 +73,9 @@ with program() as gate_cal:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -166,23 +164,30 @@ else:
                     plot_options={"cmap": "magma"},
                 )
         fig = plt.figure()
+        colors = ["b", "r", "g", "m", "c"]
+        i = 0
         for it in [1, int(0.25 * n_pulse_max), int(0.5 * n_pulse_max), int(0.75 * n_pulse_max), n_pulse_max - 1]:
-            plot_demodulated_data_1d(
-                amps * base_amp[q],
-                qubit_data[q]["I"][:, it],
-                qubit_data[q]["Q"][:, it],
-                "x180 amplitude [V]",
-                f"Power rabi {q}",
-                amp_and_phase=True,
-                fig=fig,
-                plot_options={"marker": "."},
-            )
+            plt.subplot(211)
+            plt.plot(amps * base_amp[q], qubit_data[q]["I"][:, it], colors[i] + ".", label=f"{it} iterations")
+            plt.ylabel("I [a.u.]")
+            plt.title(f"DRAG calibration for qubit {q}")
+            plt.subplot(212)
+            plt.plot(amps * base_amp[q], qubit_data[q]["Q"][:, it], colors[i] + ".", label=f"{it} iterations")
+            plt.xlabel(gate + " amplitude [V]")
+            plt.ylabel("Q [a.u.]")
+
+            plt.tight_layout()
+            i += 1
+        plt.subplot(211)
+        plt.legend(ncol=i)
+        plt.subplot(212)
+        plt.legend(ncol=i)
 
         # Update state with new DRAG coefficient
         print(f"Previous {gate} amplitude: {base_amp[q]:.1f} V")
         # Chose I, Q or amp...
-        # machine.qubits[q].driving.drag_cosine.alpha = -z_I[1] / 2 / z_I[0]
+        # machine.qubits[q].driving.drag_cosine.angle2volt.deg180 =
         print(f"New {gate} amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
-machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

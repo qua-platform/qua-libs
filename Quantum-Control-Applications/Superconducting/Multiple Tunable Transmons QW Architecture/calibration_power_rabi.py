@@ -6,7 +6,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
@@ -20,7 +19,7 @@ from datetime import datetime
 experiment = "power_rabi"
 debug = True
 simulate = False
-fit_data = True
+fit_data = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
@@ -59,9 +58,9 @@ with program() as power_rabi:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -135,11 +134,13 @@ else:
                 fit_I = Fit.rabi(
                     amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
                 )
+                plt.title(f"Power rabi {q}")
                 plt.subplot(212)
                 plt.cla()
                 fit_Q = Fit.rabi(
                     amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
                 )
+
             # live plot
             if debug and not fit_data:
                 plot_demodulated_data_1d(
@@ -159,5 +160,5 @@ else:
             machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit_I["amp"][0])
             print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
 
-machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

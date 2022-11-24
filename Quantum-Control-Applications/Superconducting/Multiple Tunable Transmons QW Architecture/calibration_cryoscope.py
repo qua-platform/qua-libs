@@ -1,3 +1,6 @@
+"""
+Perform Cryoscope to measure the flux line step response and derive the pre-distortion filter taps
+"""
 from qm.qua import *
 from quam import QuAM
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -33,7 +36,7 @@ cooldown_time = 16
 
 # FLux pulse waveform generation
 flux_len = 160
-flux_pulse = np.array([machine.get_flux_bias_point(q, "jump").value] * flux_len)  # flux_len = 200 ns
+flux_pulse = np.array([machine.get_flux_bias_point(q, "jump")] * flux_len)  # flux_len = 200 ns
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 flux_waveform = np.array([0.0] * zeros_before_pulse + list(flux_pulse) + [0.0] * zeros_after_pulse)
@@ -60,7 +63,7 @@ def baked_waveform(waveform, pulse_duration):
 total_len = flux_len + zeros_before_pulse + zeros_after_pulse
 square_pulse_segments = baked_waveform(flux_waveform, total_len)
 step_response = [1.0] * flux_len
-xplot = np.arange(0, total_len + 0.1, 1)
+xplot = np.arange(0, total_len, 1)
 # Number of averages
 n_avg = 1e3
 
@@ -80,23 +83,12 @@ with program() as cryoscope:
     flag = declare(bool)  # Boolean flag to switch between x90 and y90 for state measurement
 
     # Set the flux line offset of the other qubit to 0
-    for k in qubit_list:
-        if k == q:
-            set_dc_offset(
-                machine.qubits[q].name + "_flux",
-                "single",
-                machine.get_flux_bias_point(k, "flux_insensitive_point").value,
-            )
-        else:
-            set_dc_offset(
-                machine.qubits[q].name + "_flux",
-                "single",
-                machine.get_flux_bias_point(k, "flux_zero_frequency_point").value,
-            )
+    machine.nullify_other_qubits(qubit_list, q)
+    set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "insensitive_point"))
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
-        with for_(segment, 0, segment <= total_len, segment + 1):
+        with for_(segment, 0, segment < total_len, segment + 1):
 
             with for_each_(flag, [True, False]):
                 # Cooldown
@@ -134,7 +126,7 @@ with program() as cryoscope:
         save(n, n_st)
 
     with stream_processing():
-        state_st.boolean_to_int().buffer(2).buffer(total_len + 1).average().save("state")
+        state_st.boolean_to_int().buffer(2).buffer(total_len).average().save("state")
         n_st.save("iteration")
 
 #####################################
@@ -184,6 +176,7 @@ while results.is_processing():
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Qubit detuning [MHz]")
     plt.legend()
+    plt.tight_layout()
 
 
 # Exponential decay
@@ -250,7 +243,7 @@ print(f"FIR: {fir}\nIIR: {iir}")
 
 ## Derive responses and plots
 # Ideal response
-pulse = np.array([1.0] * flux_len)
+pulse = np.array([0.0]*zeros_before_pulse + [1.0] * flux_len + [0.0]*zeros_after_pulse)
 # Response without filter
 no_filter = expdecay(xplot, a=A, t=tau)
 # Response with filters
@@ -261,7 +254,7 @@ plt.rcParams.update({"font.size": 13})
 plt.figure()
 plt.suptitle("Cryoscope with filter implementation")
 plt.subplot(121)
-plt.plot(xplot, step_response, "o-", label="Data")
+plt.plot(xplot, pulse, "o-", label="Data")
 plt.plot(xplot, expdecay(xplot, A, tau), label="Fit")
 plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
 plt.axhline(y=1.01)
@@ -280,3 +273,4 @@ plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", face
 plt.xlabel("Flux pulse duration [ns]")
 plt.ylabel("Step response")
 plt.legend(loc="upper right")
+plt.tight_layout()

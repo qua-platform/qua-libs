@@ -16,7 +16,7 @@ import json
 import os
 from quam_sdk.viewers import qprint
 from qm.qua import set_dc_offset
-
+from pprint import pprint
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
@@ -31,13 +31,6 @@ def IQ_imbalance(g, phi):
     s = np.sin(phi)
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
-# get pulse
-def get_driving(state: QuAM, pulse, q: int):
-    for z in state.qubits[q].driving.__dict__.get("_schema").get("required"):
-        if z == pulse:
-            return state.qubits[q].driving.__getattribute__(pulse)
 
 
 def find_lo_freq(state: QuAM, index: int):
@@ -505,7 +498,7 @@ def add_common_operation(state: QuAM, config: dict):
     }
 
 
-def build_config(state, digital_out: list, qubits: list, gate_shape: str):
+def build_config(state, digital_out: list, qubits: list, shape: str):
     config = {
         "version": 1,
         "controllers": {
@@ -538,9 +531,9 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
     for single_qubit_operation in state.single_qubit_operations:
         for q in qubits:
             for z in state.qubits[q].driving.__dict__.get("_schema").get("required"):
-                if z == gate_shape:
-                    pulse = get_driving(state, z, q)
-                    if pulse.gate_shape == "gaussian":
+                if z == shape:
+                    pulse = get_qubit_gate(state, q, z)
+                    if pulse.shape == "gaussian":
                         if abs(single_qubit_operation.angle) == 180:
                             amplitude = pulse.angle2volt.deg180
                         elif abs(single_qubit_operation.angle) == 90:
@@ -557,11 +550,11 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
                             single_qubit_operation.direction,
                             amplitude
                             * gaussian(
-                                round(pulse.gate_len * 1e9),
-                                round(pulse.gate_sigma * 1e9),
+                                round(pulse.length * 1e9),
+                                round(pulse.sigma * 1e9),
                             ),
                         )  # +180 and -180 have same amplitude
-                    elif pulse.gate_shape == "drag_gaussian":
+                    elif pulse.shape == "drag_gaussian":
                         from qualang_tools.config.waveform_tools import (
                             drag_gaussian_pulse_waveforms,
                         )
@@ -569,8 +562,8 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
                         drag_I, drag_Q = np.array(
                             drag_gaussian_pulse_waveforms(
                                 1,
-                                round(pulse.gate_len * 1e9),
-                                round(pulse.gate_sigma * 1e9),
+                                round(pulse.length * 1e9),
+                                round(pulse.sigma * 1e9),
                                 alpha=pulse.alpha,
                                 detuning=pulse.detuning,
                                 anharmonicity=state.qubits[q].anharmonicity,
@@ -593,7 +586,7 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
                             amplitude * drag_I,
                             amplitude * drag_Q,
                         )  # +180 and -180 have same amplitude
-                    elif pulse.gate_shape == "drag_cosine":
+                    elif pulse.shape == "drag_cosine":
                         from qualang_tools.config.waveform_tools import (
                             drag_cosine_pulse_waveforms,
                         )
@@ -601,7 +594,7 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
                         drag_I, drag_Q = np.array(
                             drag_cosine_pulse_waveforms(
                                 1,
-                                round(pulse.gate_len * 1e9),
+                                round(pulse.length * 1e9),
                                 alpha=pulse.alpha,
                                 detuning=pulse.detuning,
                                 anharmonicity=state.qubits[q].anharmonicity,
@@ -625,7 +618,7 @@ def build_config(state, digital_out: list, qubits: list, gate_shape: str):
                             amplitude * drag_Q,
                         )  # +180 and -180 have same amplitude
                     else:
-                        raise ValueError(f"Gate shape {pulse.gate_shape} not recognized.")
+                        raise ValueError(f"Gate shape {pulse.shape} not recognized.")
 
     return config
 
@@ -652,117 +645,7 @@ def save(state: QuAM, filename: str, reuse_existing_values: bool = False):
         json.dump(state._json, file)
 
 
-def get_sequence_state(state: QuAM, index: int, sequence_state: str):
-    """
-    Get the sequence state object.
-
-    :param index: index of the qubit to be retrieved.
-    :param sequence_state: name of the sequence.
-    :return: the sequence state object.
-    """
-    for seq in state.qubits[index].sequence_states.arbitrary:
-        if seq.name == sequence_state:
-            return seq
-    for seq in state.qubits[index].sequence_states.constant:
-        if seq.name == sequence_state:
-            return seq
-    raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state.")
-
-
-def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None):
-    if flux_bias_point is None:
-        qprint(state.qubits[index].flux_bias_points)
-        return state.qubits[index].flux_bias_points
-    for bias in state.qubits[index].flux_bias_points:
-        if bias.name == flux_bias_point:
-            return bias
-    raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}.")
-
-
-def _calc_parabola_vertex(x1, y1, x2, y2, x3, y3):
-    denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
-    A = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
-    B = (x3 * x3 * (y1 - y2) + x2 * x2 * (y3 - y1) + x1 * x1 * (y2 - y3)) / denom
-    C = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + x1 * x2 * (x1 - x2) * y3) / denom
-
-    return A, B, C
-
-
-def set_f_res_vs_flux_vertex(state: QuAM, index: int, three_points: List):
-    a, b, c = _calc_parabola_vertex(
-        three_points[0][0],
-        three_points[0][1],
-        three_points[1][0],
-        three_points[1][1],
-        three_points[2][0],
-        three_points[2][1],
-    )
-    state.readout_resonators[index].f_res_vs_flux.a = a
-    state.readout_resonators[index].f_res_vs_flux.b = b
-    state.readout_resonators[index].f_res_vs_flux.c = c
-
-
-def get_f_res_from_flux(state: QuAM, index: int, flux_bias: float):
-    vertex = state.readout_resonators[index].f_res_vs_flux
-    return vertex.a * flux_bias**2 + vertex.b * flux_bias + vertex.c
-
-
-def get_length(state: QuAM, index, operation):
-
-    try:
-        return state.get_sequence_state(index, operation).length
-    except AttributeError:
-        return len(state.get_sequence_state(index, operation).waveform) * 1e-9
-    except ValueError:
-        pass
-
-    try:
-        return state.get_qubit_gate(index, operation).gate_len
-    except AttributeError:
-        raise AttributeError(f"The operation '{operation}' is not defined in state fro qubit {index}.")
-
-
-def set_length(state: QuAM, index, operation, length):
-
-    try:
-        state.get_sequence_state(index, operation).length = length
-    except AttributeError:
-        return len(state.get_sequence_state(index, operation).waveform) * 1e-9
-    except ValueError:
-        pass
-
-    try:
-        state.get_qubit_gate(index, operation).gate_len = length
-    except AttributeError:
-        raise AttributeError(f"The operation '{operation}' is not defined in state fro qubit {index}.")
-
-
-def get_qubit(state: QuAM, qubit_name: str):
-    """
-    Get the qubit object corresponding to the specified qubit name.
-
-    :param qubit_name: name of the qubit to get.
-    :return: the qubit object.
-    """
-    for q in range(len(state.qubits)):
-        if state.qubits[q].name == qubit_name:
-            return state.qubits[q]
-    raise ValueError(f"The qubit '{qubit_name}' is not defined in the state.")
-
-
-def get_resonator(state: QuAM, resonator_name: str):
-    """
-    Get the readout resonator object corresponding to the specified resonator name.
-
-    :param resonator_name: name of the qubit to get.
-    :return: the qubit object.
-    """
-    for q in range(len(state.qubits)):
-        if state.readout_resonators[q].name == resonator_name:
-            return state.qubits[q]
-    raise ValueError(f"The readout resonator '{resonator_name}' is not defined in the state.")
-
-
+## API
 def get_wiring(state: QuAM):
     """
     Print the state connectivity.
@@ -792,34 +675,175 @@ def get_wiring(state: QuAM):
     print(s)
 
 
-def get_qubit_gate(state: QuAM, index, gate_shape):
-    qubit = state.qubits[index]
-    try:
-        return qubit.driving.__getattribute__(gate_shape)
-    except AttributeError:
-        raise AttributeError(f"The gate shape '{gate_shape}' is not defined in the state for qubit {index}.")
+def get_sequence_state(state: QuAM, index: int, sequence_state: str = None):
+    """
+    Get the sequence state object of a given qubit.
+
+    :param index: index of the qubit to be retrieved.
+    :param sequence_state: name of the sequence.
+    :return: the sequence state object. Print the list of sequence states if 'sequence_state' is None.
+    """
+
+    seq = {"constant": [], "arbitrary": []}
+    for key in state.qubits[index].sequence_states.constant:
+        seq["constant"].append(key.name)
+    for key in state.qubits[index].sequence_states.arbitrary:
+        seq["arbitrary"].append(key.name)
+
+    if sequence_state is None:
+        pprint(seq)
+        return
+
+    for seq in state.qubits[index].sequence_states.arbitrary:
+        if seq.name == sequence_state:
+            return seq
+    for seq in state.qubits[index].sequence_states.constant:
+        if seq.name == sequence_state:
+            return seq
+    raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state. The available sequence states are {seq}.")
 
 
-def get_readout_IF(state: QuAM, index):
+def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None) -> float or None:
+    """
+    Get the value of the flux bias point for a given qubit.
+
+    :param index: index of the qubit to be retrieved.
+    :param flux_bias_point: name of the flux bias point.
+    :return: value of the flux bias point in Volts. Print the list of flux bias point if 'flux_bias_point' is None.
+    """
+    points = []
+    for key in state.qubits[index].flux_bias_points:
+        points.append(key.name)
+    if flux_bias_point is None:
+        qprint(state.qubits[index].flux_bias_points)
+        return
+    for bias in state.qubits[index].flux_bias_points:
+        if bias.name == flux_bias_point:
+            return bias.value
+    raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}. The available flux bias points are {points}.")
+
+
+def get_qubit(state: QuAM, qubit_name: str):
+    """
+    Get the qubit object corresponding to the specified qubit name.
+
+    :param qubit_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+    for q in range(len(state.qubits)):
+        if state.qubits[q].name == qubit_name:
+            return state.qubits[q]
+    raise ValueError(f"The qubit '{qubit_name}' is not defined in the state.")
+
+
+def get_resonator(state: QuAM, resonator_name: str):
+    """
+    Get the readout resonator object corresponding to the specified resonator name.
+
+    :param resonator_name: name of the qubit to get.
+    :return: the qubit object.
+    """
+    for q in range(len(state.qubits)):
+        if state.readout_resonators[q].name == resonator_name:
+            return state.qubits[q]
+    raise ValueError(f"The readout resonator '{resonator_name}' is not defined in the state.")
+
+
+def get_qubit_gate(state: QuAM, index: int, shape: str):
+    """
+    Get the gate of a given qubit from its shape.
+
+    :param index: index of the qubit to be retrieved.
+    :param shape: name of the gate as defined under the qubit driving section.
+    :return: the qubit gate object.
+    """
+    for z in state.qubits[index].driving.__dict__.get("_schema").get("required"):
+        if z == shape:
+            return state.qubits[index].driving.__getattribute__(shape)
+    raise ValueError(
+        f"The gate '{shape}' is not defined in the state. The available gates are {state.qubits[index].driving.__dict__.get('_schema').get('required')}"
+    )
+
+
+def get_readout_IF(state: QuAM, index: int) -> float:
+    """
+    Get the intermediate frequency of the readout resonator specified by its index.
+
+    :param index: index of the readout resonator to be retrieved.
+    :return: the intermediate frequency in Hz.
+    """
     return (
         state.readout_resonators[index].f_opt
         - state.readout_lines[state.readout_resonators[index].wiring.readout_line_index].lo_freq
     )
 
 
-def get_qubit_IF(state: QuAM, index):
+def get_qubit_IF(state: QuAM, index: int) -> float:
+    """
+    Get the intermediate frequency of the qubit specified by its index.
+
+    :param index: index of the qubit to be retrieved.
+    :return: the intermediate frequency in Hz.
+    """
     return state.qubits[index].f_01 - state.drive_lines[state.qubits[index].wiring.drive_line_index].lo_freq
 
 
-def nullify_qubits(state: QuAM, cond: bool, q_list: list, indx: int):
+def nullify_other_qubits(state: QuAM, qubit_list: List[int], index: int, cond: bool = True):
+    """
+    Bring all qubits from qubit list, except the specified index, to their respective zero_frequency_point.
+
+    :param qubit_list: list of the available qubits.
+    :param index: index of the qubit under study that will be excluded from this operation.
+    :param cond: (optional) flag to disable the nullification of the qubits.
+    """
     if cond:
-        for r in q_list:
-            if r == indx:
-                pass
-            else:
+        for r in qubit_list:
+            if r != index:
                 set_dc_offset(
-                    state.qubits[r].name + "_flux", "single", state.get_flux_bias_point(r, "zero_frequency_point").value
+                    state.qubits[r].name + "_flux", "single", state.get_flux_bias_point(r, "zero_frequency_point")
                 )
+
+
+def _calc_parabola_vertex(x1, y1, x2, y2, x3, y3):
+    denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
+    A = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
+    B = (x3 * x3 * (y1 - y2) + x2 * x2 * (y3 - y1) + x1 * x1 * (y2 - y3)) / denom
+    C = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + x1 * x2 * (x1 - x2) * y3) / denom
+
+    return A, B, C
+
+
+def set_f_res_vs_flux_vertex(state: QuAM, index: int, three_points: List[tuple]):
+    """
+    Set the vertex corresponding to the resonator frequency vs flux parabola from three points.
+
+    :param index: index of the readout resonator to be retrieved.
+    :param three_points: list of three tuples corresponding to the three points located on the parabola to fit defined as [(x1, y1), (x2, y2), (x3, y3)].
+    """
+    a, b, c = _calc_parabola_vertex(
+        three_points[0][0],
+        three_points[0][1],
+        three_points[1][0],
+        three_points[1][1],
+        three_points[2][0],
+        three_points[2][1],
+    )
+    state.readout_resonators[index].f_res_vs_flux.a = a
+    state.readout_resonators[index].f_res_vs_flux.b = b
+    state.readout_resonators[index].f_res_vs_flux.c = c
+
+
+def get_f_res_from_flux(state: QuAM, index: int, flux_bias: float) -> float:
+    """
+    Get the resonance frequency of the specified readout resonator for a given flux bias.
+    The vertex of the resonator frequency vs flux parabola must be set beforehand.
+
+    :param index: index of the readout resonator to retrieve.
+    :param flux_bias: value of the flux bias at which the resonance frequency will be derived.
+    :return: the readout resonator resonance frequency corresponding to the specified flux bias.
+    """
+    vertex = state.readout_resonators[index].f_res_vs_flux
+    return vertex.a * flux_bias**2 + vertex.b * flux_bias + vertex.c
 
 
 if __name__ == "__main__":
@@ -827,6 +851,6 @@ if __name__ == "__main__":
     machine = QuAM("quam_bootstrap_state.json")
     qubit_list = [0, 1]
     digital = []
-    configuration = build_config(machine, digital, qubit_list, gate_shape="drag_cosine")
+    configuration = build_config(machine, digital, qubit_list, shape="drag_cosine")
     qprint(machine)
     machine.get_wiring()
