@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 1D resonator spectroscopy
+Perform the 1D resonator spectroscopy
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -17,7 +17,7 @@ from datetime import datetime
 ##################
 # State and QuAM #
 ##################
-experiment = "res_spec"
+experiment = "resonator_spectroscopy"
 debug = True
 simulate = False
 fit_data = True
@@ -57,7 +57,7 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         # bring other qubits than `i` to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         # set qubit frequency to working point
         set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
 
@@ -151,5 +151,5 @@ else:
             machine.readout_resonators[q].f_opt = machine.readout_resonators[q].f_res
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res:.1f} Hz")
 
-machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
 machine.save("latest_quam.json")

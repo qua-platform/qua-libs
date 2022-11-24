@@ -36,7 +36,7 @@ cooldown_time = 16
 
 # FLux pulse waveform generation
 flux_len = 160
-flux_pulse = np.array([machine.get_flux_bias_point(q, "jump")] * flux_len)  # flux_len = 200 ns
+flux_pulse = np.array([machine.get_flux_bias_point(q, "jump").value] * flux_len)  # flux_len = 200 ns
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 flux_waveform = np.array([0.0] * zeros_before_pulse + list(flux_pulse) + [0.0] * zeros_after_pulse)
@@ -84,7 +84,7 @@ with program() as cryoscope:
 
     # Set the flux line offset of the other qubit to 0
     machine.nullify_other_qubits(qubit_list, q)
-    set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "insensitive_point"))
+    set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "insensitive_point").value)
 
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
@@ -243,7 +243,7 @@ print(f"FIR: {fir}\nIIR: {iir}")
 
 ## Derive responses and plots
 # Ideal response
-pulse = np.array([0.0]*zeros_before_pulse + [1.0] * flux_len + [0.0]*zeros_after_pulse)
+pulse = np.array([0.0] * zeros_before_pulse + [1.0] * flux_len + [0.0] * zeros_after_pulse)
 # Response without filter
 no_filter = expdecay(xplot, a=A, t=tau)
 # Response with filters

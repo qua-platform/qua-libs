@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 2D resonator spectroscopy
+Perform the 2D resonator spectroscopy frequency vs flux
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -62,7 +62,7 @@ with program() as resonator_spec:
 
     for i in range(len(qubit_list)):
         # bring other qubits than `i` to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, bias[i])):

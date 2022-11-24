@@ -1,12 +1,11 @@
 """
-qubit_spec_amp_vs_flux.py: performs the 2D qubit spec as func of amp and flux
+Perform the 2D qubit spec as func of amp and flux
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
@@ -18,11 +17,13 @@ from qualang_tools.loops import from_array
 # State and QuAM #
 ##################
 debug = True
-simulate = True
+simulate = False
 qubit_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+
+
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -30,20 +31,27 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 ###################
 u = unit()
 
-n_avg = 4e2
+n_avg = 4e3
 
-cooldown_time = 5 * u.us // 4
+if simulate:
+    cooldown_time = 16
+else:
+    cooldown_time = 5 * u.us // 4
 
+# Qubit pulse amplitude scan
 a_min = 0.2
 a_max = 1
-da = 0.1
-
+na = 21
+amps = np.linspace(a_min, a_max, na)
+# Flux bias scan
 bias_min = [-0.4, -0.4]
 bias_max = [0.4, 0.4]
-dbias = 0.02
-
-amps = np.arange(a_min, a_max + da / 2, da)
+dbias = 0.1
 bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
+# Ensure that flux biases remain in the [-0.5, 0.5) range
+for i in qubit_list:
+    assert np.all(bias[i] + machine.get_flux_bias_point(i, "near_anti_crossing").value < 0.5)
+    assert np.all(bias[i] + machine.get_flux_bias_point(i, "near_anti_crossing").value >= -0.5)
 
 with program() as resonator_spec:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -59,19 +67,19 @@ with program() as resonator_spec:
         # bring other qubits to zero frequency
         machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
         )
+        # Pre-factors to apply in order to get the bias scan
+        pre_factors = bias[i] / machine.get_sequence_state(0, "qubit_spectroscopy").amplitude
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(b, bias[i])):
+            with for_(*from_array(b, pre_factors)):
                 with for_(*from_array(a, amps)):
-                    play("const" * amp(b), machine.qubits[i].name + "_flux_sticky")
-                    wait(100, machine.qubits[i].name)
+                    play("qubit_spectroscopy" * amp(b), machine.qubits[i].name + "_flux")
+                    wait(200, machine.qubits[i].name)
                     play("x180" * amp(a), machine.qubits[i].name)
                     align()
-                    wait(16, machine.qubits[i].name + "_flux_sticky")
-                    ramp_to_zero(machine.qubits[i].name + "_flux_sticky")
-                    align()
+                    wait(16, machine.readout_resonators[i].name)
                     measure(
                         "readout",
                         machine.readout_resonators[i].name,
@@ -101,7 +109,7 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 # Simulate or execute #
 #######################
 if simulate:
-    simulation_config = SimulationConfig(duration=1000)
+    simulation_config = SimulationConfig(duration=10000)
     job = qmm.simulate(config, resonator_spec, simulation_config)
     job.get_simulated_samples().con1.plot()
 
@@ -132,7 +140,7 @@ else:
             if debug:
                 plot_demodulated_data_2d(
                     amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
-                    bias[q],
+                    bias[q] + machine.get_flux_bias_point(q, "near_anti_crossing").value,
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
                     "Microwave drive amplitude [V]",
@@ -142,25 +150,3 @@ else:
                     fig=fig,
                     plot_options={"cmap": "magma"},
                 )
-                # plt.subplot(2, len(qubit_list), 1 + q)
-                # plt.cla()
-                # plt.title(f"Qubit spectroscopy qubit {q}")
-                # plt.pcolor(
-                #     amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
-                #     bias[q],
-                #     np.sqrt(qubit_data[q]["I"] ** 2 + qubit_data[q]["Q"] ** 2),
-                # )
-                # plt.xlabel("Microwave drive amplitude [V]")
-                # plt.ylabel("Bias amplitude [V]")
-                # cbar = plt.colorbar()
-                # cbar.ax.set_ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]", rotation=270, labelpad=20)
-                # plt.subplot(2, len(qubit_list), len(qubit_list) + 1 + q)
-                # plt.cla()
-                # phase = signal.detrend(np.unwrap(np.angle(qubit_data[q]["I"] + 1j * qubit_data[q]["Q"])))
-                # plt.pcolor(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, bias[q], phase)
-                # plt.xlabel("Microwave drive amplitude [V]")
-                # plt.ylabel("Bias amplitude [V]")
-                # cbar = plt.colorbar()
-                # cbar.set_label("Phase [rad]", rotation=270, labelpad=20)
-                # plt.pause(0.1)
-                # plt.tight_layout()

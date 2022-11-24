@@ -1,5 +1,5 @@
 """
-readout_amp_opt.py: uses IQ blobs measurements to find optimal readout frequency
+Use IQ blobs measurements to find optimal readout amplitude
 """
 
 from qm.qua import *
@@ -42,7 +42,6 @@ cooldown_time = 5 * u.us // 4
 a_min = 0.2
 a_max = 1
 da = 0.01
-
 amps = np.arange(a_min, a_max + da / 2, da)
 
 with program() as readout_opt:
@@ -63,7 +62,7 @@ with program() as readout_opt:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -204,13 +203,13 @@ else:
             ) / 4
             SNR = ((np.abs(Z)) ** 2) / (2 * var)
             if debug:
-                # plt.cla()
-                # plt.plot(amps * machine.readout_resonators[q].readout_amplitude, SNR, ".-")
-                # plt.title(f"resonator optimization qubit {q}")
-                # plt.xlabel("Pulse amplitude [V]")
-                # plt.ylabel("SNR")
-                # plt.tight_layout()
-                # plt.pause(0.1)
+                plt.cla()
+                plt.plot(amps * machine.readout_resonators[q].readout_amplitude, SNR, ".-")
+                plt.title(f"resonator optimization qubit {q}")
+                plt.xlabel("Pulse amplitude [V]")
+                plt.ylabel("SNR")
+                plt.tight_layout()
+                plt.pause(0.1)
                 plt.cla()
                 plt.plot(amps * machine.readout_resonators[q].readout_amplitude, qubit_data[q]["state_g"])
                 plt.plot(amps * machine.readout_resonators[q].readout_amplitude, qubit_data[q]["state_e"])
@@ -221,15 +220,15 @@ else:
                 plt.xscale("log")
                 plt.tight_layout()
                 plt.pause(0.1)
-    #     # Find the readout frequency that maximizes the SNR
-    #     f_opt = freq[q][np.argmax(SNR)]
-    #     SNR_opt = SNR[np.argmax(SNR)]
-    #     print(
-    #         f"Previous optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR[len(freq[q])//2+1]:.2f}"
-    #     )
-    #     machine.readout_resonators[q].f_opt = (
-    #         f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
-    #     )
-    #     print(f"New optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR_opt:.2f}")
-    # machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
-    # machine.save("latest_quam.json")
+        # Find the readout amplitude that maximizes the SNR
+        amp_opt = amps[np.argmax(SNR)] * machine.readout_resonators[q].readout_amplitude
+        SNR_opt = SNR[np.argmax(SNR)]
+        print(
+            f"Previous optimal readout amplitude: {machine.readout_resonators[q].readout_amplitude:.1f} V with SNR = {SNR[len(amps[q])//2+1]:.2f}"
+        )
+        machine.readout_resonators[0].readout_amplitude = amp_opt
+        print(
+            f"New optimal readout frequency: {machine.readout_resonators[0].readout_amplitude:.1f} V with SNR = {SNR_opt:.2f}"
+        )
+    machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
+    machine.save("latest_quam.json")

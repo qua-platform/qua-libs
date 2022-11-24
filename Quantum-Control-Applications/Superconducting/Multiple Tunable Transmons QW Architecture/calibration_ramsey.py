@@ -1,12 +1,11 @@
 """
-ramsey.py: performs ramsey with frame rotation
+Perform ramsey with frame rotation
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
@@ -60,7 +59,7 @@ with program() as power_rabi:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
             machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
         )
@@ -154,7 +153,7 @@ else:
                 plot_demodulated_data_1d(
                     4 * taus,
                     qubit_data[q]["I"],
-                    qubit_data[q]["state"],
+                    qubit_data[q]["Q"],
                     "x180 amplitude [V]",
                     f"Power rabi {q}",
                     amp_and_phase=False,
@@ -165,7 +164,7 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous qubit frequency: {machine.qubits[q].f_01:.1f} Hz")
-            machine.qubits[q].f_01 = np.round(fit_state["f"][0])
+            machine.qubits[q].f_01 = np.round(fit_state["f"][0] * 1e9)
             print(f"New qubit frequency: {machine.qubits[q].f_01:.1f} Hz")
 
 machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")

@@ -90,7 +90,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             # add pulse
             config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
-                "length": op.length,
+                "length": op.length * 1e9,
                 "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
             }
             config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
@@ -118,7 +118,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             # add pulse
             config["pulses"][state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}"] = {
                 "operation": "control",
-                "length": op.flux_pulse.constant.length,
+                "length": op.flux_pulse.constant.length * 1e9,
                 "waveforms": {"single": state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}" + "_wf"},
             }
             config["waveforms"][state.qubits[q].name + f"_flux_{op.flux_pulse.constant.name}" + "_wf"] = {
@@ -148,7 +148,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             # add pulse
             config["pulses"][state.qubits[q].name + f"_flux_{op.name}"] = {
                 "operation": "control",
-                "length": op.length,
+                "length": op.length * 1e9,
                 "waveforms": {"single": state.qubits[q].name + f"_flux_{op.name}" + "_wf"},
             }
             config["waveforms"][state.qubits[q].name + f"_flux_{op.name}" + "_wf"] = {
@@ -700,16 +700,18 @@ def get_sequence_state(state: QuAM, index: int, sequence_state: str = None):
     for seq in state.qubits[index].sequence_states.constant:
         if seq.name == sequence_state:
             return seq
-    raise ValueError(f"The sequence state '{sequence_state}' is not defined in the state. The available sequence states are {seq}.")
+    raise ValueError(
+        f"The sequence state '{sequence_state}' is not defined in the state. The available sequence states are {seq}."
+    )
 
 
-def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None) -> float or None:
+def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None):
     """
-    Get the value of the flux bias point for a given qubit.
+    Get the flux bias point for a given qubit.
 
     :param index: index of the qubit to be retrieved.
     :param flux_bias_point: name of the flux bias point.
-    :return: value of the flux bias point in Volts. Print the list of flux bias point if 'flux_bias_point' is None.
+    :return: flux bias point object. Print the list of flux bias point if 'flux_bias_point' is None.
     """
     points = []
     for key in state.qubits[index].flux_bias_points:
@@ -719,8 +721,10 @@ def get_flux_bias_point(state: QuAM, index: int, flux_bias_point: str = None) ->
         return
     for bias in state.qubits[index].flux_bias_points:
         if bias.name == flux_bias_point:
-            return bias.value
-    raise ValueError(f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}. The available flux bias points are {points}.")
+            return bias
+    raise ValueError(
+        f"The flux_bias_point '{flux_bias_point}' is not defined in the state for qubit {index}. The available flux bias points are {points}."
+    )
 
 
 def get_qubit(state: QuAM, qubit_name: str):
@@ -800,7 +804,7 @@ def nullify_other_qubits(state: QuAM, qubit_list: List[int], index: int, cond: b
         for r in qubit_list:
             if r != index:
                 set_dc_offset(
-                    state.qubits[r].name + "_flux", "single", state.get_flux_bias_point(r, "zero_frequency_point")
+                    state.qubits[r].name + "_flux", "single", state.get_flux_bias_point(r, "zero_frequency_point").value
                 )
 
 

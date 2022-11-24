@@ -97,9 +97,7 @@ for n in range(3):
     plt.pcolor(offset_i, offset_q, lo_leakage.transpose())
     plt.xlabel("I offset [V]")
     plt.ylabel("Q offset [V]")
-    plt.title(
-        f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {lo_leakage[minimum[0]][minimum[1]]:.1f} dBm"
-    )
+    plt.title(f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {lo_leakage[minimum[0]][minimum[1]]:.1f} dBm")
 plt.suptitle(f"LO leakage correction for {element}")
 
 machine.drive_lines[machine.qubits[qubit_index].wiring.drive_line_index].I.offset = centers[0]
@@ -132,9 +130,7 @@ for n in range(3):
     plt.pcolor(gain, phase, image.transpose())
     plt.xlabel("Gain")
     plt.ylabel("Phase imbalance [rad]")
-    plt.title(
-        f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {image[minimum[0]][minimum[1]]:.1f} dBm"
-    )
+    plt.title(f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {image[minimum[0]][minimum[1]]:.1f} dBm")
 plt.suptitle(f"Image cancellation for {element}")
 
 machine.qubits[qubit_index].wiring.correction_matrix.gain = centers[0]

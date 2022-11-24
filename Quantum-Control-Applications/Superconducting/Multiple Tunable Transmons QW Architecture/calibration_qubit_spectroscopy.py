@@ -19,7 +19,7 @@ from datetime import datetime
 ##################
 experiment = "qb_spec"
 debug = True
-simulate = False
+simulate = True
 fit_data = True
 qubit_list = [0, 1]
 digital = []
@@ -53,7 +53,7 @@ with program() as qubit_spec:
 
     for i in range(len(qubit_list)):
         # bring other qubits than `i` to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         # set qubit frequency to working point
         set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
 

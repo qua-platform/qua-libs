@@ -1,5 +1,5 @@
 """
-readout_freq_opt.py: uses IQ blobs measurements to find optimal readout frequency
+Use IQ blobs measurements to find optimal readout frequency
 """
 
 from qm.qua import *
@@ -58,7 +58,7 @@ with program() as readout_opt:
 
     for i in range(len(qubit_list)):
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -206,5 +206,5 @@ else:
             f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
         )
         print(f"New optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR_opt:.2f}")
-    machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+    machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
     machine.save("latest_quam.json")

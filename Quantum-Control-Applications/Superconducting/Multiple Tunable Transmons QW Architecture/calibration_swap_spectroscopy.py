@@ -1,5 +1,5 @@
 """
-SWAP_spectroscopy.py: program performing a SWAP spectroscopy used to calibrate the CZ gate.
+Program performing a SWAP spectroscopy used to calibrate the CZ gate.
 """
 
 from qm.qua import *
@@ -18,7 +18,7 @@ from qualang_tools.loops import from_array
 ##################
 # State and QuAM #
 ##################
-experiment = "readout_opt"
+experiment = "SWAP_spectroscopy"
 debug = True
 simulate = False
 qubit_list = [0, 1]
@@ -30,7 +30,10 @@ now = now.strftime("%m%d%Y_%H%M%S")
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
-cz = machine.two_qubit_gates.CZ[0]
+qubit_index = 0
+cz = machine.two_qubit_gates.CZ[qubit_index]
+
+
 print(f"SWAP spectroscopy with target qubit {cz.target_qubit} and conditional qubit {cz.conditional_qubit}")
 ##############################
 # Program-specific variables #
@@ -43,9 +46,9 @@ n_avg = 100
 
 # The flux amplitude is chosen to reach the 02-11 avoided crossing found by performing a flux versus frequency spectroscopy
 # FLux pulse waveform generation
-flux_len = cz.flux_pulse.constant.length
+flux_len = int(cz.flux_pulse.constant.length * 1e9)
 flux_amp = cz.flux_pulse.constant.amplitude
-flux_waveform = np.array([flux_amp] * flux_len)  # The variable flux_len is defined in the configuration
+flux_waveform = np.array([flux_amp] * flux_len)
 
 
 def baked_waveform(waveform, pulse_duration):
@@ -84,6 +87,14 @@ with program() as SWAP_spectroscopy:
     state_st = declare_stream()
     a = declare(fixed)  # Flux pulse amplitude
     segment = declare(int)  # Flux pulse segment
+
+    machine.nullify_other_qubits(qubit_list, qubit_index)
+    # set qubit frequency to working point
+    set_dc_offset(
+        machine.qubits[qubit_index].name + "_flux",
+        "single",
+        machine.get_flux_bias_point(qubit_index, "working_point").value,
+    )
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(a, amps)):

@@ -75,7 +75,7 @@ with program() as gate_cal:
         # bring other qubits to zero frequency
         machine.nullify_other_qubits(qubit_list, i)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing")
+            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
         )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
