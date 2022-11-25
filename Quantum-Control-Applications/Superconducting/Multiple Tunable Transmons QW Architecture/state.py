@@ -20,8 +20,8 @@ For 1 OPX we have:
 
 READOUT_RESONATORS_PER_FEED_LINE = 2
 
-NUMBER_OF_QUBITS = 5
-NUMBER_OF_DRIVE_LINES = 5
+NUMBER_OF_QUBITS = 2
+NUMBER_OF_DRIVE_LINES = NUMBER_OF_QUBITS
 NUMBER_OF_QUBITS_PER_DRIVE_LINE = 1
 
 CENTRAL_QUBIT_INDEX = 0
@@ -138,7 +138,7 @@ state = {
             "t2star": 1e-6,
             "t2star_docs": "Dephasing time T2* [s]",
             "ramsey_det": 10e6,
-            "ramsey_det_dcos": "Detuning to observe ramsey fringes [Hz]",
+            "ramsey_det_docs": "Detuning to observe ramsey fringes [Hz]",
             "driving": {
                 "drag_gaussian": {
                     "length": 60e-9,
