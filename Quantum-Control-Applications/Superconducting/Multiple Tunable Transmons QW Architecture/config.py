@@ -17,6 +17,7 @@ import os
 from quam_sdk.viewers import qprint
 from qm.qua import set_dc_offset
 from pprint import pprint
+from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
@@ -331,6 +332,16 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                 "cosine": [(-np.sin(rot_angle_in_pi), round(readout_line.length * 1e9))],
                 "sine": [(-np.cos(rot_angle_in_pi), round(readout_line.length * 1e9))],
             }
+            # Custom integration weights
+            for weight in state.readout_resonators[r].integration_weights:
+                config["integration_weights"][weight.name + "_weights_" + state.readout_resonators[r].name] = {
+                    "cosine": convert_integration_weights(weight.cosine, N=int(readout_line.length*1e9)),
+                    "sine": convert_integration_weights(weight.sine, N=int(readout_line.length*1e9)),
+                }
+
+                config["pulses"][f"readout_pulse_" + state.readout_resonators[r].name]["integration_weights"][
+                    weight.name
+                ] = (weight.name + "_weights_" + state.readout_resonators[r].name)
 
 
 def add_qb_rot(

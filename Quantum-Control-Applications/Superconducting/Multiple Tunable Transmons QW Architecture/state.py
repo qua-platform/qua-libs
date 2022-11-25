@@ -83,10 +83,16 @@ state = {
             "f_opt": 6.7e9,
             "f_opt_docs": "Resonator optimal readout frequency [Hz] (used in QUA).",
             "readout_regime": "low_power",
-            "readout_amplitude": 0.02,
+            "readout_amplitude": 0.1,
             "readout_amplitude_docs": "Readout amplitude for this resonator [V]. Must be within [-0.5, 0.5).",
-            "rotation_angle": 41.3,
+            "rotation_angle": 0.0,
             "rotation_angle_docs": "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees].",
+            "integration_weights": [
+                {"name": "optimal_cos", "cosine": [1.0]*25, "sine": [0.0]*25},
+                {"name": "optimal_sin", "cosine": [0.0]*25, "sine": [1.0]*25},
+                {"name": "optimal_minus_sin", "cosine": [0.0]*25, "sine": [-1.0]*25},
+            ],
+            "integration_weights_docs": "Arbitrary integration weights defined as lists of tuples whose first element is the value of the integration weight and second element is the duration in ns for which this value should be used [(1.0, readout_len)]. The duration must be divisible by 4.",
             "ge_threshold": 0.0,
             "ge_threshold_docs": "Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states.",
             "readout_fidelity": 0.84,
@@ -265,4 +271,4 @@ state = {
 
 # Now we use QuAM SDK
 
-quam_sdk.constructor.quamConstructor(state)
+quam_sdk.constructor.quamConstructor(state, reuse_existing_values=False)
