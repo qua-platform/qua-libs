@@ -30,7 +30,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qm.simulate.credentials import create_credentials
 from qualang_tools.loops import from_array
-
+from qdacii_visa import QDACII
 import time
 from macros import generic_macro
 
