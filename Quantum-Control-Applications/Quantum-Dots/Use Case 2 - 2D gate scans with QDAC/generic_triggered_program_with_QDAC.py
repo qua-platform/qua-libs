@@ -7,7 +7,7 @@ when that instrument receives the trigger; it is just a program shell to demonst
 a generic macro is run on the opx.
 
 As an example of how this could be used, imagine the macro performing a series of measurements that result in a
-signal-to-noise ratio. We could use this program to sweep the voltage supplied to an amplifier and run the SNR
+signal-to-noise ratio. For example, we could use this program to sweep the voltage supplied to an amplifier and run the SNR
 measurement on the opx at each voltage on the amplifier.
 """
 
@@ -77,7 +77,7 @@ with program() as generic_qdac_triggering:
         wait(qdac_wait_time) # time for the new voltage value to settle
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
-        # anyway, but this helps us keep track of where variables are being modified.
+        # anyway, but this helps us keep track of where variables are being used or modified.
         generic_macro(SNR_variable, SNR_stream)
 
         # put the iteration counter into the iteration stream and increment the counter
