@@ -1,5 +1,5 @@
 """
-power_rabi.py: performs power rabi
+T1 measurement
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -7,85 +7,87 @@ from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from datetime import datetime
+from qualang_tools.loops import from_array, get_equivalent_log_array
+
 
 ##################
 # State and QuAM #
 ##################
-experiment = "power_rabi"
+experiment = "T1"
 debug = True
 simulate = False
-fit_data = False
-qubit_list = [0, 1]
+fit_data = True
+qubit_list = [0]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
-now = datetime.now()
-now = now.strftime("%m%d%Y_%H%M%S")
 
-machine.qubits[0].driving.drag_cosine.angle2volt.deg180 = 0.4
-machine.qubits[1].driving.drag_cosine.angle2volt.deg180 = 0.4
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-u = unit()
+n_avg = 5000
 
-n_avg = 4e3
+# Wait time duration
+t_min = 16 // 4
+t_max = 100000 // 4
+dt = 300
 
-cooldown_time = 5 * u.us // 4
+# lengths = np.arange(t_min, t_max + dt / 2, dt)
+lengths = np.logspace(np.log10(t_min), np.log10(t_max), 40)
+# If logarithmic increment, then need to check that no items have the same integer part
+assert len(np.where(np.diff(lengths.astype(int)) == 0)[0]) == 0
 
-a_min = 0.2
-a_max = 1
-da = 0.01
-
-amps = np.arange(a_min, a_max + da / 2, da)
-
-with program() as power_rabi:
+# QUA program
+with program() as T1:
     n = [declare(int) for _ in range(len(qubit_list))]
     n_st = [declare_stream() for _ in range(len(qubit_list))]
-    a = declare(fixed)
+    t = declare(int)
     I = [declare(fixed) for _ in range(len(qubit_list))]
     Q = [declare(fixed) for _ in range(len(qubit_list))]
     I_st = [declare_stream() for _ in range(len(qubit_list))]
     Q_st = [declare_stream() for _ in range(len(qubit_list))]
     b = declare(fixed)
 
-    for i in range(len(qubit_list)):
+    for q in range(len(qubit_list)):
+        if not simulate:
+            cooldown_time = 5 * machine.qubits[q].t1 // 4
+        else:
+            cooldown_time = 16
         # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, i)
+        machine.nullify_other_qubits(qubit_list, q)
         set_dc_offset(
-            machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "near_anti_crossing").value
+            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "near_anti_crossing").value
         )
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(a, amps)):
-                play("x180" * amp(a), machine.qubits[i].name)
+        with for_(n[q], 0, n[q] < n_avg, n[q] + 1):
+            update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(0)))
+            with for_(*from_array(t, lengths)):
+                play("x180", machine.qubits[q].name)
+                wait(t, machine.qubits[q].name)
                 align()
                 measure(
                     "readout",
-                    machine.readout_resonators[i].name,
+                    machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                    dual_demod.full("cos", "out1", "sin", "out2", I[q]),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[q]),
                 )
-                wait(cooldown_time, machine.readout_resonators[i].name)
-                save(I[i], I_st[i])
-                save(Q[i], Q_st[i])
-            save(n[i], n_st[i])
+                wait(cooldown_time, machine.readout_resonators[q].name)
+                save(I[q], I_st[q])
+                save(Q[q], Q_st[q])
+            save(n[q], n_st[q])
 
         align()
 
     with stream_processing():
-        for i in range(len(qubit_list)):
-            I_st[i].buffer(len(amps)).average().save(f"I{i}")
-            Q_st[i].buffer(len(amps)).average().save(f"Q{i}")
-            n_st[i].save(f"iteration{i}")
+        for q in range(len(qubit_list)):
+            I_st[q].buffer(len(lengths)).average().save(f"I{q}")
+            Q_st[q].buffer(len(lengths)).average().save(f"Q{q}")
+            n_st[q].save(f"iteration{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -97,16 +99,18 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 #######################
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, power_rabi, simulation_config)
+    job = qmm.simulate(config, T1, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(power_rabi)
+    job = qm.execute(T1)
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
-
+    figures = []
+    if np.isclose(np.std(lengths[1:] / lengths[:-1]), 0, atol=1e-3):
+        lengths = get_equivalent_log_array(lengths)
     # Create the fitting object
     Fit = fitting.Fit()
 
@@ -115,6 +119,7 @@ else:
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
+            figures.append(fig)
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
@@ -127,38 +132,36 @@ else:
             qubit_data[q]["iteration"] = data[2]
             # Progress bar
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
-            # Fitting
-            if fit_data:
-                plt.subplot(211)
-                plt.cla()
-                fit_I = Fit.rabi(
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
-                )
-                plt.title(f"Power rabi {q}")
-                plt.subplot(212)
-                plt.cla()
-                fit_Q = Fit.rabi(
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180, qubit_data[q]["I"], plot=debug
-                )
-
             # live plot
             if debug and not fit_data:
                 plot_demodulated_data_1d(
-                    amps * machine.qubits[q].driving.drag_cosine.angle2volt.deg180,
+                    lengths * 4,
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
-                    "x180 amplitude [V]",
-                    f"Power rabi {q}",
+                    "Wait time [ns]",
+                    f"{experiment} qubit {q}",
                     amp_and_phase=False,
                     fig=fig,
                     plot_options={"marker": "."},
                 )
+            # Fitting
+            if fit_data:
+                try:
+                    plt.subplot(211)
+                    plt.cla()
+                    fit_I = Fit.T1(lengths * 4, qubit_data[q]["I"], plot=debug)
+                    plt.subplot(212)
+                    plt.cla()
+                    fit_Q = Fit.T1(lengths * 4, qubit_data[q]["Q"], plot=debug)
+                    plt.pause(0.01)
+                except (Exception,):
+                    pass
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Previous x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
-            machine.qubits[q].driving.drag_cosine.angle2volt.deg180 = np.round(fit_I["amp"][0])
-            print(f"New x180 amplitude: {machine.qubits[q].driving.drag_cosine.angle2volt.deg180:.1f} V")
+            print(f"Previous T1: {machine.qubits[q].t1:.3e} s")
+            machine.qubits[q].t1 = fit_I["T1"][0] * 1e-9
+            print(f"New T1: {machine.qubits[q].t1:.3e} s")
 
-machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
-machine.save("latest_quam.json")
+    machine.save_results(experiment, figures)
+    # machine.save("latest_quam.json")

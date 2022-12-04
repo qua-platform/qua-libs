@@ -8,37 +8,30 @@ from quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
-from datetime import datetime
 
 
 ##################
 # State and QuAM #
 ##################
-experiment = "readout_freq_opt"
+experiment = "readout_freq_optimization"
 debug = True
 simulate = False
-qubit_list = [0, 1]
+qubit_list = [0]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
-now = datetime.now()
-now = now.strftime("%m%d%Y_%H%M%S")
 
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-u = unit()
+n_avg = 1000
 
-n_avg = 4e3
-
-cooldown_time = 5 * u.us // 4
-
+# Frequency scan
 span = 1e6
 df = 0.01e6
 freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
@@ -56,69 +49,73 @@ with program() as readout_opt:
     Q_e_st = [declare_stream() for _ in range(len(qubit_list))]
     f = declare(int)
 
-    for i in range(len(qubit_list)):
+    for q in range(len(qubit_list)):
+        if not simulate:
+            cooldown_time = 5 * machine.qubits[q].t1 // 4
+        else:
+            cooldown_time = 16
         # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, i)
-        set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
+        machine.nullify_other_qubits(qubit_list, q)
+        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(f, freq[i])):
-                update_frequency(machine.readout_resonators[i].name, f)
+        with for_(n[q], 0, n[q] < n_avg, n[q] + 1):
+            with for_(*from_array(f, freq[q])):
+                update_frequency(machine.readout_resonators[q].name, f)
                 measure(
                     "readout",
-                    machine.readout_resonators[i].name,
+                    machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I_g[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_g[i]),
+                    dual_demod.full("cos", "out1", "sin", "out2", I_g[q]),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_g[q]),
                 )
-                wait(cooldown_time, machine.readout_resonators[i].name)
-                save(I_g[i], I_g_st[i])
-                save(Q_g[i], Q_g_st[i])
+                wait(cooldown_time, machine.readout_resonators[q].name)
+                save(I_g[q], I_g_st[q])
+                save(Q_g[q], Q_g_st[q])
 
                 align()  # global align
 
-                play("x180", machine.qubits[i].name)
+                play("x180", machine.qubits[q].name)
                 align()
                 measure(
                     "readout",
-                    machine.readout_resonators[i].name,
+                    machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I_e[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_e[i]),
+                    dual_demod.full("cos", "out1", "sin", "out2", I_e[q]),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_e[q]),
                 )
-                wait(cooldown_time, machine.readout_resonators[i].name)
-                save(I_e[i], I_e_st[i])
-                save(Q_e[i], Q_e_st[i])
+                wait(cooldown_time, machine.readout_resonators[q].name)
+                save(I_e[q], I_e_st[q])
+                save(Q_e[q], Q_e_st[q])
 
-            save(n[i], n_st[i])
+            save(n[q], n_st[q])
 
         align()
 
     with stream_processing():
-        for i in range(len(qubit_list)):
-            n_st[i].save(f"iteration{i}")
+        for q in range(len(qubit_list)):
+            n_st[q].save(f"iteration{q}")
             # mean values
-            I_g_st[i].buffer(len(freq[i])).average().save(f"I_g_avg{i}")
-            Q_g_st[i].buffer(len(freq[i])).average().save(f"Q_g_avg{i}")
-            I_e_st[i].buffer(len(freq[i])).average().save(f"I_e_avg{i}")
-            Q_e_st[i].buffer(len(freq[i])).average().save(f"Q_e_avg{i}")
+            I_g_st[q].buffer(len(freq[q])).average().save(f"I_g_avg{q}")
+            Q_g_st[q].buffer(len(freq[q])).average().save(f"Q_g_avg{q}")
+            I_e_st[q].buffer(len(freq[q])).average().save(f"I_e_avg{q}")
+            Q_e_st[q].buffer(len(freq[q])).average().save(f"Q_e_avg{q}")
             # variances
             (
-                ((I_g_st[i].buffer(len(freq[i])) * I_g_st[i].buffer(len(freq[i]))).average())
-                - (I_g_st[i].buffer(len(freq[i])).average() * I_g_st[i].buffer(len(freq[i])).average())
-            ).save(f"I_g_var{i}")
+                ((I_g_st[q].buffer(len(freq[q])) * I_g_st[q].buffer(len(freq[q]))).average())
+                - (I_g_st[q].buffer(len(freq[q])).average() * I_g_st[q].buffer(len(freq[q])).average())
+            ).save(f"I_g_var{q}")
             (
-                ((Q_g_st[i].buffer(len(freq[i])) * Q_g_st[i].buffer(len(freq[i]))).average())
-                - (Q_g_st[i].buffer(len(freq[i])).average() * Q_g_st[i].buffer(len(freq[i])).average())
-            ).save(f"Q_g_var{i}")
+                ((Q_g_st[q].buffer(len(freq[q])) * Q_g_st[q].buffer(len(freq[q]))).average())
+                - (Q_g_st[q].buffer(len(freq[q])).average() * Q_g_st[q].buffer(len(freq[q])).average())
+            ).save(f"Q_g_var{q}")
             (
-                ((I_e_st[i].buffer(len(freq[i])) * I_e_st[i].buffer(len(freq[i]))).average())
-                - (I_e_st[i].buffer(len(freq[i])).average() * I_e_st[i].buffer(len(freq[i])).average())
-            ).save(f"I_e_var{i}")
+                ((I_e_st[q].buffer(len(freq[q])) * I_e_st[q].buffer(len(freq[q]))).average())
+                - (I_e_st[q].buffer(len(freq[q])).average() * I_e_st[q].buffer(len(freq[q])).average())
+            ).save(f"I_e_var{q}")
             (
-                ((Q_e_st[i].buffer(len(freq[i])) * Q_e_st[i].buffer(len(freq[i]))).average())
-                - (Q_e_st[i].buffer(len(freq[i])).average() * Q_e_st[i].buffer(len(freq[i])).average())
-            ).save(f"Q_e_var{i}")
+                ((Q_e_st[q].buffer(len(freq[q])) * Q_e_st[q].buffer(len(freq[q]))).average())
+                - (Q_e_st[q].buffer(len(freq[q])).average() * Q_e_st[q].buffer(len(freq[q])).average())
+            ).save(f"Q_e_var{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -139,27 +136,28 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
-
+    figures = []
     for q in range(len(qubit_list)):
         # Live plotting
         print("Qubit " + str(q))
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
+            figures.append(fig)
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
         my_results = fetching_tool(
             job,
             [
-                f"I_g_avg{i}",
-                f"Q_g_avg{i}",
-                f"I_e_avg{i}",
-                f"Q_e_avg{i}",
-                f"I_g_var{i}",
-                f"Q_g_var{i}",
-                f"I_e_var{i}",
-                f"Q_e_var{i}",
-                f"iteration{i}",
+                f"I_g_avg{q}",
+                f"Q_g_avg{q}",
+                f"I_e_avg{q}",
+                f"Q_e_avg{q}",
+                f"I_g_var{q}",
+                f"Q_g_var{q}",
+                f"I_e_var{q}",
+                f"Q_e_var{q}",
+                f"iteration{q}",
             ],
             mode="live",
         )
@@ -179,7 +177,7 @@ else:
             progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
             # Derive SNR
             Z = (qubit_data[q]["I_e_avg"] - qubit_data[q]["I_g_avg"]) + 1j * (
-                qubit_data[q]["Q_e_avg"] - qubit_data[q]["I_e_avg"]
+                qubit_data[q]["Q_e_avg"] - qubit_data[q]["Q_g_avg"]
             )
             var = (
                 qubit_data[q]["I_g_var"]
@@ -189,22 +187,39 @@ else:
             ) / 4
             SNR = ((np.abs(Z)) ** 2) / (2 * var)
             if debug:
+                plt.subplot(311)
                 plt.cla()
-                plt.plot(freq[q], SNR, ".-")
-                plt.title(f"resonator optimization qubit {q}")
-                plt.xlabel("Readout frequency [Hz]")
+                plt.plot(freq[q] + machine.readout_lines[q].lo_freq, SNR, ".-")
+                plt.title(f"{experiment} qubit {q}")
                 plt.ylabel("SNR")
+                plt.subplot(312)
+                plt.cla()
+                plt.plot(freq[q] + machine.readout_lines[q].lo_freq, qubit_data[q]["I_g_avg"])
+                plt.plot(freq[q] + machine.readout_lines[q].lo_freq, qubit_data[q]["I_e_avg"])
+                plt.legend(("ground", "excited"))
+                plt.ylabel("I [a.u.]")
+                plt.subplot(313)
+                plt.cla()
+                plt.plot(freq[q] + machine.readout_lines[q].lo_freq, qubit_data[q]["Q_g_avg"])
+                plt.plot(freq[q] + machine.readout_lines[q].lo_freq, qubit_data[q]["Q_e_avg"])
+                plt.legend(("ground", "excited"))
+                plt.ylabel("Q [a.u.]")
+                plt.xlabel("Readout frequency [Hz]")
                 plt.tight_layout()
                 plt.pause(0.1)
         # Find the readout frequency that maximizes the SNR
         f_opt = freq[q][np.argmax(SNR)]
         SNR_opt = SNR[np.argmax(SNR)]
         print(
-            f"Previous optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR[len(freq[q])//2+1]:.2f}"
+            f"Previous optimal readout frequency: {machine.readout_resonators[q].f_opt*1e-9:.6f} GHz with SNR = {SNR[len(freq[q])//2+1]:.2f}"
         )
         machine.readout_resonators[q].f_opt = (
             f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
         )
-        print(f"New optimal readout frequency: {machine.readout_resonators[q].f_opt:.1f} Hz with SNR = {SNR_opt:.2f}")
-    machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
-    machine.save("latest_quam.json")
+        print(
+            f"New optimal readout frequency: {machine.readout_resonators[q].f_opt*1e-9:.6f} GHz with SNR = {SNR_opt:.2f}"
+        )
+        print(f"New resonance IF frequency: {machine.get_readout_IF(q) * 1e-6:.3f} MHz")
+
+    machine.save_results(experiment, figures)
+    # machine.save("latest_quam.json")

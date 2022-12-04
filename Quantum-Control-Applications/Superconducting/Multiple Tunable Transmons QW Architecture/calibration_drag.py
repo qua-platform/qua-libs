@@ -19,13 +19,15 @@ from datetime import datetime
 experiment = "drag_cal"
 debug = True
 simulate = False
-qubit_list = [0, 1]
+qubit_list = [0]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 now = datetime.now()
 now = now.strftime("%m%d%Y_%H%M%S")
 
+
+# machine.qubits[0].driving.drag_cosine.detuning = 2e6
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -35,16 +37,16 @@ u = unit()
 
 n_avg = 1000
 
-cooldown_time = 5 * u.us // 4
+cooldown_time = 200 * u.us // 4
 
-a_min = 0.2
-a_max = 1
-da = 0.01
+a_min = -1.9
+a_max = 1.9
+da = 0.05
 
 alpha = np.arange(a_min, a_max + da / 2, da)
 
 iter_min = 0
-iter_max = 25
+iter_max = 40
 d = 1
 iters = np.arange(iter_min, iter_max + 0.1, d)
 
@@ -150,7 +152,7 @@ else:
                     "Number of iterations",
                     "DRAG coefficient",
                     f"DRAG coefficient calibration for qubit {q}",
-                    amp_and_phase=True,
+                    amp_and_phase=False,
                     fig=fig,
                     plot_options={"cmap": "magma"},
                 )
@@ -161,17 +163,17 @@ else:
             z_I = np.polyfit(alpha, qubit_data[q]["I"][:, iters == it], 2)
             z_Q = np.polyfit(alpha, qubit_data[q]["Q"][:, iters == it], 2)
             plt.subplot(211)
-            plt.plot(alpha, qubit_data[q]["I"][:, iters == it], colors[i] + ".", label=f"{it} iterations")
-            plt.plot(
-                alpha, np.poly1d(np.squeeze(z_I))(alpha), colors[i] + "-", label=f"drag={(-z_I[1]/2/z_I[0])[0]:.3f}"
-            )
+            plt.plot(alpha, qubit_data[q]["I"][:, iters == it], colors[i] + "-", label=f"{it} iterations")
+            # plt.plot(
+            #     alpha, np.poly1d(np.squeeze(z_I))(alpha), colors[i] + ".", label=f"drag={(-z_I[1]/2/z_I[0])[0]:.3f}"
+            # )
             plt.ylabel("I [a.u.]")
             plt.title(f"DRAG calibration for qubit {q}")
             plt.subplot(212)
-            plt.plot(alpha, qubit_data[q]["Q"][:, iters == it], colors[i] + ".", label=f"{it} iterations")
-            plt.plot(
-                alpha, np.poly1d(np.squeeze(z_Q))(alpha), colors[i] + "-", label=f"drag={(-z_Q[1]/2/z_Q[0])[0]:.3f}"
-            )
+            plt.plot(alpha, qubit_data[q]["Q"][:, iters == it], colors[i] + "-", label=f"{it} iterations")
+            # plt.plot(
+            #     alpha, np.poly1d(np.squeeze(z_Q))(alpha), colors[i] + ".", label=f"drag={(-z_Q[1]/2/z_Q[0])[0]:.3f}"
+            # )
             plt.xlabel("DRAG coefficient alpha")
             plt.ylabel("Q [a.u.]")
 
@@ -188,4 +190,4 @@ else:
         print(f"New DRAG coefficient: {machine.qubits[q].driving.drag_cosine.alpha:.3f}")
 
 machine.save("./lab_notebook/state_after_" + experiment + "_" + now + ".json")
-machine.save("latest_quam.json")
+# machine.save("latest_quam.json")

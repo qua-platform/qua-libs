@@ -14,9 +14,11 @@ from typing import List, Dict
 from scipy.signal.windows import gaussian
 import json
 import os
+from datetime import datetime
 from quam_sdk.viewers import qprint
 from qm.qua import set_dc_offset
 from pprint import pprint
+import matplotlib.pyplot as plt
 from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
 # IQ imbalance matrix
@@ -335,8 +337,8 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
             # Custom integration weights
             for weight in state.readout_resonators[r].integration_weights:
                 config["integration_weights"][weight.name + "_weights_" + state.readout_resonators[r].name] = {
-                    "cosine": convert_integration_weights(weight.cosine, N=int(readout_line.length*1e9)),
-                    "sine": convert_integration_weights(weight.sine, N=int(readout_line.length*1e9)),
+                    "cosine": convert_integration_weights(weight.cosine, N=int(readout_line.length * 1e9)),
+                    "sine": convert_integration_weights(weight.sine, N=int(readout_line.length * 1e9)),
                 }
 
                 config["pulses"][f"readout_pulse_" + state.readout_resonators[r].name]["integration_weights"][
@@ -350,8 +352,8 @@ def add_qb_rot(
     q: int,
     angle: int,
     direction: str,
-    wf_I: List,
-    wf_Q: List = None,
+    wf_I,
+    wf_Q=None,
 ):
     """Add single qubit operation
 
@@ -564,6 +566,23 @@ def build_config(state, digital_out: list, qubits: list, shape: str):
                                 round(pulse.length * 1e9),
                                 round(pulse.sigma * 1e9),
                             ),
+                        )  # +180 and -180 have same amplitude
+                    elif pulse.shape == "square":
+                        if abs(single_qubit_operation.angle) == 180:
+                            amplitude = pulse.angle2volt.deg180
+                        elif abs(single_qubit_operation.angle) == 90:
+                            amplitude = pulse.angle2volt.deg90
+                        else:
+                            raise ValueError(
+                                "Unknown angle for single qubit operation" f" {single_qubit_operation.angle}"
+                            )
+                        add_qb_rot(
+                            state,
+                            config,
+                            q,
+                            single_qubit_operation.angle,
+                            single_qubit_operation.direction,
+                            np.array([amplitude] * round(pulse.length * 1e9)),
                         )  # +180 and -180 have same amplitude
                     elif pulse.shape == "drag_gaussian":
                         from qualang_tools.config.waveform_tools import (
@@ -859,6 +878,24 @@ def get_f_res_from_flux(state: QuAM, index: int, flux_bias: float) -> float:
     """
     vertex = state.readout_resonators[index].f_res_vs_flux
     return vertex.a * flux_bias**2 + vertex.b * flux_bias + vertex.c
+
+
+def save_results(state: QuAM, filename, figures: List = ()):
+    now = datetime.now()
+    now = now.strftime("%m%d%Y_%H%M%S")
+    directory = state.results.directory + f"{now[:8]}/"
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    # Save json
+    state.save(directory + f"{now[9:]}_state_after_{filename}.json")
+    # Save figure
+    for i in range(len(figures)):
+        if len(figures) > 1:
+            figures[i].savefig(directory + f"{now[9:]}_{filename}" + f"_fig{i}")
+        else:
+            figures[i].savefig(directory + f"{now[9:]}_{filename}")
+    # Save data
+    # tbd
 
 
 if __name__ == "__main__":

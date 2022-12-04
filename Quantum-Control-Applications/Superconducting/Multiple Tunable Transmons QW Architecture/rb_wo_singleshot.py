@@ -40,12 +40,12 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 interleaved_gate_index = 1
 max_circuit_depth = 100
 num_of_sequences = 5
-n_avg = 2000
+n_avg = 500
 seed = 345324
 cooldown_time = int(200e3) // 4
 
 
-def generate_sequence(interleaved_gate_index):
+def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
     current_state = declare(int)
@@ -56,17 +56,11 @@ def generate_sequence(interleaved_gate_index):
     rand = Random(seed=seed)
 
     assign(current_state, 0)
-    with for_(i, 0, i < 2 * max_circuit_depth, i + 2):
+    with for_(i, 0, i < max_circuit_depth, i + 1):
         assign(step, rand.rand_int(24))
         assign(current_state, cayley[current_state * 24 + step])
         assign(sequence[i], step)
         assign(inv_gate[i], inv_list[current_state])
-        # interleaved gate
-        assign(step, interleaved_gate_index)
-        assign(current_state, cayley[current_state * 24 + step])
-        assign(sequence[i + 1], step)
-        assign(inv_gate[i + 1], inv_list[current_state])
-
     return sequence, inv_gate
 
 
@@ -147,9 +141,6 @@ def play_sequence(sequence_list, depth, qubit_name):
                 play("x-90", qubit_name)
 
 
-###################
-# The QUA program #
-###################
 with program() as rb:
     depth = declare(int)
     saved_gate = declare(int)
@@ -160,53 +151,40 @@ with program() as rb:
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
-    state = declare(bool)
-    state_st = declare_stream()
-    even_depth = declare(int)
 
-    with for_(m, 0, m < num_of_sequences, m + 1):
-        # Generates the RB sequence with a gate interleaved after each Clifford
-        sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
-        # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
-        assign(even_depth, 2)
-        with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
-            # Replacing the last gate in the sequence with the sequence's inverse gate
-            # The original gate is saved in 'saved_gate' and is being restored at the end
-            assign(saved_gate, sequence_list[depth])
-            assign(sequence_list[depth], inv_gate_list[depth - 1])
+    with for_(n, 0, n < n_avg, n + 1):
+        with for_(m, 0, m < num_of_sequences, m + 1):
+            sequence_list, inv_gate_list = generate_sequence()
 
-            with if_(depth == even_depth):
-                with for_(n, 0, n < n_avg, n + 1):
-                    # Can replace by active reset
-                    wait(cooldown_time, machine.qubits[qubit_index].name)
+            with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+                # Replacing the last gate in the sequence with the sequence's inverse gate
+                # The original gate is saved in 'saved_gate' and is being restored at the end
+                assign(saved_gate, sequence_list[depth])
+                assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-                    align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
+                wait(cooldown_time, machine.readout_resonators[qubit_index].name)
 
-                    play_sequence(sequence_list, depth, machine.qubits[qubit_index].name)
-                    align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
-                    # Make sure you updated the ge_threshold
-                    measure(
-                        "readout",
-                        machine.readout_resonators[qubit_index].name,
-                        None,
-                        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-                    )
-                    assign(state, I > machine.readout_resonators[qubit_index].ge_threshold)
-                    save(state, state_st)
-                    save(I, I_st)
-                    save(Q, Q_st)
-                # always play the random gate followed by the interleaved gate
-                assign(even_depth, even_depth + 2)
-            assign(sequence_list[depth], saved_gate)
-        save(m, n_st)
+                align(machine.readout_resonators[qubit_index].name, machine.qubits[qubit_index].name)
+
+                play_sequence(sequence_list, depth, machine.qubits[qubit_index].name)
+                align(machine.qubits[qubit_index].name, machine.readout_resonators[qubit_index].name)
+                measure(
+                    "readout",
+                    machine.readout_resonators[qubit_index].name,
+                    None,
+                    dual_demod.full("cos", "out1", "sin", "out2", I),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                )
+
+                save(I, I_st)
+                save(Q, Q_st)
+
+                assign(sequence_list[depth], saved_gate)
+        save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(num_of_sequences).save("I")
-        Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(num_of_sequences).save("Q")
-        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
-            num_of_sequences
-        ).save(f"res")
+        I_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("I")
+        Q_st.buffer(max_circuit_depth).buffer(num_of_sequences).average().save("Q")
         n_st.save("iteration")
 
 
@@ -232,6 +210,7 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+
     x = np.linspace(1, max_circuit_depth, max_circuit_depth)
     while results.is_processing():
         # Fetch results
@@ -289,55 +268,5 @@ else:
             f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
             f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
         )
-    # res_handles = job.result_handles
-    # res_handles.wait_for_all_values()
-    # state = res_handles.get(f"res").fetch_all()
-    #
-    # value = 1 - np.average(state, axis=0)
-    # error = np.std(state, axis=0)
-    #
-    # def power_law(m, a, b, p):
-    #     return a * (p**m) + b
-    #
-    # plt.figure()
-    # x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-    # plt.xlabel("Number of Clifford gates")
-    # plt.ylabel("Sequence Fidelity")
-    #
-    # pars, cov = curve_fit(
-    #     f=power_law,
-    #     xdata=x,
-    #     ydata=value,
-    #     p0=[0.5, 0.5, 0.9],
-    #     bounds=(-np.inf, np.inf),
-    #     maxfev=2000,
-    # )
-    #
-    # plt.errorbar(x, value, yerr=error, marker=".")
-    # plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
-    #
-    # stdevs = np.sqrt(np.diag(cov))
-    #
-    # print("#########################")
-    # print("### Fitted Parameters ###")
-    # print("#########################")
-    # print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
-    # print("Covariance Matrix")
-    # print(cov)
-    #
-    # one_minus_p = 1 - pars[2]
-    # r_c = one_minus_p * (1 - 1 / 2**1)
-    # r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-    # r_c_std = stdevs[2] * (1 - 1 / 2**1)
-    # r_g_std = r_c_std / 1.875
-    #
-    # print("#########################")
-    # print("### Useful Parameters ###")
-    # print("#########################")
-    # print(
-    #     f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-    #     f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-    #     f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-    # )
-    #
-    # np.savez("rb_values", value)
+
+        np.savez("rb_values", value)

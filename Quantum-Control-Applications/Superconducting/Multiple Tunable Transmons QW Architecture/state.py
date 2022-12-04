@@ -33,6 +33,7 @@ state = {
     "_func": [
         "config.build_config",
         "config.save",
+        "config.save_results",
         "config.get_wiring",
         "config.get_sequence_state",
         "config.get_qubit",
@@ -45,7 +46,7 @@ state = {
         "config.set_f_res_vs_flux_vertex",
         "config.get_f_res_from_flux",
     ],
-    "network": {"qop_ip": "172.16.2.103", "port": 80},
+    "network": {"qop_ip": "127.0.0.1", "port": 80},
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
@@ -88,9 +89,9 @@ state = {
             "rotation_angle": 0.0,
             "rotation_angle_docs": "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees].",
             "integration_weights": [
-                {"name": "optimal_cos", "cosine": [1.0]*25, "sine": [0.0]*25},
-                {"name": "optimal_sin", "cosine": [0.0]*25, "sine": [1.0]*25},
-                {"name": "optimal_minus_sin", "cosine": [0.0]*25, "sine": [-1.0]*25},
+                {"name": "optimal_cos", "cosine": [1.0] * 25, "sine": [0.0] * 25},
+                {"name": "optimal_sin", "cosine": [0.0] * 25, "sine": [1.0] * 25},
+                {"name": "optimal_minus_sin", "cosine": [0.0] * 25, "sine": [-1.0] * 25},
             ],
             "integration_weights_docs": "Arbitrary integration weights defined as lists of tuples whose first element is the value of the integration weight and second element is the duration in ns for which this value should be used [(1.0, readout_len)]. The duration must be divisible by 4.",
             "ge_threshold": 0.0,
@@ -98,6 +99,8 @@ state = {
             "readout_fidelity": 0.84,
             "q_factor": 1e4,
             "chi": 1e6,
+            "relaxation_time": 5e-6,
+            "relaxation_time_docs": "Resonator relaxation time [s].",
             "f_res_vs_flux": {
                 "a": 0.0,
                 "b": 0.0,
@@ -110,6 +113,8 @@ state = {
                 "time_of_flight": 272,
                 "time_of_flight_docs": "Time of flight for this resonator [ns].",
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
+                "maximum_amplitude": 0.4,
+                "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
             },
         }
         for i in range(READOUT_RESONATORS_PER_FEED_LINE)
@@ -122,8 +127,8 @@ state = {
             "lo_freq_docs": "LO frequency [Hz]",
             "lo_power": 15,
             "lo_power_docs": "LO power to drive line [dBm]",
-            "I": {"controller": "con1", "channel": 1 + 2 * i, "offset": 0.0},
-            "Q": {"controller": "con1", "channel": 2 + 2 * i, "offset": 0.0},
+            "I": {"controller": "con1", "channel": 1 + 3 * i, "offset": 0.0},
+            "Q": {"controller": "con1", "channel": 2 + 3 * i, "offset": 0.0},
         }
         for i in range(NUMBER_OF_DRIVE_LINES)
     ],
@@ -172,11 +177,21 @@ state = {
                     "angle2volt": {"deg90": 0.25, "deg180": 0.49},
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
+                "square": {
+                    "length": 60e-9,
+                    "length_docs": "The pulse length [s]",
+                    "shape": "square",
+                    "shape_docs": "Shape of the gate",
+                    "angle2volt": {"deg90": 0.25, "deg180": 0.49},
+                    "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
+                },
             },
             "wiring": {
                 "drive_line_index": int(np.floor(i / NUMBER_OF_QUBITS_PER_DRIVE_LINE)),
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
-                "flux_line": {"controller": "con1", "channel": 8 - i, "offset": 0.0},
+                "maximum_amplitude": 0.4,
+                "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
+                "flux_line": {"controller": "con1", "channel": 3 + 3 * i, "offset": 0.0},
                 "flux_filter_coefficients": {
                     "feedforward": [],
                     "feedback": [],
@@ -185,23 +200,28 @@ state = {
             "flux_bias_points": [
                 {
                     "name": "insensitive_point",
-                    "value": 0.1,
+                    "value": 0.0,
                     "value_docs": "Bias voltage to set qubit to maximal frequency [V]",
                 },
                 {
                     "name": "zero_frequency_point",
-                    "value": 0.1,
+                    "value": 0.0,
                     "value_docs": "Bias voltage that nullifies the qubit frequency [V]",
                 },
                 {
                     "name": "near_anti_crossing",
-                    "value": 0.1,
+                    "value": 0.0,
                     "value_docs": "Bias voltage near rr-qb anti-crossing used for easy state discrimination [V]",
                 },
                 {
                     "name": "working_point",
-                    "value": 0.1,
+                    "value": 0.0,
                     "value_docs": "Arbitrary bias voltage for your own desired working point",
+                },
+                {
+                    "name": "readout",
+                    "value": 0.0,
+                    "value_docs": "Bias voltage corresponding to the chosen readout frequency.",
                 },
             ],
             "sequence_states": {
@@ -266,6 +286,7 @@ state = {
             if i != CENTRAL_QUBIT_INDEX
         ],
     },
+    "results": {"directory": ""},
     "running_strategy": {"running": True, "start": [], "end": []},
 }
 

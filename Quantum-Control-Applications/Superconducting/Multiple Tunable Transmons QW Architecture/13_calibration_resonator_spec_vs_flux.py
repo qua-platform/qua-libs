@@ -13,16 +13,15 @@ from qualang_tools.results import progress_counter, fetching_tool
 from macros import qua_declaration
 from qualang_tools.loops import from_array
 
-
 ##################
 # State and QuAM #
 ##################
-experiment = "_resonator_spectroscopy_vs_flux"
+experiment = "2D_resonator_spectroscopy_vs_flux"
 debug = True
-simulate = True
-qubit_list = [0, 1]
+simulate = False
+qubit_list = [0]
 digital = []
-machine = QuAM("quam_bootstrap_state.json")
+machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
 config = machine.build_config(digital, qubit_list, gate_shape)
@@ -33,22 +32,22 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 u = unit()
 
 n_avg = 1e3
-cooldown_time = 16 + 0 * 5 * u.us // 4
+cooldown_time = 5 * u.us // 4
 
 # Frequency scan
-freq_span = 25e6
-df = 10e6
+freq_span = 5e6
+df = 0.1e6
 freq = [
     np.arange(machine.get_readout_IF(i) - freq_span, machine.get_readout_IF(i) + freq_span + df / 2, df)
     for i in qubit_list
 ]
 # Bias scan
-bias_span = 0.3
+bias_span = 0.5
 dbias = 0.05
 bias = [
     np.arange(
-        machine.get_flux_bias_point(i, "zero_frequency_point") - bias_span,
-        machine.get_flux_bias_point(i, "zero_frequency_point") + bias_span + dbias / 2,
+        machine.get_flux_bias_point(i, "zero_frequency_point").value - bias_span,
+        machine.get_flux_bias_point(i, "zero_frequency_point").value + bias_span + dbias / 2,
         dbias,
     )
     for i in range(len(qubit_list))
@@ -60,35 +59,39 @@ with program() as resonator_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i in range(len(qubit_list)):
-        # bring other qubits than `i` to zero frequency
-        machine.nullify_other_qubits(qubit_list, i)
+    for q in range(len(qubit_list)):
+        if not simulate:
+            cooldown_time = machine.readout_resonators[q].relaxation_time // 4
+        else:
+            cooldown_time = 16
+        # bring other qubits than `q` to zero frequency
+        machine.nullify_other_qubits(qubit_list, q)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(b, bias[i])):
-                set_dc_offset(machine.qubits[i].name + "_flux", "single", b)
+        with for_(n[q], 0, n[q] < n_avg, n[q] + 1):
+            with for_(*from_array(b, bias[q])):
+                set_dc_offset(machine.qubits[q].name + "_flux", "single", b)
                 wait(250)  # wait for 1 us
-                with for_(*from_array(f, freq[i])):
-                    update_frequency(machine.readout_resonators[i].name, f)
+                with for_(*from_array(f, freq[q])):
+                    update_frequency(machine.readout_resonators[q].name, f)
                     measure(
                         "readout",
-                        machine.readout_resonators[i].name,
+                        machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        dual_demod.full("cos", "out1", "sin", "out2", I[q]),
+                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[q]),
                     )
-                    wait(cooldown_time, machine.readout_resonators[i].name)
-                    save(I[i], I_st[i])
-                    save(Q[i], Q_st[i])
-            save(n[i], n_st[i])
+                    wait(cooldown_time, machine.readout_resonators[q].name)
+                    save(I[q], I_st[q])
+                    save(Q[q], Q_st[q])
+            save(n[q], n_st[q])
 
         align()
 
     with stream_processing():
-        for i in range(len(qubit_list)):
-            I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{i}")
-            Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{i}")
-            n_st[i].save(f"iteration{i}")
+        for q in range(len(qubit_list)):
+            I_st[q].buffer(len(freq[q])).buffer(len(bias[q])).average().save(f"I{q}")
+            Q_st[q].buffer(len(freq[q])).buffer(len(bias[q])).average().save(f"Q{q}")
+            n_st[q].save(f"iteration{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -110,12 +113,13 @@ else:
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
     # Live plotting
-    # if debug:
-    #     fig = [plt.figure() for q in range(len(qubit_list))]
+    figures = []
 
     for q in range(len(qubit_list)):
-        fig = plt.figure()
-        interrupt_on_close(fig, job)
+        if debug:
+            fig = plt.figure()
+            interrupt_on_close(fig, job)
+            figures.append(fig)
         print("Qubit " + str(q))
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
@@ -131,13 +135,13 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    freq[q] / u.MHz,
+                    (freq[q] + machine.readout_lines[0].lo_freq) * 1e-6,
                     bias[q],
                     qubit_data[q]["I"],
                     qubit_data[q]["Q"],
-                    "frequency [MHz]",
+                    "Readout frequency [MHz]",
                     "Flux bias [V]",
-                    f"resonator spectroscopy qubit {q}",
+                    f"{experiment} qubit {q}",
                     amp_and_phase=True,
                     plot_options={"cmap": "magma"},
                     fig=fig,
@@ -147,5 +151,5 @@ else:
     # machine.get_flux_bias_point(0, "zero_frequency_point").value = 0.115
     # And choose three points on the resonator frequency vs flux parabola to fit it and get the f_res vs flux correspondence
     # machine.set_f_res_vs_flux_vertex(0, [(-0.1, 4.46e9), (0, 4.45e9), (0.1, 4.465e9)])
-    # machine.save("./labnotebook/state_after_" + experiment + "_" + now + ".json")
+    # machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")

@@ -1,29 +1,21 @@
 """
-iq_blobs.py: performs the iq_blobs measurement
+Measure the IQ blobs of the qubit in the ground and excited states to estimate the readout fidelity
 """
-import time
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from quam import QuAM
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal
 from qm import SimulationConfig
-from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_1d
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
-from datetime import datetime
 from qualang_tools.analysis.discriminator import two_state_discriminator
+
 
 ##################
 # State and QuAM #
 ##################
-experiment = "iq_blobs"
+experiment = "IQ_blobs"
 debug = True
 simulate = False
-qubit_list = [0, 1]
+qubit_list = [0]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
@@ -33,11 +25,7 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 ###################
 # The QUA program #
 ###################
-u = unit()
-
-n_avg = 4e3
-
-cooldown_time = 5 * u.us // 4
+n_runs = 10e3
 
 with program() as iq_blobs:
     n = [declare(int) for _ in range(len(qubit_list))]
@@ -52,49 +40,53 @@ with program() as iq_blobs:
     I_e_st = [declare_stream() for _ in range(len(qubit_list))]
     Q_e_st = [declare_stream() for _ in range(len(qubit_list))]
 
-    for i in range(len(qubit_list)):
+    for q in range(len(qubit_list)):
+        if not simulate:
+            cooldown_time = 5 * machine.qubits[q].t1 // 4
+        else:
+            cooldown_time = 16
         # bring other qubits to zero frequency
-        machine.nullify_qubits(True, qubit_list, i)
-        set_dc_offset(machine.qubits[i].name + "_flux", "single", machine.get_flux_bias_point(i, "working_point").value)
+        machine.nullify_other_qubits(qubit_list, q)
+        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
+        with for_(n[q], 0, n[q] < n_runs, n[q] + 1):
             measure(
                 "readout",
-                machine.readout_resonators[i].name,
+                machine.readout_resonators[q].name,
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I_g[i]),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q_g[i]),
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g[q]),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g[q]),
             )
-            wait(cooldown_time, machine.readout_resonators[i].name)
-            save(I_g[i], I_g_st[i])
-            save(Q_g[i], Q_g_st[i])
+            wait(cooldown_time, machine.readout_resonators[q].name)
+            save(I_g[q], I_g_st[q])
+            save(Q_g[q], Q_g_st[q])
 
             align()
 
-            play("x180", machine.qubits[i].name)
+            play("x180", machine.qubits[q].name)
             align()
             measure(
                 "readout",
-                machine.readout_resonators[i].name,
+                machine.readout_resonators[q].name,
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I_e[i]),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q_e[i]),
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e[q]),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e[q]),
             )
-            wait(cooldown_time, machine.readout_resonators[i].name)
-            save(I_e[i], I_e_st[i])
-            save(Q_e[i], Q_e_st[i])
+            wait(cooldown_time, machine.readout_resonators[q].name)
+            save(I_e[q], I_e_st[q])
+            save(Q_e[q], Q_e_st[q])
 
-            save(n[i], n_st[i])
+            save(n[q], n_st[q])
 
         align()
 
     with stream_processing():
-        for i in range(len(qubit_list)):
-            I_g_st[i].save_all(f"Ig{i}")
-            Q_g_st[i].save_all(f"Qg{i}")
-            I_e_st[i].save_all(f"Ie{i}")
-            Q_e_st[i].save_all(f"Qe{i}")
-            n_st[i].save(f"iteration{i}")
+        for q in range(len(qubit_list)):
+            I_g_st[q].save_all(f"Ig{q}")
+            Q_g_st[q].save_all(f"Qg{q}")
+            I_e_st[q].save_all(f"Ie{q}")
+            Q_e_st[q].save_all(f"Qe{q}")
+            n_st[q].save(f"iteration{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -122,7 +114,7 @@ else:
         qubit_data[q]["iteration"] = 0
         # Get results from QUA program
         my_results = fetching_tool(job, [f"Ig{q}", f"Qg{q}", f"Ie{q}", f"Qe{q}", f"iteration{q}"], mode="live")
-        while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
+        while my_results.is_processing() and qubit_data[q]["iteration"] < n_runs:
             # Fetch results
             data = my_results.fetch_all()
             qubit_data[q]["Ig"] = data[0]
@@ -131,7 +123,8 @@ else:
             qubit_data[q]["Qe"] = data[3]
             qubit_data[q]["iteration"] = data[4]
             # Progress bar
-            progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
+            progress_counter(qubit_data[q]["iteration"], n_runs, start_time=my_results.start_time)
+        # PLot the IQ blobs end derive the readout fidelity
         angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
             qubit_data[q]["Ig"],
             qubit_data[q]["Qg"],
@@ -140,3 +133,9 @@ else:
             b_print=True,
             b_plot=True,
         )
+        machine.readout_resonators[q].readout_fidelity = fidelity
+        machine.readout_resonators[q].ge_threshold = threshold
+        machine.readout_resonators[q].rotation_angle = angle
+
+    machine.save_results(experiment, figures)
+    # machine.save("latest_quam.json")
