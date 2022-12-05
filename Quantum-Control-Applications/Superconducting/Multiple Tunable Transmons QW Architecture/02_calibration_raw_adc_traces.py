@@ -72,20 +72,46 @@ for q in qubit_list:
     fig = plt.figure()
     plt.subplot(121)
     plt.title("Single run")
-    plt.plot(adc1_single_run, label="Input 1")
-    plt.plot(adc2_single_run, label="Input 2")
+    plt.plot(adc1_single_run, "b", label="Input 1")
+    plt.plot(adc2_single_run, "r", label="Input 2")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
     plt.subplot(122)
     plt.title("Averaged run")
-    plt.plot(adc1, label="Input 1")
-    plt.plot(adc2, label="Input 2")
+    plt.plot(adc1, "b", label="Input 1")
+    plt.plot(adc2, "r", label="Input 2")
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.suptitle(f"Qubit {q}")
     plt.tight_layout()
+
+    # Fitting
+    plt.subplot(122)
+    tof1 = 0
+    try:
+        tof1 = np.min(np.where(np.abs(np.diff(adc1)) > 10 / 4096))
+        plt.axvline(x=tof1, color="b", linestyle=":")
+        plt.axhline(y=np.mean(adc1[:tof1]), color="b", linestyle="--")
+    except (Exception,):
+        pass
+    tof2 = 0
+    try:
+        tof2 = np.min(np.where(np.abs(np.diff(adc2)) > 10 / 4096))
+        plt.axvline(x=tof2, color="r", linestyle=":")
+        plt.axhline(y=np.mean(adc1[:tof2]), color="r", linestyle="--")
+    except (Exception,):
+        pass
+
+    # Update the state
+    machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].I_down.offset -= np.mean(adc1)
+    machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].Q_down.offset -= np.mean(adc2)
+    machine.readout_resonators[q].wiring.time_of_flight += max(tof1, tof2) - max(tof1, tof2) % 4 + 4
+
     figures.append(fig)
     print(f"Qubit {q}:")
     print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+    print(f"TOF to add: {tof1} ns for input 1 and {tof2} ns for input 2")
+
 machine.save_results(experiment, figures)
+# machine.save("latest_quam.json")
