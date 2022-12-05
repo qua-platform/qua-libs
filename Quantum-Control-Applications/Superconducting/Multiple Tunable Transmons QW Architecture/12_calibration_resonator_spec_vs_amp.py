@@ -57,7 +57,7 @@ with program() as resonator_spec:
 
     for q in range(len(qubit_list)):
         if not simulate:
-            cooldown_time = machine.readout_resonators[q].relaxation_time // 4
+            cooldown_time = int(machine.readout_resonators[q].relaxation_time * 1e9) // 4
         else:
             cooldown_time = 16
         # bring other qubits than `q` to zero frequency

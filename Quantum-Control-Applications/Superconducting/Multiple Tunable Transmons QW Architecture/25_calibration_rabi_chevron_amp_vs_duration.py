@@ -67,7 +67,7 @@ with program() as rabi:
 
     for q in range(len(qubit_list)):
         if not simulate:
-            cooldown_time = 5 * machine.qubits[q].t1 // 4
+            cooldown_time = 5 * int(machine.qubits[q].t1 * 1e9) // 4
         else:
             cooldown_time = 16
         # bring other qubits to zero frequency

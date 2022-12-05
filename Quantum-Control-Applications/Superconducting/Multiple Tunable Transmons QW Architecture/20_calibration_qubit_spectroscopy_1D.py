@@ -24,8 +24,8 @@ digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-machine.get_qubit_gate(0, gate_shape).angle2volt.deg180 = 0.2
-machine.get_qubit_gate(0, gate_shape).length = 200e-9
+# machine.get_qubit_gate(0, gate_shape).angle2volt.deg180 = 0.2
+# machine.get_qubit_gate(0, gate_shape).length = 200e-9
 config = machine.build_config(digital, qubit_list, gate_shape)
 
 ###################
@@ -52,7 +52,7 @@ with program() as qubit_spec:
 
     for q in range(len(qubit_list)):
         if not simulate:
-            cooldown_time = 5 * machine.qubits[q].t1 // 4
+            cooldown_time = 5 * int(machine.qubits[q].t1 * 1e9) // 4
         else:
             cooldown_time = 16
         # bring other qubits to zero frequency
