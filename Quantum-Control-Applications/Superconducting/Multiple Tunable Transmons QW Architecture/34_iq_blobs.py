@@ -7,7 +7,7 @@ from quam import QuAM
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.analysis.discriminator import two_state_discriminator
-
+import matplotlib.pyplot as plt
 
 ##################
 # State and QuAM #
@@ -107,7 +107,7 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
-
+    figures = []
     for q in range(len(qubit_list)):
         # Live plotting
         print("Qubit " + str(q))
@@ -136,6 +136,7 @@ else:
         machine.readout_resonators[q].readout_fidelity = fidelity
         machine.readout_resonators[q].ge_threshold = threshold
         machine.readout_resonators[q].rotation_angle = angle
-
+        plt.suptitle(f"Qubit {q}")
+        figures.append(plt.gcf())
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
