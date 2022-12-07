@@ -14,8 +14,9 @@ machine = QuAM("quam_bootstrap_state.json")
 # machine.qubits[0].sequence_states.arbitrary.append({"name": "slepian", "waveform": (dpss(48,5)*0.5)[:24].tolist()})
 # machine.readout_lines[0].length = 1e-6
 # machine.save("quam_bootstrap_state.json")
-config = machine.build_config(digital_out=[], qubits=[0, 1], shape="drag_cosine")
-
+config = machine.build_config(
+    digital_out=[], qubits=[0, 1], qubits_wo_charge=[2, 3, 4, 5], injector_list=[0, 1], shape="drag_cosine"
+)
 
 qmm = QuantumMachinesManager(machine.network.qop_ip)
 
