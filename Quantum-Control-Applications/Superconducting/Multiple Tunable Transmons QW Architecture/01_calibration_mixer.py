@@ -26,7 +26,9 @@ def IQ_imbalance(g, phi):
 # State and QuAM #
 ##################
 experiment = "mixer_calibration"
-qubit_list = [0]
+qubit_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+injector_list = [0, 1]
 qubit_index = 0
 digital = []
 machine = QuAM("latest_quam.json")
@@ -38,7 +40,7 @@ element = machine.readout_resonators[qubit_index].name
 # machine.qubits[0].wiring.maximum_amplitude = 0.2
 
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
