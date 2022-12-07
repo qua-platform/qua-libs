@@ -10,6 +10,7 @@ from qm import SimulationConfig
 from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
+from macros import *
 
 
 ##################
@@ -19,7 +20,7 @@ gate = "x90"
 experiment = gate + "_amplitude_calibration"
 debug = True
 simulate = False
-qubit_list = [0]
+qubit_list = [1]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
@@ -41,7 +42,7 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 ###################
 # The QUA program #
 ###################
-n_avg = 1e3
+n_avg = 1e2
 
 # Amplitude scan
 a_min = 0.75
@@ -54,32 +55,22 @@ n_pulse_max = 100
 pulse_vec = np.arange(0, n_pulse_max + 1, iteration_step)
 
 with program() as gate_cal:
-    n = [declare(int) for _ in range(len(qubit_list))]
-    n_st = [declare_stream() for _ in range(len(qubit_list))]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
     a = declare(fixed)
-    I = [declare(fixed) for _ in range(len(qubit_list))]
-    Q = [declare(fixed) for _ in range(len(qubit_list))]
-    I_st = [declare_stream() for _ in range(len(qubit_list))]
-    Q_st = [declare_stream() for _ in range(len(qubit_list))]
-    b = declare(fixed)
     it = declare(int)
     pulses = declare(int)
     n_pulse = declare(int)
     state = [declare(bool) for _ in range(len(qubit_list))]
     state_st = [declare_stream() for _ in range(len(qubit_list))]
 
-    for q in range(len(qubit_list)):
-        if not simulate:
-            cooldown_time = 5 * int(machine.qubits[q].t1 * 1e9) // 4
-        else:
-            cooldown_time = 16
+    for i, q in enumerate(qubit_list):
         # bring other qubits to zero frequency
         machine.nullify_other_qubits(qubit_list, q)
         set_dc_offset(
             machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "near_anti_crossing").value
         )
 
-        with for_(n[q], 0, n[q] < n_avg, n[q] + 1):
+        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(n_pulse, pulse_vec)):
                 with for_(*from_array(a, amps)):
                     with for_(pulses, 0, pulses < n_pulse, pulses + 1):
@@ -89,25 +80,25 @@ with program() as gate_cal:
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[q]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[q]),
+                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
+                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
                     )
-                    wait(cooldown_time, machine.readout_resonators[q].name)
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
                     align()
-                    assign(state[q], I[q] > machine.readout_resonators[q].ge_threshold)
-                    save(I[q], I_st[q])
-                    save(Q[q], Q_st[q])
-                    save(state[q], state_st[q])
-                save(n[q], n_st[q])
+                    assign(state[i], I[i] > machine.readout_resonators[q].ge_threshold)
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+                    save(state[i], state_st[i])
+                save(n[i], n_st[i])
 
         align()
 
     with stream_processing():
-        for q in range(len(qubit_list)):
-            I_st[q].buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"I{q}")
-            Q_st[q].buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"Q{q}")
-            state_st[q].boolean_to_int().buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"state{q}")
-            n_st[q].save(f"iteration{q}")
+        for i, q in enumerate(qubit_list):
+            I_st[i].buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"I{q}")
+            Q_st[i].buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"Q{q}")
+            state_st[i].boolean_to_int().buffer(len(amps)).buffer(len(pulse_vec)).average().save(f"state{q}")
+            n_st[i].save(f"iteration{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -132,33 +123,33 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
 
-    for q in range(len(qubit_list)):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
             figures.append(fig)
         print("Qubit " + str(q))
-        qubit_data[q]["iteration"] = 0
+        qubit_data[i]["iteration"] = 0
         # Get results from QUA program
         my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"state{q}", f"iteration{q}"], mode="live")
-        while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
+        while my_results.is_processing() and qubit_data[i]["iteration"] < n_avg - 1:
             # Fetch results
             data = my_results.fetch_all()
 
-            qubit_data[q]["I"] = data[0]
-            qubit_data[q]["Q"] = data[1]
-            qubit_data[q]["state"] = data[2]
-            qubit_data[q]["iteration"] = data[3]
+            qubit_data[i]["I"] = data[0]
+            qubit_data[i]["Q"] = data[1]
+            qubit_data[i]["state"] = data[2]
+            qubit_data[i]["iteration"] = data[3]
             # Progress bar
-            progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
+            progress_counter(qubit_data[i]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    amps * base_amp[q],
+                    amps * base_amp[i],
                     pulse_vec,
-                    qubit_data[q]["I"],
-                    qubit_data[q]["Q"],
+                    qubit_data[i]["I"],
+                    qubit_data[i]["Q"],
                     "Number of pulses",
                     gate + " amplitude [V]",
                     f"{experiment} qubit {q}",
@@ -169,31 +160,25 @@ else:
         fig = plt.figure()
         figures.append(fig)
         colors = ["b", "r", "g", "m", "c"]
-        i = 0
-        for it in [
-            1,
-            int(0.25 * len(pulse_vec)),
-            int(0.5 * len(pulse_vec)),
-            int(0.75 * len(pulse_vec)),
-            len(pulse_vec) - 1,
-        ]:
+        j = 0
+        for it in [1, int(0.25 * len(pulse_vec)), int(0.5 * len(pulse_vec)), int(0.75 * len(pulse_vec)), len(pulse_vec) - 1]:
             plt.subplot(211)
-            plt.plot(amps * base_amp[q], qubit_data[q]["I"][it], colors[i] + "-", label=f"{it} iterations")
+            plt.plot(amps * base_amp[i], qubit_data[i]["I"][it], colors[j] + "-", label=f"{it} iterations")
             plt.ylabel("I [a.u.]")
             plt.title(f"DRAG calibration for qubit {q}")
             plt.subplot(212)
-            plt.plot(amps * base_amp[q], qubit_data[q]["Q"][it], colors[i] + "-", label=f"{it} iterations")
+            plt.plot(amps * base_amp[i], qubit_data[i]["Q"][it], colors[j] + "-", label=f"{it} iterations")
             plt.xlabel(gate + " amplitude [V]")
             plt.ylabel("Q [a.u.]")
             plt.tight_layout()
-            i += 1
+            j += 1
         plt.subplot(211)
-        plt.legend(ncol=i)
+        plt.legend(ncol=j)
         plt.subplot(212)
-        plt.legend(ncol=i)
+        plt.legend(ncol=j)
 
         # Update state with new DRAG coefficient
-        print(f"Previous {gate} amplitude: {base_amp[q]:.1f} V")
+        print(f"Previous {gate} amplitude: {base_amp[i]:.1f} V")
         # Chose I, Q or amp...
         # machine.qubits[q].driving.drag_cosine.angle2volt.deg180 =
         print(f"New {gate} amplitude: {machine.get_qubit_gate(q, gate_shape).angle2volt.deg180:.1f} V")

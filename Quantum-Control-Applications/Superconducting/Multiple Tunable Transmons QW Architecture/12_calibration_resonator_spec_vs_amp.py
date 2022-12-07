@@ -10,8 +10,9 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
-from macros import qua_declaration
+from macros import *
 from qualang_tools.loops import from_array
+
 
 ##################
 # State and QuAM #
@@ -19,7 +20,7 @@ from qualang_tools.loops import from_array
 experiment = "2D_resonator_spectroscopy_vs_amp"
 debug = True
 simulate = False
-qubit_list = [0]
+qubit_list = [1,0]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
@@ -46,7 +47,7 @@ freq = [
 a_min = 0.1
 a_max = 1
 da = 0.01
-amps = [np.arange(a_min, a_max + da / 2, da) for i in range(len(qubit_list))]
+amps = [np.arange(a_min, a_max + da/2, da) for i in range(len(qubit_list))]
 # amps = [np.logspace(-2, np.log10(1.1), 31) for i in range(len(qubit_list))]
 
 # QUA program
@@ -55,39 +56,35 @@ with program() as resonator_spec:
     f = declare(int)
     a = declare(fixed)
 
-    for q in range(len(qubit_list)):
-        if not simulate:
-            cooldown_time = int(machine.readout_resonators[q].relaxation_time * 1e9) // 4
-        else:
-            cooldown_time = 16
+    for i,q in enumerate(qubit_list):
         # bring other qubits than `q` to zero frequency
         machine.nullify_other_qubits(qubit_list, q)
         # set qubit frequency to working point
         set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
 
-        with for_(n[q], 0, n[q] < n_avg, n[q] + 1):
-            with for_(*from_array(a, amps[q])):
-                with for_(*from_array(f, freq[q])):
+        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
+            with for_(*from_array(a, amps[i])):
+                with for_(*from_array(f, freq[i])):
                     update_frequency(machine.readout_resonators[q].name, f)
                     measure(
-                        "readout" * amp(a),
+                        "readout"*amp(a),
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[q]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[q]),
+                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
+                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
                     )
-                    wait(cooldown_time, machine.readout_resonators[q].name)
-                    save(I[q], I_st[q])
-                    save(Q[q], Q_st[q])
-            save(n[q], n_st[q])
+                    wait_cooldown_time(machine.readout_resonators[q].relaxation_time, simulate)
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+            save(n[i], n_st[i])
 
         align()
 
     with stream_processing():
-        for q in range(len(qubit_list)):
-            I_st[q].buffer(len(freq[q])).buffer(len(amps[q])).average().save(f"I{q}")
-            Q_st[q].buffer(len(freq[q])).buffer(len(amps[q])).average().save(f"Q{q}")
-            n_st[q].save(f"iteration{q}")
+        for i,q in enumerate(qubit_list):
+            I_st[i].buffer(len(freq[i])).buffer(len(amps[i])).average().save(f"I{q}")
+            Q_st[i].buffer(len(freq[i])).buffer(len(amps[i])).average().save(f"Q{q}")
+            n_st[i].save(f"iteration{q}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -111,31 +108,32 @@ else:
     # Live plotting
     figures = []
 
-    for q in range(len(qubit_list)):
-        scaling = np.array([amps[q] for _ in range(len(freq[q]))]).transpose()
+    for i,q in enumerate(qubit_list):
+        scaling = np.array([amps[i] for _ in range(len(freq[i]))]).transpose()
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
             figures.append(fig)
-        print("Qubit " + str(q))
-        qubit_data[q]["iteration"] = 0
+        print(f"Qubit {q}")
+        qubit_data[i]["iteration"] = 0
+        exit = False
         # Get results from QUA program
         my_results = fetching_tool(job, [f"I{q}", f"Q{q}", f"iteration{q}"], mode="live")
-        while my_results.is_processing() and qubit_data[q]["iteration"] < n_avg - 1:
+        while my_results.is_processing() and qubit_data[i]["iteration"] < n_avg - 1:
             # Fetch results
             data = my_results.fetch_all()
-            qubit_data[q]["I"] = data[0]
-            qubit_data[q]["Q"] = data[1]
-            qubit_data[q]["iteration"] = data[2]
+            qubit_data[i]["I"] = data[0]
+            qubit_data[i]["Q"] = data[1]
+            qubit_data[i]["iteration"] = data[2]
             # Progress bar
-            progress_counter(qubit_data[q]["iteration"], n_avg, start_time=my_results.start_time)
+            progress_counter(qubit_data[i]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    (freq[q] + machine.readout_lines[0].lo_freq) * 1e-6,
-                    amps[q] * machine.readout_resonators[q].readout_amplitude,
-                    qubit_data[q]["I"] / scaling,
-                    qubit_data[q]["Q"] / scaling,
+                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq)*1e-6,
+                    amps[i] * machine.readout_resonators[q].readout_amplitude,
+                    qubit_data[i]["I"] / scaling,
+                    qubit_data[i]["Q"] / scaling,
                     "Readout frequency [MHz]",
                     "Readout amplitude [V]",
                     f"{experiment} qubit {q}",
@@ -143,6 +141,13 @@ else:
                     plot_options={"cmap": "magma"},
                     fig=fig,
                 )
+            # Break the loop if interupt on close
+            if my_results.is_processing():
+                if not my_results.is_processing():
+                    exit = True
+                    break
+        if exit:
+            break
 
     # need to update quam with readout amplitude
     # machine.readout_resonators[q].readout_amplitude = 0.02
