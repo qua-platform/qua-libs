@@ -337,8 +337,8 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
             # Custom integration weights
             for weight in state.readout_resonators[r].integration_weights:
                 config["integration_weights"][weight.name + "_weights_" + state.readout_resonators[r].name] = {
-                    "cosine": convert_integration_weights(weight.cosine, N=int(readout_line.length * 1e9)),
-                    "sine": convert_integration_weights(weight.sine, N=int(readout_line.length * 1e9)),
+                    "cosine": convert_integration_weights(weight.cosine, N=int(readout_line.length*1e9)),
+                    "sine": convert_integration_weights(weight.sine, N=int(readout_line.length*1e9)),
                 }
 
                 config["pulses"][f"readout_pulse_" + state.readout_resonators[r].name]["integration_weights"][
@@ -353,7 +353,7 @@ def add_qb_rot(
     angle: int,
     direction: str,
     wf_I,
-    wf_Q=None,
+    wf_Q = None,
 ):
     """Add single qubit operation
 
@@ -880,7 +880,7 @@ def get_f_res_from_flux(state: QuAM, index: int, flux_bias: float) -> float:
     return vertex.a * flux_bias**2 + vertex.b * flux_bias + vertex.c
 
 
-def save_results(state: QuAM, filename, figures: List = ()):
+def save_results(state: QuAM, filename, figures: List=()):
     now = datetime.now()
     now = now.strftime("%m%d%Y_%H%M%S")
     directory = state.results.directory + f"{now[:8]}/"
@@ -896,7 +896,6 @@ def save_results(state: QuAM, filename, figures: List = ()):
             figures[i].savefig(directory + f"{now[9:]}_{filename}")
     # Save data
     # tbd
-
 
 if __name__ == "__main__":
     # if we execute directly config.py this tests that configuration is ok

@@ -46,7 +46,7 @@ state = {
         "config.set_f_res_vs_flux_vertex",
         "config.get_f_res_from_flux",
     ],
-    "network": {"qop_ip": "127.0.0.1", "port": 80},
+    "network": {"qop_ip": "172.16.2.103", "port": 81},
     "controllers": ["con1"],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
@@ -191,7 +191,7 @@ state = {
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
                 "maximum_amplitude": 0.4,
                 "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
-                "flux_line": {"controller": "con1", "channel": 3 + 3 * i, "offset": 0.0},
+                "flux_line": {"controller": "con1", "channel": 3+3*i, "offset": 0.0},
                 "flux_filter_coefficients": {
                     "feedforward": [],
                     "feedback": [],
@@ -253,6 +253,7 @@ state = {
         }
         for i in range(NUMBER_OF_QUBITS)
     ],
+
     "crosstalk_matrix": {
         # index 0, 1 -> correspond to qubit0 talking to qubit1
         "static": [[1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
@@ -286,7 +287,9 @@ state = {
             if i != CENTRAL_QUBIT_INDEX
         ],
     },
-    "results": {"directory": ""},
+    "results": {
+        "directory": ""
+    },
     "running_strategy": {"running": True, "start": [], "end": []},
 }
 
