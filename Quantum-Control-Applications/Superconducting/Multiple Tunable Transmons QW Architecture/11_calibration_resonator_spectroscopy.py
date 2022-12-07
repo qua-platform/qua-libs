@@ -20,7 +20,10 @@ experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
 fit_data = False
-qubit_list = [1,0]
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
@@ -32,7 +35,7 @@ gate_shape = "drag_cosine"
 # machine.readout_resonators[0].readout_amplitude =0.005
 # machine.readout_resonators[0].f_opt = 6.131e9
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -54,11 +57,10 @@ with program() as resonator_spec:
     I_st = [declare_stream() for _ in range(len(qubit_list))]
     Q_st = [declare_stream() for _ in range(len(qubit_list))]
 
-    for i,q in enumerate(qubit_list):
-        # bring other qubits than `q` to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
+    for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
+        if q == 0 or q == 1:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
@@ -67,8 +69,8 @@ with program() as resonator_spec:
                     "readout",
                     machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                    demod.full("cos", I[i], "out1"),
+                    demod.full("sin", Q[i], "out1"),
                 )
 
                 wait_cooldown_time(machine.readout_resonators[q].relaxation_time, simulate)
@@ -79,7 +81,7 @@ with program() as resonator_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(freq[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -106,7 +108,7 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
     figures = []
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()
@@ -155,7 +157,7 @@ else:
                     plt.pause(0.1)
                 except (Exception,):
                     pass
-            #Break the loop if interupt on close
+            # Break the loop if interupt on close
             if my_results.is_processing():
                 if not my_results.is_processing():
                     exit = True
@@ -171,4 +173,7 @@ else:
             print(f"New resonance IF frequency: {machine.get_readout_IF(q) * 1e-6:.3f} MHz")
 
     machine.save_results(experiment, figures)
+
+machine.save("latest_quam.json")
+
 
