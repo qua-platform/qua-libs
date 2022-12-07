@@ -223,20 +223,12 @@ state = {
             "sequence_states": {
                 "constant": [
                     {
-                        "name": "CZ_gate",
-                        "amplitude": 0.2,
-                        "amplitude_docs": "[V]",
-                        "length": 200e-9,
-                        "length_docs": "[s]",
-                    },
-                    {
                         "name": "qubit_spectroscopy",
                         "amplitude": 0.4,
                         "amplitude_docs": "[V]",
                         "length": 1e-6,
                         "length_docs": "[s]",
                     },
-                    {"name": "Jump", "amplitude": 0.4, "amplitude_docs": "[V]", "length": 16e-9, "length_docs": "[s]"},
                 ],
                 "arbitrary": [
                     {
