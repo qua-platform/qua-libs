@@ -17,14 +17,18 @@ experiment = "raw_adc_traces"
 debug = True
 simulate = False
 fit_data = True
-qubit_list = [0]
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0]  # is zero because only one readout line
+injector_list = [0, 1]
 digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
 # machine.readout_resonators[0].f_opt = 6.145e9
 # machine.readout_resonators[0].readout_amplitude =0.01
-config = machine.build_config(digital_out=[], qubits=[0], shape="drag_cosine")
+# machine.readout_lines[0].I_down.offset = 0.0
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 
 qmm = QuantumMachinesManager(machine.network.qop_ip)
@@ -34,7 +38,7 @@ qmm = QuantumMachinesManager(machine.network.qop_ip)
 ##############################
 n_avg = 1000  # Number of averaging loops
 cooldown_time = 2000 // 4  # Resonator cooldown time in clock cycles (4ns)
-q = 0
+# q = 0
 ###################
 # The QUA program #
 ###################
@@ -52,10 +56,10 @@ with program() as raw_trace_prog:
         for q in qubit_list:
             # Will save average:
             adc_st[q].input1().average().save(f"adc1_{q}")
-            adc_st[q].input2().average().save(f"adc2_{q}")
+            # adc_st[q].input2().average().save(f"adc2_{q}")
             # Will save only last run:
             adc_st[q].input1().save(f"adc1_single_run_{q}")
-            adc_st[q].input2().save(f"adc2_single_run_{q}")
+            # adc_st[q].input2().save(f"adc2_single_run_{q}")
 
 
 qm = qmm.open_qm(config)
@@ -65,22 +69,22 @@ res_handles.wait_for_all_values()
 figures = []
 for q in qubit_list:
     adc1 = u.raw2volts(res_handles.get(f"adc1_{q}").fetch_all())
-    adc2 = u.raw2volts(res_handles.get(f"adc2_{q}").fetch_all())
+    # adc2 = u.raw2volts(res_handles.get(f"adc2_{q}").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get(f"adc1_single_run_{q}").fetch_all())
-    adc2_single_run = u.raw2volts(res_handles.get(f"adc2_single_run_{q}").fetch_all())
+    # adc2_single_run = u.raw2volts(res_handles.get(f"adc2_single_run_{q}").fetch_all())
 
     fig = plt.figure()
     plt.subplot(121)
     plt.title("Single run")
     plt.plot(adc1_single_run, "b", label="Input 1")
-    plt.plot(adc2_single_run, "r", label="Input 2")
+    # plt.plot(adc2_single_run, "r", label="Input 2")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
     plt.subplot(122)
     plt.title("Averaged run")
     plt.plot(adc1, "b", label="Input 1")
-    plt.plot(adc2, "r", label="Input 2")
+    # plt.plot(adc2, "r", label="Input 2")
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.suptitle(f"Qubit {q}")
@@ -96,22 +100,22 @@ for q in qubit_list:
     except (Exception,):
         pass
     tof2 = 0
-    try:
-        tof2 = np.min(np.where(np.abs(np.diff(adc2)) > 10 / 4096))
-        plt.axvline(x=tof2, color="r", linestyle=":")
-        plt.axhline(y=np.mean(adc1[:tof2]), color="r", linestyle="--")
-    except (Exception,):
-        pass
+    # try:
+    #     tof2 = np.min(np.where(np.abs(np.diff(adc2)) > 10 / 4096))
+    #     plt.axvline(x=tof2, color="r", linestyle=":")
+    #     plt.axhline(y=np.mean(adc1[:tof2]), color="r", linestyle="--")
+    # except (Exception,):
+    #     pass
 
     # Update the state
     machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].I_down.offset -= np.mean(adc1)
-    machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].Q_down.offset -= np.mean(adc2)
+    # machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].Q_down.offset -= np.mean(adc2)
     machine.readout_resonators[q].wiring.time_of_flight += max(tof1, tof2) - max(tof1, tof2) % 4 + 4
 
     figures.append(fig)
     print(f"Qubit {q}:")
-    print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
-    print(f"TOF to add: {tof1} ns for input 1 and {tof2} ns for input 2")
+    print(f"\nInput1 mean: {np.mean(adc1)} V\n")
+    print(f"TOF to add: {tof1} ns for input 1")
 
 machine.save_results(experiment, figures)
-# machine.save("latest_quam.json")
+machine.save("latest_quam.json")
