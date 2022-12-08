@@ -11,7 +11,7 @@ from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_dat
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from macros import *
-
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,26 +19,29 @@ from macros import *
 experiment = "echo"
 debug = True
 simulate = False
-fit_data = True
-qubit_list = [1, 0]
-digital = []
+fit_data = False
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 2e3
+n_avg = 2e2
 
 # Echo time scan
 tau_min = 4  # in clock cycles
 tau_max = 40000  # in clock cycles
 d_tau = 100  # in clock cycles
 
-# taus = np.arange(t_min, t_max + dtau / 2, dtau)
-taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 31)   # + 0.1 to add tau_max to taus
+taus = np.arange(tau_min, tau_max + d_tau / 2, d_tau)
+# taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 31)   # + 0.1 to add tau_max to taus
 # If logarithmic increment, then need to check that no items have the same integer part
 assert len(np.where(np.diff(taus.astype(int))==0)[0]) == 0
 
@@ -49,31 +52,42 @@ with program() as echo:
     state_st = [declare_stream() for _ in range(len(qubit_list))]
 
     for i, q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(
-            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "near_anti_crossing").value
-        )
+        # set qubit frequency to working point
+        if q in qubit_w_charge_list:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(tau, taus)):
-                play("x90", machine.qubits[q].name)
-                wait(tau, machine.qubits[q].name)
-                play("x180", machine.qubits[q].name)
-                wait(tau, machine.qubits[q].name)
-                frame_rotation_2pi(
-                    Cast.mul_fixed_by_int(machine.qubits[q].ramsey_det * 1e-9, 4 * tau), machine.qubits[q].name
-                )  # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-                play("x90", machine.qubits[q].name)
+                if q in qubit_w_charge_list:
+                    play("x90", machine.qubits[q].name)
+                    wait(tau, machine.qubits[q].name)
+                    play("x180", machine.qubits[q].name)
+                    wait(tau, machine.qubits[q].name)
+                    frame_rotation_2pi(
+                        Cast.mul_fixed_by_int(machine.qubits[q].ramsey_det * 1e-9, 8 * tau), machine.qubits[q].name
+                    )  # 8*tau because tau was in clock cycles and 1e-9 because tau is ns
+                    play("x90", machine.qubits[q].name)
+                else:
+                    play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                    wait(tau, machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                    wait(tau, machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                    frame_rotation_2pi(
+                        Cast.mul_fixed_by_int(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].ramsey_det * 1e-9, 8 * tau), machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name
+                    )  # 8*tau because tau was in clock cycles and 1e-9 because tau is ns
+                    play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                 align()
                 measure(
                     "readout",
                     machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I[i]),
-                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q[i]),
+                    demod.full("rotated_cos", I[i], "out1"),
+                    demod.full("rotated_sin", Q[i], "out1"),
                 )
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                if q in qubit_w_charge_list:
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                else:
+                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                 assign(state[i], I[i] > machine.readout_resonators[q].ge_threshold)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
@@ -146,28 +160,34 @@ else:
                     fig=fig,
                     plot_options={"marker": "."},
                 )
-            # Fitting
-            if fit_data:
-                try:
-                    Fit.T1(8 * taus, qubit_data[i]["I"])
-                    plt.subplot(211)
-                    plt.cla()
-                    fit_I = Fit.T1(8 * taus, qubit_data[i]["I"], plot=debug)
-                    plt.subplot(212)
-                    plt.cla()
-                    fit_Q = Fit.T1(8 * taus, qubit_data[i]["Q"], plot=debug)
-                    # plt.subplot(313)
-                    # plt.cla()
-                    # fit_state = Fit.ramsey(8 * taus, qubit_data[i]["state"], plot=debug)
-                    # plt.ylabel("qubit state")
-                except (Exception,):
-                    pass
+                # Fitting
+                if fit_data:
+                    try:
+                        Fit.T1(8 * taus, qubit_data[i]["I"])
+                        plt.subplot(211)
+                        plt.cla()
+                        fit_I = Fit.T1(8 * taus, qubit_data[i]["I"], plot=debug)
+                        plt.subplot(212)
+                        plt.cla()
+                        fit_Q = Fit.T1(8 * taus, qubit_data[i]["Q"], plot=debug)
+                        # plt.subplot(313)
+                        # plt.cla()
+                        # fit_state = Fit.ramsey(8 * taus, qubit_data[i]["state"], plot=debug)
+                        # plt.ylabel("qubit state")
+                        plt.pause(0.1)
+                    except (Exception,):
+                        pass
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Previous qubit {q} T2: {machine.qubits[q].t2:.1e} s")
-            machine.qubits[q].t2 = fit_I["T1"][0] * 1e-9
-            print(f"New qubit {q} T2: {machine.qubits[q].t2:.1e} s")
+            if q in qubit_w_charge_list:
+                print(f"Previous qubit {q} T2: {machine.qubits[q].t2:.1e} s")
+                machine.qubits[q].t2 = fit_I["T1"][0] * 1e-9
+                print(f"New qubit {q} T2: {machine.qubits[q].t2:.1e} s")
+            else:
+                print(f"Previous qubit {q} T2: {machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t2:.1e} s")
+                machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t2 = fit_I["T1"][0] * 1e-9
+                print(f"New qubit {q} T2: {machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t2:.1e} s")
 
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
