@@ -20,14 +20,17 @@ from qualang_tools.loops import from_array
 experiment = "2D_resonator_spectroscopy_vs_amp"
 debug = True
 simulate = False
-qubit_list = [1,0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
 # machine.readout_resonators[0].readout_amplitude = 0.4
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -56,11 +59,10 @@ with program() as resonator_spec:
     f = declare(int)
     a = declare(fixed)
 
-    for i,q in enumerate(qubit_list):
-        # bring other qubits than `q` to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
+    for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
+        if q == 0 or q == 1:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps[i])):
@@ -70,8 +72,8 @@ with program() as resonator_spec:
                         "readout"*amp(a),
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        demod.full("cos", I[i], "out1"),
+                        demod.full("sin", Q[i], "out1"),
                     )
                     wait_cooldown_time(machine.readout_resonators[q].relaxation_time, simulate)
                     save(I[i], I_st[i])
@@ -81,7 +83,7 @@ with program() as resonator_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(freq[i])).buffer(len(amps[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).buffer(len(amps[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -108,7 +110,7 @@ else:
     # Live plotting
     figures = []
 
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         scaling = np.array([amps[i] for _ in range(len(freq[i]))]).transpose()
         if debug:
             fig = plt.figure()

@@ -24,7 +24,7 @@ qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
 qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
-digital = []
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
