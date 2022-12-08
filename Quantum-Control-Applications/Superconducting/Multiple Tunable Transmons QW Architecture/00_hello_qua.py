@@ -15,7 +15,7 @@ machine = QuAM("quam_bootstrap_state.json")
 # machine.readout_lines[0].length = 1e-6
 # machine.save("quam_bootstrap_state.json")
 config = machine.build_config(
-    digital_out=[], qubits=[0, 1], qubits_wo_charge=[2, 3, 4, 5], injector_list=[0, 1], shape="drag_cosine"
+    digital_out=[1, 9], qubits=[0, 1], qubits_wo_charge=[2, 3, 4, 5], injector_list=[0, 1], shape="drag_cosine"
 )
 
 qmm = QuantumMachinesManager(machine.network.qop_ip)
@@ -27,8 +27,7 @@ def play_pi():
 
 
 with program() as hello_qua:
-    a = declare(fixed)
-    play_pi()
+    play('x180', machine.qubits[0].name)
 
 
 job = qmm.simulate(config, hello_qua, SimulationConfig(500))

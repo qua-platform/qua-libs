@@ -71,6 +71,13 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "mixer": f"mixer_drive_line{state.qubits[q].wiring.drive_line_index}",
             },
             "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
+            "digitalInputs": {
+                "switch": {
+                    "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
+                    "delay": state.qubits[q].wiring.switch_delay,
+                    "buffer": state.qubits[q].wiring.switch_buffer,
+                },
+            },
             "operations": {
                 state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
             },
@@ -211,6 +218,14 @@ def add_qubits_wo_charge(state: QuAM, config: Dict, qb_wo_charge_list: list):
                 "mixer": f"mixer_drive_line{state.qubits_wo_charge[q-NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index}",
             },
             "intermediate_frequency": round(state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01) - lo_freq,
+            "digitalInputs": {
+                "switch": {
+                    "port": (state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.controller,
+                             state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.channel),
+                    "delay": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_delay,
+                    "buffer": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_buffer,
+                },
+            },
             "operations": {
                 state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
             },
@@ -280,6 +295,13 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list, qb_wo_charg
                     "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
                 },
                 "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                        "delay": v.wiring.switch_delay,
+                        "buffer": v.wiring.switch_buffer,
+                    },
+                },
                 "operations": {
                     state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
                     "readout": f"readout_pulse_" + state.readout_resonators[r].name,
@@ -401,6 +423,13 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list, qb_wo_charg
                     "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
                 },
                 "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                        "delay": v.wiring.switch_delay,
+                        "buffer": v.wiring.switch_buffer,
+                    },
+                },
                 "operations": {
                     state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
                     "readout": f"readout_pulse_" + state.readout_resonators[r].name,
@@ -569,6 +598,7 @@ def add_qb_rot(
             "I": f"{direction}{angle}_I_wf_" + state.qubits[q].name,
             "Q": f"{direction}{angle}_Q_wf_" + state.qubits[q].name,
         },
+        "digital_marker": "ON",
     }
     config["elements"][state.qubits[q].name]["operations"][f"{direction}{angle}"] = (
         f"{direction}{angle}_pulse_" + state.qubits[q].name
@@ -637,6 +667,7 @@ def add_qb_wo_charge_rot(
             "I": f"{direction}{angle}_I_wf_" + state.qubits_wo_charge[q].name,
             "Q": f"{direction}{angle}_Q_wf_" + state.qubits_wo_charge[q].name,
         },
+        "digital_marker": "ON",
     }
     config["elements"][state.qubits_wo_charge[q].name]["operations"][f"{direction}{angle}"] = (
         f"{direction}{angle}_pulse_" + state.qubits_wo_charge[q].name
@@ -760,6 +791,7 @@ def add_common_operation(state: QuAM, config: dict):
             "I": "const_wf",
             "Q": "zero_wf",
         },
+        "digital_marker": "ON",
     }
     config["pulses"][f"{state.common_operation.name}_single_pulse"] = {
         "operation": "control",
@@ -767,6 +799,7 @@ def add_common_operation(state: QuAM, config: dict):
         "waveforms": {
             "single": "const_wf",
         },
+        "digital_marker": "ON",
     }
 
 

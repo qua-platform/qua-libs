@@ -72,6 +72,8 @@ state = {
             "Q_up": {"controller": "con1", "channel": 10, "offset": 0.0},
             "I_down": {"controller": "con1", "channel": 1, "offset": 0.0, "gain_db": 1},
             # "Q_down": {"controller": "con1", "channel": 2, "offset": 0.0, "gain_db": 1},
+            "switch": {"controller": "con1", "channel": 9},
+            "switch_docs": "digital output declaration",
         },
     ],
     "readout_resonators": [
@@ -114,6 +116,10 @@ state = {
                 "correction_matrix": {"gain": 0.0, "phase": 0.0},
                 "maximum_amplitude": 0.4,
                 "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
+                "switch_delay": 0,
+                "switch_delay_docs": "delay of digital pulse",
+                "switch_buffer": 0,
+                "switch_buffer_docs": "buffer of digital pulse"
             },
         }
         for i in range(READOUT_RESONATORS_PER_FEED_LINE)
@@ -128,6 +134,8 @@ state = {
             "lo_power_docs": "LO power to drive line [dBm]",
             "I": {"controller": "con1", "channel": 1 + 3 * i, "offset": 0.0},
             "Q": {"controller": "con1", "channel": 2 + 3 * i, "offset": 0.0},
+            "switch": {"controller": "con1", "channel": 1 + i},
+            "switch_docs": "digital output declaration",
         }
         for i in range(NUMBER_OF_DRIVE_LINES)
     ],
@@ -153,7 +161,7 @@ state = {
             "ramsey_det_docs": "Detuning to observe ramsey fringes [Hz]",
             "driving": {
                 "drag_gaussian": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "sigma": 10e-9,
                     "sigma_docs": "The gaussian standard deviation (only for gaussian pulses) [s]",
@@ -167,7 +175,7 @@ state = {
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
                 "drag_cosine": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "alpha": 0.0,
                     "alpha_docs": "The DRAG coefficient alpha.",
@@ -179,7 +187,7 @@ state = {
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
                 "square": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "shape": "square",
                     "shape_docs": "Shape of the gate",
@@ -200,6 +208,10 @@ state = {
                     "feedforward": [],
                     "feedback": [],
                 },
+                "switch_delay": 0,
+                "switch_delay_docs": "delay of digital pulse",
+                "switch_buffer": 0,
+                "switch_buffer_docs": "buffer of digital pulse"
             },
             "charge_bias_points": [
                 {
@@ -259,7 +271,7 @@ state = {
             "ramsey_det_docs": "Detuning to observe ramsey fringes [Hz]",
             "driving": {
                 "drag_gaussian": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "sigma": 10e-9,
                     "sigma_docs": "The gaussian standard deviation (only for gaussian pulses) [s]",
@@ -273,7 +285,7 @@ state = {
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
                 "drag_cosine": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "alpha": 0.0,
                     "alpha_docs": "The DRAG coefficient alpha.",
@@ -285,7 +297,7 @@ state = {
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
                 "square": {
-                    "length": 60e-9,
+                    "length": 80e-9,
                     "length_docs": "The pulse length [s]",
                     "shape": "square",
                     "shape_docs": "Shape of the gate",
@@ -303,6 +315,10 @@ state = {
                 #     "feedforward": [],
                 #     "feedback": [],
                 # },
+                "switch_delay": 0,
+                "switch_delay_docs": "delay of digital pulse",
+                "switch_buffer": 0,
+                "switch_buffer_docs": "buffer of digital pulse"
             },
         }
         for i in range(NUMBER_OF_QUBITS_WO_CHARGE)
