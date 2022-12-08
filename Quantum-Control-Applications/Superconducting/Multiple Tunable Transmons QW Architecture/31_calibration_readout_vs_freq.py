@@ -33,7 +33,7 @@ config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list
 ###################
 # The QUA program #
 ###################
-n_avg = 100
+n_avg = 4e2
 
 # Frequency scan
 span = 1e6
@@ -78,7 +78,10 @@ with program() as readout_opt:
 
                 align()  # global align
 
-                play("x180", machine.qubits[i].name)
+                if q in qubit_w_charge_list:
+                    play("x180", machine.qubits[q].name)
+                else:
+                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                 align()
                 measure(
                     "readout",

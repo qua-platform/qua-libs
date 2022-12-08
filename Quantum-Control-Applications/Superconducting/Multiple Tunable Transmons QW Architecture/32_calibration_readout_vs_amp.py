@@ -12,6 +12,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import wait_cooldown_time
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,21 +20,24 @@ from macros import wait_cooldown_time
 experiment = "readout_amplitude_optimization"
 debug = True
 simulate = False
-qubit_list = [0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e3
+n_avg = 4e2
 
 # Amplitude scan
 a_min = 0.2
-a_max = 1.99
+a_max = 1.00
 da = 0.01
 amps = np.arange(a_min, a_max + da / 2, da)
 
@@ -54,9 +58,10 @@ with program() as readout_opt:
     state_e_st = [declare_stream() for _ in range(len(qubit_list))]
 
     for i, q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "working_point").value)
+        if q in qubit_w_charge_list:
+            set_dc_offset(
+                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value
+            )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps)):
@@ -64,10 +69,13 @@ with program() as readout_opt:
                     "readout" * amp(a),
                     machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I_g[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_g[i]),
+                    demod.full("cos", I_g[i], "out1"),
+                    demod.full("sin", Q_g[i], "out1"),
                 )
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                if q in qubit_w_charge_list:
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                else:
+                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                 assign(state[i], I_g[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_g[i], I_g_st[i])
                 save(Q_g[i], Q_g_st[i])
@@ -75,16 +83,22 @@ with program() as readout_opt:
 
                 align()  # global align
 
-                play("x180", machine.qubits[q].name)
+                if q in qubit_w_charge_list:
+                    play("x180", machine.qubits[q].name)
+                else:
+                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                 align()
                 measure(
                     "readout" * amp(a),
                     machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I_e[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q_e[i]),
+                    demod.full("cos", I_e[i], "out1"),
+                    demod.full("sin", Q_e[i], "out1"),
                 )
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                if q in qubit_w_charge_list:
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                else:
+                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                 assign(state[i], I_e[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_e[i], I_e_st[i])
                 save(Q_e[i], Q_e_st[i])
