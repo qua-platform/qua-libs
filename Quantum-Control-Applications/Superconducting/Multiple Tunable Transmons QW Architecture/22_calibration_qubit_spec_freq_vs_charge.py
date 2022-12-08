@@ -1,5 +1,5 @@
 """
-qubit_spec_freq_vs_flux.py: performs qubit spec vs freq and flux to show the parabola
+qubit_spec_freq_vs_charge.py: performs qubit spec vs freq and charge to show the parabola
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -11,29 +11,33 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
 ##################
-experiment = "2D_qubit_spectroscopy_vs_flux"
+experiment = "2D_qubit_spectroscopy_vs_charge"
 debug = True
 simulate = False
-qubit_list = [1,0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 1]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 wait_time = 200
-flux_point = "readout"
+charge_point = "working_point"
 
 # machine.get_qubit_gate(0, gate_shape).length = 1e-6
 machine.get_sequence_state(0, "qubit_spectroscopy").length = machine.get_qubit_gate(0, gate_shape).length + wait_time*4e-9
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e3
+n_avg = 4e1
 
 # Frequency scan
 freq_span = 50e6
@@ -41,15 +45,15 @@ df = 1e6
 freq = [
     np.arange(machine.get_qubit_IF(i) - freq_span, machine.get_qubit_IF(i) + freq_span + df / 2, df) for i in qubit_list
 ]
-# Flux bias scan
+# charge bias scan
 bias_min = -0.2
 bias_max = 0.2
 dbias = 0.02
 bias = [np.arange(bias_min, bias_max + dbias / 2, dbias) for i in range(len(qubit_list))]
-# Ensure that flux biases remain in the [-0.5, 0.5) range
-for i in qubit_list:
-    assert np.all(bias[i] + machine.get_flux_bias_point(i, flux_point).value < 0.5)
-    assert np.all(bias[i] + machine.get_flux_bias_point(i, flux_point).value >= -0.5)
+# Ensure that charge biases remain in the [-0.5, 0.5) range
+for i in qubit_w_charge_list:
+    assert np.all(bias[i] + machine.get_charge_bias_point(i, charge_point).value < 0.5)
+    assert np.all(bias[i] + machine.get_charge_bias_point(i, charge_point).value >= -0.5)
 
 # QUA program
 with program() as qubit_spec:
@@ -57,34 +61,35 @@ with program() as qubit_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i,q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(
-            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, flux_point).value
-        )
+    for i, q in enumerate(qubit_list):
+        if q in qubit_w_charge_list:
+            set_dc_offset(
+                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, charge_point).value
+            )
         # Pre-factors to apply in order to get the bias scan
         pre_factors = bias[i] / machine.get_sequence_state(0, "qubit_spectroscopy").amplitude
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, pre_factors)):
                 with for_(*from_array(f, freq[i])):
-                    play("qubit_spectroscopy" * amp(b), machine.qubits[q].name + "_flux_sticky")
-                    wait(wait_time, machine.qubits[q].name)
-                    update_frequency(machine.qubits[q].name, f)
-                    play("x180", machine.qubits[q].name)
-                    align()
-                    ramp_to_zero(machine.qubits[q].name + "_flux_sticky")
-                    wait(16, machine.qubits[q].name + "_flux")
+                    if q in qubit_w_charge_list:
+                        play("qubit_spectroscopy" * amp(b), machine.qubits[q].name + "_charge_sticky")
+                        wait(wait_time, machine.qubits[q].name)
+                        update_frequency(machine.qubits[q].name, f)
+                        play("x180", machine.qubits[q].name)
+                        align()
+                        ramp_to_zero(machine.qubits[q].name + "_charge_sticky")
+                        wait(16, machine.qubits[q].name + "_charge")
                     align()
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        demod.full("cos", I[i], "out1"),
+                        demod.full("sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    if q in qubit_w_charge_list:
+                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -92,7 +97,7 @@ with program() as qubit_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -116,12 +121,12 @@ else:
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
+    figures = []
 
     for i,q in enumerate(qubit_list):
         print("Qubit " + str(q))
         qubit_data[i]["iteration"] = 0
         # Live plotting
-        figures = []
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)
@@ -139,12 +144,12 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    freq[i] + machine.drive_lines[q].lo_freq,
-                    bias[i] + machine.get_flux_bias_point(q, flux_point).value,
+                    freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                    bias[i] + machine.get_charge_bias_point(q, charge_point).value,
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
                     "Microwave drive frequency [Hz]",
-                    "Flux bias [V]",
+                    "charge bias [V]",
                     f"{experiment} qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
