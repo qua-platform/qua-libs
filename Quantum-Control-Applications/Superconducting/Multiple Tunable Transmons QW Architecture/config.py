@@ -1294,7 +1294,10 @@ def get_qubit_IF(state: QuAM, index: int) -> float:
     :param index: index of the qubit to be retrieved.
     :return: the intermediate frequency in Hz.
     """
-    return state.qubits[index].f_01 - state.drive_lines[state.qubits[index].wiring.drive_line_index].lo_freq
+    if index < NUMBER_OF_QUBITS_W_CHARGE:
+        return state.qubits[index].f_01 - state.drive_lines[state.qubits[index].wiring.drive_line_index].lo_freq
+    else:
+        return state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].f_01 - state.drive_lines[state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq
 
 
 def _calc_parabola_vertex(x1, y1, x2, y2, x3, y3):

@@ -11,6 +11,7 @@ from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_dat
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 
 ##################
@@ -19,20 +20,23 @@ from macros import *
 experiment = "1D_qubit_spectroscopy"
 debug = True
 simulate = False
-fit_data = False
-qubit_list = [1,0]
-digital = []
+fit_data = True
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 1, 2, 3]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-machine.get_qubit_gate(0, gate_shape).angle2volt.deg180 = 0.2
-machine.get_qubit_gate(0, gate_shape).length = 200e-9
-config = machine.build_config(digital, qubit_list, gate_shape)
+# machine.get_qubit_gate(0, gate_shape).angle2volt.deg180 = 0.2
+# machine.get_qubit_gate(0, gate_shape).length = 200e-9
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e3
+n_avg = 4e2
 
 # Frequency scan
 freq_span = 10e6
@@ -46,25 +50,35 @@ with program() as qubit_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i,q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "readout").value)
-
+    for i, q in enumerate(qubit_list):
+        # set qubit frequency to working point
+        if q in qubit_w_charge_list:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(0)))
+            if q in qubit_w_charge_list:
+                update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(0)))
+            else:
+                update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, int(machine.get_qubit_IF(0)))
             with for_(*from_array(f, freq[i])):
-                update_frequency(machine.qubits[q].name, f)
-                play("x180", machine.qubits[q].name)
+                if q in qubit_w_charge_list:
+                    update_frequency(machine.qubits[q].name, f)
+                    play("x180", machine.qubits[q].name)
+                else:
+                    update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, f)
+                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                 align()
                 measure(
                     "readout",
                     machine.readout_resonators[q].name,
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                    demod.full("cos", I[i], "out1"),
+                    demod.full("sin", Q[i], "out1"),
                 )
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                align()
+                if q in qubit_w_charge_list:
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                else:
+                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -99,7 +113,7 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
     figures = []
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()
@@ -120,37 +134,67 @@ else:
 
             # live plot
             if debug:
-                plot_demodulated_data_1d(
-                    freq[i] + machine.drive_lines[q].lo_freq,
-                    qubit_data[i]["I"],
-                    qubit_data[i]["Q"],
-                    "Microwave drive frequency [Hz]",
-                    f"{experiment}_qubit{q}",
-                    amp_and_phase=True,
-                    fig=fig,
-                    plot_options={"marker": "."},
-                )
+                if q in qubit_w_charge_list:
+                    plot_demodulated_data_1d(
+                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Microwave drive frequency [Hz]",
+                        f"{experiment}_qubit{q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"marker": "."},
+                    )
+                else:
+                    plot_demodulated_data_1d(
+                        freq[i] + machine.drive_lines[machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Microwave drive frequency [Hz]",
+                        f"{experiment}_qubit{q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"marker": "."},
+                    )
             # Fitting
             if fit_data:
                 try:
-                    fit = Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.drive_lines[q].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
-                    )
-                    plt.subplot(211)
-                    plt.cla()
-                    fit = Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.drive_lines[q].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
-                        plot=debug)
-                    plt.pause(0.1)
+                    if q in qubit_w_charge_list:
+                        fit = Fit.reflection_resonator_spectroscopy(
+                            freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
+                        )
+                        plt.subplot(211)
+                        plt.cla()
+                        fit = Fit.reflection_resonator_spectroscopy(
+                            freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
+                            plot=debug)
+                        plt.pause(0.1)
+                    else:
+                        fit = Fit.reflection_resonator_spectroscopy(
+                            freq[i] + machine.drive_lines[machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
+                        )
+                        plt.subplot(211)
+                        plt.cla()
+                        fit = Fit.reflection_resonator_spectroscopy(
+                            freq[i] + machine.drive_lines[machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
+                            plot=debug)
+                        plt.pause(0.1)
+
                 except Exception as e:
                     pass
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
-            machine.qubits[q].f_01 = np.round(fit["f"][0])
-            print(f"New qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
-            print(f"New resonance IF frequency: {machine.get_qubit_IF(q) * 1e-6:.3f} MHz")
+            if q in qubit_w_charge_list:
+                print(f"Qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
+                machine.qubits[q].f_01 = np.round(fit["f"][0])
+                print(f"New qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
+                print(f"New resonance IF frequency: {machine.get_qubit_IF(q) * 1e-6:.3f} MHz")
+            else:
+                print(f"Qubit frequency: {machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01 * 1e-9:.6f} GHz")
+                machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01 = np.round(fit["f"][0])
+                print(f"New qubit frequency: {machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01 * 1e-9:.6f} GHz")
+                print(f"New resonance IF frequency: {machine.get_qubit_IF(q) * 1e-6:.3f} MHz")
 
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
