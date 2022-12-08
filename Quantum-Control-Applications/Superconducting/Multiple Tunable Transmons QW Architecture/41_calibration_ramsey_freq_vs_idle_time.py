@@ -11,6 +11,7 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -18,24 +19,26 @@ from macros import *
 experiment = "2D_ramsey_freq_vs_idle_time"
 debug = True
 simulate = False
-fit_data = True
-qubit_list = [0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e2
+n_avg = 1e1
 
 # Frequency scan
-freq_span = 100e6
-df = 1e6
+freq_span = 10e6
+df = 0.1e6
 freq = [
-    np.arange(-freq_span, 0 + freq_span + df / 2, df) for i in qubit_list
+    np.arange(machine.get_qubit_IF(i) - freq_span, machine.get_qubit_IF(i) + freq_span + df / 2, df) for i in qubit_list
 ]
 # Dephasing time scan
 tau_min = 4  # in clock cycles
@@ -53,28 +56,38 @@ with program() as ramsey:
     tau = declare(int)
 
     for i, q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(
-            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "zero_frequency_point").value
-        )
+        # set qubit frequency to working point
+        if q in qubit_w_charge_list:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
-                update_frequency(machine.qubits[q].name, f)
+                if q in qubit_w_charge_list:
+                    update_frequency(machine.qubits[q].name, f)
+                else:
+                    update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, f)
+
                 with for_(*from_array(tau, taus)):
-                    play("x90", machine.qubits[q].name)
-                    wait(tau, machine.qubits[q].name)
-                    play("x90", machine.qubits[q].name)
+                    if q in qubit_w_charge_list:
+                        play("x90", machine.qubits[q].name)
+                        wait(tau, machine.qubits[q].name)
+                        play("x90", machine.qubits[q].name)
+                    else:
+                        play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                        wait(tau, machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                        play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                     align()
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I[i]),
-                        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q[i]),
+                        demod.full("rotated_cos", I[i], "out1"),
+                        demod.full("rotated_sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    if q in qubit_w_charge_list:
+                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    else:
+                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -127,17 +140,31 @@ else:
             progress_counter(qubit_data[i]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
-                plot_demodulated_data_2d(
-                    taus * 4,
-                    freq[i] + machine.drive_lines[q].lo_freq,
-                    qubit_data[i]["I"],
-                    qubit_data[i]["Q"],
-                    "Microwave drive frequency [Hz]",
-                    "Dephasing time [ns]",
-                    f"{experiment} qubit {q}",
-                    amp_and_phase=True,
-                    fig=fig,
-                    plot_options={"cmap": "magma"},
-                )
+                if q in qubit_w_charge_list:
+                    plot_demodulated_data_2d(
+                        taus * 4,
+                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Dephasing time [ns]",
+                        "drive frequency [Hz]",
+                        f"{experiment} qubit {q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"cmap": "magma"},
+                    )
+                else:
+                    plot_demodulated_data_2d(
+                        taus * 4,
+                        freq[i] + machine.drive_lines[machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Dephasing time [ns]",
+                        "drive frequency [Hz]",
+                        f"{experiment} qubit {q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"cmap": "magma"},
+                    )
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
