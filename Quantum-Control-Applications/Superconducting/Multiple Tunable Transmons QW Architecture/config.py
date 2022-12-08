@@ -56,32 +56,61 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
     for q in qb_list:
         wiring = state.qubits[q].wiring
         lo_freq = find_lo_freq(state, q)
-        config["elements"][state.qubits[q].name] = {
-            "mixInputs": {
-                "I": (
-                    state.drive_lines[wiring.drive_line_index].I.controller,
-                    state.drive_lines[wiring.drive_line_index].I.channel,
-                ),
-                "Q": (
-                    state.drive_lines[wiring.drive_line_index].Q.controller,
-                    state.drive_lines[wiring.drive_line_index].Q.channel,
-                ),
-                "lo_frequency": lo_freq,
-                # "mixer": f"mixer_drive_line{q}",
-                "mixer": f"mixer_drive_line{state.qubits[q].wiring.drive_line_index}",
-            },
-            "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
-            "digitalInputs": {
-                "switch": {
-                    "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
-                    "delay": state.qubits[q].wiring.switch_delay,
-                    "buffer": state.qubits[q].wiring.switch_buffer,
+        if state.qubits[q].threads.thread_cond:
+            config["elements"][state.qubits[q].name] = {
+                "thread": state.qubits[q].threads.thread,
+                "mixInputs": {
+                    "I": (
+                        state.drive_lines[wiring.drive_line_index].I.controller,
+                        state.drive_lines[wiring.drive_line_index].I.channel,
+                    ),
+                    "Q": (
+                        state.drive_lines[wiring.drive_line_index].Q.controller,
+                        state.drive_lines[wiring.drive_line_index].Q.channel,
+                    ),
+                    "lo_frequency": lo_freq,
+                    # "mixer": f"mixer_drive_line{q}",
+                    "mixer": f"mixer_drive_line{state.qubits[q].wiring.drive_line_index}",
                 },
-            },
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-            },
-        }
+                "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
+                        "delay": state.qubits[q].wiring.switch_delay,
+                        "buffer": state.qubits[q].wiring.switch_buffer,
+                    },
+                },
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                },
+            }
+        else:
+            config["elements"][state.qubits[q].name] = {
+                "mixInputs": {
+                    "I": (
+                        state.drive_lines[wiring.drive_line_index].I.controller,
+                        state.drive_lines[wiring.drive_line_index].I.channel,
+                    ),
+                    "Q": (
+                        state.drive_lines[wiring.drive_line_index].Q.controller,
+                        state.drive_lines[wiring.drive_line_index].Q.channel,
+                    ),
+                    "lo_frequency": lo_freq,
+                    # "mixer": f"mixer_drive_line{q}",
+                    "mixer": f"mixer_drive_line{state.qubits[q].wiring.drive_line_index}",
+                },
+                "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
+                        "delay": state.qubits[q].wiring.switch_delay,
+                        "buffer": state.qubits[q].wiring.switch_buffer,
+                    },
+                },
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                },
+            }
         # add offsets
         config["controllers"][state.drive_lines[wiring.drive_line_index].I.controller]["analog_outputs"][
             str(state.drive_lines[wiring.drive_line_index].I.channel)
@@ -203,33 +232,63 @@ def add_qubits_wo_charge(state: QuAM, config: Dict, qb_wo_charge_list: list):
     for q in qb_wo_charge_list:
         wiring = state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring
         lo_freq = find_lo_freq(state, q)
-        config["elements"][state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name] = {
-            "mixInputs": {
-                "I": (
-                    state.drive_lines[wiring.drive_line_index].I.controller,
-                    state.drive_lines[wiring.drive_line_index].I.channel,
-                ),
-                "Q": (
-                    state.drive_lines[wiring.drive_line_index].Q.controller,
-                    state.drive_lines[wiring.drive_line_index].Q.channel,
-                ),
-                "lo_frequency": lo_freq,
-                # "mixer": f"mixer_drive_line{q}",
-                "mixer": f"mixer_drive_line{state.qubits_wo_charge[q-NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index}",
-            },
-            "intermediate_frequency": round(state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01) - lo_freq,
-            "digitalInputs": {
-                "switch": {
-                    "port": (state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.controller,
-                             state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.channel),
-                    "delay": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_delay,
-                    "buffer": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_buffer,
+        if state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].threads.thread_cond:
+            config["elements"][state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name] = {
+                "thread": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].threads.thread,
+                "mixInputs": {
+                    "I": (
+                        state.drive_lines[wiring.drive_line_index].I.controller,
+                        state.drive_lines[wiring.drive_line_index].I.channel,
+                    ),
+                    "Q": (
+                        state.drive_lines[wiring.drive_line_index].Q.controller,
+                        state.drive_lines[wiring.drive_line_index].Q.channel,
+                    ),
+                    "lo_frequency": lo_freq,
+                    # "mixer": f"mixer_drive_line{q}",
+                    "mixer": f"mixer_drive_line{state.qubits_wo_charge[q-NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index}",
                 },
-            },
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-            },
-        }
+                "intermediate_frequency": round(state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01) - lo_freq,
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.controller,
+                                 state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.channel),
+                        "delay": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_delay,
+                        "buffer": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_buffer,
+                    },
+                },
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                },
+            }
+        else:
+            config["elements"][state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name] = {
+                "mixInputs": {
+                    "I": (
+                        state.drive_lines[wiring.drive_line_index].I.controller,
+                        state.drive_lines[wiring.drive_line_index].I.channel,
+                    ),
+                    "Q": (
+                        state.drive_lines[wiring.drive_line_index].Q.controller,
+                        state.drive_lines[wiring.drive_line_index].Q.channel,
+                    ),
+                    "lo_frequency": lo_freq,
+                    # "mixer": f"mixer_drive_line{q}",
+                    "mixer": f"mixer_drive_line{state.qubits_wo_charge[q-NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index}",
+                },
+                "intermediate_frequency": round(state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01) - lo_freq,
+                "digitalInputs": {
+                    "switch": {
+                        "port": (state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.controller,
+                                 state.drive_lines[state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].switch.channel),
+                        "delay": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_delay,
+                        "buffer": state.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.switch_buffer,
+                    },
+                },
+                "operations": {
+                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                },
+            }
         # add offsets
         config["controllers"][state.drive_lines[wiring.drive_line_index].I.controller]["analog_outputs"][
             str(state.drive_lines[wiring.drive_line_index].I.channel)
