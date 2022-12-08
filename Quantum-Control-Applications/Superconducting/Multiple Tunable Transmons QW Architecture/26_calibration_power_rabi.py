@@ -29,7 +29,7 @@ digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)  # sets config with min gate length
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
