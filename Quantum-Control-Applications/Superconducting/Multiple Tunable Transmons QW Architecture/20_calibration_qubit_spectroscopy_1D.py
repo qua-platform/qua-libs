@@ -20,10 +20,10 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "1D_qubit_spectroscopy"
 debug = True
 simulate = False
-fit_data = True
+fit_data = False
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1, 2, 3]  # you can shuffle the order at which you perform the experiment
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
 digital = [1, 9]
 machine = QuAM("latest_quam.json")

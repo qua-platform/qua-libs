@@ -26,6 +26,7 @@ NUMBER_OF_DRIVE_LINES = 1
 NUMBER_OF_QP_INJECTORS = 2
 NUMBER_OF_QUBITS_PER_DRIVE_LINE = NUMBER_OF_QUBITS_W_CHARGE + NUMBER_OF_QUBITS_WO_CHARGE
 
+threads = ["a", "b", "c", "d", "e", "f"]
 
 # layer 1: bare state QUantum Abstract Machine
 state = {
@@ -124,7 +125,7 @@ state = {
             "threads": {
                 "thread_cond": True,
                 "thread_cond_docs": "Boolean to decided to put manual threds or not",
-                "thread": "a",
+                "thread": threads[i],
                 "thread_docs": "Manual thread being allocated",
             },
         }
@@ -222,7 +223,7 @@ state = {
             "threads": {
                 "thread_cond": True,
                 "thread_cond_docs": "Boolean to decided to put manual threds or not",
-                "thread": "a",
+                "thread": threads[i],
                 "thread_docs": "Manual thread being allocated",
             },
             "charge_bias_points": [
@@ -335,7 +336,7 @@ state = {
             "threads": {
                 "thread_cond": True,
                 "thread_cond_docs": "Boolean to decided to put manual threds or not",
-                "thread": "a",
+                "thread": threads[i + NUMBER_OF_QUBITS_W_CHARGE],
                 "thread_docs": "Manual thread being allocated",
             },
         }

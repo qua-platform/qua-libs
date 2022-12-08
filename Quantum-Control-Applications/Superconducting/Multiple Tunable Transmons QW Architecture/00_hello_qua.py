@@ -33,3 +33,5 @@ with program() as hello_qua:
 job = qmm.simulate(config, hello_qua, SimulationConfig(500))
 job.get_simulated_samples().con1.plot()
 plt.show()
+machine.save("latest_quam.json")
+
