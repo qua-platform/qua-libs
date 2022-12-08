@@ -11,7 +11,7 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,27 +19,31 @@ from macros import *
 experiment = "2D_Rabi_chevron_amp_vs_length"
 debug = True
 simulate = False
-qubit_list = [0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
 gate_params = []
-for q in qubit_list:
+for i, q in enumerate(qubit_list):
     gate_params.append((machine.get_qubit_gate(q, gate_shape).length, machine.get_qubit_gate(q, gate_shape).angle2volt.deg180))
     machine.get_qubit_gate(q, gate_shape).length = 16e-9
     machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = 0.4
 
-config = machine.build_config(digital, qubit_list, gate_shape)
-for q in qubit_list:
-    machine.get_qubit_gate(q, gate_shape).length = gate_params[q][0]
-    machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = gate_params[q][1]
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)  # sets config with min gate length
+
+for i, q in enumerate(qubit_list):
+    machine.get_qubit_gate(q, gate_shape).length = gate_params[i][0]
+    machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = gate_params[i][1]
 
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e2
+n_avg = 4e1
 
 # Frequency scan
 length_min = 16 // 4
@@ -60,26 +64,30 @@ with program() as rabi:
     a = declare(fixed)
 
     for i,q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(
-            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "readout").value
-        )
+        if q in qubit_w_charge_list:
+            set_dc_offset(
+                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value
+            )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amplitudes)):
                 with for_(*from_array(t, lengths)):
-
-                    play("x180" * amp(a), machine.qubits[q].name, duration=t)
+                    if q in qubit_w_charge_list:
+                        play("x180" * amp(a), machine.qubits[q].name, duration=t)
+                    else:
+                        play("x180" * amp(a), machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, duration=t)
                     align()
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        demod.full("cos", I[i], "out1"),
+                        demod.full("sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    if q in qubit_w_charge_list:
+                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    else:
+                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -132,17 +140,33 @@ else:
             progress_counter(qubit_data[i]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
-                plot_demodulated_data_2d(
-                    lengths * 4,
-                    amplitudes * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
-                    qubit_data[i]["I"],
-                    qubit_data[i]["Q"],
-                    "Gate length [ns]",
-                    "Gate amplitude [V]",
-                    f"{experiment} qubit {q}",
-                    amp_and_phase=True,
-                    fig=fig,
-                    plot_options={"cmap": "magma"},
-                )
+                if q in qubit_w_charge_list:
+                    plot_demodulated_data_2d(
+                        lengths * 4,
+                        # amplitudes * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
+                        amplitudes * 0.4,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Gate length [ns]",
+                        "Gate amplitude [V]",
+                        f"{experiment} qubit {q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"cmap": "magma"},
+                    )
+                else:
+                    plot_demodulated_data_2d(
+                        lengths * 4,
+                        # amplitudes * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
+                        amplitudes * 0.4,
+                        qubit_data[i]["I"],
+                        qubit_data[i]["Q"],
+                        "Gate length [ns]",
+                        "Gate amplitude [V]",
+                        f"{experiment} qubit {q}",
+                        amp_and_phase=True,
+                        fig=fig,
+                        plot_options={"cmap": "magma"},
+                    )
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
