@@ -146,26 +146,26 @@ else:
                     qubit_data[i]["Q"],
                     "Dephasing time [ns]",
                     f"{experiment} qubit {q}",
-                    amp_and_phase=False,
+                    amp_and_phase=True,
                     fig=fig,
                     plot_options={"marker": "."},
                 )
-            # Fitting
-            if fit_data:
-                try:
-                    Fit.ramsey(4 * taus, qubit_data[i]["I"])
-                    plt.subplot(211)
-                    plt.cla()
-                    fit_I = Fit.ramsey(4 * taus, qubit_data[i]["I"], plot=debug)
-                    plt.subplot(212)
-                    plt.cla()
-                    fit_Q = Fit.ramsey(4 * taus, qubit_data[i]["I"], plot=debug)
-                    # plt.subplot(313)
-                    # plt.cla()
-                    # fit_state = Fit.ramsey(4 * taus, qubit_data[i]["state"], plot=debug)
-                    plt.pause(0.1)
-                except (Exception,):
-                    pass
+                # Fitting
+                if fit_data:
+                    try:
+                        Fit.ramsey(4 * taus, qubit_data[i]["I"])
+                        plt.subplot(211)
+                        plt.cla()
+                        fit_I = Fit.ramsey(4 * taus, qubit_data[i]["I"], plot=debug)
+                        plt.subplot(212)
+                        plt.cla()
+                        fit_Q = Fit.ramsey(4 * taus, qubit_data[i]["I"], plot=debug)
+                        # plt.subplot(313)
+                        # plt.cla()
+                        # fit_state = Fit.ramsey(4 * taus, qubit_data[i]["state"], plot=debug)
+                        plt.pause(0.1)
+                    except (Exception,):
+                        pass
 
         # Update state with new resonance frequency
         if fit_data:
