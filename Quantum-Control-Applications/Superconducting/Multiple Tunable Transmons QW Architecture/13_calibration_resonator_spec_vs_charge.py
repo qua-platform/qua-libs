@@ -1,5 +1,5 @@
 """
-Perform the 2D resonator spectroscopy frequency vs flux
+Perform the 2D resonator spectroscopy frequency vs charge
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -15,15 +15,18 @@ from qualang_tools.loops import from_array
 ##################
 # State and QuAM #
 ##################
-experiment = "2D_resonator_spectroscopy_vs_flux"
+experiment = "2D_resonator_spectroscopy_vs_charge"  # this scrip is valuable for qubits with charge lines
 debug = True
 simulate = False
-qubit_list = [1,0]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 1]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -41,8 +44,8 @@ bias_span = 0.5
 dbias = 0.05
 bias = [
     np.arange(
-        machine.get_flux_bias_point(i, "zero_frequency_point").value - bias_span,
-        machine.get_flux_bias_point(i, "zero_frequency_point").value+ bias_span + dbias / 2,
+        machine.get_charge_bias_point(i, "degeneracy_point").value - bias_span,
+        machine.get_charge_bias_point(i, "degeneracy_point").value + bias_span + dbias / 2,
         dbias,
     )
     for i in range(len(qubit_list))
@@ -54,14 +57,11 @@ with program() as resonator_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i,q in enumerate(qubit_list):
-
-        # bring other qubits than `q` to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
+    for i, q in enumerate(qubit_list):
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, bias[i])):
-                set_dc_offset(machine.qubits[q].name + "_flux", "single", b)
+                set_dc_offset(machine.qubits[q].name + "_charge", "single", b)
                 wait(250)  # wait for 1 us
                 with for_(*from_array(f, freq[i])):
                     update_frequency(machine.readout_resonators[q].name, f)
@@ -69,8 +69,8 @@ with program() as resonator_spec:
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        demod.full("cos", I[i], "out1"),
+                        demod.full("sin", Q[i], "out1"),
                     )
                     wait_cooldown_time(machine.readout_resonators[q].relaxation_time, simulate)
                     save(I[i], I_st[i])
@@ -80,7 +80,7 @@ with program() as resonator_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -133,7 +133,7 @@ else:
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
                     "Readout frequency [MHz]",
-                    "Flux bias [V]",
+                    "charge bias [V]",
                     f"{experiment} qubit {q}",
                     amp_and_phase=True,
                     plot_options={"cmap": "magma"},
@@ -147,9 +147,9 @@ else:
         if exit:
             break
 
-    # need to update quam with important flux bias points in the console
-    # machine.get_flux_bias_point(0, "zero_frequency_point").value = 0.115
-    # And choose three points on the resonator frequency vs flux parabola to fit it and get the f_res vs flux correspondence
-    # machine.set_f_res_vs_flux_vertex(0, [(-0.1, 4.46e9), (0, 4.45e9), (0.1, 4.465e9)])
+    # need to update quam with important charge bias points in the console
+    # machine.get_charge_bias_point(0, "zero_frequency_point").value = 0.115
+    # And choose three points on the resonator frequency vs charge parabola to fit it and get the f_res vs charge correspondence
+    # machine.set_f_res_vs_charge_vertex(0, [(-0.1, 4.46e9), (0, 4.45e9), (0.1, 4.465e9)])
     # machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")
