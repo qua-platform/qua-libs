@@ -19,7 +19,7 @@ from macros import *
 experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
-fit_data = False
+fit_data = True
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
 qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
@@ -143,14 +143,14 @@ else:
             if fit_data:
                 try:
                     Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                        (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=False,
                     )
                     plt.subplot(211)
                     plt.cla()
                     fit = Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                        (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=True,
                     )
