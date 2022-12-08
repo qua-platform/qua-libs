@@ -281,44 +281,85 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list, qb_wo_charg
         if r in qb_list:
             readout_line = state.readout_lines[v.wiring.readout_line_index]
 
-            config["elements"][state.readout_resonators[r].name] = {
-                "mixInputs": {
-                    "I": (
-                        readout_line.I_up.controller,
-                        readout_line.I_up.channel,
-                    ),
-                    "Q": (
-                        readout_line.Q_up.controller,
-                        readout_line.Q_up.channel,
-                    ),
-                    "lo_frequency": round(readout_line.lo_freq),
-                    "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
-                },
-                "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
-                "digitalInputs": {
-                    "switch": {
-                        "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
-                        "delay": v.wiring.switch_delay,
-                        "buffer": v.wiring.switch_buffer,
+            if state.readout_resonators[r].threads.thread_cond:
+                config["elements"][state.readout_resonators[r].name] = {
+                    "thread": state.readout_resonators[r].threads.thread,
+                    "mixInputs": {
+                        "I": (
+                            readout_line.I_up.controller,
+                            readout_line.I_up.channel,
+                        ),
+                        "Q": (
+                            readout_line.Q_up.controller,
+                            readout_line.Q_up.channel,
+                        ),
+                        "lo_frequency": round(readout_line.lo_freq),
+                        "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
                     },
-                },
-                "operations": {
-                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-                    "readout": f"readout_pulse_" + state.readout_resonators[r].name,
-                },
-                "outputs": {
-                    "out1": (
-                        readout_line.I_down.controller,
-                        readout_line.I_down.channel,
-                    ),
-                    # "out2": (
-                    #     readout_line.Q_down.controller,
-                    #     readout_line.Q_down.channel,
-                    # ),
-                },
-                "time_of_flight": v.wiring.time_of_flight,
-                "smearing": 0,
-            }
+                    "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                    "digitalInputs": {
+                        "switch": {
+                            "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                            "delay": v.wiring.switch_delay,
+                            "buffer": v.wiring.switch_buffer,
+                        },
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        "readout": f"readout_pulse_" + state.readout_resonators[r].name,
+                    },
+                    "outputs": {
+                        "out1": (
+                            readout_line.I_down.controller,
+                            readout_line.I_down.channel,
+                        ),
+                        # "out2": (
+                        #     readout_line.Q_down.controller,
+                        #     readout_line.Q_down.channel,
+                        # ),
+                    },
+                    "time_of_flight": v.wiring.time_of_flight,
+                    "smearing": 0,
+                }
+            else:
+                config["elements"][state.readout_resonators[r].name] = {
+                    "mixInputs": {
+                        "I": (
+                            readout_line.I_up.controller,
+                            readout_line.I_up.channel,
+                        ),
+                        "Q": (
+                            readout_line.Q_up.controller,
+                            readout_line.Q_up.channel,
+                        ),
+                        "lo_frequency": round(readout_line.lo_freq),
+                        "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
+                    },
+                    "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                    "digitalInputs": {
+                        "switch": {
+                            "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                            "delay": v.wiring.switch_delay,
+                            "buffer": v.wiring.switch_buffer,
+                        },
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        "readout": f"readout_pulse_" + state.readout_resonators[r].name,
+                    },
+                    "outputs": {
+                        "out1": (
+                            readout_line.I_down.controller,
+                            readout_line.I_down.channel,
+                        ),
+                        # "out2": (
+                        #     readout_line.Q_down.controller,
+                        #     readout_line.Q_down.channel,
+                        # ),
+                    },
+                    "time_of_flight": v.wiring.time_of_flight,
+                    "smearing": 0,
+                }
             # add mixers
             if f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}" not in config["mixers"]:
                 config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"] = []
@@ -409,44 +450,85 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list, qb_wo_charg
         if r in qb_wo_charge_list:
             readout_line = state.readout_lines[v.wiring.readout_line_index]
 
-            config["elements"][state.readout_resonators[r].name] = {
-                "mixInputs": {
-                    "I": (
-                        readout_line.I_up.controller,
-                        readout_line.I_up.channel,
-                    ),
-                    "Q": (
-                        readout_line.Q_up.controller,
-                        readout_line.Q_up.channel,
-                    ),
-                    "lo_frequency": round(readout_line.lo_freq),
-                    "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
-                },
-                "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
-                "digitalInputs": {
-                    "switch": {
-                        "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
-                        "delay": v.wiring.switch_delay,
-                        "buffer": v.wiring.switch_buffer,
+            if state.readout_resonators[r].threads.thread_cond:
+                config["elements"][state.readout_resonators[r].name] = {
+                    "thread": state.readout_resonators[r].threads.thread,
+                    "mixInputs": {
+                        "I": (
+                            readout_line.I_up.controller,
+                            readout_line.I_up.channel,
+                        ),
+                        "Q": (
+                            readout_line.Q_up.controller,
+                            readout_line.Q_up.channel,
+                        ),
+                        "lo_frequency": round(readout_line.lo_freq),
+                        "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
                     },
-                },
-                "operations": {
-                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
-                    "readout": f"readout_pulse_" + state.readout_resonators[r].name,
-                },
-                "outputs": {
-                    "out1": (
-                        readout_line.I_down.controller,
-                        readout_line.I_down.channel,
-                    ),
-                    # "out2": (
-                    #     readout_line.Q_down.controller,
-                    #     readout_line.Q_down.channel,
-                    # ),
-                },
-                "time_of_flight": v.wiring.time_of_flight,
-                "smearing": 0,
-            }
+                    "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                    "digitalInputs": {
+                        "switch": {
+                            "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                            "delay": v.wiring.switch_delay,
+                            "buffer": v.wiring.switch_buffer,
+                        },
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        "readout": f"readout_pulse_" + state.readout_resonators[r].name,
+                    },
+                    "outputs": {
+                        "out1": (
+                            readout_line.I_down.controller,
+                            readout_line.I_down.channel,
+                        ),
+                        # "out2": (
+                        #     readout_line.Q_down.controller,
+                        #     readout_line.Q_down.channel,
+                        # ),
+                    },
+                    "time_of_flight": v.wiring.time_of_flight,
+                    "smearing": 0,
+                }
+            else:
+                config["elements"][state.readout_resonators[r].name] = {
+                    "mixInputs": {
+                        "I": (
+                            readout_line.I_up.controller,
+                            readout_line.I_up.channel,
+                        ),
+                        "Q": (
+                            readout_line.Q_up.controller,
+                            readout_line.Q_up.channel,
+                        ),
+                        "lo_frequency": round(readout_line.lo_freq),
+                        "mixer": f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}",
+                    },
+                    "intermediate_frequency": round(v.f_opt - readout_line.lo_freq),
+                    "digitalInputs": {
+                        "switch": {
+                            "port": (state.readout_lines[0].switch.controller, state.readout_lines[0].switch.channel),
+                            "delay": v.wiring.switch_delay,
+                            "buffer": v.wiring.switch_buffer,
+                        },
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        "readout": f"readout_pulse_" + state.readout_resonators[r].name,
+                    },
+                    "outputs": {
+                        "out1": (
+                            readout_line.I_down.controller,
+                            readout_line.I_down.channel,
+                        ),
+                        # "out2": (
+                        #     readout_line.Q_down.controller,
+                        #     readout_line.Q_down.channel,
+                        # ),
+                    },
+                    "time_of_flight": v.wiring.time_of_flight,
+                    "smearing": 0,
+                }
             # add mixers
             if f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}" not in config["mixers"]:
                 config["mixers"][f"mixer_readout_line{state.readout_resonators[r].wiring.readout_line_index}"] = []

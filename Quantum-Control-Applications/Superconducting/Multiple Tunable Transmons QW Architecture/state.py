@@ -121,6 +121,12 @@ state = {
                 "switch_buffer": 0,
                 "switch_buffer_docs": "buffer of digital pulse"
             },
+            "threads": {
+                "thread_cond": True,
+                "thread_cond_docs": "Boolean to decided to put manual threds or not",
+                "thread": "a",
+                "thread_docs": "Manual thread being allocated",
+            },
         }
         for i in range(READOUT_RESONATORS_PER_FEED_LINE)
     ],
@@ -212,6 +218,12 @@ state = {
                 "switch_delay_docs": "delay of digital pulse",
                 "switch_buffer": 0,
                 "switch_buffer_docs": "buffer of digital pulse"
+            },
+            "threads": {
+                "thread_cond": True,
+                "thread_cond_docs": "Boolean to decided to put manual threds or not",
+                "thread": "a",
+                "thread_docs": "Manual thread being allocated",
             },
             "charge_bias_points": [
                 {
@@ -319,6 +331,12 @@ state = {
                 "switch_delay_docs": "delay of digital pulse",
                 "switch_buffer": 0,
                 "switch_buffer_docs": "buffer of digital pulse"
+            },
+            "threads": {
+                "thread_cond": True,
+                "thread_cond_docs": "Boolean to decided to put manual threds or not",
+                "thread": "a",
+                "thread_docs": "Manual thread being allocated",
             },
         }
         for i in range(NUMBER_OF_QUBITS_WO_CHARGE)
