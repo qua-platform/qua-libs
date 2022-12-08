@@ -11,7 +11,7 @@ from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_dat
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-
+from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -20,8 +20,11 @@ gate = "x90"
 experiment = gate + "_amplitude_calibration"
 debug = True
 simulate = False
-qubit_list = [1]
-digital = []
+qubit_w_charge_list = [0, 1]
+qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+injector_list = [0, 1]
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
@@ -37,7 +40,7 @@ elif gate == "x180":
     for q in qubit_list:
         base_amp.append(machine.get_qubit_gate(q, gate_shape).angle2volt.deg180)
 
-config = machine.build_config(digital, qubit_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -45,8 +48,8 @@ config = machine.build_config(digital, qubit_list, gate_shape)
 n_avg = 1e2
 
 # Amplitude scan
-a_min = 0.75
-a_max = 1.25
+a_min = 0.9
+a_max = 1.1
 da = 0.01
 amps = np.arange(a_min, a_max + da / 2, da)
 
@@ -64,26 +67,30 @@ with program() as gate_cal:
     state_st = [declare_stream() for _ in range(len(qubit_list))]
 
     for i, q in enumerate(qubit_list):
-        # bring other qubits to zero frequency
-        machine.nullify_other_qubits(qubit_list, q)
-        set_dc_offset(
-            machine.qubits[q].name + "_flux", "single", machine.get_flux_bias_point(q, "near_anti_crossing").value
-        )
+        # set qubit frequency to working point
+        if q in qubit_w_charge_list:
+            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(n_pulse, pulse_vec)):
                 with for_(*from_array(a, amps)):
                     with for_(pulses, 0, pulses < n_pulse, pulses + 1):
-                        play(gate * amp(a), machine.qubits[q].name)
+                        if q in qubit_w_charge_list:
+                            play(gate * amp(a), machine.qubits[q].name)
+                        else:
+                            play(gate * amp(a), machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
                     align()
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
                         None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[i]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[i]),
+                        demod.full("cos", I[i], "out1"),
+                        demod.full("sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    if q in qubit_w_charge_list:
+                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    else:
+                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
                     align()
                     assign(state[i], I[i] > machine.readout_resonators[q].ge_threshold)
                     save(I[i], I_st[i])
@@ -150,8 +157,8 @@ else:
                     pulse_vec,
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
-                    "Number of pulses",
                     gate + " amplitude [V]",
+                    "Number of pulses",
                     f"{experiment} qubit {q}",
                     amp_and_phase=True,
                     fig=fig,
@@ -163,11 +170,11 @@ else:
         j = 0
         for it in [1, int(0.25 * len(pulse_vec)), int(0.5 * len(pulse_vec)), int(0.75 * len(pulse_vec)), len(pulse_vec) - 1]:
             plt.subplot(211)
-            plt.plot(amps * base_amp[i], qubit_data[i]["I"][it], colors[j] + "-", label=f"{it} iterations")
+            plt.plot(amps * base_amp[i], qubit_data[i]["I"][it], colors[j] + "-", label=f"{pulse_vec[it]} iterations")
             plt.ylabel("I [a.u.]")
-            plt.title(f"DRAG calibration for qubit {q}")
+            plt.title(f"Amplitude calibration for qubit {q}")
             plt.subplot(212)
-            plt.plot(amps * base_amp[i], qubit_data[i]["Q"][it], colors[j] + "-", label=f"{it} iterations")
+            plt.plot(amps * base_amp[i], qubit_data[i]["Q"][it], colors[j] + "-", label=f"{pulse_vec[it]} iterations")
             plt.xlabel(gate + " amplitude [V]")
             plt.ylabel("Q [a.u.]")
             plt.tight_layout()
@@ -177,7 +184,7 @@ else:
         plt.subplot(212)
         plt.legend(ncol=j)
 
-        # Update state with new DRAG coefficient
+        # Update state with new amplitude
         print(f"Previous {gate} amplitude: {base_amp[i]:.1f} V")
         # Chose I, Q or amp...
         # machine.qubits[q].driving.drag_cosine.angle2volt.deg180 =
