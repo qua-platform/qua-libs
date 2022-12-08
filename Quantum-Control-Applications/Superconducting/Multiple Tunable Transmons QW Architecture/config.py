@@ -1393,7 +1393,10 @@ def get_qubit_gate(state: QuAM, index: int, shape: str):
     """
     for z in state.qubits[index].driving.__dict__.get("_schema").get("required"):
         if z == shape:
-            return state.qubits[index].driving.__getattribute__(shape)
+            if index < NUMBER_OF_QUBITS_W_CHARGE:
+                return state.qubits[index].driving.__getattribute__(shape)
+            else:
+                return state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].driving.__getattribute__(shape)
     raise ValueError(
         f"The gate '{shape}' is not defined in the state. The available gates are {state.qubits[index].driving.__dict__.get('_schema').get('required')}"
     )

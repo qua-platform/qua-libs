@@ -54,6 +54,7 @@ with program() as qubit_spec:
         # set qubit frequency to working point
         if q in qubit_w_charge_list:
             set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             if q in qubit_w_charge_list:
                 update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(0)))
