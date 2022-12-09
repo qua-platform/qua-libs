@@ -27,7 +27,13 @@ def play_pi():
 
 
 with program() as hello_qua:
-    play('x180', machine.qubits[0].name)
+
+    a = declare(fixed)
+
+    with for_(a, 0.1, a < 1.0, a+0.1):
+        play('x180'*amp(a), machine.qubits[0].name)
+        align()
+        measure('readout', machine.readout_resonators[0].name, None)
 
 
 job = qmm.simulate(config, hello_qua, SimulationConfig(500))

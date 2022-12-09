@@ -21,7 +21,7 @@ debug = True
 simulate = False
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0]  # you can shuffle the order at which you perform the experiment
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
 digital = [1, 9]
 machine = QuAM("latest_quam.json")
@@ -33,8 +33,8 @@ for q in qubit_list:
     machine.get_qubit_gate(q, gate_shape).length = 16e-9  # sets gate length to minimum value
 
 config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)  # sets config with min gate length
-for q in qubit_list:
-    machine.get_qubit_gate(q, gate_shape).length = gate_length[q]  # restates the original gate lengths
+for i, q in enumerate(qubit_list):
+    machine.get_qubit_gate(q, gate_shape).length = gate_length[i]  # restates the original gate lengths
 
 ###################
 # The QUA program #
@@ -82,10 +82,7 @@ with program() as rabi:
                         demod.full("cos", I[i], "out1"),
                         demod.full("sin", Q[i], "out1"),
                     )
-                    if q in qubit_w_charge_list:
-                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                    else:
-                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])

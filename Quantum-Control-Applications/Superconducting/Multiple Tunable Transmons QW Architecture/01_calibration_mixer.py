@@ -26,11 +26,12 @@ def IQ_imbalance(g, phi):
 # State and QuAM #
 ##################
 experiment = "mixer_calibration"
-qubit_list = [0, 1]
+qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_list = qubit_w_charge_list + qubit_wo_charge_list  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
+digital = [1, 9]
 qubit_index = 0
-digital = []
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
@@ -38,9 +39,14 @@ element = machine.readout_resonators[qubit_index].name
 # machine.readout_resonators[0].wiring.maximum_amplitude = 0.2
 # element = machine.qubits[qubit_index].name
 # machine.qubits[0].wiring.maximum_amplitude = 0.2
+# machine.readout_lines[0].lo_freq = 6.0e9
+# machine.readout_lines[0].lo_power = 13
+# machine.readout_lines[0].length = 3e-6
+# machine.drive_lines[0].lo_freq = 6.0e9
+# machine.drive_lines[0].lo_power = 13
 
 
-config = machine.build_config(digital, qubit_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
 # The QUA program #

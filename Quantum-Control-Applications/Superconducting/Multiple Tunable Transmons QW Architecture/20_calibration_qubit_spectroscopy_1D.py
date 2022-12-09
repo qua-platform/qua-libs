@@ -23,14 +23,18 @@ simulate = False
 fit_data = False
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
 digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+amplitudes = [0.005, 0.005]
+fs = [5.55e9, 5.6e9]
+lens = [200e-9, 200e-9]
 # machine.get_qubit_gate(0, gate_shape).angle2volt.deg180 = 0.2
 # machine.get_qubit_gate(0, gate_shape).length = 200e-9
+populate_machine_qubits(machine, qubit_list, qubit_w_charge_list, qubit_wo_charge_list, amplitudes, fs, lens, gate_shape)
 config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
 ###################
@@ -56,10 +60,6 @@ with program() as qubit_spec:
             set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            if q in qubit_w_charge_list:
-                update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(0)))
-            else:
-                update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, int(machine.get_qubit_IF(0)))
             with for_(*from_array(f, freq[i])):
                 if q in qubit_w_charge_list:
                     update_frequency(machine.qubits[q].name, f)
@@ -76,10 +76,7 @@ with program() as qubit_spec:
                     demod.full("sin", Q[i], "out1"),
                 )
                 align()
-                if q in qubit_w_charge_list:
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                else:
-                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
             save(n[i], n_st[i])

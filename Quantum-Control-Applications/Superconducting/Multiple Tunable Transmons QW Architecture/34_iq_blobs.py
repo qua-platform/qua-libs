@@ -8,7 +8,7 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.analysis.discriminator import two_state_discriminator
-from macros import wait_cooldown_time
+from macros import *
 from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
@@ -19,7 +19,7 @@ debug = True
 simulate = False
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [1]  # you can shuffle the order at which you perform the experiment
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
 digital = [1, 9]
 machine = QuAM("latest_quam.json")
@@ -59,10 +59,7 @@ with program() as iq_blobs:
                 demod.full("rotated_cos", I_g[i], "out1"),
                 demod.full("rotated_sin", Q_g[i], "out1"),
             )
-            if q in qubit_w_charge_list:
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-            else:
-                wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+            wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
             save(I_g[i], I_g_st[i])
             save(Q_g[i], Q_g_st[i])
 
@@ -80,10 +77,7 @@ with program() as iq_blobs:
                 demod.full("rotated_cos", I_e[i], "out1"),
                 demod.full("rotated_sin", Q_e[i], "out1"),
             )
-            if q in qubit_w_charge_list:
-                wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-            else:
-                wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+            wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
             save(I_e[i], I_e_st[i])
             save(Q_e[i], Q_e_st[i])
 

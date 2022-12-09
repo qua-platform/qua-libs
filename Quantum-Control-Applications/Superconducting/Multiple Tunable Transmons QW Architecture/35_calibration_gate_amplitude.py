@@ -45,7 +45,7 @@ config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list
 ###################
 # The QUA program #
 ###################
-n_avg = 1e2
+n_avg = 1e3
 
 # Amplitude scan
 a_min = 0.9
@@ -87,10 +87,7 @@ with program() as gate_cal:
                         demod.full("cos", I[i], "out1"),
                         demod.full("sin", Q[i], "out1"),
                     )
-                    if q in qubit_w_charge_list:
-                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                    else:
-                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                     align()
                     assign(state[i], I[i] > machine.readout_resonators[q].ge_threshold)
                     save(I[i], I_st[i])

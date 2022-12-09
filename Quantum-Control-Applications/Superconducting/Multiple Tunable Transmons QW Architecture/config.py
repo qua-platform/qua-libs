@@ -20,14 +20,7 @@ from qm.qua import set_dc_offset
 from pprint import pprint
 import matplotlib.pyplot as plt
 from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
-READOUT_RESONATORS_PER_FEED_LINE = 6
-
-NUMBER_OF_QUBITS_W_CHARGE = 2
-NUMBER_OF_QUBITS_WO_CHARGE = 4
-NUMBER_OF_DRIVE_LINES = 1
-NUMBER_OF_QP_INJECTORS = 2
-NUMBER_OF_QUBITS_PER_DRIVE_LINE = NUMBER_OF_QUBITS_W_CHARGE + NUMBER_OF_QUBITS_WO_CHARGE
+from architecture import *
 
 
 # IQ imbalance matrix

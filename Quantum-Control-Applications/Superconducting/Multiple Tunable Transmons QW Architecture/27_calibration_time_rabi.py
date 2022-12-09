@@ -59,10 +59,6 @@ with program() as time_rabi:
             )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            if q in qubit_w_charge_list:
-                update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(q)))
-            else:
-                update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, int(machine.get_qubit_IF(q - NUMBER_OF_QUBITS_W_CHARGE)))
             with for_(*from_array(t, lengths)):
                 if q in qubit_w_charge_list:
                     play("x180", machine.qubits[q].name, duration=t)
@@ -76,10 +72,7 @@ with program() as time_rabi:
                     demod.full("cos", I[i], "out1"),
                     demod.full("sin", Q[i], "out1"),
                 )
-                if q in qubit_w_charge_list:
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                else:
-                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
             save(n[i], n_st[i])

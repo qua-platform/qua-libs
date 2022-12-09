@@ -20,7 +20,7 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "power_rabi"
 debug = True
 simulate = False
-fit_data = False
+fit_data = True
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
 qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
@@ -34,7 +34,7 @@ config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list
 ###################
 # The QUA program #
 ###################
-n_avg = 500
+n_avg = 1000
 
 # Amplitude scan
 a_min = 0
@@ -54,10 +54,6 @@ with program() as power_rabi:
             )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            if q in qubit_w_charge_list:
-                update_frequency(machine.qubits[q].name, int(machine.get_qubit_IF(q)))
-            else:
-                update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, int(machine.get_qubit_IF(q - NUMBER_OF_QUBITS_W_CHARGE)))
             with for_(*from_array(a, amps)):
                 if q in qubit_w_charge_list:
                     play("x180" * amp(a), machine.qubits[q].name)
@@ -71,10 +67,7 @@ with program() as power_rabi:
                     demod.full("cos", I[i], "out1"),
                     demod.full("sin", Q[i], "out1"),
                 )
-                if q in qubit_w_charge_list:
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                else:
-                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -82,7 +75,7 @@ with program() as power_rabi:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(amps)).average().save(f"I{q}")
             Q_st[i].buffer(len(amps)).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -110,7 +103,7 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
 
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()

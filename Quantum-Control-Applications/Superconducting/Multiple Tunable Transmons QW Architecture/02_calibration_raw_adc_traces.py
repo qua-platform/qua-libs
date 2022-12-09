@@ -19,9 +19,9 @@ simulate = False
 fit_data = True
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0]  # is zero because only one readout line
+qubit_list = qubit_w_charge_list + qubit_wo_charge_list  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
-digital = []
+digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
@@ -44,16 +44,16 @@ cooldown_time = 2000 // 4  # Resonator cooldown time in clock cycles (4ns)
 ###################
 with program() as raw_trace_prog:
     n = declare(int)
-    adc_st = [declare_stream(adc_trace=True) for _ in range(len(qubit_list))]
+    adc_st = [declare_stream(adc_trace=True) for _ in range(len(machine.readout_lines))]
 
-    for q in qubit_list:
+    for q in range(len(machine.readout_lines)):
         with for_(n, 0, n < n_avg, n + 1):
             reset_phase(machine.readout_resonators[q].name)
             measure("readout", machine.readout_resonators[q].name, adc_st[q])
             wait(cooldown_time, machine.readout_resonators[q].name)
 
     with stream_processing():
-        for q in qubit_list:
+        for q in range(len(machine.readout_lines)):
             # Will save average:
             adc_st[q].input1().average().save(f"adc1_{q}")
             # adc_st[q].input2().average().save(f"adc2_{q}")
@@ -67,7 +67,7 @@ job = qm.execute(raw_trace_prog)
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
 figures = []
-for q in qubit_list:
+for q in range(len(machine.readout_lines)):
     adc1 = u.raw2volts(res_handles.get(f"adc1_{q}").fetch_all())
     # adc2 = u.raw2volts(res_handles.get(f"adc2_{q}").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get(f"adc1_single_run_{q}").fetch_all())

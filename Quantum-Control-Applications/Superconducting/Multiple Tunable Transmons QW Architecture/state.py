@@ -10,6 +10,7 @@ The process to generate the initial state and the build config function:
 import quam_sdk.constructor
 import numpy as np
 from scipy.signal.windows import dpss
+from architecture import *
 
 
 """
@@ -17,16 +18,6 @@ For 1 OPX we have:
     up to 4 fixed freq transmons or 2 charge tunable + 1 fixed freq transmons  
     1 readout line coupled to up to 4 readout resonators 
 """
-
-READOUT_RESONATORS_PER_FEED_LINE = 6
-
-NUMBER_OF_QUBITS_W_CHARGE = 2
-NUMBER_OF_QUBITS_WO_CHARGE = 4
-NUMBER_OF_DRIVE_LINES = 1
-NUMBER_OF_QP_INJECTORS = 2
-NUMBER_OF_QUBITS_PER_DRIVE_LINE = NUMBER_OF_QUBITS_W_CHARGE + NUMBER_OF_QUBITS_WO_CHARGE
-
-threads = ["a", "b", "c", "d", "e", "f"]
 
 # layer 1: bare state QUantum Abstract Machine
 state = {

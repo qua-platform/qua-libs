@@ -84,10 +84,7 @@ with program() as ramsey:
                         demod.full("rotated_cos", I[i], "out1"),
                         demod.full("rotated_sin", Q[i], "out1"),
                     )
-                    if q in qubit_w_charge_list:
-                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                    else:
-                        wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])

@@ -11,7 +11,7 @@ from qm import SimulationConfig
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
-from macros import wait_cooldown_time
+from macros import *
 from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
@@ -72,10 +72,7 @@ with program() as readout_opt:
                     demod.full("cos", I_g[i], "out1"),
                     demod.full("sin", Q_g[i], "out1"),
                 )
-                if q in qubit_w_charge_list:
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                else:
-                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                 assign(state[i], I_g[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_g[i], I_g_st[i])
                 save(Q_g[i], Q_g_st[i])
@@ -95,10 +92,7 @@ with program() as readout_opt:
                     demod.full("cos", I_e[i], "out1"),
                     demod.full("sin", Q_e[i], "out1"),
                 )
-                if q in qubit_w_charge_list:
-                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
-                else:
-                    wait_cooldown_time(5 * machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].t1, simulate)
+                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
                 assign(state[i], I_e[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_e[i], I_e_st[i])
                 save(Q_e[i], Q_e_st[i])

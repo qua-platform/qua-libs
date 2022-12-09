@@ -5,6 +5,7 @@ All the macros below have been written and tested with the basic configuration. 
 """
 
 from qm.qua import *
+from architecture import *
 
 ##############
 # QUA macros #
@@ -19,6 +20,15 @@ def qua_declaration(qubit_list):
     I_st = [declare_stream() for _ in range(len(qubit_list))]
     Q_st = [declare_stream() for _ in range(len(qubit_list))]
     return I, I_st, Q, Q_st, n, n_st
+
+
+def wait_cooldown_time_fivet1(index, machine, simulate, q_charge_list):
+    if index in q_charge_list:
+        if not simulate:
+            wait(int(5 * machine.qubits[index].t1 * 1e9) // 4)
+    else:
+        if not simulate:
+            wait(int(5 * machine.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].t1 * 1e9) // 4)
 
 
 def wait_cooldown_time(cooldown_time, simulate):
@@ -195,3 +205,24 @@ def ge_averaged_measurement(machine, qubit_index, cooldown_time, n_avg):
         save(Q, Qe_st)
 
         return Ig_st, Qg_st, Ie_st, Qe_st
+
+
+# Populate machine with initial guesses from previous knowledge
+def populate_machine_resonators(machine, qubit_index, amplitude, f_opt):
+    for i, q in enumerate(qubit_index):
+        machine.readout_resonators[q].readout_amplitude = amplitude[i]
+        machine.readout_resonators[q].f_opt = f_opt[i]
+
+
+# Populate machine with initial guesses from previous knowledge
+def populate_machine_qubits(machine, q_index, q_charge, q_wo_charge, amplitude, f, lens, gate_shape):
+    for i, q in enumerate(q_index):
+        if q in q_charge:
+            machine.qubits[q].f_01 = f[i]
+            machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = amplitude[i]
+            machine.get_qubit_gate(q, gate_shape).length = lens[i]
+        if q in q_wo_charge:
+            machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01 = f[i]
+            machine.get_qubit_gate(q - NUMBER_OF_QUBITS_W_CHARGE, gate_shape).angle2volt.deg180 = amplitude[i]
+            machine.get_qubit_gate(q - NUMBER_OF_QUBITS_W_CHARGE, gate_shape).length = lens[i]
+

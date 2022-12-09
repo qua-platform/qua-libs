@@ -19,19 +19,21 @@ from macros import *
 experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
-fit_data = True
+fit_data = False
 qubit_w_charge_list = [0, 1]
 qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
 digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-
+qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+amplitudes = [0.005, 0.005]
+f_opts = [6.231e9, 6.141e9]
 # machine.readout_lines[0].lo_freq = 6.0e9
 # machine.readout_lines[0].lo_power = 13
 # machine.readout_lines[0].length = 3e-6
+populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
 # machine.readout_resonators[0].readout_amplitude =0.005
 # machine.readout_resonators[0].f_opt = 6.131e9
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
@@ -42,10 +44,10 @@ config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list
 ###################
 u = unit()
 
-n_avg = 4e3
+n_avg = 4e4
 
 span = 2e6
-df = 0.01e6
+df = 0.1e6
 freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
 
 with program() as resonator_spec:
@@ -59,7 +61,7 @@ with program() as resonator_spec:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q == 0 or q == 1:
+        if q in qubit_w_charge_list:
             set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
@@ -157,7 +159,7 @@ else:
                     plt.pause(0.1)
                 except (Exception,):
                     pass
-            # Break the loop if interupt on close
+            # Break the loop if interrupt on close
             if my_results.is_processing():
                 if not my_results.is_processing():
                     exit = True
@@ -174,6 +176,6 @@ else:
 
     machine.save_results(experiment, figures)
 
-machine.save("latest_quam.json")
+# machine.save("latest_quam.json")
 
 
