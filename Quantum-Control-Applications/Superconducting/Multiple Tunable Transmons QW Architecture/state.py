@@ -261,6 +261,8 @@ state = {
             "name": f"qubit_{i+NUMBER_OF_QUBITS_W_CHARGE}",
             "f_01": 5.7e9,
             "f_01_docs": "0-1 transition frequency [Hz]",
+            "df": 1e6,
+            "df_docs": "Half of charge dispersion measured in spectroscopy [Hz]",
             "anharmonicity": 350e6,
             "anharmonicity_docs": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]",
             "rabi_freq": 0,
