@@ -112,113 +112,115 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
             str(state.drive_lines[wiring.drive_line_index].Q.channel)
         ]["offset"] = state.drive_lines[wiring.drive_line_index].Q.offset
 
-        # add charge element
-        config["elements"][state.qubits[q].name + "_charge"] = {
-            "singleInput": {
-                "port": (
-                    wiring.charge_line.controller,
-                    wiring.charge_line.channel,
-                )
-            },
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
-            },
-        }
-        # add operations for charge line
-        for op in state.qubits[q].sequence_states.constant:
-            config["elements"][state.qubits[q].name + "_charge"]["operations"][op.name] = (
-                state.qubits[q].name + f"_charge_{op.name}"
-            )
-            # add pulse
-            config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
-                "operation": "control",
-                "length": op.length * 1e9,
-                "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
-            }
-            config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
-                "type": "constant",
-                "sample": op.amplitude,
-            }
-        for op in state.qubits[q].sequence_states.arbitrary:
-            config["elements"][state.qubits[q].name + "_charge"]["operations"][op.name] = (
-                state.qubits[q].name + f"_charge_{op.name}"
-            )
-            # add pulse
-            config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
-                "operation": "control",
-                "length": len(op.waveform),
-                "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
-            }
-            config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
-                "type": "arbitrary",
-                "samples": op.waveform,
-            }
+        for i in range(NUMBER_OF_CHARGE_LINES):
+            if q == state.charge_lines[i].index:
+                # add charge element
+                config["elements"][state.qubits[q].name + "_charge"] = {
+                    "singleInput": {
+                        "port": (
+                            wiring.charge_line.controller,
+                            wiring.charge_line.channel,
+                        )
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                    },
+                }
+                # add operations for charge line
+                for op in state.qubits[q].sequence_states.constant:
+                    config["elements"][state.qubits[q].name + "_charge"]["operations"][op.name] = (
+                        state.qubits[q].name + f"_charge_{op.name}"
+                    )
+                    # add pulse
+                    config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
+                        "operation": "control",
+                        "length": op.length * 1e9,
+                        "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
+                    }
+                    config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
+                        "type": "constant",
+                        "sample": op.amplitude,
+                    }
+                for op in state.qubits[q].sequence_states.arbitrary:
+                    config["elements"][state.qubits[q].name + "_charge"]["operations"][op.name] = (
+                        state.qubits[q].name + f"_charge_{op.name}"
+                    )
+                    # add pulse
+                    config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
+                        "operation": "control",
+                        "length": len(op.waveform),
+                        "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
+                    }
+                    config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
+                        "type": "arbitrary",
+                        "samples": op.waveform,
+                    }
 
-        config["elements"][state.qubits[q].name + "_charge_sticky"] = {
-            "singleInput": {
-                "port": (
-                    wiring.charge_line.controller,
-                    wiring.charge_line.channel,
-                )
-            },
-            "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
-            },
-            "hold_offset" "": {"duration": 1},
-        }
-        # add operations for charge line
-        for op in state.qubits[q].sequence_states.constant:
-            config["elements"][state.qubits[q].name + "_charge_sticky"]["operations"][op.name] = (
-                state.qubits[q].name + f"_charge_{op.name}"
-            )
+                config["elements"][state.qubits[q].name + "_charge_sticky"] = {
+                    "singleInput": {
+                        "port": (
+                            wiring.charge_line.controller,
+                            wiring.charge_line.channel,
+                        )
+                    },
+                    "operations": {
+                        state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                    },
+                    "hold_offset" "": {"duration": 1},
+                }
+                # add operations for charge line
+                for op in state.qubits[q].sequence_states.constant:
+                    config["elements"][state.qubits[q].name + "_charge_sticky"]["operations"][op.name] = (
+                        state.qubits[q].name + f"_charge_{op.name}"
+                    )
 
-            # add pulse
-            config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
-                "operation": "control",
-                "length": op.length * 1e9,
-                "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
-            }
-            config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
-                "type": "constant",
-                "sample": op.amplitude,
-            }
-        for op in state.qubits[q].sequence_states.arbitrary:
-            config["elements"][state.qubits[q].name + "_charge_sticky"]["operations"][op.name] = (
-                state.qubits[q].name + f"_charge_{op.name}"
-            )
-            # add pulse
-            config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
-                "operation": "control",
-                "length": len(op.waveform),
-                "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
-            }
-            config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
-                "type": "arbitrary",
-                "samples": op.waveform,
-            }
-        # add filters
-        config["controllers"][wiring.charge_line.controller]["analog_outputs"][str(wiring.charge_line.channel)][
-            "filter"
-        ] = {
-            "feedforward": wiring.charge_filter_coefficients.feedforward,
-            "feedback": wiring.charge_filter_coefficients.feedback,
-        }
-        # add offsets
-        config["controllers"][wiring.charge_line.controller]["analog_outputs"][str(wiring.charge_line.channel)][
-            "offset"
-        ] = wiring.charge_line.offset
+                    # add pulse
+                    config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
+                        "operation": "control",
+                        "length": op.length * 1e9,
+                        "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
+                    }
+                    config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
+                        "type": "constant",
+                        "sample": op.amplitude,
+                    }
+                for op in state.qubits[q].sequence_states.arbitrary:
+                    config["elements"][state.qubits[q].name + "_charge_sticky"]["operations"][op.name] = (
+                        state.qubits[q].name + f"_charge_{op.name}"
+                    )
+                    # add pulse
+                    config["pulses"][state.qubits[q].name + f"_charge_{op.name}"] = {
+                        "operation": "control",
+                        "length": len(op.waveform),
+                        "waveforms": {"single": state.qubits[q].name + f"_charge_{op.name}" + "_wf"},
+                    }
+                    config["waveforms"][state.qubits[q].name + f"_charge_{op.name}" + "_wf"] = {
+                        "type": "arbitrary",
+                        "samples": op.waveform,
+                    }
+                # add filters
+                config["controllers"][wiring.charge_line.controller]["analog_outputs"][str(wiring.charge_line.channel)][
+                    "filter"
+                ] = {
+                    "feedforward": wiring.charge_filter_coefficients.feedforward,
+                    "feedback": wiring.charge_filter_coefficients.feedback,
+                }
+                # add offsets
+                config["controllers"][wiring.charge_line.controller]["analog_outputs"][str(wiring.charge_line.channel)][
+                    "offset"
+                ] = wiring.charge_line.offset
 
-    # add cross talk
-    for i in range(len(state.crosstalk_matrix.fast)):
-        crosstalk = {}
-        q_i = state.qubits[i]
-        for j in range(len(state.crosstalk_matrix.fast[i])):
-            q_j = state.qubits[j]
-            crosstalk[q_j.wiring.charge_line.channel] = state.crosstalk_matrix.fast[i][j]
-        if q_i.index in qb_list and q_j.index in qb_list:
-            config["controllers"][q_i.wiring.charge_line.controller]["analog_outputs"][
-                str(q_i.wiring.charge_line.channel)
-            ]["crosstalk"] = crosstalk
+    # # add cross talk
+    # for i in range(len(state.crosstalk_matrix.fast)):
+    #     crosstalk = {}
+    #     q_i = state.qubits[i]
+    #     for j in range(len(state.crosstalk_matrix.fast[i])):
+    #         q_j = state.qubits[j]
+    #         crosstalk[q_j.wiring.charge_line.channel] = state.crosstalk_matrix.fast[i][j]
+    #     if q_i.index in qb_list and q_j.index in qb_list:
+    #         config["controllers"][q_i.wiring.charge_line.controller]["analog_outputs"][
+    #             str(q_i.wiring.charge_line.channel)
+    #         ]["crosstalk"] = crosstalk
 
 
 def add_mixers(state: QuAM, config: Dict, qb_list: list):
@@ -541,9 +543,6 @@ def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, injecto
             config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {
                 "offset": 0.0
             }
-            # config["controllers"][con]["analog_outputs"][str(wiring.charge_line.channel)] = {
-            #     "offset": state.qubits[i].wiring.analog_channel_offset
-            # }
             # Add resonator channels
             readout_line = state.readout_lines[state.readout_resonators[i].wiring.readout_line_index]
             config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {

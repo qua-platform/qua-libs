@@ -276,6 +276,7 @@ state = {
     ],
     "charge_lines": [
         {
+            "index": i,
             "analog_channel_offset": 0.0,
             "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
             "charge_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
