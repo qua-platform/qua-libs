@@ -201,7 +201,7 @@ state = {
                 "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
                 "analog_channel_offset": 0.0,
                 "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
-                "charge_line": {"controller": "con1", "channel": 3 + i, "offset": 0.0},
+                "charge_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
                 "charge_filter_coefficients": {
                     "feedforward": [],
                     "feedback": [],
@@ -274,6 +274,35 @@ state = {
         {"direction": "y", "angle": 90},
         {"direction": "y", "angle": -90},
     ],
+    "charge_lines": [
+        {
+            "analog_channel_offset": 0.0,
+            "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
+            "charge_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
+            "charge_filter_coefficients": {
+                "feedforward": [],
+                "feedback": [],
+            },
+            "charge_bias_points": [
+                {
+                    "name": "degeneracy_point",
+                    "value": 0.0,
+                    "value_docs": "Bias voltage to set qubit to degeneracy between even and odd parity [V]",
+                },
+                {
+                    "name": "max_dispersion_point",
+                    "value": 0.0,
+                    "value_docs": "Bias voltage that maximizes the frequency separation between even and odd parity [V]",
+                },
+                {
+                    "name": "working_point",
+                    "value": 0.0,
+                    "value_docs": "Arbitrary bias voltage for your own desired working point",
+                },
+            ],
+        }
+        for i in range(NUMBER_OF_CHARGE_LINES)
+    ],
     "qp_injectors": [
         {
             "index": i,
@@ -287,7 +316,7 @@ state = {
             "analog_channel_offset": 0.0,
             "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
             "wiring": {
-                "injector_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
+                "injector_line": {"controller": "con1", "channel": 7 + i, "offset": 0.0},
             },
         }
         for i in range(NUMBER_OF_QP_INJECTORS)
