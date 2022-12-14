@@ -11,7 +11,6 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,11 +18,12 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "2D_qubit_spectroscopy_vs_charge"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
+qubit_w_charge_list = [0, 1, 2, 3, 4, 5]
+# qubit_wo_charge_list = [2, 3, 4, 5]
 qubit_list = [0, 1]  # you can shuffle the order at which you perform the experiment
 injector_list = [0, 1]
-digital = [1, 9]
+charge_list = [0, 1]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 wait_time = 200
@@ -32,7 +32,7 @@ charge_point = "working_point"
 # machine.get_qubit_gate(0, gate_shape).length = 1e-6
 machine.get_sequence_state(0, "qubit_spectroscopy").length = machine.get_qubit_gate(0, gate_shape).length + wait_time*4e-9
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, injector_list, charge_list, gate_shape)
 
 ###################
 # The QUA program #
@@ -51,7 +51,7 @@ bias_max = 0.2
 dbias = 0.02
 bias = [np.arange(bias_min, bias_max + dbias / 2, dbias) for i in range(len(qubit_list))]
 # Ensure that charge biases remain in the [-0.5, 0.5) range
-for i in qubit_w_charge_list:
+for i in charge_list:
     assert np.all(bias[i] + machine.get_charge_bias_point(i, charge_point).value < 0.5)
     assert np.all(bias[i] + machine.get_charge_bias_point(i, charge_point).value >= -0.5)
 
@@ -61,8 +61,8 @@ with program() as qubit_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i, q in enumerate(qubit_list):
-        if q in qubit_w_charge_list:
+    for i, q in enumerate(charge_list):
+        if q in charge_list:
             set_dc_offset(
                 machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, charge_point).value
             )
@@ -72,7 +72,7 @@ with program() as qubit_spec:
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, pre_factors)):
                 with for_(*from_array(f, freq[i])):
-                    if q in qubit_w_charge_list:
+                    if q in charge_list:
                         play("qubit_spectroscopy" * amp(b), machine.qubits[q].name + "_charge_sticky")
                         wait(wait_time, machine.qubits[q].name)
                         update_frequency(machine.qubits[q].name, f)

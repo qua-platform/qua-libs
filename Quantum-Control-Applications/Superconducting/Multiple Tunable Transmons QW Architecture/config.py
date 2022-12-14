@@ -891,7 +891,7 @@ def get_charge_bias_point(state: QuAM, index: int, charge_bias_point: str = None
     if charge_bias_point is None:
         qprint(state.qubits[index].charge_bias_points)
         return
-    for bias in state.qubits[index].charge_bias_points:
+    for bias in state.charge_lines[index].charge_bias_points:
         if bias.name == charge_bias_point:
             return bias
     raise ValueError(
