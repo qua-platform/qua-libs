@@ -827,9 +827,6 @@ def get_wiring(state: QuAM):
         for q in range(len(state.qubits)):
             if d == state.qubits[q].wiring.drive_line_index:
                 qq.append(q)
-        # for q in range(len(state.qubits_wo_charge)):
-        #     if d == state.qubits_wo_charge[q].wiring.drive_line_index:
-        #         qq.append(q + NUMBER_OF_QUBITS_W_CHARGE)
         s += str(qq) + "\n"
     s += "-" * 110 + "\n"
     for r in range(len(state.readout_lines)):
@@ -934,29 +931,13 @@ def get_qubit_gate(state: QuAM, index: int, shape: str):
     """
     for z in state.qubits[index].driving.__dict__.get("_schema").get("required"):
         if z == shape:
-            if index < NUMBER_OF_QUBITS_W_CHARGE:
+            if index < NUMBER_OF_QUBITS:
                 return state.qubits[index].driving.__getattribute__(shape)
-            # else:
-            #     return state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].driving.__getattribute__(shape)
     raise ValueError(
         f"The gate '{shape}' is not defined in the state. The available gates are {state.qubits[index].driving.__dict__.get('_schema').get('required')}"
     )
 
 
-# def get_qubit_wo_charge_gate(state: QuAM, index: int, shape: str):
-#     """
-#     Get the gate of a given qubit from its shape.
-#
-#     :param index: index of the qubit to be retrieved.
-#     :param shape: name of the gate as defined under the qubit driving section.
-#     :return: the qubit gate object.
-#     """
-#     for z in state.qubits_wo_charge[index].driving.__dict__.get("_schema").get("required"):
-#         if z == shape:
-#             return state.qubits_wo_charge[index].driving.__getattribute__(shape)
-#     raise ValueError(
-#         f"The gate '{shape}' is not defined in the state. The available gates are {state.qubits_wo_charge[index].driving.__dict__.get('_schema').get('required')}"
-#     )
 
 
 def get_readout_IF(state: QuAM, index: int) -> float:
@@ -979,10 +960,8 @@ def get_qubit_IF(state: QuAM, index: int) -> float:
     :param index: index of the qubit to be retrieved.
     :return: the intermediate frequency in Hz.
     """
-    if index < NUMBER_OF_QUBITS_W_CHARGE:
+    if index < NUMBER_OF_QUBITS:
         return state.qubits[index].f_01 - state.drive_lines[state.qubits[index].wiring.drive_line_index].lo_freq
-    # else:
-    #     return state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].f_01 - state.drive_lines[state.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq
 
 
 def _calc_parabola_vertex(x1, y1, x2, y2, x3, y3):

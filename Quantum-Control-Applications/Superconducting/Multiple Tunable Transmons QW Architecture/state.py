@@ -253,95 +253,15 @@ state = {
                 ],
             },
         }
-        for i in range(NUMBER_OF_QUBITS_W_CHARGE)
+        for i in range(NUMBER_OF_QUBITS)
     ],
-    # "qubits_wo_charge": [
-    #     {
-    #         "index": i + NUMBER_OF_QUBITS_W_CHARGE,
-    #         "name": f"qubit_{i+NUMBER_OF_QUBITS_W_CHARGE}",
-    #         "f_01": 5.7e9,
-    #         "f_01_docs": "0-1 transition frequency [Hz]",
-    #         "df": 1e6,
-    #         "df_docs": "Half of charge dispersion measured in spectroscopy [Hz]",
-    #         "anharmonicity": 350e6,
-    #         "anharmonicity_docs": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]",
-    #         "rabi_freq": 0,
-    #         "rabi_freq_docs": "Qubit Rabi frequency [Hz]",
-    #         "t1": 18e-6,
-    #         "t1_docs": "Relaxation time T1 [s]",
-    #         "t2": 5e-6,
-    #         "t2_docs": "Dephasing time T2 [s]",
-    #         "t2star": 1e-6,
-    #         "t2star_docs": "Dephasing time T2* [s]",
-    #         "ramsey_det": 10e6,
-    #         "ramsey_det_docs": "Detuning to observe ramsey fringes [Hz]",
-    #         "driving": {
-    #             "drag_gaussian": {
-    #                 "length": 80e-9,
-    #                 "length_docs": "The pulse length [s]",
-    #                 "sigma": 10e-9,
-    #                 "sigma_docs": "The gaussian standard deviation (only for gaussian pulses) [s]",
-    #                 "alpha": 0.0,
-    #                 "alpha_docs": "The DRAG coefficient alpha.",
-    #                 "detuning": 1,
-    #                 "detuning_docs": "The frequency shift to correct for AC stark shift [Hz].",
-    #                 "shape": "drag_gaussian",
-    #                 "shape_docs": "Shape of the gate",
-    #                 "angle2volt": {"deg90": 0.25, "deg180": 0.49},
-    #                 "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
-    #             },
-    #             "drag_cosine": {
-    #                 "length": 80e-9,
-    #                 "length_docs": "The pulse length [s]",
-    #                 "alpha": 0.0,
-    #                 "alpha_docs": "The DRAG coefficient alpha.",
-    #                 "detuning": 1,
-    #                 "detuning_docs": "The frequency shift to correct for AC stark shift [Hz].",
-    #                 "shape": "drag_cosine",
-    #                 "shape_docs": "Shape of the gate",
-    #                 "angle2volt": {"deg90": 0.25, "deg180": 0.49},
-    #                 "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
-    #             },
-    #             "square": {
-    #                 "length": 80e-9,
-    #                 "length_docs": "The pulse length [s]",
-    #                 "shape": "square",
-    #                 "shape_docs": "Shape of the gate",
-    #                 "angle2volt": {"deg90": 0.25, "deg180": 0.49},
-    #                 "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
-    #             },
-    #         },
-    #         "wiring": {
-    #             "drive_line_index": int(np.floor(i / NUMBER_OF_QUBITS_PER_DRIVE_LINE)),
-    #             "correction_matrix": {"gain": 0.0, "phase": 0.0},
-    #             "maximum_amplitude": 0.4,
-    #             "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
-    #             # "charge_line": {"controller": "con1", "channel": 3 + 3 * i, "offset": 0.0},
-    #             # "charge_filter_coefficients": {
-    #             #     "feedforward": [],
-    #             #     "feedback": [],
-    #             # },
-    #             "switch_delay": 0,
-    #             "switch_delay_docs": "delay of digital pulse",
-    #             "switch_buffer": 0,
-    #             "switch_buffer_docs": "buffer of digital pulse"
-    #         },
-    #         "threads": {
-    #             "thread_cond": True,
-    #             "thread_cond_docs": "Boolean to decided to put manual threds or not",
-    #             "thread": threads[i + NUMBER_OF_QUBITS_W_CHARGE],
-    #             "thread_docs": "Manual thread being allocated",
-    #         },
-    #     }
-    #     for i in range(NUMBER_OF_QUBITS_WO_CHARGE)
-    # ],
     "crosstalk_matrix": {
         # index 0, 1 -> correspond to qubit0 talking to qubit1
         "static": [
-            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS_W_CHARGE)] for j in range(NUMBER_OF_QUBITS_W_CHARGE)
+            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)
         ],
         "fast": [
-            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS_W_CHARGE)] for j in range(NUMBER_OF_QUBITS_W_CHARGE)
+            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)
         ],
     },
     "single_qubit_operations": [
