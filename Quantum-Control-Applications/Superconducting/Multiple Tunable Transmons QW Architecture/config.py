@@ -522,7 +522,7 @@ def add_control_operation_iq(config, element, operation_name, wf_i, wf_q):
     config["elements"][element]["operations"][operation_name] = pulse_name
 
 
-def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, injector_list: list):
+def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, injector_list: list, charge_list: list):
     for con in state.controllers:
         config["controllers"][con] = {}
         config["controllers"][con]["analog_outputs"] = {}
@@ -541,9 +541,9 @@ def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, injecto
             config["controllers"][con]["analog_outputs"][str(state.drive_lines[wiring.drive_line_index].Q.channel)] = {
                 "offset": 0.0
             }
-            config["controllers"][con]["analog_outputs"][str(wiring.charge_line.channel)] = {
-                "offset": state.qubits[i].wiring.analog_channel_offset
-            }
+            # config["controllers"][con]["analog_outputs"][str(wiring.charge_line.channel)] = {
+            #     "offset": state.qubits[i].wiring.analog_channel_offset
+            # }
             # Add resonator channels
             readout_line = state.readout_lines[state.readout_resonators[i].wiring.readout_line_index]
             config["controllers"][con]["analog_inputs"][str(readout_line.I_down.channel)] = {
@@ -561,6 +561,10 @@ def add_controllers(state: QuAM, config, d_outputs: list, qb_list: list, injecto
             wiring = state.qp_injectors[i].wiring
             config["controllers"][con]["analog_outputs"][str(wiring.injector_line.channel)] = {
                 "offset": state.qp_injectors[i].analog_channel_offset
+            }
+        for i in charge_list:
+            config["controllers"][con]["analog_outputs"][str(state.charge_lines[i].charge_line.channel)] = {
+                "offset": state.charge_lines[i].analog_channel_offset
             }
 
 
@@ -641,7 +645,7 @@ def add_qp_injector(state: QuAM, config: Dict, injector_list: list):
         }
 
 
-def build_config(state, digital_out: list, qubits: list, injector_list: list, shape: str):
+def build_config(state, digital_out: list, qubits: list, injector_list: list, charge_list: list, shape: str):
     config = {
         "version": 1,
         "controllers": {
@@ -665,6 +669,7 @@ def build_config(state, digital_out: list, qubits: list, injector_list: list, sh
         d_outputs=digital_out,
         qb_list=qubits,
         injector_list=injector_list,
+        charge_list=charge_list,
     )
 
     add_common_operation(state, config)

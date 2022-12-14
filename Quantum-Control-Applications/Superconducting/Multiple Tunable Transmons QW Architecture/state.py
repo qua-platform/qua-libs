@@ -130,8 +130,8 @@ state = {
             "lo_freq_docs": "LO frequency [Hz]",
             "lo_power": 15,
             "lo_power_docs": "LO power to drive line [dBm]",
-            "I": {"controller": "con1", "channel": 1 + 3 * i, "offset": 0.0},
-            "Q": {"controller": "con1", "channel": 2 + 3 * i, "offset": 0.0},
+            "I": {"controller": "con1", "channel": 1 + 2 * i, "offset": 0.0},
+            "Q": {"controller": "con1", "channel": 2 + 2 * i, "offset": 0.0},
             "switch": {"controller": "con1", "channel": 1 + i},
             "switch_docs": "digital output declaration",
         }

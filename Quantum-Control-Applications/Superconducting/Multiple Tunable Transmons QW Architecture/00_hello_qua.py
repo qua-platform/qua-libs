@@ -16,7 +16,7 @@ machine = QuAM("quam_bootstrap_state.json")
 # machine.save("quam_bootstrap_state.json")
 qubit_list = [0, 1, 2, 3, 4, 5]
 config = machine.build_config(
-    digital_out=[1, 9], qubits=qubit_list, injector_list=[0, 1], shape="drag_cosine"
+    digital_out=[1, 2, 9], qubits=qubit_list, injector_list=[0, 1], charge_list=[0, 1], shape="drag_cosine"
 )
 
 qmm = QuantumMachinesManager(machine.network.qop_ip)
