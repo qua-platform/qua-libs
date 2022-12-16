@@ -20,10 +20,11 @@ experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
 fit_data = False
-qubit_w_charge_list = [0, 1]
+qubit_w_charge_list = [0, 1, 2, 3, 4, 5]
 qubit_wo_charge_list = [2, 3, 4, 5]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
+charge_lines=[0, 1]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
@@ -37,39 +38,32 @@ populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
 # machine.readout_resonators[0].readout_amplitude =0.005
 # machine.readout_resonators[0].f_opt = 6.131e9
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_w_charge_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
 ###################
 u = unit()
 
-n_avg = 4e4
+n_avg = 4e3
 
 span = 2e6
 df = 0.1e6
 freq = [np.arange(machine.get_readout_IF(i) - span, machine.get_readout_IF(i) + span + df / 2, df) for i in qubit_list]
+spans = np.arange(-span, span + df / 2, df)
 
 with program() as resonator_spec:
-    n = [declare(int) for _ in range(len(qubit_list))]
-    n_st = [declare_stream() for _ in range(len(qubit_list))]
-    f = declare(int)
-    I = [declare(fixed) for _ in range(len(qubit_list))]
-    Q = [declare(fixed) for _ in range(len(qubit_list))]
-    I_st = [declare_stream() for _ in range(len(qubit_list))]
-    Q_st = [declare_stream() for _ in range(len(qubit_list))]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
     it = declare(int)
     it_st = declare_stream()
-
-    for i, q in enumerate(qubit_list):
-        # set qubit frequency to working point
-        if q in qubit_w_charge_list:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+    f = declare(int)
+    f_res = [declare(int) for _ in range(len(qubit_list))]
 
     with for_(it, 0, it < n_avg, it + 1):
-        with for_(*from_array(f, freq[i])):
+        with for_(*from_array(f, spans)):
             for i, q in enumerate(qubit_list):
-                update_frequency(machine.readout_resonators[q].name, f)
+                assign(f_res[i], machine.get_readout_IF(i) + f)
+                update_frequency(machine.readout_resonators[q].name, f_res[i])
                 measure(
                     "readout",
                     machine.readout_resonators[q].name,
@@ -132,7 +126,7 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_1d(
-                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                    (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
                     "frequency [GHz]",
@@ -145,14 +139,14 @@ else:
             if fit_data:
                 try:
                     Fit.reflection_resonator_spectroscopy(
-                        (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                        (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=False,
                     )
                     plt.subplot(211)
                     plt.cla()
                     fit = Fit.reflection_resonator_spectroscopy(
-                        (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                        (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=True,
                     )
