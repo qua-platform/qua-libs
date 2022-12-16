@@ -25,6 +25,11 @@ digital = [1, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
+# for i in range(6):
+#     machine.readout_resonators[i].wiring.time_of_flight = 64 + 248 # ns
+#     # machine.readout_resonators[0].readout_amplitude = 0.2 # Volts
+#     machine.readout_resonators[i].wiring.switch_delay = 136 # ns
+#     machine.readout_resonators[i].wiring.switch_buffer = 0 # ns
 # machine.readout_resonators[0].f_opt = 6.145e9
 # machine.readout_resonators[0].readout_amplitude =0.01
 # machine.readout_lines[0].I_down.offset = 0.0

@@ -38,7 +38,7 @@ state = {
         "config.get_f_res_from_charge",
     ],
     "network": {"qop_ip": "172.16.2.103", "port": 80},
-    "controllers": ["con1"],
+    "controllers": [controller_under_use],
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
     # Just put conventional pulses to all elements; qubit, readout & charge drives will be added later
@@ -60,11 +60,11 @@ state = {
             "lo_freq_docs": "LO frequency for readout line [Hz]",
             "lo_power": 15,
             "lo_power_docs": "LO power for readout line [dBm]",
-            "I_up": {"controller": "con1", "channel": 9, "offset": 0.0},
-            "Q_up": {"controller": "con1", "channel": 10, "offset": 0.0},
-            "I_down": {"controller": "con1", "channel": 1, "offset": 0.0, "gain_db": 1},
-            # "Q_down": {"controller": "con1", "channel": 2, "offset": 0.0, "gain_db": 1},
-            "switch": {"controller": "con1", "channel": 9},
+            "I_up": {"controller": controller_under_use, "channel": 9, "offset": 0.0},
+            "Q_up": {"controller": controller_under_use, "channel": 10, "offset": 0.0},
+            "I_down": {"controller": controller_under_use, "channel": 1, "offset": 0.0, "gain_db": 1},
+            # "Q_down": {"controller": controller_under_use, "channel": 2, "offset": 0.0, "gain_db": 1},
+            "switch": {"controller": controller_under_use, "channel": 9},
             "switch_docs": "digital output declaration",
         },
     ],
@@ -130,9 +130,9 @@ state = {
             "lo_freq_docs": "LO frequency [Hz]",
             "lo_power": 15,
             "lo_power_docs": "LO power to drive line [dBm]",
-            "I": {"controller": "con1", "channel": 1 + 2 * i, "offset": 0.0},
-            "Q": {"controller": "con1", "channel": 2 + 2 * i, "offset": 0.0},
-            "switch": {"controller": "con1", "channel": 1 + i},
+            "I": {"controller": controller_under_use, "channel": 1 + 2 * i, "offset": 0.0},
+            "Q": {"controller": controller_under_use, "channel": 2 + 2 * i, "offset": 0.0},
+            "switch": {"controller": controller_under_use, "channel": 1 + i},
             "switch_docs": "digital output declaration",
         }
         for i in range(NUMBER_OF_DRIVE_LINES)
@@ -144,7 +144,11 @@ state = {
             "f_01": 5.7e9,
             "f_01_docs": "0-1 transition frequency [Hz]",
             "df": 1e6,
-            "df_docs": "Half of charge dispersion measured in spectroscopy [Hz]",
+            "df_docs": "Amplitude of charge dispersion derived from spectroscopy [Hz]",
+            "idle_time_charge_tomo": 100e-9,
+            "idle_time_charge_tomo_docs": "idle time for charge tomography derived from Ramsey-charge-tomo [s]",
+            "idle_time_parity": 50e-9,
+            "idle_time_parity_docs": "idle time for parity measurement derived from Ramsey-charge-tomo [s]",
             "anharmonicity": 350e6,
             "anharmonicity_docs": "Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]",
             "rabi_freq": 0,
@@ -201,7 +205,7 @@ state = {
                 "maximum_amplitude_docs": "max amplitude in volts above which the mixer will send higher harmonics.",
                 "analog_channel_offset": 0.0,
                 "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
-                "charge_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
+                "charge_line": {"controller": controller_under_use, "channel": 5 + i, "offset": 0.0},
                 "charge_filter_coefficients": {
                     "feedforward": [],
                     "feedback": [],
@@ -279,7 +283,7 @@ state = {
             "index": i,
             "analog_channel_offset": 0.0,
             "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
-            "charge_line": {"controller": "con1", "channel": 5 + i, "offset": 0.0},
+            "charge_line": {"controller": controller_under_use, "channel": 5 + i, "offset": 0.0},
             "charge_filter_coefficients": {
                 "feedforward": [],
                 "feedback": [],
@@ -317,7 +321,7 @@ state = {
             "analog_channel_offset": 0.0,
             "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
             "wiring": {
-                "injector_line": {"controller": "con1", "channel": 7 + i, "offset": 0.0},
+                "injector_line": {"controller": controller_under_use, "channel": 7 + i, "offset": 0.0},
             },
         }
         for i in range(NUMBER_OF_QP_INJECTORS)

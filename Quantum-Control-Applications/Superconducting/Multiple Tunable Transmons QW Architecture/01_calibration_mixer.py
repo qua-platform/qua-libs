@@ -45,6 +45,16 @@ element = machine.readout_resonators[qubit_index].name
 # machine.drive_lines[0].lo_freq = 6.0e9
 # machine.drive_lines[0].lo_power = 13
 
+# machine.drive_lines[0].I.offset = -0.0287
+# machine.drive_lines[0].Q.offset = -0.0031
+
+# machine.readout_lines[0].I_up.offset = -0.023
+# machine.readout_lines[0].Q_up.offset = -0.008
+
+# machine.readout_resonators[qubit_index].wiring.correction_matrix.gain = 0.0
+# machine.readout_resonators[qubit_index].wiring.correction_matrix.phase = 0.3
+
+# machine.save("latest_quam.json")
 
 config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
 
