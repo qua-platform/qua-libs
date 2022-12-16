@@ -20,32 +20,30 @@ experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
 fit_data = False
-qubit_w_charge_list = [0, 1, 2, 3, 4, 5]
-charge_lines=[0, 1]
-# qubit_wo_charge_list = [2, 3, 4, 5]
+charge_lines = [0, 1]
 injector_list = [0, 1]
 digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
-qubit_list = qubit_w_charge_list  # you can shuffle the order at which you perform the experiment
-# amplitudes = [0.005, 0.005]
-# f_opts = [6.231e9, 6.141e9]
-# machine.readout_lines[0].lo_freq = 6.0e9
-# machine.readout_lines[0].lo_power = 13
-# machine.readout_lines[0].length = 3e-6
-# populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
+amplitudes = [0.033, 0.039, 0.013, 0.016, 0.006, 0.025]
+f_opts = [6.1755e9, 6.2385e9, 6.2705e9, 6.347e9, 6.4227e9, 6.4876e9]
+machine.readout_lines[0].lo_freq = 6.3e9
+machine.readout_lines[0].lo_power = 16
+machine.readout_lines[0].length = 5e-6
+populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
 # machine.readout_resonators[0].readout_amplitude =0.005
 # machine.readout_resonators[0].f_opt = 6.131e9
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
-config = machine.build_config(digital, qubit_w_charge_list, injector_list, charge_lines, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
 ###################
 u = unit()
 
-n_avg = 4e4
+n_avg = 4e3
 
 span = 2e6
 df = 0.1e6
@@ -161,10 +159,11 @@ else:
                 except (Exception,):
                     pass
             # Break the loop if interrupt on close
-            if my_results.is_processing():
-                if not my_results.is_processing():
-                    exit = True
-                    break
+            if not i == (len(qubit_list)-1):
+                if my_results.is_processing():
+                    if not my_results.is_processing():
+                        exit = True
+                        break
         if exit:
             break
         # Update state with new resonance frequency

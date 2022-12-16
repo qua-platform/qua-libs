@@ -1021,9 +1021,9 @@ def save_results(state: QuAM, filename, figures: List = ()):
     # Save figure
     for i in range(len(figures)):
         if len(figures) > 1:
-            figures[i].savefig(directory + f"{now[9:]}_{filename}" + f"_fig{i}")
+            figures[i].savefig(directory + f"{now[9:]}_{filename}" + f"_fig{i}.svg")
         else:
-            figures[i].savefig(directory + f"{now[9:]}_{filename}")
+            figures[i].savefig(directory + f"{now[9:]}_{filename}.svg")
     # Save data
     # tbd
 
