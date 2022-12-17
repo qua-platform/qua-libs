@@ -107,7 +107,7 @@ else:
     # Live plotting
     figures = []
 
-    for i,q in enumerate(qubit_and_charge_relation):
+    for i, q in enumerate(qubit_and_charge_relation):
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)

@@ -19,24 +19,23 @@ from macros import *
 experiment = "2D_qubit_spectroscopy_amp_vs_charge"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 wait_time = 200
-charge_point = "working_point" \
-             ""
+charge_point = "working_point"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
+
 # machine.get_qubit_gate(0, gate_shape).length = 1e-6
 machine.get_sequence_state(0, "qubit_spectroscopy").length = machine.get_qubit_gate(0, gate_shape).length + wait_time*4e-9
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4e2
+n_avg = 4e1
 
 # Qubit pulse amplitude scan
 a_min = 0.01
@@ -47,32 +46,29 @@ amps = np.linspace(a_min, a_max, na)
 bias_min = [-0.1, -0.1]  # bias value specific to each qubit indeed
 bias_max = [0.05, 0.05]  # each qubit can have a different working values
 dbias = 0.005
-bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_list))]
+bias = [np.arange(bias_min[i], bias_max[i] + dbias / 2, dbias) for i in range(len(qubit_and_charge_relation))]
 # Ensure that charge biases remain in the [-0.5, 0.5) range
-for i in qubit_list:
+for i in qubit_and_charge_relation:
     assert np.all(bias[i] + machine.get_charge_bias_point(i, "working_point").value < 0.5)
     assert np.all(bias[i] + machine.get_charge_bias_point(i, "working_point").value >= -0.5)
 
 with program() as qubit_spec:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_and_charge_relation)
     a = declare(fixed)
     b = declare(fixed)
 
-    for i, q in enumerate(qubit_list):
-        if q in qubit_w_charge_list:
-            set_dc_offset(
-                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, charge_point).value
-            )
+    for i, q in enumerate(qubit_and_charge_relation):
+        set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                      machine.get_charge_bias_point(i, "working_point").value)
         # Pre-factors to apply in order to get the bias scan
         pre_factors = bias[i] / machine.get_sequence_state(q, "qubit_spectroscopy").amplitude
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, pre_factors)):
                 with for_(*from_array(a, amps)):
-                    if q in qubit_w_charge_list:
-                        play("qubit_spectroscopy" * amp(b), machine.qubits[q].name + "_charge")
-                        wait(wait_time, machine.qubits[q].name)
-                        play("x180" * amp(a), machine.qubits[q].name)
+                    play("qubit_spectroscopy" * amp(b), machine.qubits[q].name + "_charge")
+                    wait(wait_time, machine.qubits[q].name)
+                    play("saturation" * amp(a), machine.qubits[q].name)
                     align()
                     wait(16, machine.readout_resonators[q].name)
                     measure(
@@ -82,8 +78,7 @@ with program() as qubit_spec:
                         demod.full("cos", I[i], "out1"),
                         demod.full("sin", Q[i], "out1"),
                     )
-                    if q in qubit_w_charge_list:
-                        wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
+                    wait_cooldown_time(5 * machine.qubits[q].t1, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -91,7 +86,7 @@ with program() as qubit_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i,q in enumerate(qubit_and_charge_relation):
             I_st[i].buffer(len(amps)).buffer(len(bias[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(amps)).buffer(len(bias[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -114,9 +109,9 @@ else:
     job = qm.execute(qubit_spec)
 
     # Initialize dataset
-    qubit_data = [{} for _ in range(len(qubit_list))]
+    qubit_data = [{} for _ in range(len(qubit_and_charge_relation))]
     figures = []
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_and_charge_relation):
         print("Qubit " + str(q))
         qubit_data[i]["iteration"] = 0
         # Live plotting
