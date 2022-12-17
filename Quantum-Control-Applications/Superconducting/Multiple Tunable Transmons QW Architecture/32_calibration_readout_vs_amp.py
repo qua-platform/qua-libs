@@ -12,7 +12,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -20,15 +19,14 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "readout_amplitude_optimization"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -58,10 +56,11 @@ with program() as readout_opt:
     state_e_st = [declare_stream() for _ in range(len(qubit_list))]
 
     for i, q in enumerate(qubit_list):
-        if q in qubit_w_charge_list:
-            set_dc_offset(
-                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value
-            )
+        # set qubit frequency to working point
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps)):
@@ -72,7 +71,7 @@ with program() as readout_opt:
                     demod.full("cos", I_g[i], "out1"),
                     demod.full("sin", Q_g[i], "out1"),
                 )
-                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
+                wait_cooldown_time_fivet1(q, machine, simulate)
                 assign(state[i], I_g[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_g[i], I_g_st[i])
                 save(Q_g[i], Q_g_st[i])
@@ -80,10 +79,7 @@ with program() as readout_opt:
 
                 align()  # global align
 
-                if q in qubit_w_charge_list:
-                    play("x180", machine.qubits[q].name)
-                else:
-                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                play("x180", machine.qubits[q].name)
                 align()
                 measure(
                     "readout" * amp(a),
@@ -92,7 +88,7 @@ with program() as readout_opt:
                     demod.full("cos", I_e[i], "out1"),
                     demod.full("sin", Q_e[i], "out1"),
                 )
-                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
+                wait_cooldown_time_fivet1(q, machine, simulate)
                 assign(state[i], I_e[i] > machine.readout_resonators[q].ge_threshold)
                 save(I_e[i], I_e_st[i])
                 save(Q_e[i], Q_e_st[i])

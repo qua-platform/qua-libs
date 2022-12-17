@@ -11,22 +11,20 @@ from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_dat
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
 ##################
 gate = "x90"
-experiment = gate + "_amplitude_calibration"
+experiment = gate + "_amplitude_calibration_multiplexed"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
 # Set gate amplitude to max
 base_amp = []
@@ -40,12 +38,12 @@ elif gate == "x180":
     for q in qubit_list:
         base_amp.append(machine.get_qubit_gate(q, gate_shape).angle2volt.deg180)
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 1e3
+n_avg = 1e1
 
 # Amplitude scan
 a_min = 0.9
@@ -68,18 +66,19 @@ with program() as gate_cal:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q in qubit_w_charge_list:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(n_pulse, pulse_vec)):
-                with for_(*from_array(a, amps)):
-                    with for_(pulses, 0, pulses < n_pulse, pulses + 1):
-                        if q in qubit_w_charge_list:
-                            play(gate * amp(a), machine.qubits[q].name)
-                        else:
-                            play(gate * amp(a), machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
-                    align()
+    with for_(it, 0, it < n_avg, it + 1):
+        with for_(*from_array(n_pulse, pulse_vec)):
+            with for_(*from_array(a, amps)):
+                with for_(pulses, 0, pulses < n_pulse, pulses + 1):
+                    for i, q in enumerate(qubit_list):
+                        play(gate * amp(a), machine.qubits[q].name)
+                align()
+                for i, q in enumerate(qubit_list):
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
@@ -87,15 +86,12 @@ with program() as gate_cal:
                         demod.full("cos", I[i], "out1"),
                         demod.full("sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
-                    align()
+                    wait_cooldown_time_fivet1(q, machine, simulate)
                     assign(state[i], I[i] > machine.readout_resonators[q].ge_threshold)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
                     save(state[i], state_st[i])
-                save(n[i], n_st[i])
-
-        align()
+                    save(it, n_st[i])
 
     with stream_processing():
         for i, q in enumerate(qubit_list):

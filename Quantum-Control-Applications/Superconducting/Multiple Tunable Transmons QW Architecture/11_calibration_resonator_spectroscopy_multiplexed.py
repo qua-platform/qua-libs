@@ -16,7 +16,7 @@ from macros import *
 ##################
 # State and QuAM #
 ##################
-experiment = "1D_resonator_spectroscopy"
+experiment = "1D_resonator_spectroscopy_multiplexed"
 debug = True
 simulate = False
 fit_data = True
@@ -162,7 +162,7 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res * 1e-9:.6f} GHz")
-            machine.readout_resonators[q].f_res = np.round(fit["f"][0])
+            machine.readout_resonators[q].f_res = int(fit["f"][0]*1e9)
             machine.readout_resonators[q].f_opt = machine.readout_resonators[q].f_res
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res * 1e-9:.6f} GHz")
             print(f"New resonance IF frequency: {machine.get_readout_IF(q) * 1e-6:.3f} MHz")

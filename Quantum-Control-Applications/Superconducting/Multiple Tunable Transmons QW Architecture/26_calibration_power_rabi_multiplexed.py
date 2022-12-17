@@ -1,5 +1,5 @@
 """
-time_rabi.py: performs time rabi
+Perform power rabi
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,10 +12,11 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
 
+
 ##################
 # State and QuAM #
 ##################
-experiment = "time_rabi"
+experiment = "power_rabi_multiplexed"
 debug = True
 simulate = False
 fit_data = True
@@ -25,30 +26,24 @@ digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
-
-gate_length = []
-for i, q in enumerate(qubit_list):
-    gate_length.append(machine.get_qubit_gate(q, gate_shape).length)
-    machine.get_qubit_gate(q, gate_shape).length = 16e-9
-
 config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
-for i, q in enumerate(qubit_list):
-    machine.get_qubit_gate(q, gate_shape).length = gate_length[i]
 
 ###################
 # The QUA program #
 ###################
-n_avg = 500
+n_avg = 1000
 
-# Gate length scan
-t_min = 16 // 4
-t_max = 1000 // 4
-dt = 1
-lengths = np.arange(t_min, t_max + dt / 2, dt)
+# Amplitude scan
+a_min = 0
+a_max = 0.99
+da = 0.01
+amps = np.arange(a_min, a_max + da / 2, da)
 
-with program() as time_rabi:
+with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
-    t = declare(int)
+    a = declare(fixed)
+    b = declare(fixed)
+    iters = declare(int)
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
@@ -57,10 +52,11 @@ with program() as time_rabi:
                 set_dc_offset(machine.qubits[q].name + "_charge", "single",
                               machine.get_charge_bias_point(j, "working_point").value)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(t, lengths)):
-                play("x180", machine.qubits[q].name, duration=t)
-                align()
+    with for_(iters, 0, iters < n_avg, iters + 1):
+        with for_(*from_array(a, amps)):
+            for i, q in enumerate(qubit_list):
+                play("x180" * amp(a), machine.qubits[q].name)
+                # align() -- no need align because each qubit-resonator pair share the same cores
                 measure(
                     "readout",
                     machine.readout_resonators[q].name,
@@ -71,14 +67,12 @@ with program() as time_rabi:
                 wait_cooldown_time_fivet1(q, machine, simulate)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
-            save(n[i], n_st[i])
-
-        align()
+                save(iters, n_st[i])
 
     with stream_processing():
         for i, q in enumerate(qubit_list):
-            I_st[i].buffer(len(lengths)).average().save(f"I{q}")
-            Q_st[i].buffer(len(lengths)).average().save(f"Q{q}")
+            I_st[i].buffer(len(amps)).average().save(f"I{q}")
+            Q_st[i].buffer(len(amps)).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
 
 #####################################
@@ -91,12 +85,12 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.port)
 #######################
 if simulate:
     simulation_config = SimulationConfig(duration=1000)
-    job = qmm.simulate(config, time_rabi, simulation_config)
+    job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(time_rabi)
+    job = qm.execute(power_rabi)
 
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
@@ -104,7 +98,7 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
 
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()
@@ -125,39 +119,39 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_1d(
-                    lengths * 4,
+                    amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
-                    "x180 length [ns]",
+                    "x180 amplitude [V]",
                     f"{experiment} qubit {q}",
                     amp_and_phase=False,
                     fig=fig,
                     plot_options={"marker": "."},
                 )
-            # Fitting
-            if fit_data:
-                try:
-                    Fit.rabi(lengths * 4, qubit_data[i]["I"])
-                    plt.subplot(211)
-                    plt.cla()
-                    fit_I = Fit.rabi(lengths * 4, qubit_data[i]["I"], plot=debug)
-                    plt.pause(0.1)
-                except (Exception,):
-                    pass
-                try:
-                    Fit.rabi(lengths * 4, qubit_data[i]["Q"])
-                    plt.subplot(211)
-                    plt.cla()
-                    fit_Q = Fit.rabi(lengths * 4, qubit_data[i]["Q"], plot=debug)
-                    plt.pause(0.1)
-                except (Exception,):
-                    pass
+                # Fitting
+                if fit_data:
+                    try:
+                        Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["I"])
+                        plt.subplot(211)
+                        plt.cla()
+                        fit_I = Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["I"], plot=debug)
+                        plt.pause(0.1)
+                    except (Exception,):
+                        pass
+                    try:
+                        Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["Q"])
+                        plt.subplot(211)
+                        plt.cla()
+                        fit_Q = Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["Q"], plot=debug)
+                        plt.pause(0.1)
+                    except (Exception,):
+                        pass
 
         # Update state with new resonance frequency
         if fit_data:
-            print(f"Previous x180 length: {machine.get_qubit_gate(q, gate_shape).length*1e9:.0f} ns")
-            machine.get_qubit_gate(q, gate_shape).length = max(16, np.round(0.5/fit_I["f"][0]) - np.round(0.5/fit_I["f"][0])%4)
-            print(f"New x180 length: {machine.get_qubit_gate(q, gate_shape).length*1e9:.0f} ns")
-
+            print(f"Previous x180 amplitude: {machine.get_qubit_gate(q, gate_shape).angle2volt.deg180:.1f} V")
+            machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = 0.5 / fit_I["f"][0]
+            machine.get_qubit_gate(q, gate_shape).angle2volt.deg90 = 0.25 / fit_I["f"][0]
+            print(f"New x180 amplitude: {machine.get_qubit_gate(q, gate_shape).angle2volt.deg180:.1f} V")
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")

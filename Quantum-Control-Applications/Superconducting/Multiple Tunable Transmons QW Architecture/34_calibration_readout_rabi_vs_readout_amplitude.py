@@ -11,7 +11,6 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,20 +18,19 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "Rabi_vs_readout_amplitude"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
 gate_length = []
 for i, q in enumerate(qubit_list):
     gate_length.append(machine.get_qubit_gate(q, gate_shape).length)
     machine.get_qubit_gate(q, gate_shape).length = 16e-9
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 for i, q in enumerate(qubit_list):
     machine.get_qubit_gate(q, gate_shape).length = gate_length[i]
 
@@ -61,18 +59,16 @@ with program() as readout_opt:
     t = declare(int)
 
     for i, q in enumerate(qubit_list):
-        if q in qubit_w_charge_list:
-            set_dc_offset(
-                machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value
-            )
+        # set qubit frequency to working point
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(t, lengths)):
                 with for_(*from_array(a, amps)):
-                    if q in qubit_w_charge_list:
-                        play("x180", machine.qubits[q].name, duration=t)
-                    else:
-                        play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, duration=t)
+                    play("x180", machine.qubits[q].name, duration=t)
                     align()
                     measure(
                         "readout" * amp(a),
@@ -81,7 +77,7 @@ with program() as readout_opt:
                         demod.full("cos", I[i], "out1"),
                         demod.full("sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
+                    wait_cooldown_time_fivet1(q, machine, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
