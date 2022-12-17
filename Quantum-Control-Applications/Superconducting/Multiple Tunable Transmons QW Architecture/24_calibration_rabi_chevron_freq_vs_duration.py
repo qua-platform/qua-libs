@@ -68,7 +68,7 @@ with program() as rabi:
             with for_(*from_array(f, freq[i])):
                 with for_(*from_array(t, lengths)):
                     update_frequency(machine.qubits[q].name, f)
-                    play("saturation", machine.qubits[q].name, duration=t)
+                    play("x180", machine.qubits[q].name, duration=t)
                     align()
                     measure(
                         "readout",
