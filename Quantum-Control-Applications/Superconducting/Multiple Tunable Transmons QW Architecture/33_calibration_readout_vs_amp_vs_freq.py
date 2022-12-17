@@ -65,8 +65,11 @@ with program() as readout_opt:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps)):
@@ -176,10 +179,15 @@ else:
             Z = (qubit_data[i]["I_e_avg"] - qubit_data[i]["I_g_avg"]) + 1j * (
                 qubit_data[i]["Q_e_avg"] - qubit_data[i]["Q_g_avg"]
             )
-            SNR = ((np.abs(Z)) ** 2)
+            SNR = (np.abs(Z)) ** 2
             if debug:
                 plt.cla()
-                plt.pcolor(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, amps * machine.readout_resonators[q].readout_amplitude, SNR, cmap='magma')
+                plt.pcolor(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    amps * machine.readout_resonators[q].readout_amplitude,
+                    SNR,
+                    cmap="magma",
+                )
                 plt.title(f"resonator optimization qubit {q}")
                 plt.xlabel("Readout frequency [Hz]")
                 plt.ylabel("Pulse amplitude [V]")

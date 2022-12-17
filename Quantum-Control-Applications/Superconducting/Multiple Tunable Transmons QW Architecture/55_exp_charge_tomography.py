@@ -51,7 +51,7 @@ with program() as ramsey:
                 set_dc_offset(machine.qubits[q].name + "_charge", "single", b)
                 wait(2000 // 4)  # wait for 1 us
                 play("x90", machine.qubits[q].name)
-                wait(int(machine.qubits[q].idle_time_charge_tomo*1e9//4), machine.qubits[q].name)
+                wait(int(machine.qubits[q].idle_time_charge_tomo * 1e9 // 4), machine.qubits[q].name)
                 play("x90", machine.qubits[q].name)
                 align()
                 measure(

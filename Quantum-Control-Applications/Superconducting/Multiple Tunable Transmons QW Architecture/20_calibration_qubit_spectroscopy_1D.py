@@ -60,8 +60,11 @@ with program() as qubit_spec:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
@@ -145,13 +148,16 @@ else:
             if fit_data:
                 try:
                     fit = Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
+                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                        np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                     )
                     plt.subplot(211)
                     plt.cla()
                     fit = Fit.reflection_resonator_spectroscopy(
-                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq, np.sqrt(qubit_data[i]["I"]**2 + qubit_data[i]["Q"]**2),
-                        plot=debug)
+                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                        np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
+                        plot=debug,
+                    )
                     plt.pause(0.1)
                 except Exception as e:
                     pass

@@ -127,7 +127,8 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq)*1e-6,
+                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq)
+                    * 1e-6,
                     bias[i],
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],

@@ -49,8 +49,11 @@ with program() as ramsey:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(tau, taus)):
@@ -160,7 +163,9 @@ else:
         if fit_data:
             if q in qubit_list:
                 print(f"Previous qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
-                machine.qubits[q].f_01 = machine.qubits[q].f_01 - (np.round(fit_I["f"][0] * 1e9) - machine.qubits[q].ramsey_det)
+                machine.qubits[q].f_01 = machine.qubits[q].f_01 - (
+                    np.round(fit_I["f"][0] * 1e9) - machine.qubits[q].ramsey_det
+                )
                 machine.qubits[q].t2star = fit_I["T2"][0] * 1e-9
                 print(f"New qubit frequency: {machine.qubits[q].f_01 * 1e-9:.6f} GHz")
 

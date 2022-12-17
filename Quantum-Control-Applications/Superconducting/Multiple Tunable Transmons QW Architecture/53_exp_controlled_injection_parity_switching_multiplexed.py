@@ -31,15 +31,15 @@ config = machine.build_config(digital, qubit_list, injector_list, charge_lines, 
 ###################
 # The QUA program #
 ###################
-qp_iter = 50e-3/100e-6  # 20 Hz repetition rate divided by 100 us qp measurement rate
+qp_iter = 50e-3 / 100e-6  # 20 Hz repetition rate divided by 100 us qp measurement rate
 n_reps = 60
 injector_min = 20 // 4
 injector_max = 400000 // 4
 d_injector = 50000 // 4
-injector_lens = np.arange(injector_min, injector_max+d_injector/2, d_injector)
+injector_lens = np.arange(injector_min, injector_max + d_injector / 2, d_injector)
 quarter_precession = []
 for q in qubit_list:
-    quarter_precession.append(int(machine.qubits[q].idle_time_parity*1e9//4))  # in clock cycles
+    quarter_precession.append(int(machine.qubits[q].idle_time_parity * 1e9 // 4))  # in clock cycles
 
 # QUA program
 with program() as T1:
@@ -54,12 +54,15 @@ with program() as T1:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
     with for_(*from_array(t, injector_lens)):
-        with for_(rep, 0, rep < n_reps, rep+1):
-            play('injector', machine.qp_injectors[0].name, duration=t)
+        with for_(rep, 0, rep < n_reps, rep + 1):
+            play("injector", machine.qp_injectors[0].name, duration=t)
             with for_(it, 0, it < qp_iter, it + 1):
                 for i, q in enumerate(qubit_list):
                     play("x90", machine.qubits[q].name)
@@ -78,12 +81,12 @@ with program() as T1:
                     save(Q[i], Q_st[i])
                 wait_cooldown_time(qp_repetition_rate, simulate)  # repetition rate of 100 microseconds
         save(t_count, it_st)
-        assign(t_count, t_count+1)
+        assign(t_count, t_count + 1)
 
     with stream_processing():
         for i, q in enumerate(qubit_list):
-            I_st[i].buffer(qp_iter*n_reps).save(f"I{q}")
-            Q_st[i].buffer(qp_iter*n_reps).save(f"Q{q}")
+            I_st[i].buffer(qp_iter * n_reps).save(f"I{q}")
+            Q_st[i].buffer(qp_iter * n_reps).save(f"Q{q}")
         it_st.save(f"iteration")
 
 #####################################
@@ -130,8 +133,8 @@ else:
         # Fetch results
         data = my_results.fetch_all()
         for i, q in enumerate(qubit_list):
-            qubit_data[i]["I"] = data[0+i*2]
-            qubit_data[i]["Q"] = data[1+i*2]
+            qubit_data[i]["I"] = data[0 + i * 2]
+            qubit_data[i]["Q"] = data[1 + i * 2]
         it_state = data[-1]
         # Progress bar
         progress_counter(it_state, len(injector_lens), start_time=my_results.start_time)
@@ -144,16 +147,16 @@ else:
                 pnts = len(qubit_data[i]["I"])
                 pnts_array = np.arange(0, pnts, 1)
                 plt.plot(pnts_array * qp_repetition_rate, qubit_data[i]["I"])
-                plt.xlabel('Time [s]')
-                plt.ylabel('I [a.u.]')
-                plt.title('Qubit' + str(q))
+                plt.xlabel("Time [s]")
+                plt.ylabel("I [a.u.]")
+                plt.title("Qubit" + str(q))
                 plt.subplot(212)
                 plt.cla()
                 pnts = len(qubit_data[i]["Q"])
                 pnts_array = np.arange(0, pnts, 1)
                 plt.plot(pnts_array * qp_repetition_rate, qubit_data[i]["Q"])
-                plt.xlabel('Time [s]')
-                plt.ylabel('Q [a.u.]')
+                plt.xlabel("Time [s]")
+                plt.ylabel("Q [a.u.]")
                 plt.pause(1)
                 plt.tight_layout()
 

@@ -22,7 +22,7 @@ simulate = False
 fit_data = True
 injector_list = [0, 1]
 digital = [1, 2, 9]
-charge_lines=[0, 1]
+charge_lines = [0, 1]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
@@ -124,7 +124,12 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_1d(
-                    (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                    (
+                        machine.get_readout_IF(i)
+                        + spans
+                        + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+                    )
+                    * 1e-9,
                     qubit_data[i]["I"],
                     qubit_data[i]["Q"],
                     "frequency [GHz]",
@@ -137,14 +142,24 @@ else:
             if fit_data:
                 try:
                     Fit.reflection_resonator_spectroscopy(
-                        (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                        (
+                            machine.get_readout_IF(i)
+                            + spans
+                            + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+                        )
+                        * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=False,
                     )
                     plt.subplot(211)
                     plt.cla()
                     fit = Fit.reflection_resonator_spectroscopy(
-                        (machine.get_readout_IF(i) + spans + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq) * 1e-9,
+                        (
+                            machine.get_readout_IF(i)
+                            + spans
+                            + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
+                        )
+                        * 1e-9,
                         np.sqrt(qubit_data[i]["I"] ** 2 + qubit_data[i]["Q"] ** 2),
                         plot=True,
                     )
@@ -152,7 +167,7 @@ else:
                 except (Exception,):
                     pass
             # Break the loop if interrupt on close
-            if not i == (len(qubit_list)-1):
+            if not i == (len(qubit_list) - 1):
                 if my_results.is_processing():
                     if not my_results.is_processing():
                         exit = True
@@ -162,7 +177,7 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous resonance frequency: {machine.readout_resonators[q].f_res * 1e-9:.6f} GHz")
-            machine.readout_resonators[q].f_res = int(fit["f"][0]*1e9)
+            machine.readout_resonators[q].f_res = int(fit["f"][0] * 1e9)
             machine.readout_resonators[q].f_opt = machine.readout_resonators[q].f_res
             print(f"New resonance frequency: {machine.readout_resonators[q].f_res * 1e-9:.6f} GHz")
             print(f"New resonance IF frequency: {machine.get_readout_IF(q) * 1e-6:.3f} MHz")
@@ -170,5 +185,3 @@ else:
     machine.save_results(experiment, figures)
 
 # machine.save("latest_quam.json")
-
-

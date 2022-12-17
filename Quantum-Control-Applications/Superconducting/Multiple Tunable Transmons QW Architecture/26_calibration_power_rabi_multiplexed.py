@@ -49,8 +49,11 @@ with program() as power_rabi:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
     with for_(iters, 0, iters < n_avg, iters + 1):
         with for_(*from_array(a, amps)):
@@ -134,7 +137,11 @@ else:
                         Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["I"])
                         plt.subplot(211)
                         plt.cla()
-                        fit_I = Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["I"], plot=debug)
+                        fit_I = Fit.rabi(
+                            amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
+                            qubit_data[i]["I"],
+                            plot=debug,
+                        )
                         plt.pause(0.1)
                     except (Exception,):
                         pass
@@ -142,7 +149,11 @@ else:
                         Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["Q"])
                         plt.subplot(211)
                         plt.cla()
-                        fit_Q = Fit.rabi(amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180, qubit_data[i]["Q"], plot=debug)
+                        fit_Q = Fit.rabi(
+                            amps * machine.get_qubit_gate(q, gate_shape).angle2volt.deg180,
+                            qubit_data[i]["Q"],
+                            plot=debug,
+                        )
                         plt.pause(0.1)
                     except (Exception,):
                         pass

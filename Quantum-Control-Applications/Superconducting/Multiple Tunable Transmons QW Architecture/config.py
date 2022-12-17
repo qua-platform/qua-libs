@@ -68,7 +68,10 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
                 "digitalInputs": {
                     "switch": {
-                        "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
+                        "port": (
+                            state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller,
+                            state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel,
+                        ),
                         "delay": state.qubits[q].wiring.switch_delay,
                         "buffer": state.qubits[q].wiring.switch_buffer,
                     },
@@ -96,7 +99,10 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                 "intermediate_frequency": round(state.qubits[q].f_01) - lo_freq,
                 "digitalInputs": {
                     "switch": {
-                        "port": (state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller, state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel),
+                        "port": (
+                            state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.controller,
+                            state.drive_lines[state.qubits[q].wiring.drive_line_index].switch.channel,
+                        ),
                         "delay": state.qubits[q].wiring.switch_delay,
                         "buffer": state.qubits[q].wiring.switch_buffer,
                     },
@@ -493,7 +499,6 @@ def add_qb_rot(
     )
 
 
-
 def add_control_operation_single(config, element, operation_name, wf):
     pulse_name = element + "_" + operation_name + "_in"
     config["waveforms"][pulse_name + "_single"] = {
@@ -595,13 +600,13 @@ def add_common_operation(state: QuAM, config: dict):
                 "digital_marker": "ON",
             }
             config["pulses"][f"{state.common_operation[i].name}_single_pulse"] = {
-            "operation": "control",
-            "length": round(state.common_operation[i].duration * 1e9),
-            "waveforms": {
-                "single": "const_wf",
-            },
-            "digital_marker": "ON",
-        }
+                "operation": "control",
+                "length": round(state.common_operation[i].duration * 1e9),
+                "waveforms": {
+                    "single": "const_wf",
+                },
+                "digital_marker": "ON",
+            }
         else:
             for q in range(len(state.qubits)):
                 config["waveforms"]["const_wf_" + str(q)] = {
@@ -963,8 +968,6 @@ def get_qubit_gate(state: QuAM, index: int, shape: str):
     raise ValueError(
         f"The gate '{shape}' is not defined in the state. The available gates are {state.qubits[index].driving.__dict__.get('_schema').get('required')}"
     )
-
-
 
 
 def get_readout_IF(state: QuAM, index: int) -> float:

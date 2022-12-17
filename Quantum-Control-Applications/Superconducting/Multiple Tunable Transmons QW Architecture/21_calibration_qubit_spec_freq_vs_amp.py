@@ -57,8 +57,11 @@ with program() as qubit_spec:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amplitudes)):
@@ -81,7 +84,7 @@ with program() as qubit_spec:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(freq[i])).buffer(len(amplitudes)).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).buffer(len(amplitudes)).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")

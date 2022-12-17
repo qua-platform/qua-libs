@@ -31,9 +31,11 @@ def wait_cooldown_time(cooldown_time, simulate):
     if not simulate:
         wait(int(cooldown_time * 1e9) // 4)
 
+
 def break_loop(is_processing):
     if not is_processing:
         return True
+
 
 def reset_qubit(machine, method, qubit_index, **kwargs):
     """

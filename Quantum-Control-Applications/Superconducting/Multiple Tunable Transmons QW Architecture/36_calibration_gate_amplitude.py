@@ -68,8 +68,11 @@ with program() as gate_cal:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
     with for_(it, 0, it < n_avg, it + 1):
         with for_(*from_array(n_pulse, pulse_vec)):
@@ -161,7 +164,13 @@ else:
         figures.append(fig)
         colors = ["b", "r", "g", "m", "c"]
         j = 0
-        for it in [1, int(0.25 * len(pulse_vec)), int(0.5 * len(pulse_vec)), int(0.75 * len(pulse_vec)), len(pulse_vec) - 1]:
+        for it in [
+            1,
+            int(0.25 * len(pulse_vec)),
+            int(0.5 * len(pulse_vec)),
+            int(0.75 * len(pulse_vec)),
+            len(pulse_vec) - 1,
+        ]:
             plt.subplot(211)
             plt.plot(amps * base_amp[i], qubit_data[i]["I"][it], colors[j] + "-", label=f"{pulse_vec[it]} iterations")
             plt.ylabel("I [a.u.]")

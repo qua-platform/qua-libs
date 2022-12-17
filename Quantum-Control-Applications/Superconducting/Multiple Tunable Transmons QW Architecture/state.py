@@ -121,7 +121,7 @@ state = {
                 "switch_delay": 0,
                 "switch_delay_docs": "delay of digital pulse",
                 "switch_buffer": 0,
-                "switch_buffer_docs": "buffer of digital pulse"
+                "switch_buffer_docs": "buffer of digital pulse",
             },
             "threads": {
                 "thread_cond": True,
@@ -229,7 +229,7 @@ state = {
                 "switch_delay": 0,
                 "switch_delay_docs": "delay of digital pulse",
                 "switch_buffer": 0,
-                "switch_buffer_docs": "buffer of digital pulse"
+                "switch_buffer_docs": "buffer of digital pulse",
             },
             "threads": {
                 "thread_cond": True,
@@ -277,12 +277,8 @@ state = {
     ],
     "crosstalk_matrix": {
         # index 0, 1 -> correspond to qubit0 talking to qubit1
-        "static": [
-            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)
-        ],
-        "fast": [
-            [1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)
-        ],
+        "static": [[1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
+        "fast": [[1.0 if i == j else 0.0 for i in range(NUMBER_OF_QUBITS)] for j in range(NUMBER_OF_QUBITS)],
     },
     "single_qubit_operations": [
         {"direction": "x", "angle": 180},

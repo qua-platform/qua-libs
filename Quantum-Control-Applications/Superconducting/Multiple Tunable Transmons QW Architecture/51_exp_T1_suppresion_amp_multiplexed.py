@@ -41,7 +41,7 @@ dt = 300
 lengths = np.arange(t_min, t_max + dt / 2, dt)
 # lengths = np.logspace(np.log10(t_min), np.log10(t_max), 40)
 # If logarithmic increment, then need to check that no items have the same integer part
-assert len(np.where(np.diff(lengths.astype(int))==0)[0]) == 0
+assert len(np.where(np.diff(lengths.astype(int)) == 0)[0]) == 0
 
 # Amplitude scan
 a_min = 0
@@ -60,13 +60,16 @@ with program() as T1:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
     with for_(iters, 0, iters < n_avg, iters + 1):
         with for_(*from_array(a, amps)):
             with for_(*from_array(t, lengths)):
-                play('injector' * amp(a), machine.qp_injectors[0].name)
+                play("injector" * amp(a), machine.qp_injectors[0].name)
                 wait(30000 // 4)  # 30 microseconds fixed delay
                 align()
                 for i, q in enumerate(qubit_list):

@@ -54,8 +54,11 @@ with program() as time_rabi:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(t, lengths)):
@@ -104,7 +107,7 @@ else:
     # Create the fitting object
     Fit = fitting.Fit()
 
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         if debug:
             fig = plt.figure()
@@ -156,7 +159,9 @@ else:
         # Update state with new resonance frequency
         if fit_data:
             print(f"Previous x180 length: {machine.get_qubit_gate(q, gate_shape).length*1e9:.0f} ns")
-            machine.get_qubit_gate(q, gate_shape).length = max(16, np.round(0.5/fit_I["f"][0]) - np.round(0.5/fit_I["f"][0])%4)
+            machine.get_qubit_gate(q, gate_shape).length = max(
+                16, np.round(0.5 / fit_I["f"][0]) - np.round(0.5 / fit_I["f"][0]) % 4
+            )
             print(f"New x180 length: {machine.get_qubit_gate(q, gate_shape).length*1e9:.0f} ns")
 
     machine.save_results(experiment, figures)

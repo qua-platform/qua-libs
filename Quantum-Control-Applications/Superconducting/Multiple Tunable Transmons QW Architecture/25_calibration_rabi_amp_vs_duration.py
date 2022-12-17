@@ -27,7 +27,9 @@ qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perfor
 
 gate_params = []
 for i, q in enumerate(qubit_list):
-    gate_params.append((machine.get_qubit_gate(q, gate_shape).length, machine.get_qubit_gate(q, gate_shape).angle2volt.deg180))
+    gate_params.append(
+        (machine.get_qubit_gate(q, gate_shape).length, machine.get_qubit_gate(q, gate_shape).angle2volt.deg180)
+    )
     machine.get_qubit_gate(q, gate_shape).length = 16e-9
     machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = 0.4
 
@@ -65,8 +67,11 @@ with program() as rabi:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amplitudes)):
@@ -88,7 +93,7 @@ with program() as rabi:
         align()
 
     with stream_processing():
-        for i,q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_list):
             I_st[i].buffer(len(lengths)).buffer(len(amplitudes)).average().save(f"I{q}")
             Q_st[i].buffer(len(lengths)).buffer(len(amplitudes)).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -113,7 +118,7 @@ else:
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
     figures = []
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         print("Qubit " + str(q))
         qubit_data[i]["iteration"] = 0
         # Live plotting

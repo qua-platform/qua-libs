@@ -49,7 +49,7 @@ freq = [
 a_min = 0.1
 a_max = 1
 da = 0.01
-amps = [np.arange(a_min, a_max + da/2, da) for i in range(len(qubit_list))]
+amps = [np.arange(a_min, a_max + da / 2, da) for i in range(len(qubit_list))]
 # amps = [np.logspace(-2, np.log10(1.1), 31) for i in range(len(qubit_list))]
 
 # QUA program
@@ -62,15 +62,18 @@ with program() as resonator_spec:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps[i])):
                 with for_(*from_array(f, freq[i])):
                     update_frequency(machine.readout_resonators[q].name, f)
                     measure(
-                        "readout"*amp(a),
+                        "readout" * amp(a),
                         machine.readout_resonators[q].name,
                         None,
                         demod.full("cos", I[i], "out1"),
@@ -133,7 +136,8 @@ else:
             # live plot
             if debug:
                 plot_demodulated_data_2d(
-                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq)*1e-6,
+                    (freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq)
+                    * 1e-6,
                     amps[i] * machine.readout_resonators[q].readout_amplitude,
                     qubit_data[i]["I"] / scaling,
                     qubit_data[i]["Q"] / scaling,

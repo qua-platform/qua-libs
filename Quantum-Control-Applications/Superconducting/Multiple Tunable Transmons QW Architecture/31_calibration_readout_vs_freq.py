@@ -54,8 +54,11 @@ with program() as readout_opt:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
@@ -136,7 +139,7 @@ else:
     # Initialize dataset
     qubit_data = [{} for _ in range(len(qubit_list))]
     figures = []
-    for i,q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_list):
         # Live plotting
         print("Qubit " + str(q))
         if debug:
@@ -188,19 +191,35 @@ else:
             if debug:
                 plt.subplot(311)
                 plt.cla()
-                plt.plot(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, SNR, ".-")
+                plt.plot(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    SNR,
+                    ".-",
+                )
                 plt.title(f"{experiment} qubit {q}")
                 plt.ylabel("SNR")
                 plt.subplot(312)
                 plt.cla()
-                plt.plot(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, qubit_data[i]["I_g_avg"])
-                plt.plot(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, qubit_data[i]["I_e_avg"])
+                plt.plot(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    qubit_data[i]["I_g_avg"],
+                )
+                plt.plot(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    qubit_data[i]["I_e_avg"],
+                )
                 plt.legend(("ground", "excited"))
                 plt.ylabel("I [a.u.]")
                 plt.subplot(313)
                 plt.cla()
-                plt.plot(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, qubit_data[i]["Q_g_avg"])
-                plt.plot(freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq, qubit_data[i]["Q_e_avg"])
+                plt.plot(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    qubit_data[i]["Q_g_avg"],
+                )
+                plt.plot(
+                    freq[i] + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq,
+                    qubit_data[i]["Q_e_avg"],
+                )
                 plt.legend(("ground", "excited"))
                 plt.ylabel("Q [a.u.]")
                 plt.xlabel("Readout frequency [Hz]")
@@ -215,7 +234,9 @@ else:
         machine.readout_resonators[q].f_opt = (
             f_opt + machine.readout_lines[machine.readout_resonators[q].wiring.readout_line_index].lo_freq
         )
-        print(f"New optimal readout frequency: {machine.readout_resonators[q].f_opt*1e-9:.6f} GHz with SNR = {SNR_opt:.2f}")
+        print(
+            f"New optimal readout frequency: {machine.readout_resonators[q].f_opt*1e-9:.6f} GHz with SNR = {SNR_opt:.2f}"
+        )
         print(f"New resonance IF frequency: {machine.get_readout_IF(q) * 1e-6:.3f} MHz")
 
     machine.save_results(experiment, figures)

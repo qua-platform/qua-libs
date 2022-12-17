@@ -34,7 +34,7 @@ config = machine.build_config(digital, qubit_list, injector_list, charge_lines, 
 n_avg = 1e4
 quarter_precession = []
 for q in qubit_list:
-    quarter_precession.append(int(machine.qubits[q].idle_time_parity*1e9//4))  # in clock cycles
+    quarter_precession.append(int(machine.qubits[q].idle_time_parity * 1e9 // 4))  # in clock cycles
 
 # QUA program
 with program() as T1:
@@ -46,8 +46,11 @@ with program() as T1:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
     with for_(it, 0, it < n_avg, it + 1):
         for i, q in enumerate(qubit_list):
@@ -119,8 +122,8 @@ else:
         # Fetch results
         data = my_results.fetch_all()
         for i, q in enumerate(qubit_list):
-            qubit_data[i]["I"] = data[0+i*2]
-            qubit_data[i]["Q"] = data[1+i*2]
+            qubit_data[i]["I"] = data[0 + i * 2]
+            qubit_data[i]["Q"] = data[1 + i * 2]
         it_state = data[-1]
         # Progress bar
         progress_counter(it_state, n_avg, start_time=my_results.start_time)
@@ -133,9 +136,9 @@ else:
                 pnts = len(qubit_data[i]["I"])
                 pnts_array = np.arange(0, pnts, 1)
                 plt.plot(pnts_array * 10e-3, qubit_data[i]["I"])
-                plt.xlabel('Time [s]')
-                plt.ylabel('I [a.u.]')
-                plt.title('Qubit' + str(q))
+                plt.xlabel("Time [s]")
+                plt.ylabel("I [a.u.]")
+                plt.title("Qubit" + str(q))
                 plt.pause(1)
                 plt.tight_layout()
 

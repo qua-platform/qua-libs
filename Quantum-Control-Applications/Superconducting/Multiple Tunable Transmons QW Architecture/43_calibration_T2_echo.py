@@ -40,7 +40,7 @@ d_tau = 100  # in clock cycles
 taus = np.arange(tau_min, tau_max + d_tau / 2, d_tau)
 # taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 31)   # + 0.1 to add tau_max to taus
 # If logarithmic increment, then need to check that no items have the same integer part
-assert len(np.where(np.diff(taus.astype(int))==0)[0]) == 0
+assert len(np.where(np.diff(taus.astype(int)) == 0)[0]) == 0
 
 with program() as echo:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
@@ -52,8 +52,11 @@ with program() as echo:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(tau, taus)):

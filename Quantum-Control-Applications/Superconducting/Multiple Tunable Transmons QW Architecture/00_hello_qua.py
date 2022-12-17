@@ -32,10 +32,10 @@ with program() as hello_qua:
     a = declare(fixed)
 
     for q in qubit_list:
-        with for_(a, 0.1, a < 1.0, a+0.1):
-            play('x180'*amp(a), machine.qubits[q].name)
+        with for_(a, 0.1, a < 1.0, a + 0.1):
+            play("x180" * amp(a), machine.qubits[q].name)
             align()
-            measure('readout', machine.readout_resonators[q].name, None)
+            measure("readout", machine.readout_resonators[q].name, None)
 
         align()
 
@@ -43,4 +43,3 @@ job = qmm.simulate(config, hello_qua, SimulationConfig(1500))
 job.get_simulated_samples().con1.plot()
 plt.show()
 machine.save("latest_quam.json")
-

@@ -28,7 +28,9 @@ charge_point = "working_point"
 qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
 # machine.get_qubit_gate(0, gate_shape).length = 1e-6
-machine.get_sequence_state(0, "qubit_spectroscopy").length = machine.get_qubit_gate(0, gate_shape).length + wait_time*4e-9
+machine.get_sequence_state(0, "qubit_spectroscopy").length = (
+    machine.get_qubit_gate(0, gate_shape).length + wait_time * 4e-9
+)
 
 config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
@@ -60,8 +62,9 @@ with program() as qubit_spec:
     b = declare(fixed)
 
     for i, q in enumerate(qubit_and_charge_relation):
-        set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                      machine.get_charge_bias_point(i, "working_point").value)
+        set_dc_offset(
+            machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(i, "working_point").value
+        )
         # Pre-factors to apply in order to get the bias scan
         pre_factors = bias[i] / machine.get_sequence_state(0, "qubit_spectroscopy").amplitude
 
@@ -117,7 +120,7 @@ else:
     qubit_data = [{} for _ in range(len(qubit_list))]
     figures = []
 
-    for i,q in enumerate(qubit_and_charge_relation):
+    for i, q in enumerate(qubit_and_charge_relation):
         print("Qubit " + str(q))
         qubit_data[i]["iteration"] = 0
         # Live plotting

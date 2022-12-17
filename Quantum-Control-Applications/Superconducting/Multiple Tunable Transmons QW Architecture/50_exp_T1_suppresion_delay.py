@@ -40,14 +40,14 @@ dt = 300
 lengths = np.arange(t_min, t_max + dt / 2, dt)
 # lengths = np.logspace(np.log10(t_min), np.log10(t_max), 40)
 # If logarithmic increment, then need to check that no items have the same integer part
-assert len(np.where(np.diff(lengths.astype(int))==0)[0]) == 0
+assert len(np.where(np.diff(lengths.astype(int)) == 0)[0]) == 0
 
 # Delay between qp_injection and T1 experiment
 delay_min = 16 // 4
 delay_max = 200000 // 4
 d_delay = 300
 
-delays = np.arange(delay_min, delay_max + d_delay/2, d_delay)
+delays = np.arange(delay_min, delay_max + d_delay / 2, d_delay)
 
 # QUA program
 with program() as T1:
@@ -59,13 +59,16 @@ with program() as T1:
         # set qubit frequency to working point
         for j, z in enumerate(qubit_and_charge_relation):
             if q == z:
-                set_dc_offset(machine.qubits[q].name + "_charge", "single",
-                              machine.get_charge_bias_point(j, "working_point").value)
+                set_dc_offset(
+                    machine.qubits[q].name + "_charge",
+                    "single",
+                    machine.get_charge_bias_point(j, "working_point").value,
+                )
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(d, delays)):
                 with for_(*from_array(t, lengths)):
-                    play('injector', machine.qp_injectors[0].name)
+                    play("injector", machine.qp_injectors[0].name)
                     wait(d)
                     align()
                     play("x180", machine.qubits[q].name)
