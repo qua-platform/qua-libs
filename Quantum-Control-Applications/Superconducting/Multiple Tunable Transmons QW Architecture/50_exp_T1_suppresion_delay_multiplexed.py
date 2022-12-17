@@ -15,7 +15,7 @@ from macros import *
 ##################
 # State and QuAM #
 ##################
-experiment = "T1_suppression_delay"
+experiment = "T1_suppression_delay_multiplexed"
 debug = True
 simulate = False
 charge_lines = [0, 1]
@@ -30,7 +30,7 @@ config = machine.build_config(digital, qubit_list, injector_list, charge_lines, 
 ###################
 # The QUA program #
 ###################
-n_avg = 10
+n_avg = 5
 
 # Wait time duration
 t_min = 16 // 4
@@ -54,6 +54,7 @@ with program() as T1:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(qubit_list)
     t = declare(int)
     d = declare(int)
+    iters = declare(int)
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
@@ -62,15 +63,16 @@ with program() as T1:
                 set_dc_offset(machine.qubits[q].name + "_charge", "single",
                               machine.get_charge_bias_point(j, "working_point").value)
 
-        with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
-            with for_(*from_array(d, delays)):
-                with for_(*from_array(t, lengths)):
-                    play('injector', machine.qp_injectors[0].name)
-                    wait(d)
-                    align()
+    with for_(iters, 0, iters < n_avg, iters + 1):
+        with for_(*from_array(d, delays)):
+            with for_(*from_array(t, lengths)):
+                play('injector', machine.qp_injectors[0].name)
+                wait(d)
+                align()
+                for i, q in enumerate(qubit_list):
                     play("x180", machine.qubits[q].name)
                     wait(t, machine.qubits[q].name)
-                    align()
+                    # align() -- no need bc qb-rr share same core and messes up multiplexing
                     measure(
                         "readout",
                         machine.readout_resonators[q].name,
@@ -81,9 +83,7 @@ with program() as T1:
                     wait_cooldown_time_fivet1(q, machine, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
-            save(n[i], n_st[i])
-
-        align()
+                    save(iters, n_st[i])
 
     with stream_processing():
         for i, q in enumerate(qubit_list):
