@@ -60,8 +60,10 @@ with program() as resonator_spec:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q in charge_lines:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):

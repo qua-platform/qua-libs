@@ -74,7 +74,8 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                     },
                 },
                 "operations": {
-                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                    state.common_operation[0].name: f"{state.common_operation[0].name}_IQ_pulse",
+                    state.common_operation[1].name: f"{state.common_operation[1].name}_IQ_pulse_" + str(q),
                 },
             }
         else:
@@ -101,7 +102,8 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                     },
                 },
                 "operations": {
-                    state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                    state.common_operation[0].name: f"{state.common_operation[0].name}_IQ_pulse",
+                    state.common_operation[1].name: f"{state.common_operation[1].name}_IQ_pulse_" + str(q),
                 },
             }
         # add offsets
@@ -123,7 +125,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                         )
                     },
                     "operations": {
-                        state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                        state.common_operation[0].name: f"{state.common_operation[0].name}_single_pulse",
                     },
                 }
                 # add operations for charge line
@@ -164,7 +166,7 @@ def add_qubits(state: QuAM, config: Dict, qb_list: list):
                         )
                     },
                     "operations": {
-                        state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                        state.common_operation[0].name: f"{state.common_operation[0].name}_single_pulse",
                     },
                     "hold_offset" "": {"duration": 1},
                 }
@@ -278,7 +280,7 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                         },
                     },
                     "operations": {
-                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        state.common_operation[0].name: f"{state.common_operation[0].name}_IQ_pulse",
                         "readout": f"readout_pulse_" + state.readout_resonators[r].name,
                     },
                     "outputs": {
@@ -317,7 +319,7 @@ def add_readout_resonators(state: QuAM, config: Dict, qb_list: list):
                         },
                     },
                     "operations": {
-                        state.common_operation.name: f"{state.common_operation.name}_IQ_pulse",
+                        state.common_operation[0].name: f"{state.common_operation[0].name}_IQ_pulse",
                         "readout": f"readout_pulse_" + state.readout_resonators[r].name,
                     },
                     "outputs": {
@@ -573,31 +575,52 @@ def add_digital_waveforms(state: QuAM, config):
 
 
 def add_common_operation(state: QuAM, config: dict):
-    config["waveforms"]["const_wf"] = {
-        "type": "constant",
-        "sample": state.common_operation.amplitude,
-    }
-    config["waveforms"]["zero_wf"] = {
-        "type": "constant",
-        "sample": 0.0,
-    }
-    config["pulses"][f"{state.common_operation.name}_IQ_pulse"] = {
-        "operation": "control",
-        "length": round(state.common_operation.duration * 1e9),
-        "waveforms": {
-            "I": "const_wf",
-            "Q": "zero_wf",
-        },
-        "digital_marker": "ON",
-    }
-    config["pulses"][f"{state.common_operation.name}_single_pulse"] = {
-        "operation": "control",
-        "length": round(state.common_operation.duration * 1e9),
-        "waveforms": {
-            "single": "const_wf",
-        },
-        "digital_marker": "ON",
-    }
+    for i in range(len(state.common_operation)):
+        if i == 0:
+            config["waveforms"]["const_wf"] = {
+                "type": "constant",
+                "sample": state.common_operation[i].amplitude,
+            }
+            config["waveforms"]["zero_wf"] = {
+                "type": "constant",
+                "sample": 0.0,
+            }
+            config["pulses"][f"{state.common_operation[i].name}_IQ_pulse"] = {
+                "operation": "control",
+                "length": round(state.common_operation[i].duration * 1e9),
+                "waveforms": {
+                    "I": "const_wf",
+                    "Q": "zero_wf",
+                },
+                "digital_marker": "ON",
+            }
+            config["pulses"][f"{state.common_operation[i].name}_single_pulse"] = {
+            "operation": "control",
+            "length": round(state.common_operation[i].duration * 1e9),
+            "waveforms": {
+                "single": "const_wf",
+            },
+            "digital_marker": "ON",
+        }
+        else:
+            for q in range(len(state.qubits)):
+                config["waveforms"]["const_wf_" + str(q)] = {
+                    "type": "constant",
+                    "sample": state.qubits[q].driving.saturation.amplitude,
+                }
+                # config["waveforms"]["zero_wf"] = {
+                #     "type": "constant",
+                #     "sample": 0.0,
+                # }
+                config["pulses"][f"{state.common_operation[i].name}_IQ_pulse_" + str(q)] = {
+                    "operation": "control",
+                    "length": round(state.qubits[q].driving.saturation.length * 1e9),
+                    "waveforms": {
+                        "I": "const_wf_" + str(q),
+                        "Q": "zero_wf",
+                    },
+                    "digital_marker": "ON",
+                }
 
 
 def add_qp_injector(state: QuAM, config: Dict, injector_list: list):
@@ -612,7 +635,7 @@ def add_qp_injector(state: QuAM, config: Dict, injector_list: list):
                 )
             },
             "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                state.common_operation[0].name: f"{state.common_operation[0].name}_single_pulse",
                 "injector": f"{state.qp_injectors[i].name}_single_pulse",
             },
         }
@@ -626,7 +649,7 @@ def add_qp_injector(state: QuAM, config: Dict, injector_list: list):
                 )
             },
             "operations": {
-                state.common_operation.name: f"{state.common_operation.name}_single_pulse",
+                state.common_operation[0].name: f"{state.common_operation[0].name}_single_pulse",
                 "injector": f"{state.qp_injectors[i].name}_single_pulse",
             },
             "hold_offset": {"duration": 1},

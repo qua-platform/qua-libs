@@ -18,15 +18,14 @@ from qualang_tools.loops import from_array
 experiment = "2D_resonator_spectroscopy_vs_charge"  # this scrip is valuable for qubits with charge lines
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -48,7 +47,7 @@ bias = [
         machine.get_charge_bias_point(i, "degeneracy_point").value + bias_span + dbias / 2,
         dbias,
     )
-    for i in range(len(qubit_list))
+    for i in range(len(qubit_and_charge_relation))
 ]
 
 # QUA program
@@ -57,7 +56,7 @@ with program() as resonator_spec:
     f = declare(int)
     b = declare(fixed)
 
-    for i, q in enumerate(qubit_list):
+    for i, q in enumerate(qubit_and_charge_relation):
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(b, bias[i])):
@@ -80,7 +79,7 @@ with program() as resonator_spec:
         align()
 
     with stream_processing():
-        for i, q in enumerate(qubit_list):
+        for i, q in enumerate(qubit_and_charge_relation):
             I_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"I{q}")
             Q_st[i].buffer(len(freq[i])).buffer(len(bias[i])).average().save(f"Q{q}")
             n_st[i].save(f"iteration{q}")
@@ -108,7 +107,7 @@ else:
     # Live plotting
     figures = []
 
-    for i,q in enumerate(qubit_list):
+    for i,q in enumerate(qubit_and_charge_relation):
         if debug:
             fig = plt.figure()
             interrupt_on_close(fig, job)

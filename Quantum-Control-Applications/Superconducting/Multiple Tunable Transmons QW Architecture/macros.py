@@ -22,13 +22,9 @@ def qua_declaration(qubit_list):
     return I, I_st, Q, Q_st, n, n_st
 
 
-def wait_cooldown_time_fivet1(index, machine, simulate, q_charge_list):
-    if index in q_charge_list:
-        if not simulate:
-            wait(int(5 * machine.qubits[index].t1 * 1e9) // 4)
-    else:
-        if not simulate:
-            wait(int(5 * machine.qubits_wo_charge[index - NUMBER_OF_QUBITS_W_CHARGE].t1 * 1e9) // 4)
+def wait_cooldown_time_fivet1(index, machine, simulate):
+    if not simulate:
+        wait(int(5 * machine.qubits[index].t1 * 1e9) // 4)
 
 
 def wait_cooldown_time(cooldown_time, simulate):
@@ -215,14 +211,15 @@ def populate_machine_resonators(machine, qubit_index, amplitude, f_opt):
 
 
 # Populate machine with initial guesses from previous knowledge
-def populate_machine_qubits(machine, q_index, q_charge, q_wo_charge, amplitude, f, lens, gate_shape):
+def populate_machine_qubits(machine, q_index, amplitude, f, lens, gate_shape):
     for i, q in enumerate(q_index):
-        if q in q_charge:
-            machine.qubits[q].f_01 = f[i]
-            machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = amplitude[i]
-            machine.get_qubit_gate(q, gate_shape).length = lens[i]
-        if q in q_wo_charge:
-            machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].f_01 = f[i]
-            machine.get_qubit_gate(q - NUMBER_OF_QUBITS_W_CHARGE, gate_shape).angle2volt.deg180 = amplitude[i]
-            machine.get_qubit_gate(q - NUMBER_OF_QUBITS_W_CHARGE, gate_shape).length = lens[i]
+        machine.qubits[q].f_01 = f[i]
+        machine.get_qubit_gate(q, gate_shape).angle2volt.deg180 = amplitude[i]
+        machine.get_qubit_gate(q, gate_shape).length = lens[i]
 
+
+def populate_machine_qubits_saturation(machine, q_index, amplitude, f, lens):
+    for i, q in enumerate(q_index):
+        machine.qubits[q].f_01 = f[i]
+        machine.qubits[q].driving.saturation.amplitude = amplitude[i]
+        machine.qubits[q].driving.saturation.length = lens[i]

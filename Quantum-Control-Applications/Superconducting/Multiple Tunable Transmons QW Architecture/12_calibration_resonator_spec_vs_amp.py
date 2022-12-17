@@ -20,17 +20,16 @@ from qualang_tools.loops import from_array
 experiment = "2D_resonator_spectroscopy_vs_amp"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
 # machine.readout_resonators[0].readout_amplitude = 0.4
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -61,8 +60,10 @@ with program() as resonator_spec:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q == 0 or q == 1:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(a, amps[i])):

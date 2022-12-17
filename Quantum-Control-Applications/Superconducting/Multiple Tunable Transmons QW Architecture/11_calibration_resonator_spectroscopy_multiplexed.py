@@ -19,9 +19,7 @@ from macros import *
 experiment = "1D_resonator_spectroscopy"
 debug = True
 simulate = False
-fit_data = False
-qubit_w_charge_list = [0, 1, 2, 3, 4, 5]
-qubit_wo_charge_list = [2, 3, 4, 5]
+fit_data = True
 injector_list = [0, 1]
 digital = [1, 2, 9]
 charge_lines=[0, 1]
@@ -29,16 +27,16 @@ machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
 
 qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
-amplitudes = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005]
-f_opts = [6.231e9, 6.141e9, 6.231e9, 6.141e9, 6.231e9, 6.231e9]
+# amplitudes = [0.005, 0.005, 0.005, 0.005, 0.005, 0.005]
+# f_opts = [6.231e9, 6.141e9, 6.231e9, 6.141e9, 6.231e9, 6.231e9]
 # machine.readout_lines[0].lo_freq = 6.0e9
 # machine.readout_lines[0].lo_power = 13
 # machine.readout_lines[0].length = 3e-6
-populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
+# populate_machine_resonators(machine, qubit_list, amplitudes, f_opts)
 # machine.readout_resonators[0].readout_amplitude =0.005
 # machine.readout_resonators[0].f_opt = 6.131e9
 # machine.readout_resonators[0].f_opt = machine.readout_resonators[0].f_res
-config = machine.build_config(digital, qubit_w_charge_list, injector_list, charge_lines, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -154,10 +152,11 @@ else:
                 except (Exception,):
                     pass
             # Break the loop if interrupt on close
-            # if my_results.is_processing():
-            #     if not my_results.is_processing():
-            #         exit = True
-            #         break
+            if not i == (len(qubit_list)-1):
+                if my_results.is_processing():
+                    if not my_results.is_processing():
+                        exit = True
+                        break
         if exit:
             break
         # Update state with new resonance frequency

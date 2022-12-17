@@ -444,6 +444,74 @@ class Common_operation(object):
         object.__setattr__(self, key, value)
 
 
+class Common_operationList(object):
+
+    def __init__(self, quam, path, index, schema):
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    def __getitem__(self, key) -> Common_operation:
+        return Common_operation(
+            self._quam,
+            self._path + "[]/",
+            self._index + [key],
+            self._schema["items"]
+        )
+
+    def __iter__(self):
+        for i in range(self.__len__()):
+            yield self.__getitem__(i)
+
+    def __len__(self):
+        length = self._quam._json[self._path + "[]_len"]
+        for i in range(len(self._index)):
+            length = length[self._index[i]]
+        return length
+
+    def _json_view(self):
+        result = []
+        for i in range(self.__len__()):
+            result.append(self.__getitem__(i)._json_view())
+        return result
+
+    def append(self, json_item:dict):
+        """Adds a new common_operation by adding a JSON dictionary with following schema
+{
+  "name": {
+    "type": "string"
+  },
+  "duration": {
+    "type": "number",
+    "description": "pulse length [s]"
+  },
+  "amplitude": {
+    "type": "number",
+    "description": "pulse amplitude [V]"
+  }
+}"""
+        import quam_sdk.crud
+        self._schema["items"]["additionalProperties"] = False
+        quam_sdk.crud.validate_input(json_item, self._schema["items"])
+        if self._quam._record_updates:
+            self._quam._updates["items"].append([json_item, self._path, self._index])
+        quam_sdk.crud.load_data_to_flat_json(self._quam, json_item, self._path +"[]/", self._index, new_item=True)
+        self._quam._json[f"{self._path}[]_len"] += 1
+
+    def __str__(self) -> str:
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
 class I_up(object):
 
     def __init__(self, quam, path, index, schema):
@@ -3761,6 +3829,93 @@ class Square(object):
         object.__setattr__(self, key, value)
 
 
+class Saturation(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def length(self) -> float:
+        """The pulse length [s]"""
+        
+        value = self._quam._json[self._path + "length"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @length.setter
+    def length(self, value: float):
+        """The pulse length [s]"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "length")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "length"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "length"] = value
+
+    @property
+    def amplitude(self) -> float:
+        """The pulse amplitude [V]"""
+        
+        value = self._quam._json[self._path + "amplitude"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @amplitude.setter
+    def amplitude(self, value: float):
+        """The pulse amplitude [V]"""
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "amplitude")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "amplitude"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "amplitude"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
 class Driving(object):
 
     def __init__(self, quam, path, index, schema):
@@ -3793,6 +3948,14 @@ class Driving(object):
         return Square(
             self._quam, self._path + "square/", self._index,
             self._schema["properties"]["square"]
+        )
+
+    @property
+    def saturation(self) -> Saturation:
+        """"""
+        return Saturation(
+            self._quam, self._path + "saturation/", self._index,
+            self._schema["properties"]["saturation"]
         )
 
     def _json_view(self):
@@ -5551,12 +5714,31 @@ class QubitsList(object):
           "shape",
           "angle2volt"
         ]
+      },
+      "saturation": {
+        "type": "object",
+        "title": "saturation",
+        "properties": {
+          "length": {
+            "type": "number",
+            "description": "The pulse length [s]"
+          },
+          "amplitude": {
+            "type": "number",
+            "description": "The pulse amplitude [V]"
+          }
+        },
+        "required": [
+          "length",
+          "amplitude"
+        ]
       }
     },
     "required": [
       "drag_gaussian",
       "drag_cosine",
-      "square"
+      "square",
+      "saturation"
     ]
   },
   "wiring": {
@@ -7372,8 +7554,8 @@ class QuAM(object):
         else:
             self._json = None
         self._updates = {"keys":[], "indexes":[], "values":[], "items":[]}
-        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'digital_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]/integration_weights[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'drive_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/charge_bias_points[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states/constant[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states/arbitrary[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'single_qubit_operations[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'charge_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'charge_lines[]/charge_bias_points[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qp_injectors[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}}, 'additionalProperties': False}
-        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'port': {'type': 'integer'}}, 'required': ['qop_ip', 'port']}, 'controllers': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'digital_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'digital_waveform', 'properties': {'name': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'samples']}}, 'common_operation': {'type': 'object', 'title': 'common_operation', 'description': 'an operation which is common to all elements', 'properties': {'name': {'type': 'string'}, 'duration': {'type': 'number', 'description': 'pulse length [s]'}, 'amplitude': {'type': 'number', 'description': 'pulse amplitude [V]'}}, 'required': ['name', 'duration', 'amplitude']}, 'readout_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_line', 'properties': {'length': {'type': 'number', 'description': 'readout time on this readout line [s]'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency for readout line [Hz]'}, 'lo_power': {'type': 'integer', 'description': 'LO power for readout line [dBm]'}, 'I_up': {'type': 'object', 'title': 'I_up', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'Q_up': {'type': 'object', 'title': 'Q_up', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'I_down': {'type': 'object', 'title': 'I_down', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}, 'gain_db': {'type': 'integer'}}, 'required': ['controller', 'channel', 'offset', 'gain_db']}, 'switch': {'type': 'object', 'title': 'switch', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}}, 'required': ['controller', 'channel']}}, 'required': ['length', 'lo_freq', 'lo_power', 'I_up', 'Q_up', 'I_down', 'switch']}}, 'readout_resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_resonator', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'f_res': {'type': 'number', 'description': 'Resonator resonance frequency [Hz].'}, 'f_opt': {'type': 'number', 'description': 'Resonator optimal readout frequency [Hz] (used in QUA).'}, 'readout_regime': {'type': 'string'}, 'readout_amplitude': {'type': 'number', 'description': 'Readout amplitude for this resonator [V]. Must be within [-0.5, 0.5).'}, 'rotation_angle': {'type': 'number', 'description': "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees]."}, 'integration_weights': {'type': 'array', 'items': {'type': 'object', 'title': 'integration_weight', 'properties': {'name': {'type': 'string'}, 'cosine': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'sine': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'cosine', 'sine']}, 'description': 'Arbitrary integration weights defined as lists of tuples whose first element is the value of the integration weight and second element is the duration in ns for which this value should be used [(1.0, readout_len)]. The duration must be divisible by 4.'}, 'ge_threshold': {'type': 'number', 'description': "Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states."}, 'readout_fidelity': {'type': 'number'}, 'q_factor': {'type': 'number'}, 'chi': {'type': 'number'}, 'relaxation_time': {'type': 'number', 'description': 'Resonator relaxation time [s].'}, 'f_res_vs_charge': {'type': 'object', 'title': 'f_res_vs_charge', 'properties': {'a': {'type': 'number'}, 'b': {'type': 'number'}, 'c': {'type': 'number'}}, 'required': ['a', 'b', 'c']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'readout_line_index': {'type': 'integer', 'description': 'Index of the readout line connected to this resonator.'}, 'time_of_flight': {'type': 'integer', 'description': 'Time of flight for this resonator [ns].'}, 'correction_matrix': {'type': 'object', 'title': 'correction_matrix', 'properties': {'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['gain', 'phase']}, 'maximum_amplitude': {'type': 'number', 'description': 'max amplitude in volts above which the mixer will send higher harmonics.'}, 'switch_delay': {'type': 'integer', 'description': 'delay of digital pulse'}, 'switch_buffer': {'type': 'integer', 'description': 'buffer of digital pulse'}}, 'required': ['readout_line_index', 'time_of_flight', 'correction_matrix', 'maximum_amplitude', 'switch_delay', 'switch_buffer']}, 'threads': {'type': 'object', 'title': 'threads', 'properties': {'thread_cond': {'type': 'boolean', 'description': 'Boolean to decided to put manual threds or not'}, 'thread': {'type': 'string', 'description': 'Manual thread being allocated'}}, 'required': ['thread_cond', 'thread']}}, 'required': ['index', 'name', 'f_res', 'f_opt', 'readout_regime', 'readout_amplitude', 'rotation_angle', 'integration_weights', 'ge_threshold', 'readout_fidelity', 'q_factor', 'chi', 'relaxation_time', 'f_res_vs_charge', 'wiring', 'threads']}}, 'drive_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'drive_line', 'properties': {'qubits': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'qubits associated with this drive line'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency [Hz]'}, 'lo_power': {'type': 'integer', 'description': 'LO power to drive line [dBm]'}, 'I': {'type': 'object', 'title': 'I', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'Q': {'type': 'object', 'title': 'Q', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'switch': {'type': 'object', 'title': 'switch', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}}, 'required': ['controller', 'channel']}}, 'required': ['qubits', 'lo_freq', 'lo_power', 'I', 'Q', 'switch']}}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'f_01': {'type': 'number', 'description': '0-1 transition frequency [Hz]'}, 'df': {'type': 'number', 'description': 'Amplitude of charge dispersion derived from spectroscopy [Hz]'}, 'idle_time_charge_tomo': {'type': 'number', 'description': 'idle time for charge tomography derived from Ramsey-charge-tomo [s]'}, 'idle_time_parity': {'type': 'number', 'description': 'idle time for parity measurement derived from Ramsey-charge-tomo [s]'}, 'anharmonicity': {'type': 'number', 'description': 'Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]'}, 'rabi_freq': {'type': 'integer', 'description': 'Qubit Rabi frequency [Hz]'}, 't1': {'type': 'number', 'description': 'Relaxation time T1 [s]'}, 't2': {'type': 'number', 'description': 'Dephasing time T2 [s]'}, 't2star': {'type': 'number', 'description': 'Dephasing time T2* [s]'}, 'ramsey_det': {'type': 'number', 'description': 'Detuning to observe ramsey fringes [Hz]'}, 'driving': {'type': 'object', 'title': 'driving', 'properties': {'drag_gaussian': {'type': 'object', 'title': 'drag_gaussian', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'sigma': {'type': 'number', 'description': 'The gaussian standard deviation (only for gaussian pulses) [s]'}, 'alpha': {'type': 'number', 'description': 'The DRAG coefficient alpha.'}, 'detuning': {'type': 'integer', 'description': 'The frequency shift to correct for AC stark shift [Hz].'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'sigma', 'alpha', 'detuning', 'shape', 'angle2volt']}, 'drag_cosine': {'type': 'object', 'title': 'drag_cosine', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'alpha': {'type': 'number', 'description': 'The DRAG coefficient alpha.'}, 'detuning': {'type': 'integer', 'description': 'The frequency shift to correct for AC stark shift [Hz].'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'alpha', 'detuning', 'shape', 'angle2volt']}, 'square': {'type': 'object', 'title': 'square', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'shape', 'angle2volt']}}, 'required': ['drag_gaussian', 'drag_cosine', 'square']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'drive_line_index': {'type': 'integer', 'description': 'Index of the readout line connected to this qubit.'}, 'correction_matrix': {'type': 'object', 'title': 'correction_matrix', 'properties': {'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['gain', 'phase']}, 'maximum_amplitude': {'type': 'number', 'description': 'max amplitude in volts above which the mixer will send higher harmonics.'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'charge_line': {'type': 'object', 'title': 'charge_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'charge_filter_coefficients': {'type': 'object', 'title': 'charge_filter_coefficients', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}, 'switch_delay': {'type': 'integer', 'description': 'delay of digital pulse'}, 'switch_buffer': {'type': 'integer', 'description': 'buffer of digital pulse'}}, 'required': ['drive_line_index', 'correction_matrix', 'maximum_amplitude', 'analog_channel_offset', 'charge_line', 'charge_filter_coefficients', 'switch_delay', 'switch_buffer']}, 'threads': {'type': 'object', 'title': 'threads', 'properties': {'thread_cond': {'type': 'boolean', 'description': 'Boolean to decided to put manual threds or not'}, 'thread': {'type': 'string', 'description': 'Manual thread being allocated'}}, 'required': ['thread_cond', 'thread']}, 'charge_bias_points': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_bias_point', 'properties': {'name': {'type': 'string'}, 'value': {'type': 'number', 'description': 'Bias voltage to set qubit to degeneracy between even and odd parity [V]'}}, 'required': ['name', 'value']}}, 'sequence_states': {'type': 'object', 'title': 'sequence_states', 'properties': {'constant': {'type': 'array', 'items': {'type': 'object', 'title': 'constant', 'properties': {'name': {'type': 'string'}, 'amplitude': {'type': 'number', 'description': '[V]'}, 'length': {'type': 'number', 'description': '[s]'}}, 'required': ['name', 'amplitude', 'length']}}, 'arbitrary': {'type': 'array', 'items': {'type': 'object', 'title': 'arbitrary', 'properties': {'name': {'type': 'string'}, 'waveform': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'points describing the waveform shape'}}, 'required': ['name', 'waveform']}}}, 'required': ['constant', 'arbitrary']}}, 'required': ['index', 'name', 'f_01', 'df', 'idle_time_charge_tomo', 'idle_time_parity', 'anharmonicity', 'rabi_freq', 't1', 't2', 't2star', 'ramsey_det', 'driving', 'wiring', 'threads', 'charge_bias_points', 'sequence_states']}}, 'crosstalk_matrix': {'type': 'object', 'title': 'crosstalk_matrix', 'properties': {'static': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fast': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['static', 'fast']}, 'single_qubit_operations': {'type': 'array', 'items': {'type': 'object', 'title': 'single_qubit_operation', 'properties': {'direction': {'type': 'string'}, 'angle': {'type': 'integer'}}, 'required': ['direction', 'angle']}}, 'charge_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_line', 'properties': {'index': {'type': 'integer'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'charge_line': {'type': 'object', 'title': 'charge_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'charge_filter_coefficients': {'type': 'object', 'title': 'charge_filter_coefficients', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}, 'charge_bias_points': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_bias_point', 'properties': {'name': {'type': 'string'}, 'value': {'type': 'number', 'description': 'Bias voltage to set qubit to degeneracy between even and odd parity [V]'}}, 'required': ['name', 'value']}}}, 'required': ['index', 'analog_channel_offset', 'charge_line', 'charge_filter_coefficients', 'charge_bias_points']}}, 'qp_injectors': {'type': 'array', 'items': {'type': 'object', 'title': 'qp_injector', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'energy_gap': {'type': 'number', 'description': 'Superconducting energy gap [V]'}, 'injection_voltage': {'type': 'number', 'description': 'Injection pulse voltage for phonon injection experiment [V]'}, 'injection_length': {'type': 'number', 'description': 'Injection pulse lenght for phonon injection experiment [s]'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'injector_line': {'type': 'object', 'title': 'injector_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}}, 'required': ['injector_line']}}, 'required': ['index', 'name', 'energy_gap', 'injection_voltage', 'injection_length', 'analog_channel_offset', 'wiring']}}, 'results': {'type': 'object', 'title': 'results', 'properties': {'directory': {'type': 'string'}}, 'required': ['directory']}, 'running_strategy': {'type': 'object', 'title': 'running_strategy', 'properties': {'running': {'type': 'boolean'}, 'start': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'end': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['running', 'start', 'end']}}, 'required': ['network', 'controllers', 'digital_waveforms', 'common_operation', 'readout_lines', 'readout_resonators', 'drive_lines', 'qubits', 'crosstalk_matrix', 'single_qubit_operations', 'charge_lines', 'qp_injectors', 'results', 'running_strategy']}
+        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'digital_waveforms[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'common_operation[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'readout_resonators[]/integration_weights[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'drive_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/charge_bias_points[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states/constant[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]/sequence_states/arbitrary[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'single_qubit_operations[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'charge_lines[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'charge_lines[]/charge_bias_points[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qp_injectors[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}}, 'additionalProperties': False}
+        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'port': {'type': 'integer'}}, 'required': ['qop_ip', 'port']}, 'controllers': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'digital_waveforms': {'type': 'array', 'items': {'type': 'object', 'title': 'digital_waveform', 'properties': {'name': {'type': 'string'}, 'samples': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'samples']}}, 'common_operation': {'type': 'array', 'items': {'type': 'object', 'title': 'common_operation', 'description': 'an operation which is common to all elements', 'properties': {'name': {'type': 'string'}, 'duration': {'type': 'number', 'description': 'pulse length [s]'}, 'amplitude': {'type': 'number', 'description': 'pulse amplitude [V]'}}, 'required': ['name', 'duration', 'amplitude']}}, 'readout_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_line', 'properties': {'length': {'type': 'number', 'description': 'readout time on this readout line [s]'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency for readout line [Hz]'}, 'lo_power': {'type': 'integer', 'description': 'LO power for readout line [dBm]'}, 'I_up': {'type': 'object', 'title': 'I_up', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'Q_up': {'type': 'object', 'title': 'Q_up', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'I_down': {'type': 'object', 'title': 'I_down', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}, 'gain_db': {'type': 'integer'}}, 'required': ['controller', 'channel', 'offset', 'gain_db']}, 'switch': {'type': 'object', 'title': 'switch', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}}, 'required': ['controller', 'channel']}}, 'required': ['length', 'lo_freq', 'lo_power', 'I_up', 'Q_up', 'I_down', 'switch']}}, 'readout_resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'readout_resonator', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'f_res': {'type': 'number', 'description': 'Resonator resonance frequency [Hz].'}, 'f_opt': {'type': 'number', 'description': 'Resonator optimal readout frequency [Hz] (used in QUA).'}, 'readout_regime': {'type': 'string'}, 'readout_amplitude': {'type': 'number', 'description': 'Readout amplitude for this resonator [V]. Must be within [-0.5, 0.5).'}, 'rotation_angle': {'type': 'number', 'description': "Angle by which to rotate the IQ blobs to place the separation along the 'I' quadrature [degrees]."}, 'integration_weights': {'type': 'array', 'items': {'type': 'object', 'title': 'integration_weight', 'properties': {'name': {'type': 'string'}, 'cosine': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'sine': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['name', 'cosine', 'sine']}, 'description': 'Arbitrary integration weights defined as lists of tuples whose first element is the value of the integration weight and second element is the duration in ns for which this value should be used [(1.0, readout_len)]. The duration must be divisible by 4.'}, 'ge_threshold': {'type': 'number', 'description': "Threshold (in demod unit) along the 'I' quadrature discriminating between qubit ground and excited states."}, 'readout_fidelity': {'type': 'number'}, 'q_factor': {'type': 'number'}, 'chi': {'type': 'number'}, 'relaxation_time': {'type': 'number', 'description': 'Resonator relaxation time [s].'}, 'f_res_vs_charge': {'type': 'object', 'title': 'f_res_vs_charge', 'properties': {'a': {'type': 'number'}, 'b': {'type': 'number'}, 'c': {'type': 'number'}}, 'required': ['a', 'b', 'c']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'readout_line_index': {'type': 'integer', 'description': 'Index of the readout line connected to this resonator.'}, 'time_of_flight': {'type': 'integer', 'description': 'Time of flight for this resonator [ns].'}, 'correction_matrix': {'type': 'object', 'title': 'correction_matrix', 'properties': {'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['gain', 'phase']}, 'maximum_amplitude': {'type': 'number', 'description': 'max amplitude in volts above which the mixer will send higher harmonics.'}, 'switch_delay': {'type': 'integer', 'description': 'delay of digital pulse'}, 'switch_buffer': {'type': 'integer', 'description': 'buffer of digital pulse'}}, 'required': ['readout_line_index', 'time_of_flight', 'correction_matrix', 'maximum_amplitude', 'switch_delay', 'switch_buffer']}, 'threads': {'type': 'object', 'title': 'threads', 'properties': {'thread_cond': {'type': 'boolean', 'description': 'Boolean to decided to put manual threds or not'}, 'thread': {'type': 'string', 'description': 'Manual thread being allocated'}}, 'required': ['thread_cond', 'thread']}}, 'required': ['index', 'name', 'f_res', 'f_opt', 'readout_regime', 'readout_amplitude', 'rotation_angle', 'integration_weights', 'ge_threshold', 'readout_fidelity', 'q_factor', 'chi', 'relaxation_time', 'f_res_vs_charge', 'wiring', 'threads']}}, 'drive_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'drive_line', 'properties': {'qubits': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'qubits associated with this drive line'}, 'lo_freq': {'type': 'number', 'description': 'LO frequency [Hz]'}, 'lo_power': {'type': 'integer', 'description': 'LO power to drive line [dBm]'}, 'I': {'type': 'object', 'title': 'I', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'Q': {'type': 'object', 'title': 'Q', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'switch': {'type': 'object', 'title': 'switch', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}}, 'required': ['controller', 'channel']}}, 'required': ['qubits', 'lo_freq', 'lo_power', 'I', 'Q', 'switch']}}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'f_01': {'type': 'number', 'description': '0-1 transition frequency [Hz]'}, 'df': {'type': 'number', 'description': 'Amplitude of charge dispersion derived from spectroscopy [Hz]'}, 'idle_time_charge_tomo': {'type': 'number', 'description': 'idle time for charge tomography derived from Ramsey-charge-tomo [s]'}, 'idle_time_parity': {'type': 'number', 'description': 'idle time for parity measurement derived from Ramsey-charge-tomo [s]'}, 'anharmonicity': {'type': 'number', 'description': 'Qubit anharmonicity: difference in energy between the 2-1 and the 1-0 energy levels [Hz]'}, 'rabi_freq': {'type': 'integer', 'description': 'Qubit Rabi frequency [Hz]'}, 't1': {'type': 'number', 'description': 'Relaxation time T1 [s]'}, 't2': {'type': 'number', 'description': 'Dephasing time T2 [s]'}, 't2star': {'type': 'number', 'description': 'Dephasing time T2* [s]'}, 'ramsey_det': {'type': 'number', 'description': 'Detuning to observe ramsey fringes [Hz]'}, 'driving': {'type': 'object', 'title': 'driving', 'properties': {'drag_gaussian': {'type': 'object', 'title': 'drag_gaussian', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'sigma': {'type': 'number', 'description': 'The gaussian standard deviation (only for gaussian pulses) [s]'}, 'alpha': {'type': 'number', 'description': 'The DRAG coefficient alpha.'}, 'detuning': {'type': 'integer', 'description': 'The frequency shift to correct for AC stark shift [Hz].'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'sigma', 'alpha', 'detuning', 'shape', 'angle2volt']}, 'drag_cosine': {'type': 'object', 'title': 'drag_cosine', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'alpha': {'type': 'number', 'description': 'The DRAG coefficient alpha.'}, 'detuning': {'type': 'integer', 'description': 'The frequency shift to correct for AC stark shift [Hz].'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'alpha', 'detuning', 'shape', 'angle2volt']}, 'square': {'type': 'object', 'title': 'square', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'shape': {'type': 'string', 'description': 'Shape of the gate'}, 'angle2volt': {'type': 'object', 'title': 'angle2volt', 'properties': {'deg90': {'type': 'number'}, 'deg180': {'type': 'number'}}, 'required': ['deg90', 'deg180']}}, 'required': ['length', 'shape', 'angle2volt']}, 'saturation': {'type': 'object', 'title': 'saturation', 'properties': {'length': {'type': 'number', 'description': 'The pulse length [s]'}, 'amplitude': {'type': 'number', 'description': 'The pulse amplitude [V]'}}, 'required': ['length', 'amplitude']}}, 'required': ['drag_gaussian', 'drag_cosine', 'square', 'saturation']}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'drive_line_index': {'type': 'integer', 'description': 'Index of the readout line connected to this qubit.'}, 'correction_matrix': {'type': 'object', 'title': 'correction_matrix', 'properties': {'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['gain', 'phase']}, 'maximum_amplitude': {'type': 'number', 'description': 'max amplitude in volts above which the mixer will send higher harmonics.'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'charge_line': {'type': 'object', 'title': 'charge_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'charge_filter_coefficients': {'type': 'object', 'title': 'charge_filter_coefficients', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}, 'switch_delay': {'type': 'integer', 'description': 'delay of digital pulse'}, 'switch_buffer': {'type': 'integer', 'description': 'buffer of digital pulse'}}, 'required': ['drive_line_index', 'correction_matrix', 'maximum_amplitude', 'analog_channel_offset', 'charge_line', 'charge_filter_coefficients', 'switch_delay', 'switch_buffer']}, 'threads': {'type': 'object', 'title': 'threads', 'properties': {'thread_cond': {'type': 'boolean', 'description': 'Boolean to decided to put manual threds or not'}, 'thread': {'type': 'string', 'description': 'Manual thread being allocated'}}, 'required': ['thread_cond', 'thread']}, 'charge_bias_points': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_bias_point', 'properties': {'name': {'type': 'string'}, 'value': {'type': 'number', 'description': 'Bias voltage to set qubit to degeneracy between even and odd parity [V]'}}, 'required': ['name', 'value']}}, 'sequence_states': {'type': 'object', 'title': 'sequence_states', 'properties': {'constant': {'type': 'array', 'items': {'type': 'object', 'title': 'constant', 'properties': {'name': {'type': 'string'}, 'amplitude': {'type': 'number', 'description': '[V]'}, 'length': {'type': 'number', 'description': '[s]'}}, 'required': ['name', 'amplitude', 'length']}}, 'arbitrary': {'type': 'array', 'items': {'type': 'object', 'title': 'arbitrary', 'properties': {'name': {'type': 'string'}, 'waveform': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}, 'description': 'points describing the waveform shape'}}, 'required': ['name', 'waveform']}}}, 'required': ['constant', 'arbitrary']}}, 'required': ['index', 'name', 'f_01', 'df', 'idle_time_charge_tomo', 'idle_time_parity', 'anharmonicity', 'rabi_freq', 't1', 't2', 't2star', 'ramsey_det', 'driving', 'wiring', 'threads', 'charge_bias_points', 'sequence_states']}}, 'crosstalk_matrix': {'type': 'object', 'title': 'crosstalk_matrix', 'properties': {'static': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fast': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['static', 'fast']}, 'single_qubit_operations': {'type': 'array', 'items': {'type': 'object', 'title': 'single_qubit_operation', 'properties': {'direction': {'type': 'string'}, 'angle': {'type': 'integer'}}, 'required': ['direction', 'angle']}}, 'charge_lines': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_line', 'properties': {'index': {'type': 'integer'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'charge_line': {'type': 'object', 'title': 'charge_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}, 'charge_filter_coefficients': {'type': 'object', 'title': 'charge_filter_coefficients', 'properties': {'feedforward': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'feedback': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['feedforward', 'feedback']}, 'charge_bias_points': {'type': 'array', 'items': {'type': 'object', 'title': 'charge_bias_point', 'properties': {'name': {'type': 'string'}, 'value': {'type': 'number', 'description': 'Bias voltage to set qubit to degeneracy between even and odd parity [V]'}}, 'required': ['name', 'value']}}}, 'required': ['index', 'analog_channel_offset', 'charge_line', 'charge_filter_coefficients', 'charge_bias_points']}}, 'qp_injectors': {'type': 'array', 'items': {'type': 'object', 'title': 'qp_injector', 'properties': {'index': {'type': 'integer'}, 'name': {'type': 'string'}, 'energy_gap': {'type': 'number', 'description': 'Superconducting energy gap [V]'}, 'injection_voltage': {'type': 'number', 'description': 'Injection pulse voltage for phonon injection experiment [V]'}, 'injection_length': {'type': 'number', 'description': 'Injection pulse lenght for phonon injection experiment [s]'}, 'analog_channel_offset': {'type': 'number', 'description': 'Voltage value to nullify inheret analog channel offset [V]'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'injector_line': {'type': 'object', 'title': 'injector_line', 'properties': {'controller': {'type': 'string'}, 'channel': {'type': 'integer'}, 'offset': {'type': 'number'}}, 'required': ['controller', 'channel', 'offset']}}, 'required': ['injector_line']}}, 'required': ['index', 'name', 'energy_gap', 'injection_voltage', 'injection_length', 'analog_channel_offset', 'wiring']}}, 'results': {'type': 'object', 'title': 'results', 'properties': {'directory': {'type': 'string'}}, 'required': ['directory']}, 'running_strategy': {'type': 'object', 'title': 'running_strategy', 'properties': {'running': {'type': 'boolean'}, 'start': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'end': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['running', 'start', 'end']}}, 'required': ['network', 'controllers', 'digital_waveforms', 'common_operation', 'readout_lines', 'readout_resonators', 'drive_lines', 'qubits', 'crosstalk_matrix', 'single_qubit_operations', 'charge_lines', 'qp_injectors', 'results', 'running_strategy']}
         self._freeze_attributes = True
 
     def _reset_update_record(self):
@@ -7452,6 +7634,14 @@ class QuAM(object):
         )
 
     @property
+    def common_operation(self) -> Common_operationList:
+        """"""
+        return Common_operationList(
+            self._quam, self._path + "common_operation", self._index,
+            self._schema["properties"]["common_operation"]
+        )
+
+    @property
     def readout_lines(self) -> Readout_linesList:
         """"""
         return Readout_linesList(
@@ -7513,14 +7703,6 @@ class QuAM(object):
         return Network(
             self._quam, self._path + "network/", self._index,
             self._schema["properties"]["network"]
-        )
-
-    @property
-    def common_operation(self) -> Common_operation:
-        """"""
-        return Common_operation(
-            self._quam, self._path + "common_operation/", self._index,
-            self._schema["properties"]["common_operation"]
         )
 
     @property

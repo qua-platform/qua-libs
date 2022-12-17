@@ -42,14 +42,24 @@ state = {
     # Standard digital waveforms
     "digital_waveforms": [{"name": "ON", "samples": [[1, 0]]}],
     # Just put conventional pulses to all elements; qubit, readout & charge drives will be added later
-    "common_operation": {
-        "_docs": "an operation which is common to all elements",
-        "name": "const",
-        "duration": 16e-9,  # minimum length so that manipulation is at desired
-        "duration_docs": "pulse length [s]",
-        "amplitude": 0.2,
-        "amplitude_docs": "pulse amplitude [V]",
-    },
+    "common_operation": [
+        {
+            "_docs": "an operation which is common to all elements",
+            "name": "const",
+            "duration": 16e-9,  # minimum length so that manipulation is at desired
+            "duration_docs": "pulse length [s]",
+            "amplitude": 0.2,
+            "amplitude_docs": "pulse amplitude [V]",
+        },
+        {
+            "_docs": "an operation which is common to all elements",
+            "name": "saturation",
+            "duration": 16e-9,  # minimum length so that manipulation is at desired
+            "duration_docs": "pulse length [s]",
+            "amplitude": 0.2,
+            "amplitude_docs": "pulse amplitude [V]",
+        },
+    ],
     # Readout lines containing information about the readout length, LO frequency and power,
     # and connectivity for the up- and down-conversion sides
     "readout_lines": [
@@ -196,6 +206,12 @@ state = {
                     "angle2volt": {"deg90": 0.25, "deg180": 0.49},
                     "angle2volt_docs": "Rotation angle (on the Bloch sphere) to voltage amplitude conversion, must be within [-0.5, 0.5) V. For instance 'deg180':0.2 will lead to a pi pulse of 0.2 V.",
                 },
+                "saturation": {
+                    "length": 50e-6,
+                    "length_docs": "The pulse length [s]",
+                    "amplitude": 0.1,
+                    "amplitude_docs": "The pulse amplitude [V]",
+                },
             },
             "wiring": {
                 "drive_line_index": int(np.floor(i / NUMBER_OF_QUBITS_PER_DRIVE_LINE)),
@@ -280,7 +296,7 @@ state = {
     ],
     "charge_lines": [
         {
-            "index": i,
+            "index": qubit_and_charge_relation[i],
             "analog_channel_offset": 0.0,
             "analog_channel_offset_docs": "Voltage value to nullify inheret analog channel offset [V]",
             "charge_line": {"controller": controller_under_use, "channel": 5 + i, "offset": 0.0},
