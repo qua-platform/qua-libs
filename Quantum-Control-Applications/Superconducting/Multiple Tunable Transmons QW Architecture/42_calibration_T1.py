@@ -11,7 +11,6 @@ from qualang_tools.plot import interrupt_on_close, fitting, plot_demodulated_dat
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 
 ##################
@@ -21,15 +20,14 @@ experiment = "T1"
 debug = True
 simulate = False
 fit_data = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -53,17 +51,15 @@ with program() as T1:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q in qubit_w_charge_list:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(t, lengths)):
-                if q in qubit_w_charge_list:
-                    play("x180", machine.qubits[q].name)
-                    wait(t, machine.qubits[q].name)
-                else:
-                    play("x180", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
-                    wait(t, machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                play("x180", machine.qubits[q].name)
+                wait(t, machine.qubits[q].name)
                 align()
                 measure(
                     "readout",
@@ -72,7 +68,7 @@ with program() as T1:
                     demod.full("rotated_cos", I[i], "out1"),
                     demod.full("rotated_sin", Q[i], "out1"),
                 )
-                wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
+                wait_cooldown_time_fivet1(q, machine, simulate)
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
             save(n[i], n_st[i])

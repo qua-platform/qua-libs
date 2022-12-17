@@ -11,7 +11,6 @@ from qualang_tools.plot import interrupt_on_close, plot_demodulated_data_2d
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from macros import *
-from config import NUMBER_OF_QUBITS_W_CHARGE
 
 ##################
 # State and QuAM #
@@ -19,15 +18,14 @@ from config import NUMBER_OF_QUBITS_W_CHARGE
 experiment = "2D_ramsey_freq_vs_idle_time"
 debug = True
 simulate = False
-qubit_w_charge_list = [0, 1]
-qubit_wo_charge_list = [2, 3, 4, 5]
-qubit_list = [0, 5]  # you can shuffle the order at which you perform the experiment
+charge_lines = [0, 1]
 injector_list = [0, 1]
-digital = [1, 9]
+digital = [1, 2, 9]
 machine = QuAM("latest_quam.json")
 gate_shape = "drag_cosine"
+qubit_list = [0, 1, 2, 3, 4, 5]  # you can shuffle the order at which you perform the experiment
 
-config = machine.build_config(digital, qubit_w_charge_list, qubit_wo_charge_list, injector_list, gate_shape)
+config = machine.build_config(digital, qubit_list, injector_list, charge_lines, gate_shape)
 
 ###################
 # The QUA program #
@@ -57,25 +55,19 @@ with program() as ramsey:
 
     for i, q in enumerate(qubit_list):
         # set qubit frequency to working point
-        if q in qubit_w_charge_list:
-            set_dc_offset(machine.qubits[q].name + "_charge", "single", machine.get_charge_bias_point(q, "working_point").value)
+        for j, z in enumerate(qubit_and_charge_relation):
+            if q == z:
+                set_dc_offset(machine.qubits[q].name + "_charge", "single",
+                              machine.get_charge_bias_point(j, "working_point").value)
 
         with for_(n[i], 0, n[i] < n_avg, n[i] + 1):
             with for_(*from_array(f, freq[i])):
-                if q in qubit_w_charge_list:
-                    update_frequency(machine.qubits[q].name, f)
-                else:
-                    update_frequency(machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name, f)
+                update_frequency(machine.qubits[q].name, f)
 
                 with for_(*from_array(tau, taus)):
-                    if q in qubit_w_charge_list:
-                        play("x90", machine.qubits[q].name)
-                        wait(tau, machine.qubits[q].name)
-                        play("x90", machine.qubits[q].name)
-                    else:
-                        play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
-                        wait(tau, machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
-                        play("x90", machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].name)
+                    play("x90", machine.qubits[q].name)
+                    wait(tau, machine.qubits[q].name)
+                    play("x90", machine.qubits[q].name)
                     align()
                     measure(
                         "readout",
@@ -84,7 +76,7 @@ with program() as ramsey:
                         demod.full("rotated_cos", I[i], "out1"),
                         demod.full("rotated_sin", Q[i], "out1"),
                     )
-                    wait_cooldown_time_fivet1(q, machine, simulate, qubit_w_charge_list)
+                    wait_cooldown_time_fivet1(q, machine, simulate)
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
             save(n[i], n_st[i])
@@ -137,31 +129,17 @@ else:
             progress_counter(qubit_data[i]["iteration"], n_avg, start_time=my_results.start_time)
             # live plot
             if debug:
-                if q in qubit_w_charge_list:
-                    plot_demodulated_data_2d(
-                        taus * 4,
-                        freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
-                        qubit_data[i]["I"],
-                        qubit_data[i]["Q"],
-                        "Dephasing time [ns]",
-                        "drive frequency [Hz]",
-                        f"{experiment} qubit {q}",
-                        amp_and_phase=False,
-                        fig=fig,
-                        plot_options={"cmap": "magma"},
-                    )
-                else:
-                    plot_demodulated_data_2d(
-                        taus * 4,
-                        freq[i] + machine.drive_lines[machine.qubits_wo_charge[q - NUMBER_OF_QUBITS_W_CHARGE].wiring.drive_line_index].lo_freq,
-                        qubit_data[i]["I"],
-                        qubit_data[i]["Q"],
-                        "Dephasing time [ns]",
-                        "drive frequency [Hz]",
-                        f"{experiment} qubit {q}",
-                        amp_and_phase=True,
-                        fig=fig,
-                        plot_options={"cmap": "magma"},
-                    )
+                plot_demodulated_data_2d(
+                    taus * 4,
+                    freq[i] + machine.drive_lines[machine.qubits[q].wiring.drive_line_index].lo_freq,
+                    qubit_data[i]["I"],
+                    qubit_data[i]["Q"],
+                    "Dephasing time [ns]",
+                    "drive frequency [Hz]",
+                    f"{experiment} qubit {q}",
+                    amp_and_phase=False,
+                    fig=fig,
+                    plot_options={"cmap": "magma"},
+                )
     machine.save_results(experiment, figures)
     # machine.save("latest_quam.json")

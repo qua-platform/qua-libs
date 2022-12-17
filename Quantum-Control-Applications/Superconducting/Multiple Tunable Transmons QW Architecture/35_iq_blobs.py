@@ -136,7 +136,7 @@ else:
         )
         machine.readout_resonators[q].readout_fidelity = fidelity
         machine.readout_resonators[q].ge_threshold = threshold
-        machine.readout_resonators[q].rotation_angle = angle
+        machine.readout_resonators[q].rotation_angle = (angle/np.pi)*180
         plt.suptitle(f"Qubit {q}")
         figures.append(plt.gcf())
 
