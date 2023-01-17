@@ -13,7 +13,8 @@ import time
 
 # host = '172.16.2.103'
 # port = 81
-
+host = "theo-4c195fa0.dev.quantum-machines.co"
+port = 443
 class Quantum_Orchestration_Server:
     def __init__(self):
         self.router = APIRouter()
@@ -65,6 +66,7 @@ class Quantum_Orchestration_Server:
             exp_instance = eval("self.experiments['{}']['inst']".format(exp, qua_name))
             qua_program = self.context_manager_executer(exp, qua_name)
             self.job = self.qmm.simulate(exp_instance.config, qua_program, self.simulation_config)
+            # self.job.result_handles.wait_for_all_values()
             sim_res = self.job.get_simulated_samples()
             results_dict = {}
             for con in sim_res.__dict__.keys():
@@ -216,120 +218,120 @@ class Quantum_Orchestration_Server:
 
 qos = Quantum_Orchestration_Server()
 
-
-class ODMR:
-    @qos.parameter("params")
-    class Parameters(BaseModel):
-        # start_frequency: Optional[int] = Field(default=None, gt=-400e6, st=400e6,
-        #                                        title="Starting frequency of ODMR experiment")
-        # stop_frequency: Optional[int] = Field(default=None, gt=-400e6, st=400e6,
-        #                                       title="Stopping frequency of ODMR experiment")
-        # step_frequency: Optional[int] = Field(default=None, gt=0e6, st=400e6,
-        #                                       title="Stepping frequency of ODMR experiment")
-        # n_avg: Optional[int] = Field(default=None, gt=0, title="Number of times to repeat the ODMR experiment")
-        start_frequency: Optional[int] = Field(default=-250e6, gt=-400e6, st=400e6,
-                                               title="Starting frequency of ODMR experiment")
-        stop_frequency: Optional[int] = Field(default=250e6, gt=-400e6, st=400e6,
-                                              title="Stopping frequency of ODMR experiment")
-        step_frequency: Optional[int] = Field(default=10e6, gt=0e6, st=400e6,
-                                              title="Stepping frequency of ODMR experiment")
-        n_avg: Optional[int] = Field(default=10000, gt=0, title="Number of times to repeat the ODMR experiment")
-        # # start_frequency: Optional[int] = int(-250e6)
-        # stop_frequency: Optional[int] = int(250e6)
-        # step_frequency: Optional[int] = int(10e6)
-        # n_avg: Optional[int] = int(1e6)
-
-    def __init__(self, configuration):
-        self.config = configuration
-        self.params = self.Parameters(**{"start_frequency": -250000000, "stop_frequency": 250000000, "step_frequency": 10000000, "n_avg": 10000})
-
-    @qos.qua_code
-    def odmr(self):
-        f_vec = np.arange(self.params.start_frequency, self.params.step_frequency + 0.1, self.params.step_frequency)
-        times = declare(int, size=100)
-        counts = declare(int)  # variable for number of counts
-        counts_st = declare_stream()  # stream for counts
-        f = declare(int)  # frequencies
-        n = declare(int)  # number of iterations
-        n_st = declare_stream()  # stream for number of iterations
-
-        with for_(n, 0, n < self.params.n_avg, n + 1):
-            with for_(f, self.params.start_frequency, f <= self.params.stop_frequency, f + self.params.step_frequency):
-                update_frequency("NV", f)  # update frequency
-                align()  # align all elements
-                play("cw", "NV", duration=int(long_meas_len // 4))  # play microwave pulse
-                play("laser_ON", "AOM", duration=int(long_meas_len // 4))
-                measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
-
-                save(counts, counts_st)  # save counts on stream
-                save(n, n_st)  # save number of iteration inside for_loop
-
-        with stream_processing():
-            counts_st.buffer(len(f_vec)).average().save("counts")
-            n_st.save("iteration")
-
-    @qos.set
-    def set(self, val):
-        self.a = val
-
-    @qos.get
-    def get(self):
-        return self.a
-
-
-class Time_Resolved:
-    @qos.parameter("params")
-    class Parameters(BaseModel):
-        start_time: Optional[int] = int(16)
-        stop_time: Optional[int] = int(516)
-        step_time: Optional[int] = int(10)
-        n_avg: Optional[int] = int(1e6)
-
-    def __init__(self, configuration):
-        self.config = configuration
-        self.params = self.Parameters()
-
-    def hahn_echo_pulse(self, t):
-        times = declare(int, size=100)
-        counts = declare(int)  # variable for number of counts
-        play("pi_half", "NV")
-        wait(t)
-        play("pi", "NV")
-        wait(t)
-        play("pi_half", "NV")
-        align()
-        play("laser_ON", "AOM")
-        measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
-        return counts
-
-    @qos.qua_code
-    def t2(self):
-        t_vec = np.arange(self.params.start_time, self.params.stop_time + 0.1, self.params.step_time)
-
-        counts_st = declare_stream()  # stream for counts
-        t = declare(int)  # frequencies
-        n = declare(int)  # number of iterations
-        n_st = declare_stream()  # stream for number of iterations
-
-        play("laser_ON", "AOM")
-        with for_(n, 0, n < self.params.n_avg, n + 1):
-            with for_(t, self.params.start_time, t <= self.params.stop_time, t + self.params.step_time):
-                counts = self.hahn_echo_pulse(t)
-                save(counts, counts_st)  # save counts on stream
-                save(n, n_st)  # save number of iteration inside for_loop
-
-        with stream_processing():
-            counts_st.buffer(len(t_vec)).average().save("counts")
-            n_st.save("iteration")
-
-
-qos.add_experiment(ODMR, "odmr", config)
-qos.add_experiment(ODMR, "odmr2", config)
-qos.add_experiment(Time_Resolved, "tr", config)
-
-app = FastAPI()
-app.include_router(qos.router)
-uvicorn.run(app, host="127.0.0.1", port=8200)
+#
+# class ODMR:
+#     @qos.parameter("params")
+#     class Parameters(BaseModel):
+#         # start_frequency: Optional[int] = Field(default=None, gt=-400e6, st=400e6,
+#         #                                        title="Starting frequency of ODMR experiment")
+#         # stop_frequency: Optional[int] = Field(default=None, gt=-400e6, st=400e6,
+#         #                                       title="Stopping frequency of ODMR experiment")
+#         # step_frequency: Optional[int] = Field(default=None, gt=0e6, st=400e6,
+#         #                                       title="Stepping frequency of ODMR experiment")
+#         # n_avg: Optional[int] = Field(default=None, gt=0, title="Number of times to repeat the ODMR experiment")
+#         start_frequency: Optional[int] = Field(default=-250e6, gt=-400e6, st=400e6,
+#                                                title="Starting frequency of ODMR experiment")
+#         stop_frequency: Optional[int] = Field(default=250e6, gt=-400e6, st=400e6,
+#                                               title="Stopping frequency of ODMR experiment")
+#         step_frequency: Optional[int] = Field(default=10e6, gt=0e6, st=400e6,
+#                                               title="Stepping frequency of ODMR experiment")
+#         n_avg: Optional[int] = Field(default=10000, gt=0, title="Number of times to repeat the ODMR experiment")
+#         # # start_frequency: Optional[int] = int(-250e6)
+#         # stop_frequency: Optional[int] = int(250e6)
+#         # step_frequency: Optional[int] = int(10e6)
+#         # n_avg: Optional[int] = int(1e6)
+#
+#     def __init__(self, configuration):
+#         self.config = configuration
+#         self.params = self.Parameters(**{"start_frequency": -250000000, "stop_frequency": 250000000, "step_frequency": 10000000, "n_avg": 10000})
+#
+#     @qos.qua_code
+#     def odmr(self):
+#         f_vec = np.arange(self.params.start_frequency, self.params.step_frequency + 0.1, self.params.step_frequency)
+#         times = declare(int, size=100)
+#         counts = declare(int)  # variable for number of counts
+#         counts_st = declare_stream()  # stream for counts
+#         f = declare(int)  # frequencies
+#         n = declare(int)  # number of iterations
+#         n_st = declare_stream()  # stream for number of iterations
+#
+#         with for_(n, 0, n < self.params.n_avg, n + 1):
+#             with for_(f, self.params.start_frequency, f <= self.params.stop_frequency, f + self.params.step_frequency):
+#                 update_frequency("NV", f)  # update frequency
+#                 align()  # align all elements
+#                 play("cw", "NV", duration=int(1000 // 4))  # play microwave pulse
+#                 play("laser_ON", "AOM", duration=int(1000 // 4))
+#                 measure("long_readout", "SPCM", None, time_tagging.analog(times, 1000, counts))
+#
+#                 save(counts, counts_st)  # save counts on stream
+#                 save(n, n_st)  # save number of iteration inside for_loop
+#
+#         with stream_processing():
+#             counts_st.buffer(len(f_vec)).average().save("counts")
+#             n_st.save("iteration")
+#
+#     @qos.set
+#     def set(self, val):
+#         self.a = val
+#
+#     @qos.get
+#     def get(self):
+#         return self.a
+#
+#
+# class Time_Resolved:
+#     @qos.parameter("params")
+#     class Parameters(BaseModel):
+#         start_time: Optional[int] = int(16)
+#         stop_time: Optional[int] = int(516)
+#         step_time: Optional[int] = int(10)
+#         n_avg: Optional[int] = int(1e6)
+#
+#     def __init__(self, configuration):
+#         self.config = configuration
+#         self.params = self.Parameters()
+#
+#     def hahn_echo_pulse(self, t):
+#         times = declare(int, size=100)
+#         counts = declare(int)  # variable for number of counts
+#         play("pi_half", "NV")
+#         wait(t)
+#         play("pi", "NV")
+#         wait(t)
+#         play("pi_half", "NV")
+#         align()
+#         play("laser_ON", "AOM")
+#         measure("long_readout", "SPCM", None, time_tagging.analog(times, 1000, counts))
+#         return counts
+#
+#     @qos.qua_code
+#     def t2(self):
+#         t_vec = np.arange(self.params.start_time, self.params.stop_time + 0.1, self.params.step_time)
+#
+#         counts_st = declare_stream()  # stream for counts
+#         t = declare(int)  # frequencies
+#         n = declare(int)  # number of iterations
+#         n_st = declare_stream()  # stream for number of iterations
+#
+#         play("laser_ON", "AOM")
+#         with for_(n, 0, n < self.params.n_avg, n + 1):
+#             with for_(t, self.params.start_time, t <= self.params.stop_time, t + self.params.step_time):
+#                 counts = self.hahn_echo_pulse(t)
+#                 save(counts, counts_st)  # save counts on stream
+#                 save(n, n_st)  # save number of iteration inside for_loop
+#
+#         with stream_processing():
+#             counts_st.buffer(len(t_vec)).average().save("counts")
+#             n_st.save("iteration")
+#
+#
+# qos.add_experiment(ODMR, "odmr", config)
+# qos.add_experiment(ODMR, "odmr2", config)
+# qos.add_experiment(Time_Resolved, "tr", config)
+#
+# app = FastAPI()
+# app.include_router(qos.router)
+# uvicorn.run(app, host="127.0.0.1", port=8000)
 
 # <in a new file
 # r = requests.get(com('create_qmm'))
