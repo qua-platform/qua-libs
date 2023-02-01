@@ -1,26 +1,27 @@
 # Intro to octave
 This folder contains scripts for checking the octave and integrating it into your running experiments. 
 
-## octave health check
-The file `health_check_octave.py` contains some basics test for the octave. 
+## This folder contains four python files 
+1. `health_check_octave.py` runs some basics octave tests.
+2. `hello_octave.py` shows an example of running a program with the octave.
+3. `configuration.py` is the configuration file for `hello_octave.py`.
+4. `set_octave.py` sets all octave parameters.
 
-## run experiment with octave
-In the file `hello_octave.py` you can see an example of integrating octave into your experiments! 
-It uses the `configuration.py` file for the config and `set_octave` file for setting all the octave parameters.
 
 ### `set_octave.py`
-You can set all octave parameters in the `set_octave.py` file. 
 
 Let's talk about each function separately:
 
 1. `get_elements_used_in_octave` function returns a list of all the elements that the octave is using for a specific program. This is for a later use. 
 
-2. `octave_configuration` function:
-2.1. Creates a `calibration_db.json` file where the calibration parameters will be updated.
-2.2. Adds the octave devices to the octave_config object
-2.3. Sets the port mapping for each OPX-octave pair. 
 
-Note that the default is having only one octave. If you have more than one you need set `more_than_one_octave=True`, enter the `set_octave.py` file and change the relevant parameters under this flag. 
+2. `octave_configuration` function:
+   1. Creates a `calibration_db.json` file where the calibration parameters will be updated.
+   2. Adds the octave devices to the octave_config object
+   3. Sets the port mapping for each OPX-octave pair. 
+   
+   Note that the default is to use only one octave. If you have more than one you need set `more_than_one_octave=True`, enter the `set_octave.py` file and change the relevant parameters under this flag. 
+
 
 3. `octave_settings` function:
    1. Sets the clock. The default is internal. 
