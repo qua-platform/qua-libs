@@ -12,7 +12,7 @@ import time
 ############################
 # Set octave configuration #
 ############################
-octave_config = octave_configuration(default_port_mapping=True, octave_ip=octave_ip, octave_port=octave_port)
+octave_config = octave_configuration(octave_ip=octave_ip, octave_port=octave_port)
 
 ###################################
 # Open Communication with the QOP #
@@ -31,7 +31,7 @@ with program() as hello_octave:
 ###################
 octave_settings(qmm=qmm, qm=qmm.open_qm(config), prog=hello_octave, octave_config=octave_config)
 
-simulate = True
+simulate = False
 if simulate:
     simulation_config = SimulationConfig(duration=400)  # in clock cycles
     job_sim = qmm.simulate(config, hello_octave, simulation_config)
@@ -42,17 +42,6 @@ else:
     job = qm.execute(hello_octave)
     # Execute does not block python! As this is an infinite loop, the job would run forever. In this case, we've put a 10
     # seconds sleep and then halted the job.
-    time.sleep(10)
-    job.halt()
-
-#
-# if calibrate:
-#     ###############
-#     # calibration #
-#     ###############
-#     calibration(qmm=qmm, qm=qmm.open_qm(config), prog=hello_octave, octave_config=octave_config)
-#     qm = qmm.open_qm(config)
-#     job = qm.execute(hello_octave)
-#     time.sleep(30)
-#     job.halt()
+    # time.sleep(10)
+    # job.halt()
 

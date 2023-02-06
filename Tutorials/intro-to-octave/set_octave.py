@@ -7,6 +7,7 @@ import numpy as np
 from qm import generate_qua_script
 from qm.octave import QmOctaveConfig
 import re
+# from configuration import *
 
 
 def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
@@ -53,9 +54,9 @@ def octave_configuration(default_port_mapping=True, more_than_one_octave=False, 
     :return: octave_config ocject
     """
     if octave_ip is None:
-        raise ('Please insert octave ip')
+        raise ('Please inser octave ip')
     if octave_port is None:
-        raise ('Please insert octave port')
+        raise ('Please inser octave port')
 
     octave_config = QmOctaveConfig()
     octave_config.set_calibration_db(os.getcwd()) # Saves the `calibration_db` file in the current working directory. Can chnage this by giving a spesipic path
@@ -155,6 +156,5 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
         if_freq = [config['elements'][octave_elements[i]]['intermediate_frequency'] for i in
                    range(len(octave_elements))]
         for i in range(len(octave_elements)):
-            qm.octave.calibrate_element(octave_elements[i], [(lo_freq[i], if_freq[i])])
+            qm.octave.calibrate_element(octave_elements[i], [(float(lo_freq[i]), float(if_freq[i]))])
             qm = qmm.open_qm(config)
-

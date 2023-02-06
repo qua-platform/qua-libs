@@ -1,8 +1,8 @@
 
-opx_ip = '172.16.2.115'
+opx_ip = '172.0.0.1'
 opx_port = 80
 
-octave_ip = '172.16.2.115'
+octave_ip = '172.0.0.1'
 octave_port = 50
 IF = 50e6
 LO = 6e9

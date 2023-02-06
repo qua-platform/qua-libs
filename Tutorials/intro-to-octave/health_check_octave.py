@@ -9,9 +9,9 @@ from qualang_tools.units import unit
 octave_health_check.py: checks the octave's clock, synthesizers, up-converters, triggers, down-converters and calibration
 """
 
-opx_ip = '172.16.2.115'
+opx_ip = '172.0.0.1'
 opx_port = 80
-octave_ip = '172.16.2.115'
+octave_ip = '172.0.0.1'
 octave_port = 50
 IF = 50e6
 LO = 6e9
@@ -66,7 +66,7 @@ config = {
             },
             "outputs": {
                 "out1": ("con1", 1),
-                "out2": ("con2", 2),
+                "out2": ("con1", 2),
             },
             "time_of_flight": 24,
             "smearing": 0,
@@ -276,18 +276,22 @@ set_LO_and_RF_gain_mode = True
 check_synthesizers = False
 check_up_converters = False
 check_triggers = False
-check_down_converters = True
+check_down_converters = False
 calibration = False
 
 ###########################
 # Step 1 : clock settings #
 ###########################
 if set_clock:
-    internal_clock = True
-    if internal_clock:
-        qmm.octave_manager.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
+    external_clock = False
+    if external_clock == '10MHz':
+        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
+    elif external_clock == '100MHz':
+        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_100)
+    elif external_clock == '1000MHz' or external_clock == '1GHz':
+        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_1000)
     else:
-        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_1000)   # When using OPT use ClockFrequency.MHZ_1000. Can change it to: 10MHz, 100MHz
+        qmm.octave_manager.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
 
     # connect clock out from rear panel to oscilloscope and see 1GHz
 ############################################
@@ -342,15 +346,16 @@ if check_down_converters:
     # Connect RF1 ->RF1In, RF2 ->RF2In
     # Connect IFOUT1-> AI1 , IFOUT2-> AI2
     check_down_converter_1 = True
-    check_down_converter_2 = True
+    check_down_converter_2 = False
     u = unit()
     if check_down_converter_1:
+        qm.octave.set_rf_output_gain(elements[0], -10)
         qm.octave.set_qua_element_octave_rf_in_port(elements[0], "octave1", 1)
         qm.octave.set_downconversion(elements[0], lo_source=RFInputLOSource.Internal)
 
         with program() as hello_octave_readout_1:
             raw_ADC_1 = declare_stream(adc_trace=True)
-            measure('readout'*amp(0.04), 'qe1', raw_ADC_1)
+            measure('readout', 'qe1', raw_ADC_1)
             with stream_processing():
                 raw_ADC_1.input1().save('adc_1')
                 raw_ADC_1.input2().save('adc_2')
@@ -360,7 +365,7 @@ if check_down_converters:
         res.wait_for_all_values()
 
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        fig.subtitle('Inputs from down conversion 1')
+        fig.suptitle('Inputs from down conversion 1')
         adc_1 = u.raw2volts(res.get("adc_1").fetch_all())
         ax1.plot(adc_1, label="Input 1")
         ax1.set_title("amp VS time Input 1")
@@ -374,11 +379,12 @@ if check_down_converters:
         ax2.set_ylabel("Signal amplitude [V]")
 
     if check_down_converter_2:
+        qm.octave.set_rf_output_gain(elements[1], -10)
         qm.octave.set_qua_element_octave_rf_in_port(elements[1], "octave1", 2)
         qm.octave.set_downconversion(elements[1], lo_source=RFInputLOSource.Dmd2LO)
         with program() as hello_octave_readout_2:
             raw_ADC_2 = declare_stream(adc_trace=True)
-            measure('readout'*amp(0.04), 'qe2', raw_ADC_2)
+            measure('readout', 'qe2', raw_ADC_2)
             with stream_processing():
                 raw_ADC_2.input1().save('adc_1')
                 raw_ADC_2.input2().save('adc_2')
@@ -388,7 +394,7 @@ if check_down_converters:
         res.wait_for_all_values()
 
         fig, (ax1, ax2) = plt.subplots(1, 2)
-        fig.subtitle('Inputs from down conversion 2')
+        fig.suptitle('Inputs from down conversion 2')
         adc_1 = u.raw2volts(res.get("adc_1").fetch_all())
         ax1.plot(adc_1, label="Input 1")
         ax1.set_title("amp VS time Input 1")
@@ -408,13 +414,13 @@ if calibration:
     job = qm.execute(hello_octave)
     time.sleep(30) #The program will run for 30 seconds
     job.halt()
-    # Step 5.2: Run these in order to calibrate
+    # Step 5.2: Run this in order to calibrate
     for i in range(len(elements)):
         qm.octave.calibrate_element(elements[i], [(LO, IF)])  # can provide many pairs of LO & IFs.
         qm = qmm.open_qm(config)
     #Step 5.3: Run these and look at the spectrum analyzer and check if you get 1 peak at LO+IF (i.e. 6.05GHz)
     job = qm.execute(hello_octave)
-    time.sleep(30) #The program will run for 30 seconds8
+    time.sleep(30) #The program will run for 30 seconds
     job.halt()
 
 
