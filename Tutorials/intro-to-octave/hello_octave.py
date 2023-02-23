@@ -9,10 +9,7 @@ from configuration import *
 from qm import SimulationConfig
 import time
 
-octave_ip = "172.17.2.138"
-opx_ip = "172.17.2.137"
-octave_port = 80
-opx_port = 80
+
 ############################
 # Set octave configuration #
 ############################
