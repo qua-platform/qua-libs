@@ -1,8 +1,7 @@
-
-opx_ip = '172.0.0.1'
+opx_ip = "172.0.0.1"
 opx_port = 80
 
-octave_ip = '172.0.0.1'
+octave_ip = "172.0.0.1"
 octave_port = 50
 IF = 50e6
 LO = 6e9
@@ -39,11 +38,11 @@ config = {
     "elements": {
         "qe1": {
             "mixInputs": {
-                    "I": ("con1", 1),
-                    "Q": ("con1", 2),
-                    "lo_frequency": LO,
-                    "mixer": "octave_octave1_1", # a fixed name, do not change.
-                },
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
+                "lo_frequency": LO,
+                "mixer": "octave_octave1_1",  # a fixed name, do not change.
+            },
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -144,34 +143,32 @@ config = {
                 },
             },
         },
-
-
     },
     "pulses": {
-            "const": {
-                "operation": "control",
-                "length": 1000,
-                "waveforms": {
-                    "I": "const_wf",
-                    "Q": "zero_wf",
-                },
-                "digital_marker": "ON",
+        "const": {
+            "operation": "control",
+            "length": 1000,
+            "waveforms": {
+                "I": "const_wf",
+                "Q": "zero_wf",
             },
-            "readout_pulse": {
-                "operation": "measurement",
-                "length": 1000,
-                "waveforms": {
-                    "I": "readout_wf",
-                    "Q": "zero_wf",
-                },
-                "integration_weights": {
-                    "cos": "cosine_weights",
-                    "sin": "sine_weights",
-                    "minus_sin": "minus_sine_weights",
-                },
-                "digital_marker": "ON",
-            },
+            "digital_marker": "ON",
         },
+        "readout_pulse": {
+            "operation": "measurement",
+            "length": 1000,
+            "waveforms": {
+                "I": "readout_wf",
+                "Q": "zero_wf",
+            },
+            "integration_weights": {
+                "cos": "cosine_weights",
+                "sin": "sine_weights",
+                "minus_sin": "minus_sine_weights",
+            },
+            "digital_marker": "ON",
+        },
+    },
     "waveforms": {
         "zero_wf": {
             "type": "constant",
@@ -203,42 +200,42 @@ config = {
             "cosine": [(0.0, 1000)],
             "sine": [(-1.0, 1000)],
         },
-        },
+    },
     "mixers": {
-            "octave_octave1_1": [
-                {
-                    "intermediate_frequency": IF,
-                    "lo_frequency": LO,
-                    "correction": (1, 0, 0, 1),
-                },
-            ],
-            "octave_octave1_2": [
+        "octave_octave1_1": [
             {
                 "intermediate_frequency": IF,
                 "lo_frequency": LO,
                 "correction": (1, 0, 0, 1),
             },
         ],
-            "octave_octave1_3": [
-                {
-                    "intermediate_frequency": IF,
-                    "lo_frequency": LO,
-                    "correction": (1, 0, 0, 1),
-                },
-            ],
-            "octave_octave1_4": [
-                {
-                    "intermediate_frequency": IF,
-                    "lo_frequency": LO,
-                    "correction": (1, 0, 0, 1),
-                },
-            ],
-            "octave_octave1_5": [
-                {
-                    "intermediate_frequency": IF,
-                    "lo_frequency": LO,
-                    "correction": (1, 0, 0, 1),
-                },
-            ],
-        },
+        "octave_octave1_2": [
+            {
+                "intermediate_frequency": IF,
+                "lo_frequency": LO,
+                "correction": (1, 0, 0, 1),
+            },
+        ],
+        "octave_octave1_3": [
+            {
+                "intermediate_frequency": IF,
+                "lo_frequency": LO,
+                "correction": (1, 0, 0, 1),
+            },
+        ],
+        "octave_octave1_4": [
+            {
+                "intermediate_frequency": IF,
+                "lo_frequency": LO,
+                "correction": (1, 0, 0, 1),
+            },
+        ],
+        "octave_octave1_5": [
+            {
+                "intermediate_frequency": IF,
+                "lo_frequency": LO,
+                "correction": (1, 0, 0, 1),
+            },
+        ],
+    },
 }
