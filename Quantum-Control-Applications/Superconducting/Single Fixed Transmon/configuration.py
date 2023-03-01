@@ -145,6 +145,7 @@ time_of_flight = 180
 short_readout_len = 500
 short_readout_amp = 0.4
 readout_len = 5000
+extended_readout_len = 6000
 readout_amp = 0.2
 long_readout_len = 50000
 long_readout_amp = 0.1
@@ -207,6 +208,7 @@ config = {
                 "displace": "displace_pulse",
                 "short_readout": "short_readout_pulse",
                 "readout": "readout_pulse",
+                "readout_extended_weights": "readout_extended_weights_pulse",
                 "long_readout": "long_readout_pulse",
             },
             "outputs": {
@@ -337,6 +339,20 @@ config = {
             },
             "digital_marker": "ON",
         },
+        "readout_extended_weights_pulse": {
+            "operation": "measurement",
+            "length": readout_len,
+            "waveforms": {
+                "I": "readout_wf",
+                "Q": "zero_wf",
+            },
+            "integration_weights": {
+                "cos": "cosine_extended_weights",
+                "sin": "sine_extended_weights",
+                "minus_sin": "minus_sine_extended_weights",
+            },
+            "digital_marker": "ON",
+        },
         "long_readout_pulse": {
             "operation": "measurement",
             "length": long_readout_len,
@@ -417,6 +433,18 @@ config = {
         "minus_sine_weights": {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
+        },
+        "cosine_extended_weights": {
+            "cosine": [(1.0, extended_readout_len)],
+            "sine": [(0.0, extended_readout_len)],
+        },
+        "sine_extended_weights": {
+            "cosine": [(0.0, extended_readout_len)],
+            "sine": [(1.0, extended_readout_len)],
+        },
+        "minus_sine_extended_weights": {
+            "cosine": [(0.0, extended_readout_len)],
+            "sine": [(-1.0, extended_readout_len)],
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
