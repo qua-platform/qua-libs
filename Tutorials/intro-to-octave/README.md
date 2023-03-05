@@ -54,7 +54,7 @@ Let's talk about each function separately:
          Note: setting the LO frequency may be done only if LO source is internal.
       2. Gain - The default is zero gain. You can change it by entering `set_octave.py` file and modify the relevant command
       3. Trigger - The default is on. You can change it by entering `set_octave.py` file and modify the relevant command
-        * Note: the 4 gain options are: on, off, trig_normal and trig_inverse. 
+        * Note: the 4 options for the trigger are: on, off, trig_normal and trig_inverse. 
    3. Sets the down-converters modules
       1. The default is: 
          1. connecting RF1 -> RF1in, RF2 -> RF2in
