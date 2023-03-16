@@ -23,3 +23,16 @@ class QDACII():
 
     def __exit__(self):
         self.close()
+
+    def setup_qdac_channels_for_triggered_list(self, channels, trigger_sources, dwell_s_vals):
+
+        for channel, trigger, dwell_s in zip(channels, trigger_sources, dwell_s_vals):
+            # Setup LIST connect to external trigger
+            # ! Remember to set FIXed mode if you later want to set a voltage directly
+            self.write(f"sour{channel}:dc:list:dwell {dwell_s}")
+            self.write(f"sour{channel}:dc:list:tmode stepped")  # point by point trigger mode
+            self.write(f"sour{channel}:dc:trig:sour {trigger}")
+            self.write(f"sour{channel}:dc:init:cont on")
+            # Always make sure that you are in the correct DC mode (LIST) in case you have switched to FIXed
+            self.write(f"sour{channel}:dc:mode LIST")
+

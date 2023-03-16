@@ -7,26 +7,18 @@ Performs a large 2d scan using both the op-x and the qdac in triggered list mode
 A list of voltages is sent to each qdac channel. These voltages are a grid; at each point in this grid, the opx
 will perform a 2d scan. The scans are then stitched together to create an overall large scan.
 
-To use, the size of the opx scan at the device and the deltas in the voltages sent to the qdac must be calibrated.
-If not, there will be data missing or regions around the perimeter of the opx scans will be measured multiple times
-(in multiple opx scans).
+To use, the size of the opx scan at the device must be scaled with respect to the qdac voltges by calibratring the 
+voltage on the device. If not, there will be data missing or regions around the perimeter of the opx scans will be 
+measured multiple times (in multiple opx scans).
 
 This file includes functions for setting up the qdac to the correct settings. 
 
 """
 
-
-
 import matplotlib
-import numpy as np
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-
 from qm.qua import *
-from macros import (
-    round_to_fixed,
-)
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.simulate import SimulationConfig, LoopbackInterface
 from configuration import config, qop_ip
@@ -35,19 +27,13 @@ from qualang_tools.plot import interrupt_on_close
 from qm.simulate.credentials import create_credentials
 from qualang_tools.loops import from_array
 from python_macros import reshape_for_do2d
-
-from qdacii_visa import QDACII
-
+from QDAC_II import QDACII
 from macros import do2d
 
-### variables for small scan
+### variables for OPX scan
 
-opx_x_amplitude = 0.3
-opx_y_amplitude = 0.3
-
-opx_x_resolution = 10
-opx_y_resolution = 10
-
+opx_amplitude = [0.3, 0.3]
+opx_resolution = [4, 4]
 n_averages = 1
 
 
@@ -55,50 +41,30 @@ n_averages = 1
 
 # equivalent dc amplitudes for the do2d scan - i.e. how large is the amplitude of the fast
 # scan in terms of the qdac output
-do2d_x_dc_amplitude = 0.1
-do2d_y_dc_amplitude = 0.1
+opx_qdac_scale = [1, 1] # this needs to be calibrated and affected by attenuators, dividers etc. Not necessarly the same for x and y
+number_of_tiles = [4, 4]
+scan_center = [0, 0]  # in voltage
+small_scan_window = [opx_amplitude[i] * opx_qdac_scale[i] for i in range(2)]
+full_scan_window = [number_of_tiles[i] * opx_amplitude[i] * opx_qdac_scale[i] for i in range(2)]
 
+qdac_x_vals = [scan_center[0] - full_scan_window[0]/2 + small_scan_window[0]/2 + i * small_scan_window[0] for i in range(number_of_tiles[0])]
+qdac_y_vals = [scan_center[1] - full_scan_window[1]/2 + small_scan_window[1]/2 + i * small_scan_window[1] for i in range(number_of_tiles[1])]
+qdac_wait_time = 7000 // 4  # in clock cycles
 
-# etc etc. For now just use values here:
-qdac_x_resolution = 10
-qdac_y_resolution = 10
-
-
-qdac_x_vals = np.linspace(0.5, 1, qdac_x_resolution)
-qdac_y_vals = np.linspace(0.4, 0.9, qdac_y_resolution)
-qdac_wait_time = 2000 //4  # in clock cycles
-
-wait_time = 16 // 4
-
-qdac_dwell_s = 5e-6
+wait_time = 16 // 4  # voltage stabilization for OPX ramps
+qdac_dwell_s = 5e-6 # voltage stabilization for qdac ramps
 
 def reshape_and_stitch(data):
     """
     Reorder the data as measured into an array of
-    (qdac_x_resolution * opx_x_resolution, qdac_y_resolution * opx_y_resolution)
+    (number_of_tiles_x * opx_resolution[0], number_of_tiles_y * opx_resolution[1])
     """
-    return reshape_for_do2d(data, n_averages, qdac_x_resolution, qdac_y_resolution, opx_x_resolution,
-                            opx_y_resolution)
-
-
-# this should be in the driver not here but I don't want to make a custom driver that people aren't using
-def setup_qdac_channels_for_triggered_list(qdac, channels, trigger_sources, dwell_s_vals):
-
-    for channel, trigger, dwell_s in zip(channels, trigger_sources, dwell_s_vals):
-        # Setup LIST connect to external trigger
-        # ! Remember to set FIXed mode if you later want to set a voltage directly
-        qdac.write(f"sour{channel}:dc:list:dwell {dwell_s}")
-        qdac.write(f"sour{channel}:dc:list:tmode stepped")  # point by point trigger mode
-        qdac.write(f"sour{channel}:dc:trig:sour {trigger}")
-        qdac.write(f"sour{channel}:dc:init:cont on")
-
-        # Always make sure that you are in the correct DC mode (LIST) in case you have switched to FIXed
-        qdac.write(f"sour{channel}:dc:mode LIST")
+    return reshape_for_do2d(data, n_averages, number_of_tiles[0], number_of_tiles[1], opx_resolution[0],
+                            opx_resolution[1])
 
 
 with program() as do_large_2d:
-
-    # for saving set data
+    # for saving set points data
     qdac_x = declare(fixed)
     qdac_y = declare(fixed)
 
@@ -133,8 +99,8 @@ with program() as do_large_2d:
             wait(qdac_wait_time)
 
             # will save x and y streams for opx set values
-            do2d('G1_sticky', opx_x_amplitude, opx_x_resolution,
-                 'G2_sticky', opx_y_amplitude, opx_y_resolution,
+            do2d('G1_sticky', opx_amplitude[0], opx_resolution[0],
+                 'G2_sticky', opx_amplitude[1], opx_resolution[1],
                  n_averages, I, Q, I_stream, Q_stream,
                  opx_x_stream, opx_y_stream, wait_time)
 
@@ -144,7 +110,7 @@ with program() as do_large_2d:
     with stream_processing():
         for stream_name, stream, in zip(["I", "Q"],
                                         [I_stream, Q_stream]):
-            stream.buffer(opx_x_resolution, opx_y_resolution).save_all(stream_name)
+            stream.buffer(opx_resolution[0], opx_resolution[1]).save_all(stream_name)
         opx_x_stream.save_all("x")
         opx_y_stream.save_all("y")
         iteration_stream.save('iteration')
@@ -153,16 +119,14 @@ with program() as do_large_2d:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-simulation = False
+simulation = True
 
 if simulation:
 
-    simulation_duration = 10000  # ns
+    simulation_duration = 50000  # ns
 
     qmm = QuantumMachinesManager(
-        host='product-52ecaa43.dev.quantum-machines.co',
-        port=443,
-        credentials=create_credentials()
+        host=qop_ip,
     )
 
     job = qmm.simulate(
@@ -179,52 +143,31 @@ if simulation:
     output_samples.con1.plot()
     plt.show()
 
-    # fetching the data
-    result_handles = job.result_handles
-
-    I_handle, Q_handle, x_handle, y_handle = (
-        result_handles.I,
-        result_handles.Q,
-        result_handles.x,
-        result_handles.y,
-    )
-    I, Q, x, y = (
-        I_handle.fetch_all(),
-        Q_handle.fetch_all(),
-        x_handle.fetch_all(),
-        y_handle.fetch_all(),
-    )
-
-    I = reshape_and_stitch(I)
-    Q = reshape_and_stitch(Q)
-
-
 else:
 
     # Open a quantum machine
-    qmm = QuantumMachinesManager(qop_ip, port=85)
+    qmm = QuantumMachinesManager(qop_ip)
     qm = qmm.open_qm(config)
 
     # connect and set up the qdac
-    with QDACII() as qdac:
 
-        x_channel = 1
-        y_channel = 2
+    qdac = QDACII()
+    x_channel = 7
+    y_channel = 8
 
-        # prepare qdac for receiving a list of voltages to be set to on trigger
-        setup_qdac_channels_for_triggered_list(qdac,
-                                               (x_channel, y_channel),
-                                               ('ext1', 'ext2'),
-                                               (qdac_dwell_s, qdac_dwell_s))
+    # prepare qdac for receiving a list of voltages to be set to on trigger
+    qdac.setup_qdac_channels_for_triggered_list((x_channel, y_channel),
+                                           ('ext3', 'ext4'),
+                                           (qdac_dwell_s, qdac_dwell_s))
 
-        # write list of values to each qdac channel
-        qdac.write_binary_values(f'sour{x_channel}:dc:list:volt', {qdac_x_vals})
-        qdac.write_binary_values(f'sour{y_channel}:dc:list:volt', {qdac_y_vals})
-
+    # write list of values to each qdac channel
+    qdac.write(f'sour{x_channel}:dc:list:volt {",".join(map(str, qdac_x_vals.tolist()))}')
+    qdac.write(f'sour{y_channel}:dc:list:volt {",".join(map(str, qdac_x_vals.tolist()))}')
 
 
-        # Execute the QUA program
-        job = qm.execute(do_large_2d)
+
+    # Execute the QUA program
+    job = qm.execute(do_large_2d)
 
 
     # fetch the data
@@ -241,7 +184,7 @@ else:
         Q = reshape_and_stitch(Q)
 
         # Progress bar
-        progress_counter(iteration, qdac_x_resolution * qdac_y_resolution, start_time=results.start_time)
+        progress_counter(iteration, number_of_tiles_x * number_of_tiles_y, start_time=results.start_time)
         # reshaping the data into the correct order and shape
         # Plot results
         plt.cla()

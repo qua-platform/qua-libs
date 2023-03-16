@@ -9,7 +9,7 @@ from qualang_tools.units import unit
 #############
 
 u = unit()
-qop_ip = "172.16.2.103"
+qop_ip = "172.16.2.107"
 readout_time = 256  # ns
 
 config = {
@@ -22,7 +22,10 @@ config = {
                                4: {"offset": 0.0},  # Q qubit
                                5: {"offset": 0.0},  # I resonator
                                6: {"offset": 0.0},  # Q resonator
-                               7: {'offset': 0.0}   # readout element bias (compensation) 
+                               7: {'offset': 0.0},   # readout element bias (compensation)
+                               8: {'offset': 0.0},   # readout element bias (compensation)
+                               9: {'offset': 0.0},   # readout element bias (compensation)
+                               10: {'offset': 0.0},   # readout element bias (compensation)
                                },
             "digital_outputs":
                 {i: {} for i in range(1, 11)},
@@ -48,13 +51,6 @@ config = {
                 "constant": "constant",
             },
         },
-        "Gr": {
-            "singleInput": {"port": ("con1", 7)},
-            "hold_offset": {"duration": 12},
-            "operations": {
-                "constant": "constant",
-            },
-        },
         "G1": {
             "singleInput": {"port": ("con1", 1)},
             "operations": {
@@ -68,7 +64,7 @@ config = {
             },
         },
         "RF": {
-            "singleInput": {"port": ("con1", 3)},
+            "singleInput": {"port": ("con1", 5)},
             "time_of_flight": 200,
             "smearing": 0,
             "intermediate_frequency": 100e6,
@@ -78,7 +74,7 @@ config = {
         'trigger_x': {
             "digitalInputs": {
                     "trigger_qdac": {
-                        'port': ('con1', 1),
+                        'port': ('con1', 8),
                         'delay': 0,
                         'buffer': 0
                     }
@@ -90,7 +86,7 @@ config = {
         'trigger_y': {
             "digitalInputs": {
                     "trigger_qdac": {
-                        'port': ('con1', 2),
+                        'port': ('con1', 10),
                         'delay': 0,
                         'buffer': 0
                     }
@@ -128,7 +124,7 @@ config = {
     ,
     "waveforms": {
         "constant": {"type": "constant", "sample": 0.5},
-        "measure": {"type": "constant", "sample": 0.001},
+        "measure": {"type": "constant", "sample": 0.02},
         "zero": {"type": "constant", "sample": 0.00},
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},

@@ -149,11 +149,12 @@ if simulation:
     simulation_duration = 20000  # ns
 
 
-    qmm = QuantumMachinesManager(
-        host='product-52ecaa43.dev.quantum-machines.co',
-        port=443,
-        credentials=create_credentials()
-    )
+    # qmm = QuantumMachinesManager(
+    #     host='product-52ecaa43.dev.quantum-machines.co',
+    #     port=443,
+    #     credentials=create_credentials()
+    # )
+    qmm = QuantumMachinesManager(host="172.16.2.115", port=80)
 
     job = qmm.simulate(
         config=config,
