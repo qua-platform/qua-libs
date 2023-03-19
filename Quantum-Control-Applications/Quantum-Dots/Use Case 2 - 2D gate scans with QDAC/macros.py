@@ -1,11 +1,13 @@
 """
 Created on 14/12/2021
 @author barnaby
+@author jdh
 """
 
 from qm.qua import *
 from qualang_tools.loops import from_array
 import numpy as np
+import time
 
 
 def round_to_fixed(x, number_of_bits=12):
@@ -94,7 +96,6 @@ def do2d(x_element, x_amplitude, x_resolution,
          y_element, y_amplitude, y_resolution,
          n_averages, I, Q, I_stream, Q_stream,
          x_stream, y_stream, wait_time):
-
     """
     Performs a two-dimensional raster scan for a stability diagram measurement, for instance.
 
@@ -162,26 +163,18 @@ def do2d(x_element, x_amplitude, x_resolution,
 
         ramp_to_zero(x_element)
 
-import numpy as np
-import time
 
-
-def reshape_for_do2d(data: np.ndarray, n_averages, qdac_x_resolution, qdac_y_resolution, opx_x_resolution,
+def reshape_for_do2d(data: np.ndarray, qdac_x_resolution, qdac_y_resolution, opx_x_resolution,
                      opx_y_resolution):
     """
     Reshapes data from a large do2d scan using the opx and qdac. This is necessary because the averaging cannot take
     place on the opx in this case due to a quirk of the averaging protocol in stream processing.
     """
-    # reshaped = data.reshape(-1, n_averages, opx_x_resolution, opx_y_resolution)
-    # averaged = reshaped.mean(axis=1)
 
     to_stack = data.reshape(qdac_x_resolution, qdac_y_resolution, opx_x_resolution, opx_y_resolution)
     stacked = np.hstack([np.vstack(array) for array in to_stack])
 
     return stacked
-
-
-
 
 
 class TimingModule:

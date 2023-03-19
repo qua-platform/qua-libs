@@ -2,20 +2,25 @@
 Created on 31/10/2022
 @author jdh
 
-Performs a large 2d scan using both the op-x and the qdac in triggered list mode.
+Performs a large 2d scan using both the op-x and the qdac in triggered list mode. Can be easily extended to more than
+two dimensions, if necessary.
 
 A list of voltages is sent to each qdac channel. These voltages are a grid; at each point in this grid, the opx
-will perform a 2d scan. The scans are then stitched together to create an overall large scan.
+will perform a 2d scan (called 'OPX scan' in the comments here). The scans are then stitched together to create a
+larger plot made up of tiles from the OPX scans (called 'large scan' here).
 
-To use, the qdac voltage setpoints must be scaled with respect to the size of the opx scan at the device by calibratring
+To use, the qdac voltage set points must be scaled with respect to the size of the opx scan at the device by calibrating
 the voltage on the device. If not, there will be data missing or regions around the perimeter of the opx scans will be
-measured multiple times (in multiple opx scans).
+measured multiple times (be present in multiple opx scans).
 
-This file includes functions for setting up the qdac to the correct settings. 
+This file includes functions for setting up the qdac to the correct settings.
 
+Throughout, lists are used to define variables for the [x, y] parameters of the scan(s).
 """
 
 import matplotlib
+import numpy as np
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from qm.qua import *
@@ -27,34 +32,36 @@ from qualang_tools.plot import interrupt_on_close
 from qm.simulate.credentials import create_credentials
 from qualang_tools.loops import from_array
 from macros import reshape_for_do2d
-# from QDAC_II import QDACII
 from macros import do2d
+# from QDAC_II import QDACII
 from QDAC_II import FakeQDAC as QDACII
 
 # variables for OPX scan [x parameter, y parameter]
-opx_amplitude = [0.3, 0.3]
-opx_resolution = [4, 4]
-n_averages = 1
+opx_amplitude = [0.3, 0.2]
+opx_resolution = [4, 3]
+n_averages = 200
 
 # variables for large scan
 
 # equivalent dc amplitudes for the do2d scan - i.e. how large is the amplitude of the fast
 # scan in terms of the qdac output
-
 # this needs to be calibrated and is affected by attenuators, dividers etc. Not necessarily the same for x and y
-opx_qdac_scale = [1, 1]
+opx_qdac_scale = [1, 2]
 
-number_of_tiles = [5, 5]
-scan_center = [0, 0]  # in voltage
+number_of_tiles = [5, 4]
+scan_center = [0, 1]  # in voltage (qdac voltage at centre of scan)
 
+# size of small (opx) scan in terms of qdac voltage
 small_scan_window = [opx_amplitude[i] * opx_qdac_scale[i] for i in range(2)]
-full_scan_window = [number_of_tiles[i] * opx_amplitude[i] * opx_qdac_scale[i] for i in range(2)]
+
+# size of large scan in terms of qdac voltage
+large_scan_window = [number_of_tiles[i] * opx_amplitude[i] * opx_qdac_scale[i] for i in range(2)]
 
 # the setpoint voltages for the qdac as a list of [x channel values, y channel values]
 qdac_vals = [
     np.linspace(
-        scan_center[i] - full_scan_window[i] / 2 + small_scan_window[i] / 2,
-        scan_center[i] + full_scan_window[i] / 2 - small_scan_window[i] / 2,
+        scan_center[i] - large_scan_window[i] / 2 + small_scan_window[i] / 2,
+        scan_center[i] + large_scan_window[i] / 2 - small_scan_window[i] / 2,
         number_of_tiles[i]
     )
     for i in range(2)
@@ -71,7 +78,7 @@ def reshape_and_stitch(data):
     Reorder the data as measured into an array of
     (number_of_tiles_x * opx_resolution[0], number_of_tiles_y * opx_resolution[1])
     """
-    return reshape_for_do2d(data, n_averages, number_of_tiles[0], number_of_tiles[1], opx_resolution[0],
+    return reshape_for_do2d(data, number_of_tiles[0], number_of_tiles[1], opx_resolution[0],
                             opx_resolution[1])
 
 
@@ -96,7 +103,7 @@ with program() as do_large_2d:
     iteration_counter = declare(fixed, value=0)
     iteration_stream = declare_stream()
 
-    # probably best to average inside the movement of the qdac because
+    # best to average inside the movement of the qdac because
     # otherwise we incur overhead from having to move it a lot
 
     with for_(*from_array(qdac_x, qdac_vals[0])):
@@ -118,9 +125,7 @@ with program() as do_large_2d:
     with stream_processing():
         for stream_name, stream, in zip(["I", "Q"],
                                         [I_stream, Q_stream]):
-            # stream.buffer(opx_resolution[0], opx_resolution[1]).save_all(stream_name)
-            stream.buffer(opx_resolution[0], opx_resolution[1], n_averages).map(FUNCTIONS.average(2)).save_all(stream_name)
-            # stream.buffer(n_averages).buffer(opx_resolution[0]).buffer(opx_resolution[1]).map(FUNCTIONS.average(0))
+            stream.buffer(opx_resolution[0], opx_resolution[1]).buffer(n_averages).map(FUNCTIONS.average()).save_all(stream_name)
         opx_x_stream.save_all("x")
         opx_y_stream.save_all("y")
         iteration_stream.save('iteration')
@@ -202,3 +207,17 @@ else:
         plt.title("Stability diagram")
         plt.xlabel("G1" + "_scan [V]")
         plt.ylabel("G2" + "_scan [V]")
+
+"""
+Remove for production, but this is a validation of the reshape_and_stitch function: 
+"""
+
+# each matrix is the same shape as the I data, and each is filled with the value
+# corresponding to the order in which they are measured by the OPX
+test_array = np.ones_like(I) * np.arange(0, I.shape[0])[:, np.newaxis, np.newaxis]
+plt.figure()
+plt.imshow(reshape_and_stitch(test_array))
+plt.colorbar()
+plt.show()
+
+# the plot is in the correct order, showing that reshape_and_stitch has the correct functionality
