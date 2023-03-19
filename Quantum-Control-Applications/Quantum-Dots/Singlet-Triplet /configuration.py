@@ -32,8 +32,6 @@ top_hat_low = 0.
 top_hat_high = 0.5
 top_hat_waveform = [top_hat_low] * 1 + [top_hat_high] * 14 + [top_hat_low] * 1
 
-transition_measure_full_length = 512
-transition_measure_sliced_length = 1000
 ramp_pulse_length = 100
 constant_pulse_length = 16
 jump_pulse_length = 16
@@ -87,9 +85,7 @@ config = {
             'intermediate_frequency': rf_frequency,
             'outputs': {'out1': ('con1', 1)},
             'operations': {
-                'measure': 'measure',
-                'transition_measure_full': 'transition_measure_full',
-                'transition_measure_sliced': 'transition_measure_sliced'
+                'measure': 'measure'
             },
         },
 
@@ -131,28 +127,6 @@ config = {
                 'integW1': 'measure_I',
                 'integW2': 'measure_Q',
             },
-        },
-
-        'transition_measure_full': {
-            'operation': 'measurement',
-            'length': transition_measure_full_length,
-            'waveforms': {'single': 'measure'},
-            'digital_marker': 'ON',
-            'integration_weights': {
-                'integW1': 'transition_full_I',
-                'integW2': 'transition_full_Q',
-            },
-        },
-
-        'transition_measure_sliced': {
-            'operation': 'measurement',
-            'length': transition_measure_sliced_length,
-            'waveforms': {'single': 'measure'},
-            'digital_marker': 'ON',
-            'integration_weights': {
-                'integW1': 'transition_sliced_I',
-                'integW2': 'transition_sliced_Q',
-            },
         }
     },
     'waveforms': {
@@ -172,23 +146,7 @@ config = {
         "measure_Q": {
             "cosine": [(0., measurement_length)],
             "sine": [(1., measurement_length)]
-        },
-        "transition_full_I": {
-            "cosine": [(1., transition_measure_full_length)],
-            "sine": [(0., transition_measure_full_length)]
-        },
-        "transition_full_Q": {
-            "cosine": [(0., transition_measure_full_length)],
-            "sine": [(1., transition_measure_full_length)]
-        },
-        "transition_sliced_I": {
-            "cosine": [(1., transition_measure_sliced_length)],
-            "sine": [(0., transition_measure_sliced_length)]
-        },
-        "transition_sliced_Q": {
-            "cosine": [(0., transition_measure_sliced_length)],
-            "sine": [(1., transition_measure_sliced_length)]
-        },
+        }
 
     },
     'mixers': {}
