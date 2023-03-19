@@ -2,12 +2,17 @@
 Created on 22/11/2022
 @author jdh
 
-Example program making use of the pause/resume functionality of the opx. In this case, a list of voltages is
-created that will be set on an external instrument. At each of these voltages, a generic macro is run.
+Example program making use of triggering an external instrument. This program does not care about what happens
+when that instrument receives the trigger; it is just a program shell to demonstrate the concept. After each trigger,
+a generic macro is run on the opx.
 
 As an example of how this could be used, imagine the macro performing a series of measurements that result in a
 signal-to-noise ratio. We could use this program to sweep the voltage supplied to an amplifier and run the SNR
 measurement on the opx at each voltage on the amplifier.
+
+This program requires that your instrument has an option whereby you send it a predefined list of parameter values
+(here the variable set_variables_for_external_instrument) that are sequentially set after the instrument receives a
+trigger. If your instrument does not have this functionality, the generic_pause_resume program may be more helpful.
 """
 
 import matplotlib
@@ -15,13 +20,10 @@ import numpy as np
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+import time
 
 from qm.qua import *
-from macros import (
-    round_to_fixed,
-)
 
-from python_macros import TimingModule, reshape_for_do2d
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.simulate import SimulationConfig, LoopbackInterface
 from configuration import config, qop_ip
@@ -30,47 +32,50 @@ from qualang_tools.plot import interrupt_on_close
 from qm.simulate.credentials import create_credentials
 from qualang_tools.loops import from_array
 
-import time
 from macros import generic_macro
-
-voltages_for_external_instrument = np.linspace(0, 1, 10)
 
 def example_instrument_set_function(voltage):
     print(f'set fake instrument to {voltage}')
+
+# this array needs to be sent to your external instrument such that when it receives a trigger it sets the relevant
+# parameter to the next value in the array
+set_variables_for_external_instrument = np.linspace(0, 1, 10)
 
 with program() as generic_pause_resume:
     # for saving the external instrument's set values, we will create a QUA variable and stream.
     # this will also help us structure the program to get the correct number of pause/resume commands.
 
-    external_voltage = declare(fixed)
+    # external set variable for an instrument that is not the OPX
+    set_variable = declare(fixed)
 
-    external_voltage_stream = declare_stream()
+    # a stream to track this set variable
+    set_variable_stream = declare_stream()
 
     # variable and stream for the measured data
-    SNR_variable = declare(fixed)
-    SNR_stream = declare_stream()
+    measured_variable = declare(fixed)
+    measured_variable_stream = declare_stream()
 
     # iteration counter and stream so we can have a progress bar while the program is running.
     iteration_counter = declare(fixed, value=0)
     iteration_stream = declare_stream()
 
-    with for_(*from_array(external_voltage, voltages_for_external_instrument)):
-        pause()
+    with for_(*from_array(set_variable, set_variables_for_external_instrument)):
+
+        # play a trigger command to trigger the external instrument to update its value
+        play('trig', 'trigger_x')
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
         # anyway, but this helps us keep track of where variables are being modified.
-        generic_macro(SNR_variable, SNR_stream)
+        # this macro will use the OPX to measure some data and store it in the measured_variable_stream
+        generic_macro(measured_variable, measured_variable_stream)
 
         # put the iteration counter into the iteration stream and increment the counter
         save(iteration_counter, iteration_stream)
         assign(iteration_counter, iteration_counter + 1)
 
     with stream_processing():
-        SNR_stream.save_all('SNR')
+        measured_variable_stream.save_all('measured_variable')
         iteration_stream.save('iteration')
-
-
-
 
 #####################################
 #  Open Communication with the QOP  #
@@ -87,48 +92,51 @@ if simulation:
         credentials=create_credentials()
     )
 
-    job = qmm.simulate(
-        config=config,
-        program=generic_pause_resume,
-        simulate=SimulationConfig(
-            duration=int(simulation_duration // 4),
-        ),
-        # simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1), ('con1', 2, 'con1', 2)])
+    print('pause/resume functionality does not currently work with the simulator')
 
-    )
 
-    # this is commented out because pause/resume does not work on the simulator at the time of writing
-    # # pause/resume program
+    # job = qmm.simulate(
+    #     config=config,
+    #     program=generic_pause_resume,
+    #     simulate=SimulationConfig(
+    #         duration=int(simulation_duration // 4),
+    #     ),
+    #     # simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1), ('con1', 2, 'con1', 2)])
+    #
+    # )
 
-    # for external_voltage in voltages_for_external_instrument:
+
+    # #### pause/resume program ####
+    #
+    # for set_variable in set_variables_for_external_instrument:
     #
     #     # poll the opx to check if the program is in the paused state. If not, wait 1 and repoll.
     #     while not job.is_paused():
     #         time.sleep(1e-3)
     #
     #     # send instruction to the external instrument
-    #     example_instrument_set_function(external_voltage)
+    #     example_instrument_set_function(set_variable)
     #
     #     # resume the job. This python loop then iterates. We now await the next paused state
     #     job.resume()
 
-    plt.figure("simulated output samples")
-    output_samples = job.get_simulated_samples()
-    output_samples.con1.plot()
-
-    plt.show()
-    result_handles = job.result_handles
-
-    # fetching the data
-    SNR_handle = result_handles.SNR
-
-    SNR = SNR_handle.fetch_all()
+    # plt.figure("simulated output samples")
+    # output_samples = job.get_simulated_samples()
+    # output_samples.con1.plot()
+    #
+    # plt.show()
+    # result_handles = job.result_handles
+    #
+    # # fetching the data
+    # measured_variable_handle = result_handles.measured_variable
+    #
+    # measured_variable_data = measured_variable_handle.fetch_all()
 
 
 
 else:
 
-    qmm = QuantumMachinesManager(qop_ip, port=85)
+    qmm = QuantumMachinesManager(qop_ip)
     # Open a quantum machine
     qm = qmm.open_qm(config)
 
@@ -136,20 +144,20 @@ else:
 
     #### pause/resume program ####
 
-    for external_voltage in voltages_for_external_instrument:
+    for set_variable in set_variables_for_external_instrument:
 
         # poll the opx to check if the program is in the paused state. If not, wait 1 and repoll.
         while not job.is_paused():
             time.sleep(1e-3)
 
         # send instruction to the external instrument
-        example_instrument_set_function(external_voltage)
+        example_instrument_set_function(set_variable)
 
         # resume the job. This python loop then iterates. We now await the next paused state
         job.resume()
 
     # fetch the data
-    results = fetching_tool(job, ['SNR', 'iteration'], mode="live")
+    results = fetching_tool(job, ['measured_variable', 'iteration'], mode="live")
 
     # Live plot
     fig = plt.figure()
@@ -157,7 +165,10 @@ else:
 
     while results.is_processing():
         # Fetch results
-        SNR, iteration = results.fetch_all()
+        measured_variable_data, iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, len(voltages_for_external_instrument), start_time=results.start_time)
+        progress_counter(iteration, len(set_variables_for_external_instrument), start_time=results.start_time)
+
+        plt.plot(measured_variable_data)
+
 
