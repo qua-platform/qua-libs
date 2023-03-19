@@ -61,8 +61,8 @@ with program() as generic_pause_resume:
 
     with for_(*from_array(set_variable, set_variables_for_external_instrument)):
 
-        # play a trigger command to trigger the external instrument to update its value
-        play('trig', 'trigger_x')
+        
+        pause()
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
         # anyway, but this helps us keep track of where variables are being modified.
