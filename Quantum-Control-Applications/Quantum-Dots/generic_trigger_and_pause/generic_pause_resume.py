@@ -61,7 +61,6 @@ with program() as generic_pause_resume:
 
     with for_(*from_array(set_variable, set_variables_for_external_instrument)):
 
-        
         pause()
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
@@ -137,6 +136,7 @@ if simulation:
 else:
 
     qmm = QuantumMachinesManager(qop_ip)
+
     # Open a quantum machine
     qm = qmm.open_qm(config)
 
