@@ -9,7 +9,7 @@ from qualang_tools.units import unit
 #############
 
 u = unit()
-qop_ip = "172.16.2.107"
+qop_ip = "172.16.2.102"
 readout_time = 256  # ns
 
 config = {
