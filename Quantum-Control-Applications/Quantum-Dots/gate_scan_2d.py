@@ -85,7 +85,10 @@ with program() as gate_scan:
         ramp_to_zero("G1_sticky", duration=ramp_to_zero_duration)
 
     with stream_processing():
-        for stream_name, stream, in zip(["I", "Q"], [I_stream, Q_stream]):
+        for (
+            stream_name,
+            stream,
+        ) in zip(["I", "Q"], [I_stream, Q_stream]):
             stream.buffer(x_res * y_res).average().save(stream_name)
         x_st.save_all("x")
         y_st.save_all("y")
@@ -94,7 +97,9 @@ with program() as gate_scan:
 #  Open Communication with the QOP  #
 #####################################
 # qmm = QuantumMachinesManager(qop_ip)
-qmm = QuantumMachinesManager(host='product-52ecaa43.dev.quantum-machines.co', port=443, credentials=create_credentials())
+qmm = QuantumMachinesManager(
+    host="product-52ecaa43.dev.quantum-machines.co", port=443, credentials=create_credentials()
+)
 
 simulation = True
 

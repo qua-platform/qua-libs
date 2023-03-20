@@ -15,13 +15,14 @@ config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "analog_outputs": {1: {"offset": 0.0},  # G1
-                               2: {"offset": 0.0},  # G2
-                               3: {"offset": 0.0},  # I qubit
-                               4: {"offset": 0.0},  # Q qubit
-                               5: {"offset": 0.0},  # I resonator
-                               6: {"offset": 0.0},  # Q resonator
-                               },
+            "analog_outputs": {
+                1: {"offset": 0.0},  # G1
+                2: {"offset": 0.0},  # G2
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
+                5: {"offset": 0.0},  # I resonator
+                6: {"offset": 0.0},  # Q resonator
+            },
             "digital_outputs": {
                 1: {},  # trigger for external device
             },
@@ -95,8 +96,7 @@ config = {
                 "sin": "sin",
             },
         },
-    }
-    ,
+    },
     "waveforms": {
         "sweep": {"type": "constant", "sample": 0.499},
         "measure": {"type": "constant", "sample": 0.001},

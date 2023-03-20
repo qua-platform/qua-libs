@@ -15,7 +15,6 @@ def round_to_fixed(x, number_of_bits=12):
 
 
 def measurement_macro_with_pulses(x_element, y_element, measured_element, wait_before_meas, I, I_stream, Q, Q_stream):
-
     # jump downwards diagonally to initialise the spin state
     play("jump" * amp(+0.05), x_element, duration=100)
     play("jump" * amp(-0.05), y_element, duration=100)
@@ -51,7 +50,6 @@ def measurement_macro(measured_element, I, I_stream, Q, Q_stream):
 
 
 def spiral_order(N: int):
-
     # casting to int if necessary
     if not isinstance(N, int):
         N = int(N)

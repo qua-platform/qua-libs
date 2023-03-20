@@ -55,6 +55,7 @@ plt.show()
 
 print(f"Averaged error per step: {np.average(np.abs(output_1.flatten()-output_1_filter)[:])*100:.1f} %")
 
+
 ##################################################
 # Spiral scan
 ##################################################
@@ -121,6 +122,8 @@ plt.ylabel("output voltage (V)")
 plt.legend()
 plt.show()
 print(f"Averaged error per step: {np.average(np.abs(output_1.flatten()-output_1_filter)[:])*100:.1f} %")
+
+
 ##################################################
 # Diagonal scan
 ##################################################

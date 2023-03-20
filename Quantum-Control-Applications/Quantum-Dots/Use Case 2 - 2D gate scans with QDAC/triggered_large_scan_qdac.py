@@ -21,7 +21,7 @@ Throughout, lists are used to define variables for the [x, y] parameters of the 
 import matplotlib
 import numpy as np
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -63,7 +63,7 @@ qdac_vals = [
     np.linspace(
         scan_center[i] - large_scan_window[i] / 2 + small_scan_window[i] / 2,
         scan_center[i] + large_scan_window[i] / 2 - small_scan_window[i] / 2,
-        number_of_tiles[i]
+        number_of_tiles[i],
     )
     for i in range(2)
 ]
@@ -79,8 +79,7 @@ def reshape_and_stitch(data):
     Reorder the data as measured into an array of
     (number_of_tiles_x * opx_resolution[0], number_of_tiles_y * opx_resolution[1])
     """
-    return reshape_for_do2d(data, number_of_tiles[0], number_of_tiles[1], opx_resolution[0],
-                            opx_resolution[1])
+    return reshape_for_do2d(data, number_of_tiles[0], number_of_tiles[1], opx_resolution[0], opx_resolution[1])
 
 
 with program() as do_large_2d:
@@ -108,28 +107,44 @@ with program() as do_large_2d:
     # otherwise we incur overhead from having to move it a lot
 
     with for_(*from_array(qdac_x, qdac_vals[0])):
-        play('trig', 'trigger_x')  # check if we need condition for first iteration
+        play("trig", "trigger_x")  # check if we need condition for first iteration
 
         with for_(*from_array(qdac_y, qdac_vals[1])):
-            play('trig', 'trigger_y')
+            play("trig", "trigger_y")
             wait(qdac_wait_time)
 
             # will save x and y streams for opx set values
-            do2d('G1_sticky', opx_amplitude[0], opx_resolution[0],
-                 'G2_sticky', opx_amplitude[1], opx_resolution[1],
-                 n_averages, I, Q, I_stream, Q_stream,
-                 opx_x_stream, opx_y_stream, wait_time)
+            do2d(
+                "G1_sticky",
+                opx_amplitude[0],
+                opx_resolution[0],
+                "G2_sticky",
+                opx_amplitude[1],
+                opx_resolution[1],
+                n_averages,
+                I,
+                Q,
+                I_stream,
+                Q_stream,
+                opx_x_stream,
+                opx_y_stream,
+                wait_time,
+            )
 
             save(iteration_counter, iteration_stream)
             assign(iteration_counter, iteration_counter + 1)
 
     with stream_processing():
-        for stream_name, stream, in zip(["I", "Q"],
-                                        [I_stream, Q_stream]):
-            stream.buffer(opx_resolution[0], opx_resolution[1]).buffer(n_averages).map(FUNCTIONS.average()).save_all(stream_name)
+        for (
+            stream_name,
+            stream,
+        ) in zip(["I", "Q"], [I_stream, Q_stream]):
+            stream.buffer(opx_resolution[0], opx_resolution[1]).buffer(n_averages).map(FUNCTIONS.average()).save_all(
+                stream_name
+            )
         opx_x_stream.save_all("x")
         opx_y_stream.save_all("y")
-        iteration_stream.save('iteration')
+        iteration_stream.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -137,7 +152,6 @@ with program() as do_large_2d:
 simulation = False
 
 if simulation:
-
     simulation_duration = 50000  # ns
 
     qmm = QuantumMachinesManager(
@@ -159,7 +173,6 @@ if simulation:
     plt.show()
 
 else:
-
     # Open a quantum machine
     qmm = QuantumMachinesManager(qop_ip)
     qm = qmm.open_qm(config)
@@ -171,9 +184,7 @@ else:
     y_channel = 8
 
     # prepare qdac for receiving a list of voltages to be set to on trigger
-    qdac.setup_qdac_channels_for_triggered_list((x_channel, y_channel),
-                                                ('ext3', 'ext4'),
-                                                (qdac_dwell_s, qdac_dwell_s))
+    qdac.setup_qdac_channels_for_triggered_list((x_channel, y_channel), ("ext3", "ext4"), (qdac_dwell_s, qdac_dwell_s))
 
     # write list of values to each qdac channel
     qdac.write(f'sour{x_channel}:dc:list:volt {",".join(map(str, qdac_vals[0].tolist()))}')
@@ -183,7 +194,7 @@ else:
     job = qm.execute(do_large_2d)
 
     # fetch the data
-    results = fetching_tool(job, ["I", "Q", 'x', 'y', "iteration"], mode="live")
+    results = fetching_tool(job, ["I", "Q", "x", "y", "iteration"], mode="live")
     # Live plot
     fig = plt.figure()
     interrupt_on_close(fig, job)
@@ -201,7 +212,7 @@ else:
 
         # Plot results
         plt.cla()
-        plt.imshow(np.sqrt(reshaped_I ** 2 + reshaped_Q ** 2), aspect='auto', origin='lower')
+        plt.imshow(np.sqrt(reshaped_I**2 + reshaped_Q**2), aspect="auto", origin="lower")
         plt.colorbar()
 
         # plt.pcolor(x_axis, y_axis, np.sqrt(I**2 + Q**2))

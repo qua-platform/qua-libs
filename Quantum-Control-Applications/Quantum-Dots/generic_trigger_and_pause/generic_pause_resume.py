@@ -18,7 +18,7 @@ trigger. If your instrument does not have this functionality, the generic_pause_
 import matplotlib
 import numpy as np
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import time
 
@@ -34,8 +34,10 @@ from qualang_tools.loops import from_array
 
 from macros import generic_macro
 
+
 def example_instrument_set_function(voltage):
-    print(f'set fake instrument to {voltage}')
+    print(f"set fake instrument to {voltage}")
+
 
 # this array needs to be sent to your external instrument such that when it receives a trigger it sets the relevant
 # parameter to the next value in the array
@@ -60,7 +62,6 @@ with program() as generic_pause_resume:
     iteration_stream = declare_stream()
 
     with for_(*from_array(set_variable, set_variables_for_external_instrument)):
-
         pause()
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
@@ -73,8 +74,8 @@ with program() as generic_pause_resume:
         assign(iteration_counter, iteration_counter + 1)
 
     with stream_processing():
-        measured_variable_stream.save_all('measured_variable')
-        iteration_stream.save('iteration')
+        measured_variable_stream.save_all("measured_variable")
+        iteration_stream.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -86,13 +87,10 @@ if simulation:
     simulation_duration = 10000  # ns
 
     qmm = QuantumMachinesManager(
-        host='product-52ecaa43.dev.quantum-machines.co',
-        port=443,
-        credentials=create_credentials()
+        host="product-52ecaa43.dev.quantum-machines.co", port=443, credentials=create_credentials()
     )
 
-    print('pause/resume functionality does not currently work with the simulator')
-
+    print("pause/resume functionality does not currently work with the simulator")
 
     # job = qmm.simulate(
     #     config=config,
@@ -103,7 +101,6 @@ if simulation:
     #     # simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1), ('con1', 2, 'con1', 2)])
     #
     # )
-
 
     # #### pause/resume program ####
     #
@@ -132,9 +129,7 @@ if simulation:
     # measured_variable_data = measured_variable_handle.fetch_all()
 
 
-
 else:
-
     qmm = QuantumMachinesManager(qop_ip)
 
     # Open a quantum machine
@@ -145,7 +140,6 @@ else:
     #### pause/resume program ####
 
     for set_variable in set_variables_for_external_instrument:
-
         # poll the opx to check if the program is in the paused state. If not, wait 1 and repoll.
         while not job.is_paused():
             time.sleep(1e-3)
@@ -157,7 +151,7 @@ else:
         job.resume()
 
     # fetch the data
-    results = fetching_tool(job, ['measured_variable', 'iteration'], mode="live")
+    results = fetching_tool(job, ["measured_variable", "iteration"], mode="live")
 
     # Live plot
     fig = plt.figure()
@@ -170,5 +164,3 @@ else:
         progress_counter(iteration, len(set_variables_for_external_instrument), start_time=results.start_time)
 
         plt.plot(measured_variable_data)
-
-

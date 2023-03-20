@@ -16,20 +16,19 @@ config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "analog_outputs": {1: {"offset": 0.0},  # G1
-                               2: {"offset": 0.0},  # G2
-                               3: {"offset": 0.0},  # I qubit
-                               4: {"offset": 0.0},  # Q qubit
-                               5: {"offset": 0.0},  # I resonator
-                               6: {"offset": 0.0},  # Q resonator
-                               7: {'offset': 0.0},   # readout element bias (compensation)
-                               8: {'offset': 0.0},   # readout element bias (compensation)
-                               9: {'offset': 0.0},   # readout element bias (compensation)
-                               10: {'offset': 0.0},   # readout element bias (compensation)
-                               },
-            "digital_outputs":
-                {i: {} for i in range(1, 11)},
-
+            "analog_outputs": {
+                1: {"offset": 0.0},  # G1
+                2: {"offset": 0.0},  # G2
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
+                5: {"offset": 0.0},  # I resonator
+                6: {"offset": 0.0},  # Q resonator
+                7: {"offset": 0.0},  # readout element bias (compensation)
+                8: {"offset": 0.0},  # readout element bias (compensation)
+                9: {"offset": 0.0},  # readout element bias (compensation)
+                10: {"offset": 0.0},  # readout element bias (compensation)
+            },
+            "digital_outputs": {i: {} for i in range(1, 11)},
             "analog_inputs": {
                 1: {"offset": 0.0},
                 2: {"offset": 0.0},
@@ -71,31 +70,14 @@ config = {
             "outputs": {"out1": ("con1", 1)},
             "operations": {"measure": "measure"},
         },
-        'trigger_x': {
-            "digitalInputs": {
-                    "trigger_qdac": {
-                        'port': ('con1', 8),
-                        'delay': 0,
-                        'buffer': 0
-                    }
-                },
-            'operations': {
-                'trig': 'trigger'
-            }
+        "trigger_x": {
+            "digitalInputs": {"trigger_qdac": {"port": ("con1", 8), "delay": 0, "buffer": 0}},
+            "operations": {"trig": "trigger"},
         },
-        'trigger_y': {
-            "digitalInputs": {
-                    "trigger_qdac": {
-                        'port': ('con1', 10),
-                        'delay': 0,
-                        'buffer': 0
-                    }
-                },
-            'operations': {
-                'trig': 'trigger'
-            }
+        "trigger_y": {
+            "digitalInputs": {"trigger_qdac": {"port": ("con1", 10), "delay": 0, "buffer": 0}},
+            "operations": {"trig": "trigger"},
         },
-
     },
     "pulses": {
         "constant": {
@@ -120,8 +102,7 @@ config = {
                 "sin": "sin",
             },
         },
-    }
-    ,
+    },
     "waveforms": {
         "constant": {"type": "constant", "sample": 0.5},
         "measure": {"type": "constant", "sample": 0.02},

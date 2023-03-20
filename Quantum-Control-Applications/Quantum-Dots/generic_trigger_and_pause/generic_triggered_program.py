@@ -18,7 +18,7 @@ trigger. If your instrument does not have this functionality, the generic_pause_
 import matplotlib
 import numpy as np
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from qm.qua import *
@@ -56,9 +56,8 @@ with program() as generic_pause_resume:
     iteration_stream = declare_stream()
 
     with for_(*from_array(set_variable, set_variables_for_external_instrument)):
-
         # play a trigger command to trigger the external instrument to update its value
-        play('trig', 'trigger_x')
+        play("trig", "trigger_x")
 
         # it's good practice to send variables and streams to the macro. The variables are global so would be available
         # anyway, but this helps us keep track of where variables are being modified.
@@ -70,8 +69,8 @@ with program() as generic_pause_resume:
         assign(iteration_counter, iteration_counter + 1)
 
     with stream_processing():
-        measured_variable_stream.save_all('measured_variable')
-        iteration_stream.save('iteration')
+        measured_variable_stream.save_all("measured_variable")
+        iteration_stream.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -83,9 +82,7 @@ if simulation:
     simulation_duration = 10000  # ns
 
     qmm = QuantumMachinesManager(
-        host='product-52ecaa43.dev.quantum-machines.co',
-        port=443,
-        credentials=create_credentials()
+        host="product-52ecaa43.dev.quantum-machines.co", port=443, credentials=create_credentials()
     )
 
     job = qmm.simulate(
@@ -95,7 +92,6 @@ if simulation:
             duration=int(simulation_duration // 4),
         ),
         # simulation_interface=LoopbackInterface([('con1', 1, 'con1', 1), ('con1', 2, 'con1', 2)])
-
     )
 
     plt.figure("simulated output samples")
@@ -111,9 +107,7 @@ if simulation:
     measured_variable_data = measured_variable_handle.fetch_all()
 
 
-
 else:
-
     qmm = QuantumMachinesManager(qop_ip)
     # Open a quantum machine
     qm = qmm.open_qm(config)
@@ -121,7 +115,7 @@ else:
     job = qm.execute(generic_pause_resume)
 
     # fetch the data
-    results = fetching_tool(job, ['measured_variable', 'iteration'], mode="live")
+    results = fetching_tool(job, ["measured_variable", "iteration"], mode="live")
 
     # Live plot
     fig = plt.figure()

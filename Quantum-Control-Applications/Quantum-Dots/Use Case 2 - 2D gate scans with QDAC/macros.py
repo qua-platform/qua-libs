@@ -14,10 +14,22 @@ QUA MACROS
 """
 
 
-def do2d(x_element, x_amplitude, x_resolution,
-         y_element, y_amplitude, y_resolution,
-         n_averages, I, Q, I_stream, Q_stream,
-         x_stream, y_stream, wait_time):
+def do2d(
+    x_element,
+    x_amplitude,
+    x_resolution,
+    y_element,
+    y_amplitude,
+    y_resolution,
+    n_averages,
+    I,
+    Q,
+    I_stream,
+    Q_stream,
+    x_stream,
+    y_stream,
+    wait_time,
+):
     """
     Performs a two-dimensional raster scan for a stability diagram measurement, for instance.
 
@@ -47,15 +59,15 @@ def do2d(x_element, x_amplitude, x_resolution,
     # averaging loop
     with for_(n, 0, n < n_averages, n + 1):
         # set the x axis to the starting value
-        play('constant' * amp(x_axis[0]), x_element)
+        play("constant" * amp(x_axis[0]), x_element)
 
         # assign the x flag to false (do not move for first iteration)
         assign(x_move_flag, False)
 
         with for_(*from_array(x, x_axis)):
-            play('constant' * amp(dx), x_element, condition=x_move_flag)
+            play("constant" * amp(dx), x_element, condition=x_move_flag)
 
-            play('constant' * amp(y_axis[0]), y_element)
+            play("constant" * amp(y_axis[0]), y_element)
             assign(y_move_flag, False)
 
             with for_(*from_array(y, y_axis)):
@@ -85,6 +97,7 @@ def do2d(x_element, x_amplitude, x_resolution,
 
         ramp_to_zero(x_element)
 
+
 def generic_macro(variable, stream):
     measure(
         "measure",
@@ -95,12 +108,13 @@ def generic_macro(variable, stream):
 
     save(variable, stream)
 
+
 """
 PYTHON MACROS
 """
 
-def reshape_for_do2d(data: np.ndarray, qdac_x_resolution, qdac_y_resolution, opx_x_resolution,
-                     opx_y_resolution):
+
+def reshape_for_do2d(data: np.ndarray, qdac_x_resolution, qdac_y_resolution, opx_x_resolution, opx_y_resolution):
     """
     Reshapes data from a large do2d scan using the opx and qdac. This is necessary because the averaging cannot take
     place on the opx in this case due to a quirk of the averaging protocol in stream processing.
@@ -110,7 +124,3 @@ def reshape_for_do2d(data: np.ndarray, qdac_x_resolution, qdac_y_resolution, opx
     stacked = np.hstack([np.vstack(array) for array in to_stack])
 
     return stacked
-
-
-
-
