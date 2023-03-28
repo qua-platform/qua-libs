@@ -14,7 +14,7 @@ from qualang_tools.units import unit
 check_up_converters = False
 check_triggers = False
 check_down_converters = False
-calibration = True
+calibration = False
 
 #################################
 # Step 0 : Octave configuration #
@@ -69,6 +69,7 @@ config = {
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
                 "readout": "readout_pulse",
             },
             "digitalInputs": {
@@ -95,6 +96,7 @@ config = {
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
                 "readout": "readout_pulse",
             },
             "digitalInputs": {
@@ -121,6 +123,7 @@ config = {
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
             },
             "digitalInputs": {
                 "switch": {
@@ -140,6 +143,7 @@ config = {
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
             },
             "digitalInputs": {
                 "switch": {
@@ -159,6 +163,7 @@ config = {
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
             },
             "digitalInputs": {
                 "switch": {
@@ -178,6 +183,14 @@ config = {
                 "Q": "zero_wf",
             },
             "digital_marker": "ON",
+        },
+        "const_wo_trig": {
+            "operation": "control",
+            "length": 1000,
+            "waveforms": {
+                "I": "const_wf",
+                "Q": "zero_wf",
+            },
         },
         "readout_pulse": {
             "operation": "measurement",
@@ -364,14 +377,15 @@ if check_up_converters:
 ##################################
 if check_triggers:
     print("-" * 37 + " Checking triggers")
-    # Connect RF1, RF2, RF3, RF4, RF5 to a scope and check that you get a signal for 1ms.
+    # Connect RF1, RF2, RF3, RF4, RF5 to a spectrum analyzer and check that you get a signal for 4sec then don't get a signal fo 4 sec and so on.
     for i in range(len(elements)):
         # set the behaviour of the RF switch to be on only when triggered
         qm.octave.set_rf_output_mode(elements[i], RFOutputMode.trig_normal)
 
     with program() as hello_octave_trigger:
         for el in elements:
-            play("cw", el, duration=1e6)
+            play("cw", el, duration=1e9)
+            play('cw_wo_trig', 'qe1', duration=1e9)
     job = qm.execute(hello_octave_trigger)
     time.sleep(60)  #  The program will run for 1 minute
     job.halt()

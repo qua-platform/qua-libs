@@ -170,6 +170,7 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
             qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 1)
             qm.octave.set_downconversion(octave_elements[i])
             qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Internal)  # Can change to Dmd1LO
+            qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
         if (
             qm.octave._get_element_octave_output_port(octave_elements[i])[1] == 2
             and "outputs" in config["elements"][octave_elements[i]].keys()
@@ -179,6 +180,7 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
             qm.octave.set_downconversion(
                 octave_elements[i], lo_source=RFInputLOSource.Dmd2LO
             )  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
+            qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
 
     #########################################################################
     # calibrate all the elements in the program that are used by the octave #
