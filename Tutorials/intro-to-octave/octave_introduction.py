@@ -47,10 +47,10 @@ config = {
             },
             "digital_outputs": {
                 1: {},
-                2: {},
                 3: {},
-                4: {},
                 5: {},
+                7: {},
+                9: {},
             },
             "analog_inputs": {
                 1: {"offset": +0.0},
@@ -101,7 +101,7 @@ config = {
             },
             "digitalInputs": {
                 "switch": {
-                    "port": ("con1", 2),
+                    "port": ("con1", 3),
                     "delay": 136,
                     "buffer": 0,
                 },
@@ -127,7 +127,7 @@ config = {
             },
             "digitalInputs": {
                 "switch": {
-                    "port": ("con1", 3),
+                    "port": ("con1", 5),
                     "delay": 136,
                     "buffer": 0,
                 },
@@ -147,7 +147,7 @@ config = {
             },
             "digitalInputs": {
                 "switch": {
-                    "port": ("con1", 4),
+                    "port": ("con1", 7),
                     "delay": 136,
                     "buffer": 0,
                 },
@@ -167,7 +167,7 @@ config = {
             },
             "digitalInputs": {
                 "switch": {
-                    "port": ("con1", 5),
+                    "port": ("con1", 9),
                     "delay": 136,
                     "buffer": 0,
                 },
