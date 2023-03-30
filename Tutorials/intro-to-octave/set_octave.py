@@ -7,7 +7,7 @@ import numpy as np
 from qm import generate_qua_script
 from qm.octave import QmOctaveConfig
 import re
-
+from qm.elements.element_with_octave import ElementWithOctave
 
 def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
     """
@@ -38,9 +38,8 @@ def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
     elements_used_in_octave = []
     config = qm.get_config()
     for element in elements_in_prog:
-        if "mixInputs" in config["elements"][element].keys() and qm.octave._get_element_opx_output(element)[0] in list(
-            QmOctaveConfig.get_opx_octave_port_mapping(octave_config)
-        ):
+        element_i = qm.elements[element]
+        if isinstance(element_i, ElementWithOctave):
             elements_used_in_octave.append(element)
 
     return np.array(elements_used_in_octave)
@@ -161,26 +160,25 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
     ###################################
     # setting down-converters modules #
     ###################################
-    for i in range(len(octave_elements)):
-        # This assumes that: FR1in measures RF1's output, FR2in measures RF2's output
-        if (
-            qm.octave._get_element_octave_output_port(octave_elements[i])[1] == 1
-            and "outputs" in config["elements"][octave_elements[i]].keys()
-        ):
-            qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 1)
-            qm.octave.set_downconversion(octave_elements[i])
-            qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Internal)  # Can change to Dmd1LO
-            qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
-        if (
-            qm.octave._get_element_octave_output_port(octave_elements[i])[1] == 2
-            and "outputs" in config["elements"][octave_elements[i]].keys()
-        ):
-            qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 2)
-            qm.octave.set_downconversion(octave_elements[i])
-            qm.octave.set_downconversion(
-                octave_elements[i], lo_source=RFInputLOSource.Dmd2LO
-            )  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
-            qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
+    for elements in octave_elements:
+        element_i = qm.elements[elements]
+        if isinstance(element_i, ElementWithOctave):
+            # This assumes that: FR1in measures RF1's output (which is connected to Analog output 1 and 2), FR2in measures RF2's output (which is connected to Analog output 3 and 4)
+            if (element_i.q_port == 1 or element_i.q_port == 2) and 'outputs' in \
+                    config['elements'][octave_elements[i]].keys():
+                qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 1)
+                qm.octave.set_downconversion(octave_elements[i])
+                qm.octave.set_downconversion(octave_elements[i],
+                                             lo_source=RFInputLOSource.Internal)  # Can change to Dmd1LO
+                qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct,
+                                                      if_mode_q=IFMode.direct)
+
+            if (element_i.q_port == 3 or element_i.q_port == 4) and 'outputs' in \
+                    config['elements'][octave_elements[i]].keys():
+                qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 2)
+                qm.octave.set_downconversion(octave_elements[i])
+                qm.octave.set_downconversion(octave_elements[i],
+                                             lo_source=RFInputLOSource.Dmd2LO)  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
 
     #########################################################################
     # calibrate all the elements in the program that are used by the octave #
