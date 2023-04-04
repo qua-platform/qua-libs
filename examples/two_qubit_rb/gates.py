@@ -8,7 +8,7 @@ from typing import Set
 import cirq
 import numpy as np
 
-from .simple_tableau import SimpleTableau
+from simple_tableau import SimpleTableau
 
 q1, q2 = cirq.LineQubit.range(2)
 

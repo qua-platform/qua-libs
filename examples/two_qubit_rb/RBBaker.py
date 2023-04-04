@@ -6,11 +6,10 @@ from cirq import GateOperation
 from qm.qua import switch_, case_, declare, align, for_
 from qualang_tools.bakery.bakery import Baking, baking
 
-from .gates import GateCommand, GateGenerator, gate_db
+from gates import GateCommand, GateGenerator, gate_db
 
 
 class RBBaker:
-
     def __init__(self, config, phased_xz_generator: Callable, two_qubit_gate_generators: Dict[str, Callable]):
         self._config = copy.deepcopy(config)
         self._phased_xz_generator = phased_xz_generator
@@ -119,9 +118,11 @@ class RBBaker:
             two_qubit_gates_len = two_qubit_gates_baker.get_current_length()
             if len({qubit1_len, qubit2_len, two_qubit_gates_len}) > 1:
                 raise RuntimeError("All gates should be of the same length")
-        if len(all_qubit1_qes.intersection(all_qubit2_qes)) > 0 or len(
-                all_qubit1_qes.intersection(all_two_qubit_gates_qes)) > 0 or len(
-                all_qubit2_qes.intersection(all_two_qubit_gates_qes)) > 0:
+        if (
+            len(all_qubit1_qes.intersection(all_qubit2_qes)) > 0
+            or len(all_qubit1_qes.intersection(all_two_qubit_gates_qes)) > 0
+            or len(all_qubit2_qes.intersection(all_two_qubit_gates_qes)) > 0
+        ):
             raise RuntimeError("Overlapped QEs were used for Qubit1/Qubit2/Two qubit gates")
 
     def bake(self) -> dict:
@@ -129,12 +130,22 @@ class RBBaker:
         self._bakers = {
             "qubit1": self._partial_bake_qubit_ops(config, 0),
             "qubit2": self._partial_bake_qubit_ops(config, 1),
-            "two_qubit_gates": self._partial_bake_two_qubit_ops(config, [0, 1])
+            "two_qubit_gates": self._partial_bake_two_qubit_ops(config, [0, 1]),
         }
         self._validate_bakers()
-        self._op_id_by_cmd_ids = {"qubit1": [self._get_baker("qubit1", c)[0] for c in gate_db.commands],
-                                  "qubit2": [self._get_baker("qubit2", c)[0] for c in gate_db.commands],
-                                  "two_qubit_gates": [self._get_baker("two_qubit_gates", c)[0] for c in gate_db.commands]}
+        self._op_id_by_cmd_ids = {
+            "qubit1": [self._get_baker("qubit1", c)[0] for c in gate_db.commands],
+            "qubit2": [self._get_baker("qubit2", c)[0] for c in gate_db.commands],
+            "two_qubit_gates": [self._get_baker("two_qubit_gates", c)[0] for c in gate_db.commands],
+        }
+        # Kevin
+        for waves in config["waveforms"]:
+            if waves[0] == "q":
+                # print(waves)
+                config["waveforms"][waves]["max_allowed_error"] = 1e-4
+        # for operations in config["elements"]["qe0"]["operations"]:
+        #     print(operations)
+        # Kevin
         return config
 
     def decode(self, cmd_id, element):
@@ -146,21 +157,21 @@ class RBBaker:
         two_qubit_cmd_i = declare(int)
 
         align()
-        with for_(q1_cmd_i, 0, q1_cmd_i < length, q1_cmd_i+1):
+        with for_(q1_cmd_i, 0, q1_cmd_i < length, q1_cmd_i + 1):
             with switch_(q1_cmds[q1_cmd_i], unsafe=unsafe):
                 for type_ops in self._bakers["qubit1"].values():
                     for case_id, b in type_ops.values():
                         with case_(case_id):
                             b.run()
 
-        with for_(q2_cmd_i, 0, q2_cmd_i < length, q2_cmd_i+1):
+        with for_(q2_cmd_i, 0, q2_cmd_i < length, q2_cmd_i + 1):
             with switch_(q2_cmds[q2_cmd_i], unsafe=unsafe):
                 for type_ops in self._bakers["qubit2"].values():
                     for case_id, b in type_ops.values():
                         with case_(case_id):
                             b.run()
 
-        with for_(two_qubit_cmd_i, 0, two_qubit_cmd_i < length, two_qubit_cmd_i+1):
+        with for_(two_qubit_cmd_i, 0, two_qubit_cmd_i < length, two_qubit_cmd_i + 1):
             with switch_(two_qubit_cmds[two_qubit_cmd_i], unsafe=unsafe):
                 for case_id, b in self._bakers["two_qubit_gates"].values():
                     with case_(case_id):
