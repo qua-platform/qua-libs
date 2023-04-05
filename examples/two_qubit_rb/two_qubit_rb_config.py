@@ -64,11 +64,16 @@ def measure_qubit_1(qubit):
 #############
 qubit0_qe = "qe0"
 qubit1_qe = "qe1"
+qubit0_aux_qe = "qe0_aux"
+qubit1_aux_qe = "qe1_aux"
 qubit0_x_pulse = "x180"
 qubit1_x_pulse = "x180"
 qubit0_flux_qe = "qubit0_flux_qe"
 qubit1_flux_qe = "qubit1_flux_qe"
 iswap_pulse = "iswap_pulse"
+cr_c1t0 = "crtqe1cqe0"
+cr_c1t0_pulse = "cw"
+minus_cr_c1t0_pulse = "minus_cw"
 u = unit()
 qop_ip = "127.0.0.1"
 
@@ -272,6 +277,50 @@ config = {
                 "-y90": "-y90_pulse",
             },
         },
+        "qe0_aux": {
+            "mixInputs": {
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
+                "lo_frequency": qe0_LO,
+                "mixer": "mixer_qe0",
+            },
+            "intermediate_frequency": qe0_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "saturation": "saturation_pulse",
+                "gauss": "gaussian_pulse",
+                "pi": "x180_pulse",
+                "pi_half": "x90_pulse",
+                "x90": "x90_pulse",
+                "x180": "x180_pulse",
+                "-x90": "-x90_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
+                "-y90": "-y90_pulse",
+            },
+        },
+        "qe1_aux": {
+            "mixInputs": {
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
+                "lo_frequency": qe1_LO,
+                "mixer": "mixer_qe1",
+            },
+            "intermediate_frequency": qe1_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "saturation": "saturation_pulse",
+                "gauss": "gaussian_pulse",
+                "pi": "x180_pulse",
+                "pi_half": "x90_pulse",
+                "x90": "x90_pulse",
+                "x180": "x180_pulse",
+                "-x90": "-x90_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
+                "-y90": "-y90_pulse",
+            },
+        },
         "crtqe1cqe0": {
             "mixInputs": {
                 "I": ("con1", 1),
@@ -282,6 +331,7 @@ config = {
             "intermediate_frequency": qe1_IF,
             "operations": {
                 "cw": "const_pulse",
+                "minus_cw": "minus_const_pulse",
             },
         },
         "rr0": {
@@ -358,6 +408,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "minus_const_pulse": {
+            "operation": "control",
+            "length": const_len,
+            "waveforms": {
+                "I": "minus_const_wf",
                 "Q": "zero_wf",
             },
         },
@@ -493,6 +551,7 @@ config = {
     "waveforms": {
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "const_wf": {"type": "constant", "sample": const_amp},
+        "minus_const_wf": {"type": "constant", "sample": (-1) * const_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "displace_wf": {"type": "arbitrary", "samples": displace_wf.tolist()},
