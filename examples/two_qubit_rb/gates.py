@@ -18,60 +18,106 @@ C1_reduced = [
     cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=-0.5, z_exponent=1),
     cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=-0.5, z_exponent=-0.5),
     cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0.5, z_exponent=0.5),
-    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0.5)
+    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0.5),
 ]
 
 S1 = [
     cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0),
     cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0.5, z_exponent=0.5),
-    cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=-0.5, z_exponent=-0.5)
+    cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=-0.5, z_exponent=-0.5),
 ]
 
 pauli = [
-    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0),       # I
-    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=1.0, z_exponent=0),     # X
-    cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=1.0, z_exponent=0),   # Y
-    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1.0),     # Z
+    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0),  # I
+    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=1.0, z_exponent=0),  # X
+    cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=1.0, z_exponent=0),  # Y
+    cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1.0),  # Z
 ]
 
 pauli_phase = [
-    [0, 0],     # I
-    [0, 1],     # X
-    [1, 1],     # Y
-    [1, 0],     # Z
+    [0, 0],  # I
+    [0, 1],  # X
+    [1, 1],  # Y
+    [1, 0],  # Z
 ]
 
 native_2_qubit_gates = {
-
     "sqr_iSWAP": {
-        "CNOT": [cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=-1)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1)(q2),
-                 cirq.ISWAP(q1, q2) ** 0.5,
-                 cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=1, z_exponent=0)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0)(q2),
-                 cirq.ISWAP(q1, q2) ** 0.5,
-                 cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.5)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q2)
-                 ],  # compilation of CNOT in terms of phased XZ and sqiSWAP
-
-        "iSWAP": [cirq.ISWAP(q1, q2) ** 0.5,
-                  cirq.ISWAP(q1, q2) ** 0.5],  # compilation of iSWAP in terms of phased XZ and sqiSWAP
-
-        "SWAP": [cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0.5, z_exponent=0.5)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q2),
-                 cirq.ISWAP(q1, q2) ** 0.5,
-                 cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q2),
-                 cirq.ISWAP(q1, q2) ** 0.5,
-                 cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q2),
-                 cirq.ISWAP(q1, q2) ** 0.5,
-                 cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=-0.5)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1)(q2)
-                 ]  # compilation of SWAP in terms of phased XZ and sqiSWAP
-    }
+        "CNOT": [
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=-1)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1)(q2),
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=1, z_exponent=0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0)(q2),
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.5)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q2),
+        ],  # compilation of CNOT in terms of phased XZ and sqiSWAP
+        "iSWAP": [
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.ISWAP(q1, q2) ** 0.5,
+        ],  # compilation of iSWAP in terms of phased XZ and sqiSWAP
+        "SWAP": [
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0.5, z_exponent=0.5)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q2),
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-1, x_exponent=0.5, z_exponent=1)(q2),
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0)(q2),
+            cirq.ISWAP(q1, q2) ** 0.5,
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=-0.5)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=1)(q2),
+        ],  # compilation of SWAP in terms of phased XZ and sqiSWAP
+    },
     # TODO: add more implementations
-
+    "CNOT": {
+        "CNOT": [cirq.CNOT(q1, q2)],
+        "iSWAP": [
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.5)(q1),  # S
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.5)(q2),  # S
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q2),  # I
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q2),  # I
+            cirq.CNOT(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.CNOT(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),  # I
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),  # I
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+        ],
+        "SWAP": [
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.CNOT(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.CNOT(q1, q2), 
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.CNOT(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+        ],
+    },
 }
 
 
@@ -91,14 +137,13 @@ class GateCommand:
 
 
 class _GateDatabase:
-
     def __init__(self):
         self._commands, self._tableaus, self._symplectic_range, self._pauli_range = self._gen_commands_and_tableaus()
 
     @staticmethod
     def _gen_commands_and_tableaus():
-        compilation_path = pathlib.Path(os.path.dirname(os.path.abspath(__file__))) / 'symplectic_compilation_XZ.pkl'
-        with open(compilation_path, 'rb') as f:
+        compilation_path = pathlib.Path(os.path.dirname(os.path.abspath(__file__))) / "symplectic_compilation_XZ.pkl"
+        with open(compilation_path, "rb") as f:
             compilation = pickle.load(f)
         symplectics = compilation["symplectics"]
         phases = compilation["phases"]
@@ -106,13 +151,13 @@ class _GateDatabase:
 
         rb_commands = []
         for command in commands:
-            if command[0] == 'C1\'s':
+            if command[0] == "C1's":
                 rb_commands.append(GateCommand("C1", (command[1],), (command[2],)))
-            elif command[0] == 'CNOT\'s':
+            elif command[0] == "CNOT's":
                 rb_commands.append(GateCommand("CNOT", (command[1], command[3]), (command[2], command[4])))
-            elif command[0] == 'iSWAP\'s':
+            elif command[0] == "iSWAP's":
                 rb_commands.append(GateCommand("iSWAP", (command[1], command[3]), (command[2], command[4])))
-            elif command[0] == 'SWAP\'s':
+            elif command[0] == "SWAP's":
                 rb_commands.append(GateCommand("SWAP", (command[1],), (command[2],)))
 
         # Generate Paulis:
@@ -154,11 +199,11 @@ class _GateDatabase:
         return random.randrange(*self._pauli_range)
 
     def find_symplectic_gate_id_by_tableau_g(self, tableau: SimpleTableau):
-        tableaus = self._tableaus[self._symplectic_range[0]:self._symplectic_range[1]]
+        tableaus = self._tableaus[self._symplectic_range[0] : self._symplectic_range[1]]
         return next(i for i, x in enumerate(tableaus) if np.array_equal(x.g, tableau.g))
 
     def find_pauli_gate_id_by_tableau_alpha(self, tableau: SimpleTableau):
-        tableaus = self._tableaus[self._pauli_range[0]:self._pauli_range[1]]
+        tableaus = self._tableaus[self._pauli_range[0] : self._pauli_range[1]]
         return self._pauli_range[0] + next(i for i, x in enumerate(tableaus) if np.array_equal(x.alpha, tableau.alpha))
 
 
@@ -169,7 +214,7 @@ class GateGenerator:
     two_qubit_imp_priority = {  # TODO: verify this priority table
         "CNOT": ["CNOT", "CZ", "iSWAP", "sqr_iSWAP"],
         "iSWAP": ["iSWAP", "sqr_iSWAP", "CNOT", "CZ"],
-        "SWAP": ["CNOT", "CZ", "iSWAP", "sqr_iSWAP"]
+        "SWAP": ["CNOT", "CZ", "iSWAP", "sqr_iSWAP"],
     }
 
     def __init__(self, native_two_qubit_gates: Set[str]):
@@ -189,26 +234,26 @@ class GateGenerator:
         gate = []
         command = gate_db.get_command(cmd_id)
         two_qubit_imp = self._two_qubit_dict[command.type] if command.type in self._two_qubit_dict else None
-        if command.type == 'C1':
+        if command.type == "C1":
             gate.append(C1_reduced[command.q1[0]](q1))
             gate.append(C1_reduced[command.q2[0]](q2))
-        elif command.type == 'CNOT':
+        elif command.type == "CNOT":
             gate.append(C1_reduced[command.q1[0]](q1))
             gate.append(C1_reduced[command.q2[0]](q2))
             gate.extend(native_2_qubit_gates[two_qubit_imp]["CNOT"])
             gate.append(S1[command.q1[1]](q1))
             gate.append(S1[command.q2[1]](q2))
-        elif command.type == 'iSWAP':
+        elif command.type == "iSWAP":
             gate.append(C1_reduced[command.q1[0]](q1))
             gate.append(C1_reduced[command.q2[0]](q2))
             gate.extend(native_2_qubit_gates[two_qubit_imp]["iSWAP"])
             gate.append(S1[command.q1[1]](q1))
             gate.append(S1[command.q2[1]](q2))
-        elif command.type == 'SWAP':
+        elif command.type == "SWAP":
             gate.append(C1_reduced[command.q1[0]](q1))
             gate.append(C1_reduced[command.q2[0]](q2))
             gate.extend(native_2_qubit_gates[two_qubit_imp]["SWAP"])
-        elif command.type == 'PAULI':
+        elif command.type == "PAULI":
             gate.append(pauli[command.q1[0]](q1))
             gate.append(pauli[command.q2[0]](q2))
         else:
