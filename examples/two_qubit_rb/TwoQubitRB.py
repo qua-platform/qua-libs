@@ -163,7 +163,7 @@ class TwoQubitRb:
         with program() as prog_now:
             play("baked_Op_10", "qe0")
 
-        qm = qmm.open_qm(self._config, close_other_machines=False)  # Kevin
+        qm = qmm.open_qm(self._config)
         # job_sim = qmm.simulate(self._config, prog_now, SimulationConfig(2500))
         # job_sim.get_simulated_samples().con1.plot()
         job = qm.execute(prog)

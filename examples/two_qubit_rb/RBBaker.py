@@ -64,7 +64,17 @@ class RBBaker:
         with baking(config) as b:
             for gate_op in gate_ops:
                 gate_qubits = self._get_qubits(gate_op)
-                if gate_qubits == qubits:
+                # Kevin -> because cirq.CNOT(q2,q1) had to add the case to eval [1, 0]
+                if len(qubits) == 2:
+                    if gate_qubits == [0, 1] or gate_qubits == [1, 0]:
+                        self._gen_gate(b, gate_op)
+                    elif (len(qubits) == 1 and len(gate_qubits) == 2) or (len(qubits) == 2 and gate_qubits == [0]):
+                        qes = b.get_qe_set()
+                        if len(qes) == 0 and len(qubits) == 2:
+                            qes = self._two_qubits_qes
+                        b.wait(self._get_gate_op_time(gate_op), *qes)
+                # Kevin
+                elif gate_qubits == qubits:
                     self._gen_gate(b, gate_op)
                 elif (len(qubits) == 1 and len(gate_qubits) == 2) or (len(qubits) == 2 and gate_qubits == [0]):
                     qes = b.get_qe_set()
@@ -119,8 +129,11 @@ class RBBaker:
             qubit1_len = qubit1_baker.get_current_length()
             qubit2_len = qubit2_baker.get_current_length()
             two_qubit_gates_len = two_qubit_gates_baker.get_current_length()
-            print(two_qubit_gates_len, all_two_qubit_gates_qes)
             if len({qubit1_len, qubit2_len, two_qubit_gates_len}) > 1:
+                print(qubit1_len, qubit2_len, two_qubit_gates_len, all_two_qubit_gates_qes, command)
+                print(len({qubit1_len, qubit2_len, two_qubit_gates_len}))
+                print({qubit1_len, qubit2_len, two_qubit_gates_len})
+
                 raise RuntimeError("All gates should be of the same length")
         if (
             len(all_qubit1_qes.intersection(all_qubit2_qes)) > 0
