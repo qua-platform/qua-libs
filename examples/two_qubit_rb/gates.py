@@ -78,26 +78,14 @@ native_2_qubit_gates = {
             cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),  # S + H -> PhasedXZ
             cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.5)(q2),  # S
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
-            cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
+            cirq.CNOT(q2, q1),
             cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),  # I
             cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
         ],
         "SWAP": [
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
+            cirq.CNOT(q2, q1),
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
-            cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
-            cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
-            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
+            cirq.CNOT(q2, q1)
         ],
     },
 }
