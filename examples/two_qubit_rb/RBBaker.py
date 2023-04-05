@@ -119,6 +119,7 @@ class RBBaker:
             qubit1_len = qubit1_baker.get_current_length()
             qubit2_len = qubit2_baker.get_current_length()
             two_qubit_gates_len = two_qubit_gates_baker.get_current_length()
+            print(two_qubit_gates_len, all_two_qubit_gates_qes)
             if len({qubit1_len, qubit2_len, two_qubit_gates_len}) > 1:
                 raise RuntimeError("All gates should be of the same length")
         if (

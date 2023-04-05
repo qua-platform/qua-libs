@@ -100,7 +100,7 @@ native_2_qubit_gates = {
             cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
         ],
     },
-    # "CNOT": {
+    # "CNOT": {  # TODO all gates shoudl be of the same length -- last is 408
     #     "CNOT": [cirq.CNOT(q1, q2)],
     #     "iSWAP": [
     #         cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),  # S + H -> PhasedXZ

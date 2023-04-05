@@ -25,7 +25,7 @@ def bake_sqrt_iswap(baker: Baking, q1, q2):
 
 
 def bake_cnot(baker: Baking, q1, q2):
-    if q1 == 0 & q2 == 1:
+    if q1 == 0:
         baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
         baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
@@ -41,6 +41,34 @@ def bake_cnot(baker: Baking, q1, q2):
 
         baker.wait((x180_len + const_len) // 4, cr_c1t0)
         baker.play(minus_cr_c1t0_pulse, cr_c1t0)
+
+    elif q1 == 1: # TODO reverse gate does not work
+        baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
+        baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
+        baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
+        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
+        baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
+
+        baker.wait(x180_len // 4, cr_c1t0)
+        baker.play(cr_c1t0_pulse, cr_c1t0)
+
+        baker.wait(const_len // 4, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe)
+
+        baker.wait((x180_len + const_len) // 4, cr_c1t0)
+        baker.play(minus_cr_c1t0_pulse, cr_c1t0)
+
+        # TODO below exponents are not true
+        baker.wait(const_len // 4, qubit0_aux_qe)
+        baker.wait(const_len // 4, qubit1_aux_qe)
+
+        baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
+        baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
+        baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
+        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
+        baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
 
 
 # def bake_cz(baker: Baking, q1, q2):
@@ -64,7 +92,7 @@ def meas():
 
 qmm = QuantumMachinesManager(host="172.16.33.100", port=80)
 
-rb = TwoQubitRb(config, bake_phased_xz, {"CNOT": bake_sqrt_iswap}, prep, meas)
+rb = TwoQubitRb(config, bake_phased_xz, {"CNOT": bake_cnot}, prep, meas)
 
 res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=4, num_averages=10)
 
