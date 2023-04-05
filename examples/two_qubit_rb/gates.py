@@ -75,47 +75,29 @@ native_2_qubit_gates = {
     "CNOT": {
         "CNOT": [cirq.CNOT(q1, q2)],
         "iSWAP": [
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.5)(q1),  # S
+            cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),  # S + H -> PhasedXZ
             cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.5)(q2),  # S
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q2),  # I
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q2),  # I
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
             cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),  # I
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),  # I
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
         ],
         "SWAP": [
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
-            cirq.CNOT(q1, q2), 
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
             cirq.CNOT(q1, q2),
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q1),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.5, x_exponent=0.5, z_exponent=0.0)(q2),  # Y ** 0.5 - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q1),  # X - hadamard_part
-            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=1.0, z_exponent=0.0)(q2),  # X - hadamard_part
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
+            cirq.CNOT(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),  # H -> PhasedXZ
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),  # H -> PhasedXZ
         ],
     },
 }

@@ -163,7 +163,7 @@ class TwoQubitRb:
         with program() as prog_now:
             play("baked_Op_10", "qe0")
 
-        qm = qmm.open_qm(self._config)
+        qm = qmm.open_qm(self._config, close_other_machines=False)  # Kevin
         # job_sim = qmm.simulate(self._config, prog_now, SimulationConfig(2500))
         # job_sim.get_simulated_samples().con1.plot()
         job = qm.execute(prog)
@@ -174,6 +174,7 @@ class TwoQubitRb:
         pbar(job.result_handles, full_progress, "progress")
         job.result_handles.wait_for_all_values()
         print(job.execution_report())  # Kevin
+        qm.close()
 
         return RBResult(
             sequence_depths=sequence_depths,

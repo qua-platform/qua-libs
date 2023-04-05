@@ -26,6 +26,7 @@ def bake_sqrt_iswap(baker: Baking, q1, q2):
 
 def bake_cnot(baker: Baking, q1, q2):
     baker.play(iswap_pulse, qubit0_flux_qe)
+    baker.wait(int(const_flux_len//4), qubit1_flux_qe)
 
 
 # def bake_cz(baker: Baking, q1, q2):

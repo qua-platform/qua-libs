@@ -67,6 +67,7 @@ qubit1_qe = "qe1"
 qubit0_x_pulse = "x180"
 qubit1_x_pulse = "x180"
 qubit0_flux_qe = "qubit0_flux_qe"
+qubit1_flux_qe = "qubit1_flux_qe"
 iswap_pulse = "iswap_pulse"
 u = unit()
 qop_ip = "127.0.0.1"
@@ -217,6 +218,7 @@ config = {
                 5: {"offset": 0.0},
                 6: {"offset": 0.0},
                 7: {"offset": 0.0},
+                8: {"offset": 0.0},
             },
             "digital_outputs": {},
             "analog_inputs": {
@@ -329,6 +331,14 @@ config = {
         "qubit0_flux_qe": {
             "singleInput": {
                 "port": ("con1", 7),
+            },
+            "operations": {
+                "iswap_pulse": "const_flux_pulse",
+            },
+        },
+        "qubit1_flux_qe": {
+            "singleInput": {
+                "port": ("con1", 8),
             },
             "operations": {
                 "iswap_pulse": "const_flux_pulse",
