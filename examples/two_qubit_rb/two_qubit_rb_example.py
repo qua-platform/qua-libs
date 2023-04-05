@@ -43,12 +43,14 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.play(minus_cr_c1t0_pulse, cr_c1t0)
 
     elif q1 == 1 and q2 == 0:
-        baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
-        baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
+        # note that cirq.CNOT(q2,q1) rewritten still in cirq.CNOT(q1,q2) terms
+        # with H to q1, q2 before
+        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
+        baker.frame_rotation_2pi(0.5 + 0.5, qubit0_aux_qe)
+        baker.frame_rotation_2pi(-0.0, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
+        baker.frame_rotation_2pi(0.0 + 0.5, qubit1_aux_qe)
 
         baker.wait(x180_len // 4, cr_c1t0)
         baker.play(cr_c1t0_pulse, cr_c1t0)
@@ -59,16 +61,16 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.wait((x180_len + const_len) // 4, cr_c1t0)
         baker.play(minus_cr_c1t0_pulse, cr_c1t0)
 
-        # # TODO below exponents are not true
+        # with H to q1, q2 before
         baker.wait(const_len // 4, qubit0_aux_qe)
         baker.wait(const_len // 4, qubit1_aux_qe)
 
-        baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
-        baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
+        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
+        baker.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
+        baker.frame_rotation_2pi(-0.5, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
+        baker.frame_rotation_2pi(0.5 + 1.0, qubit1_aux_qe)
 
 
 # def bake_cz(baker: Baking, q1, q2):
