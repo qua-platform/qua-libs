@@ -24,6 +24,10 @@ def bake_sqrt_iswap(baker: Baking, q1, q2):
     baker.play(iswap_pulse, qubit0_flux_qe)
 
 
+def bake_cnot(baker: Baking, q1, q2):
+    baker.play(iswap_pulse, qubit0_flux_qe)
+
+
 # def bake_cz(baker: Baking, q1, q2):
 #     baker.play(cz_pulse, qubit0_flux_qe)
 
@@ -45,7 +49,7 @@ def meas():
 
 qmm = QuantumMachinesManager(host="172.16.33.100", port=80)
 
-rb = TwoQubitRb(config, bake_phased_xz, {"sqr_iSWAP": bake_sqrt_iswap}, prep, meas)
+rb = TwoQubitRb(config, bake_phased_xz, {"CNOT": bake_sqrt_iswap}, prep, meas)
 
 res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=4, num_averages=10)
 

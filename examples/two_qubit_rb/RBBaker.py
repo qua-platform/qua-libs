@@ -43,6 +43,9 @@ class RBBaker:
         elif type(gate_op.gate) == cirq.ISwapPowGate and gate_op.gate.exponent == 0.5:
             self._validate_two_qubit_gate_available("sqr_iSWAP")
             self._two_qubit_gate_generators["sqr_iSWAP"](baker, *self._get_qubits(gate_op))
+        elif type(gate_op.gate) == cirq.CNotPowGate and gate_op.gate.exponent == 1:
+            self._validate_two_qubit_gate_available("CNOT")
+            self._two_qubit_gate_generators["CNOT"](baker, *self._get_qubits(gate_op))
         else:
             raise RuntimeError("unsupported gate")
 
