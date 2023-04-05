@@ -32,11 +32,14 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
         baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
+
         baker.wait(x180_len // 4, cr_c1t0)
         baker.play(cr_c1t0_pulse, cr_c1t0)
-        baker.wait((x180_len + const_len) // 4, qubit0_aux_qe)
+
+        baker.wait(const_len // 4, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
-        baker.wait((2 * x180_len + const_len) // 4, cr_c1t0)
+
+        baker.wait((x180_len + const_len) // 4, cr_c1t0)
         baker.play(minus_cr_c1t0_pulse, cr_c1t0)
 
 
