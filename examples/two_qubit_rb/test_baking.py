@@ -37,6 +37,16 @@ with baking(local_config) as b:
     # b.play(qubit0_x_pulse, qubit0_aux_qe)
     # b.wait(x180_len, cr_c0t1)
     # b.play(minus_cr_c0t1_pulse, cr_c0t1)
+    # b.wait(const_len, qubit0_aux_qe)
+    # b.wait(const_len, qubit1_aux_qe)
+
+    # b.frame_rotation_2pi(-0.5, qubit0_aux_qe)
+    # b.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.0)
+    # b.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
+    # b.frame_rotation_2pi(-0.5, qubit1_aux_qe)
+    # b.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.0)
+    # b.frame_rotation_2pi(0.5 + 1.0, qubit1_aux_qe)
+
 
     b.frame_rotation_2pi(-0.5, qubit0_aux_qe)
     b.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
@@ -67,11 +77,13 @@ with baking(local_config) as b:
 
 
 with program() as prog:
-    update_frequency(qubit0_qe, 0)
-    update_frequency(qubit1_qe, 0)
+    update_frequency(qubit0_aux_qe, 0)
+    update_frequency(qubit1_aux_qe, 0)
     update_frequency(cr_c0t1, 0)
     align()
     b.run()
+    align()
+    play('x180', qubit0_qe)
 
 qmm = QuantumMachinesManager(host='172.16.33.100')
 job = qmm.simulate(local_config, prog, SimulationConfig(1000))

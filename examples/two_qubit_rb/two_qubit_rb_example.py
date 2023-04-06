@@ -24,6 +24,7 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     """
     Can go to any point in the Bloch sphere. As of now, it takes the calibrated amplitude for x180
     and does amp() and frame_rotation_2pi() to get to anywhere in the Bloch sphere.
+
     # TODO: if the amplitude of x90 is not half of x180, then can use python if-statement
     to adjust the amplitude.
     """
@@ -43,9 +44,12 @@ def bake_cnot(baker: Baking, q1, q2):
     """
     The way it is written is uses cr01 for both cirq.CNOT(q1,q2) and cirq.CNOT(q2,q1)
     In bakery, the argument to wait() is given in nanoseconds, not clock cycles
+
+    cnot based on decomposition Corcoles et al., 10.1038/ncomms7979 (2016)
     # TODO: add components to accept cr10
     """
     if q1 == 0 and q2 == 1:
+        # CNOT(q1, q2)
         baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
         baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
