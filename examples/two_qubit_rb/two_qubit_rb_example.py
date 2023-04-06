@@ -61,7 +61,7 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.wait(const_len, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
         baker.wait(x180_len, cr_c0t1)
-        baker.play(minus_cr_c0t1_pulse, cr_c0t1)
+        baker.play(cr_c0t1_pulse, cr_c0t1, amp=-1)
         # blanked pulses, see amp=0.0 -- to match length of CNOT(q1, q2) and CNOT(q2, q1)
         baker.wait(const_len, qubit0_aux_qe)
         baker.wait(const_len, qubit1_aux_qe)
@@ -86,7 +86,7 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.wait(const_len, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
         baker.wait(x180_len, cr_c0t1)
-        baker.play(minus_cr_c0t1_pulse, cr_c0t1)
+        baker.play(cr_c0t1_pulse, cr_c0t1, amp=-1)
         # with H to q1, q2 after
         baker.wait(const_len, qubit0_aux_qe)
         baker.wait(const_len, qubit1_aux_qe)
