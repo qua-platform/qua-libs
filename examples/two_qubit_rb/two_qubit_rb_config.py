@@ -31,18 +31,28 @@ def IQ_imbalance(g, phi):
 ##########
 
 
+def add_aux_elements(config: dict, q1: str, q2: str) -> dict:
+    import copy
+
+    copy_config = copy.deepcopy(config)
+
+    copy_config["elements"][q1 + "_aux"] = config["elements"][q1]
+    copy_config["elements"][q2 + "_aux"] = config["elements"][q2]
+
+    return copy_config
+
+
 def measure_qubit_0(qubit):
     I = declare(fixed)
     Q = declare(fixed)
     measure(
         "readout",
-        "rr0",
+        "rr1",
         None,
-        dual_demod.full("cos", "out1", "sin", "out2", I),
-        dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
     )
     assign(qubit, I > 0)
-    return Q
 
 
 def measure_qubit_1(qubit):
@@ -50,42 +60,29 @@ def measure_qubit_1(qubit):
     Q = declare(fixed)
     measure(
         "readout",
-        "rr1",
+        "rr2",
         None,
-        dual_demod.full("cos", "out1", "sin", "out2", I),
-        dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
     )
     assign(qubit, I > 0)
-    return Q
 
 
 #############
 # VARIABLES #
 #############
-qubit0_qe = "qe0"
-qubit1_qe = "qe1"
-qubit0_aux_qe = "qe0_aux"
-qubit1_aux_qe = "qe1_aux"
-qubit0_x_pulse = "x180"
-qubit1_x_pulse = "x180"
 qubit0_flux_qe = "qubit0_flux_qe"
 qubit1_flux_qe = "qubit1_flux_qe"
 iswap_pulse = "iswap_pulse"
-cr_c1t0 = "crtqe1cqe0"
-cr_c1t0_pulse = "cw"
-minus_cr_c1t0_pulse = "minus_cw"
+
 u = unit()
 qop_ip = "127.0.0.1"
 
 # qe0s
-qe0_IF = 50 * u.MHz
-qe0_LO = 7 * u.GHz
-mixer_qe0_g = 0.0
-mixer_qe0_phi = 0.0
 qe1_IF = 50 * u.MHz
 qe1_LO = 7 * u.GHz
-mixer_qe1_g = 0.0
-mixer_qe1_phi = 0.0
+qe2_IF = 50 * u.MHz
+qe2_LO = 7 * u.GHz
 
 qe0_T1 = int(10 * u.us)
 
@@ -184,15 +181,11 @@ minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-# rr0
-rr0_IF = 60 * u.MHz
-rr0_LO = 5.5 * u.GHz
-mixer_rr0_g = 0.0
-mixer_rr0_phi = 0.0
+#
 rr1_IF = 60 * u.MHz
 rr1_LO = 5.5 * u.GHz
-mixer_rr1_g = 0.0
-mixer_rr1_phi = 0.0
+rr2_IF = 60 * u.MHz
+rr2_LO = 5.5 * u.GHz
 
 time_of_flight = 180
 
@@ -214,7 +207,7 @@ const_flux_amp = 0.05
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
+        "con2": {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qe0
                 2: {"offset": 0.0},  # Q qe0
@@ -224,6 +217,8 @@ config = {
                 6: {"offset": 0.0},
                 7: {"offset": 0.0},
                 8: {"offset": 0.0},
+                9: {"offset": 0.0},
+                10: {"offset": 0.0},
             },
             "digital_outputs": {},
             "analog_inputs": {
@@ -233,34 +228,12 @@ config = {
         },
     },
     "elements": {
-        "qe0": {
+        "q1": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": qe0_LO,
-                "mixer": "mixer_qe0",
-            },
-            "intermediate_frequency": qe0_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "saturation": "saturation_pulse",
-                "gauss": "gaussian_pulse",
-                "pi": "x180_pulse",
-                "pi_half": "x90_pulse",
-                "x90": "x90_pulse",
-                "x180": "x180_pulse",
-                "-x90": "-x90_pulse",
-                "y90": "y90_pulse",
-                "y180": "y180_pulse",
-                "-y90": "-y90_pulse",
-            },
-        },
-        "qe1": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con2", 3),
+                "Q": ("con2", 4),
                 "lo_frequency": qe1_LO,
-                "mixer": "mixer_qe1",
+                "mixer": "octave_octave2_2",
             },
             "intermediate_frequency": qe1_IF,
             "operations": {
@@ -277,14 +250,14 @@ config = {
                 "-y90": "-y90_pulse",
             },
         },
-        "qe0_aux": {
+        "q2": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": qe0_LO,
-                "mixer": "mixer_qe0",
+                "I": ("con2", 5),
+                "Q": ("con2", 6),
+                "lo_frequency": qe2_LO,
+                "mixer": "octave_octave2_3",
             },
-            "intermediate_frequency": qe0_IF,
+            "intermediate_frequency": qe2_IF,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -299,69 +272,25 @@ config = {
                 "-y90": "-y90_pulse",
             },
         },
-        "qe1_aux": {
+        "cr01": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con2", 3),
+                "Q": ("con2", 4),
                 "lo_frequency": qe1_LO,
-                "mixer": "mixer_qe1",
+                "mixer": "octave_octave2_2",
             },
-            "intermediate_frequency": qe1_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "saturation": "saturation_pulse",
-                "gauss": "gaussian_pulse",
-                "pi": "x180_pulse",
-                "pi_half": "x90_pulse",
-                "x90": "x90_pulse",
-                "x180": "x180_pulse",
-                "-x90": "-x90_pulse",
-                "y90": "y90_pulse",
-                "y180": "y180_pulse",
-                "-y90": "-y90_pulse",
-            },
-        },
-        "crtqe1cqe0": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": qe0_LO,
-                "mixer": "mixer_qe1",
-            },
-            "intermediate_frequency": qe1_IF,
+            "intermediate_frequency": qe2_IF,
             "operations": {
                 "cw": "const_pulse",
                 "minus_cw": "minus_const_pulse",
             },
         },
-        "rr0": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": rr0_LO,
-                "mixer": "mixer_rr0",
-            },
-            "intermediate_frequency": rr0_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "displace": "displace_pulse",
-                "short_readout": "short_readout_pulse",
-                "readout": "readout_pulse",
-                "long_readout": "long_readout_pulse",
-            },
-            "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
-            },
-            "time_of_flight": time_of_flight,
-            "smearing": 0,
-        },
         "rr1": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
                 "lo_frequency": rr1_LO,
-                "mixer": "mixer_rr1",
+                "mixer": "mixer_rr0",
             },
             "intermediate_frequency": rr1_IF,
             "operations": {
@@ -372,15 +301,37 @@ config = {
                 "long_readout": "long_readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": ("con2", 1),
+                "out2": ("con2", 2),
+            },
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
+        },
+        "rr2": {
+            "mixInputs": {
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
+                "lo_frequency": rr2_LO,
+                "mixer": "mixer_rr1",
+            },
+            "intermediate_frequency": rr2_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "displace": "displace_pulse",
+                "short_readout": "short_readout_pulse",
+                "readout": "readout_pulse",
+                "long_readout": "long_readout_pulse",
+            },
+            "outputs": {
+                "out1": ("con2", 1),
+                "out2": ("con2", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "qubit0_flux_qe": {
             "singleInput": {
-                "port": ("con1", 7),
+                "port": ("con2", 7),
             },
             "operations": {
                 "iswap_pulse": "const_flux_pulse",
@@ -388,7 +339,7 @@ config = {
         },
         "qubit1_flux_qe": {
             "singleInput": {
-                "port": ("con1", 8),
+                "port": ("con2", 8),
             },
             "operations": {
                 "iswap_pulse": "const_flux_pulse",
@@ -651,32 +602,32 @@ config = {
         },
     },
     "mixers": {
-        "mixer_qe0": [
-            {
-                "intermediate_frequency": qe0_IF,
-                "lo_frequency": qe0_LO,
-                "correction": IQ_imbalance(mixer_qe0_g, mixer_qe0_phi),
-            }
-        ],
-        "mixer_qe1": [
+        "octave_octave2_2": [
             {
                 "intermediate_frequency": qe1_IF,
                 "lo_frequency": qe1_LO,
-                "correction": IQ_imbalance(mixer_qe1_g, mixer_qe1_phi),
+                "correction": [1.0, 0.0, 0.0, 1.0],
+            }
+        ],
+        "octave_octave2_3": [
+            {
+                "intermediate_frequency": qe2_IF,
+                "lo_frequency": qe2_LO,
+                "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
         "mixer_rr0": [
             {
-                "intermediate_frequency": rr0_IF,
-                "lo_frequency": rr0_LO,
-                "correction": IQ_imbalance(mixer_rr0_g, mixer_rr0_phi),
+                "intermediate_frequency": rr1_IF,
+                "lo_frequency": rr1_LO,
+                "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
         "mixer_rr1": [
             {
-                "intermediate_frequency": rr1_IF,
-                "lo_frequency": rr1_LO,
-                "correction": IQ_imbalance(mixer_rr1_g, mixer_rr1_phi),
+                "intermediate_frequency": rr2_IF,
+                "lo_frequency": rr2_LO,
+                "correction": [1.0, 0.0, 0.0, 1.0],
             }
         ],
     },
