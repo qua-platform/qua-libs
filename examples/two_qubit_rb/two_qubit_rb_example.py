@@ -21,6 +21,12 @@ minus_cr_c0t1_pulse = "minus_cw"
 
 
 def bake_phased_xz(baker: Baking, q, x, z, a):
+    """
+    Can go to any point in the Bloch sphere. As of now, it takes the calibrated amplitude for x180
+    and does amp() and frame_rotation_2pi() to get to anywhere in the Bloch sphere.
+    # TODO: if the amplitude of x90 is not half of x180, then can use python if-statement
+    to adjust the amplitude.
+    """
     qe = qubit0_qe if q == 0 else qubit1_qe
     pulse = qubit0_x_pulse if q == 0 else qubit1_x_pulse
 
@@ -36,6 +42,7 @@ def bake_sqrt_iswap(baker: Baking, q1, q2):
 def bake_cnot(baker: Baking, q1, q2):
     """
     The way it is written is uses cr01 for both cirq.CNOT(q1,q2) and cirq.CNOT(q2,q1)
+    In bakery, the argument to wait() is given in nanoseconds, not clock cycles
     # TODO: add components to accept cr10
     """
     if q1 == 0 and q2 == 1:
@@ -45,15 +52,21 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
         baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
-
-        baker.wait(x180_len // 4, cr_c0t1)
+        baker.wait(x180_len, cr_c0t1)
         baker.play(cr_c0t1_pulse, cr_c0t1)
-
-        baker.wait(const_len // 4, qubit0_aux_qe)
+        baker.wait(const_len, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
-
-        baker.wait((x180_len + const_len) // 4, cr_c0t1)
+        baker.wait(x180_len, cr_c0t1)
         baker.play(minus_cr_c0t1_pulse, cr_c0t1)
+        # blanked pulses, see amp=0.0 -- to match length of CNOT(q1, q2) and CNOT(q2, q1)
+        baker.wait(const_len, qubit0_aux_qe)
+        baker.wait(const_len, qubit1_aux_qe)
+        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
+        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.0)
+        baker.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
+        baker.frame_rotation_2pi(-0.5, qubit1_aux_qe)
+        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.0)
+        baker.frame_rotation_2pi(0.5 + 1.0, qubit1_aux_qe)
 
     elif q1 == 1 and q2 == 0:
         # note that cirq.CNOT(q2,q1) rewritten still in cirq.CNOT(q1,q2) terms
@@ -64,20 +77,15 @@ def bake_cnot(baker: Baking, q1, q2):
         baker.frame_rotation_2pi(-0.0, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
         baker.frame_rotation_2pi(0.0 + 0.5, qubit1_aux_qe)
-
-        baker.wait(x180_len // 4, cr_c0t1)
+        baker.wait(x180_len, cr_c0t1)
         baker.play(cr_c0t1_pulse, cr_c0t1)
-
-        baker.wait(const_len // 4, qubit0_aux_qe)
+        baker.wait(const_len, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
-
-        baker.wait((x180_len + const_len) // 4, cr_c0t1)
+        baker.wait(x180_len, cr_c0t1)
         baker.play(minus_cr_c0t1_pulse, cr_c0t1)
-
-        # with H to q1, q2 before
-        baker.wait(const_len // 4, qubit0_aux_qe)
-        baker.wait(const_len // 4, qubit1_aux_qe)
-
+        # with H to q1, q2 after
+        baker.wait(const_len, qubit0_aux_qe)
+        baker.wait(const_len, qubit1_aux_qe)
         baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
         baker.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
