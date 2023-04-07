@@ -21,20 +21,8 @@ def divide_array_in_half(arr):
     return arr1, arr2
 
 
-def create_linear_array_of_same_length(arr):
-    length = len(arr)
-    return [i * 4 for i in range(length)]
-
-
 def create_complex_array(arr1, arr2):
     return arr1 + 1j * arr2
-
-
-def plot_complex_array(arr):
-    plt.figure()
-    plt.plot(arr.real)
-    plt.plot(arr.imag)
-    plt.show()
 
 
 def subtract_complex_arrays(arr1, arr2):
@@ -57,25 +45,40 @@ def normalize_complex_array(arr):
 
 def plot_three_complex_arrays(arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real)
-    ax1.plot(arr1.imag)
+    ax1.plot(arr1.real, label="readl")
+    ax1.plot(arr1.imag, label="imag")
     ax1.set_title("ground state")
-    ax2.plot(arr2.real)
-    ax2.plot(arr2.imag)
+    ax1.set_xlabel("Clock cicles")
+    ax1.set_ylabel("demod traces [a.u.]")
+    ax1.legend()
+    ax2.plot(arr2.real, label="readl")
+    ax2.plot(arr2.imag, label="imag")
     ax2.set_title("excited state")
-    ax3.plot(arr3.real)
-    ax3.plot(arr3.imag)
+    ax2.set_xlabel("Clock cicles")
+    ax2.set_ylabel("demod traces [a.u.]")
+    ax2.legend()
+    ax3.plot(arr3.real, label="readl")
+    ax3.plot(arr3.imag, label="imag")
     ax3.set_title("optimal weights")
+    ax3.set_xlabel("Clock cicles")
+    ax3.set_ylabel("substracted traces [a.u.]")
+    ax3.legend()
     plt.show()
 
 
 ###################
 # The QUA program #
 ###################
+"""
+To obtain the decay of the resonators the integration weights length needs to be set longer
+than the readout_len, i.e., the pulse length. If integration weights and readout len
+are the same then you will not get the ringdown of the resonator.
+"""
 
-number_of_divisions = 250  # number of chunks to divide the integration weights into // put something meaningful here
-division_length = int(readout_len / (4 * number_of_divisions))  # in clock cycles
+division_length = 1  # in clock cycles
+number_of_divisions = int(readout_len / (4 * division_length))
 print("Integration weights chunk-size length in clock cyclces:", division_length)
+print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
 n_avg = 1e4  # number of averages
 cooldown_time = 5 * qubit_T1 // 4  # thermal decay time of the qubit
@@ -189,5 +192,18 @@ else:
     excited_trace = create_complex_array(Ie, Qe)
     substracted_trace = subtract_complex_arrays(excited_trace, ground_trace)
     norm_substracted_trace = normalize_complex_array(substracted_trace)  # <- these are the optimal weights :)
-
     plot_three_complex_arrays(ground_trace, excited_trace, norm_substracted_trace)
+
+    # after obtaining the optimal weights, they need to be loaded to 'integration_weights' dictionary
+    # in the config dictionary
+    # for example
+    # weights_plus_cos = norm_substracted_trace.real
+    # weights_minus_sin = (-1) * norm_substracted_trace.imag
+    # weights_sin = norm_substracted_trace.imag
+    # weights_minus_cos = (-1) * norm_substracted_trace.real
+    # then
+    # config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_plus_cos, "sine": weights_minus_sin}
+    # config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
+    # config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
+    # also need to add the new weights to readout_pulse
+    # config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
