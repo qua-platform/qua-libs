@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 ########################################
 # Define target matrix and frequencies #
 ########################################
-collision_free = True  # Enables the collision fre sorting algorithm
+collision_free = True  # Enables the collision free sorting algorithm
 piecewise_chirp = False  # Enables the piecewise chirp decomposition for minimal jerk trajectory
 analog_occupation_matrix = False  # Reads the current occupation matrix via analog readout
 raw_adc_acquisition = True  # Acquires chirp tones to plot spectrograms - output should be connected to OPX analog input
@@ -117,7 +117,7 @@ def get_current_row(this_row, nb_of_columns, current_location_full, target_locat
         # Initialize the target atom location vector for this row
         assign(target_location[col], target_location_full[this_row * nb_of_columns + col])
         # Initialize the target frequency vector for this row
-        with if_(target_frequencies_full[this_row * nb_of_columns + col] > 10):
+        with if_(~(target_frequencies_full[this_row * nb_of_columns + col] == 0)):
             assign(
                 target_frequencies[freq_count],
                 target_frequencies_full[this_row * nb_of_columns + col],
