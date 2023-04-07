@@ -156,12 +156,10 @@ class RBBaker:
             "two_qubit_gates": [self._get_baker("two_qubit_gates", c)[0] for c in gate_db.commands],
         }
         # Kevin
-        for waves in config["waveforms"]:
-            if waves[0] == "q":
-                # print(waves)
-                config["waveforms"][waves]["max_allowed_error"] = 1e-4
-        # for operations in config["elements"]["cr01"]["operations"]:
-        #     print(operations)
+        # for waves in config["waveforms"]:
+        #     if config["waveforms"][waves]["type"] == "arbitrary":
+        #         # print(waves)
+        #         config["waveforms"][waves]["max_allowed_error"] = 1e-4
         # Kevin
         return config
 

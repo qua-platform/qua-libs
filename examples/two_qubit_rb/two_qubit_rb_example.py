@@ -45,6 +45,8 @@ def bake_cnot(baker: Baking, q1, q2):
     The way it is written is uses cr01 for both cirq.CNOT(q1,q2) and cirq.CNOT(q2,q1)
     In bakery, the argument to wait() is given in nanoseconds, not clock cycles
 
+    Works with CR_len = 320 ns and pi_len = 40 ns -> avoid wf compression
+
     cnot based on decomposition Corcoles et al., 10.1038/ncomms7979 (2016)
     # TODO: add components to accept cr10, right written as cr01
     """
@@ -122,7 +124,7 @@ rb = TwoQubitRb(local_config, bake_phased_xz, {"CNOT": bake_cnot}, prep, meas, v
 
 # %%
 
-res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=4, num_averages=10)
+res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=50, num_averages=1000)
 
 # %%
 

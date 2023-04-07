@@ -88,7 +88,7 @@ qe0_T1 = int(10 * u.us)
 
 saturation_len = 1000
 saturation_amp = 0.1
-const_len = 100
+const_len = 340
 const_amp = 0.1
 square_pi_len = 100
 square_pi_amp = 0.1
