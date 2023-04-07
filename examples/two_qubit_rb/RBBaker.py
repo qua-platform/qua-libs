@@ -160,7 +160,7 @@ class RBBaker:
             if waves[0] == "q":
                 # print(waves)
                 config["waveforms"][waves]["max_allowed_error"] = 1e-4
-        # for operations in config["elements"]["qe0"]["operations"]:
+        # for operations in config["elements"]["cr01"]["operations"]:
         #     print(operations)
         # Kevin
         return config

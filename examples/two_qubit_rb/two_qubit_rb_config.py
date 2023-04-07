@@ -79,9 +79,9 @@ u = unit()
 qop_ip = "127.0.0.1"
 
 # qe0s
-qe1_IF = 50 * u.MHz
+qe1_IF = 0 * u.MHz
 qe1_LO = 7 * u.GHz
-qe2_IF = 50 * u.MHz
+qe2_IF = 0 * u.MHz
 qe2_LO = 7 * u.GHz
 
 qe0_T1 = int(10 * u.us)
@@ -230,8 +230,8 @@ config = {
     "elements": {
         "q1": {
             "mixInputs": {
-                "I": ("con2", 3),
-                "Q": ("con2", 4),
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
                 "lo_frequency": qe1_LO,
                 "mixer": "octave_octave2_2",
             },
@@ -274,8 +274,8 @@ config = {
         },
         "cr01": {
             "mixInputs": {
-                "I": ("con2", 3),
-                "Q": ("con2", 4),
+                "I": ("con2", 1),
+                "Q": ("con2", 2),
                 "lo_frequency": qe1_LO,
                 "mixer": "octave_octave2_2",
             },
@@ -287,8 +287,8 @@ config = {
         },
         "rr1": {
             "mixInputs": {
-                "I": ("con2", 1),
-                "Q": ("con2", 2),
+                "I": ("con2", 3),
+                "Q": ("con2", 4),
                 "lo_frequency": rr1_LO,
                 "mixer": "mixer_rr0",
             },
@@ -309,8 +309,8 @@ config = {
         },
         "rr2": {
             "mixInputs": {
-                "I": ("con2", 1),
-                "Q": ("con2", 2),
+                "I": ("con2", 3),
+                "Q": ("con2", 4),
                 "lo_frequency": rr2_LO,
                 "mixer": "mixer_rr1",
             },
@@ -607,7 +607,12 @@ config = {
                 "intermediate_frequency": qe1_IF,
                 "lo_frequency": qe1_LO,
                 "correction": [1.0, 0.0, 0.0, 1.0],
-            }
+            },
+            {
+                "intermediate_frequency": qe2_IF,
+                "lo_frequency": qe1_LO,
+                "correction": [1.0, 0.0, 0.0, 1.0],
+            },
         ],
         "octave_octave2_3": [
             {
