@@ -44,11 +44,11 @@ sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pd
 def allXY(pulses):
     """
     Generate a QUA sequence based on the two operations written in pulses. Used to generate the all XY program.
-    **Example:** I, Q = allXY(['I', 'y90']])
+    **Example:** I, Q = allXY(['I', 'y90'])
 
     :param pulses: tuple containing a particular set of operations to play. The pulse names must match corresponding
         operations in the config except for the identity operation that must be called 'I'.
-    :return: two QUA variables for the I and Q quadratures measured after the sequence.
+    :return: two QUA variables for the 'I' and 'Q' quadratures measured after the sequence.
     """
     I_xy = declare(fixed)
     Q_xy = declare(fixed)

@@ -24,7 +24,7 @@ f_min = 55 * u.MHz
 f_max = 65 * u.MHz
 df = 50 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
-# Flux amplitude sweep (as a prefactor of the flux amplitude)
+# Flux amplitude sweep (as a pre-factor of the flux amplitude)
 a_min = -1
 a_max = 0
 da = 0.01
@@ -73,7 +73,7 @@ with program() as resonator_spec_1D:
 with program() as resonator_spec_2D:
     n = declare(int)  # Averaging index
     f = declare(int)  # Resonator frequency
-    a = declare(fixed)  # Flux amplitude prefactor
+    a = declare(fixed)  # Flux amplitude pre-factor
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()

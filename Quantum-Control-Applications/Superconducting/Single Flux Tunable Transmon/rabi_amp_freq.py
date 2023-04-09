@@ -22,7 +22,7 @@ freq_span = 20 * u.MHz
 n_freq = 41
 freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
 
-# Pulse amplitude sweep (as a prefactor of the flux amplitude)
+# Pulse amplitude sweep (as a pre-factor of the flux amplitude)
 a_min = 0
 a_max = 1.99
 n_a = 161

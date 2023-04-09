@@ -15,8 +15,8 @@ from qualang_tools.loops import from_array
 
 tau_min = 4  # in clock cycles
 tau_max = 100  # in clock cycles
-dtau = 2  # in clock cycles
-taus = np.arange(tau_min, tau_max + 0.1, dtau)  # + 0.1 to add tau_max to taus
+d_tau = 2  # in clock cycles
+taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
 
 n_avg = 1e4
 cooldown_time = 5 * qubit_T1 // 4

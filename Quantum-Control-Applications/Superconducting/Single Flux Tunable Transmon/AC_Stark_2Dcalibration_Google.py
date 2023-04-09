@@ -8,7 +8,8 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from macros import single_measurement
+from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
@@ -18,7 +19,10 @@ n_avg = 1000
 
 cooldown_time = 5 * qubit_T1 // 4
 
-number_of_pulses = 20
+iter_min = 0
+iter_max = 50
+d = 1
+iters = np.arange(iter_min, iter_max + 0.1, d)
 
 with program() as ac_stark_shift:
     n = declare(int)
@@ -34,11 +38,12 @@ with program() as ac_stark_shift:
     pulses = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(it, 0, it < number_of_pulses, it + 1):
-            play("x180" * amp(1), "qubit")
-            play("x180" * amp(-1), "qubit")
+        with for_(*from_array(it, iters)):
+            with for_(pulses, iter_min, pulses <= it, pulses + d):
+                play("x180" * amp(1), "qubit")
+                play("x180" * amp(-1), "qubit")
         align("qubit", "resonator")
-        state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+        state, I, Q = single_measurement(threshold=ge_threshold, state=state, I=I, Q=Q)
         save(I, I_st)
         save(Q, Q_st)
         save(state, state_st)
@@ -46,10 +51,10 @@ with program() as ac_stark_shift:
         save(n, n_st)
 
     with stream_processing():
-        I_st.average().save("I")
-        Q_st.average().save("Q")
+        I_st.buffer(len(iters)).average().save("I")
+        Q_st.buffer(len(iters)).average().save("Q")
         n_st.save("iteration")
-        state_st.boolean_to_int().average().save("state")
+        state_st.boolean_to_int().buffer(len(iters)).average().save("state")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -67,7 +72,7 @@ else:
     xaxis = []
     yaxis = []
 
-    detunings = np.arange(-3e6, 0e6, 0.06e6)
+    detunings = np.arange(-20e6, 20e6, 1e6)
 
     for det in detunings:
         xaxis.append(det)
@@ -97,7 +102,7 @@ else:
 
         yaxis.append(state)
 
-    plt.plot(xaxis, yaxis)
-    plt.xlabel("Detuning [Hz]")
-    plt.ylabel("State population")
+    plt.pcolor(iters, xaxis, yaxis)
+    plt.xlabel("Iterations")
+    plt.ylabel("Detuning [Hz]")
     plt.title("AC stark shift calibration")

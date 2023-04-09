@@ -189,6 +189,6 @@ The absence of these two features on the right picture shows the validity of the
 
 <a id="1">[1]</a> M. A. Rol1,  L. Ciorciaro1, F. K. Malinowski1, B. M. Tarasinski1, R. E. Sagastizabal1, C. C. Bultink1, Y. Salathe, N. Haandbaek, J. Sedivy, and L. DiCarlo1. Time-domain characterization and correction of on-chip distortion of control pulses in a quantum processor. Appl. Phys. Lett. 116, 054001 (2020). https://doi.org/10.1063/1.5133894
 
-<a id="2">[2]</a> [Cryoscope with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/SSB%20mixer%20for%20readout/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope)
+<a id="2">[2]</a> [Cryoscope with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope#cryoscope)
 
 <a id="3">[3]</a> [DRAG pulse optimization with QUA use-case.](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration)

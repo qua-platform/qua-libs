@@ -31,7 +31,7 @@ with program() as rabi_amp_freq:
     I_st = declare_stream()
     Q_st = declare_stream()
 
-    # Calibrate the ground and excited states readout for deriving the Bloch vector
+    # Calibrate the ground and excited states' readout for deriving the Bloch vector
     Ig_st, Qg_st, Ie_st, Qe_st = ge_averaged_measurement(cooldown_time, n_avg)
 
     with for_(n, 0, n < n_avg, n + 1):

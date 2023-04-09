@@ -8,7 +8,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from macros import single_measurement
 
 ###################
 # The QUA program #
@@ -38,7 +38,7 @@ with program() as ac_stark_shift:
             play("x180" * amp(1), "qubit")
             play("x180" * amp(-1), "qubit")
         align("qubit", "resonator")
-        state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+        state, I, Q = single_measurement(threshold=ge_threshold, state=state, I=I, Q=Q)
         save(I, I_st)
         save(Q, Q_st)
         save(state, state_st)

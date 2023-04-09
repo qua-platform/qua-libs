@@ -31,7 +31,7 @@ job = qm.execute(cw_output)
 # The output of the IQ Mixer should be connected to a spectrum analyzer and values should be chosen as to minimize the
 # unwanted peaks.
 # If python can read the output of the spectrum analyzer, then this process can be automated and the correct values can
-# found using an optimization method such as Nelder-Mead:
+# be found using an optimization method such as Nelder-Mead:
 # https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html
 
 # qm.set_output_dc_offset_by_element('qubit', ('I', 'Q'), (-0.001, 0.003))

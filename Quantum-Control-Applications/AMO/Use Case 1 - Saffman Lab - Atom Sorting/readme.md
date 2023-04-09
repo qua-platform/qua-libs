@@ -193,7 +193,7 @@ with for_(j, 0, j < number_of_tweezers, j + 1):
 ```
 
 #### 3.3.2 Piecewise linear chirps
-Arbitrary chirps rates more suitable for atom transports (minimum jerk trajectory for instance) can be approximated with a serie of small linear segments.
+Arbitrary chirps rates more suitable for atom transports (minimum jerk trajectory for instance) can be approximated with a series of small linear segments.
 
 The minimum jerk trajectory that minimizes the acceleration changes applied to the atoms during transport leads to the following chirp profile:
 chirp(t) = detuning x (15.(t/t_{pulse})^4 - 30.(t/t_{pulse})^3 + 15.(t/t_{pulse})^2)
