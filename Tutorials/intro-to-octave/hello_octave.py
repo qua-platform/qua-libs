@@ -51,5 +51,5 @@ else:
     job = qm.execute(hello_octave)
     # Execute does not block python! As this is an infinite loop, the job would run forever. In this case, we've put a 10
     # seconds sleep and then halted the job.
-    # time.sleep(10)
-    # job.halt()
+    time.sleep(10)
+    job.halt()
