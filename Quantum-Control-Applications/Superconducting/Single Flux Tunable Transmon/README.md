@@ -33,6 +33,10 @@ the DRAG coefficient `$\alpha$`
 the DRAG coefficient `$\alpha$`
     * [2D](AC_Stark_2Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
     * [1D](AC_Stark_1Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by scanning the DRAG pulse detuning for a given number of pulses.
+14. [Optimal Readout Weights](optimal_weights.py) - Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
+15. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
+    * [Frequency optimization](readout_frequency_optimization.py) - The script performs frequency scaning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Duration optimization](readout_duration_opt.py) - The scrips performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as as a function of readout time.
 
 ## Use Cases
 

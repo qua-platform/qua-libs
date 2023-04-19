@@ -207,6 +207,7 @@ config = {
                 "displace": "displace_pulse",
                 "short_readout": "short_readout_pulse",
                 "readout": "readout_pulse",
+                "opt_readout": "opt_readout_pulse",
                 "long_readout": "long_readout_pulse",
             },
             "outputs": {
@@ -415,6 +416,18 @@ config = {
             "sine": [(1.0, readout_len)],
         },
         "minus_sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(-1.0, readout_len)],
+        },
+        "opt_cosine_weights": {
+            "cosine": [(1.0, readout_len)],
+            "sine": [(0.0, readout_len)],
+        },
+        "opt_sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(1.0, readout_len)],
+        },
+        "opt_minus_sine_weights": {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
         },
