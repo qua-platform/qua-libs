@@ -387,9 +387,10 @@ if check_triggers:
         qm.octave.set_rf_output_mode(el, RFOutputMode.trig_normal)
 
     with program() as hello_octave_trigger:
-        for el in elements:
-            play("cw", el, duration=1e9)
-            play('cw_wo_trig', 'qe1', duration=1e9)
+        with infinite_loop_():
+            for el in elements:
+                play("cw", el, duration=1e9)
+                play('cw_wo_trig', el, duration=1e9)
     job = qm.execute(hello_octave_trigger)
     time.sleep(60)  #  The program will run for 1 minute
     job.halt()
