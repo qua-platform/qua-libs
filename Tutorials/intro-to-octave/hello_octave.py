@@ -31,12 +31,12 @@ with program() as hello_octave:
 # Octave settings #
 ###################
 # Set all the Octave parameters as defined in set_octave.py
-octave_settings(
+qmm, qm = octave_settings(
     qmm=qmm,
     qm=qm,
     prog=hello_octave,
+    config=config,
     octave_config=octave_config,
-    external_clock=False,
     calibration=False,
 )
 

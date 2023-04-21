@@ -9,7 +9,7 @@ from qm.octave import QmOctaveConfig
 import re
 from qm.elements.element_with_octave import ElementWithOctave
 
-def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
+def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=None):
     """
     Extract the elements used in program that are connected to the octave
     :param qm: Quantum Machine object
@@ -20,6 +20,8 @@ def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
 
     if qm is None:
         raise "Can not find qm object"
+    if config is None:
+        raise "Can not find configuration"
     if octave_config is None:
         raise "Can not find octave configuration"
     if prog is None:
@@ -27,7 +29,7 @@ def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
 
     # make a list of all the elements in the program
     elements_in_prog = []
-    for element in list(qm.get_config()["elements"].keys()):
+    for element in list(config["elements"].keys()):
         if (
             re.search(f'(?<="){element}', generate_qua_script(prog)) is not None
             and re.search(f'{element}(?=")', generate_qua_script(prog)) is not None
@@ -36,7 +38,6 @@ def get_elements_used_in_octave(qm=None, octave_config=None, prog=None):
 
     # get the elements that are connected to the octave
     elements_used_in_octave = []
-    config = qm.get_config()
     for element in elements_in_prog:
         element_i = qm.elements[element]
         if isinstance(element_i, ElementWithOctave):
@@ -112,7 +113,7 @@ def octave_configuration(default_port_mapping=True, more_than_one_octave=False, 
     return octave_config
 
 
-def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibration=True):
+def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, calibration=True):
     """
     Set all the octave settings including: clock, up-converters modules, down-converters modules and calibration.
     The default parameters are internal LO for the up-conversion modules with a 0dB gain and RFOutputMode.on.
@@ -143,8 +144,7 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
     ##############################################################
     # extracting octave elements and their LO and IF frequencies #
     ##############################################################
-    octave_elements = get_elements_used_in_octave(qm=qm, octave_config=octave_config, prog=prog)
-    config = qm.get_config()
+    octave_elements = get_elements_used_in_octave(qm=qm, config=config, octave_config=octave_config, prog=prog)
     lo_freq = [config["elements"][octave_elements[i]]["mixInputs"]["lo_frequency"] for i in range(len(octave_elements))]
 
     #################################
@@ -188,5 +188,7 @@ def octave_settings(qmm, qm, prog, octave_config, external_clock=False, calibrat
             config["elements"][octave_elements[i]]["intermediate_frequency"] for i in range(len(octave_elements))
         ]
         for i in range(len(octave_elements)):
+            print("-" * 37 + f" Calibrates {octave_elements[i]}")
             qm.octave.calibrate_element(octave_elements[i], [(float(lo_freq[i]), float(if_freq[i]))])
             qm = qmm.open_qm(config)
+    return qmm, qm
