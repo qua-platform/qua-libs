@@ -9,6 +9,7 @@ from qm.octave import QmOctaveConfig
 import re
 from qm.elements.element_with_octave import ElementWithOctave
 
+
 def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=None):
     """
     Extract the elements used in program that are connected to the octave
@@ -31,8 +32,8 @@ def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=N
     elements_in_prog = []
     for element in list(config["elements"].keys()):
         if (
-            re.search(f'(?<="){element}', generate_qua_script(prog)) is not None
-            and re.search(f'{element}(?=")', generate_qua_script(prog)) is not None
+                re.search(f'(?<="){element}', generate_qua_script(prog)) is not None
+                and re.search(f'{element}(?=")', generate_qua_script(prog)) is not None
         ):
             elements_in_prog.append(element)
 
@@ -124,20 +125,16 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     :param prog: The QUA program
     :param octave_config: octave_config object
     :param external_clock: When False (default) sets the clock to be internal.
-        When external_clock='10MHz' sets the clock to be external and expects to get 10MHz
-        When external_clock='100MHz' sets the clock to be external and expects to get 100MHz
-        When external_clock='1000MHz' or external_clock='1GHz' sets the clock to be external and expects to get 1GHz
     :param calibration: When True (default) calibrates all the elements in the program
     """
     #####################
     # setting the clock #
     #####################
-    if external_clock == "10MHz":
+    if external_clock:
+        # Change to the relevant external frequency
         qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
-    elif external_clock == "100MHz":
-        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_100)
-    elif external_clock == "1000MHz" or external_clock == "1GHz":
-        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_1000)
+        # If using a clock from the OPT, use this command instead
+        # qmm.octave_manager.set_clock(octave, ClockType.Buffered, ClockFrequency.MHZ_1000)
     else:
         qmm.octave_manager.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
 
@@ -167,18 +164,14 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
             if (element_i.q_port == 1 or element_i.q_port == 2) and 'outputs' in \
                     config['elements'][octave_elements[i]].keys():
                 qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 1)
-                qm.octave.set_downconversion(octave_elements[i])
-                qm.octave.set_downconversion(octave_elements[i],
-                                             lo_source=RFInputLOSource.Internal)  # Can change to Dmd1LO
-                qm.octave._set_downconversion_if_mode(octave_elements[i], if_mode_i=IFMode.direct,
-                                                      if_mode_q=IFMode.direct)
-
+                qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Internal,
+                                             if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
             if (element_i.q_port == 3 or element_i.q_port == 4) and 'outputs' in \
                     config['elements'][octave_elements[i]].keys():
                 qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 2)
-                qm.octave.set_downconversion(octave_elements[i])
-                qm.octave.set_downconversion(octave_elements[i],
-                                             lo_source=RFInputLOSource.Dmd2LO)  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
+                qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Dmd2LO,
+                                             if_mode_i=IFMode.direct,
+                                             if_mode_q=IFMode.direct)  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
 
     #########################################################################
     # calibrate all the elements in the program that are used by the octave #
