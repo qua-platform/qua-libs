@@ -57,6 +57,7 @@ config = {
             },
             "outputs": {
                 "out1": ("con1", 1),
+                "out2": ("con1", 2),
             },
             "time_of_flight": 24,
             "smearing": 0,
@@ -81,6 +82,7 @@ config = {
                 },
             },
             "outputs": {
+                "out1": ("con1", 1),
                 "out2": ("con1", 2),
             },
             "time_of_flight": 24,
