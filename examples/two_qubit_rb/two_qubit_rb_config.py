@@ -79,9 +79,9 @@ u = unit()
 qop_ip = "127.0.0.1"
 
 # qe0s
-qe1_IF = 0 * u.MHz
+qe1_IF = 100 * u.MHz
 qe1_LO = 7 * u.GHz
-qe2_IF = 0 * u.MHz
+qe2_IF = 80 * u.MHz
 qe2_LO = 7 * u.GHz
 
 qe0_T1 = int(10 * u.us)

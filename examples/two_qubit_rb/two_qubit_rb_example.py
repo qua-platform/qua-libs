@@ -52,51 +52,24 @@ def bake_cnot(baker: Baking, q1, q2):
     """
     if q1 == 0 and q2 == 1:
         # CNOT(q1, q2)
+
+        # pre ECR unitaries
         baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=1)
         baker.frame_rotation_2pi(0.25, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-1.0, qubit1_aux_qe)
         baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(1.0, qubit1_aux_qe)
+
+        # ECR to realize ZX
+        baker.frame_rotation_2pi(0.0, qubit1_aux_qe) # put correct angle here 
         baker.align(cr_c0t1, qubit0_aux_qe)
         baker.play(cr_c0t1_pulse, cr_c0t1)
         baker.align(cr_c0t1, qubit0_aux_qe)
         baker.play(qubit0_x_pulse, qubit0_aux_qe)
         baker.align(cr_c0t1, qubit0_aux_qe)
         baker.play(cr_c0t1_pulse, cr_c0t1, amp=-1)
-        # blanked pulses, see amp=0.0 -- to match length of CNOT(q1, q2) and CNOT(q2, q1)
-        baker.align(qubit1_aux_qe, qubit0_aux_qe, cr_c0t1)
-        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.0)
-        baker.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-0.5, qubit1_aux_qe)
-        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.0)
-        baker.frame_rotation_2pi(0.5 + 1.0, qubit1_aux_qe)
 
-    elif q1 == 1 and q2 == 0:
-        # note that cirq.CNOT(q2,q1) rewritten still in cirq.CNOT(q1,q2) terms
-        # with H to q1, q2 before
-        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(0.5 + 0.5, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-0.0, qubit1_aux_qe)
-        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(0.0 + 0.5, qubit1_aux_qe)
-        baker.align(cr_c0t1, qubit0_aux_qe)
-        baker.play(cr_c0t1_pulse, cr_c0t1)
-        baker.align(cr_c0t1, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe)
-        baker.align(cr_c0t1, qubit0_aux_qe)
-        baker.play(cr_c0t1_pulse, cr_c0t1, amp=-1)
-        # with H to q1, q2 after
-        baker.align(qubit1_aux_qe, qubit0_aux_qe, cr_c0t1)
-        baker.frame_rotation_2pi(-0.5, qubit0_aux_qe)
-        baker.play(qubit0_x_pulse, qubit0_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(0.5 + 1.0, qubit0_aux_qe)
-        baker.frame_rotation_2pi(-0.5, qubit1_aux_qe)
-        baker.play(qubit1_x_pulse, qubit1_aux_qe, amp=0.5)
-        baker.frame_rotation_2pi(0.5 + 1.0, qubit1_aux_qe)
-
+        # post ECR unitry
+        baker.frame_rotation_2pi(-0.25, qubit0_aux_qe)        
 
 # def bake_cz(baker: Baking, q1, q2):
 #     baker.play(cz_pulse, qubit0_flux_qe)
@@ -118,13 +91,13 @@ def meas():
 
 local_config = add_aux_elements(config, "q1", "q2")
 
-qmm = QuantumMachinesManager(host="172.16.33.100", port=80)
+qmm = QuantumMachinesManager(host="172.16.33.100", port=81)
 
 rb = TwoQubitRb(local_config, bake_phased_xz, {"CNOT": bake_cnot}, prep, meas, verify_generation=True)
 
 # %%
 
-res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=50, num_averages=1000)
+res = rb.run(qmm, sequence_depths=[10, 15, 20, 25, 30], num_repeats=50, num_averages=10000)
 
 # %%
 
@@ -133,3 +106,5 @@ plt.show()
 
 res.plot_fidelity()
 plt.show()
+
+# %%
