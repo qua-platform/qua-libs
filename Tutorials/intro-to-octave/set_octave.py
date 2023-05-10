@@ -134,7 +134,7 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
         # Change to the relevant external frequency
         qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
         # If using a clock from the OPT, use this command instead
-        # qmm.octave_manager.set_clock(octave, ClockType.Buffered, ClockFrequency.MHZ_1000)
+        # qmm.octave_manager.set_clock("octave1", ClockType.Buffered, ClockFrequency.MHZ_1000)
     else:
         qmm.octave_manager.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
 
