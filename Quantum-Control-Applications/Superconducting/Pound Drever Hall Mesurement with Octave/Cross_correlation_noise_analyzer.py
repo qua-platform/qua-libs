@@ -1,47 +1,44 @@
+"""
+Cross_correlation_noise_analyzer.py:
+
+Version: 0.1
+
+"""
+## Imports
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-import numpy as np
 from PDH_config_octave import *
 import matplotlib.pyplot as plt
-from qm import SimulationConfig
+from qm import SimulationConfig # It is also possible to simulate the IQ signals
 from qm.octave import *
 from scipy.fft import fft, fftfreq
 import os
-import csv
 
-# opx_ip = '172.16.2.123'
-# opx_port = 80
-
-
+## Octave configuration
 octave_config = QmOctaveConfig()
-octave_config.add_device_info('octave1', octave_ip, octave_port)
+octave_config.add_device_info('octave1', qop_ip, octave_port)
 octave_config.set_opx_octave_mapping([("con1", "octave1")])
-# octave_config.add_opx_connections(portmap)
-octave_config.set_calibration_db(os.getcwd())
-# cdb = calibration_db.CalibrationDB(os.getcwd())
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
+octave_config.set_calibration_db(os.getcwd()) # The database can be placed anywhere you like
+qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, octave=octave_config)
 
-# qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
-qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_1000)
+qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
 
 qm = qmm.open_qm(config)
 
-element = "RR"
+element="RR"
 qm.octave.set_lo_frequency(element, rr_LO)
 qm.octave.set_lo_source(element, OctaveLOSource.Internal)
 qm.octave.set_rf_output_gain(element, -4)
 qm.octave.set_rf_output_mode(element, RFOutputMode.on)
 
-qm.octave.set_qua_element_octave_rf_in_port(element, "octave1", 2)
-qm.octave.set_downconversion(element, lo_source=RFInputLOSource.Dmd2LO)
-
-qm.octave._set_downconversion_if_mode(element, if_mode_i=IFMode.envelope, if_mode_q=IFMode.envelope)
+qm.octave.set_qua_element_octave_rf_in_port(element,"octave1", 1)
+qm.octave.set_downconversion(element, lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.envelope, if_mode_q=IFMode.envelope) #Dmd2LO
 
 qm.octave.calibrate_element(element, [(rr_LO, rr_IF)])
 
 qm = qmm.open_qm(config)
 
-
+## Cross Correlation Noise Analyzer Code
 pound_samples_per_chunk = 1*int(2*250e6/pound_modulation_freq) #in clocks = 100ns to catch 2 periods of the PDH signal
 pound_vector_size = int(pound_pulse_length/4/pound_samples_per_chunk)
 correlation_length = 4096
@@ -67,8 +64,6 @@ with program() as noise_analyzer:
 
     pound_index = declare(int)
     index = declare(int)
-    #MAC_I = declare(fixed, value=0.0)
-    #MAC_Q = declare(fixed, value=0.0)
     j = declare(int)
     j2 = declare(int)
     avg = declare(int)
@@ -86,14 +81,6 @@ with program() as noise_analyzer:
     with for_(pound_index, 0, pound_index<5*averaging_length*correlation_length*fft_averaging_length, pound_index+1):
         play('pound_pulse', 'RR')
         #frame_rotation_2pi(0.5, 'Pound_simulator')
-
-
-
-    #measure('pound_demod_pulse', 'Pound_demod', adc_st, demod.sliced('integ_pound',pound_vector_I1, pound_samples_per_chunk, 'out1'), demod.sliced('integ_pound',pound_vector_Q1, pound_samples_per_chunk, 'out2'))
-    #measure('pound_demod_pulse', 'Pound_demod_2', adc_st2, demod.sliced('integ_pound',pound_vector_I2, pound_samples_per_chunk, 'out1'), demod.sliced('integ_pound',pound_vector_Q2, pound_samples_per_chunk, 'out2'))
-    #with for_(dt, pound_samples_per_chunk, dt<pound_samples_per_chunk*1000, dt+pound_samples_per_chunk):
-    #align('Pound_demod', 'Pound_demod_2')
-    #measure('pound_demod_pulse', 'Pound_demod', adc_st, demod.full('integ_pound', pound_signalI, 'out1'), demod.sliced('integ_pound',pound_vector_I, pound_samples_per_chunk, 'out1'), demod.full('integ_pound', pound_signalQ, 'out2'))
 
     measure('pound_demod_pulse', 'Pound_demod', adc_st,
             demod.sliced('integ_pound', pound_vector_I1, pound_samples_per_chunk, 'out1'),
@@ -145,7 +132,9 @@ with program() as noise_analyzer:
         corr_Q_st.buffer(correlation_length).save_all('corr_Q')
         corr_I_st.buffer(correlation_length).fft('abs').average().save('PSD_I')
 
-
+## Run the Program
+# After program execution We can plot the cross correlation and the FFT of the auto correlation.
+# The FFT can be done in python or online in the stream processing
 job = qm.execute(noise_analyzer)
 job.result_handles.wait_for_all_values()
 res = job.result_handles
@@ -194,28 +183,9 @@ plt.xticks(fontsize= 20)
 plt.yticks(fontsize= 20)
 plt.grid()
 
-# plt.subplot(122)
-# plt.plot(t, ifft(X), 'r')
-# plt.xlabel('Time (s)')
-# plt.ylabel('Amplitude')
-# plt.tight_layout()
-# plt.show()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
+## Simulate the signals
 # job = qmm.simulate(config, noise_analyzer, SimulationConfig(2000))
 # samps = job.get_simulated_samples()
 # pound_simulated_signal9 = samps.con1.analog['9']
