@@ -24,10 +24,9 @@ def IQ_imbalance(g, phi):
 # CONFIGURATION:
 ################
 
-opx_ip = '169.254.10.0'
-opx_port = 81
-octave_ip = '169.254.10.0'
-octave_port = 51
+qop_ip = '169.254.10.0'
+opx_port = 80
+octave_port = 50
 
 # generating the mixer calibration matrix from the g and phi parameters
 # to this you need to also add the DC offsets which you set in the analog outputs section
@@ -116,10 +115,10 @@ config = {
         # Resonator element
         'RR': {
             'mixInputs': {
-                'I': (controller, 3),
-                'Q': (controller, 4),
+                'I': (controller, 1),
+                'Q': (controller, 2),
                 'lo_frequency': rr_LO,
-                'mixer': 'octave_octave1_2' #'mixer_RR'
+                'mixer': 'octave_octave1_1' #'mixer_RR'
             },
             'intermediate_frequency': rr_IF,
             'operations': {
@@ -131,7 +130,7 @@ config = {
             },
             "digitalInputs": {
                 'switch': {
-                    'port': (controller, 2),
+                    'port': (controller, 1),
                     'delay': 144,
                     'buffer': 0,
                 }
@@ -533,7 +532,7 @@ config = {
 
     'mixers': {
 
-        'octave_octave1_2': [
+        'octave_octave1_1': [
             {'intermediate_frequency': rr_IF, 'lo_frequency': rr_LO,
              'correction': [1,0,0,1]}
         ],
