@@ -1,57 +1,54 @@
+"""
+PDH_PID_octave.py: This example code is an implementation
+of Pound Drever Hall technique to find and lock on a resonator frequency
+
+Version: 0.1
+
+"""
+## Imports
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-import numpy as np
 from PDH_config_octave import *
 import matplotlib.pyplot as plt
-from qm import SimulationConfig
+from qm import SimulationConfig # It is also possible to simulate the IQ signals
 from qm.octave import *
 import os
 import csv
 
-#
-# opx_ip = '172.16.2.107'
-# opx_port = 80
-# octave_ip = '172.16.2.107'
-# octave_port = 50
-
-
+## Octave configuration
 octave_config = QmOctaveConfig()
-octave_config.add_device_info('octave1', octave_ip, octave_port)
+octave_config.add_device_info('octave1', qop_ip, octave_port)
 octave_config.set_opx_octave_mapping([("con1", "octave1")])
-# octave_config.add_opx_connections(portmap)
-octave_config.set_calibration_db(os.getcwd())
-# cdb = calibration_db.CalibrationDB(os.getcwd())
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
+octave_config.set_calibration_db(os.getcwd()) # The database can be placed anywhere you like
+qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, octave=octave_config)
 
-# qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
-qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_1000)
+qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
 
 qm = qmm.open_qm(config)
 
-element = "RR"
+element="RR"
 qm.octave.set_lo_frequency(element, rr_LO)
 qm.octave.set_lo_source(element, OctaveLOSource.Internal)
 qm.octave.set_rf_output_gain(element, -4)
 qm.octave.set_rf_output_mode(element, RFOutputMode.on)
 
-qm.octave.set_qua_element_octave_rf_in_port(element, "octave1", 2)
-qm.octave.set_downconversion(element, lo_source=RFInputLOSource.Dmd2LO)
-
-qm.octave._set_downconversion_if_mode(element, if_mode_i=IFMode.envelope, if_mode_q=IFMode.envelope)
+qm.octave.set_qua_element_octave_rf_in_port(element,"octave1", 1)
+qm.octave.set_downconversion(element, lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.envelope, if_mode_q=IFMode.envelope) #Dmd2LO
 
 qm.octave.calibrate_element(element, [(rr_LO, rr_IF)])
 
 qm = qmm.open_qm(config)
 
-# PDH spectroscopy code
-# Output channels are 1 and 2 to go to the IQ mixer, all PDH parameters are in the config file
-# It would be best to calibrate the mixer first to have clean single sideband upconversion and not have
-# to worry about mixing in with some LO leakage.
-# Also make sure of course that the carrier IF frequency is larger than the sideband
 
 
-f_init = int(32e6)
-f_final = int(195e6)
+## PDH PID code
+# Output channels are 1 and 2 to go to the RF_OUT_1, all PDH parameters are in the config file
+# It is best to calibrate the mixer first to have clean signal
+# Always make sure that the carrier IF frequency is larger than the sideband as it should
+
+
+f_init = int(50e6)
+f_final = int(100e6)
 df = int(10e3)
 freq_array_size = int((f_final - f_init) / df)
 N_averaging = 1
@@ -69,7 +66,7 @@ with program() as PDH_PID:
     adc_st = declare_stream(adc_trace=True)
     pound_signal = declare(fixed)
     pound_signal_st = declare_stream()
-    f = declare(int, value=initial_frequency)  # initial resonator frequency (LO=9.8 GHz)
+    f = declare(int, value=initial_frequency)  # initial resonator frequency
     scan_freq = declare(int)
     f_st = declare_stream()
     n = declare(int)
@@ -313,8 +310,8 @@ plt.xlabel('Frequency [MHz]', fontsize=30)
 plt.ylabel('FT of signal [V.s]', fontsize=30)
 plt.yscale("log")
 plt.grid()
-
-# simulate the signal to see that everything is phase coherent etc.. simulate for 20000 clock cycles or 80us
+## Simulate
+# It is also possible simulate the signal to see that everything is phase coherent etc.. simulate for 20000 clock cycles or 80us
 # job = qmm.simulate(config, PDH_PID, SimulationConfig(20000))
 # samps = job.get_simulated_samples()
 # RR_I = samps.con1.analog['1']

@@ -1,6 +1,6 @@
 """
 PDH_spectroscopy_octave.py: This example code is an implementation
-of Pound Drever Hall technique to find and lock on a resonator frequency
+of Pound Drever Hall technique to find a resonator frequency or artifacts in the resonator
 
 Version: 0.1
 
@@ -46,8 +46,8 @@ qm = qmm.open_qm(config)
 # Always make sure that the carrier IF frequency is larger than the sideband as it should
 
 
-f_init = int(-70e6) # This is where the sweep starts in Hz
-f_final = int(-10e6) # This is where the sweep ends in Hz
+f_init = int(50e6) # This is where the sweep starts in Hz
+f_final = int(100e6) # This is where the sweep ends in Hz
 df = int(10e3) # Sweep resolution in Hz
 freq_array_size = int((f_final-f_init)/df)
 N_averaging = 1 # how many sweeps to run
