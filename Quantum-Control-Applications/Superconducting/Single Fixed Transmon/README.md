@@ -37,6 +37,10 @@ fidelity
     * [Randomized Benchmarking without Single Shot readout](rb_without_singleshot_readout.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity without single shot readout.
 16. [State Tomography](state_tomography.py) - A template to perform state tomography
 17. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
+18. [Optimal Readout Weights](optimal_weights.py) - Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
+19. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
+    * [Frequency optimization](readout_frequency_optimization.py) - The script performs frequency scaning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Duration optimization](readout_duration_opt.py) - The scrips performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as as a function of readout time.
 
 ## Use Cases
 

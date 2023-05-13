@@ -45,9 +45,8 @@ Let's talk about each function separately:
 
 3. `octave_settings` function:
    1. Sets the clock. The default is internal. 
-      1. If you want to use an external clock with 10MHz set `external_clock='10MHz'`
-      2. If you want to use an external clock with 100MHz set `external_clock='100MHz'`
-      3. If you want to use an external clock with 1GHz set `external_clock='1GHz'`
+      1. If you want to use an external, use the flag `external_clock=True` and set the relevant external clock frequency.
+         2. If you want to use the clock from the OPT use the `ClockType.Buffered`.
       * Note: the above is related to configuring clock in. The Octave's clock out is fixed to 1GHz. 
    2. Sets the up-converters modules.
       1. LO  - The default LO source is internal. If you want to use an external LO you need to enter `set_octave.py` file and change the LO to the relevant external one (LO1, LO2, LO3, LO4 or LO5)
