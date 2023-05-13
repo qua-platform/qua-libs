@@ -1,9 +1,8 @@
 import numpy as np
 
-######################
-# AUXILIARY FUNCTIONS:
-######################
-
+"""
+Auxiliary functions
+"""
 
 def gauss(amplitude, mu, sigma, length):
     t = np.linspace(-length / 2, length / 2, length)
@@ -20,9 +19,9 @@ def IQ_imbalance(g, phi):
 
 
 
-################
-# CONFIGURATION:
-################
+"""
+CONFIGURATION:
+"""
 
 qop_ip = '169.254.10.0'
 opx_port = 80
