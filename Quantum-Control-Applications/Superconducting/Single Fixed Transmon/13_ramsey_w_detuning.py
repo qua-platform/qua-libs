@@ -1,5 +1,5 @@
 """
-ramsey_w_frame_rotation.py: Measures T2*
+ramsey.py: Measures T2* using detuning
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -32,13 +32,12 @@ with program() as ramsey:
     Q_st = declare_stream()
     tau = declare(int)
 
+    update_frequency("qubit", qubit_IF + detuning)
+
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
             play("pi_half", "qubit")
             wait(tau, "qubit")
-            frame_rotation_2pi(
-                Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau), "qubit"
-            )  # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
             play("pi_half", "qubit")
             align("qubit", "resonator")
             measure(
@@ -51,7 +50,6 @@ with program() as ramsey:
             save(I, I_st)
             save(Q, Q_st)
             wait(cooldown_time, "resonator")
-            reset_frame("qubit")
         save(n, n_st)
 
     with stream_processing():
@@ -94,6 +92,6 @@ else:
         plt.plot(4 * taus, Q, ".", label="Q")
         plt.xlabel("Idle time [ns]")
         plt.ylabel("I & Q amplitude [a.u.]")
-        plt.title("Ramsey with frame rotation")
+        plt.title("Ramsey")
         plt.legend()
         plt.pause(0.1)

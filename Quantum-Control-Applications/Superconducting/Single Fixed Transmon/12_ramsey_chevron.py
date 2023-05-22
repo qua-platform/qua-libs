@@ -1,5 +1,5 @@
 """
-ramsey_freq_duration.py: template for acquiring the 2D (idle time & pulse frequency sweeps) Ramsey oscillations
+ramsey_chevron.py: template for acquiring the 2D (idle time & pulse frequency sweeps) Ramsey oscillations
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -20,7 +20,7 @@ cooldown_time = 5 * qubit_T1 // 4  # Resonator cooldown time in clock cycles (4n
 # Frequency sweep in Hz (Needs to be a list of int)
 freq_span = 10 * u.MHz
 n_freq = 41
-freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
+freq_array = np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF
 
 # Idle time sweep (Needs to be a list of int)
 delay_max = 4 * u.us
@@ -106,13 +106,13 @@ else:
         plt.cla()
         plt.title("resonator spectroscopy amplitude")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, np.sqrt(I**2 + Q**2))
-        plt.xlabel("frequency [MHz]")
+        plt.xlabel("detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, delay_array * 4, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("frequency [MHz]")
+        plt.xlabel("detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()
         plt.pause(0.01)
