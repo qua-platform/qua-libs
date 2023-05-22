@@ -28,7 +28,7 @@ def IQ_imbalance(g, phi):
 #############
 # VARIABLES #
 #############
-u = unit()
+u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"
 
 # Qubits
