@@ -1,5 +1,5 @@
 """
-rabi_amp_freq.py: template for acquiring the 2D (pulse amplitude & frequency sweeps) Rabi oscillations
+rabi_chevron.py: template for acquiring the 2D (pulse amplitude & frequency sweeps) Rabi oscillations
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

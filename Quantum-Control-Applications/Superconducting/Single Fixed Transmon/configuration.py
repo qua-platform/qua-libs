@@ -180,8 +180,8 @@ config = {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
                 "gauss": "gaussian_pulse",
-                "pi": "x180_pulse",
-                "pi_half": "x90_pulse",
+                "pi": "square_pi_pulse",
+                "pi_half": "square_pi_half_pulse",
                 "x90": "x90_pulse",
                 "x180": "x180_pulse",
                 "-x90": "-x90_pulse",
@@ -225,6 +225,14 @@ config = {
             "length": square_pi_len,
             "waveforms": {
                 "I": "square_pi_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "square_pi_half_pulse": {
+            "operation": "control",
+            "length": square_pi_len,
+            "waveforms": {
+                "I": "square_pi_half_wf",
                 "Q": "zero_wf",
             },
         },
@@ -322,6 +330,7 @@ config = {
         "const_wf": {"type": "constant", "sample": const_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
+        "square_pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
         "displace_wf": {"type": "arbitrary", "samples": displace_wf.tolist()},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
