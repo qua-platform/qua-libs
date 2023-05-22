@@ -1,5 +1,5 @@
 """
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
