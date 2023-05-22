@@ -1,5 +1,5 @@
 """
-optimal_weights.py: Optimal weights for the readout pulse
+readout_duration_optimization.py: optimal readout duration that maximizes the SNR between ground and excited
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -12,7 +12,6 @@ from qualang_tools.loops import from_array
 ###########
 # Helpers #
 ###########
-
 
 def divide_array_in_half(arr):
     split_index = len(arr) // 2
@@ -27,22 +26,22 @@ def create_complex_array(arr1, arr2):
 
 def plot_three_complex_arrays(arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real, label="readl")
+    ax1.plot(arr1.real, label="real")
     ax1.plot(arr1.imag, label="imag")
     ax1.set_title("ground state")
-    ax1.set_xlabel("Clock cicles")
+    ax1.set_xlabel("Clock cycles")
     ax1.set_ylabel("demod traces [a.u.]")
     ax1.legend()
-    ax2.plot(arr2.real, label="readl")
+    ax2.plot(arr2.real, label="real")
     ax2.plot(arr2.imag, label="imag")
     ax2.set_title("excited state")
-    ax2.set_xlabel("Clock cicles")
+    ax2.set_xlabel("Clock cycles")
     ax2.set_ylabel("demod traces [a.u.]")
     ax2.legend()
-    ax3.plot(arr3.real, label="readl")
+    ax3.plot(arr3.real, label="real")
     ax3.plot(arr3.imag, label="imag")
     ax3.set_title("SNR")
-    ax3.set_xlabel("Clock cicles")
+    ax3.set_xlabel("Clock cycles")
     ax3.set_ylabel("substracted traces [a.u.]")
     ax3.legend()
     plt.show()
@@ -52,17 +51,19 @@ def plot_three_complex_arrays(arr1, arr2, arr3):
 # The QUA program #
 ###################
 """
-If you want to obtain the behavior of the resonator during the ringdown, the ingtegration weights
+If you want to obtain the behavior of the resonator during the ringdown, the integration weights
 length needs to be larger than the readout_pulse length.
 """
 
 division_length = 1  # in clock cycles
 number_of_divisions = int(readout_len / (4 * division_length))
-print("Integration weights chunk-size length in clock cyclces:", division_length)
+print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
 n_avg = 1e4  # number of averages
 cooldown_time = 5 * qubit_T1 // 4  # thermal decay time of the qubit
+
+qubit_operation = "pi"
 
 with program() as opt_weights:
     n = declare(int)
@@ -101,12 +102,9 @@ with program() as opt_weights:
         align()
 
         # excited state
-        play("x180", "qubit")
+        play(qubit_operation, "qubit")
         align("qubit", "resonator")
-        measure(
-            "readout",
-            "resonator",
-            None,
+        measure("readout", "resonator", None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -179,3 +177,5 @@ else:
     excited_trace = create_complex_array(Ie, Qe)
     SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
     plot_three_complex_arrays(ground_trace, excited_trace, SNR)
+    print(f"The optimal readout length is {np.argmax(SNR) * number_of_divisions * division_length} clock cycles (SNR={max(SNR)})")
+
