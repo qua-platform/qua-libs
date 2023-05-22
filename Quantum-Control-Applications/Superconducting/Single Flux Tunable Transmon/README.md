@@ -14,27 +14,29 @@ While these can serve as a template for new labs or for new experiments, certain
 Use with care.
 
 ## Basic Files
-1. [Hello_qua](hello_qua.py) - A script used for basic qua program demonstration.
-2. [raw_adc_traces](raw_adc_traces.py) - A script for acquiring raw ADC traces from inputs 1 and 2 and check ADC saturation and time of flight.
-3. [Resonator_spec](resonator_spec.py) - Performs the 1D and 2D (with flux amplitude sweep) resonator spectroscopy.
-4. [Rabi_amp_freq](rabi_amp_freq.py) - Acquires the 2D (pulse amplitude & frequency sweeps) Rabi oscillations.
-5. [ramsey_freq_duration](ramsey_freq_duration.py) - Acquires the 2D (idle time & pulse frequency sweeps) Ramsey oscillations.
-6. [Resonator_spec_g_e](resonator_spec_g_e.py) -  Performs the 1D resonator spectroscopy for a ground and excited qubit (with IO values).
-7. [IQ_blobs](IQ_blobs.py) - Performs a discrimination of the IQ blobs and derives the readout fidelity.
-8. [Active_reset](active_reset.py) - Template to showcase the usage of active reset.
-9. [Tomography](tomography.py) - Performs the qubit tomography by scanning the phase of the 2nd pi/2 pulse.
-10. [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
-11. [Cryoscope](cryoscope.py) - Performs the cryoscope measurement.
-12. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
-13. **DRAG calibration** -  Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
+0. [Hello_qua](00_hello_qua.py) - A script used for basic qua program demonstration.
+1. [raw_adc_traces](01_raw_adc_traces.py) - A script for acquiring raw ADC traces from inputs 1 and 2 and check ADC saturation.
+2. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances
+3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
+4. [Resonator_spec](resonator_spec.py) - Performs the 1D and 2D (with flux amplitude sweep) resonator spectroscopy.
+5. [Rabi_amp_freq](rabi_amp_freq.py) - Acquires the 2D (pulse amplitude & frequency sweeps) Rabi oscillations.
+6. [ramsey_freq_duration](ramsey_freq_duration.py) - Acquires the 2D (idle time & pulse frequency sweeps) Ramsey oscillations.
+7. [Resonator_spec_g_e](resonator_spec_g_e.py) -  Performs the 1D resonator spectroscopy for a ground and excited qubit (with IO values).
+8. [IQ_blobs](IQ_blobs.py) - Performs a discrimination of the IQ blobs and derives the readout fidelity.
+9. [Active_reset](active_reset.py) - Template to showcase the usage of active reset.
+10. [Tomography](tomography.py) - Performs the qubit tomography by scanning the phase of the 2nd pi/2 pulse.
+11. [Cryoscope_amplitude_calibration](cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
+12. [Cryoscope](cryoscope.py) - Performs the cryoscope measurement.
+13. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file. 
+14. **DRAG calibration** -  Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`
     * [Yale method](DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain 
 the DRAG coefficient `$\alpha$`
     * [2D](AC_Stark_2Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
     * [1D](AC_Stark_1Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by scanning the DRAG pulse detuning for a given number of pulses.
-14. [Optimal Readout Weights](optimal_weights.py) - Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
-15. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
+15. [Optimal Readout Weights](optimal_weights.py) - Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
+16. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
     * [Frequency optimization](readout_frequency_optimization.py) - The script performs frequency scaning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
     * [Duration optimization](readout_duration_opt.py) - The scrips performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as as a function of readout time.
 

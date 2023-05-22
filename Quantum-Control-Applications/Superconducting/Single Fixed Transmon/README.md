@@ -6,10 +6,11 @@ These files were tested on real qubits, but are given as-is with no guarantee.
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
 Use with care.
 
-1. [Hello QUA](hello_qua.py) - A script used for playing with QUA
-2. [Mixer Calibration](manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances
-3. [Raw ADC Traces](raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
-is not saturated, correct for DC offsets and define the time of flight
+0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA
+1. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances
+2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
+is not saturated, correct for DC offsets.
+3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Resonator Spectroscopy](resonator_spec.py) - Performs a 1D frequency sweep on the resonator
 5. [Qubit Spectroscopy](qubit_spec.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator
    * [Qubit Spectroscopy Wide Range](qubit_spec_wide_range.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop
