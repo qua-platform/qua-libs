@@ -104,7 +104,7 @@ with program() as ALLXY:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager("172.16.33.100", port=83)
+qmm = QuantumMachinesManager(qop_ip)
 
 simulate = False
 
