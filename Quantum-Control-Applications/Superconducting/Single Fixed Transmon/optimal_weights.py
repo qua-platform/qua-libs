@@ -194,7 +194,7 @@ else:
     norm_substracted_trace = normalize_complex_array(substracted_trace)  # <- these are the optimal weights :)
     plot_three_complex_arrays(ground_trace, excited_trace, norm_substracted_trace)
 
-    # after obtaining the optimal weights, they need to be loaded to 'integration_weights' dictionary
+    # after obtaining the optimal weights, you need to be loaded to 'integration_weights' dictionary
     # in the config dictionary
     # for example
     # weights_plus_cos = norm_substracted_trace.real

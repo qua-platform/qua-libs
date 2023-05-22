@@ -202,7 +202,6 @@ config = {
                 "cw": "const_pulse",
                 "displace": "displace_pulse",
                 "readout": "readout_pulse",
-                "opt_readout": "opt_readout_pulse",
             },
             "outputs": {
                 "out1": ("con1", 1),
@@ -312,6 +311,9 @@ config = {
                 "rotated_cos": "rotated_cosine_weights",
                 "rotated_sin": "rotated_sine_weights",
                 "rotated_minus_sin": "rotated_minus_sine_weights",
+                "opt_cos": "opt_cosine_weights",
+                "opt_sin": "opt_sine_weights",
+                "opt_minus_sin": "opt_minus_sine_weights",
             },
             "digital_marker": "ON",
         },
