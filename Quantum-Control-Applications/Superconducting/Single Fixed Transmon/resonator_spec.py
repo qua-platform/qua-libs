@@ -34,7 +34,7 @@ with program() as resonator_spec:
         with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
             update_frequency("resonator", f)
             measure(
-                "long_readout",
+                "readout",
                 "resonator",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),

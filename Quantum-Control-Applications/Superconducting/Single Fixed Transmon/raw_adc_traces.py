@@ -23,7 +23,7 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):
         reset_phase("resonator")
-        measure("short_readout", "resonator", adc_st)
+        measure("readout", "resonator", adc_st)
         wait(cooldown_time, "resonator")
 
     with stream_processing():

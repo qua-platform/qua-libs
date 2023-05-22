@@ -142,12 +142,8 @@ mixer_resonator_phi = 0.0
 
 time_of_flight = 180
 
-short_readout_len = 500
-short_readout_amp = 0.4
 readout_len = 5000
 readout_amp = 0.2
-long_readout_len = 50000
-long_readout_amp = 0.1
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
@@ -205,10 +201,8 @@ config = {
             "operations": {
                 "cw": "const_pulse",
                 "displace": "displace_pulse",
-                "short_readout": "short_readout_pulse",
                 "readout": "readout_pulse",
                 "opt_readout": "opt_readout_pulse",
-                "long_readout": "long_readout_pulse",
             },
             "outputs": {
                 "out1": ("con1", 1),
@@ -304,23 +298,6 @@ config = {
                 "Q": "minus_y90_Q_wf",
             },
         },
-        "short_readout_pulse": {
-            "operation": "measurement",
-            "length": short_readout_len,
-            "waveforms": {
-                "I": "short_readout_wf",
-                "Q": "zero_wf",
-            },
-            "integration_weights": {
-                "cos": "short_cosine_weights",
-                "sin": "short_sine_weights",
-                "minus_sin": "short_minus_sine_weights",
-                "rotated_cos": "short_rotated_cosine_weights",
-                "rotated_sin": "short_rotated_sine_weights",
-                "rotated_minus_sin": "short_rotated_minus_sine_weights",
-            },
-            "digital_marker": "ON",
-        },
         "readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
@@ -335,23 +312,6 @@ config = {
                 "rotated_cos": "rotated_cosine_weights",
                 "rotated_sin": "rotated_sine_weights",
                 "rotated_minus_sin": "rotated_minus_sine_weights",
-            },
-            "digital_marker": "ON",
-        },
-        "long_readout_pulse": {
-            "operation": "measurement",
-            "length": long_readout_len,
-            "waveforms": {
-                "I": "long_readout_wf",
-                "Q": "zero_wf",
-            },
-            "integration_weights": {
-                "cos": "long_cosine_weights",
-                "sin": "long_sine_weights",
-                "minus_sin": "long_minus_sine_weights",
-                "rotated_cos": "long_rotated_cosine_weights",
-                "rotated_sin": "long_rotated_sine_weights",
-                "rotated_minus_sin": "long_rotated_minus_sine_weights",
             },
             "digital_marker": "ON",
         },
@@ -375,38 +335,12 @@ config = {
         "y180_I_wf": {"type": "arbitrary", "samples": y180_I_wf.tolist()},
         "minus_y90_Q_wf": {"type": "arbitrary", "samples": minus_y90_Q_wf.tolist()},
         "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
-        "short_readout_wf": {"type": "constant", "sample": short_readout_amp},
         "readout_wf": {"type": "constant", "sample": readout_amp},
-        "long_readout_wf": {"type": "constant", "sample": long_readout_amp},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
     },
     "integration_weights": {
-        "short_cosine_weights": {
-            "cosine": [(1.0, short_readout_len)],
-            "sine": [(0.0, short_readout_len)],
-        },
-        "short_sine_weights": {
-            "cosine": [(0.0, short_readout_len)],
-            "sine": [(1.0, short_readout_len)],
-        },
-        "short_minus_sine_weights": {
-            "cosine": [(0.0, short_readout_len)],
-            "sine": [(-1.0, short_readout_len)],
-        },
-        "short_rotated_cosine_weights": {
-            "cosine": [(np.cos(rotation_angle), short_readout_len)],
-            "sine": [(-np.sin(rotation_angle), short_readout_len)],
-        },
-        "short_rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), short_readout_len)],
-            "sine": [(np.cos(rotation_angle), short_readout_len)],
-        },
-        "short_rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), short_readout_len)],
-            "sine": [(-np.cos(rotation_angle), short_readout_len)],
-        },
         "cosine_weights": {
             "cosine": [(1.0, readout_len)],
             "sine": [(0.0, readout_len)],
@@ -442,30 +376,6 @@ config = {
         "rotated_minus_sine_weights": {
             "cosine": [(-np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
-        },
-        "long_cosine_weights": {
-            "cosine": [(1.0, long_readout_len)],
-            "sine": [(0.0, long_readout_len)],
-        },
-        "long_sine_weights": {
-            "cosine": [(0.0, long_readout_len)],
-            "sine": [(1.0, long_readout_len)],
-        },
-        "long_minus_sine_weights": {
-            "cosine": [(0.0, long_readout_len)],
-            "sine": [(-1.0, long_readout_len)],
-        },
-        "long_rotated_cosine_weights": {
-            "cosine": [(np.cos(rotation_angle), long_readout_len)],
-            "sine": [(-np.sin(rotation_angle), long_readout_len)],
-        },
-        "long_rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), long_readout_len)],
-            "sine": [(np.cos(rotation_angle), long_readout_len)],
-        },
-        "long_rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), long_readout_len)],
-            "sine": [(-np.cos(rotation_angle), long_readout_len)],
         },
     },
     "mixers": {
