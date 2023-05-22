@@ -13,7 +13,7 @@ from qm import SimulationConfig
 ##############################
 # Program-specific variables #
 ##############################
-n_points = 1e2
+n_points = 1e6
 cooldown_time = 5 * qubit_T1 // 4
 
 # All XY sequences. The sequence names must match corresponding operation in the config
@@ -78,11 +78,12 @@ with program() as ALLXY:
     n = declare(int)
     r = Random()
     r_ = declare(int)
-    I_st = [declare_stream() for _ in range(21)]
-    Q_st = [declare_stream() for _ in range(21)]
+    I_st = [declare_stream() for _ in range(len(sequence))]
+    Q_st = [declare_stream() for _ in range(len(sequence))]
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_points, n + 1):
-        assign(r_, r.rand_int(21))
+        assign(r_, r.rand_int(len(sequence)))
         # Can replace by active reset
         wait(cooldown_time, "qubit")
         # Plays a random XY sequence
@@ -92,16 +93,18 @@ with program() as ALLXY:
                     I, Q = allXY(sequence[i])
                     save(I, I_st[i])
                     save(Q, Q_st[i])
+        save(n, n_st)
 
     with stream_processing():
-        for i in range(21):
+        n_st.save("iteration")
+        for i in range(len(sequence)):
             I_st[i].average().save(f"I{i}")
             Q_st[i].average().save(f"Q{i}")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager("172.16.33.100", port=83)
 
 simulate = False
 
@@ -111,29 +114,30 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
-
     qm = qmm.open_qm(config)
-
     job = qm.execute(ALLXY)
-    job.result_handles.wait_for_all_values()
-
-    I = []
-    Q = []
-    for x in range(21):
-        I.append(job.result_handles.get(f"I{x}").fetch_all())
-        Q.append(job.result_handles.get(f"Q{x}").fetch_all())
-
-    I = np.array(I)
-    Q = np.array(Q)
-
-    plt.figure()
-    ax1 = plt.subplot(211)
-    ax1.plot(I)
-    ax1.set_ylabel("I quadrature [a.u.]")
-    ax1.set_xticklabels("")
-    ax2 = plt.subplot(212)
-    ax2.plot(Q)
-    ax2.set_ylabel("Q quadrature [a.u.]")
-    ax2.set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
-    plt.suptitle("All XY")
-    plt.tight_layout()
+    fig = plt.figure()
+    interrupt_on_close(fig, job)
+    data_list = ["iteration"] + list(np.concatenate([[f"I{i}", f"Q{i}"] for i in range(len(sequence))]))
+    results = fetching_tool(job, data_list, mode="live")
+    while results.is_processing():
+        res = results.fetch_all()
+        I = np.array(res[1::2])
+        Q = np.array(res[2::2])
+        n = res[0]
+        progress_counter(n, n_points, start_time=results.start_time)
+        plt.subplot(211)
+        plt.cla()
+        plt.plot(-I)
+        plt.plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, '-')
+        plt.ylabel("I quadrature [a.u.]")
+        plt.xticks(ticks=range(len(sequence)), labels=["" for _ in sequence], rotation=45)
+        plt.subplot(212)
+        plt.cla()
+        plt.plot(-Q)
+        plt.plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, '-')
+        plt.ylabel("Q quadrature [a.u.]")
+        plt.xticks(ticks=range(len(sequence)), labels=[str(el) for el in sequence], rotation=45)
+        plt.suptitle("All XY")
+        plt.tight_layout()
+        plt.pause(0.1)
