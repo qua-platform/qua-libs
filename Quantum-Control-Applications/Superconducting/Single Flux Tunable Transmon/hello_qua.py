@@ -22,9 +22,7 @@ qmm = QuantumMachinesManager(qop_ip)
 
 simulation = True
 if simulation:
-    simulation_config = SimulationConfig(
-        duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    )
+    simulation_config = SimulationConfig(duration=8000)
     job = qmm.simulate(config, hello_qua, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
