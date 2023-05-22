@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 ###################
 # The QUA program #
 ###################
+qubit_operation = "pi"
 
 n_avg = 10000
 
@@ -51,7 +52,7 @@ with program() as IQ_blobs:
 
             align()  # global align
 
-            play("x180", "qubit")
+            play(qubit_operation, "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",
@@ -125,3 +126,4 @@ while results.is_processing():
     plt.xlabel("Readout frequency [Hz]")
     plt.ylabel("SNR")
     plt.pause(0.1)
+    print(f"The optimal readout frequency is {freqs[np.argmax(SNR)]} Hz (SNR={max(SNR)})")

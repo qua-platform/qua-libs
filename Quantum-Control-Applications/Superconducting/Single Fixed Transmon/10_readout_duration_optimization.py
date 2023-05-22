@@ -178,4 +178,3 @@ else:
     SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
     plot_three_complex_arrays(ground_trace, excited_trace, SNR)
     print(f"The optimal readout length is {np.argmax(SNR) * number_of_divisions * division_length} clock cycles (SNR={max(SNR)})")
-
