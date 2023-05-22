@@ -42,7 +42,7 @@ def plot_three_complex_arrays(arr1, arr2, arr3):
     ax3.plot(arr3.imag, label="imag")
     ax3.set_title("SNR")
     ax3.set_xlabel("Clock cycles")
-    ax3.set_ylabel("substracted traces [a.u.]")
+    ax3.set_ylabel("subtracted traces [a.u.]")
     ax3.legend()
     plt.show()
 
@@ -160,7 +160,7 @@ else:
     # Live plotting
     while results.is_processing():
         # Fetch results
-        iteration = results.fetch_all()
+        iteration = results.fetch_all()[0]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
 
