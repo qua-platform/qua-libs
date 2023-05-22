@@ -15,7 +15,7 @@ from macros import readout_macro
 #############################################
 # Program dependent variables and functions #
 #############################################
-
+state_discrimination = True
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # index from play_sequence() function defined below of the gate under study
 # Correspondence table:
@@ -27,7 +27,10 @@ num_of_sequences = 5
 n_avg = 10
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
+delta_clifford = 10
 
+def power_law(power, a, b, p):
+    return a * (p**power) + b
 
 def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -134,14 +137,19 @@ def play_sequence(sequence_list, depth):
 ###################
 with program() as rb:
     depth = declare(int)
+    depth_target = declare(int)
     saved_gate = declare(int)
     m = declare(int)
     n = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
     state = declare(bool)
-    state_st = declare_stream()
-    depth_target = declare(int)
+    if state_discrimination:
+        state_st = declare_stream()
+    else:
+        I_st = declare_stream()
+        Q_st = declare_stream()
+    m_st = declare_stream()
 
     with for_(m, 0, m < num_of_sequences, m + 1):
         # Generates the RB sequence with a gate interleaved after each Clifford
@@ -160,68 +168,84 @@ with program() as rb:
                     wait(cooldown_time, "resonator")
 
                     align("resonator", "qubit")
-
-                    play_sequence(sequence_list, depth)
+                    with strict_timing_():
+                        play_sequence(sequence_list, depth)
                     align("qubit", "resonator")
                     # Make sure you updated the ge_threshold
                     state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
                     save(state, state_st)
                 # always play the random gate followed by the interleaved gate
-                assign(depth_target, depth_target + 2)
+                assign(depth_target, depth_target + 2*delta_clifford)
             assign(sequence_list[depth], saved_gate)
+        save(m, m_st)
 
     with stream_processing():
-        state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth).buffer(
-            num_of_sequences
-        ).save("res")
+        m_st.save("iteration")
+        if state_discrimination:
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save("state_avg")
+        else:
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("I")
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("Q")
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-
 qmm = QuantumMachinesManager(qop_ip)
 
-#######################
-# Simulate or execute #
-#######################
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=50000)  # in clock cycles
+    simulation_config = SimulationConfig(duration=100000)  # in clock cycles
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
+
 else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(rb)
-    res_handles = job.result_handles
-    res_handles.wait_for_all_values()
-    state = res_handles.res.fetch_all()
+    # Get results from QUA program
+    if state_discrimination:
+        results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
+    else:
+        results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    # data analysis
+    x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
+    x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
+    while results.is_processing():
+        # data analysis
+        if state_discrimination:
+            state_avg, iteration = results.fetch_all()
+            value_avg = 1 - state_avg
+            error_avg = np.std(state_avg)
+        else:
+            I, Q, iteration = results.fetch_all()
+            value_avg = np.sqrt(I**2 + Q**2)
+            error_avg = np.std(np.sqrt(I**2 + Q**2))
 
-    value = 1 - np.average(state, axis=0)
-    error = np.std(state, axis=0)
+        # Progress bar
+        progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
+        # Plot results
+        plt.cla()
+        plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
+        pars, cov = curve_fit(
+            f=power_law,
+            xdata=x,
+            ydata=value_avg,
+            p0=[0.5, 0.5, 0.9],
+            bounds=(-np.inf, np.inf),
+            maxfev=2000,
+        )
+        plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+        plt.xlabel("Number of Clifford gates")
+        plt.ylabel("Sequence Fidelity")
+        plt.title("Single qubit RB")
+        plt.pause(0.1)
 
-    def power_law(m, a, b, p):
-        return a * (p**m) + b
-
-    plt.figure()
-    x = np.linspace(1, max_circuit_depth, max_circuit_depth)
-    plt.xlabel("Number of Clifford gates")
-    plt.ylabel("Sequence Fidelity")
-
-    pars, cov = curve_fit(
-        f=power_law,
-        xdata=x,
-        ydata=value,
-        p0=[0.5, 0.5, 0.9],
-        bounds=(-np.inf, np.inf),
-        maxfev=2000,
-    )
-
-    plt.errorbar(x, value, yerr=error, marker=".")
-    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
 
     stdevs = np.sqrt(np.diag(cov))
 
@@ -247,4 +271,4 @@ else:
         f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
     )
 
-    np.savez("rb_values", value)
+    # np.savez("rb_values", value)
