@@ -271,48 +271,48 @@ config = {
             "operation": "control",
             "length": x90_len,
             "waveforms": {
-                "I": "x90_wf",
-                "Q": "x90_der_wf",
+                "I": "x90_I_wf",
+                "Q": "x90_Q_wf",
             },
         },
         "x180_pulse": {
             "operation": "control",
             "length": x180_len,
             "waveforms": {
-                "I": "x180_wf",
-                "Q": "x180_der_wf",
+                "I": "x180_I_wf",
+                "Q": "x180_Q_wf",
             },
         },
         "-x90_pulse": {
             "operation": "control",
             "length": minus_x90_len,
             "waveforms": {
-                "I": "minus_x90_wf",
-                "Q": "minus_x90_der_wf",
+                "I": "minus_x90_I_wf",
+                "Q": "minus_x90_Q_wf",
             },
         },
         "y90_pulse": {
             "operation": "control",
             "length": y90_len,
             "waveforms": {
-                "I": "y90_der_wf",
-                "Q": "y90_wf",
+                "I": "y90_I_wf",
+                "Q": "y90_Q_wf",
             },
         },
         "y180_pulse": {
             "operation": "control",
             "length": y180_len,
             "waveforms": {
-                "I": "y180_der_wf",
-                "Q": "y180_wf",
+                "I": "y180_I_wf",
+                "Q": "y180_Q_wf",
             },
         },
         "-y90_pulse": {
             "operation": "control",
             "length": minus_y90_len,
             "waveforms": {
-                "I": "minus_y90_der_wf",
-                "Q": "minus_y90_wf",
+                "I": "minus_y90_I_wf",
+                "Q": "minus_y90_Q_wf",
             },
         },
         "gaussian_pulse": {
