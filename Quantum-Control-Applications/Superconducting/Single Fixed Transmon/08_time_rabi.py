@@ -1,5 +1,5 @@
 """
-power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse
+time_rabi.py: A Rabi experiment sweeping the duration of the MW pulse
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -17,24 +17,23 @@ n_avg = 10000
 
 cooldown_time = 5 * qubit_T1 // 4
 
-a_min = 0.0
-a_max = 1.0
-da = 0.05
-amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
+t_min = 10
+t_max = 1000
+dt = 10
+taus = np.arange(t_min, t_max + 0.1, dt)  # + 0.1 to add t_max to taus
 
-
-with program() as power_rabi:
+with program() as time_rabi:
     n = declare(int)
     n_st = declare_stream()
-    a = declare(fixed)
+    t = declare(int)
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(a, amps)):
-            play("gauss" * amp(a), "qubit", duration=x180_len // 4)
+        with for_(*from_array(t, taus)):
+            play("pi", "qubit", duration=t)
             align("qubit", "resonator")
             measure(
                 "readout",
@@ -49,8 +48,8 @@ with program() as power_rabi:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(amps)).average().save("I")
-        Q_st.buffer(len(amps)).average().save("Q")
+        I_st.buffer(len(taus)).average().save("I")
+        Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -62,18 +61,19 @@ simulate = True
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles
-    job = qmm.simulate(config, power_rabi, simulation_config)
+    job = qmm.simulate(config, time_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     qm = qmm.open_qm(config)
 
-    job = qm.execute(power_rabi)
+    job = qm.execute(time_rabi)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
@@ -81,9 +81,10 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.plot(amps * gauss_amp, I, ".", label="I")
-        plt.plot(amps * gauss_amp, Q, ".", label="Q")
-        plt.xlabel("Rabi pulse amplitude [V]")
+        plt.plot(4 * taus, I, ".", label="I")
+        plt.plot(4 * taus, Q, ".", label="Q")
+        plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I & Q amplitude [a.u.]")
+        plt.title("Time Rabi")
         plt.legend()
         plt.pause(0.1)
