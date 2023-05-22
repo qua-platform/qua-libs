@@ -1,5 +1,5 @@
 """
-resonator_spec.py: performs the 2D resonator spectroscopy versus flux
+resonator_spec_vs_flux.py: performs the 2D resonator spectroscopy versus flux
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
