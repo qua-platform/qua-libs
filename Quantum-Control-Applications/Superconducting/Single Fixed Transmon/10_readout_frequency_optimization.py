@@ -126,4 +126,4 @@ while results.is_processing():
     plt.xlabel("Readout frequency [Hz]")
     plt.ylabel("SNR")
     plt.pause(0.1)
-    print(f"The optimal readout frequency is {freqs[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
+print(f"The optimal readout frequency is {freqs[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
