@@ -38,7 +38,7 @@ with program() as IQ_blobs:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
-            update_frequency("qubit", f)
+            update_frequency("resonator", f)
             measure(
                 "readout",
                 "resonator",
