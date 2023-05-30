@@ -27,8 +27,8 @@ config = {
                 },
             },
             "analog_inputs": {
-                1: {"offset": 0.11153787215711804, "gain_db": 18},
-                2: {"offset": 0.08925540489908858, "gain_db": 18},
+                1: {"offset": 0, "gain_db": 0},
+                2: {"offset": 0, "gain_db": 0},
             },
             "digital_outputs": {},
         }
