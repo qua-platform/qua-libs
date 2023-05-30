@@ -137,5 +137,5 @@ def meas():
 Returns a tuple containing the measured values of the two qubits as Qua expressions. The expression must evaluate to a Boolean value. False means |0>, True means |1>. The MSB is the first qubit. 
 
 ### Results
-<img align="right" width="400" src="https://github.com/maximilianqm/max-dev/blob/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/res.png">
+<img align="right" width="400" src="https://github.com/maximilianqm/max-dev/blob/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/results.png">
 Plot fidelity as function of depth and plot histograms for each depth
