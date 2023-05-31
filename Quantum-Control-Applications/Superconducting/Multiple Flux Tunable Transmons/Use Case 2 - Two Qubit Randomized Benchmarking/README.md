@@ -6,7 +6,7 @@ Author: Maximilian Zanner
 *specifically tailored setup and software environment. When adapting the code to run on your device, make sure to adjust the relevant functions and parameters and contact QM Customer Success!*
 
 ## Introduction
-Two-Qubit Randomized Benchmarking has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. In this use-case example we introduce a possible implementation on the OPX+ using the current version (2023, June) of the generic *TwoQubitRb* class. An updated version can be found int the *py-qua-tools* repository.
+Two-Qubit Randomized Benchmarking has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. In this use-case example we introduce a possible implementation on the OPX+ using the current version (2023, June) of the generic *TwoQubitRb* class. An updated version can be found in the [*py-qua-tools*](https://github.com/qua-platform/py-qua-tools) repository.
 
 [^1]: Knill et al (2008 Phys. Rev. A 77 012307)
 [^2]: C A Ryan et al 2009 New J. Phys. 11 013034
@@ -27,9 +27,9 @@ The use-case in this example is tailored for a superconducting quantum processor
 - Calibrated Measurement Protocol for 2-State Discrimination for both Qubits
 
 ## Implementation in QUA
-The following procedure implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. 
+The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. 
 ```diff
-- The circuit generation}$$ is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
+- The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
 ```
 
 [^5]: Barends, R. et al. Nature 508, 500–503 (2014)
