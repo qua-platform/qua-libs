@@ -57,7 +57,7 @@ res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=50, num
 
 For running the experiment the user has to specify the following arguments:
 - **qmm**: The quantum machine manager instance, on which the 2-Qubit-RB will be executed on.
-- **circuit_depths**: Number of consecutive clifford gates (layers) per sequence (not including the inverse, more info on depth: https://qiskit.org/documentation/apidoc/circuit.html).
+- **circuit_depths**: Number of consecutive clifford gates (layers) per sequence (not including the inverse.
 - **num_circuits_per_depth**: The amount of different circuit randomizations (combination of Cliffords) in each sequence. 
 - **num_shots_per_circuit**: The number of repetitions of the same circuit of a depth, e.g. used for averaging.
 
