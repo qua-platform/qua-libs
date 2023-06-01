@@ -19,9 +19,6 @@ Two-Qubit Randomized Benchmarking has become a popular protocol that allows to e
 The use-case in this example is tailored for a superconducting quantum processor using flux-tunable transmon qubits, where we focus on a subset of two qubits that are capacitively coupled to each other. Single qubit operations are controlled by sending microwave pulses through a xy-line that is capacitively coupled to the individual qubits. The two-qubit gate is implemented by a controlled-Z (CZ) gate utilizing the fast-flux lines to rapidly change the qubit frequencies and the capacitive coupling between both qubits. Part of the optimization protocol for tuning up a CZ gate can be found in the use-case [Two-Qubit Gate Optimization](https://github.com/qua-platform/qua-libs/tree/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 
 ## Prerequisites
-```diff
-- OPX+, QOP Version > 20???, QUA Version ???, py-qua-tools > ???}
-````
 - Calibrated Single Qubit Gates
 - Calibrated CZ Gate
 - Calibrated Measurement Protocol for 2-State Discrimination for both Qubits
