@@ -28,7 +28,7 @@ def IQ_imbalance(g, phi):
 #############
 # VARIABLES #
 #############
-u = unit()
+u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
 
@@ -156,9 +156,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
-                5: {"offset": 0.0},  # flux line
+                3: {"offset": 0.0},  # flux line
+                9: {"offset": 0.0},  # I resonator
+                10: {"offset": 0.0},  # Q resonator
             },
             "digital_outputs": {
                 1: {},
@@ -193,8 +193,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 9),
+                "Q": ("con1", 10),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -212,7 +212,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 3),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -220,7 +220,7 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 3),
             },
             "hold_offset": {"duration": 1},  # in clock cycles (4ns)
             "operations": {
