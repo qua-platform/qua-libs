@@ -32,8 +32,8 @@ def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=N
     elements_in_prog = []
     for element in list(config["elements"].keys()):
         if (
-                re.search(f'(?<="){element}', generate_qua_script(prog)) is not None
-                and re.search(f'{element}(?=")', generate_qua_script(prog)) is not None
+            re.search(f'(?<="){element}', generate_qua_script(prog)) is not None
+            and re.search(f'{element}(?=")', generate_qua_script(prog)) is not None
         ):
             elements_in_prog.append(element)
 
@@ -161,17 +161,26 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
         element_i = qm.elements[elements]
         if isinstance(element_i, ElementWithOctave):
             # This assumes that: FR1in measures RF1's output (which is connected to Analog output 1 and 2), FR2in measures RF2's output (which is connected to Analog output 3 and 4)
-            if (element_i.q_port == 1 or element_i.q_port == 2) and 'outputs' in \
-                    config['elements'][octave_elements[i]].keys():
+            if (element_i.q_port == 1 or element_i.q_port == 2) and "outputs" in config["elements"][
+                octave_elements[i]
+            ].keys():
                 qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 1)
-                qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Internal,
-                                             if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
-            if (element_i.q_port == 3 or element_i.q_port == 4) and 'outputs' in \
-                    config['elements'][octave_elements[i]].keys():
+                qm.octave.set_downconversion(
+                    octave_elements[i],
+                    lo_source=RFInputLOSource.Internal,
+                    if_mode_i=IFMode.direct,
+                    if_mode_q=IFMode.direct,
+                )
+            if (element_i.q_port == 3 or element_i.q_port == 4) and "outputs" in config["elements"][
+                octave_elements[i]
+            ].keys():
                 qm.octave.set_qua_element_octave_rf_in_port(octave_elements[i], "octave1", 2)
-                qm.octave.set_downconversion(octave_elements[i], lo_source=RFInputLOSource.Dmd2LO,
-                                             if_mode_i=IFMode.direct,
-                                             if_mode_q=IFMode.direct)  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
+                qm.octave.set_downconversion(
+                    octave_elements[i],
+                    lo_source=RFInputLOSource.Dmd2LO,
+                    if_mode_i=IFMode.direct,
+                    if_mode_q=IFMode.direct,
+                )  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
 
     #########################################################################
     # calibrate all the elements in the program that are used by the octave #
