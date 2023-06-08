@@ -1,11 +1,11 @@
-# Single flux tunable transmon with SSB mixer for readout
+# Single flux tunable transmon
 
 <img align="right" src="Single Flux Tunable Transmon Setup.PNG" alt="drawing" width="400"/>
 
 ## Experimental setup and context
 
 These files showcase various experiments that can be done on an single flux tunable transmon.
-The readout pulses are sent through a SSB mixer but are downconverted through an IQ mixer. 
+The readout pulses are sent through an IQ mixer and downconverted through an IQ mixer. 
 Qubit addressing is being done with and IQ mixer.
 
 These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
