@@ -28,7 +28,7 @@ with program() as state_tomography:
             # Add here whatever state you want to characterize
             with switch_(c):
                 with case_(0):  # projection along X
-                    play("-x90", "qubit")
+                    play("-y90", "qubit")
                     align("qubit", "resonator")
                     state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
