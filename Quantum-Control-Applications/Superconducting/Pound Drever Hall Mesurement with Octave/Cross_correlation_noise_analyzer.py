@@ -135,105 +135,111 @@ with program() as noise_analyzer:
 ## Run the Program
 # After program execution We can plot the cross correlation and the FFT of the auto correlation.
 # The FFT can be done in python or online in the stream processing
-job = qm.execute(noise_analyzer)
-job.result_handles.wait_for_all_values()
-res = job.result_handles
-adcI1 = res.get("adcI1").fetch_all()
-adcQ1 = res.get("adcQ1").fetch_all()
-adcI2 = res.get("adcI2").fetch_all()
-adcQ2 = res.get("adcQ2").fetch_all()
-pound_vector_I1 = res.get('pound_vector_I1').fetch_all()[0][0]
-pound_vector_Q1 = res.get('pound_vector_Q1').fetch_all()[0][0]
-pound_vector_I2 = res.get('pound_vector_I2').fetch_all()[0][0]
-pound_vector_Q2 = res.get('pound_vector_Q2').fetch_all()[0][0]
-corr_I = res.get('corr_I').fetch_all()['value'][0]
-corr_Q = res.get('corr_Q').fetch_all()['value'][0]
-PSD=res.get('PSD_I').fetch_all()
 
-# Number of sample points
-N = corr_I.__len__()
-# sample spacing
-T = pound_samples_per_chunk*4e-9
-xI = np.linspace(0.0, N*T, N, endpoint=False)
-yI = corr_I
-yfI = fft(yI)
-xfI = fftfreq(N, T)[:N//2]
+simulate = False
 
-xQ = np.linspace(0.0, N*T, N, endpoint=False)
-yQ = corr_Q
-yfQ = fft(yQ) #PSD
-xfQ = fftfreq(N, T)[:N//2]
+if not simulate:
+    job = qm.execute(noise_analyzer)
+    job.result_handles.wait_for_all_values()
+    res = job.result_handles
+    adcI1 = res.get("adcI1").fetch_all()
+    adcQ1 = res.get("adcQ1").fetch_all()
+    adcI2 = res.get("adcI2").fetch_all()
+    adcQ2 = res.get("adcQ2").fetch_all()
+    pound_vector_I1 = res.get('pound_vector_I1').fetch_all()[0][0]
+    pound_vector_Q1 = res.get('pound_vector_Q1').fetch_all()[0][0]
+    pound_vector_I2 = res.get('pound_vector_I2').fetch_all()[0][0]
+    pound_vector_Q2 = res.get('pound_vector_Q2').fetch_all()[0][0]
+    corr_I = res.get('corr_I').fetch_all()['value'][0]
+    corr_Q = res.get('corr_Q').fetch_all()['value'][0]
+    PSD=res.get('PSD_I').fetch_all()
 
-plt.figure(figsize=(16,12))
-plt.loglog(xfI, 2.0/N * np.abs(yfI[0:N//2]),linewidth=5, markersize=10)
-plt.loglog(xfQ, 2.0/N * np.abs(yfQ[0:N//2]),linewidth=5, markersize=10)
-plt.title('FFT of autocorrelation', fontsize=30)
-plt.xlabel('Freq (Hz)', fontsize=30)
-plt.ylabel('FFT Amplitude |X(freq)|', fontsize=30)
-plt.xticks(fontsize= 20)
-plt.yticks(fontsize= 20)
-plt.grid()
+    # Number of sample points
+    N = corr_I.__len__()
+    # sample spacing
+    T = pound_samples_per_chunk*4e-9
+    xI = np.linspace(0.0, N*T, N, endpoint=False)
+    yI = corr_I
+    yfI = fft(yI)
+    xfI = fftfreq(N, T)[:N//2]
 
-plt.figure(figsize=(16,12))
-plt.loglog(xfI,2.0/N * np.abs(PSD[0:N//2]),linewidth=5, markersize=10)
-plt.title('FFT from stream processing', fontsize=30)
-plt.xlabel('Freq (Hz)', fontsize=30)
-plt.ylabel('FFT Amplitude |X(freq)|', fontsize=30)
-plt.xticks(fontsize= 20)
-plt.yticks(fontsize= 20)
-plt.grid()
+    xQ = np.linspace(0.0, N*T, N, endpoint=False)
+    yQ = corr_Q
+    yfQ = fft(yQ) #PSD
+    xfQ = fftfreq(N, T)[:N//2]
+
+    plt.figure(figsize=(16,12))
+    plt.loglog(xfI, 2.0/N * np.abs(yfI[0:N//2]),linewidth=5, markersize=10)
+    plt.loglog(xfQ, 2.0/N * np.abs(yfQ[0:N//2]),linewidth=5, markersize=10)
+    plt.title('FFT of autocorrelation', fontsize=30)
+    plt.xlabel('Freq (Hz)', fontsize=30)
+    plt.ylabel('FFT Amplitude |X(freq)|', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
+
+    plt.figure(figsize=(16,12))
+    plt.loglog(xfI,2.0/N * np.abs(PSD[0:N//2]),linewidth=5, markersize=10)
+    plt.title('FFT from stream processing', fontsize=30)
+    plt.xlabel('Freq (Hz)', fontsize=30)
+    plt.ylabel('FFT Amplitude |X(freq)|', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
 
 
 
 ## Simulate the signals
-# job = qmm.simulate(config, noise_analyzer, SimulationConfig(2000))
-# samps = job.get_simulated_samples()
-# pound_simulated_signal9 = samps.con1.analog['9']
-# pound_simulated_signal10 = samps.con1.analog['10']
-#
-#
-# plt.figure(figsize=(16,12))
-# plt.plot(pound_vector_I1,linewidth=5, markersize=10)
-# plt.plot(pound_vector_Q1,linewidth=5, markersize=10)
-# plt.plot(pound_vector_I2,linewidth=5, markersize=10)
-# plt.plot(pound_vector_Q2,linewidth=5, markersize=10)
-# plt.title('pound demod vectors', fontsize=30)
-# plt.xlabel('Shot no.', fontsize=30)
-# plt.ylabel('I/Q values', fontsize=30)
-# plt.xticks(fontsize= 20)
-# plt.yticks(fontsize= 20)
-# plt.grid()
-#
-#
-#
-# plt.figure(figsize=(16,12))
-# plt.plot([(x+1)*pound_samples_per_chunk*4 for x in range(corr_I.__len__())], corr_I,linewidth=5, markersize=10)
-# plt.plot([(x+1)*pound_samples_per_chunk*4 for x in range(corr_Q.__len__())], corr_Q,linewidth=5, markersize=10)
-# plt.title('autocorrelation I/Q', fontsize=30)
-# plt.xlabel('dt', fontsize=30)
-# plt.ylabel('Raw ADC data', fontsize=30)
-# plt.xticks(fontsize= 20)
-# plt.yticks(fontsize= 20)
-# plt.grid()
-#
-# plt.figure(figsize=(16,12))
-# plt.plot(adcI1,linewidth=5, markersize=10)
-# plt.plot(adcQ1,linewidth=5, markersize=10)
-# plt.plot(adcI2,linewidth=5, markersize=10)
-# plt.plot(adcQ2,linewidth=5, markersize=10)
-# plt.title('Raw ADC data', fontsize=30)
-# plt.xlabel('Shot no.', fontsize=30)
-# plt.ylabel('Raw ADC data', fontsize=30)
-# plt.xticks(fontsize= 20)
-# plt.yticks(fontsize= 20)
-# plt.grid()
-#
-# plt.figure(figsize=(16,12))
-# plt.plot(pound_simulated_signal9,linewidth=5, markersize=10)
-# plt.plot(pound_simulated_signal10,linewidth=5, markersize=10)
-# plt.title('Simulation output', fontsize=30)
-# plt.xlabel('Shot no.', fontsize=30)
-# plt.ylabel('Volt', fontsize=30)
-# plt.xticks(fontsize= 20)
-# plt.yticks(fontsize= 20)
-# plt.grid()
+
+if simulate:
+    job = qmm.simulate(config, noise_analyzer, SimulationConfig(2000))
+    samps = job.get_simulated_samples()
+    pound_simulated_signal9 = samps.con1.analog['9']
+    pound_simulated_signal10 = samps.con1.analog['10']
+
+
+    plt.figure(figsize=(16,12))
+    plt.plot(pound_vector_I1,linewidth=5, markersize=10)
+    plt.plot(pound_vector_Q1,linewidth=5, markersize=10)
+    plt.plot(pound_vector_I2,linewidth=5, markersize=10)
+    plt.plot(pound_vector_Q2,linewidth=5, markersize=10)
+    plt.title('pound demod vectors', fontsize=30)
+    plt.xlabel('Shot no.', fontsize=30)
+    plt.ylabel('I/Q values', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
+
+
+
+    plt.figure(figsize=(16,12))
+    plt.plot([(x+1)*pound_samples_per_chunk*4 for x in range(corr_I.__len__())], corr_I,linewidth=5, markersize=10)
+    plt.plot([(x+1)*pound_samples_per_chunk*4 for x in range(corr_Q.__len__())], corr_Q,linewidth=5, markersize=10)
+    plt.title('autocorrelation I/Q', fontsize=30)
+    plt.xlabel('dt', fontsize=30)
+    plt.ylabel('Raw ADC data', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
+
+    plt.figure(figsize=(16,12))
+    plt.plot(adcI1,linewidth=5, markersize=10)
+    plt.plot(adcQ1,linewidth=5, markersize=10)
+    plt.plot(adcI2,linewidth=5, markersize=10)
+    plt.plot(adcQ2,linewidth=5, markersize=10)
+    plt.title('Raw ADC data', fontsize=30)
+    plt.xlabel('Shot no.', fontsize=30)
+    plt.ylabel('Raw ADC data', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
+
+    plt.figure(figsize=(16,12))
+    plt.plot(pound_simulated_signal9,linewidth=5, markersize=10)
+    plt.plot(pound_simulated_signal10,linewidth=5, markersize=10)
+    plt.title('Simulation output', fontsize=30)
+    plt.xlabel('Shot no.', fontsize=30)
+    plt.ylabel('Volt', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()

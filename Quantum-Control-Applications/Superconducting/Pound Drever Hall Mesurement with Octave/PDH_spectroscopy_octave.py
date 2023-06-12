@@ -85,8 +85,8 @@ with program() as PDH_spectroscopy:
             # measure the pound signal with a separate element which oscillates at the sideband frequency
             # and save the result into the pound_signal variable. Save also the raw acquired data into adc_st
             measure('pound_demod_pulse', 'Pound_demod', adc_st, demod.full('integ_pound', pound_signal, 'out1'))
-            # play another pound pulse to have a continuous pound signal independent of the time of flight of the demodulation signal
             assign(pound_signal_int, Cast.mul_int_by_fixed(1e8, pound_signal))
+            # play another pound pulse to have a continuous pound signal independent of the time of flight of the demodulation signal
 
             play('pound_pulse', 'RR')
 
@@ -100,52 +100,54 @@ with program() as PDH_spectroscopy:
 
 ## Execute the program
 
-job = qm.execute(PDH_spectroscopy)
-job.result_handles.wait_for_all_values()
-res = job.result_handles
-res.wait_for_all_values()
+simulate = False
+if not simulate:
+    job = qm.execute(PDH_spectroscopy)
+    job.result_handles.wait_for_all_values()
+    res = job.result_handles
+    res.wait_for_all_values()
 
-adc1 = res.get("adc1").fetch_all()
-pound_signal = res.get('pound_signal').fetch_all()
+    adc1 = res.get("adc1").fetch_all()
+    pound_signal = res.get('pound_signal').fetch_all()
 
-freq = [x/1e6 for x in np.linspace(f_init, f_final, int((f_final-f_init)/df))]
+    freq = [x/1e6 for x in np.linspace(f_init, f_final, int((f_final-f_init)/df))]
 
-plt.figure(figsize=(16,12))
-plt.plot(freq,pound_signal,linewidth=5, markersize=10)
-plt.title('PDH spectroscopy', fontsize=30)
-plt.xlabel('Frequency [MHz]', fontsize=30)
-plt.ylabel('PDH signal', fontsize=30)
-plt.xticks(fontsize= 20)
-plt.yticks(fontsize= 20)
-plt.grid()
+    plt.figure(figsize=(16,12))
+    plt.plot(freq,pound_signal,linewidth=5, markersize=10)
+    plt.title('PDH spectroscopy', fontsize=30)
+    plt.xlabel('Frequency [MHz]', fontsize=30)
+    plt.ylabel('PDH signal', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
 
-plt.figure(figsize=(16,12))
-plt.plot(adc1)
-plt.title('Raw acquired data (for the last shot)', fontsize=30)
-plt.xlabel('Time [ns]', fontsize=30)
-plt.ylabel('Raw ADC sample', fontsize=30)
-plt.xticks(fontsize= 20)
-plt.yticks(fontsize= 20)
-plt.grid()
+    plt.figure(figsize=(16,12))
+    plt.plot(adc1)
+    plt.title('Raw acquired data (for the last shot)', fontsize=30)
+    plt.xlabel('Time [ns]', fontsize=30)
+    plt.ylabel('Raw ADC sample', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
 
 ## Simulate
 # It is also possible to simulate the signal to see that everything is phase coherent etc.. simulate for 20000 clock cycles or 80us
-#
-# job = qmm.simulate(config, PDH_spectroscopy, SimulationConfig(20000))
-# samps = job.get_simulated_samples()
-# RR_I = samps.con1.analog['1']
-# RR_Q = samps.con1.analog['2']
+if simulate:
+    job = qmm.simulate(config, PDH_spectroscopy, SimulationConfig(20000))
+    samps = job.get_simulated_samples()
+    RR_I = samps.con1.analog['1']
+    RR_Q = samps.con1.analog['2']
 
-# plt.figure(figsize=(16,12))
-# plt.plot(RR_I)
-# plt.title('Simulated PDH output signal', fontsize=30)
-# plt.xlabel('Time [ns]', fontsize=30)
-# plt.ylabel('Raw DAC signal', fontsize=30)
-# plt.xticks(fontsize= 20)
-# plt.yticks(fontsize= 20)
-# plt.grid()
+    plt.figure(figsize=(16,12))
+    plt.plot(RR_I)
+    plt.title('Simulated PDH output signal', fontsize=30)
+    plt.xlabel('Time [ns]', fontsize=30)
+    plt.ylabel('Raw DAC signal', fontsize=30)
+    plt.xticks(fontsize= 20)
+    plt.yticks(fontsize= 20)
+    plt.grid()
 
 
-# you can also plot the other quadrature if you want:
-# plt.figure(figsize=(10,8))
-# plt.plot(RR_Q)
+    # you can also plot the other quadrature if you want:
+    plt.figure(figsize=(10,8))
+    plt.plot(RR_Q)
