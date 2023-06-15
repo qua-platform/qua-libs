@@ -8,6 +8,7 @@ from qm import generate_qua_script
 from qm.octave import QmOctaveConfig
 import re
 from qm.elements.element_with_octave import ElementWithOctave
+from qm.octave.octave_manager import ClockMode
 
 
 def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=None):
@@ -132,11 +133,9 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     #####################
     if external_clock:
         # Change to the relevant external frequency
-        qmm.octave_manager.set_clock("octave1", ClockType.External, ClockFrequency.MHZ_10)
-        # If using a clock from the OPT, use this command instead
-        # qmm.octave_manager.set_clock("octave1", ClockType.Buffered, ClockFrequency.MHZ_1000)
+        qm.set_clock.set_clock("octave1", clock_mode=ClockMode.External_10MH)
     else:
-        qmm.octave_manager.set_clock("octave1", ClockType.Internal, ClockFrequency.MHZ_10)
+        qm.octave.set_clock("octave1", clock_mode=ClockMode.Internal)
 
 
     ##############################################################
