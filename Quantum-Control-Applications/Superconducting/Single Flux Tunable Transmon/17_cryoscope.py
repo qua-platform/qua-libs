@@ -24,8 +24,6 @@ flux_amp = -0.1
 flux_waveform = np.array([flux_amp] * const_flux_len)
 # signal.triang(const_flux_len)
 # np.cos(2 * np.pi * 10e6 * np.arange(0,const_flux_len)*1e-9)**2
-
-
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
