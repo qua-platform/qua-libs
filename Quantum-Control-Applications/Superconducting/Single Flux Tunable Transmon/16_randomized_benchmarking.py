@@ -17,12 +17,13 @@ from macros import readout_macro
 ##############################
 state_discrimination = False
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-max_circuit_depth = int(3 * qubit_T1 / x180_len)
+max_circuit_depth = 1000
 num_of_sequences = 500
 n_avg = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
-delta_clifford = 10
+delta_clifford = 10  # Must be > 1
+assert (max_circuit_depth/delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
 def power_law(power, a, b, p):
     return a * (p**power) + b

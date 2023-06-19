@@ -5,7 +5,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
-from macros import single_measurement, reset_qubit
+from macros import readout_macro, reset_qubit
 from qualang_tools.analysis import two_state_discriminator
 
 ##############################
@@ -30,14 +30,14 @@ with program() as IQ_blob:
         reset_qubit("cooldown_time", cooldown_time=cooldown_time)
         # Measure the ground state
         align("qubit", "resonator")
-        I_g, Q_g = single_measurement()
+        I_g, Q_g = readout_macro()
         # Reset qubit state
         reset_qubit("cooldown_time", cooldown_time=cooldown_time)
         # Excited state measurement
         align("qubit", "resonator")
         play("pi", "qubit")
         # Measure the excited state
-        I_e, Q_e = single_measurement()
+        I_e, Q_e = readout_macro()
         # Save data to the stream processing
         save(I_g, Ig_st)
         save(Q_g, Qg_st)
