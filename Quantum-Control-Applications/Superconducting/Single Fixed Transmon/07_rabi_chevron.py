@@ -106,7 +106,9 @@ else:
         plt.subplot(212)
         plt.cla()
         plt.title("Resonator spectroscopy phase")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * square_pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.pcolor(
+            (freq_array - qubit_IF) / u.MHz, a_array * square_pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q)))
+        )
         plt.xlabel("Frequency [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()

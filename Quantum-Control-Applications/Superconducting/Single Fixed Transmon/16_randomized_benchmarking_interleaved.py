@@ -28,18 +28,20 @@ n_avg = 100
 seed = 345323
 cooldown_time = 5 * qubit_T1 // 4
 delta_clifford = 10  # Must be > 1
-assert (max_circuit_depth/delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+
 
 def power_law(power, a, b, p):
     return a * (p**power) + b
+
 
 def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
     current_state = declare(int)
     step = declare(int)
-    sequence = declare(int, size=2*max_circuit_depth + 1)
-    inv_gate = declare(int, size=2*max_circuit_depth + 1)
+    sequence = declare(int, size=2 * max_circuit_depth + 1)
+    inv_gate = declare(int, size=2 * max_circuit_depth + 1)
     i = declare(int)
     rand = Random(seed=seed)
 
@@ -163,7 +165,7 @@ with program() as rb:
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-            with if_((depth==2) | (depth == depth_target)):
+            with if_((depth == 2) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can replace by active reset
                     wait(cooldown_time, "resonator")
@@ -177,17 +179,23 @@ with program() as rb:
 
                     save(state, state_st)
                 # always play the random gate followed by the interleaved gate
-                assign(depth_target, depth_target + 2*delta_clifford)
+                assign(depth_target, depth_target + 2 * delta_clifford)
             assign(sequence_list[depth], saved_gate)
         save(m, m_st)
 
     with stream_processing():
         m_st.save("iteration")
         if state_discrimination:
-            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("state_avg")
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("Q")
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "I"
+            )
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "Q"
+            )
 
 
 #####################################
@@ -246,7 +254,6 @@ else:
         plt.ylabel("Sequence Fidelity")
         plt.title("Single qubit RB")
         plt.pause(0.1)
-
 
     stdevs = np.sqrt(np.diag(cov))
 

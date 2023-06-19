@@ -23,10 +23,12 @@ n_avg = 20
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
 delta_clifford = 10  # Must be > 1
-assert (max_circuit_depth/delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+
 
 def power_law(power, a, b, p):
     return a * (p**power) + b
+
 
 def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -122,6 +124,7 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
                 play("-x90", "qubit")
 
+
 ###################
 # The QUA program #
 ###################
@@ -179,17 +182,21 @@ with program() as rb:
     with stream_processing():
         m_st.save("iteration")
         if state_discrimination:
-        # saves a 2D array of depth and random pulse sequences
-        # state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-        #     max_circuit_depth / delta_clifford + 1
-        # ).buffer(num_of_sequences).save("state")
-        # returns a 1D array of averaged random pulse sequences vs depth of circuit
+            # saves a 2D array of depth and random pulse sequences
+            # state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            #     max_circuit_depth / delta_clifford + 1
+            # ).buffer(num_of_sequences).save("state")
+            # returns a 1D array of averaged random pulse sequences vs depth of circuit
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
                 max_circuit_depth / delta_clifford + 1
             ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("Q")
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "I"
+            )
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "Q"
+            )
 
 #####################################
 #  Open Communication with the QOP  #
@@ -247,7 +254,6 @@ else:
         plt.ylabel("Sequence Fidelity")
         plt.title("Single qubit RB")
         plt.pause(0.1)
-
 
     stdevs = np.sqrt(np.diag(cov))
 

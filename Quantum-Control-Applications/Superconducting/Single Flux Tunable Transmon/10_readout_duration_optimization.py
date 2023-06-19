@@ -13,6 +13,7 @@ from qualang_tools.loops import from_array
 # Helpers #
 ###########
 
+
 def divide_array_in_half(arr):
     split_index = len(arr) // 2
     arr1 = arr[:split_index]
@@ -104,7 +105,10 @@ with program() as opt_weights:
         # excited state
         play(qubit_operation, "qubit")
         align("qubit", "resonator")
-        measure("readout", "resonator", None,
+        measure(
+            "readout",
+            "resonator",
+            None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
             demod.accumulated("minus_sin", QI, division_length, "out1"),
@@ -177,4 +181,6 @@ else:
     excited_trace = create_complex_array(Ie, Qe)
     SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
     plot_three_complex_arrays(ground_trace, excited_trace, SNR)
-    print(f"The optimal readout length is {np.argmax(SNR)*number_of_divisions*division_length} clock cycles (SNR={max(SNR)})")
+    print(
+        f"The optimal readout length is {np.argmax(SNR)*number_of_divisions*division_length} clock cycles (SNR={max(SNR)})"
+    )

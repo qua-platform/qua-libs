@@ -17,11 +17,14 @@ def divide_array_in_half(arr):
     arr2 = arr[split_index:]
     return arr1, arr2
 
+
 def create_complex_array(arr1, arr2):
     return arr1 + 1j * arr2
 
+
 def subtract_complex_arrays(arr1, arr2):
     return arr1 - arr2
+
 
 def normalize_complex_array(arr):
     # Calculate the simple norm of the complex array
@@ -35,6 +38,7 @@ def normalize_complex_array(arr):
     rescaled_arr = normalized_arr / max_val
 
     return rescaled_arr
+
 
 def plot_three_complex_arrays(arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))

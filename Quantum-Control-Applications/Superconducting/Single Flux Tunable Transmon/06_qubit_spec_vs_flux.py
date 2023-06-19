@@ -37,7 +37,7 @@ flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the s
 with program() as qubit_spec_2D:
     n = declare(int)  # Averaging index
     f = declare(int)  # Resonator frequency
-    dc = declare(fixed) # flux dc level
+    dc = declare(fixed)  # flux dc level
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()

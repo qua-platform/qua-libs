@@ -8,7 +8,7 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-element =  "qubit"
+element = "qubit"
 
 with program() as cw_output:
     with infinite_loop_():
