@@ -22,12 +22,13 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
-max_circuit_depth = int(3 * qubit_T1 / x180_len)
+max_circuit_depth = 1000
 num_of_sequences = 5
 n_avg = 10
 seed = 345324
 cooldown_time = 5 * qubit_T1 // 4
-delta_clifford = 10
+delta_clifford = 10  # Must be > 1
+assert (max_circuit_depth/delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
 def power_law(power, a, b, p):
     return a * (p**power) + b
@@ -155,7 +156,7 @@ with program() as rb:
         # Generates the RB sequence with a gate interleaved after each Clifford
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
-        assign(depth_target, 2)
+        assign(depth_target, 0)
         with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
@@ -183,7 +184,7 @@ with program() as rb:
     with stream_processing():
         m_st.save("iteration")
         if state_discrimination:
-            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save("state_avg")
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("state_avg")
         else:
             I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("I")
             Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("Q")
