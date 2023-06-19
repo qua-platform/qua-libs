@@ -73,7 +73,7 @@ with program() as drag:
         n_st.save("iteration")
         state_st.boolean_to_int().buffer(len(iters)).average().save("state")
 
-qmm = QuantumMachinesManager(host="192.168.88.10", port="80")
+qmm = QuantumMachinesManager(host="192.168.88.10", port=80)
 
 xaxis = []
 yaxis = []
@@ -84,7 +84,7 @@ for j in range(-20, 20):
     xaxis.append(det)
 
     x180_wf, x180_der_wf = np.array(
-        drag_cosine_pulse_waveforms(x180_amp, x180_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det)
+        drag_cosine_pulse_waveforms(x180_amp, x180_len, alpha=drag_coef, anharmonicity=(-0.163e9), detuning=det)
     )
 
     config["waveforms"]["x180_wf"]["samples"] = x180_wf.tolist()

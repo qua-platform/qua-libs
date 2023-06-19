@@ -91,24 +91,24 @@ det = 0
 gauss_len = 16
 gauss_sigma = gauss_len / 5
 gauss_amp = 0.05
-gauss_wf, gauss_der_wf = np.array(drag_cosine_pulse_waveforms(gauss_amp, gauss_len, alpha=0, delta=-0.163e9))
+gauss_wf, gauss_der_wf = np.array(drag_cosine_pulse_waveforms(gauss_amp, gauss_len, alpha=0, anharmonicity=-0.163e9))
 # gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
 x180_len = 20
 x180_sigma = x180_len / 5
 x180_amp = 0.096  # *2 due to half time
-# x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
+# x180_wf, x180_der_wf = np.array(drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det))
 x180_wf, x180_der_wf = np.array(
-    drag_cosine_pulse_waveforms(x180_amp, x180_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det)
+    drag_cosine_pulse_waveforms(x180_amp, x180_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 )
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = 0.096 / 2
-# x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
+# x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det))
 x90_wf, x90_der_wf = np.array(
-    drag_cosine_pulse_waveforms(x90_amp, x90_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det)
+    drag_cosine_pulse_waveforms(x90_amp, x90_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 )
 # No DRAG when alpha=0, it's just a gaussian.
 
@@ -116,11 +116,11 @@ minus_x90_len = x180_len
 minus_x90_sigma = minus_x90_len / 5
 minus_x90_amp = -0.096 / 2
 # minus_x90_wf, minus_x90_der_wf = np.array(
-#     drag_gaussian_pulse_waveforms(minus_x90_amp, minus_x90_len, minus_x90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+#     drag_gaussian_pulse_waveforms(minus_x90_amp, minus_x90_len, minus_x90_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 # )
 minus_x90_wf, minus_x90_der_wf = np.array(
     drag_cosine_pulse_waveforms(
-        minus_x90_amp, minus_x90_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det
+        minus_x90_amp, minus_x90_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det
     )
 )
 # No DRAG when alpha=0, it's just a gaussian.
@@ -128,9 +128,9 @@ minus_x90_wf, minus_x90_der_wf = np.array(
 y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = 0.096
-# y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
+# y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det))
 y180_wf, y180_der_wf = np.array(
-    drag_cosine_pulse_waveforms(y180_amp, y180_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det)
+    drag_cosine_pulse_waveforms(y180_amp, y180_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 )
 y180_der_wf = (-1) * y180_der_wf  # for the correct sign in config
 # No DRAG when alpha=0, it's just a gaussian.
@@ -138,9 +138,9 @@ y180_der_wf = (-1) * y180_der_wf  # for the correct sign in config
 y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = 0.096 / 2
-# y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det))
+# y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det))
 y90_wf, y90_der_wf = np.array(
-    drag_cosine_pulse_waveforms(y90_amp, y90_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det)
+    drag_cosine_pulse_waveforms(y90_amp, y90_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 )
 y90_der_wf = (-1) * y90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -149,11 +149,11 @@ minus_y90_len = y180_len
 minus_y90_sigma = minus_y90_len / 5
 minus_y90_amp = -0.096 / 2
 # minus_y90_wf, minus_y90_der_wf = np.array(
-#     drag_gaussian_pulse_waveforms(minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, delta=-0.163e9, detuning=det)
+#     drag_gaussian_pulse_waveforms(minus_y90_amp, minus_y90_len, minus_y90_sigma, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det)
 # )
 minus_y90_wf, minus_y90_der_wf = np.array(
     drag_cosine_pulse_waveforms(
-        minus_y90_amp, minus_y90_len, alpha=drag_coef, delta=(-2 * np.pi * 0.163e9), detuning=det
+        minus_y90_amp, minus_y90_len, alpha=drag_coef, anharmonicity=-0.163e9, detuning=det
     )
 )
 minus_y90_der_wf = (-1) * minus_y90_der_wf
