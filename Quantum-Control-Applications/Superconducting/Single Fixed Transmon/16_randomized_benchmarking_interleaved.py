@@ -24,8 +24,8 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 interleaved_gate_index = 2
 max_circuit_depth = 1000
 num_of_sequences = 5
-n_avg = 10
-seed = 345324
+n_avg = 100
+seed = 345323
 cooldown_time = 5 * qubit_T1 // 4
 delta_clifford = 10  # Must be > 1
 assert (max_circuit_depth/delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
@@ -38,8 +38,8 @@ def generate_sequence(interleaved_gate_index):
     inv_list = declare(int, value=inv_gates)
     current_state = declare(int)
     step = declare(int)
-    sequence = declare(int, size=max_circuit_depth + 1)
-    inv_gate = declare(int, size=max_circuit_depth + 1)
+    sequence = declare(int, size=2*max_circuit_depth + 1)
+    inv_gate = declare(int, size=2*max_circuit_depth + 1)
     i = declare(int)
     rand = Random(seed=seed)
 
@@ -163,7 +163,7 @@ with program() as rb:
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
 
-            with if_(depth == depth_target):
+            with if_((depth==2) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can replace by active reset
                     wait(cooldown_time, "resonator")
@@ -198,7 +198,7 @@ qmm = QuantumMachinesManager(qop_ip)
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=100000)  # in clock cycles
+    simulation_config = SimulationConfig(duration=10000)  # in clock cycles
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
 
@@ -215,7 +215,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
-    x = np.arange(1, max_circuit_depth + 0.1, delta_clifford)
+    x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while results.is_processing():
         # data analysis
