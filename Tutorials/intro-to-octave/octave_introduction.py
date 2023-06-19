@@ -2,7 +2,7 @@
 octave_introduction.py: shows the basic commands to control the octave's clock, synthesizers, up-converters, triggers,
 down-converters and calibration
 """
-
+#%%
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.octave import *
 from qm.octave.octave_manager import ClockMode
@@ -11,7 +11,7 @@ import os
 import time
 import matplotlib.pyplot as plt
 from qualang_tools.units import unit
-
+#%%
 # Flags to switch between different modes defined below
 check_up_converters = False
 check_triggers = False
@@ -21,10 +21,10 @@ calibration = False
 #################################
 # Step 0 : Octave configuration #
 #################################
-opx_ip = "172.0.0.1"
-opx_port = 80
-octave_ip = "172.0.0.1"
-octave_port = 50
+opx_ip = "127.0.0.1"
+opx_port = 8080
+octave_ip = "127.0.0.1"
+octave_port = 5050
 con = "con1"
 octave = "octave1"
 # The elements used to test the ports of the Octave
@@ -280,7 +280,7 @@ config = {
         ],
     },
 }
-
+#%%
 # Create the octave config object
 octave_config = QmOctaveConfig()
 # Specify where to store the outcome of the calibration (correction matrix, offsets...)
@@ -319,7 +319,7 @@ octave_config.set_opx_octave_mapping([(con, octave)])
 #     ('con1',  9) : ('octave1', 'I5'),
 #     ('con1', 10) : ('octave1', 'Q5'),
 # })
-
+#%%
 # Open the QuantumMachineManager for the OPX and Octave
 qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
 # Open a quantum machine to calibrate the ports or play signals
@@ -334,6 +334,7 @@ with program() as hello_octave:
 ###########################
 # Step 1 : clock settings #
 ###########################
+#%%
 external_clock = False
 if external_clock:
     # Change to the relevant external frequency
@@ -341,7 +342,7 @@ if external_clock:
 else:
     qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
 # You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
-
+#%%
 #########################################
 # Step 2 : set LO, RF gain, and RF mode #
 #########################################
@@ -361,7 +362,7 @@ else:
         qm.octave.set_rf_output_mode(el, RFOutputMode.on)  # set the behaviour of the RF switch to be 'on'.
         # 'RFOutputMode' can be : on, off, trig_normal or trig_inverse
         # You can check the internal LOs by connecting the ports synth1, 2 and 3 to a spectrum analyzer.
-
+#%%
 #######################################
 # Step 3 : checking the up-converters #
 #######################################
@@ -372,7 +373,7 @@ if check_up_converters:
     job.halt()
     # You can connect RF1, RF2, RF3, RF4, RF5 to a spectrum analyzer and check the 3 peaks before calibration:
     # 1. LO-IF, 2. LO, 3. LO+IF
-
+#%%
 ##################################
 # Step 4 : checking the triggers #
 ##################################
@@ -391,7 +392,7 @@ if check_triggers:
     job = qm.execute(hello_octave_trigger)
     time.sleep(60)  #  The program will run for 1 minute
     job.halt()
-
+#%%
 #########################################
 # Step 5 : checking the down-converters #
 #########################################
@@ -471,7 +472,7 @@ if check_down_converters:
         ax2.set_xlabel("Time [ns]")
         ax2.set_ylabel("Signal amplitude [V]")
         plt.tight_layout()
-
+#%%
 #################################
 # Step 6 : checking calibration #
 #################################
@@ -491,3 +492,5 @@ if calibration:
     job = qm.execute(hello_octave)
     time.sleep(30)  # The program will run for 30 seconds
     job.halt()
+
+# %%

@@ -5,6 +5,7 @@ from qm import QuantumMachinesManager
 from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from two_qubit_rb import TwoQubitRb
+%matplotlib qt
 #%%
 
 q1 = '0'
