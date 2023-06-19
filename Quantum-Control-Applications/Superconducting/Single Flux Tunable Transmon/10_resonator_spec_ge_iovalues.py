@@ -8,6 +8,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qualang_tools.loops import from_array
 
 ##############################
 # Program-specific variables #
@@ -40,7 +41,7 @@ with program() as resonator_spec:
     assign(flag, IO1)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(f, *from_array(f, freqs)):  # Notice it's <= to include f_max (This is only for integers!)
             # Adjust the flux line
             play("const" * amp(0), "flux_line")
             wait(flux_settle_time, "resonator")
@@ -48,7 +49,7 @@ with program() as resonator_spec:
             update_frequency("resonator", f)
             # Play a pi pulse on conditional flag (I/O values)
             with if_(flag):
-                play("pi", "qubit")
+                play("x180", "qubit")
                 align("qubit", "resonator")
             # Measure the resonator
             measure(
@@ -74,7 +75,7 @@ with program() as resonator_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
