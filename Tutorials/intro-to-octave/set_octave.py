@@ -124,6 +124,7 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     :param qmm: Quantum Machines Manager object
     :param qm: Quantum Machine object
     :param prog: The QUA program
+    :param config: The QM configuration
     :param octave_config: octave_config object
     :param external_clock: When False (default) sets the clock to be internal.
     :param calibration: When True (default) calibrates all the elements in the program
@@ -133,7 +134,7 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     #####################
     if external_clock:
         # Change to the relevant external frequency
-        qm.set_clock.set_clock("octave1", clock_mode=ClockMode.External_10MH)
+        qm.set_clock.set_clock("octave1", clock_mode=ClockMode.External_10MHz)
     else:
         qm.octave.set_clock("octave1", clock_mode=ClockMode.Internal)
 
