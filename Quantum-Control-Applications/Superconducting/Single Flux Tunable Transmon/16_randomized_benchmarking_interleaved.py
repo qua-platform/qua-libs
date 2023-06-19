@@ -15,7 +15,7 @@ from macros import readout_macro
 #############################################
 # Program dependent variables and functions #
 #############################################
-state_discrimination = True
+state_discrimination = False
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # index from play_sequence() function defined below of the gate under study
 # Correspondence table:
