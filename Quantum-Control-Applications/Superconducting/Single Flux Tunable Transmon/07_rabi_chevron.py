@@ -48,7 +48,7 @@ with program() as rabi_amp_freq:
                 # Update the resonator frequency
                 update_frequency("qubit", f)
                 # Adjust the pulse amplitude
-                play("pi" * amp(a), "qubit")
+                play("x180" * amp(a), "qubit")
                 align("qubit", "resonator")
                 # Measure the resonator
                 measure(

@@ -48,12 +48,12 @@ with program() as ramsey_freq_duration:
                 update_frequency("qubit", f)
                 # Adjust the idle time
                 with if_(delay >= 4):
-                    play("pi_half", "qubit")
+                    play("x90", "qubit")
                     wait(delay, "qubit")
-                    play("pi_half", "qubit")
+                    play("x90", "qubit")
                 with else_():
-                    play("pi_half", "qubit")
-                    play("pi_half", "qubit")
+                    play("x90", "qubit")
+                    play("x90", "qubit")
                 align("qubit", "resonator")
                 # Measure the resonator
                 measure(

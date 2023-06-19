@@ -32,11 +32,11 @@ with program() as echo:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             wait(tau, "qubit")
-            play("pi", "qubit")
+            play("x180", "qubit")
             wait(tau, "qubit")
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",

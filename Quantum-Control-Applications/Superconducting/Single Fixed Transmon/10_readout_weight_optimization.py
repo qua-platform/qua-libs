@@ -76,7 +76,7 @@ print("The readout has been sliced in the following number of divisions", number
 n_avg = 1e4  # number of averages
 cooldown_time = 5 * qubit_T1 // 4  # thermal decay time of the qubit
 
-qubit_operation = "pi"
+qubit_operation = "x180"
 
 with program() as opt_weights:
     n = declare(int)

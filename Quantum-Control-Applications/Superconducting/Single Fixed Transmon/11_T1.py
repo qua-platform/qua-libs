@@ -32,7 +32,7 @@ with program() as T1:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
-            play("pi", "qubit")
+            play("x180", "qubit")
             wait(tau, "qubit")
             align("qubit", "resonator")
             measure(

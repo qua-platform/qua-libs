@@ -35,7 +35,7 @@ with program() as IQ_blob:
         reset_qubit("cooldown_time", cooldown_time=cooldown_time)
         # Excited state measurement
         align("qubit", "resonator")
-        play("pi", "qubit")
+        play("x180", "qubit")
         # Measure the excited state
         I_e, Q_e = readout_macro()
         # Save data to the stream processing

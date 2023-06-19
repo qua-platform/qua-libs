@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 ###################
 # The QUA program #
 ###################
-qubit_operation = "pi"
+qubit_operation = "x180"
 
 n_avg = 10000
 

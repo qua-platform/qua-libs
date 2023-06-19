@@ -37,11 +37,11 @@ with program() as rabi_amp_freq:
     with for_(n, 0, n < n_avg, n + 1):
         with for_each_(phase, phase_array.tolist()):
             # First pi/2 pulse
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             # Rotate the phase of the second pulse
             frame_rotation_2pi(phase, "qubit")
             # Second pi/2 pulse
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             align("qubit", "resonator")
             # Measure the resonator
             measure(

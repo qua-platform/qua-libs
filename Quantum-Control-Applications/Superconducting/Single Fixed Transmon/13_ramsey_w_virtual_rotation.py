@@ -34,12 +34,12 @@ with program() as ramsey:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             wait(tau, "qubit")
             frame_rotation_2pi(
                 Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau), "qubit"
             )  # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-            play("pi_half", "qubit")
+            play("x90", "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",

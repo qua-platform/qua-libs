@@ -33,7 +33,7 @@ with program() as time_rabi:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, taus)):
-            play("pi", "qubit", duration=t)
+            play("x180", "qubit", duration=t)
             align("qubit", "resonator")
             measure(
                 "readout",

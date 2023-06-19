@@ -40,7 +40,7 @@ with program() as IQ_blobs:
 
         align()  # global align
 
-        play("pi", "qubit")
+        play("x180", "qubit")
         align("qubit", "resonator")
         measure(
             "readout",

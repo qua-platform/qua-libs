@@ -36,7 +36,7 @@ with program() as power_rabi:
         with for_(*from_array(a, amps)):
             # Loop for error amplification (perform many qubit pulses)
             for i in range(err_amp):
-                play("pi" * amp(a), "qubit")
+                play("x180" * amp(a), "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",
