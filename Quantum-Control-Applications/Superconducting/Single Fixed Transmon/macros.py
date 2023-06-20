@@ -11,6 +11,7 @@ from qm.qua import declare, fixed, measure, dual_demod, assign, wait, play, alig
 # QUA macros #
 ##############
 
+
 def reset_qubit(method, **kwargs):
     """
     Macro to reset the qubit state.
