@@ -44,7 +44,7 @@ config = {
             "intermediate_frequency": -251827527.6672637,
             "operations": {
                 "cw$rect": "qubit0_xy$cw$rect",
-                "x$drag": "qubit0_xy$x$drag",
+                "x": "qubit0_xy$x$drag",
             },
         },
         "qubit0_z": {"singleInput": {"port": ["con1", 7]}, "intermediate_frequency": 0},
@@ -59,7 +59,7 @@ config = {
             "time_of_flight": 280,
             "smearing": 0,
             "outputs": {"out1": ["con1", 1], "out2": ["con1", 2]},
-            "operations": {"readout$rect$rotation": "qubit0_rr$readout$rect$rotation"},
+            "operations": {"readout": "qubit0_rr$readout$rect$rotation"},
         },
         "qubit1_xy": {
             "mixInputs": {
@@ -71,13 +71,13 @@ config = {
             "intermediate_frequency": -219480775.3785769,
             "operations": {
                 "cw$rect": "qubit1_xy$cw$rect",
-                "x$drag": "qubit1_xy$x$drag",
+                "x": "qubit1_xy$x$drag",
             },
         },
         "qubit1_z": {
             "singleInput": {"port": ["con1", 8]},
             "intermediate_frequency": 0,
-            "operations": {"cz_qubit1_qubit0$rect": "qubit1_z$cz_qubit1_qubit0$rect"},
+            "operations": {"cz_pulse": "qubit1_z$cz_qubit1_qubit0$rect"},
         },
         "qubit1_rr": {
             "mixInputs": {
@@ -90,7 +90,7 @@ config = {
             "time_of_flight": 280,
             "smearing": 0,
             "outputs": {"out1": ["con1", 1], "out2": ["con1", 2]},
-            "operations": {"readout$rect$rotation": "qubit1_rr$readout$rect$rotation"},
+            "operations": {"readout": "qubit1_rr$readout$rect$rotation"},
         },
     },
     "pulses": {
