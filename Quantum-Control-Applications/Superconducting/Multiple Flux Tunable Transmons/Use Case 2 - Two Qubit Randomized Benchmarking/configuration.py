@@ -77,7 +77,7 @@ config = {
         "qubit1_z": {
             "singleInput": {"port": ["con1", 8]},
             "intermediate_frequency": 0,
-            "operations": {"cz_pulse": "qubit1_z$cz_qubit1_qubit0$rect"},
+            "operations": {"cz": "qubit1_z$cz_qubit1_qubit0$rect"},
         },
         "qubit1_rr": {
             "mixInputs": {

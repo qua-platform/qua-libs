@@ -26,7 +26,7 @@ def bake_cz(baker: Baking, q0, q1):
     q1_xy_element = f"qubit{q1}_xy"
     q1_z_element = f"qubit{q1}_z"
     
-    baker.play("cz_pulse", q1_z_element)
+    baker.play("cz", q1_z_element)
     baker.align()
     baker.frame_rotation_2pi(qubit0_frame_update, q0_xy_element)
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
