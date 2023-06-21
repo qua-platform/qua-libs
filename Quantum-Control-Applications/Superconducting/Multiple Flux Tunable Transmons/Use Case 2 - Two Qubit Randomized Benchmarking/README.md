@@ -65,7 +65,7 @@ Gate generation is performed using the *baking* class. This class adds to QUA th
 def bake_phased_xz(baker: Baking, q, x, z, a):
     element = f"qubit{q}_xy"
     baker.frame_rotation_2pi(-a, element)
-    baker.play("x$drag", element, amp=x)
+    baker.play("x", element, amp=x)
     baker.frame_rotation_2pi(a + z, element)
 ```
 single_qubit_gate_generator: A callable used to generate a single qubit gate using a signature similar to `phasedXZ`.
@@ -85,7 +85,7 @@ def bake_cz(baker: Baking, q1, q2):
     q2_xy_element = f"qubit{q2}_xy"
     q2_z_element = f"qubit{q2}_z"
    
-    baker.play("cz_qubit1_qubit0$rect", q2_z_element)
+    baker.play("cz", q2_z_element)
     baker.align()
     baker.frame_rotation_2pi(qubit1_frame_update, q2_xy_element)
     baker.frame_rotation_2pi(qubit2_frame_update, q1_xy_element)
@@ -119,11 +119,11 @@ def meas():
     Iq1 = declare(fixed)
     Qq1 = declare(fixed)
    
-    measure("readout$rect$rotation", rr0_name, None,
+    measure("readout", rr0_name, None,
             dual_demod.full("w1", "out1", "w2", "out2", Iq0),
             dual_demod.full("w3", "out1", "w1", "out2", Qq0)
             )
-    measure("readout$rect$rotation", rr1_name, None,
+    measure("readout", rr1_name, None,
             dual_demod.full("w1", "out1", "w2", "out2", Iq1),
             dual_demod.full("w3", "out1", "w1", "out2", Qq1)
             )
