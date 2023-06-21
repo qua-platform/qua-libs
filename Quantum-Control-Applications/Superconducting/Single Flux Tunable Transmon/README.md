@@ -47,7 +47,7 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    * [Interleaved Single Qubit Randomized Benchmarking](16_randomized_benchmarking_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
+    * [Interleaved Single Qubit Randomized Benchmarking](16_randomized_benchmarking_interleaved.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
     * [Single Qubit Randomized Benchmarking](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
 17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
     * [Cryoscope_amplitude_calibration](17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
@@ -62,8 +62,8 @@ the DRAG coefficient `$\alpha$`.
     * [1D](19_AC_Stark_1Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by scanning the DRAG pulse detuning for a given number of pulses.
 20. **Tomography:**
     * [State Tomography](20_state_tomography.py) - A template to perform state tomography.
-    * [State Tomography](20_wigner_tomography.py) - A template to perform Wigner tomography of a photon mode in a cavity.
-20. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file.
+    * [State Tomography](20_wigner_tomography.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - A template to perform Wigner tomography of a photon mode in a cavity.
+20. [Calibration](calibrations.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - Uses an API to perform several single qubit calibrations easily from a single file.
 
 ## Use Cases
 

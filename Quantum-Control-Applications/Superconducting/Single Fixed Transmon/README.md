@@ -1,5 +1,7 @@
 # Single Fixed Transmon Superconducting Qubit
 
+<img align="right" src="Single Fixed Frequency Transmon Setup.PNG" alt="drawing" width="400"/>
+
 ## Basic Files
 These files showcase various experiments that can be done on a Single Fixed Transmon Superconducting Qubit.
 These files were tested on real qubits, but are given as-is with no guarantee.
@@ -38,8 +40,8 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    * [Interleaved Single Qubit Randomized Benchmarking](16_randomized_benchmarking_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity.
-    * [Single Qubit Randomized Benchmarking](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
+    *  [Interleaved Single Qubit Randomized Benchmarking](16_randomized_benchmarking_interleaved.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
+    * [Single Qubit Randomized Benchmarking](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
 17. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](17_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`.
@@ -51,11 +53,10 @@ the DRAG coefficient `$\alpha$`.
 
 19. **Tomography:**
     * [State Tomography](19_state_tomography.py) - A template to perform state tomography.
-    * [State Tomography](19_wigner_tomography.py) - A template to perform Wigner tomography of a photon mode in a cavity.
-20. [Calibration](calibrations.py) - Uses an API to perform several single qubit calibrations easily from a single file.
+    *  [Wigner Tomography](19_wigner_tomography.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - A template to perform Wigner tomography of a photon mode in a cavity.
+20.  [Calibration](calibrations.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - Uses an API to perform several single qubit calibrations easily from a single file.
 
 ## Use Cases
-
 These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
 a specific setup and would require changes to run on different setups. Current use-cases:
 
