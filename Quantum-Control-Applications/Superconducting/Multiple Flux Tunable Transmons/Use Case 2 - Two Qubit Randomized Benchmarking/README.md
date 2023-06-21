@@ -131,8 +131,8 @@ def meas():
 Returns a tuple containing the measured values of the two qubits as Qua expressions. The expression must evaluate to a Boolean value. False means |0>, True means |1>. The MSB is the first qubit. 
 
 ### Results
-<img align="right" width="400" src="https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/results.png">
-The result object *res*, that is created from the *rb* class by the running the experiment contains an xarray dataset (res.data) with the result data and the specified parameters. It has two implemented functions that easily visualize the fidelity decay with increasing circuit depth
+<img align="center" width="400" src="https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/results.png">
+The result object *res* , that is created from the *rb* class by the running the experiment contains an xarray dataset (res.data) with the result data and the specified parameters. It has two implemented functions that easily visualize the fidelity decay with increasing circuit depth
 
 ```python
 res.plot_fidelity()
