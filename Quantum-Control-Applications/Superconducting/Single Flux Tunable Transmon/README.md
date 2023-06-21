@@ -63,7 +63,7 @@ the DRAG coefficient `$\alpha$`.
 20. **Tomography:**
     * [State Tomography](20_state_tomography.py) - A template to perform state tomography.
     * [State Tomography](20_wigner_tomography.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - A template to perform Wigner tomography of a photon mode in a cavity.
-20. [Calibration](calibrations.py) ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) - Uses an API to perform several single qubit calibrations easily from a single file.
+20. [Calibration](calibrations.py) <img alt="Static Badge" src="https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red"> - Uses an API to perform several single qubit calibrations easily from a single file.
 
 ## Use Cases
 
