@@ -1,7 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from qm.simulate import LoopbackInterface
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
@@ -11,7 +10,7 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
 
-t = 14000   # Qubit pulse length
+t = 14 * u.us   # Qubit pulse length
 
 dfs = np.arange(- 20e6, + 20e6, 0.1e6)
 n_avg = 10000
@@ -32,10 +31,10 @@ with program() as multi_qubit_spec:
             update_frequency("q2_xy", df + qubit_IF_q2)
 
             # qubit 1
-            play("cw" * amp(0.07), "q1_xy", duration=t * u.ns)
+            play("cw" * amp(1), "q1_xy", duration=t * u.ns)
             align("q1_xy", "rr1")
             # qubit 2
-            play("cw" * amp(0.3), "q2_xy", duration=t * u.ns)
+            play("cw" * amp(1), "q2_xy", duration=t * u.ns)
             align("q2_xy", "rr2")
 
             # readout (reduce amplitude to minimize measurement induced transitions)
@@ -58,7 +57,7 @@ with program() as multi_qubit_spec:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, multi_qubit_spec, SimulationConfig(11000))
@@ -69,7 +68,7 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(multi_qubit_spec)
 
-    fig, ax = plt.subplots(2, 2)
+    fig = plt.figure()
     interrupt_on_close(fig, job)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
     while results.is_processing():
@@ -78,25 +77,25 @@ else:
         s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
         s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
 
-        ax[0, 0].cla()
-        ax[1, 0].cla()
-        ax[0, 1].cla()
-        ax[1, 1].cla()
-        ax[0, 0].plot(dfs / u.MHz, np.abs(s1))
-        ax[0, 0].set_title(f"q1 amp (fcent1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
-        ax[1, 0].plot(dfs / u.MHz, np.angle(s1))
-        ax[0, 1].plot(dfs / u.MHz, np.abs(s2))
-        ax[0, 1].set_title(f"q2 amp (fcent2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
-        ax[1, 1].plot(dfs / u.MHz, np.angle(s2))
-        ax[1, 0].set_ylabel("phase (rad)")
-        ax[0, 0].set_ylabel("amplitude (V)")
-        ax[1, 1].set_xlabel("detuning (MHz)")
-        ax[1, 0].set_xlabel("detuning (MHz)")
+        plt.subplot(221)
+        plt.cla()
+        plt.plot(dfs / u.MHz, np.abs(s1))
+        plt.ylabel("amplitude (V)")
+        plt.title(f"q1 (f_res1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.subplot(223)
+        plt.cla()
+        plt.plot(dfs / u.MHz, np.angle(s1))
+        plt.ylabel("phase (rad)")
+        plt.xlabel("detuning (MHz)")
+        plt.subplot(222)
+        plt.cla()
+        plt.plot(dfs / u.MHz, np.abs(s2))
+        plt.title(f"q2 (f_res2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.subplot(224)
+        plt.cla()
+        plt.plot(dfs / u.MHz, np.angle(s2))
+        plt.xlabel("detuning (MHz)")
         plt.tight_layout()
         plt.pause(0.1)
-
-    # plt.plot(I1, Q1, '.')
-    # plt.plot(I2, Q2, '.')
-    # plt.axis('equal')
 
 plt.show()
