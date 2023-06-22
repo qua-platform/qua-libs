@@ -50,10 +50,11 @@ fidelity.
     * [Cryoscope](19_cryoscope.py) - Performs the cryoscope measurement.
 20. ** SWAP spectroscopy ** by driving the energy exchange |10> <--> |01>:
     * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
-    * [iSWAP](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>::
-    * [iSWAP](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
-    * [iSWAP](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+    * [iSWAP pulsed](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>:
+![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
+    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
+    * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
     
 
 ## Use Cases
