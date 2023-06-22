@@ -130,6 +130,10 @@ minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
+# Flux line
+const_flux_len = 200
+const_flux_amp = 0.45
+
 #############################################
 #                Resonators                 #
 #############################################
@@ -155,15 +159,6 @@ ge_threshold_q1 = 0.0
 ge_threshold_q2 = 0.0
 
 #############################################
-#            Optical parameters             #
-#############################################
-
-aom_amp = 0.2
-aom_len = 16
-optical_readout_len = 10_000
-optical_time_of_flight = 148
-
-#############################################
 #                  Config                   #
 #############################################
 config = {
@@ -173,8 +168,12 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I readout line
                 2: {"offset": 0.0},  # Q readout line
-                3: {"offset": 0.0},  # I qubit XY
-                4: {"offset": 0.0},  # Q qubit XY
+                3: {"offset": 0.0},  # I qubit1 XY
+                4: {"offset": 0.0},  # Q qubit1 XY
+                5: {"offset": 0.0},  # I qubit2 XY
+                6: {"offset": 0.0},  # Q qubit2 XY
+                7: {"offset": 0.0},  # qubit1 Z
+                8: {"offset": 0.0},  # qubit2 Z
             },
             "digital_outputs": {
                 1: {},
@@ -182,21 +181,6 @@ config = {
             "analog_inputs": {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-            },
-        },
-        "con2": {
-            "analog_outputs": {
-                1: {"offset": 0.0},
-                2: {"offset": 0.0},
-                3: {"offset": 0.0},
-                4: {"offset": 0.0},
-            },
-            "digital_outputs": {
-                1: {},
-            },
-            "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},
-                2: {"offset": 0.0, "gain_db": 0},
             },
         },
     },
@@ -275,30 +259,31 @@ config = {
                 "-y90": "-y90_pulse_q2",
             },
         },
-        "SPCM": {
-            "singleInput": {"port": ("con2", 4)},
-            "digitalInputs": {
-                "marker": {
-                    "port": ("con2", 1),
-                    "delay": 0,
-                    "buffer": 0,
-                },
+        "q1_z": {
+            "singleInput": {
+                "port": ("con1", 7),
             },
             "operations": {
-                "photon_count": "photon_count_pulse",
+                "const": "const_flux_pulse",
             },
-            "outputs": {"out1": ("con2", 1)},
-            "time_of_flight": optical_time_of_flight,
-            "smearing": 0,
         },
-        "AOM": {
-            "singleInput": {"port": ("con2", 1)},
+        "q2_z": {
+            "singleInput": {
+                "port": ("con1", 8),
+            },
             "operations": {
-                "open": "open_pulse",
+                "const": "const_flux_pulse",
             },
         },
     },
     "pulses": {
+        "const_flux_pulse": {
+            "operation": "control",
+            "length": const_flux_len,
+            "waveforms": {
+                "single": "const_flux_wf",
+            },
+        },
         "const_pulse": {
             "operation": "control",
             "length": const_len,
@@ -311,48 +296,48 @@ config = {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "x90_wf_q1",
-                "Q": "x90_der_wf_q1",
+                "I": "x90_I_wf_q1",
+                "Q": "x90_Q_wf_q1",
             },
         },
         "x180_pulse_q1": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "x180_wf_q1",
-                "Q": "x180_der_wf_q1",
+                "I": "x180_I_wf_q1",
+                "Q": "x180_Q_wf_q1",
             },
         },
         "-x90_pulse_q1": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "minus_x90_wf_q1",
-                "Q": "minus_x90_der_wf_q1",
+                "I": "minus_x90_I_wf_q1",
+                "Q": "minus_x90_Q_wf_q1",
             },
         },
         "y90_pulse_q1": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "y90_der_wf_q1",
-                "Q": "y90_wf_q1",
+                "I": "y90_I_wf_q1",
+                "Q": "y90_Q_wf_q1",
             },
         },
         "y180_pulse_q1": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "y180_der_wf_q1",
-                "Q": "y180_wf_q1",
+                "I": "y180_I_wf_q1",
+                "Q": "y180_Q_wf_q1",
             },
         },
         "-y90_pulse_q1": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "minus_y90_der_wf_q1",
-                "Q": "minus_y90_wf_q1",
+                "I": "minus_y90_I_wf_q1",
+                "Q": "minus_y90_Q_wf_q1",
             },
         },
         "readout_pulse_q1": {
@@ -376,48 +361,48 @@ config = {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "x90_wf_q2",
-                "Q": "x90_der_wf_q2",
+                "I": "x90_I_wf_q2",
+                "Q": "x90_Q_wf_q2",
             },
         },
         "x180_pulse_q2": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "x180_wf_q2",
-                "Q": "x180_der_wf_q2",
+                "I": "x180_I_wf_q2",
+                "Q": "x180_Q_wf_q2",
             },
         },
         "-x90_pulse_q2": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "minus_x90_wf_q2",
-                "Q": "minus_x90_der_wf_q2",
+                "I": "minus_x90_I_wf_q2",
+                "Q": "minus_x90_Q_wf_q2",
             },
         },
         "y90_pulse_q2": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "y90_der_wf_q2",
-                "Q": "y90_wf_q2",
+                "I": "y90_I_wf_q2",
+                "Q": "y90_Q_wf_q2",
             },
         },
         "y180_pulse_q2": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "y180_der_wf_q2",
-                "Q": "y180_wf_q2",
+                "I": "y180_I_wf_q2",
+                "Q": "y180_Q_wf_q2",
             },
         },
         "-y90_pulse_q2": {
             "operation": "control",
             "length": pi_len,
             "waveforms": {
-                "I": "minus_y90_der_wf_q2",
-                "Q": "minus_y90_wf_q2",
+                "I": "minus_y90_I_wf_q2",
+                "Q": "minus_y90_Q_wf_q2",
             },
         },
         "readout_pulse_q2": {
@@ -437,50 +422,37 @@ config = {
             },
             "digital_marker": "ON",
         },
-        "open_pulse": {
-            "operation": "control",
-            "length": aom_len,
-            "waveforms": {
-                "single": "open_wf",
-            },
-        },
-        "photon_count_pulse": {
-            "operation": "measurement",
-            "length": optical_readout_len,
-            "waveforms": {"single": "zero_wf"},
-            "digital_marker": "ON",
-        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "x90_wf_q1": {"type": "arbitrary", "samples": x90_wf_q1.tolist()},
-        "x90_der_wf_q1": {"type": "arbitrary", "samples": x90_der_wf_q1.tolist()},
-        "x180_wf_q1": {"type": "arbitrary", "samples": x180_wf_q1.tolist()},
-        "x180_der_wf_q1": {"type": "arbitrary", "samples": x180_der_wf_q1.tolist()},
-        "minus_x90_wf_q1": {"type": "arbitrary", "samples": minus_x90_wf_q1.tolist()},
-        "minus_x90_der_wf_q1": {"type": "arbitrary", "samples": minus_x90_der_wf_q1.tolist()},
-        "y90_wf_q1": {"type": "arbitrary", "samples": y90_wf_q1.tolist()},
-        "y90_der_wf_q1": {"type": "arbitrary", "samples": y90_der_wf_q1.tolist()},
-        "y180_wf_q1": {"type": "arbitrary", "samples": y180_wf_q1.tolist()},
-        "y180_der_wf_q1": {"type": "arbitrary", "samples": y180_der_wf_q1.tolist()},
-        "minus_y90_wf_q1": {"type": "arbitrary", "samples": minus_y90_wf_q1.tolist()},
-        "minus_y90_der_wf_q1": {"type": "arbitrary", "samples": minus_y90_der_wf_q1.tolist()},
+        "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
+        "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
+        "x180_I_wf_q1": {"type": "arbitrary", "samples": x180_I_wf_q1.tolist()},
+        "x180_Q_wf_q1": {"type": "arbitrary", "samples": x180_Q_wf_q1.tolist()},
+        "minus_x90_I_wf_q1": {"type": "arbitrary", "samples": minus_x90_I_wf_q1.tolist()},
+        "minus_x90_Q_wf_q1": {"type": "arbitrary", "samples": minus_x90_Q_wf_q1.tolist()},
+        "y90_I_wf_q1": {"type": "arbitrary", "samples": y90_I_wf_q1.tolist()},
+        "y90_Q_wf_q1": {"type": "arbitrary", "samples": y90_Q_wf_q1.tolist()},
+        "y180_I_wf_q1": {"type": "arbitrary", "samples": y180_I_wf_q1.tolist()},
+        "y180_Q_wf_q1": {"type": "arbitrary", "samples": y180_Q_wf_q1.tolist()},
+        "minus_y90_I_wf_q1": {"type": "arbitrary", "samples": minus_y90_I_wf_q1.tolist()},
+        "minus_y90_Q_wf_q1": {"type": "arbitrary", "samples": minus_y90_Q_wf_q1.tolist()},
         "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1},
-        "x90_wf_q2": {"type": "arbitrary", "samples": x90_wf_q2.tolist()},
-        "x90_der_wf_q2": {"type": "arbitrary", "samples": x90_der_wf_q2.tolist()},
-        "x180_wf_q2": {"type": "arbitrary", "samples": x180_wf_q2.tolist()},
-        "x180_der_wf_q2": {"type": "arbitrary", "samples": x180_der_wf_q2.tolist()},
-        "minus_x90_wf_q2": {"type": "arbitrary", "samples": minus_x90_wf_q2.tolist()},
-        "minus_x90_der_wf_q2": {"type": "arbitrary", "samples": minus_x90_der_wf_q2.tolist()},
-        "y90_wf_q2": {"type": "arbitrary", "samples": y90_wf_q2.tolist()},
-        "y90_der_wf_q2": {"type": "arbitrary", "samples": y90_der_wf_q2.tolist()},
-        "y180_wf_q2": {"type": "arbitrary", "samples": y180_wf_q2.tolist()},
-        "y180_der_wf_q2": {"type": "arbitrary", "samples": y180_der_wf_q2.tolist()},
-        "minus_y90_wf_q2": {"type": "arbitrary", "samples": minus_y90_wf_q2.tolist()},
-        "minus_y90_der_wf_q2": {"type": "arbitrary", "samples": minus_y90_der_wf_q2.tolist()},
+        "x90_I_wf_q2": {"type": "arbitrary", "samples": x90_I_wf_q2.tolist()},
+        "x90_Q_wf_q2": {"type": "arbitrary", "samples": x90_Q_wf_q2.tolist()},
+        "x180_I_wf_q2": {"type": "arbitrary", "samples": x180_I_wf_q2.tolist()},
+        "x180_Q_wf_q2": {"type": "arbitrary", "samples": x180_Q_wf_q2.tolist()},
+        "minus_x90_I_wf_q2": {"type": "arbitrary", "samples": minus_x90_I_wf_q2.tolist()},
+        "minus_x90_Q_wf_q2": {"type": "arbitrary", "samples": minus_x90_Q_wf_q2.tolist()},
+        "y90_I_wf_q2": {"type": "arbitrary", "samples": y90_I_wf_q2.tolist()},
+        "y90_Q_wf_q2": {"type": "arbitrary", "samples": y90_Q_wf_q2.tolist()},
+        "y180_I_wf_q2": {"type": "arbitrary", "samples": y180_I_wf_q2.tolist()},
+        "y180_Q_wf_q2": {"type": "arbitrary", "samples": y180_Q_wf_q2.tolist()},
+        "minus_y90_I_wf_q2": {"type": "arbitrary", "samples": minus_y90_I_wf_q2.tolist()},
+        "minus_y90_Q_wf_q2": {"type": "arbitrary", "samples": minus_y90_Q_wf_q2.tolist()},
         "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
-        "open_wf": {"type": "constant", "sample": aom_amp},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
