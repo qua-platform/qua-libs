@@ -166,12 +166,12 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I readout line
-                2: {"offset": 0.0},  # Q readout line
-                3: {"offset": 0.0},  # I qubit1 XY
-                4: {"offset": 0.0},  # Q qubit1 XY
-                5: {"offset": 0.0},  # I qubit2 XY
-                6: {"offset": 0.0},  # Q qubit2 XY
+                1: {"offset": 0.0},  # I qubit1 XY
+                2: {"offset": 0.0},  # Q qubit1 XY
+                3: {"offset": 0.0},  # I qubit2 XY
+                4: {"offset": 0.0},  # Q qubit2 XY
+                5: {"offset": 0.0},  # I readout line
+                6: {"offset": 0.0},  # Q readout line
                 7: {"offset": 0.0},  # qubit1 Z
                 8: {"offset": 0.0},  # qubit2 Z
             },
@@ -187,8 +187,8 @@ config = {
     "elements": {
         "rr1": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -206,8 +206,8 @@ config = {
         },
         "rr2": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -225,8 +225,8 @@ config = {
         },
         "q1_xy": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit_q1",
             },
@@ -243,8 +243,8 @@ config = {
         },
         "q2_xy": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit_q2",
             },
