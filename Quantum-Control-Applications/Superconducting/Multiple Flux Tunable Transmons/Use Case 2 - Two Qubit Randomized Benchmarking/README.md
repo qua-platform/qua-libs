@@ -20,7 +20,7 @@ The use-case in this example is tailored for a superconducting quantum processor
 ## Prerequisites
 - Calibrated Single Qubit Gates
 - Calibrated CZ Gate
-- Calibrated Measurement Protocol for 2-State Discrimination for both Qubits
+- Calibrated Measurement Protocol for Qubit State Discrimination
 
 # Quick User Guide
 For a quick implementation just clone the repository and edit the file [*two_qubit_rb_example.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py).
@@ -61,15 +61,20 @@ def prep():
 ```
 
 ## Measurement
-Finally, the measurement is performed at the end of the circuit 
+Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send a readout pulse to the resonators of the qubits and demodulate the signal, where we assume that we optimized the readout such that all information is contained in the *Iq0* and *Iq1*. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state |0> and True for state |1>.
+
 ```python
 def meas():
+    threshold0 = 0.3 #example value
+    threshold1 = 0.3 #example value
     rr0_name = f"qubit{q0}_rr"
     rr1_name = f"qubit{q1}_rr"
     Iq0 = declare(fixed)
     Qq0 = declare(fixed)
     Iq1 = declare(fixed)
     Qq1 = declare(fixed)
+    state0 = declare(bool)
+    state1 = declare(bool)
     measure("readout", rr0_name, None,
             dual_demod.full("w1", "out1", "w2", "out2", Iq0),
             dual_demod.full("w3", "out1", "w1", "out2", Qq0)
@@ -78,7 +83,9 @@ def meas():
             dual_demod.full("w1", "out1", "w2", "out2", Iq1),
             dual_demod.full("w3", "out1", "w1", "out2", Qq1)
             )
-return Iq0 > 0, Iq1 > 0  # example, should be taken from QPU parameters
+    assign(state0, Iq0 > threshold0)
+    assign(state1, Iq1 > threshold1)
+    return state0, state1
 ```
 
 
@@ -190,7 +197,7 @@ def meas():
     return Iq0 > 0, Iq1 > 0  # example, should be taken from QPU parameters
 ```    
 **measure_func**: A callable used to measure the qubits. This function does not use the baking object, and is a proper QUA code macro. 
-Returns a tuple containing the measured values of the two qubits as Qua expressions. The expression must evaluate to a Boolean value. False means |0>, True means |1>. The MSB is the first qubit. 
+Returns a tuple containing the measured values of the two qubits as QUA expressions. The expression must evaluate to a Boolean value. False means |0>, True means |1>. The MSB is the first qubit. 
 
 ### Results
 The result object *res* , that is created from the *rb* class by the running the experiment contains an xarray dataset (res.data) with the result data and the specified parameters. It has two implemented functions that easily visualize the fidelity decay with increasing circuit depth
