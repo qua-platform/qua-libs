@@ -177,7 +177,10 @@ with program() as rb:
                         play_sequence(sequence_list, depth, qubit)
                     align(f"q{qubit}_xy", f"rr{qubit}")
                     # Make sure you updated the ge_threshold
-                    multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[1], weights="rotated_", threshold=[threshold], state=[state], state_st=[state_st])
+                    multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[1], weights="rotated_")
+                    if state_discrimination:
+                        assign(state, I > threshold)
+                        save(state, state_st)
 
                 assign(depth_target, depth_target + delta_clifford)
 
