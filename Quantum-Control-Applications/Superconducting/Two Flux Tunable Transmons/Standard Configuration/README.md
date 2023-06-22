@@ -1,4 +1,4 @@
-# Two flux tunable transmons
+# Two flux tunable transmons with the standard configuration
 
 <img align="right" src="Two Flux Tunable Transmon Setup.PNG" alt="drawing" width="400"/>
 
