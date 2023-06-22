@@ -4,16 +4,19 @@ from qm import SimulationConfig
 from qm.qua import *
 from configuration import *
 import matplotlib.pyplot as plt
+from scipy.signal import detrend
 from qualang_tools.loops import from_array
 
 
 ###################
 # The QUA program #
 ###################
-# rr2
-freqs = np.arange(-135e6, -128e6, 0.05e6)
+
 ## rr1
 # freqs = np.arange(47e6, 51e6, 0.05e6)
+# rr2
+freqs = np.arange(-135e6, -128e6, 0.05e6)
+
 depletion_time = 1000
 n_avg = 1000
 
@@ -46,7 +49,7 @@ with program() as res_spec:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, res_spec, SimulationConfig(11000,
@@ -72,12 +75,12 @@ else:
     fig, ax = plt.subplots(2, 1)
     ax[0].plot((resonator_LO + freqs) / u.MHz, np.abs(s))
     ax[0].set_ylabel("Amp (V)")
-    ax[1].plot((resonator_LO + freqs) / u.MHz, np.angle(s))
+    ax[1].plot((resonator_LO + freqs) / u.MHz, detrend(np.unwrap(np.angle(s))))
     ax[1].set_ylabel("Phase (rad)")
     ax[1].set_xlabel("Freq (MHz)")
     ax[1].get_shared_x_axes().join(ax[0], ax[1])
-    plt.tight_layout()
 
-    print(f"IF freq at resonance: {freqs[idx]}")
-    plt.suptitle(f'resonator: {(resonator_LO + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]} Hz)')
+    print(f"IF freq at resonance: {freqs[idx]*1e-6} MHz")
+    plt.suptitle(f'resonator: {(resonator_LO + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)')
+    plt.tight_layout()
     plt.show()
