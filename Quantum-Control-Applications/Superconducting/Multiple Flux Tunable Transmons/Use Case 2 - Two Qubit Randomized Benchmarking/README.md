@@ -47,6 +47,8 @@ def bake_cz(baker: Baking, q0, q1):
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
     baker.align()
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+
 ## Implementation in QUA
 The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
 
