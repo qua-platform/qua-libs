@@ -50,6 +50,40 @@ def bake_cz(baker: Baking, q0, q1):
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
     baker.align()
 ```
+
+### Initialization
+Before each circuit, it is important to implement a initialization protocol to reset the qubits to the ground state. In the example the *prep* function contains a single QUA command *wait* and is called before each circuit execution to assure that the initial state is set to |00>. The time inside the *wait* statement is chosen to be a multiple of the characteristic decay time of the qubits *T1* to leave enough time for the qubit to relax after it has been excited to the excited state |1>. If single shot readout is implemented, it is possible to use active feedback to reset the qubit to the ground state |0> by sending a pi-pulse if the qubit was measured in the excited state |1>.   
+
+```python
+T1 = 10000
+def prep():
+    wait(10*T1)  # thermal preparation
+    align()
+```
+
+### Measurement
+Finally, the measurement is performed at the end of the circuit 
+```python
+def meas():
+    rr0_name = f"qubit{q0}_rr"
+    rr1_name = f"qubit{q1}_rr"
+    Iq0 = declare(fixed)
+    Qq0 = declare(fixed)
+    Iq1 = declare(fixed)
+    Qq1 = declare(fixed)
+    measure("readout", rr0_name, None,
+            dual_demod.full("w1", "out1", "w2", "out2", Iq0),
+            dual_demod.full("w3", "out1", "w1", "out2", Qq0)
+            )
+    measure("readout", rr1_name, None,
+            dual_demod.full("w1", "out1", "w2", "out2", Iq1),
+            dual_demod.full("w3", "out1", "w1", "out2", Qq1)
+            )
+return Iq0 > 0, Iq1 > 0  # example, should be taken from QPU parameters
+```
+![image](https://github.com/qua-platform/qua-libs/assets/117653449/1f9e119d-aef3-4593-b2a3-c0ddf3646a66)
+
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Implementation in QUA
