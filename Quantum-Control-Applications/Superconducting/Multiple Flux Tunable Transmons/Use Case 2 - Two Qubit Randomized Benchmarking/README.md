@@ -81,7 +81,6 @@ def meas():
             )
 return Iq0 > 0, Iq1 > 0  # example, should be taken from QPU parameters
 ```
-![image](https://github.com/qua-platform/qua-libs/assets/117653449/1f9e119d-aef3-4593-b2a3-c0ddf3646a66)
 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
