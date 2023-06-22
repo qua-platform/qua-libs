@@ -6,7 +6,7 @@ Author: Maximilian Zanner
 *specifically tailored setup and software environment. When adapting the code to run on your device, make sure to adjust the relevant functions and parameters and contact QM Customer Success!*
 
 ## Introduction
-Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. Two-Qubit RB can be challenging to implement with state-of-the-art control electronics because of the necessity to sample from a large amount of Clifford gates corresponding to the Two-Qubit Clifford group. This Clifford group consists of 11520 operations [^4] and contains the single qubit Clifford operations (576), the CNOT-like class (5184), the iSWAP-like class (5184) and the SWAP-like class (576). In this use-case example we introduce a possible implementation on the OPX+ using the current version (2023, June) of the generic *TwoQubitRb* class. The implementation exploits the [baking tool](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) in order to generate and invert the sequence before running the QUA program. The QUA program then uses the [Input Stream](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=declare_input_stream#input-streams) feature to randomly load and execute the pre-compiled sequences. An updated version of the *TwoQubitRb* class can be found in the [*py-qua-tools*](https://github.com/qua-platform/py-qua-tools) repository.
+Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. Two-Qubit RB can be challenging to implement with state-of-the-art control electronics because of the necessity to sample from a large amount of Clifford gates corresponding to the Two-Qubit Clifford group. This Clifford group consists of 11520 operations [^4] and contains the single qubit Clifford operations (576), the CNOT-like class (5184), the iSWAP-like class (5184) and the SWAP-like class (576). In this use-case example we introduce a possible implementation on the OPX+ using the current version (2023, June) of the generic *TwoQubitRb* class. The implementation exploits the [*baking tool*](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) in order to generate and invert the sequence before running the QUA program. The QUA program then uses the [*Input Stream*](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=declare_input_stream#input-streams) feature to randomly load and execute the pre-compiled sequences. An updated version of the *TwoQubitRb* class can be found in the [*py-qua-tools*](https://github.com/qua-platform/py-qua-tools) repository.
 
 [^1]: Knill et al (2008 Phys. Rev. A 77 012307)
 [^2]: C A Ryan et al 2009 New J. Phys. 11 013034
@@ -22,6 +22,30 @@ The use-case in this example is tailored for a superconducting quantum processor
 - Calibrated Single Qubit Gates
 - Calibrated CZ Gate
 - Calibrated Measurement Protocol for 2-State Discrimination for both Qubits
+
+## Quick User Guide
+For a quick implementation just clone the repository and edit the file [*two_qubit_rb_example.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py).
+
+### Single Qubit Gates
+The function for the single qubit gates requires that the operation "x" was previously calibrated by the user and corresponds to a pi-pulse on the target qubits. The *amp=x* condition inside the *play* statement allows to scale the amplitude of the pulse. Together with the first *frame_rotation_2pi* it allows the *play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis.
+```python
+def bake_phased_xz(baker: Baking, q, x, z, a):
+    element = f"qubit{q}_xy"
+    baker.frame_rotation_2pi(-a, element)
+    baker.play("x", element, amp=x)
+    baker.frame_rotation_2pi(a + z, element)
+```
+### CZ Gate
+This example needs a calibrated CZ gate that imprints a minus-1 phase on the qubits |11> state. 
+def bake_cz(baker: Baking, q0, q1):
+    q0_xy_element = f"qubit{q0}_xy"
+    q1_xy_element = f"qubit{q1}_xy"
+    q1_z_element = f"qubit{q1}_z"
+    baker.play("cz", q1_z_element)
+    baker.align()
+    baker.frame_rotation_2pi(qubit0_frame_update, q0_xy_element)
+    baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
+    baker.align()
 
 ## Implementation in QUA
 The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
