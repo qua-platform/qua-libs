@@ -1,5 +1,6 @@
 from quam import QuAM
 from configuration import build_config
+from qualang_tools.units import unit
 
 machine = QuAM("quam_bootstrap_state.json", flat_data=False)
 

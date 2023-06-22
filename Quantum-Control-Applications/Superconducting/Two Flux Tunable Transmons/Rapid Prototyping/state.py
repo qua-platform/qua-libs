@@ -5,7 +5,7 @@ import quam_sdk.constructor
 # structure is almost completely free
 
 state = {
-    "network": {"qop_ip": "172.16.33.100", "qop_port": 83},
+    "network": {"qop_ip": "172.16.33.100", "qop_port": 83, "save_dir": ""},
     "local_oscillators": {
         "qubits": [
             {"freq": 3.3, "power": 18},
