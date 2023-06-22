@@ -87,7 +87,17 @@ def meas():
     assign(state1, Iq1 > threshold1)
     return state0, state1
 ```
+## Execution and Results
+Using the 
+```python
+rb = TwoQubitRb(config, single_qubit_gate_generator, two_qubit_gate_generators, prep_func, measure_func, verify_generation=True)
+```
+The experiment is run by calling the run method of the previously generated program rb.
 
+```python
+qmm = QuantumMachinesManager('127.0.0.1',8080)
+res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=50, num_shots_per_circuit=1000)
+```
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 # Additional Information
