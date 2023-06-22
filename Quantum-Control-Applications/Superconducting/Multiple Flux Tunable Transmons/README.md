@@ -35,7 +35,7 @@ is not saturated, correct for DC offsets and check the multiplexed readout level
     * [Time Rabi](10_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
 11. [IQ Blobs](11_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
 and the fidelity are good enough, gives the parameters needed for active reset.
-12. [Active Reset](12_IQ_blobs_active_reset.py) - Script for performing a single shot discrimination and active reset.
+12. [Active Reset](12_IQ_blobs_active_reset.py) - Script for performing a single shot discrimination and active reset. ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
 13. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
     * [Frequency optimization](13_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
 14. [T1](14_T1.py) - Measures T1.
@@ -54,7 +54,7 @@ fidelity.
 
 
 
-21. |** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>:| ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red) |
+21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
     * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
     * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
     
