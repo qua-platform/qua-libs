@@ -11,8 +11,8 @@ from qualang_tools.results import fetching_tool
 ###################
 # The QUA program #
 ###################
-dfs = np.arange(- 1.2e6, + 1.2e6, 0.02e6)
-n_avg = 8000
+dfs = np.arange(- 12e6, + 12e6, 0.1e6)
+n_avg = 1000
 depletion_time = 1000
 
 with program() as multi_res_spec:
@@ -36,7 +36,8 @@ with program() as multi_res_spec:
             save(I[0], I_st[0])
             save(Q[0], Q_st[0])
 
-            # resonator 2 (in parallel)
+            # align("rr1", "rr2")  # Uncomment to measure sequentially
+            # resonator 2
             update_frequency("rr2", df + resonator_IF_q2)
             measure("readout", "rr2", None, dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]))
@@ -57,7 +58,7 @@ with program() as multi_res_spec:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, multi_res_spec, SimulationConfig(11000,
@@ -86,8 +87,13 @@ else:
     ax[1].set_title("resonator 2")
     ax[1].set_xlabel("Freq (MHz)")
     plt.tight_layout()
-    # plt.plot(I1, Q1, '.')
-    # plt.plot(I2, Q2, '.')
-    # plt.axis('equal')
 
-plt.show()
+from qualang_tools.plot.fitting import Fit
+fit = Fit()
+plt.figure()
+plt.subplot(121)
+fit.reflection_resonator_spectroscopy((resonator_IF_q1 + dfs) / u.MHz, np.abs(s1), plot=True)
+plt.xlabel("rr1 IF (MHz)")
+plt.subplot(122)
+fit.reflection_resonator_spectroscopy((resonator_IF_q2 + dfs) / u.MHz, np.abs(s2), plot=True)
+plt.xlabel("rr21 IF (MHz)")
