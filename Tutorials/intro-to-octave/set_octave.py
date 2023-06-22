@@ -134,7 +134,7 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     #####################
     if external_clock:
         # Change to the relevant external frequency
-        qm.set_clock.set_clock("octave1", clock_mode=ClockMode.External_10MHz)
+        qm.octave.set_clock("octave1", clock_mode=ClockMode.External_10MHz)
     else:
         qm.octave.set_clock("octave1", clock_mode=ClockMode.Internal)
 

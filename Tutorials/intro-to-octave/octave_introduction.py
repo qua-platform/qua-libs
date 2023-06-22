@@ -337,7 +337,7 @@ with program() as hello_octave:
 external_clock = False
 if external_clock:
     # Change to the relevant external frequency
-    qm.set_clock.set_clock(octave, clock_mode=ClockMode.External_10MH)
+    qm.octave.set_clock(octave, clock_mode=ClockMode.External_10MHz)
 else:
     qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
 # You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
