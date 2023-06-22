@@ -24,9 +24,7 @@ The configuration dictionary that the OPX expects is then built using a one-to-o
 
 
 The first step is to install the QuAM SDK using
-``
-pip install  "git+https://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@github.com/entropy-lab/quam-sdk#egg=quam-sdk"
-``
+
 
 ## Basic Files
 0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA.
