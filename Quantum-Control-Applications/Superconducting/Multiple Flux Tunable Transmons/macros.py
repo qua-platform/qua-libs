@@ -21,21 +21,33 @@ def cz_gate(dc0):
     wait(10) # for flux pulse to relax back completely
 
 
-def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):
+def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights="", threshold=None, state=None, state_st=None):
     """ Perform multiplexed readout on two resonators """
     if type(resonators) is not list:
         resonators = [resonators]
+
+    if threshold is not None:
+        if type(threshold) is not list:
+            threshold = [threshold]
 
     for ind,res in enumerate(resonators):
         measure("readout" * amp(amplitude), f"rr{res}", None,
                 dual_demod.full(weights + "cos", "out1", weights + "sin", "out2", I[ind]),
                 dual_demod.full(weights + "minus_sin", "out1", weights + "cos", "out2", Q[ind]))
+
+        if threshold is not None:
+            assign(state[ind], I[ind] > threshold[ind])
+
         if I_st is not None:
             save(I[ind], I_st[ind])
         if Q_st is not None:
             save(Q[ind], Q_st[ind])
+        if state_st is not None:
+            save(state[ind], state_st[ind])
         if sequential and ind < len(resonators)-1:
             align(f"rr{res}", f"rr{res+1}")
+
+
 
 
 def qua_declaration(nb_of_qubits):
