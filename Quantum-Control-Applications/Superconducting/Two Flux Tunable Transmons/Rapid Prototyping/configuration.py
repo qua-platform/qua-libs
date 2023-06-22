@@ -167,8 +167,8 @@ def build_config(quam: QuAM):
                     2: {"offset": 0.0},  # Q qubit1 XY
                     3: {"offset": 0.0},  # I qubit2 XY
                     4: {"offset": 0.0},  # Q qubit2 XY
-                    5: {"offset": 0.0},  # I readout line
-                    6: {"offset": 0.0},  # Q readout line
+                    5: {"offset": quam.resonators[0].mixer_correction.offset_I},  # I readout line
+                    6: {"offset": quam.resonators[0].mixer_correction.offset_Q},  # Q readout line
                     7: {"offset": 0.0},  # qubit1 Z
                     8: {"offset": 0.0},  # qubit2 Z
                 },
@@ -182,14 +182,14 @@ def build_config(quam: QuAM):
             },
         },
         "elements": {
-            **{"rr1": {
+            **{f"rr{i}": {
                 "mixInputs": {
-                    "I": ("con1", quam.resonators[0].wiring.I),
-                    "Q": ("con1", quam.resonators[0].wiring.Q),
+                    "I": ("con1", quam.resonators[i].wiring.I),
+                    "Q": ("con1", quam.resonators[i].wiring.Q),
                     "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
-                    "mixer": "mixer_resonator",
+                    "mixer": f"mixer_resonator{i}",
                 },
-                "intermediate_frequency": (quam.resonators[0].f_res - quam.local_oscillators.readout[0].freq) * 1e9,
+                "intermediate_frequency": (quam.resonators[i].f_res - quam.local_oscillators.readout[0].freq) * 1e9,
                 "operations": {
                     "cw": "const_pulse",
                     "readout": "readout_pulse_q1",
@@ -198,28 +198,9 @@ def build_config(quam: QuAM):
                     "out1": ("con1", 1),
                     "out2": ("con1", 2),
                 },
-                "time_of_flight": quam.resonators[0].time_of_flight,
+                "time_of_flight": quam.resonators[i].time_of_flight,
                 "smearing": 0,
-            } for i in range()
-            },
-            "rr2": {
-                "mixInputs": {
-                    "I": ("con1", 1),
-                    "Q": ("con1", 2),
-                    "lo_frequency": resonator_LO,
-                    "mixer": "mixer_resonator",
-                },
-                "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
-                "operations": {
-                    "cw": "const_pulse",
-                    "readout": "readout_pulse_q2",
-                },
-                "outputs": {
-                    "out1": ("con1", 1),
-                    "out2": ("con1", 2),
-                },
-                "time_of_flight": time_of_flight,
-                "smearing": 0,
+            } for i in range(len(quam.resonators))
             },
             "q1_xy": {
                 "mixInputs": {
@@ -338,22 +319,24 @@ def build_config(quam: QuAM):
                     "Q": "minus_y90_wf_q1",
                 },
             },
-            "readout_pulse_q1": {
-                "operation": "measurement",
-                "length": readout_len,
-                "waveforms": {
-                    "I": "readout_wf_q1",
-                    "Q": "zero_wf",
-                },
-                "integration_weights": {
-                    "cos": "cosine_weights",
-                    "sin": "sine_weights",
-                    "minus_sin": "minus_sine_weights",
-                    "rotated_cos": "rotated_cosine_weights_q1",
-                    "rotated_sin": "rotated_sine_weights_q1",
-                    "rotated_minus_sin": "rotated_minus_sine_weights_q1",
-                },
-                "digital_marker": "ON",
+            **{
+                f"readout_pulse_q{i}": {
+                    "operation": "measurement",
+                    "length": quam.resonators[i].readout_pulse_length,
+                    "waveforms": {
+                        "I": f"readout{i}_wf",
+                        "Q": "zero_wf",
+                    },
+                    "integration_weights": {
+                        "cos": f"cosine_weights{i}",
+                        "sin": f"sine_weights{i}",
+                        "minus_sin": f"minus_sine_weights{i}",
+                        "rotated_cos": f"rotated_cosine_weights{i}",
+                        "rotated_sin": f"rotated_sine_weights{i}",
+                        "rotated_minus_sin": f"rotated_minus_sine_weights{i}",
+                    },
+                    "digital_marker": "ON",
+                } for i in range(len(quam.resonators))
             },
             "x90_pulse_q2": {
                 "operation": "control",
@@ -403,23 +386,6 @@ def build_config(quam: QuAM):
                     "Q": "minus_y90_wf_q2",
                 },
             },
-            "readout_pulse_q2": {
-                "operation": "measurement",
-                "length": readout_len,
-                "waveforms": {
-                    "I": "readout_wf_q2",
-                    "Q": "zero_wf",
-                },
-                "integration_weights": {
-                    "cos": "cosine_weights",
-                    "sin": "sine_weights",
-                    "minus_sin": "minus_sine_weights",
-                    "rotated_cos": "rotated_cosine_weights_q2",
-                    "rotated_sin": "rotated_sine_weights_q2",
-                    "rotated_minus_sin": "rotated_minus_sine_weights_q2",
-                },
-                "digital_marker": "ON",
-            },
         },
         "waveforms": {
             "const_wf": {"type": "constant", "sample": const_amp},
@@ -437,7 +403,9 @@ def build_config(quam: QuAM):
             "y180_der_wf_q1": {"type": "arbitrary", "samples": y180_der_wf_q1.tolist()},
             "minus_y90_wf_q1": {"type": "arbitrary", "samples": minus_y90_wf_q1.tolist()},
             "minus_y90_der_wf_q1": {"type": "arbitrary", "samples": minus_y90_der_wf_q1.tolist()},
-            "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1},
+            **{
+                f"readout{i}_wf": {"type": "constant", "sample": quam.resonators[i].readout_pulse_amp} for i in range(len(quam.resonators))
+            },
             "x90_wf_q2": {"type": "arbitrary", "samples": x90_wf_q2.tolist()},
             "x90_der_wf_q2": {"type": "arbitrary", "samples": x90_der_wf_q2.tolist()},
             "x180_wf_q2": {"type": "arbitrary", "samples": x180_wf_q2.tolist()},
@@ -450,47 +418,46 @@ def build_config(quam: QuAM):
             "y180_der_wf_q2": {"type": "arbitrary", "samples": y180_der_wf_q2.tolist()},
             "minus_y90_wf_q2": {"type": "arbitrary", "samples": minus_y90_wf_q2.tolist()},
             "minus_y90_der_wf_q2": {"type": "arbitrary", "samples": minus_y90_der_wf_q2.tolist()},
-            "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
         },
         "digital_waveforms": {
             "ON": {"samples": [(1, 0)]},
         },
         "integration_weights": {
-            "cosine_weights": {
-                "cosine": [(1.0, readout_len)],
-                "sine": [(0.0, readout_len)],
+            **{
+                f"rotated_cosine_weights{i}": {
+                    "cosine": [(1.0, quam.resonators[i].readout_pulse_length)],
+                    "sine": [(0.0, quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
-            "sine_weights": {
-                "cosine": [(0.0, readout_len)],
-                "sine": [(1.0, readout_len)],
+            **{
+                f"rotated_sine_weights{i}": {
+                    "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
+                    "sine": [(1.0, quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
-            "minus_sine_weights": {
-                "cosine": [(0.0, readout_len)],
-                "sine": [(-1.0, readout_len)],
+            **{
+                f"rotated_minus_sine_weights{i}": {
+                    "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
+                    "sine": [(-1.0, quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
-            "rotated_cosine_weights_q1": {
-                "cosine": [(np.cos(rotation_angle_q1), readout_len)],
-                "sine": [(-np.sin(rotation_angle_q1), readout_len)],
+            **{
+                f"rotated_cosine_weights{i}": {
+                    "cosine": [(np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                    "sine": [(-np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
-            "rotated_sine_weights_q1": {
-                "cosine": [(np.sin(rotation_angle_q1), readout_len)],
-                "sine": [(np.cos(rotation_angle_q1), readout_len)],
+            **{
+                f"rotated_sine_weights{i}": {
+                    "cosine": [(np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                    "sine": [(np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
-            "rotated_minus_sine_weights_q1": {
-                "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
-                "sine": [(-np.cos(rotation_angle_q1), readout_len)],
-            },
-            "rotated_cosine_weights_q2": {
-                "cosine": [(np.cos(rotation_angle_q2), readout_len)],
-                "sine": [(-np.sin(rotation_angle_q2), readout_len)],
-            },
-            "rotated_sine_weights_q2": {
-                "cosine": [(np.sin(rotation_angle_q2), readout_len)],
-                "sine": [(np.cos(rotation_angle_q2), readout_len)],
-            },
-            "rotated_minus_sine_weights_q2": {
-                "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
-                "sine": [(-np.cos(rotation_angle_q2), readout_len)],
+            **{
+                f"rotated_minus_sine_weights{i}": {
+                    "cosine": [(-np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                    "sine": [(-np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                } for i in range(len(quam.resonators))
             },
         },
         "mixers": {
@@ -508,18 +475,18 @@ def build_config(quam: QuAM):
                     "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
                 }
             ],
-            "mixer_resonator": [
-                {
-                    "intermediate_frequency": resonator_IF_q1,
-                    "lo_frequency": resonator_LO,
-                    "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1),
-                },
-                {
-                    "intermediate_frequency": resonator_IF_q2,
-                    "lo_frequency": resonator_LO,
-                    "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2),
-                },
-            ],
+            **{
+                f"mixer_resonator{i}": [
+                    {
+                        "intermediate_frequency": (quam.resonators[i].f_res - quam.local_oscillators.readout[
+                            0].freq) * 1e9,
+                        "lo_frequency": quam.local_oscillators.readout[0].freq,
+                        "correction": IQ_imbalance(quam.resonators[i].mixer_correction.gain,
+                                                   quam.resonators[i].mixer_correction.phase),
+                    },
+                ] for i in range(len(quam.resonators))
+            },
+
         },
     }
     return config

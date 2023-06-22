@@ -53,6 +53,15 @@ state = {
                 "Q": 6,
             },
             "time_of_flight": 24,
+            "mixer_correction": {
+                "offset_I": 0.01,
+                "offset_Q": -0.041,
+                "gain": 0.015,
+                "phase": -0.0236
+            },
+            "readout_pulse_length": 1_000,
+            "readout_pulse_amp": 0.05,
+            "rotation_angle": 0.0,
         },
         {
             "f_res": 6.75,
@@ -61,6 +70,16 @@ state = {
                 "I": 5,
                 "Q": 6,
             },
+            "time_of_flight": 24,
+            "mixer_correction": {
+                "offset_I": 0.01,
+                "offset_Q": -0.041,
+                "gain": 0.019,
+                "phase": -0.0214
+            },
+            "readout_pulse_length": 1_000,
+            "readout_pulse_amp": 0.07,
+            "rotation_angle": 0.0,
         },
     ],
 }
