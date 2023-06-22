@@ -150,7 +150,7 @@ readout_len = 4000
 readout_amp_q1 = 0.07
 readout_amp_q2 = 0.07
 
-time_of_flight = 260  # should be a multiple of 4
+time_of_flight = 24  # must be a multiple of 4
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi

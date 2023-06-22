@@ -6,7 +6,7 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-element =  "qubit"
+element =  "rr1"
 
 with program() as manual_mixer_calib:
     with infinite_loop_():
@@ -32,7 +32,8 @@ job = qm.execute(manual_mixer_calib)
 # unwanted peaks.
 
 # qm.set_output_dc_offset_by_element(element, ('I', 'Q'), (-0.001, 0.003))
-# qm.set_mixer_correction(f'mixer_qubit', int(qubit_IF), int(qubit_LO), IQ_imbalance(0.015, 0.01))
+# qm.set_mixer_correction(f'mixer_qubit_q1', int(qubit_IF_q1), int(qubit_LO), IQ_imbalance(0.015, 0.01))
+# qm.set_mixer_correction(f'mixer_resonator', int(resonator_IF_q1), int(resonator_LO), IQ_imbalance(0.015, 0.01))
 # qm.set_mixer_correction(f'mixer_{element}', int(int(config["elements"][element]["intermediate_frequency"])), int(int(config["elements"][element]["mixInputs"]["lo_frequency"])), IQ_imbalance(0.015, 0.01))
 
 # Automatic LO leakage correction
