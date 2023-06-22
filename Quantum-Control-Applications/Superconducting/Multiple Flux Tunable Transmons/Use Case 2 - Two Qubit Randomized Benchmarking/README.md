@@ -27,7 +27,7 @@ The use-case in this example is tailored for a superconducting quantum processor
 For a quick implementation just clone the repository and edit the file [*two_qubit_rb_example.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py).
 
 ### Single Qubit Gates
-The function for the single qubit gates requires that the operation "x" was previously calibrated by the user and corresponds to a pi-pulse on the target qubits. The *amp=x* condition inside the *play* statement allows to scale the amplitude of the pulse. Together with the first *frame_rotation_2pi* it allows the *play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis.
+The function for the single qubit gates requires that the operation "x" was previously calibrated by the user and corresponds to a pi-pulse on the target qubits. The *amp=x* condition inside the *baker.play* statement allows to scale the amplitude of the pulse. Together with the first *baker.frame_rotation_2pi* it allows the *baker.play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *baker.frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis.
 ```python
 def bake_phased_xz(baker: Baking, q, x, z, a):
     element = f"qubit{q}_xy"
@@ -35,8 +35,11 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     baker.play("x", element, amp=x)
     baker.frame_rotation_2pi(a + z, element)
 ```
+
 ### CZ Gate
-This example needs a calibrated CZ gate that imprints a minus-1 phase on the qubits |11> state. 
+The use-case is designed for flux-tunable transmon qubits where the qubit-qubit interaction is realized with a direct capacitive coupling. Utilizing this architecture it is possible to realize a flux-tuned |11> - |02> phase gate. An applied flux pulse that tunes the qubits in and out of the |11> − |02> avoided-crossing leads to a conditional phase accumulation. Leaving the system at the avoided-crossing for a specific time maps the state |11〉back into itself but acquires a minus sign in the process. As the computational states are far from being resonant with other transitions their phases evolve trivially and can be corrected using single qubit phase corrections and thus realize the CZ gate. The *baker.play* statement therefore contains a flux pulse that frequency-tunes transmon *q1* in and out of the avoided crossing |11> - |02> , while the *baker.frame_rotation_2pi* statements correct the single qubit phases.
+
+```python
 def bake_cz(baker: Baking, q0, q1):
     q0_xy_element = f"qubit{q0}_xy"
     q1_xy_element = f"qubit{q1}_xy"
@@ -46,7 +49,7 @@ def bake_cz(baker: Baking, q0, q1):
     baker.frame_rotation_2pi(qubit0_frame_update, q0_xy_element)
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
     baker.align()
-
+```
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Implementation in QUA
