@@ -10,7 +10,7 @@ from qualang_tools.config.waveform_tools import flattop_gaussian_waveform
 
 from pathlib import Path
 
-save_dir = (Path().absolute() / "TEST" / "BETAsite" / "QM" / "OPXPlus" / "data")
+save_dir = Path().absolute() / "TEST" / "BETAsite" / "QM" / "OPXPlus" / "data"
 
 
 #######################
@@ -28,7 +28,7 @@ def IQ_imbalance(g, phi):
     """
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
@@ -64,69 +64,81 @@ AC_stark_detuning_q1 = 0 * u.MHz
 AC_stark_detuning_q2 = 0 * u.MHz
 
 x180_wf_q1, x180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 x180_I_wf_q1 = x180_wf_q1
 x180_Q_wf_q1 = x180_der_wf_q1
 x180_wf_q2, x180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 x180_I_wf_q2 = x180_wf_q2
 x180_Q_wf_q2 = x180_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_wf_q1, x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 x90_I_wf_q1 = x90_wf_q1
 x90_Q_wf_q1 = x90_der_wf_q1
 x90_wf_q2, x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 x90_I_wf_q2 = x90_wf_q2
 x90_Q_wf_q2 = x90_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
+)
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
+)
 minus_x90_I_wf_q2 = minus_x90_wf_q2
 minus_x90_Q_wf_q2 = minus_x90_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_wf_q1, y180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 y180_I_wf_q1 = (-1) * y180_der_wf_q1
 y180_Q_wf_q1 = y180_wf_q1
 y180_wf_q2, y180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 y180_I_wf_q2 = (-1) * y180_der_wf_q2
 y180_Q_wf_q2 = y180_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_wf_q1, y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 y90_I_wf_q1 = (-1) * y90_der_wf_q1
 y90_Q_wf_q1 = y90_wf_q1
 y90_wf_q2, y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 y90_I_wf_q2 = (-1) * y90_der_wf_q2
 y90_Q_wf_q2 = y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
+)
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
+)
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
@@ -157,167 +169,205 @@ rotation_angle_q2 = (0.0 / 180) * np.pi
 ge_threshold_q1 = 0.0
 ge_threshold_q2 = 0.0
 
+
 def build_config(quam: QuAM):
+    x180_I_wf = []
+    x180_Q_wf = []
+    x90_I_wf = []
+    x90_Q_wf = []
+    minus_x90_I_wf = []
+    minus_x90_Q_wf = []
+    y180_I_wf = []
+    y180_Q_wf = []
+    y90_I_wf = []
+    y90_Q_wf = []
+    minus_y90_I_wf = []
+    minus_y90_Q_wf = []
+    # No DRAG when alpha=0, it's just a gaussian.
+    for i in range(len(quam.qubits)):
+        # x180
+        x180_wf, x180_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                quam.qubits[i].xy.pi_amp,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        x180_I_wf.append(x180_wf)
+        x180_Q_wf.append(x180_der_wf)
+        # x90
+        x90_wf, x90_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                quam.qubits[i].xy.pi_amp / 2,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        x90_I_wf.append(x90_wf)
+        x90_Q_wf.append(x90_der_wf)
+        # -x90
+        minus_x90_wf, minus_x90_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                -quam.qubits[i].xy.pi_amp / 2,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        minus_x90_I_wf.append(minus_x90_wf)
+        minus_x90_Q_wf.append(minus_x90_der_wf)
+        # y180
+        y180_wf, y180_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                quam.qubits[i].xy.pi_amp,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        y180_I_wf.append((-1) * y180_der_wf)
+        y180_Q_wf.append(y180_wf)
+        # y90
+        y90_wf, y90_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                quam.qubits[i].xy.pi_amp / 2,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        y90_I_wf.append((-1) * y90_der_wf)
+        y90_Q_wf.append(y90_wf)
+        # -y90
+        minus_y90_wf, minus_y90_der_wf = np.array(
+            drag_gaussian_pulse_waveforms(
+                -quam.qubits[i].xy.pi_amp / 2,
+                quam.qubits[i].xy.pi_length,
+                quam.qubits[i].xy.pi_length / 5,
+                quam.qubits[i].xy.drag_coefficient,
+                quam.qubits[i].xy.anharmonicity,
+                quam.qubits[i].xy.ac_stark_detuning,
+            )
+        )
+        minus_y90_I_wf.append((-1) * minus_y90_der_wf)
+        minus_y90_Q_wf.append(minus_y90_wf)
+
     config = {
         "version": 1,
         "controllers": {
             "con1": {
                 "analog_outputs": {
-                    1: {"offset": 0.0},  # I qubit1 XY
-                    2: {"offset": 0.0},  # Q qubit1 XY
-                    3: {"offset": 0.0},  # I qubit2 XY
-                    4: {"offset": 0.0},  # Q qubit2 XY
+                    1: {"offset": quam.qubits[0].xy.mixer_correction.offset_I},  # I qubit1 XY
+                    2: {"offset": quam.qubits[0].xy.mixer_correction.offset_Q},  # Q qubit1 XY
+                    3: {"offset": quam.qubits[1].xy.mixer_correction.offset_I},  # I qubit2 XY
+                    4: {"offset": quam.qubits[1].xy.mixer_correction.offset_Q},  # Q qubit2 XY
                     5: {"offset": quam.resonators[0].mixer_correction.offset_I},  # I readout line
                     6: {"offset": quam.resonators[0].mixer_correction.offset_Q},  # Q readout line
-                    7: {"offset": 0.0},  # qubit1 Z
-                    8: {"offset": 0.0},  # qubit2 Z
+                    7: {"offset": quam.qubits[0].z.flux_zero_frequency},  # qubit1 Z
+                    8: {"offset": quam.qubits[1].z.flux_zero_frequency},  # qubit2 Z
                 },
                 "digital_outputs": {
                     1: {},
                 },
                 "analog_inputs": {
-                    1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-                    2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
+                    1: {
+                        "offset": quam.global_parameters.downconversion_offset_I,
+                        "gain_db": 0,
+                    },  # I from down-conversion
+                    2: {
+                        "offset": quam.global_parameters.downconversion_offset_Q,
+                        "gain_db": 0,
+                    },  # Q from down-conversion
                 },
             },
         },
         "elements": {
-            **{f"rr{i}": {
-                "mixInputs": {
-                    "I": ("con1", quam.resonators[i].wiring.I),
-                    "Q": ("con1", quam.resonators[i].wiring.Q),
-                    "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
-                    "mixer": f"mixer_resonator{i}",
-                },
-                "intermediate_frequency": (quam.resonators[i].f_res - quam.local_oscillators.readout[0].freq) * 1e9,
-                "operations": {
-                    "cw": "const_pulse",
-                    "readout": "readout_pulse_q1",
-                },
-                "outputs": {
-                    "out1": ("con1", 1),
-                    "out2": ("con1", 2),
-                },
-                "time_of_flight": quam.resonators[i].time_of_flight,
-                "smearing": 0,
-            } for i in range(len(quam.resonators))
+            **{
+                f"rr{i}": {
+                    "mixInputs": {
+                        "I": ("con1", quam.resonators[i].wiring.I),
+                        "Q": ("con1", quam.resonators[i].wiring.Q),
+                        "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
+                        "mixer": f"mixer_resonator{i}",
+                    },
+                    "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9,
+                    "operations": {
+                        "cw": "const_pulse",
+                        "readout": "readout_pulse_q1",
+                    },
+                    "outputs": {
+                        "out1": ("con1", 1),
+                        "out2": ("con1", 2),
+                    },
+                    "time_of_flight": quam.global_parameters.time_of_flight,
+                    "smearing": 0,
+                }
+                for i in range(len(quam.resonators))
             },
-            "q1_xy": {
-                "mixInputs": {
-                    "I": ("con1", 3),
-                    "Q": ("con1", 4),
-                    "lo_frequency": qubit_LO,
-                    "mixer": "mixer_qubit_q1",
-                },
-                "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
-                "operations": {
-                    "cw": "const_pulse",
-                    "x180": "x180_pulse_q1",
-                    "x90": "x90_pulse_q1",
-                    "-x90": "-x90_pulse_q1",
-                    "y90": "y90_pulse_q1",
-                    "y180": "y180_pulse_q1",
-                    "-y90": "-y90_pulse_q1",
-                },
+            **{
+                f"q{i}_xy": {
+                    "mixInputs": {
+                        "I": ("con1", quam.qubits[i].xy.wiring.I),
+                        "Q": ("con1", quam.qubits[i].xy.wiring.Q),
+                        "lo_frequency": quam.local_oscillators.qubits[0].freq * 1e9,
+                        "mixer": f"mixer_qubit{i}",
+                    },
+                    "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq) * 1e9,
+                    "operations": {
+                        "cw": "const_pulse",
+                        "x180": f"x180_pulse_q{i}",
+                        "x90": f"x90_pulse_q{i}",
+                        "-x90": f"-x90_pulse_q{i}",
+                        "y90": f"y90_pulse_q{i}",
+                        "y180": f"y180_pulse_q{i}",
+                        "-y90": f"-y90_pulse_q{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "q2_xy": {
-                "mixInputs": {
-                    "I": ("con1", 5),
-                    "Q": ("con1", 6),
-                    "lo_frequency": qubit_LO,
-                    "mixer": "mixer_qubit_q2",
-                },
-                "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
-                "operations": {
-                    "cw": "const_pulse",
-                    "x180": "x180_pulse_q2",
-                    "x90": "x90_pulse_q2",
-                    "-x90": "-x90_pulse_q2",
-                    "y90": "y90_pulse_q2",
-                    "y180": "y180_pulse_q2",
-                    "-y90": "-y90_pulse_q2",
-                },
-            },
-            "q1_z": {
-                "singleInput": {
-                    "port": ("con1", 7),
-                },
-                "operations": {
-                    "const": "const_flux_pulse",
-                },
-            },
-            "q2_z": {
-                "singleInput": {
-                    "port": ("con1", 8),
-                },
-                "operations": {
-                    "const": "const_flux_pulse",
-                },
+            **{
+                f"q{i}_z": {
+                    "singleInput": {
+                        "port": ("con1", quam.qubits[i].z.wiring),
+                    },
+                    "operations": {
+                        "const": f"const_flux_pulse{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
         },
         "pulses": {
-            "const_flux_pulse": {
-                "operation": "control",
-                "length": const_flux_len,
-                "waveforms": {
-                    "single": "const_flux_wf",
-                },
-            },
             "const_pulse": {
                 "operation": "control",
-                "length": const_len,
+                "length": 1000,
                 "waveforms": {
                     "I": "const_wf",
                     "Q": "zero_wf",
                 },
             },
-            "x90_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "x90_wf_q1",
-                    "Q": "x90_der_wf_q1",
-                },
-            },
-            "x180_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "x180_wf_q1",
-                    "Q": "x180_der_wf_q1",
-                },
-            },
-            "-x90_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "minus_x90_wf_q1",
-                    "Q": "minus_x90_der_wf_q1",
-                },
-            },
-            "y90_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "y90_der_wf_q1",
-                    "Q": "y90_wf_q1",
-                },
-            },
-            "y180_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "y180_der_wf_q1",
-                    "Q": "y180_wf_q1",
-                },
-            },
-            "-y90_pulse_q1": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "minus_y90_der_wf_q1",
-                    "Q": "minus_y90_wf_q1",
-                },
+            **{
+                f"const_flux_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].z.flux_pulse_length,
+                    "waveforms": {
+                        "I": f"const_flux{i}_wf",
+                        "Q": "zero_wf",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
             **{
                 f"readout_pulse_q{i}": {
@@ -336,88 +386,123 @@ def build_config(quam: QuAM):
                         "rotated_minus_sin": f"rotated_minus_sine_weights{i}",
                     },
                     "digital_marker": "ON",
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
-            "x90_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "x90_wf_q2",
-                    "Q": "x90_der_wf_q2",
-                },
+            **{
+                f"x90_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"x90_I_wf{i}",
+                        "Q": f"x90_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "x180_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "x180_wf_q2",
-                    "Q": "x180_der_wf_q2",
-                },
+            **{
+                f"x180_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"x180_I_wf{i}",
+                        "Q": f"x180_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "-x90_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "minus_x90_wf_q2",
-                    "Q": "minus_x90_der_wf_q2",
-                },
+            **{
+                f"-x90_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"minus_x90_I_wf{i}",
+                        "Q": f"minus_x90_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "y90_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "y90_der_wf_q2",
-                    "Q": "y90_wf_q2",
-                },
+            **{
+                f"y90_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"y90_I_wf{i}",
+                        "Q": f"y90_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "y180_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "y180_der_wf_q2",
-                    "Q": "y180_wf_q2",
-                },
+            **{
+                f"y180_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"y180_I_wf{i}",
+                        "Q": f"y180_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
-            "-y90_pulse_q2": {
-                "operation": "control",
-                "length": pi_len,
-                "waveforms": {
-                    "I": "minus_y90_der_wf_q2",
-                    "Q": "minus_y90_wf_q2",
-                },
+            **{
+                f"-y90_pulse{i}": {
+                    "operation": "control",
+                    "length": quam.qubits[i].xy.pi_length,
+                    "waveforms": {
+                        "I": f"minus_y90_I_wf{i}",
+                        "Q": f"minus_y90_Q_wf{i}",
+                    },
+                }
+                for i in range(len(quam.qubits))
             },
         },
         "waveforms": {
-            "const_wf": {"type": "constant", "sample": const_amp},
-            "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
             "zero_wf": {"type": "constant", "sample": 0.0},
-            "x90_wf_q1": {"type": "arbitrary", "samples": x90_wf_q1.tolist()},
-            "x90_der_wf_q1": {"type": "arbitrary", "samples": x90_der_wf_q1.tolist()},
-            "x180_wf_q1": {"type": "arbitrary", "samples": x180_wf_q1.tolist()},
-            "x180_der_wf_q1": {"type": "arbitrary", "samples": x180_der_wf_q1.tolist()},
-            "minus_x90_wf_q1": {"type": "arbitrary", "samples": minus_x90_wf_q1.tolist()},
-            "minus_x90_der_wf_q1": {"type": "arbitrary", "samples": minus_x90_der_wf_q1.tolist()},
-            "y90_wf_q1": {"type": "arbitrary", "samples": y90_wf_q1.tolist()},
-            "y90_der_wf_q1": {"type": "arbitrary", "samples": y90_der_wf_q1.tolist()},
-            "y180_wf_q1": {"type": "arbitrary", "samples": y180_wf_q1.tolist()},
-            "y180_der_wf_q1": {"type": "arbitrary", "samples": y180_der_wf_q1.tolist()},
-            "minus_y90_wf_q1": {"type": "arbitrary", "samples": minus_y90_wf_q1.tolist()},
-            "minus_y90_der_wf_q1": {"type": "arbitrary", "samples": minus_y90_der_wf_q1.tolist()},
+            "const_wf": {"type": "constant", "sample": 0.1},
             **{
-                f"readout{i}_wf": {"type": "constant", "sample": quam.resonators[i].readout_pulse_amp} for i in range(len(quam.resonators))
+                f"readout{i}_wf": {"type": "constant", "sample": quam.resonators[i].readout_pulse_amp}
+                for i in range(len(quam.resonators))
             },
-            "x90_wf_q2": {"type": "arbitrary", "samples": x90_wf_q2.tolist()},
-            "x90_der_wf_q2": {"type": "arbitrary", "samples": x90_der_wf_q2.tolist()},
-            "x180_wf_q2": {"type": "arbitrary", "samples": x180_wf_q2.tolist()},
-            "x180_der_wf_q2": {"type": "arbitrary", "samples": x180_der_wf_q2.tolist()},
-            "minus_x90_wf_q2": {"type": "arbitrary", "samples": minus_x90_wf_q2.tolist()},
-            "minus_x90_der_wf_q2": {"type": "arbitrary", "samples": minus_x90_der_wf_q2.tolist()},
-            "y90_wf_q2": {"type": "arbitrary", "samples": y90_wf_q2.tolist()},
-            "y90_der_wf_q2": {"type": "arbitrary", "samples": y90_der_wf_q2.tolist()},
-            "y180_wf_q2": {"type": "arbitrary", "samples": y180_wf_q2.tolist()},
-            "y180_der_wf_q2": {"type": "arbitrary", "samples": y180_der_wf_q2.tolist()},
-            "minus_y90_wf_q2": {"type": "arbitrary", "samples": minus_y90_wf_q2.tolist()},
-            "minus_y90_der_wf_q2": {"type": "arbitrary", "samples": minus_y90_der_wf_q2.tolist()},
+            **{
+                f"const_flux{i}_wf": {"type": "constant", "sample": quam.qubits[i].z.flux_pulse_amp}
+                for i in range(len(quam.resonators))
+            },
+            **{f"x90_I_wf{i}": {"type": "arbitrary", "samples": x90_I_wf[i].tolist()} for i in range(len(quam.qubits))},
+            **{f"x90_Q_wf{i}": {"type": "arbitrary", "samples": x90_Q_wf[i].tolist()} for i in range(len(quam.qubits))},
+            **{
+                f"x180_I_wf{i}": {"type": "arbitrary", "samples": x180_I_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"x180_Q_wf{i}": {"type": "arbitrary", "samples": x180_Q_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"minus_x90_I_wf{i}": {"type": "arbitrary", "samples": minus_x90_I_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"minus_x90_Q_wf{i}": {"type": "arbitrary", "samples": minus_x90_Q_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{f"y90_I_wf{i}": {"type": "arbitrary", "samples": y90_I_wf[i].tolist()} for i in range(len(quam.qubits))},
+            **{f"y90_Q_wf{i}": {"type": "arbitrary", "samples": y90_Q_wf[i].tolist()} for i in range(len(quam.qubits))},
+            **{
+                f"y180_I_wf{i}": {"type": "arbitrary", "samples": y180_I_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"y180_Q_wf{i}": {"type": "arbitrary", "samples": y180_Q_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"minus_y90_I_wf{i}": {"type": "arbitrary", "samples": minus_y90_I_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
+            **{
+                f"minus_y90_Q_wf{i}": {"type": "arbitrary", "samples": minus_y90_Q_wf[i].tolist()}
+                for i in range(len(quam.qubits))
+            },
         },
         "digital_waveforms": {
             "ON": {"samples": [(1, 0)]},
@@ -427,66 +512,72 @@ def build_config(quam: QuAM):
                 f"rotated_cosine_weights{i}": {
                     "cosine": [(1.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(0.0, quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
             **{
                 f"rotated_sine_weights{i}": {
                     "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(1.0, quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
             **{
                 f"rotated_minus_sine_weights{i}": {
                     "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(-1.0, quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
             **{
                 f"rotated_cosine_weights{i}": {
                     "cosine": [(np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
                     "sine": [(-np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
             **{
                 f"rotated_sine_weights{i}": {
                     "cosine": [(np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
                     "sine": [(np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
             **{
                 f"rotated_minus_sine_weights{i}": {
                     "cosine": [(-np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
                     "sine": [(-np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
-                } for i in range(len(quam.resonators))
+                }
+                for i in range(len(quam.resonators))
             },
         },
         "mixers": {
-            "mixer_qubit_q1": [
-                {
-                    "intermediate_frequency": qubit_IF_q1,
-                    "lo_frequency": qubit_LO,
-                    "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
-                }
-            ],
-            "mixer_qubit_q2": [
-                {
-                    "intermediate_frequency": qubit_IF_q2,
-                    "lo_frequency": qubit_LO,
-                    "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
-                }
-            ],
+            **{
+                f"mixer_qubit{i}": [
+                    {
+                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.readout[0].freq)
+                        * 1e9,
+                        "lo_frequency": quam.local_oscillators.readout[0].freq,
+                        "correction": IQ_imbalance(
+                            quam.qubits[i].xy.mixer_correction.gain, quam.qubits[i].xy.mixer_correction.phase
+                        ),
+                    },
+                ]
+                for i in range(len(quam.qubits))
+            },
             **{
                 f"mixer_resonator{i}": [
                     {
-                        "intermediate_frequency": (quam.resonators[i].f_res - quam.local_oscillators.readout[
-                            0].freq) * 1e9,
+                        "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq)
+                        * 1e9,
                         "lo_frequency": quam.local_oscillators.readout[0].freq,
-                        "correction": IQ_imbalance(quam.resonators[i].mixer_correction.gain,
-                                                   quam.resonators[i].mixer_correction.phase),
+                        "correction": IQ_imbalance(
+                            quam.resonators[i].mixer_correction.gain, quam.resonators[i].mixer_correction.phase
+                        ),
                     },
-                ] for i in range(len(quam.resonators))
+                ]
+                for i in range(len(quam.resonators))
             },
-
         },
     }
     return config

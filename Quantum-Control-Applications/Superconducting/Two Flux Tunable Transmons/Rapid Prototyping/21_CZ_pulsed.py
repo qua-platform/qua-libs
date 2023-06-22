@@ -19,6 +19,7 @@ from qualang_tools.bakery import baking
 # The variable const_flux_len is defined in the configuration
 flux_waveform = np.array([const_flux_amp] * const_flux_len)
 
+
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
@@ -74,7 +75,7 @@ with program() as cz:
 
     with stream_processing():
         # for the progress counter
-        n_st.save('n')
+        n_st.save("n")
         # resonator 1
         I_st[0].buffer(const_flux_len + 1).buffer(len(amps)).average().save("I1")
         Q_st[0].buffer(const_flux_len + 1).buffer(len(amps)).average().save("Q1")
@@ -105,22 +106,22 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(xplot, amps * const_flux_amp + dc0_q1, I1)
-        plt.title('q1 - I')
+        plt.title("q1 - I")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(xplot, amps * const_flux_amp + dc0_q1, Q1)
-        plt.title('q1 - Q')
+        plt.title("q1 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(xplot, amps * const_flux_amp + dc0_q1, I2)
-        plt.title('q2 - I')
+        plt.title("q2 - I")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(xplot, amps * const_flux_amp + dc0_q1, Q2)
-        plt.title('q2 - Q')
+        plt.title("q2 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()
         plt.pause(0.1)

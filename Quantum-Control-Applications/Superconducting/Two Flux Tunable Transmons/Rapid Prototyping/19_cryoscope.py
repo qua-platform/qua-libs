@@ -21,9 +21,8 @@ from macros import expdecay, filter_calc
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-flux_waveform = np.array(
-    [0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse
-)
+flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse)
+
 
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects

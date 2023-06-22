@@ -32,8 +32,13 @@ with program() as res_spec:
         with for_(*from_array(f, freqs)):
             update_frequency("rr1", f)
 
-            measure("readout", "rr1", None, dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q)) #rr1
+            measure(
+                "readout",
+                "rr1",
+                None,
+                dual_demod.full("cos", "out1", "sin", "out2", I),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            )  # rr1
             # measure("readout", "rr2", None, dual_demod.full("cos", "out1", "sin", "out2", I),
             #         dual_demod.full("minus_sin", "out1", "cos", "out2", Q))
             wait(depletion_time * u.ns, "rr1")
@@ -52,8 +57,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, res_spec, SimulationConfig(11000,
-    simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2) ], latency=250)))
+    job = qmm.simulate(
+        config,
+        res_spec,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -81,6 +91,6 @@ else:
     ax[1].get_shared_x_axes().join(ax[0], ax[1])
 
     print(f"IF freq at resonance: {freqs[idx]*1e-6} MHz")
-    plt.suptitle(f'resonator: {(resonator_LO + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)')
+    plt.suptitle(f"resonator: {(resonator_LO + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)")
     plt.tight_layout()
     plt.show()

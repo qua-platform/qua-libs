@@ -10,7 +10,7 @@ from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration
 
 amps = np.arange(0.05, 1.99, 0.10)
-dfs = np.arange(-1.0e6, + 1.0e6, 0.01e6)
+dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
 n_avg = 2000
 
 depletion_time = 1000
@@ -33,9 +33,13 @@ with program() as multi_res_spec_vs_amp:
             with for_(*from_array(a, amps)):
                 # resonator 1
                 wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
-                measure("readout" * amp(a), "rr1", None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[0]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]))
+                measure(
+                    "readout" * amp(a),
+                    "rr1",
+                    None,
+                    dual_demod.full("cos", "out1", "sin", "out2", I[0]),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
+                )
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
@@ -43,9 +47,13 @@ with program() as multi_res_spec_vs_amp:
 
                 # resonator 2
                 wait(depletion_time * u.ns, "rr2")  # wait for the resonator to relax
-                measure("readout" * amp(a), "rr2", None,
-                        dual_demod.full("cos", "out1", "sin", "out2", I[1]),
-                        dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]))
+                measure(
+                    "readout" * amp(a),
+                    "rr2",
+                    None,
+                    dual_demod.full("cos", "out1", "sin", "out2", I[1]),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
+                )
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])
 
@@ -66,8 +74,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, multi_res_spec_vs_amp, SimulationConfig(11000,
-    simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2) ], latency=250)))
+    job = qmm.simulate(
+        config,
+        multi_res_spec_vs_amp,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
 
 else:

@@ -12,7 +12,7 @@ from macros import qua_declaration, multiplexed_readout
 flux_pts = 50
 
 dcs = np.linspace(-0.49, 0.49, flux_pts)
-dfs = np.arange(-5e6,  5e6, 0.05e6)
+dfs = np.arange(-5e6, 5e6, 0.05e6)
 
 depletion_time = 1000
 n_avg = 2000
@@ -44,7 +44,6 @@ with program() as multi_res_spec_vs_flux:
 
                 wait(depletion_time * u.ns, "rr1", "rr2")  # wait for the resonators to relax
 
-
     with stream_processing():
         n_st.save("n")
         # resonator 1
@@ -62,8 +61,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, multi_res_spec_vs_flux, SimulationConfig(11000,
-    simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2) ], latency=250)))
+    job = qmm.simulate(
+        config,
+        multi_res_spec_vs_flux,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
     plt.show()
 else:

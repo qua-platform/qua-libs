@@ -19,6 +19,7 @@ from qualang_tools.bakery import baking
 # The variable const_flux_len is defined in the configuration
 flux_waveform = np.array([const_flux_amp] * const_flux_len)
 
+
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration

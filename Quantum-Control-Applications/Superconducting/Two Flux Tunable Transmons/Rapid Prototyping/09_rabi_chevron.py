@@ -14,7 +14,7 @@ from macros import qua_declaration, multiplexed_readout
 ###################
 # The QUA program #
 ###################
-dfs = np.arange(- 14e6, + 14e6, 0.2e6)
+dfs = np.arange(-14e6, +14e6, 0.2e6)
 amps = np.arange(0.0, 1, 0.02)
 
 cooldown_time = 1 * u.us
@@ -60,8 +60,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, rabi_chevron, SimulationConfig(11000,
-            simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2) ], latency=250)))
+    job = qmm.simulate(
+        config,
+        rabi_chevron,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
     plt.show()
 else:

@@ -10,9 +10,9 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
 
-t = 14 * u.us   # Qubit pulse length
+t = 14 * u.us  # Qubit pulse length
 
-dfs = np.arange(- 20e6, + 20e6, 0.1e6)
+dfs = np.arange(-20e6, +20e6, 0.1e6)
 n_avg = 10000
 
 cooldown_time = 1 * u.us
@@ -41,7 +41,6 @@ with program() as multi_qubit_spec:
             multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], amplitude=0.9)
 
             wait(cooldown_time * u.ns)
-
 
     with stream_processing():
         n_st.save("n")

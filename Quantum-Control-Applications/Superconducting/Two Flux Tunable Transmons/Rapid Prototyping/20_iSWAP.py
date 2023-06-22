@@ -26,7 +26,7 @@ with program() as iswap:
     t = declare(int)
     a = declare(fixed)
 
-    with for_(n, 0, n < n_avg, n+1):
+    with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, ts)):
             with for_(*from_array(a, amps)):
@@ -43,7 +43,7 @@ with program() as iswap:
 
     with stream_processing():
         # for the progress counter
-        n_st.save('n')
+        n_st.save("n")
         # resonator 1
         I_st[0].buffer(len(amps)).buffer(len(ts)).average().save("I1")
         Q_st[0].buffer(len(amps)).buffer(len(ts)).average().save("Q1")
@@ -72,23 +72,23 @@ else:
 
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(amps, 4*ts, I1)
-        plt.title('q1 - I')
+        plt.pcolor(amps, 4 * ts, I1)
+        plt.title("q1 - I")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(amps, 4*ts, Q1)
-        plt.title('q1 - Q')
+        plt.pcolor(amps, 4 * ts, Q1)
+        plt.title("q1 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(amps, 4*ts, I2)
-        plt.title('q2 - I')
+        plt.pcolor(amps, 4 * ts, I2)
+        plt.title("q2 - I")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(amps, 4*ts, Q2)
-        plt.title('q2 - Q')
+        plt.pcolor(amps, 4 * ts, Q2)
+        plt.title("q2 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()
         plt.pause(0.1)

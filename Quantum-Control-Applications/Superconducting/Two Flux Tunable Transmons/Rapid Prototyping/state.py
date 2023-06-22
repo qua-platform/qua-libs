@@ -7,81 +7,98 @@ import quam_sdk.constructor
 state = {
     "network": {"qop_ip": "172.16.33.100", "qop_port": 83},
     "local_oscillators": {
-        "qubits": {
-            "freq": 3.3,
-            "power": 3.3
-        },
+        "qubits": [
+            {"freq": 3.3, "power": 18},
+        ],
         "readout": [
-            {
-                "freq": 6.5,
-                "power": 3.3
-            },
-        ]
+            {"freq": 6.5, "power": 15},
+        ],
     },
     "crosstalk": {
-        "flux": {
-            "dc": [[0.0, 0.0], [0.0, 0.0]],
-            "fast_flux": [[0.0, 0.0], [0.0, 0.0]]
-        },
-        "rf": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        "flux": {"dc": [[0.0, 0.0], [0.0, 0.0]], "fast_flux": [[0.0, 0.0], [0.0, 0.0]]},
+        "rf": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
     },
-    "qubits": [  
+    "qubits": [
         {
-            "f01": 3.52,
-            "T1": 123.2,
-            "wiring": {
-                "I": 1,
-                "Q": 2,
+            "xy": {
+                "f_01": 3.52,
+                "anharmonicity": 0.250,
+                "drag_coefficient": 0.0,
+                "ac_stark_detuning": 0.0,
+                "pi_length": 40,
+                "pi_amp": 0.124,
+                "T1": 123.2,
+                "T2": 123.2,
+                "wiring": {
+                    "I": 1,
+                    "Q": 2,
+                },
+                "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
+            },
+            "z": {
+                "wiring": 7,
+                "flux_pulse_length": 16,
+                "flux_pulse_amp": 0.175,
+                "flux_zero_frequency": 0.0,
             },
         },
         {
-            "f01": 3.21,
-            "T1": 99.2,
-            "wiring": {
-                "I": 3,
-                "Q": 4,
+            "xy": {
+                "f_01": 3.25,
+                "anharmonicity": 0.250,
+                "drag_coefficient": 0.0,
+                "ac_stark_detuning": 0.0,
+                "pi_length": 40,
+                "pi_amp": 0.124,
+                "T1": 123.2,
+                "T2": 123.2,
+                "wiring": {
+                    "I": 3,
+                    "Q": 4,
+                },
+                "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
+            },
+            "z": {
+                "wiring": 8,
+                "flux_pulse_length": 16,
+                "flux_pulse_amp": 0.175,
+                "flux_zero_frequency": 0.0,
             },
         },
     ],
-    "qubits_docs": "list of all qubits in the experiment",
     "resonators": [
         {
             "f_res": 6.3,
+            "f_opt": 6.3,
             "depletion_time": 10_000,
-            "wiring": {
-                "I": 5,
-                "Q": 6,
-            },
-            "time_of_flight": 24,
-            "mixer_correction": {
-                "offset_I": 0.01,
-                "offset_Q": -0.041,
-                "gain": 0.015,
-                "phase": -0.0236
-            },
             "readout_pulse_length": 1_000,
             "readout_pulse_amp": 0.05,
             "rotation_angle": 0.0,
-        },
-        {
-            "f_res": 6.75,
-            "depletion_time": 10_000,
             "wiring": {
                 "I": 5,
                 "Q": 6,
             },
-            "time_of_flight": 24,
-            "mixer_correction": {
-                "offset_I": 0.01,
-                "offset_Q": -0.041,
-                "gain": 0.019,
-                "phase": -0.0214
-            },
+            "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
+        },
+        {
+            "f_res": 6.75,
+            "f_opt": 6.75,
+            "depletion_time": 10_000,
             "readout_pulse_length": 1_000,
             "readout_pulse_amp": 0.07,
             "rotation_angle": 0.0,
+            "wiring": {
+                "I": 5,
+                "Q": 6,
+            },
+            "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.019, "phase": -0.0214},
         },
     ],
+    "global_parameters": {
+        "time_of_flight": 24,
+        "downconversion_offset_I": 0.0,
+        "downconversion_offset_Q": 0.0,
+    },
 }
 
 # Now we use QuAM SDK

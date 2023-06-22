@@ -19,7 +19,7 @@ def IQ_imbalance(g, phi):
     """
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
@@ -32,7 +32,7 @@ qop_ip = "172.16.33.100"
 qop_port = 83
 
 # Path to save data
-save_dir = (Path().absolute() / "QM" / "INSTALLATION" / "data")
+save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
 #############################################
 #                  Qubits                   #
@@ -63,69 +63,81 @@ AC_stark_detuning_q1 = 0 * u.MHz
 AC_stark_detuning_q2 = 0 * u.MHz
 
 x180_wf_q1, x180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 x180_I_wf_q1 = x180_wf_q1
 x180_Q_wf_q1 = x180_der_wf_q1
 x180_wf_q2, x180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 x180_I_wf_q2 = x180_wf_q2
 x180_Q_wf_q2 = x180_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_wf_q1, x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 x90_I_wf_q1 = x90_wf_q1
 x90_Q_wf_q1 = x90_der_wf_q1
 x90_wf_q2, x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 x90_I_wf_q2 = x90_wf_q2
 x90_Q_wf_q2 = x90_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
+)
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
+)
 minus_x90_I_wf_q2 = minus_x90_wf_q2
 minus_x90_Q_wf_q2 = minus_x90_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_wf_q1, y180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 y180_I_wf_q1 = (-1) * y180_der_wf_q1
 y180_Q_wf_q1 = y180_wf_q1
 y180_wf_q2, y180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 y180_I_wf_q2 = (-1) * y180_der_wf_q2
 y180_Q_wf_q2 = y180_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_wf_q1, y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+)
 y90_I_wf_q1 = (-1) * y90_der_wf_q1
 y90_Q_wf_q1 = y90_wf_q1
 y90_wf_q2, y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+)
 y90_I_wf_q2 = (-1) * y90_der_wf_q2
 y90_Q_wf_q2 = y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1,
-                                  AC_stark_detuning_q1))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+    )
+)
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(-pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2,
-                                  AC_stark_detuning_q2))
+    drag_gaussian_pulse_waveforms(
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+    )
+)
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
