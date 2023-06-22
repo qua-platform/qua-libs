@@ -23,10 +23,10 @@ The use-case in this example is tailored for a superconducting quantum processor
 - Calibrated CZ Gate
 - Calibrated Measurement Protocol for 2-State Discrimination for both Qubits
 
-## Quick User Guide
+# Quick User Guide
 For a quick implementation just clone the repository and edit the file [*two_qubit_rb_example.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py).
 
-### Single Qubit Gates
+## Single Qubit Gates
 The function for the single qubit gates requires that the operation "x" was previously calibrated by the user and corresponds to a pi-pulse on the target qubits. The *amp=x* condition inside the *baker.play* statement allows to scale the amplitude of the pulse. Together with the first *baker.frame_rotation_2pi* it allows the *baker.play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *baker.frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis.
 ```python
 def bake_phased_xz(baker: Baking, q, x, z, a):
@@ -36,7 +36,7 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     baker.frame_rotation_2pi(a + z, element)
 ```
 
-### CZ Gate
+## CZ Gate
 The use-case is designed for flux-tunable transmon qubits where the qubit-qubit interaction is realized with a direct capacitive coupling. Utilizing this architecture it is possible to realize a flux-tuned |11>-|02> phase gate. An applied flux pulse that tunes the qubits in and out of the |11>−|02> avoided-crossing leads to a conditional phase accumulation. Leaving the system at the avoided-crossing for a specific time maps the state |11〉back into itself but acquires a minus sign in the process. As the computational states are far from being resonant with other transitions their phases evolve trivially and can be corrected using single qubit phase corrections and thus realize the CZ gate. The *baker.play* statement therefore contains a flux pulse that frequency-tunes transmon *q1* in and out of the avoided crossing |11>-|02> , while the *baker.frame_rotation_2pi* statements correct the single qubit phases.
 
 ```python
@@ -51,7 +51,7 @@ def bake_cz(baker: Baking, q0, q1):
     baker.align()
 ```
 
-### Initialization
+## Initialization
 Before each circuit, it is important to implement a initialization protocol to reset the qubits to the ground state. In the example the *prep* function contains a single QUA command *wait* and is called before each circuit execution to assure that the initial state is set to |00>. The time inside the *wait* statement is chosen to be a multiple of the characteristic decay time of the qubits *T1* to leave enough time for the qubit to relax after it has been excited to the excited state |1>. If single shot readout is implemented, it is possible to use active feedback to reset the qubit to the ground state |0> by sending a pi-pulse if the qubit was measured in the excited state |1>.   
 
 ```python
@@ -61,7 +61,7 @@ def prep():
     align()
 ```
 
-### Measurement
+## Measurement
 Finally, the measurement is performed at the end of the circuit 
 ```python
 def meas():
@@ -84,6 +84,7 @@ return Iq0 > 0, Iq1 > 0  # example, should be taken from QPU parameters
 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
+# Additional Information
 
 ## Implementation in QUA
 The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
