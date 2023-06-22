@@ -11,12 +11,11 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
 
-
 ###################
 # The QUA program #
 ###################
 dfs = np.arange(- 14e6, + 14e6, 0.2e6)
-amps = np.arange(0.0, 1.95, 0.02)
+amps = np.arange(0.0, 1, 0.02)
 
 cooldown_time = 1 * u.us
 n_avg = 1000
@@ -69,7 +68,7 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(rabi_chevron)
 
-    fig, ax = plt.subplots(2, 2)
+    fig = plt.figure()
     interrupt_on_close(fig, job)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
     while results.is_processing():
@@ -79,31 +78,27 @@ else:
         s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
         s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
 
-        ax[0, 0].cla()
-        ax[0, 0].pcolor(amps * pi_amp_q1, dfs, I1)
-        ax[0, 0].set_title(f'I1, f_cent={(qubit_LO + qubit_IF_q1) / u.MHz} MHz')
-        ax[0, 0].set_xlabel("qubit pulse amplitude (V)")
-        ax[0, 0].set_ylabel("qubit 1 detuning (MHz)")
-        ax[1, 0].cla()
-        ax[1, 0].pcolor(amps * pi_amp_q1, dfs, Q1)
-        ax[1, 0].set_title('Q1')
-        ax[1, 0].set_xlabel("qubit pulse amplitude (V)")
-        ax[1, 0].set_ylabel("qubit 1 detuning (MHz)")
-        ax[0, 1].cla()
-        ax[0, 1].pcolor(amps * pi_amp_q2, dfs, I2)
-        ax[0, 1].set_title(f'I2, f_cent={(qubit_LO + qubit_IF_q2) / u.MHz} MHz')
-        ax[0, 1].set_xlabel("qubit pulse amplitude (V)")
-        ax[0, 1].set_ylabel("qubit 2 detuning (MHz)")
-        ax[1, 1].cla()
-        ax[1, 1].pcolor(amps * pi_amp_q2, dfs, Q2)
-        ax[1, 1].set_title('Q2')
-        ax[1, 1].set_xlabel("qubit pulse amplitude (V)")
-        ax[1, 1].set_ylabel("qubit 2 detuning (MHz)")
+        plt.subplot(221)
+        plt.cla()
+        plt.pcolor(amps * pi_amp_q1, dfs, I1)
+        plt.xlabel("qubit pulse amplitude (V)")
+        plt.ylabel("qubit 1 detuning (MHz)")
+        plt.title(f"q1 (f_res1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.subplot(223)
+        plt.cla()
+        plt.pcolor(amps * pi_amp_q1, dfs, Q1)
+        plt.xlabel("qubit pulse amplitude (V)")
+        plt.ylabel("qubit 1 detuning (MHz)")
+        plt.subplot(222)
+        plt.cla()
+        plt.pcolor(amps * pi_amp_q2, dfs, I2)
+        plt.title(f"q2 (f_res2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.ylabel("qubit 2 detuning (MHz)")
+        plt.xlabel("qubit pulse amplitude (V)")
+        plt.subplot(224)
+        plt.cla()
+        plt.pcolor(amps * pi_amp_q2, dfs, Q2)
+        plt.xlabel("qubit pulse amplitude (V)")
+        plt.ylabel("qubit 2 detuning (MHz)")
         plt.tight_layout()
         plt.pause(0.1)
-
-# plt.plot(I1, Q1, '.')
-# plt.plot(I2, Q2, '.')
-# plt.axis('equal')
-
-plt.show()

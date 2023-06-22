@@ -47,7 +47,7 @@ with program() as rabi:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, rabi, SimulationConfig(11000))
@@ -64,29 +64,24 @@ else:
     while results.is_processing():
         n, I1, Q1, I2, Q2 = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
-        # s1 = I1 + 1j*Q1
-        # s2 = I2 + 1j*Q2
 
-        u = unit()
-        ax[0, 0].cla()
-        ax[0, 0].plot(times, I1)
-        ax[0, 0].set_title("I1")
-        ax[1, 0].cla()
-        ax[1, 0].plot(times, Q1)
-        ax[1, 0].set_title("Q1")
-        ax[1, 0].set_xlabel("qubit pulse duration (ns)")
-        ax[0, 1].cla()
-        ax[0, 1].plot(times, I2)
-        ax[0, 1].set_title("I2")
-        ax[1, 1].cla()
-        ax[1, 1].plot(times, Q2)
-        ax[1, 1].set_title("Q2")
-        ax[1, 1].set_xlabel("qubit pulse duration (ns)")
+        plt.subplot(221)
+        plt.cla()
+        plt.plot(times, I1)
+        plt.title("I1")
+        plt.subplot(223)
+        plt.cla()
+        plt.plot(times, Q1)
+        plt.title("Q1")
+        plt.xlabel("qubit pulse duration (ns)")
+        plt.subplot(222)
+        plt.cla()
+        plt.plot(times, I2)
+        plt.title("I2")
+        plt.subplot(224)
+        plt.cla()
+        plt.plot(times, Q2)
+        plt.title("Q2")
+        plt.xlabel("qubit pulse duration (ns)")
         plt.tight_layout()
         plt.pause(1.0)
-
-    # plt.plot(I1, Q1, '.')
-    # plt.plot(I2, Q2, '.')
-    # plt.axis('equal')
-
-plt.show()

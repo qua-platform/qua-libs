@@ -51,7 +51,7 @@ qubit_T1 = int(3 * u.us)
 const_len = 1000
 const_amp = 270 * u.mV
 
-pi_len = 16
+pi_len = 40
 pi_sigma = pi_len / 5
 pi_amp_q1 = 0.22
 pi_amp_q2 = 0.22
