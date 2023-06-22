@@ -4,7 +4,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool
 from qualang_tools.analysis import two_state_discriminator
-from macros import multiplexed_readout, reset_qubit
+from macros import qua_declaration, multiplexed_readout, reset_qubit
 
 
 ###################
@@ -15,15 +15,8 @@ cooldown_time = 1 * u.us
 
 
 with program() as iq_blobs:
-    n = declare(int)
-    I_g = [declare(fixed) for _ in range(2)]
-    Q_g = [declare(fixed) for _ in range(2)]
-    I_g_st = [declare_stream() for _ in range(2)]
-    Q_g_st = [declare_stream() for _ in range(2)]
-    I_e = [declare(fixed) for _ in range(2)]
-    Q_e = [declare(fixed) for _ in range(2)]
-    I_e_st = [declare_stream() for _ in range(2)]
-    Q_e_st = [declare_stream() for _ in range(2)]
+    I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
     with for_(n, 0, n < pts, n + 1):
         # ground iq blobs
