@@ -53,6 +53,8 @@ def allXY(pulses, qubit, resonator):
     **Example:** I, Q = allXY(['I', 'y90'])
     :param pulses: tuple containing a particular set of operations to play. The pulse names must match corresponding
         operations in the config except for the identity operation that must be called 'I'.
+    :param qubit: The qubit element as defined in the config.
+    :param resonator: The resonator element as defined in the config.
     :return: two QUA variables for the 'I' and 'Q' quadratures measured after the sequence.
     """
     I_xy = declare(fixed)
