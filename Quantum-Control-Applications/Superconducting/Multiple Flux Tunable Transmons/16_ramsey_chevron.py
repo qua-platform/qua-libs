@@ -21,7 +21,6 @@ with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)
     df = declare(int)
-    phi = declare(fixed)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -31,18 +30,14 @@ with program() as ramsey:
             update_frequency("q2_xy", df + qubit_IF_q2)
 
             with for_(*from_array(t, t_delay)):
-                # assign(phi, Cast.mul_fixed_by_int(1e-2 * Cast.mul_fixed_by_int(1e-7, df), 4 * t))
-                # save(phi, "phi")
                 # qubit 1
                 play("x90", "q1_xy")
                 wait(t, "q1_xy")
-                # frame_rotation_2pi(phi, "q1_xy")
                 play("x90", "q1_xy")
 
                 # qubit 2
                 play("x90", "q2_xy")
                 wait(t, "q2_xy")
-                # frame_rotation_2pi(phi, "q2_xy")
                 play("x90", "q2_xy")
 
                 align()
@@ -63,7 +58,7 @@ with program() as ramsey:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     job = qmm.simulate(config, ramsey, SimulationConfig(11000))
     job.get_simulated_samples().con1.plot()
@@ -72,30 +67,32 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(ramsey)
 
-    fig, ax = plt.subplots(2, 2)
+    fig = plt.figure()
     interrupt_on_close(fig, job)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
     while results.is_processing():
         n, I1, Q1, I2, Q2 = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
 
-        ax[0, 0].cla()
-        ax[0, 0].pcolor(4 * t_delay, dfs / u.MHz, I1)
-        ax[0, 0].set_title(f"Q1-I, fcent={(qubit_LO + qubit_IF_q1) / u.MHz}")
-        ax[0, 0].set_ylabel("detuning (MHz)")
-        ax[1, 0].cla()
-        ax[1, 0].pcolor(4 * t_delay, dfs / u.MHz, Q1)
-        ax[1, 0].set_title('Q1-Q')
-        ax[1, 0].set_xlabel("Idle time (ns)")
-        ax[1, 0].set_ylabel("detuning (MHz)")
-        ax[0, 1].cla()
-        ax[0, 1].pcolor(4 * t_delay, dfs / u.MHz, I2)
-        ax[0, 1].set_title(f"Q2-I, fcent={(qubit_LO + qubit_IF_q2) / u.MHz}")
-        ax[1, 1].cla()
-        ax[1, 1].pcolor(4 * t_delay, dfs / u.MHz, Q2)
-        ax[1, 1].set_title('Q2-Q')
-        ax[1, 1].set_xlabel("Idle time (ns)")
+        plt.subplot(221)
+        plt.cla()
+        plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
+        plt.title(f"Q1-I, fcent={(qubit_LO + qubit_IF_q1) / u.MHz}")
+        plt.ylabel("detuning (MHz)")
+        plt.subplot(223)
+        plt.cla()
+        plt.pcolor(4 * t_delay, dfs / u.MHz, Q1)
+        plt.title('Q1-Q')
+        plt.xlabel("Idle time (ns)")
+        plt.ylabel("detuning (MHz)")
+        plt.subplot(222)
+        plt.cla()
+        plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
+        plt.title(f"Q2-I, fcent={(qubit_LO + qubit_IF_q2) / u.MHz}")
+        plt.subplot(224)
+        plt.cla()
+        plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
+        plt.title('Q2-Q')
+        plt.xlabel("Idle time (ns)")
         plt.tight_layout()
         plt.pause(0.1)
-
-plt.show()

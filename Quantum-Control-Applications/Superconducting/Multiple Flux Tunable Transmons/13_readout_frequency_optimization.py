@@ -10,8 +10,7 @@ from macros import multiplexed_readout
 ###################
 # The QUA program #
 ###################
-pts = 4000
-s = 1.0
+n_avg = 4000
 dfs = np.arange(-0.5e6, 0.5e6, 0.02e6)
 cooldown_time = 1 * u.us
 
@@ -27,7 +26,7 @@ with program() as iq_blobs:
     df = declare(int)
     D_st = declare_stream()
 
-    with for_(n, 0, n < pts, n + 1):
+    with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             update_frequency("rr1", df + resonator_IF_q1)
             update_frequency("rr2", df + resonator_IF_q2)
@@ -38,7 +37,6 @@ with program() as iq_blobs:
             multiplexed_readout(I_g, None, Q_g, None, resonators=[1, 2], weights="rotated_")
 
             # excited iq blobs for both qubits
-            wait(cooldown_time * u.ns)
             align()
             play("x180", "q1_xy")
             # play("x180", "q2_xy")
