@@ -63,7 +63,7 @@ with program() as multi_res_spec_vs_amp:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = True
+simulate = False
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, multi_res_spec_vs_amp, SimulationConfig(11000,
@@ -76,7 +76,7 @@ else:
     # Execute the QUA program
     job = qm.execute(multi_res_spec_vs_amp)
     # Prepare the figures for live plotting
-    fig, ax = plt.subplots(1, 2)
+    fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
@@ -98,16 +98,18 @@ else:
         row_sums = A2.sum(axis=0)
         A2 = A2 / row_sums[np.newaxis, :]
         # Plot
-        ax[0].cla()
-        ax[0].set_title(f"resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz})")
-        ax[0].set_xlabel("amp")
-        ax[0].set_ylabel("detuning (MHz)")
-        ax[0].pcolor(amps, dfs / u.MHz, A1)
-        ax[1].cla()
-        ax[1].set_title(f"resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz})")
-        ax[1].set_xlabel("amp")
-        ax[1].set_ylabel("detuning (MHz)")
-        ax[1].pcolor(amps, dfs / u.MHz, A2)
+        plt.subplot(121)
+        plt.cla()
+        plt.title(f"resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz})")
+        plt.xlabel("amplitude pre-factor")
+        plt.ylabel("detuning (MHz)")
+        plt.pcolor(amps, dfs / u.MHz, A1)
+        plt.subplot(122)
+        plt.cla()
+        plt.title(f"resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz})")
+        plt.xlabel("amplitude pre-factor")
+        plt.ylabel("detuning (MHz)")
+        plt.pcolor(amps, dfs / u.MHz, A2)
         plt.tight_layout()
 
-        plt.pause(0.1)  # every second
+        plt.pause(0.1)
