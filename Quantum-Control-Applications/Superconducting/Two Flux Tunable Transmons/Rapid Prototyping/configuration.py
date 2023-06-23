@@ -158,7 +158,7 @@ def build_config(quam: QuAM):
                     "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq),
                     "operations": {
                         "cw": "const_pulse",
-                        "readout": "readout_pulse_q1",
+                        "readout": f"readout_pulse_q{i}",
                     },
                     "outputs": {
                         "out1": ("con1", 1),
@@ -361,21 +361,21 @@ def build_config(quam: QuAM):
         },
         "integration_weights": {
             **{
-                f"rotated_cosine_weights{i}": {
+                f"cosine_weights{i}": {
                     "cosine": [(1.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(0.0, quam.resonators[i].readout_pulse_length)],
                 }
                 for i in range(len(quam.resonators))
             },
             **{
-                f"rotated_sine_weights{i}": {
+                f"sine_weights{i}": {
                     "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(1.0, quam.resonators[i].readout_pulse_length)],
                 }
                 for i in range(len(quam.resonators))
             },
             **{
-                f"rotated_minus_sine_weights{i}": {
+                f"minus_sine_weights{i}": {
                     "cosine": [(0.0, quam.resonators[i].readout_pulse_length)],
                     "sine": [(-1.0, quam.resonators[i].readout_pulse_length)],
                 }

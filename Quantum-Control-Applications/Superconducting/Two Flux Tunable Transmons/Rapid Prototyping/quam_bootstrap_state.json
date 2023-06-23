@@ -43,7 +43,7 @@
   "resonators[].mixer_correction.gain": [0.015,0.019],
   "resonators[].mixer_correction.phase": [-0.0236,-0.0214],
   "resonators[]_len": 2,
-  "global_parameters.time_of_flight": 28,
-  "global_parameters.downconversion_offset_I": 0.012083718261718751,
-  "global_parameters.downconversion_offset_Q": 0.00745043701171875
+  "global_parameters.time_of_flight": 24,
+  "global_parameters.downconversion_offset_I": 0.0,
+  "global_parameters.downconversion_offset_Q": 0.0
 }
