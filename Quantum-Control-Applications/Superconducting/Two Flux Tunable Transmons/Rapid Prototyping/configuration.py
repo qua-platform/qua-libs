@@ -128,8 +128,8 @@ def build_config(quam: QuAM):
                     4: {"offset": quam.qubits[1].xy.mixer_correction.offset_Q},  # Q qubit2 XY
                     5: {"offset": quam.resonators[0].mixer_correction.offset_I},  # I readout line
                     6: {"offset": quam.resonators[0].mixer_correction.offset_Q},  # Q readout line
-                    7: {"offset": quam.qubits[0].z.flux_zero_frequency},  # qubit1 Z
-                    8: {"offset": quam.qubits[1].z.flux_zero_frequency},  # qubit2 Z
+                    7: {"offset": quam.qubits[0].z.max_frequency_point, "filter": {'feedforward': quam.qubits[0].z.wiring.filter.fir_taps, 'feedback':quam.qubits[0].z.wiring.filter.iir_taps}},  # qubit1 Z
+                    8: {"offset": quam.qubits[1].z.max_frequency_point, "filter": {'feedforward': quam.qubits[1].z.wiring.filter.fir_taps, 'feedback':quam.qubits[1].z.wiring.filter.iir_taps}},  # qubit2 Z
                 },
                 "digital_outputs": {
                     1: {},
@@ -193,7 +193,7 @@ def build_config(quam: QuAM):
             **{
                 f"q{i}_z": {
                     "singleInput": {
-                        "port": ("con1", quam.qubits[i].z.wiring),
+                        "port": ("con1", quam.qubits[i].z.wiring.port),
                     },
                     "operations": {
                         "const": f"const_flux_pulse{i}",

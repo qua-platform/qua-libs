@@ -1,14 +1,20 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -25,12 +31,12 @@ with program() as rabi:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, times)):
-            play("x180", "q1_xy", duration=t)
-            # play("x180", "q2_xy", duration=t*u.ns)
+            play("x180", "q0_xy", duration=t)
+            # play("x180", "q1_xy", duration=t*u.ns)
             align()
 
             # Start using Rotated-Readout:
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+            multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
             wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -45,7 +51,7 @@ with program() as rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:

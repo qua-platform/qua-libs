@@ -1,7 +1,7 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
+
 from qm.simulate import LoopbackInterface
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array

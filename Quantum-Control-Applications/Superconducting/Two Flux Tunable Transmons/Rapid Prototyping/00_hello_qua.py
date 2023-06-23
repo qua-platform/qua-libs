@@ -14,8 +14,8 @@ config = build_config(machine)
 # The QUA program #
 ###################
 with program() as hello_qua:
-    set_dc_offset("q1_z", "single", 0.153)
-    play("cw", "q1_xy")
+    set_dc_offset("q0_z", "single", 0.153)
+    play("cw", "q0_xy")
 
 
 #####################################

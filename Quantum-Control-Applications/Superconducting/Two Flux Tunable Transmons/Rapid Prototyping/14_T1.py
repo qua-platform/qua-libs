@@ -1,14 +1,20 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -27,15 +33,15 @@ with program() as T1:
 
         with for_(*from_array(t, t_delay)):
             # qubit 1
+            play("x180", "q0_xy")
+            wait(t, "q0_xy")
+
+            # qubit 2
             play("x180", "q1_xy")
             wait(t, "q1_xy")
 
-            # qubit 2
-            play("x180", "q2_xy")
-            wait(t, "q2_xy")
-
             align()
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+            multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
             wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -51,7 +57,7 @@ with program() as T1:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -90,3 +96,22 @@ else:
         plt.xlabel("Wait time (ns)")
         plt.tight_layout()
         plt.pause(0.1)
+
+try:
+    from qualang_tools.plot.fitting import Fit
+    fit = Fit()
+    plt.figure()
+    plt.subplot(221)
+    fit_1 = fit.T1(4 * t_delay, I1, plot=True)
+    plt.subplot(223)
+    fit_1 = fit.T1(4 * t_delay, Q1, plot=True)
+    plt.subplot(222)
+    fit_2 = fit.T1(4 * t_delay, I2, plot=True)
+    plt.subplot(224)
+    fit_2 = fit.T1(4 * t_delay, Q2, plot=True)
+except (Exception,):
+    pass
+
+# machine.qubits[0].T1 = int(fit_1["T1"])
+# machine.qubits[1].T1 = int(fit_2["T1"])
+# machine._save("quam_bootstrap_state.json")

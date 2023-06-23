@@ -1,13 +1,20 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
+from quam import QuAM
+from configuration import build_config, u
+
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -16,6 +23,9 @@ dfs = np.arange(-10e6, 10e6, 0.1e6)
 t_delay = np.arange(4, 300, 4)
 n_avg = 1000
 cooldown_time = 1 * u.us
+
+qb_if_1 = machine.qubits[0].xy.f_01 - machine.local_oscillators.qubits[0].freq
+qb_if_2 = machine.qubits[1].xy.f_01 - machine.local_oscillators.qubits[0].freq
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -26,22 +36,22 @@ with program() as ramsey:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency("q1_xy", df + qubit_IF_q1)
-            update_frequency("q2_xy", df + qubit_IF_q2)
+            update_frequency("q0_xy", df + qb_if_1)
+            update_frequency("q1_xy", df + qb_if_2)
 
             with for_(*from_array(t, t_delay)):
                 # qubit 1
+                play("x90", "q0_xy")
+                wait(t, "q0_xy")
+                play("x90", "q0_xy")
+
+                # qubit 2
                 play("x90", "q1_xy")
                 wait(t, "q1_xy")
                 play("x90", "q1_xy")
 
-                # qubit 2
-                play("x90", "q2_xy")
-                wait(t, "q2_xy")
-                play("x90", "q2_xy")
-
                 align()
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -56,7 +66,7 @@ with program() as ramsey:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -77,7 +87,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"Q1-I, fcent={(qubit_LO + qubit_IF_q1) / u.MHz}")
+        plt.title(f"Q1-I, fcent={machine.qubits[0].xy.f_01 / u.MHz}")
         plt.ylabel("detuning (MHz)")
         plt.subplot(223)
         plt.cla()
@@ -88,7 +98,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"Q2-I, fcent={(qubit_LO + qubit_IF_q2) / u.MHz}")
+        plt.title(f"Q2-I, fcent={machine.qubits[1].xy.f_01 / u.MHz}")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)

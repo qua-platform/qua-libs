@@ -1,14 +1,20 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -32,12 +38,12 @@ with program() as rabi:
             with for_(*from_array(a, amps)):
                 # Loop for error amplification (perform many qubit pulses)
                 with for_(count, 0, count < npi, count + 1):
-                    play("x180" * amp(a), "q1_xy")
-                    # play("x180" * amp(a), "q2_xy")
+                    play("x180" * amp(a), "q0_xy")
+                    # play("x180" * amp(a), "q0_xy")
                 align()
 
                 # Start using Rotated-Readout:
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -52,7 +58,7 @@ with program() as rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -114,3 +120,7 @@ else:
             plt.xlabel("qubit pulse amplitude pre-factor (V)")
         plt.tight_layout()
         plt.pause(1.0)
+
+# machine.qubits[0].xy.pi_amp =
+# machine.qubits[1].xy.pi_amp =
+# machine._save("quam_bootstrap_state.json")

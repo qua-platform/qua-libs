@@ -27,8 +27,6 @@ state = {
                 "ac_stark_detuning": 0.0,
                 "pi_length": 40,
                 "pi_amp": 0.124,
-                "T1": 123.2,
-                "T2": 123.2,
                 "wiring": {
                     "I": 1,
                     "Q": 2,
@@ -36,11 +34,28 @@ state = {
                 "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
             },
             "z": {
-                "wiring": 7,
+                "wiring": {
+                    "port": 7,
+                    "filter":{
+                        "iir_taps": [0.0],
+                        "fir_taps": [0.0]
+                    },
+                },
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
                 "max_frequency_point": 0.0,
+                "iswap":{
+                    "length": 16,
+                    "level": 0.075,
+                },
+                "cz": {
+                    "length": 16,
+                    "level": 0.075,
+                },
             },
+            "ge_threshold": 0.0,
+            "T1": 1230,
+            "T2": 123,
         },
         {
             "xy": {
@@ -50,8 +65,6 @@ state = {
                 "ac_stark_detuning": 0.0,
                 "pi_length": 40,
                 "pi_amp": 0.124,
-                "T1": 123.2,
-                "T2": 123.2,
                 "wiring": {
                     "I": 3,
                     "Q": 4,
@@ -59,11 +72,28 @@ state = {
                 "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
             },
             "z": {
-                "wiring": 8,
+                "wiring": {
+                    "port": 8,
+                    "filter":{
+                        "iir_taps": [0.0],
+                        "fir_taps": [0.0]
+                    },
+                },
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
                 "max_frequency_point": 0.0,
+                "iswap": {
+                    "length": 16,
+                    "level": 0.075,
+                },
+                "cz": {
+                    "length": 16,
+                    "level": 0.075,
+                },
             },
+            "ge_threshold": 0.0,
+            "T1": 1232,
+            "T2": 122,
         },
     ],
     "resonators": [

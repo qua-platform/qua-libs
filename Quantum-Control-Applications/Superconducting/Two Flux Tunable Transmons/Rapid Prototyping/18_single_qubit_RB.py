@@ -5,26 +5,26 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from scipy.optimize import curve_fit
-from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ##############################
 # Program-specific variables #
 ##############################
-qubit = 1
+qubit_index = 1
 
-if qubit == 1:
-    threshold = ge_threshold_q1
-elif qubit == 2:
-    threshold = ge_threshold_q2
-else:
-    threshold = 0
 state_discrimination = False
 
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
@@ -33,7 +33,7 @@ num_of_sequences = 500
 n_avg = 20
 seed = 345324
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * machine.qubits[qubit_index].T1 // 4
 delta_clifford = 10  # Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
@@ -67,7 +67,7 @@ def play_sequence(sequence_list, depth, qubit):
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
-                wait(pi_len // 4, f"q{qubit}_xy")
+                wait(machine.qubits[qubit_index].xy.pi_length // 4, f"q{qubit}_xy")
             with case_(1):
                 play("x180", f"q{qubit}_xy")
             with case_(2):
@@ -170,16 +170,16 @@ with program() as rb:
                 with for_(n, 0, n < n_avg, n + 1):
 
                     # Can replace by active reset
-                    wait(cooldown_time, f"rr{qubit}")
+                    wait(cooldown_time, f"rr{qubit_index}")
 
-                    align(f"rr{qubit}", f"q{qubit}_xy")
+                    align(f"rr{qubit_index}", f"q{qubit_index}_xy")
                     with strict_timing_():
-                        play_sequence(sequence_list, depth, qubit)
-                    align(f"q{qubit}_xy", f"rr{qubit}")
+                        play_sequence(sequence_list, depth, qubit_index)
+                    align(f"q{qubit_index}_xy", f"rr{qubit_index}")
                     # Make sure you updated the ge_threshold
                     multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[1], weights="rotated_")
                     if state_discrimination:
-                        assign(state, I > threshold)
+                        assign(state, I > machine.qubits[qubit_index].ge_threshold)
                         save(state, state_st)
 
                 assign(depth_target, depth_target + delta_clifford)
@@ -205,7 +205,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 

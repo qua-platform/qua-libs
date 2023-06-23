@@ -1,7 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
@@ -9,6 +8,14 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.plot.fitting import Fit
+from quam import QuAM
+from configuration import build_config, u
+
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 
 ###################
@@ -18,7 +25,7 @@ idle_times = np.arange(4, 300, 1)
 cooldown_time = 1 * u.us
 n_avg = 1000
 detuning = 1e6
-qubit_element = "q1_xy"
+qubit_element = "q0_xy"
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -29,16 +36,16 @@ with program() as ramsey:
         save(n, n_st)
 
         with for_(*from_array(t, idle_times)):
-            # play("x180", "q2_xy")
+            # play("x180", "q1_xy")
             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
             play("x90", qubit_element)
-            wait(t, "q1_xy")
+            wait(t, "q0_xy")
             frame_rotation_2pi(phi, qubit_element)
             play("x90", qubit_element)
 
             align()
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+            multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
             reset_frame(qubit_element)
             wait(cooldown_time * u.ns)
 
@@ -54,7 +61,7 @@ with program() as ramsey:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -99,16 +106,22 @@ try:
     fit = Fit()
     plt.figure()
     plt.subplot(221)
-    fit.ramsey(4 * idle_times * 1e-9, I1, plot=True)
+    fit_1 = fit.ramsey(4 * idle_times, I1, plot=True)
     plt.xlabel("idle_times (ns)")
     plt.subplot(223)
-    fit.ramsey(4 * idle_times * 1e-9, Q1, plot=True)
+    fit_1 = fit.ramsey(4 * idle_times, Q1, plot=True)
     plt.xlabel("idle_times (ns)")
     plt.subplot(222)
-    fit.ramsey(4 * idle_times * 1e-9, I2, plot=True)
+    fit_2 = fit.ramsey(4 * idle_times, I2, plot=True)
     plt.xlabel("idle_times (ns)")
     plt.subplot(224)
-    fit.ramsey(4 * idle_times * 1e-9, Q2, plot=True)
+    fit_2 = fit.ramsey(4 * idle_times, Q2, plot=True)
     plt.xlabel("idle_times (ns)")
 except (Exception,):
     pass
+
+# machine.qubits[0].T2 = fit_1["tau"]
+# machine.qubits[0].xy.f_01 += detuning - fit_1["f"] * 1e6
+# machine.qubits[1].T2 = fit_2["tau"]
+# machine.qubits[1].xy.f_01 += detuning - fit_2["f"] * 1e6
+# machine._save("quam_bootstrap_state.json")

@@ -1228,60 +1228,6 @@ class Xy(object):
             self._quam._json[self._path + "pi_amp"] = value
 
     @property
-    def T1(self) -> float:
-        """"""
-        
-        value = self._quam._json[self._path + "T1"]
-        for i in range(len(self._index)):
-            value = value[self._index[i]]
-        return value
-
-
-    @T1.setter
-    def T1(self, value: float):
-        """"""
-        if not isinstance(value, float):
-            raise TypeError(f"Expected float but received {type(value)}")
-        if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "T1")
-            self._quam._updates["indexes"].append(self._index)
-            self._quam._updates["values"].append(value)
-        if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "T1"]
-            for i in range(len(self._index)-1):
-                value_ref = value_ref[self._index[i]]
-            value_ref[self._index[-1]] = value
-        else:
-            self._quam._json[self._path + "T1"] = value
-
-    @property
-    def T2(self) -> float:
-        """"""
-        
-        value = self._quam._json[self._path + "T2"]
-        for i in range(len(self._index)):
-            value = value[self._index[i]]
-        return value
-
-
-    @T2.setter
-    def T2(self, value: float):
-        """"""
-        if not isinstance(value, float):
-            raise TypeError(f"Expected float but received {type(value)}")
-        if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "T2")
-            self._quam._updates["indexes"].append(self._index)
-            self._quam._updates["values"].append(value)
-        if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "T2"]
-            for i in range(len(self._index)-1):
-                value_ref = value_ref[self._index[i]]
-            value_ref[self._index[-1]] = value
-        else:
-            self._quam._json[self._path + "T2"] = value
-
-    @property
     def wiring(self) -> Wiring:
         """"""
         return Wiring(
@@ -1340,7 +1286,7 @@ class Xy(object):
         object.__setattr__(self, key, value)
 
 
-class Z(object):
+class Filter(object):
 
     def __init__(self, quam, path, index, schema):
         """"""
@@ -1351,31 +1297,401 @@ class Z(object):
         self._freeze_attributes = True
 
     @property
-    def wiring(self) -> int:
+    def iir_taps(self) -> List[Union[str, int, float, bool, list]]:
         """"""
         
-        value = self._quam._json[self._path + "wiring"]
+        if self._quam._record_updates:
+            return _List(
+                self._quam,
+                self._path + "iir_taps",
+                self._index,
+                self._schema
+            )
+        
+        value = self._quam._json[self._path + "iir_taps"]
         for i in range(len(self._index)):
             value = value[self._index[i]]
         return value
 
 
-    @wiring.setter
-    def wiring(self, value: int):
+    @iir_taps.setter
+    def iir_taps(self, value: List[Union[str, int, float, bool, list]]):
         """"""
-        if not isinstance(value, int):
-            raise TypeError(f"Expected int but received {type(value)}")
+        if not isinstance(value, List):
+            raise TypeError(f"Expected List[Union[str, int, float, bool, list]] but received {type(value)}")
         if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "wiring")
+            self._quam._updates["keys"].append(self._path + "iir_taps")
             self._quam._updates["indexes"].append(self._index)
             self._quam._updates["values"].append(value)
         if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "wiring"]
+            value_ref = self._quam._json[self._path + "iir_taps"]
             for i in range(len(self._index)-1):
                 value_ref = value_ref[self._index[i]]
             value_ref[self._index[-1]] = value
         else:
-            self._quam._json[self._path + "wiring"] = value
+            self._quam._json[self._path + "iir_taps"] = value
+
+    @property
+    def fir_taps(self) -> List[Union[str, int, float, bool, list]]:
+        """"""
+        
+        if self._quam._record_updates:
+            return _List(
+                self._quam,
+                self._path + "fir_taps",
+                self._index,
+                self._schema
+            )
+        
+        value = self._quam._json[self._path + "fir_taps"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @fir_taps.setter
+    def fir_taps(self, value: List[Union[str, int, float, bool, list]]):
+        """"""
+        if not isinstance(value, List):
+            raise TypeError(f"Expected List[Union[str, int, float, bool, list]] but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "fir_taps")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "fir_taps"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "fir_taps"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __hash__(self):
+        return hash(f"{self._path}{self._index}")
+
+    def __eq__(self, other):
+        if isinstance(other, Filter):
+            return f"{self._path}{self._index}" == f"{other._path}{other._index}"
+        return NotImplemented
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class Wiring2(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam: QuAM = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def port(self) -> int:
+        """"""
+        
+        value = self._quam._json[self._path + "port"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @port.setter
+    def port(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "port")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "port"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "port"] = value
+
+    @property
+    def filter(self) -> Filter:
+        """"""
+        return Filter(
+            self._quam, self._path + "filter.", self._index,
+            self._schema["properties"]["filter"]
+        )
+    @filter.setter
+    def filter(self, value: dict):
+        import quam_sdk.crud
+        quam_sdk.crud.replace_layer_in_quam_data(self, "filter", value)
+    
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __hash__(self):
+        return hash(f"{self._path}{self._index}")
+
+    def __eq__(self, other):
+        if isinstance(other, Wiring2):
+            return f"{self._path}{self._index}" == f"{other._path}{other._index}"
+        return NotImplemented
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class Iswap(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam: QuAM = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def length(self) -> int:
+        """"""
+        
+        value = self._quam._json[self._path + "length"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @length.setter
+    def length(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "length")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "length"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "length"] = value
+
+    @property
+    def level(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "level"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @level.setter
+    def level(self, value: float):
+        """"""
+        if not isinstance(value, float):
+            raise TypeError(f"Expected float but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "level")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "level"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "level"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __hash__(self):
+        return hash(f"{self._path}{self._index}")
+
+    def __eq__(self, other):
+        if isinstance(other, Iswap):
+            return f"{self._path}{self._index}" == f"{other._path}{other._index}"
+        return NotImplemented
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class Cz(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam: QuAM = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
+
+    @property
+    def length(self) -> int:
+        """"""
+        
+        value = self._quam._json[self._path + "length"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @length.setter
+    def length(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "length")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "length"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "length"] = value
+
+    @property
+    def level(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "level"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @level.setter
+    def level(self, value: float):
+        """"""
+        if not isinstance(value, float):
+            raise TypeError(f"Expected float but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "level")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "level"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "level"] = value
+
+    def _json_view(self):
+        result = {}
+        for v in [func for func in dir(self) if not func.startswith("_")]:
+            value = getattr(self,v)
+            if type(value) in [str, int, float, None, list, bool]:
+                result[v] = value
+            elif not callable(value):
+                result[v] = value._json_view()
+        return result
+
+    def __str__(self) -> str:
+        if self._quam._json is None:
+            raise ValueError("No data about Quantum Abstract Machine (QuAM) "
+            "has been loaded. Aborting printing.")
+        import json
+        return json.dumps(self._json_view())
+
+    def __hash__(self):
+        return hash(f"{self._path}{self._index}")
+
+    def __eq__(self, other):
+        if isinstance(other, Cz):
+            return f"{self._path}{self._index}" == f"{other._path}{other._index}"
+        return NotImplemented
+
+    def __setattr__(self, key, value):
+        if hasattr(self, "_freeze_attributes") and not hasattr(self, key):
+            raise TypeError(f"One cannot add non-existing attribute '{key}'"
+                " to Quantum Abstract Machine (QuAM).\n"
+                " If you want to change available"
+                " attributes, please update system stete used for automatic\n"
+                " generation of QuAM class via quam_sdk.quamConstructor")
+        object.__setattr__(self, key, value)
+
+
+class Z(object):
+
+    def __init__(self, quam, path, index, schema):
+        """"""
+        self._quam: QuAM = quam
+        self._path = path
+        self._index = index
+        self._schema = schema
+        self._freeze_attributes = True
 
     @property
     def flux_pulse_length(self) -> int:
@@ -1432,32 +1748,68 @@ class Z(object):
             self._quam._json[self._path + "flux_pulse_amp"] = value
 
     @property
-    def flux_zero_frequency(self) -> float:
+    def max_frequency_point(self) -> float:
         """"""
         
-        value = self._quam._json[self._path + "flux_zero_frequency"]
+        value = self._quam._json[self._path + "max_frequency_point"]
         for i in range(len(self._index)):
             value = value[self._index[i]]
         return value
 
 
-    @flux_zero_frequency.setter
-    def flux_zero_frequency(self, value: float):
+    @max_frequency_point.setter
+    def max_frequency_point(self, value: float):
         """"""
         if not isinstance(value, float):
             raise TypeError(f"Expected float but received {type(value)}")
         if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "flux_zero_frequency")
+            self._quam._updates["keys"].append(self._path + "max_frequency_point")
             self._quam._updates["indexes"].append(self._index)
             self._quam._updates["values"].append(value)
         if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "flux_zero_frequency"]
+            value_ref = self._quam._json[self._path + "max_frequency_point"]
             for i in range(len(self._index)-1):
                 value_ref = value_ref[self._index[i]]
             value_ref[self._index[-1]] = value
         else:
-            self._quam._json[self._path + "flux_zero_frequency"] = value
+            self._quam._json[self._path + "max_frequency_point"] = value
 
+    @property
+    def wiring(self) -> Wiring2:
+        """"""
+        return Wiring2(
+            self._quam, self._path + "wiring.", self._index,
+            self._schema["properties"]["wiring"]
+        )
+    @wiring.setter
+    def wiring(self, value: dict):
+        import quam_sdk.crud
+        quam_sdk.crud.replace_layer_in_quam_data(self, "wiring", value)
+    
+    @property
+    def iswap(self) -> Iswap:
+        """"""
+        return Iswap(
+            self._quam, self._path + "iswap.", self._index,
+            self._schema["properties"]["iswap"]
+        )
+    @iswap.setter
+    def iswap(self, value: dict):
+        import quam_sdk.crud
+        quam_sdk.crud.replace_layer_in_quam_data(self, "iswap", value)
+    
+    @property
+    def cz(self) -> Cz:
+        """"""
+        return Cz(
+            self._quam, self._path + "cz.", self._index,
+            self._schema["properties"]["cz"]
+        )
+    @cz.setter
+    def cz(self, value: dict):
+        import quam_sdk.crud
+        quam_sdk.crud.replace_layer_in_quam_data(self, "cz", value)
+    
     def _json_view(self):
         result = {}
         for v in [func for func in dir(self) if not func.startswith("_")]:
@@ -1502,6 +1854,87 @@ class Qubit2(object):
         self._index = index
         self._schema = schema
         self._freeze_attributes = True
+
+    @property
+    def ge_threshold(self) -> float:
+        """"""
+        
+        value = self._quam._json[self._path + "ge_threshold"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @ge_threshold.setter
+    def ge_threshold(self, value: float):
+        """"""
+        if not isinstance(value, float):
+            raise TypeError(f"Expected float but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "ge_threshold")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "ge_threshold"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "ge_threshold"] = value
+
+    @property
+    def T1(self) -> int:
+        """"""
+        
+        value = self._quam._json[self._path + "T1"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @T1.setter
+    def T1(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "T1")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "T1"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "T1"] = value
+
+    @property
+    def T2(self) -> int:
+        """"""
+        
+        value = self._quam._json[self._path + "T2"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+
+    @T2.setter
+    def T2(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "T2")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "T2"]
+            for i in range(len(self._index)-1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "T2"] = value
 
     @property
     def xy(self) -> Xy:
@@ -1624,12 +2057,6 @@ class QubitsList2(object):
       "pi_amp": {
         "type": "number"
       },
-      "T1": {
-        "type": "number"
-      },
-      "T2": {
-        "type": "number"
-      },
       "wiring": {
         "type": "object",
         "title": "wiring",
@@ -1678,8 +2105,6 @@ class QubitsList2(object):
       "ac_stark_detuning",
       "pi_length",
       "pi_amp",
-      "T1",
-      "T2",
       "wiring",
       "mixer_correction"
     ]
@@ -1689,7 +2114,71 @@ class QubitsList2(object):
     "title": "z",
     "properties": {
       "wiring": {
-        "type": "integer"
+        "type": "object",
+        "title": "wiring",
+        "properties": {
+          "port": {
+            "type": "integer"
+          },
+          "filter": {
+            "type": "object",
+            "title": "filter",
+            "properties": {
+              "iir_taps": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array"
+                    }
+                  ]
+                }
+              },
+              "fir_taps": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "iir_taps",
+              "fir_taps"
+            ]
+          }
+        },
+        "required": [
+          "port",
+          "filter"
+        ]
       },
       "flux_pulse_length": {
         "type": "integer"
@@ -1697,16 +2186,59 @@ class QubitsList2(object):
       "flux_pulse_amp": {
         "type": "number"
       },
-      "flux_zero_frequency": {
+      "max_frequency_point": {
         "type": "number"
+      },
+      "iswap": {
+        "type": "object",
+        "title": "iswap",
+        "properties": {
+          "length": {
+            "type": "integer"
+          },
+          "level": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "length",
+          "level"
+        ]
+      },
+      "cz": {
+        "type": "object",
+        "title": "cz",
+        "properties": {
+          "length": {
+            "type": "integer"
+          },
+          "level": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "length",
+          "level"
+        ]
       }
     },
     "required": [
       "wiring",
       "flux_pulse_length",
       "flux_pulse_amp",
-      "flux_zero_frequency"
+      "max_frequency_point",
+      "iswap",
+      "cz"
     ]
+  },
+  "ge_threshold": {
+    "type": "number"
+  },
+  "T1": {
+    "type": "integer"
+  },
+  "T2": {
+    "type": "integer"
   }
 }"""
         import quam_sdk.crud
@@ -1733,7 +2265,7 @@ class QubitsList2(object):
                 " generation of QuAM class via quam_sdk.quamConstructor")
         object.__setattr__(self, key, value)
 
-class Wiring2(object):
+class Wiring3(object):
 
     def __init__(self, quam, path, index, schema):
         """"""
@@ -1818,7 +2350,7 @@ class Wiring2(object):
         return hash(f"{self._path}{self._index}")
 
     def __eq__(self, other):
-        if isinstance(other, Wiring2):
+        if isinstance(other, Wiring3):
             return f"{self._path}{self._index}" == f"{other._path}{other._index}"
         return NotImplemented
 
@@ -2158,9 +2690,9 @@ class Resonator(object):
             self._quam._json[self._path + "rotation_angle"] = value
 
     @property
-    def wiring(self) -> Wiring2:
+    def wiring(self) -> Wiring3:
         """"""
-        return Wiring2(
+        return Wiring3(
             self._quam, self._path + "wiring.", self._index,
             self._schema["properties"]["wiring"]
         )
@@ -2480,8 +3012,8 @@ class QuAM(object):
         self._index = []
         self._record_updates = False
         self._updates = {"keys":[], "indexes":[], "values":[], "items":[]}
-        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'local_oscillators.qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'local_oscillators.readout[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'network.qop_ip': {'type': 'string'}, 'network.qop_port': {'type': 'integer'}, 'network.save_dir': {'type': 'string'}, 'local_oscillators.qubits[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.qubits[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'local_oscillators.readout[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.readout[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'crosstalk.flux.dc': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.flux.fast_flux': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.rf': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'qubits[].xy.f_01': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.anharmonicity': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.drag_coefficient': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.ac_stark_detuning': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.pi_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.pi_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.T1': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.T2': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.I': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.wiring.Q': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.wiring': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.flux_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.flux_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.flux_zero_frequency': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].f_res': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].f_opt': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].depletion_time': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].rotation_angle': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.I': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].wiring.Q': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'global_parameters.time_of_flight': {'type': 'integer'}, 'global_parameters.downconversion_offset_I': {'type': 'number'}, 'global_parameters.downconversion_offset_Q': {'type': 'number'}}, 'additionalProperties': False}
-        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'qop_port': {'type': 'integer'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'qop_port', 'save_dir']}, 'local_oscillators': {'type': 'object', 'title': 'local_oscillators', 'properties': {'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}, 'readout': {'type': 'array', 'items': {'type': 'object', 'title': 'readout', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}}, 'required': ['qubits', 'readout']}, 'crosstalk': {'type': 'object', 'title': 'crosstalk', 'properties': {'flux': {'type': 'object', 'title': 'flux', 'properties': {'dc': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fast_flux': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['dc', 'fast_flux']}, 'rf': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['flux', 'rf']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'xy': {'type': 'object', 'title': 'xy', 'properties': {'f_01': {'type': 'number'}, 'anharmonicity': {'type': 'number'}, 'drag_coefficient': {'type': 'number'}, 'ac_stark_detuning': {'type': 'number'}, 'pi_length': {'type': 'integer'}, 'pi_amp': {'type': 'number'}, 'T1': {'type': 'number'}, 'T2': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'integer'}, 'Q': {'type': 'integer'}}, 'required': ['I', 'Q']}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['f_01', 'anharmonicity', 'drag_coefficient', 'ac_stark_detuning', 'pi_length', 'pi_amp', 'T1', 'T2', 'wiring', 'mixer_correction']}, 'z': {'type': 'object', 'title': 'z', 'properties': {'wiring': {'type': 'integer'}, 'flux_pulse_length': {'type': 'integer'}, 'flux_pulse_amp': {'type': 'number'}, 'flux_zero_frequency': {'type': 'number'}}, 'required': ['wiring', 'flux_pulse_length', 'flux_pulse_amp', 'flux_zero_frequency']}}, 'required': ['xy', 'z']}}, 'resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'resonator', 'properties': {'f_res': {'type': 'number'}, 'f_opt': {'type': 'number'}, 'depletion_time': {'type': 'integer'}, 'readout_pulse_length': {'type': 'integer'}, 'readout_pulse_amp': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'integer'}, 'Q': {'type': 'integer'}}, 'required': ['I', 'Q']}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['f_res', 'f_opt', 'depletion_time', 'readout_pulse_length', 'readout_pulse_amp', 'rotation_angle', 'wiring', 'mixer_correction']}}, 'global_parameters': {'type': 'object', 'title': 'global_parameters', 'properties': {'time_of_flight': {'type': 'integer'}, 'downconversion_offset_I': {'type': 'number'}, 'downconversion_offset_Q': {'type': 'number'}}, 'required': ['time_of_flight', 'downconversion_offset_I', 'downconversion_offset_Q']}}, 'required': ['network', 'local_oscillators', 'crosstalk', 'qubits', 'resonators', 'global_parameters']}
+        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'local_oscillators.qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'local_oscillators.readout[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'network.qop_ip': {'type': 'string'}, 'network.qop_port': {'type': 'integer'}, 'network.save_dir': {'type': 'string'}, 'local_oscillators.qubits[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.qubits[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'local_oscillators.readout[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.readout[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'crosstalk.flux.dc': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.flux.fast_flux': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.rf': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'qubits[].xy.f_01': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.anharmonicity': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.drag_coefficient': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.ac_stark_detuning': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.pi_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.pi_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.I': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.wiring.Q': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.wiring.port': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.wiring.filter.iir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.wiring.filter.fir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.flux_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.flux_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.max_frequency_point': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.iswap.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.iswap.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.cz.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.cz.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].ge_threshold': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].T1': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].T2': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].f_res': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].f_opt': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].depletion_time': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].rotation_angle': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.I': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].wiring.Q': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'global_parameters.time_of_flight': {'type': 'integer'}, 'global_parameters.downconversion_offset_I': {'type': 'number'}, 'global_parameters.downconversion_offset_Q': {'type': 'number'}}, 'additionalProperties': False}
+        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'qop_port': {'type': 'integer'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'qop_port', 'save_dir']}, 'local_oscillators': {'type': 'object', 'title': 'local_oscillators', 'properties': {'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}, 'readout': {'type': 'array', 'items': {'type': 'object', 'title': 'readout', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}}, 'required': ['qubits', 'readout']}, 'crosstalk': {'type': 'object', 'title': 'crosstalk', 'properties': {'flux': {'type': 'object', 'title': 'flux', 'properties': {'dc': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fast_flux': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['dc', 'fast_flux']}, 'rf': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['flux', 'rf']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'xy': {'type': 'object', 'title': 'xy', 'properties': {'f_01': {'type': 'number'}, 'anharmonicity': {'type': 'number'}, 'drag_coefficient': {'type': 'number'}, 'ac_stark_detuning': {'type': 'number'}, 'pi_length': {'type': 'integer'}, 'pi_amp': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'integer'}, 'Q': {'type': 'integer'}}, 'required': ['I', 'Q']}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['f_01', 'anharmonicity', 'drag_coefficient', 'ac_stark_detuning', 'pi_length', 'pi_amp', 'wiring', 'mixer_correction']}, 'z': {'type': 'object', 'title': 'z', 'properties': {'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'port': {'type': 'integer'}, 'filter': {'type': 'object', 'title': 'filter', 'properties': {'iir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['iir_taps', 'fir_taps']}}, 'required': ['port', 'filter']}, 'flux_pulse_length': {'type': 'integer'}, 'flux_pulse_amp': {'type': 'number'}, 'max_frequency_point': {'type': 'number'}, 'iswap': {'type': 'object', 'title': 'iswap', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}, 'cz': {'type': 'object', 'title': 'cz', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}}, 'required': ['wiring', 'flux_pulse_length', 'flux_pulse_amp', 'max_frequency_point', 'iswap', 'cz']}, 'ge_threshold': {'type': 'number'}, 'T1': {'type': 'integer'}, 'T2': {'type': 'integer'}}, 'required': ['xy', 'z', 'ge_threshold', 'T1', 'T2']}}, 'resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'resonator', 'properties': {'f_res': {'type': 'number'}, 'f_opt': {'type': 'number'}, 'depletion_time': {'type': 'integer'}, 'readout_pulse_length': {'type': 'integer'}, 'readout_pulse_amp': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'I': {'type': 'integer'}, 'Q': {'type': 'integer'}}, 'required': ['I', 'Q']}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['f_res', 'f_opt', 'depletion_time', 'readout_pulse_length', 'readout_pulse_amp', 'rotation_angle', 'wiring', 'mixer_correction']}}, 'global_parameters': {'type': 'object', 'title': 'global_parameters', 'properties': {'time_of_flight': {'type': 'integer'}, 'downconversion_offset_I': {'type': 'number'}, 'downconversion_offset_Q': {'type': 'number'}}, 'required': ['time_of_flight', 'downconversion_offset_I', 'downconversion_offset_Q']}}, 'required': ['network', 'local_oscillators', 'crosstalk', 'qubits', 'resonators', 'global_parameters']}
         self._runtime_var = dict()  #: scratchpad dictionary of runtime variables for user's convenience. These are not saved when exporting data.
         if data is not None:
             if type(data) is str:

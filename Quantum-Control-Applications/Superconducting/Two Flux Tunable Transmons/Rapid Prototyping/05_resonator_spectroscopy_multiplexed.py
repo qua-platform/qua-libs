@@ -49,7 +49,7 @@ with program() as multi_res_spec:
             save(I[0], I_st[0])
             save(Q[0], Q_st[0])
 
-            # align("rr1", "rr2")  # Uncomment to measure sequentially
+            # align("rr1", "rr1")  # Uncomment to measure sequentially
             # resonator 2
             update_frequency("rr1", df + res_if_2)
             measure(

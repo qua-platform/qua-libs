@@ -1,7 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 from scipy import signal
 import scipy.optimize
 import matplotlib.pyplot as plt
@@ -12,7 +11,16 @@ import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
 from macros import expdecay, filter_calc
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
+
+qubit_index = 0
 
 ##########
 # baking #
@@ -21,7 +29,7 @@ from macros import expdecay, filter_calc
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse)
+flux_waveform = np.array([0.0] * zeros_before_pulse + [machine.qubits[qubit_index].z.flux_pulse_amp] * machine.qubits[qubit_index].z.flux_pulse_length + [0.0] * zeros_after_pulse)
 
 
 def baked_waveform(waveform, pulse_duration):
@@ -34,8 +42,8 @@ def baked_waveform(waveform, pulse_duration):
             else:
                 wf = waveform[:i].tolist()
 
-            b.add_op("flux_pulse", "q2_z", wf)
-            b.play("flux_pulse", "q2_z")
+            b.add_op("flux_pulse", f"q{qubit_index}_z", wf)
+            b.play("flux_pulse", f"q{qubit_index}_z")
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -43,18 +51,14 @@ def baked_waveform(waveform, pulse_duration):
 
 # Baked flux pulse segments
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
-step_response = [1.0] * const_flux_len
+step_response = [1.0] * machine.qubits[qubit_index].z.flux_pulse_length
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)
 
 ###################
 # The QUA program #
 ###################
-dc0_q2 = config["controllers"]["con1"]["analog_outputs"][8]["offset"]
-dc0_q1 = config["controllers"]["con1"]["analog_outputs"][7]["offset"]
 cooldown_time = 5 * 50 * u.us
 n_avg = 1000
-
-qubit = 1
 
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -66,9 +70,9 @@ with program() as cryoscope:
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
-        with for_(segment, 0, segment <= const_flux_len + total_zeros, segment + 1):
+        with for_(segment, 0, segment <= machine.qubits[qubit_index].z.flux_pulse_length + total_zeros, segment + 1):
             with for_each_(flag, [True, False]):
-                play("x90", "q2_xy")
+                play("x90", "q1_xy")
 
                 align()
                 # TODO: this wait() creates time between pi and flux pulses, it is possible to calibrate the delay
@@ -79,37 +83,35 @@ with program() as cryoscope:
                         with case_(j):
                             square_pulse_segments[j].run()
 
-                wait((const_flux_len + 100) * u.ns, f"q{qubit}_xy")
+                wait((machine.qubits[qubit_index].z.flux_pulse_length + 100) * u.ns, f"q{qubit_index}_xy")
 
                 with if_(flag):
-                    play("x90", f"q{qubit}_xy")
+                    play("x90", f"q{qubit_index}_xy")
                 with else_():
-                    play("y90", f"q{qubit}_xy")
+                    play("y90", f"q{qubit_index}_xy")
 
                 align()
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
-                assign(state[0], I[0] > ge_threshold_q1)
-                assign(state[1], I[1] > ge_threshold_q2)
-                save(state[0], state_st[0])
-                save(state[1], state_st[1])
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
+                assign(state[qubit_index], I[qubit_index] > machine.qubits[qubit_index].ge_threshold)
+                save(state[qubit_index], state_st[qubit_index])
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
         # for the progress counter
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I1")
-        Q_st[0].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q1")
-        state_st[0].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state1")
+        I_st[0].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("I1")
+        Q_st[0].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I2")
-        Q_st[1].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q2")
-        state_st[1].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state2")
+        I_st[1].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("I2")
+        Q_st[1].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("Q2")
+        # Qubit state
+        state_st[qubit_index].boolean_to_int().buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("state")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -120,9 +122,9 @@ else:
     job = qm.execute(cryoscope)
     fig = plt.figure()
     interrupt_on_close(fig, job)
-    results = fetching_tool(job, ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"], mode="live")
+    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2", "state"], mode="live")
     while results.is_processing():
-        n, I1, Q1, state1, I2, Q2, state2 = results.fetch_all()
+        n, I1, Q1, I2, Q2, state = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
 
         plt.subplot(231)
@@ -137,8 +139,8 @@ else:
         plt.xlabel("Interaction time (ns)")
         plt.subplot(233)
         plt.cla()
-        plt.title("q1 - state")
-        plt.plot(xplot, state1, ".-")
+        plt.title("qubit - state")
+        plt.plot(xplot, state, ".-")
         plt.xlabel("Interaction time (ns)")
         plt.subplot(234)
         plt.cla()
@@ -150,37 +152,30 @@ else:
         plt.plot(xplot, Q2, ".-")
         plt.title("q2 - Q")
         plt.xlabel("Interaction time (ns)")
-        plt.subplot(236)
-        plt.cla()
-        plt.title("q2 - state")
-        plt.plot(xplot, state2, ".-")
-        plt.xlabel("Interaction time (ns)")
         plt.tight_layout()
         plt.pause(0.1)
 
-    if qubit == 1:
-        Sxx = state1[:, 0] * 2 - 1
-        Syy = state1[:, 1] * 2 - 1
-    elif qubit == 2:
-        Sxx = state2[:, 0] * 2 - 1
-        Syy = state2[:, 1] * 2 - 1
-    else:
-        Sxx = 0
-        Syy = 0
+
+    Sxx = state[:, 0] * 2 - 1
+    Syy = state[:, 1] * 2 - 1
     S = Sxx + 1j * Syy
 
     phase = np.unwrap(np.angle(S))
     phase = phase - phase[-1]
     detuning = signal.savgol_filter(phase / 2 / np.pi, 21, 2, deriv=1, delta=0.001)
-    step_response = detuning / np.average(detuning[-int(const_flux_len / 2) :])
+    step_response = detuning / np.average(detuning[-int(machine.qubits[qubit_index].z.flux_pulse_length / 2) :])
 
     plt.figure()
     plt.subplot(121)
-    plt.plot(xplot, Sxx)
-    plt.plot(xplot, Syy)
+    plt.plot(xplot, Sxx, label="Sxx")
+    plt.plot(xplot, Syy, label="Sxx")
+    plt.xlabel("Interaction time (ns)")
+    plt.ylabel("Spin vector component")
+    plt.legend()
     plt.subplot(122)
     plt.plot(xplot, step_response, label="freq")
     plt.plot(xplot, np.sqrt(step_response), label="sqrt(freq)")
+    plt.xlabel("Interaction time (ns)")
     plt.legend()
     plt.tight_layout()
 
@@ -198,7 +193,7 @@ else:
 
     ## Derive responses and plots
     # Ideal response
-    pulse = np.array([1.0] * (const_flux_len + 1))
+    pulse = np.array([1.0] * (machine.qubits[qubit_index].z.flux_pulse_length + 1))
     # Response without filter
     no_filter = expdecay(xplot, a=A, t=tau)
     # Response with filters
@@ -229,3 +224,7 @@ else:
     plt.ylabel("Step response")
     plt.tight_layout()
     plt.legend(loc="upper right")
+
+# machine.qubits[qubit_index].z.wiring.filter.fir_taps = fir
+# machine.qubits[qubit_index].z.wiring.filter.iir_taps = iir
+# machine._save("quam_bootstrap_state.json")

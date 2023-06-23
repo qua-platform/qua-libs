@@ -40,7 +40,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 qubit_LO = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 
 qubit_IF_q1 = 50 * u.MHz
-qubit_IF_q2 = 75 * u.MHz
+qb_if_2 = 75 * u.MHz
 mixer_qubit_g_q1 = 0.00
 mixer_qubit_g_q2 = 0.00
 mixer_qubit_phi_q1 = 0.0
@@ -53,7 +53,7 @@ const_amp = 270 * u.mV
 
 pi_len = 40
 pi_sigma = pi_len / 5
-pi_amp_q1 = 0.22
+machine.qubits[0].xy.pi_amp = 0.22
 pi_amp_q2 = 0.22
 drag_coef_q1 = 0
 drag_coef_q2 = 0
@@ -63,7 +63,7 @@ AC_stark_detuning_q1 = 0 * u.MHz
 AC_stark_detuning_q2 = 0 * u.MHz
 
 x180_wf_q1, x180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(machine.qubits[0].xy.pi_amp, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
 )
 x180_I_wf_q1 = x180_wf_q1
 x180_Q_wf_q1 = x180_der_wf_q1

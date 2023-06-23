@@ -4,19 +4,26 @@ allxy.py: Performs an ALLXY experiment to correct for gates imperfections
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
+from quam import QuAM
+from configuration import build_config, u
+
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ##############################
 # Program-specific variables #
 ##############################
-qb = "q1_xy"
-res = "rr1"
+qb = "q0_xy"
+res = "rr0"
 n_points = 1000
 cooldown_time = 10_000
 
@@ -62,13 +69,19 @@ def allXY(pulses, qubit, resonator):
     if pulses[0] != "I":
         play(pulses[0], qubit)  # Either play the sequence
     else:
-        wait(pi_len // 4, qubit)  # or wait if sequence is identity
+        wait(machine.qubits[int(qubit[1])].xy.pi_length // 4, qubit)  # or wait if sequence is identity
     if pulses[1] != "I":
         play(pulses[1], qubit)  # Either play the sequence
     else:
-        wait(pi_len // 4, qubit)  # or wait if sequence is identity
+        wait(machine.qubits[int(qubit[1])].xy.pi_length // 4, qubit)  # or wait if sequence is identity
 
-    align(qubit, resonator)
+    align()
+    # Play the readout on the other resonator to measure in the same condition as when optimizing readout
+    if resonator == "rr0":
+        measure("readout", "rr1", None)
+    elif resonator == "rr1":
+        measure("readout", "rr0", None)
+
     measure(
         "readout",
         resonator,
@@ -112,7 +125,7 @@ with program() as ALLXY:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 
@@ -152,5 +165,3 @@ else:
         plt.suptitle("All XY (n: %s)" % (n))
         plt.tight_layout()
         plt.pause(1.0)
-
-    plt.show()
