@@ -97,7 +97,9 @@ else:
     ax[1].get_shared_x_axes().join(ax[0], ax[1])
 
     print(f"IF freq at resonance: {freqs[idx]*1e-6} MHz")
-    plt.suptitle(f"resonator: {(machine.local_oscillators.readout[0].freq + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)")
+    plt.suptitle(
+        f"resonator: {(machine.local_oscillators.readout[0].freq + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)"
+    )
     plt.tight_layout()
     plt.show()
 

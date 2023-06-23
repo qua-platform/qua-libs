@@ -99,6 +99,7 @@ else:
 
 try:
     from qualang_tools.plot.fitting import Fit
+
     fit = Fit()
     plt.figure()
     plt.subplot(221)

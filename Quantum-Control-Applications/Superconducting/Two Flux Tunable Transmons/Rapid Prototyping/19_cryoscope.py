@@ -29,7 +29,11 @@ qubit_index = 0
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-flux_waveform = np.array([0.0] * zeros_before_pulse + [machine.qubits[qubit_index].z.flux_pulse_amp] * machine.qubits[qubit_index].z.flux_pulse_length + [0.0] * zeros_after_pulse)
+flux_waveform = np.array(
+    [0.0] * zeros_before_pulse
+    + [machine.qubits[qubit_index].z.flux_pulse_amp] * machine.qubits[qubit_index].z.flux_pulse_length
+    + [0.0] * zeros_after_pulse
+)
 
 
 def baked_waveform(waveform, pulse_duration):
@@ -106,7 +110,9 @@ with program() as cryoscope:
         I_st[1].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("I2")
         Q_st[1].buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("Q2")
         # Qubit state
-        state_st[qubit_index].boolean_to_int().buffer(2).buffer(machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1).average().save("state")
+        state_st[qubit_index].boolean_to_int().buffer(2).buffer(
+            machine.qubits[qubit_index].z.flux_pulse_length + total_zeros + 1
+        ).average().save("state")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -154,7 +160,6 @@ else:
         plt.xlabel("Interaction time (ns)")
         plt.tight_layout()
         plt.pause(0.1)
-
 
     Sxx = state[:, 0] * 2 - 1
     Syy = state[:, 1] * 2 - 1

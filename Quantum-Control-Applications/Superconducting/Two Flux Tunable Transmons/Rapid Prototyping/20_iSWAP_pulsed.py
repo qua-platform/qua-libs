@@ -24,7 +24,10 @@ qubit_index = 0
 ##########
 # FLux pulse waveform generation
 # The variable machine.qubits[qubit_index].z.flux_pulse_length is defined in the configuration
-flux_waveform = np.array([machine.qubits[qubit_index].z.flux_pulse_amp] * machine.qubits[qubit_index].z.flux_pulse_length)
+flux_waveform = np.array(
+    [machine.qubits[qubit_index].z.flux_pulse_amp] * machine.qubits[qubit_index].z.flux_pulse_length
+)
+
 
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
@@ -106,22 +109,30 @@ else:
 
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, I1.T)
+        plt.pcolor(
+            amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, I1.T
+        )
         plt.title("q1 - I")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, Q1.T)
+        plt.pcolor(
+            amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, Q1.T
+        )
         plt.title("q1 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, I2.T)
+        plt.pcolor(
+            amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, I2.T
+        )
         plt.title("q2 - I")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, Q2.T)
+        plt.pcolor(
+            amps * machine.qubits[qubit_index].z.flux_pulse_amp + machine.qubits[0].z.max_frequency_point, xplot, Q2.T
+        )
         plt.title("q2 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()

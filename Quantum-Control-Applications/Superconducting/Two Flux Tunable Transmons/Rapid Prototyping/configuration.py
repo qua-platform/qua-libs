@@ -128,8 +128,20 @@ def build_config(quam: QuAM):
                     4: {"offset": quam.qubits[1].xy.mixer_correction.offset_Q},  # Q qubit2 XY
                     5: {"offset": quam.resonators[0].mixer_correction.offset_I},  # I readout line
                     6: {"offset": quam.resonators[0].mixer_correction.offset_Q},  # Q readout line
-                    7: {"offset": quam.qubits[0].z.max_frequency_point, "filter": {'feedforward': quam.qubits[0].z.wiring.filter.fir_taps, 'feedback':quam.qubits[0].z.wiring.filter.iir_taps}},  # qubit1 Z
-                    8: {"offset": quam.qubits[1].z.max_frequency_point, "filter": {'feedforward': quam.qubits[1].z.wiring.filter.fir_taps, 'feedback':quam.qubits[1].z.wiring.filter.iir_taps}},  # qubit2 Z
+                    7: {
+                        "offset": quam.qubits[0].z.max_frequency_point,
+                        "filter": {
+                            "feedforward": quam.qubits[0].z.wiring.filter.fir_taps,
+                            "feedback": quam.qubits[0].z.wiring.filter.iir_taps,
+                        },
+                    },  # qubit1 Z
+                    8: {
+                        "offset": quam.qubits[1].z.max_frequency_point,
+                        "filter": {
+                            "feedforward": quam.qubits[1].z.wiring.filter.fir_taps,
+                            "feedback": quam.qubits[1].z.wiring.filter.iir_taps,
+                        },
+                    },  # qubit2 Z
                 },
                 "digital_outputs": {
                     1: {},
@@ -407,8 +419,7 @@ def build_config(quam: QuAM):
             **{
                 f"mixer_q{i}_xy": [
                     {
-                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq
-                       ),
+                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq),
                         "lo_frequency": quam.local_oscillators.qubits[0].freq,
                         "correction": IQ_imbalance(
                             quam.qubits[i].xy.mixer_correction.gain, quam.qubits[i].xy.mixer_correction.phase

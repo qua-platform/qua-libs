@@ -11,6 +11,7 @@ from qualang_tools.addons.variables import assign_variables_to_element
 # QUA macros #
 ##############
 
+
 def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):
     """Perform multiplexed readout on two resonators"""
     if type(resonators) is not list:
