@@ -154,7 +154,7 @@ def build_config(quam: QuAM):
                         "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
                         "mixer": f"mixer_resonator{i}",
                     },
-                    "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9,
+                    "intermediate_frequency": int((quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9),
                     "operations": {
                         "cw": "const_pulse",
                         "readout": "readout_pulse_q1",
@@ -176,15 +176,15 @@ def build_config(quam: QuAM):
                         "lo_frequency": quam.local_oscillators.qubits[0].freq * 1e9,
                         "mixer": f"mixer_qubit{i}",
                     },
-                    "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq) * 1e9,
+                    "intermediate_frequency": int((quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq) * 1e9),
                     "operations": {
                         "cw": "const_pulse",
-                        "x180": f"x180_pulse_q{i}",
-                        "x90": f"x90_pulse_q{i}",
-                        "-x90": f"-x90_pulse_q{i}",
-                        "y90": f"y90_pulse_q{i}",
-                        "y180": f"y180_pulse_q{i}",
-                        "-y90": f"-y90_pulse_q{i}",
+                        "x180": f"x180_pulse{i}",
+                        "x90": f"x90_pulse{i}",
+                        "-x90": f"-x90_pulse{i}",
+                        "y90": f"y90_pulse{i}",
+                        "y180": f"y180_pulse{i}",
+                        "-y90": f"-y90_pulse{i}",
                     },
                 }
                 for i in range(len(quam.qubits))
@@ -215,8 +215,7 @@ def build_config(quam: QuAM):
                     "operation": "control",
                     "length": quam.qubits[i].z.flux_pulse_length,
                     "waveforms": {
-                        "I": f"const_flux{i}_wf",
-                        "Q": "zero_wf",
+                        "single": f"const_flux{i}_wf",
                     },
                 }
                 for i in range(len(quam.qubits))
@@ -407,9 +406,9 @@ def build_config(quam: QuAM):
             **{
                 f"mixer_qubit{i}": [
                     {
-                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.readout[0].freq)
-                        * 1e9,
-                        "lo_frequency": quam.local_oscillators.readout[0].freq,
+                        "intermediate_frequency": int((quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq)
+                        * 1e9),
+                        "lo_frequency": quam.local_oscillators.qubits[0].freq * 1e9,
                         "correction": IQ_imbalance(
                             quam.qubits[i].xy.mixer_correction.gain, quam.qubits[i].xy.mixer_correction.phase
                         ),
@@ -420,9 +419,8 @@ def build_config(quam: QuAM):
             **{
                 f"mixer_resonator{i}": [
                     {
-                        "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq)
-                        * 1e9,
-                        "lo_frequency": quam.local_oscillators.readout[0].freq,
+                        "intermediate_frequency": int((quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9),
+                        "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
                         "correction": IQ_imbalance(
                             quam.resonators[i].mixer_correction.gain, quam.resonators[i].mixer_correction.phase
                         ),
