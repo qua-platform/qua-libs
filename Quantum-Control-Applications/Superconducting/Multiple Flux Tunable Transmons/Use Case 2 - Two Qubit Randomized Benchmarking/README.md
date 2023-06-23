@@ -61,7 +61,7 @@ def prep():
 ```
 
 ## Measurement
-Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send a readout pulse to the resonators of the qubits and demodulate the signal, where we assume that we optimized the readout such that all information is contained in the *Iq0* and *Iq1*. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state |0> and True for state |1>.
+Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send a readout pulse to the resonators of the qubits and demodulate the signal, where we assume that we optimized the readout such that all information is contained in the *Iq0* and *Iq1*. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state |0> and True for state |1>. This the measurement function returns four possible outcomes: |00>, |01>, |10> and |11>
 
 ```python
 def meas():
@@ -88,9 +88,9 @@ def meas():
     return state0, state1
 ```
 ## Execution and Results
-Using the 
+Using the *TwoQubitRb* class we can now construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. It will generate the gate sequences and find the inverse, using Googles cirq tableau calculations. By setting 
 ```python
-rb = TwoQubitRb(config, single_qubit_gate_generator, two_qubit_gate_generators, prep_func, measure_func, verify_generation=True)
+rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=True)
 ```
 The experiment is run by calling the run method of the previously generated program rb.
 
