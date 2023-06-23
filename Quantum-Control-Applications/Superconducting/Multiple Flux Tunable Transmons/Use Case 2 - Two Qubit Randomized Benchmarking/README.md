@@ -89,7 +89,7 @@ def meas():
 ```
 
 ## Execution and Results
-Using the *TwoQubitRb* class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [*Google Cirq*](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that would reset the qubits to the state |00> in case of unitary circuits.
+Using the *TwoQubitRb* class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [*Google Cirq*](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that resets the qubits to the state |00> in case of perfect gates. Note, that it is possible to provide the √iSWAP or CNOT gate by adding them to the two-qubit dictionary to allow an optimized gate decomposition into Clifford gates. If other native gates are implemented, the decomposition has to be added to the [gates](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/gates.py#L43) python file.
 
 ```python
 rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=True)
