@@ -11,17 +11,6 @@ from qualang_tools.addons.variables import assign_variables_to_element
 # QUA macros #
 ##############
 
-
-def cz_gate(dc0):
-    set_dc_offset("q0_z", "single", -0.10557)
-    wait(189 // 4, "q0_z")
-    # set_dc_offset("q0_z", "single", -0.10342)
-    # wait(161//4, "q0_z")
-    align()
-    set_dc_offset("q0_z", "single", dc0)
-    wait(10)  # for flux pulse to relax back completely
-
-
 def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):
     """Perform multiplexed readout on two resonators"""
     if type(resonators) is not list:

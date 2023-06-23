@@ -27,7 +27,7 @@ with program() as iq_blobs:
         # ground iq blobs
         reset_qubit("cooldown", "q0_xy", "rr0", cooldown_time=cooldown_time)
         reset_qubit("cooldown", "q1_xy", "rr1", cooldown_time=cooldown_time)
-        # reset_qubit("active", "q0_xy", "resonator", threshold=ge_threshold_q1, max_tries=10, Ig=I_g)
+        # reset_qubit("active", "q0_xy", "resonator", threshold=machine.qubits[0].ge_threshold, max_tries=10, Ig=I_g)
         align()
         multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=[0, 1], weights="rotated_")
 
