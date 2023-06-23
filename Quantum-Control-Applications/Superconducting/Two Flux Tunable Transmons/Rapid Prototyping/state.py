@@ -8,10 +8,10 @@ state = {
     "network": {"qop_ip": "172.16.33.100", "qop_port": 83, "save_dir": ""},
     "local_oscillators": {
         "qubits": [
-            {"freq": 3.3, "power": 18},
+            {"freq": 3.3e9, "power": 18},
         ],
         "readout": [
-            {"freq": 6.5, "power": 15},
+            {"freq": 6.5e9, "power": 15},
         ],
     },
     "crosstalk": {
@@ -21,8 +21,8 @@ state = {
     "qubits": [
         {
             "xy": {
-                "f_01": 3.52,
-                "anharmonicity": 0.250,
+                "f_01": 3.52e9,
+                "anharmonicity": 250e6,
                 "drag_coefficient": 0.0,
                 "ac_stark_detuning": 0.0,
                 "pi_length": 40,
@@ -44,8 +44,8 @@ state = {
         },
         {
             "xy": {
-                "f_01": 3.25,
-                "anharmonicity": 0.250,
+                "f_01": 3.25e9,
+                "anharmonicity": 250e6,
                 "drag_coefficient": 0.0,
                 "ac_stark_detuning": 0.0,
                 "pi_length": 40,
@@ -68,8 +68,8 @@ state = {
     ],
     "resonators": [
         {
-            "f_res": 6.3,
-            "f_opt": 6.3,
+            "f_res": 6.3e9,
+            "f_opt": 6.3e9,
             "depletion_time": 10_000,
             "readout_pulse_length": 1_000,
             "readout_pulse_amp": 0.05,
@@ -81,8 +81,8 @@ state = {
             "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
         },
         {
-            "f_res": 6.75,
-            "f_opt": 6.75,
+            "f_res": 6.75e9,
+            "f_opt": 6.75e9,
             "depletion_time": 10_000,
             "readout_pulse_length": 1_000,
             "readout_pulse_amp": 0.07,

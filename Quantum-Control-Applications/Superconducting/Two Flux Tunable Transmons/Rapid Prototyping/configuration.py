@@ -151,10 +151,10 @@ def build_config(quam: QuAM):
                     "mixInputs": {
                         "I": ("con1", quam.resonators[i].wiring.I),
                         "Q": ("con1", quam.resonators[i].wiring.Q),
-                        "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
-                        "mixer": f"mixer_resonator{i}",
+                        "lo_frequency": quam.local_oscillators.readout[0].freq,
+                        "mixer": f"mixer_rr{i}",
                     },
-                    "intermediate_frequency": int((quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9),
+                    "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq),
                     "operations": {
                         "cw": "const_pulse",
                         "readout": "readout_pulse_q1",
@@ -173,10 +173,10 @@ def build_config(quam: QuAM):
                     "mixInputs": {
                         "I": ("con1", quam.qubits[i].xy.wiring.I),
                         "Q": ("con1", quam.qubits[i].xy.wiring.Q),
-                        "lo_frequency": quam.local_oscillators.qubits[0].freq * 1e9,
-                        "mixer": f"mixer_qubit{i}",
+                        "lo_frequency": quam.local_oscillators.qubits[0].freq,
+                        "mixer": f"mixer_q{i}_xy",
                     },
-                    "intermediate_frequency": int((quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq) * 1e9),
+                    "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq),
                     "operations": {
                         "cw": "const_pulse",
                         "x180": f"x180_pulse{i}",
@@ -404,11 +404,11 @@ def build_config(quam: QuAM):
         },
         "mixers": {
             **{
-                f"mixer_qubit{i}": [
+                f"mixer_q{i}_xy": [
                     {
-                        "intermediate_frequency": int((quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq)
-                        * 1e9),
-                        "lo_frequency": quam.local_oscillators.qubits[0].freq * 1e9,
+                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq
+                       ),
+                        "lo_frequency": quam.local_oscillators.qubits[0].freq,
                         "correction": IQ_imbalance(
                             quam.qubits[i].xy.mixer_correction.gain, quam.qubits[i].xy.mixer_correction.phase
                         ),
@@ -417,10 +417,10 @@ def build_config(quam: QuAM):
                 for i in range(len(quam.qubits))
             },
             **{
-                f"mixer_resonator{i}": [
+                f"mixer_rr{i}": [
                     {
-                        "intermediate_frequency": int((quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq) * 1e9),
-                        "lo_frequency": quam.local_oscillators.readout[0].freq * 1e9,
+                        "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq),
+                        "lo_frequency": quam.local_oscillators.readout[0].freq,
                         "correction": IQ_imbalance(
                             quam.resonators[i].mixer_correction.gain, quam.resonators[i].mixer_correction.phase
                         ),

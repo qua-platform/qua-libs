@@ -1,11 +1,40 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from configuration import *
+from quam import QuAM
+from configuration import build_config
+
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
+
+# IQ imbalance matrix
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    :param g: relative gain imbalance between the I & Q ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the I & Q ports (radians), set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 ###################
 # The QUA program #
 ###################
-element = "rr1"
+element = "q0_xy"
+
+if element[:2] == "rr":
+    IF = machine.resonators[int(element[2])].f_opt - machine.local_oscillators.readout[0].freq
+    LO = machine.local_oscillators.readout[0].freq
+elif element[0] == "q":
+    IF = machine.qubits[int(element[1])].xy.f_01 - machine.local_oscillators.qubits[0].freq
+    LO = machine.local_oscillators.qubits[0].freq
+
 
 with program() as manual_mixer_calib:
     with infinite_loop_():
@@ -15,7 +44,7 @@ with program() as manual_mixer_calib:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 qm = qmm.open_qm(config)
 job = qm.execute(manual_mixer_calib)
 
@@ -31,11 +60,12 @@ job = qm.execute(manual_mixer_calib)
 # unwanted peaks.
 
 # qm.set_output_dc_offset_by_element(element, ('I', 'Q'), (-0.001, 0.003))
-# qm.set_mixer_correction(f'mixer_qubit_q1', int(qubit_IF_q1), int(qubit_LO), IQ_imbalance(0.015, 0.01))
-# qm.set_mixer_correction(f'mixer_resonator', int(resonator_IF_q1), int(resonator_LO), IQ_imbalance(0.015, 0.01))
-# qm.set_mixer_correction(f'mixer_{element}', int(int(config["elements"][element]["intermediate_frequency"])), int(int(config["elements"][element]["mixInputs"]["lo_frequency"])), IQ_imbalance(0.015, 0.01))
+# qm.set_mixer_correction(f"mixer_{element}", IF, LO, IQ_imbalance(0.015, 0.01))
 
-# Automatic LO leakage correction
+#####################################
+#  Automatic LO leakage correction  #
+#####################################
+
 # centers = [0.5, 0]
 # span = 0.1
 #
@@ -61,8 +91,17 @@ job = qm.execute(manual_mixer_calib)
 # plt.suptitle(f"LO leakage correction for {element}")
 #
 # print(f"For {element}, I offset is {centers[0]} and Q offset is {centers[1]}")
-#
-# # Automatic image cancellation
+# if element[:2] == "rr":
+#     machine.resonators[int(element[2])].mixer_correction.offset_I = centers[0]
+#     machine.resonators[int(element[2])].mixer_correction.offset_Q = centers[1]
+# elif element[0] == "q":
+#     machine.qubits[int(element[1])].xy.mixer_correction.offset_I = centers[0]
+#     machine.qubits[int(element[1])].xy.mixer_correction.offset_Q = centers[1]
+
+##################################
+#  Automatic image cancellation  #
+##################################
+
 # centers = [0.5, 0]
 # span = [0.2, 0.5]
 #
@@ -73,12 +112,7 @@ job = qm.execute(manual_mixer_calib)
 #     image = np.zeros((len(phase), len(gain)))
 #     for g in range(len(gain)):
 #         for p in range(len(phase)):
-#             qm.set_mixer_correction(
-#                 config["elements"][element]["mixInputs"]["mixer"],
-#                 int(config["elements"][element]["intermediate_frequency"]),
-#                 int(config["elements"][element]["mixInputs"]["lo_frequency"]),
-#                 IQ_imbalance(gain[g], phase[p]),
-#             )
+#             qm.set_mixer_correction(f"mixer_{element}", IF, LO, IQ_imbalance(gain[g], phase[p]))
 #             sleep(0.01)
 #             # Write functions to extract the image from the spectrum analyzer
 #             # image[q][i] =
@@ -93,3 +127,9 @@ job = qm.execute(manual_mixer_calib)
 # plt.suptitle(f"Image cancellation for {element}")
 #
 # print(f"For {element}, gain is {centers[0]} and phase is {centers[1]}")
+# if element[:2] == "rr":
+#     machine.resonators[int(element[2])].mixer_correction.gain = centers[0]
+#     machine.resonators[int(element[2])].mixer_correction.phase = centers[1]
+# elif element[0] == "q":
+#     machine.qubits[int(element[1])].xy.mixer_correction.gain = centers[0]
+#     machine.qubits[int(element[1])].xy.mixer_correction.phase = centers[1]
