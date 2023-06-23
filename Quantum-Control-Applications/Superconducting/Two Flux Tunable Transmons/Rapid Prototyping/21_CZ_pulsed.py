@@ -1,7 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
@@ -10,6 +9,14 @@ from qualang_tools.results import progress_counter
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
+from quam import QuAM
+from configuration import build_config, u
+
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ##########
 # baking #
@@ -29,8 +36,8 @@ def baked_waveform(waveform, pulse_duration):
                 wf = [0.0] * 16
             else:
                 wf = waveform[:i].tolist()
-            b.add_op("flux_pulse", "q1_z", wf)
-            b.play("flux_pulse", "q1_z")
+            b.add_op("flux_pulse", "q0_z", wf)
+            b.play("flux_pulse", "q0_z")
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -59,18 +66,18 @@ with program() as cz:
         save(n, n_st)
         with for_(*from_array(a, amps)):
             with for_(segment, 0, segment <= const_flux_len, segment + 1):
+                play("x180", "q0_xy")
                 play("x180", "q1_xy")
-                play("x180", "q2_xy")
 
                 align()
                 with switch_(segment):
                     for j in range(0, const_flux_len + 1):
                         with case_(j):
-                            square_pulse_segments[j].run(amp_array=[("q1_z", a)])
+                            square_pulse_segments[j].run(amp_array=[("q0_z", a)])
 
                 wait(10)
                 align()
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -86,7 +93,7 @@ with program() as cz:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -125,3 +132,7 @@ else:
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()
         plt.pause(0.1)
+
+# machine.qubits[0].z.cz.length =
+# machine.qubits[0].z.cz.level =
+# machine._save("quam_bootstrap_state.json")
