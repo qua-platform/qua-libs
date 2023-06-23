@@ -8,16 +8,26 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration
+from quam import QuAM
+from configuration import build_config, u
 
-amps = np.arange(0.05, 1.99, 0.10)
-dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
-n_avg = 2000
-
-depletion_time = 1000
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
 ###################
+amps = np.arange(0.05, 1.99, 0.10)
+dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
+n_avg = 2000
+depletion_time = 1000
+
+res_if_1 = machine.resonators[0].f_res - machine.local_oscillators.readout[0].freq
+res_if_2 = machine.resonators[1].f_res - machine.local_oscillators.readout[0].freq
+
 with program() as multi_res_spec_vs_amp:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)
@@ -27,15 +37,15 @@ with program() as multi_res_spec_vs_amp:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency("rr1", df + resonator_IF_q1)
-            update_frequency("rr2", df + resonator_IF_q2)
+            update_frequency("rr0", df + res_if_1)
+            update_frequency("rr1", df + res_if_2)
 
             with for_(*from_array(a, amps)):
                 # resonator 1
-                wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
+                wait(depletion_time * u.ns, "rr0")  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    "rr1",
+                    "rr0",
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[0]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
@@ -43,13 +53,13 @@ with program() as multi_res_spec_vs_amp:
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
-                # align("rr1", "rr2") # sequential to avoid overflow
+                # align("rr0", "rr1") # sequential to avoid overflow
 
                 # resonator 2
-                wait(depletion_time * u.ns, "rr2")  # wait for the resonator to relax
+                wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    "rr2",
+                    "rr1",
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
@@ -69,7 +79,7 @@ with program() as multi_res_spec_vs_amp:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
@@ -100,8 +110,8 @@ else:
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Data analysis
-        s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
-        s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        s1 = u.demod2volts(I1 + 1j * Q1, machine.resonators[0].readout_pulse_length)
+        s2 = u.demod2volts(I2 + 1j * Q2, machine.resonators[0].readout_pulse_length)
 
         A1 = np.abs(s1)
         A2 = np.abs(s2)
@@ -113,13 +123,13 @@ else:
         # Plot
         plt.subplot(121)
         plt.cla()
-        plt.title(f"resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz})")
+        plt.title(f"resonator 1 - f_cent: {machine.resonators[0].f_res / u.MHz})")
         plt.xlabel("amplitude pre-factor")
         plt.ylabel("detuning (MHz)")
         plt.pcolor(amps, dfs / u.MHz, A1)
         plt.subplot(122)
         plt.cla()
-        plt.title(f"resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz})")
+        plt.title(f"resonator 2 - f_cent: {machine.resonators[1].f_res / u.MHz})")
         plt.xlabel("amplitude pre-factor")
         plt.ylabel("detuning (MHz)")
         plt.pcolor(amps, dfs / u.MHz, A2)

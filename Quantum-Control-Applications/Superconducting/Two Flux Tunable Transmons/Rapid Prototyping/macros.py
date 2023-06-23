@@ -60,7 +60,7 @@ def qua_declaration(nb_of_qubits):
     Q_st = [declare_stream() for _ in range(nb_of_qubits)]
     # Workaround to manually assign the results variables to the readout elements
     for i in range(nb_of_qubits):
-        assign_variables_to_element(f"rr{i + 1}", I[i], Q[i])
+        assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
 
 

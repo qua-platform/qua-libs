@@ -2,11 +2,17 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.simulate import LoopbackInterface
 from qm import SimulationConfig
 from qm.qua import *
-from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import detrend
 from qualang_tools.loops import from_array
+from quam import QuAM
+from configuration import build_config, u
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -15,7 +21,7 @@ from qualang_tools.loops import from_array
 ## rr1
 # freqs = np.arange(47e6, 51e6, 0.05e6)
 # rr2
-freqs = np.arange(-135e6, -128e6, 0.05e6)
+freqs = np.arange(-300.5e6, 300e6, 1e6)
 
 depletion_time = 1000
 n_avg = 1000
@@ -30,18 +36,18 @@ with program() as res_spec:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, freqs)):
-            update_frequency("rr1", f)
+            update_frequency("rr0", f)
 
             measure(
                 "readout",
-                "rr1",
+                "rr0",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
-            )  # rr1
-            # measure("readout", "rr2", None, dual_demod.full("cos", "out1", "sin", "out2", I),
+            )
+            # measure("readout", "rr1", None, dual_demod.full("cos", "out1", "sin", "out2", I),
             #         dual_demod.full("minus_sin", "out1", "cos", "out2", Q))
-            wait(depletion_time * u.ns, "rr1")
+            wait(depletion_time * u.ns)
             save(I, I_st)
             save(Q, Q_st)
 
@@ -52,11 +58,11 @@ with program() as res_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
 simulate = False
 if simulate:
-    # simulate the test_config QUA program
+    # simulate the QUA program
     job = qmm.simulate(
         config,
         res_spec,
@@ -83,14 +89,18 @@ else:
     idx = np.argmin(np.abs(s))
     # Plot
     fig, ax = plt.subplots(2, 1)
-    ax[0].plot((resonator_LO + freqs) / u.MHz, np.abs(s))
+    ax[0].plot((machine.local_oscillators.readout[0].freq + freqs) / u.MHz, np.abs(s))
     ax[0].set_ylabel("Amp (V)")
-    ax[1].plot((resonator_LO + freqs) / u.MHz, detrend(np.unwrap(np.angle(s))))
+    ax[1].plot((machine.local_oscillators.readout[0].freq + freqs) / u.MHz, detrend(np.unwrap(np.angle(s))))
     ax[1].set_ylabel("Phase (rad)")
     ax[1].set_xlabel("Freq (MHz)")
     ax[1].get_shared_x_axes().join(ax[0], ax[1])
 
     print(f"IF freq at resonance: {freqs[idx]*1e-6} MHz")
-    plt.suptitle(f"resonator: {(resonator_LO + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)")
+    plt.suptitle(f"resonator: {(machine.local_oscillators.readout[0].freq + freqs[idx])/ u.MHz} MHz (IF={freqs[idx]*1e-6} MHz)")
     plt.tight_layout()
     plt.show()
+
+# machine.resonators[0].f_res =
+# machine.resonators[1].f_res =
+# machine._save("quam_bootstrap_state.json")

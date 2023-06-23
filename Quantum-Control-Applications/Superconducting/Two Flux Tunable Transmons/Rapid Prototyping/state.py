@@ -39,7 +39,7 @@ state = {
                 "wiring": 7,
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
-                "flux_zero_frequency": 0.0,
+                "max_frequency_point": 0.0,
             },
         },
         {
@@ -62,7 +62,7 @@ state = {
                 "wiring": 8,
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
-                "flux_zero_frequency": 0.0,
+                "max_frequency_point": 0.0,
             },
         },
     ],
