@@ -35,7 +35,7 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     baker.frame_rotation_2pi(a + z, element)
 ```
 
-## CZ Gate
+## Two-Qubit Gate (CZ)
 The use-case is designed for flux-tunable transmon qubits where the qubit-qubit interaction is realized with a direct capacitive coupling. Utilizing this architecture it is possible to realize a flux-tuned |11>-|02> phase gate. An applied flux pulse that tunes the qubits in and out of the |11>−|02> avoided-crossing leads to a conditional phase accumulation. Leaving the system at the avoided-crossing for a specific time maps the state |11〉back into itself but acquires a minus sign in the process. As the computational states are far from being resonant with other transitions their phases evolve trivially and can be corrected using single qubit phase corrections and thus realize the CZ gate. The *baker.play* statement therefore contains a flux pulse that frequency-tunes transmon *q1* in and out of the avoided crossing |11>-|02> , while the *baker.frame_rotation_2pi* statements correct the single qubit phases.
 
 ```python
@@ -87,12 +87,14 @@ def meas():
     assign(state1, Iq1 > threshold1)
     return state0, state1
 ```
+
 ## Execution and Results
-Using the *TwoQubitRb* class we can now construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. It will generate the gate sequences and find the inverse, using Googles cirq tableau calculations. By setting 
+Using the *TwoQubitRb* class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [*Google Cirq*](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that would reset the qubits to the state |00> in case of unitary circuits.
+
 ```python
 rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=True)
 ```
-The experiment is run by calling the run method of the previously generated program rb.
+The experiment is executed on the OPX by calling the run method of the previously generated program rb.
 
 ```python
 qmm = QuantumMachinesManager('127.0.0.1',8080)
