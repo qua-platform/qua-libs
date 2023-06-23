@@ -1,23 +1,30 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
+from quam import QuAM
+from configuration import build_config, u
 
-n_avg = 100  # Number of averaging loops
-depletion_time = 1000 // 4
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 100  # Number of averaging loops
+depletion_time = 1000 // 4
+
 with program() as raw_trace_prog:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("rr1")
-        measure("readout", "rr1", adc_st)
-        wait(depletion_time, "rr1")
+        reset_phase("rr0")
+        measure("readout", "rr0", adc_st)
+        wait(depletion_time, "rr0")
 
     with stream_processing():
         # Will save average:
@@ -31,7 +38,7 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 qm = qmm.open_qm(config)
 job = qm.execute(raw_trace_prog)
 res_handles = job.result_handles
@@ -49,7 +56,7 @@ signal = savgol_filter(np.abs(adc1_unbiased + 1j * adc2_unbiased), 11, 3)
 # detect arrival of readout signal
 th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
 delay = np.where(signal > th)[0][0]
-delay = np.round(delay / 4) * 4
+delay = int(np.round(delay / 4) * 4)
 dc_offset_i = -adc1_mean
 dc_offset_q = -adc2_mean
 # Plot data
@@ -85,3 +92,8 @@ plt.show()
 print(f"DC offset to add to I: {dc_offset_i:.6f} V")
 print(f"DC offset to add to Q: {dc_offset_q:.6f} V")
 print(f"TOF to add: {delay} ns")
+
+machine.global_parameters.downconversion_offset_I += dc_offset_i
+machine.global_parameters.downconversion_offset_Q += dc_offset_q
+machine.global_parameters.time_of_flight += delay
+# machine._save("quam_bootstrap_state.json")

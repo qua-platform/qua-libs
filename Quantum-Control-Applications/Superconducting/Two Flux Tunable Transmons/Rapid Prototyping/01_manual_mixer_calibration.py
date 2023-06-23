@@ -133,3 +133,5 @@ job = qm.execute(manual_mixer_calib)
 # elif element[0] == "q":
 #     machine.qubits[int(element[1])].xy.mixer_correction.gain = centers[0]
 #     machine.qubits[int(element[1])].xy.mixer_correction.phase = centers[1]
+
+# machine._save("quam_bootstrap_state.json", flat_data=False)

@@ -1,27 +1,32 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from configuration import *
 import matplotlib.pyplot as plt
+from quam import QuAM
+from configuration import build_config, u
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
-
-n_avg = 100  # Number of averaging loops
-depletion_time = 1000 // 4
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+config = build_config(machine)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 100  # Number of averaging loops
+depletion_time = 1000 // 4
+
 with program() as raw_trace_prog:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("rr2")
+        reset_phase("rr0")
         reset_phase("rr1")
         play("readout", "rr1")
-        measure("readout", "rr2", adc_st)
+        measure("readout", "rr0", adc_st)
 
-        wait(depletion_time, "rr2")
+        wait(depletion_time)
 
     with stream_processing():
         # Will save average:
@@ -34,7 +39,9 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
+qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 qm = qmm.open_qm(config)
+
 job = qm.execute(raw_trace_prog)
 res_handles = job.result_handles
 res_handles.wait_for_all_values()
