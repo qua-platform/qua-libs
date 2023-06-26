@@ -93,11 +93,11 @@ job = qm.execute(manual_mixer_calib)
 #
 # print(f"For {element}, I offset is {centers[0]} and Q offset is {centers[1]}")
 # if element[:2] == "rr":
-#     machine.resonators[int(element[2])].mixer_correction.offset_I = centers[0]
-#     machine.resonators[int(element[2])].mixer_correction.offset_Q = centers[1]
+#     machine.resonators[int(element[2])].wiring.mixer_correction.offset_I = centers[0]
+#     machine.resonators[int(element[2])].wiring.mixer_correction.offset_Q = centers[1]
 # elif element[0] == "q":
-#     machine.qubits[int(element[1])].xy.mixer_correction.offset_I = centers[0]
-#     machine.qubits[int(element[1])].xy.mixer_correction.offset_Q = centers[1]
+#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.offset_I = centers[0]
+#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.offset_Q = centers[1]
 
 ##################################
 #  Automatic image cancellation  #
@@ -129,10 +129,10 @@ job = qm.execute(manual_mixer_calib)
 #
 # print(f"For {element}, gain is {centers[0]} and phase is {centers[1]}")
 # if element[:2] == "rr":
-#     machine.resonators[int(element[2])].mixer_correction.gain = centers[0]
-#     machine.resonators[int(element[2])].mixer_correction.phase = centers[1]
+#     machine.resonators[int(element[2])].wiring.mixer_correction.gain = centers[0]
+#     machine.resonators[int(element[2])].wiring.mixer_correction.phase = centers[1]
 # elif element[0] == "q":
-#     machine.qubits[int(element[1])].xy.mixer_correction.gain = centers[0]
-#     machine.qubits[int(element[1])].xy.mixer_correction.phase = centers[1]
+#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.gain = centers[0]
+#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.phase = centers[1]
 
 # machine._save("quam_bootstrap_state.json", flat_data=False)

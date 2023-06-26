@@ -122,12 +122,12 @@ def build_config(quam: QuAM):
         "controllers": {
             "con1": {
                 "analog_outputs": {
-                    1: {"offset": quam.qubits[0].xy.mixer_correction.offset_I},  # I qubit1 XY
-                    2: {"offset": quam.qubits[0].xy.mixer_correction.offset_Q},  # Q qubit1 XY
-                    3: {"offset": quam.qubits[1].xy.mixer_correction.offset_I},  # I qubit2 XY
-                    4: {"offset": quam.qubits[1].xy.mixer_correction.offset_Q},  # Q qubit2 XY
-                    5: {"offset": quam.resonators[0].mixer_correction.offset_I},  # I readout line
-                    6: {"offset": quam.resonators[0].mixer_correction.offset_Q},  # Q readout line
+                    1: {"offset": quam.qubits[0].xy.wiring.mixer_correction.offset_I},  # I qubit1 XY
+                    2: {"offset": quam.qubits[0].xy.wiring.mixer_correction.offset_Q},  # Q qubit1 XY
+                    3: {"offset": quam.qubits[1].xy.wiring.mixer_correction.offset_I},  # I qubit2 XY
+                    4: {"offset": quam.qubits[1].xy.wiring.mixer_correction.offset_Q},  # Q qubit2 XY
+                    5: {"offset": quam.resonators[0].wiring.mixer_correction.offset_I},  # I readout line
+                    6: {"offset": quam.resonators[0].wiring.mixer_correction.offset_Q},  # Q readout line
                     7: {
                         "offset": quam.qubits[0].z.max_frequency_point,
                         "filter": {
@@ -422,7 +422,7 @@ def build_config(quam: QuAM):
                         "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[0].freq),
                         "lo_frequency": quam.local_oscillators.qubits[0].freq,
                         "correction": IQ_imbalance(
-                            quam.qubits[i].xy.mixer_correction.gain, quam.qubits[i].xy.mixer_correction.phase
+                            quam.qubits[i].xy.wiring.mixer_correction.gain, quam.qubits[i].xy.wiring.mixer_correction.phase
                         ),
                     },
                 ]
@@ -434,7 +434,7 @@ def build_config(quam: QuAM):
                         "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[0].freq),
                         "lo_frequency": quam.local_oscillators.readout[0].freq,
                         "correction": IQ_imbalance(
-                            quam.resonators[i].mixer_correction.gain, quam.resonators[i].mixer_correction.phase
+                            quam.resonators[i].wiring.mixer_correction.gain, quam.resonators[i].wiring.mixer_correction.phase
                         ),
                     },
                 ]
