@@ -30,14 +30,8 @@ state = {
                 "wiring": {
                     "I": 1,
                     "Q": 2,
-                    "mixer_correction": {
-                        "offset_I": 0.01,
-                        "offset_Q": -0.041,
-                        "gain": 0.015,
-                        "phase": -0.0236
-                    },
+                    "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
                 },
-
             },
             "z": {
                 "wiring": {
@@ -71,12 +65,7 @@ state = {
                 "wiring": {
                     "I": 3,
                     "Q": 4,
-                    "mixer_correction": {
-                        "offset_I": 0.01,
-                        "offset_Q": -0.041,
-                        "gain": 0.015,
-                        "phase": -0.0236
-                    },
+                    "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
                 },
             },
             "z": {
@@ -112,12 +101,7 @@ state = {
             "wiring": {
                 "I": 5,
                 "Q": 6,
-                "mixer_correction": {
-                    "offset_I": 0.01,
-                    "offset_Q": -0.041,
-                    "gain": 0.015,
-                    "phase": -0.0236
-                },
+                "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.015, "phase": -0.0236},
             },
         },
         {
@@ -130,12 +114,7 @@ state = {
             "wiring": {
                 "I": 5,
                 "Q": 6,
-                "mixer_correction": {
-                    "offset_I": 0.01,
-                    "offset_Q": -0.041,
-                    "gain": 0.019,
-                    "phase": -0.0214
-                },
+                "mixer_correction": {"offset_I": 0.01, "offset_Q": -0.041, "gain": 0.019, "phase": -0.0214},
             },
         },
     ],
