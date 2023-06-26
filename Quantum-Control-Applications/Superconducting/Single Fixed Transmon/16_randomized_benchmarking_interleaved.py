@@ -176,8 +176,11 @@ with program() as rb:
                     align("qubit", "resonator")
                     # Make sure you updated the ge_threshold
                     state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
-
-                    save(state, state_st)
+                    if state_discrimination:
+                        save(state, state_st)
+                    else:
+                        save(I, I_st)
+                        save(Q, Q_st)
                 # always play the random gate followed by the interleaved gate
                 assign(depth_target, depth_target + 2 * delta_clifford)
             assign(sequence_list[depth], saved_gate)
