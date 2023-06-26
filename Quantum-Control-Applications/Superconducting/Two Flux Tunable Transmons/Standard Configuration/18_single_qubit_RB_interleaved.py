@@ -216,12 +216,12 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulate = False
+simulate = True
 
 if simulate:
-    simulation_config = SimulationConfig(duration=10000)  # in clock cycles
+    simulation_config = SimulationConfig(duration=100000)  # in clock cycles
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
 

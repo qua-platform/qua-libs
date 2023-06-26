@@ -207,7 +207,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
 simulate = False
 
