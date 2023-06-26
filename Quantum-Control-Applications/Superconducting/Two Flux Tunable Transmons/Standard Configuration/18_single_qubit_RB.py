@@ -168,16 +168,18 @@ with program() as rb:
             with if_((depth == 1) | (depth == depth_target)):
 
                 with for_(n, 0, n < n_avg, n + 1):
-
                     # Can replace by active reset
                     wait(cooldown_time, f"rr{qubit}")
 
-                    align(f"rr{qubit}", f"q{qubit}_xy")
+                    align()
                     with strict_timing_():
                         play_sequence(sequence_list, depth, qubit)
-                    align(f"q{qubit}_xy", f"rr{qubit}")
+
+                    align()
+                    # Play through the 2nd resonator to be in the same condition as when the readout was optimized
+                    measure("readout", f"rr{qubit%2 + 1}", None)
+                    multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[qubit], weights="rotated_")
                     # Make sure you updated the ge_threshold
-                    multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[1], weights="rotated_")
                     if state_discrimination:
                         assign(state, I > threshold)
                         save(state, state_st)

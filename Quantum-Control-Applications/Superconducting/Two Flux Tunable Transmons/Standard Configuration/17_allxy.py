@@ -69,6 +69,11 @@ def allXY(pulses, qubit, resonator):
         wait(pi_len // 4, qubit)  # or wait if sequence is identity
 
     align(qubit, resonator)
+    # Play through the 2nd resonator to be in the same condition as when the readout was optimized
+    if resonator == "rr1":
+        measure("readout", "rr2", None)
+    elif resonator == "rr2":
+        measure("readout", "rr1", None)
     measure("readout", resonator, None,
             dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_xy),
             dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_xy))
