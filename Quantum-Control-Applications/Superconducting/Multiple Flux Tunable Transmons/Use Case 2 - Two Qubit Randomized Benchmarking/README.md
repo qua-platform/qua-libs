@@ -89,7 +89,7 @@ def meas():
 ```
 
 ## Execution and Results
-Using the *TwoQubitRb* class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [*Google Cirq*](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that resets the qubits to the state |00> in case of perfect gates. Note, that it is possible to provide the √iSWAP or CNOT gate by adding them to the two-qubit dictionary to allow an optimized gate decomposition into Clifford gates. If other native gates are implemented, the decomposition has to be added to [*gates.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/gates.py#L43).
+Using the *TwoQubitRb* class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [*Google Cirq*](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that resets the qubits to the state |00>. When gate errors occur, the inverse gate cannot reset the unitary circuit to the ground state and we will see a fidelity decrease, typically for increasing circuit depth. Note, that it is possible to provide the √iSWAP or CNOT gate by adding them to the two-qubit dictionary to allow an optimized gate decomposition into Clifford gates. If other native gates are implemented, the decomposition has to be added to [*gates.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/gates.py#L43).
 
 ```python
 rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=True)
@@ -100,6 +100,7 @@ Before running the experiment, we have to specify the utilized OPX-cluster by cr
 qmm = QuantumMachinesManager('127.0.0.1',8080)
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=50, num_shots_per_circuit=1000)
 ```
+The qubit states are measured after the inversion of the random circuit, ideally it is |00>. Due to gate errors, we will also measure the states |01>, |10> and |11>. The result object *res* contains the outcome of these measurements 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 # Additional Information
