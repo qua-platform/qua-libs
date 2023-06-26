@@ -11,35 +11,38 @@ from qualang_tools.addons.variables import assign_variables_to_element
 # QUA macros #
 ##############
 
+
 def cz_gate(dc0):
     set_dc_offset("q1_z", "single", -0.10557)
-    wait(189//4, "q1_z")
+    wait(189 // 4, "q1_z")
     # set_dc_offset("q1_z", "single", -0.10342)
     # wait(161//4, "q1_z")
     align()
     set_dc_offset("q1_z", "single", dc0)
-    wait(10) # for flux pulse to relax back completely
+    wait(10)  # for flux pulse to relax back completely
 
 
 def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):
-    """ Perform multiplexed readout on two resonators """
+    """Perform multiplexed readout on two resonators"""
     if type(resonators) is not list:
         resonators = [resonators]
 
-    for ind,res in enumerate(resonators):
-        measure("readout" * amp(amplitude), f"rr{res}", None,
-                dual_demod.full(weights + "cos", "out1", weights + "sin", "out2", I[ind]),
-                dual_demod.full(weights + "minus_sin", "out1", weights + "cos", "out2", Q[ind]))
+    for ind, res in enumerate(resonators):
+        measure(
+            "readout" * amp(amplitude),
+            f"rr{res}",
+            None,
+            dual_demod.full(weights + "cos", "out1", weights + "sin", "out2", I[ind]),
+            dual_demod.full(weights + "minus_sin", "out1", weights + "cos", "out2", Q[ind]),
+        )
 
         if I_st is not None:
             save(I[ind], I_st[ind])
         if Q_st is not None:
             save(Q[ind], Q_st[ind])
 
-        if sequential and ind < len(resonators)-1:
+        if sequential and ind < len(resonators) - 1:
             align(f"rr{res}", f"rr{res+1}")
-
-
 
 
 def qua_declaration(nb_of_qubits):
@@ -61,7 +64,7 @@ def qua_declaration(nb_of_qubits):
     return I, I_st, Q, Q_st, n, n_st
 
 
-def reset_qubit(method:str, qubit:str, resonator:str, **kwargs):
+def reset_qubit(method: str, qubit: str, resonator: str, **kwargs):
     """
     Macro to reset the qubit state.
 
@@ -107,7 +110,7 @@ def reset_qubit(method:str, qubit:str, resonator:str, **kwargs):
 
 
 # Macro for performing active reset until successful for a given number of tries.
-def active_reset(threshold:float, qubit:str, resonator:str, max_tries=1, Ig=None):
+def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=None):
     """Macro for performing active reset until successful for a given number of tries.
 
     :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.

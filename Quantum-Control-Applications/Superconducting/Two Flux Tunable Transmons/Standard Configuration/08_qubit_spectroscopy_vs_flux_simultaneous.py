@@ -34,7 +34,7 @@ with program() as multi_qubit_spec_vs_flux:
 
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping
-                set_dc_offset("q1_z", "single", dc+0.05)
+                set_dc_offset("q1_z", "single", dc + 0.05)
                 set_dc_offset("q2_z", "single", dc)
                 wait(10)  # Wait for the flux to settle
 
@@ -47,7 +47,6 @@ with program() as multi_qubit_spec_vs_flux:
                 # readout
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], amplitude=0.9)
                 wait(cooldown_time * u.ns)
-
 
     with stream_processing():
         n_st.save("n")

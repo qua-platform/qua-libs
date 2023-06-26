@@ -10,8 +10,8 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
 
-dfs = np.arange(- 20e6, + 20e6, 0.5e6)
-dcs = np.arange(-0.5, 0.49, 0.02) # flux
+dfs = np.arange(-20e6, +20e6, 0.5e6)
+dcs = np.arange(-0.5, 0.49, 0.02)  # flux
 
 cooldown_time = 1 * u.us
 n_avg = 1000

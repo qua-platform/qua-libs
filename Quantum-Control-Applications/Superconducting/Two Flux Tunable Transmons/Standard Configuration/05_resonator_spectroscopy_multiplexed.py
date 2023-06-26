@@ -11,7 +11,7 @@ from qualang_tools.results import fetching_tool
 ###################
 # The QUA program #
 ###################
-dfs = np.arange(- 12e6, + 12e6, 0.1e6)
+dfs = np.arange(-12e6, +12e6, 0.1e6)
 n_avg = 1000
 depletion_time = 1000
 
@@ -30,17 +30,26 @@ with program() as multi_res_spec:
 
             # resonator 1
             update_frequency("rr1", df + resonator_IF_q1)
-            measure("readout", "rr1", None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I[0]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]))
+            measure(
+                "readout",
+                "rr1",
+                None,
+                dual_demod.full("cos", "out1", "sin", "out2", I[0]),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
+            )
             save(I[0], I_st[0])
             save(Q[0], Q_st[0])
 
             # align("rr1", "rr2")  # Uncomment to measure sequentially
             # resonator 2
             update_frequency("rr2", df + resonator_IF_q2)
-            measure("readout", "rr2", None, dual_demod.full("cos", "out1", "sin", "out2", I[1]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]))
+            measure(
+                "readout",
+                "rr2",
+                None,
+                dual_demod.full("cos", "out1", "sin", "out2", I[1]),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
+            )
             save(I[1], I_st[1])
             save(Q[1], Q_st[1])
 
@@ -61,8 +70,13 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, multi_res_spec, SimulationConfig(11000,
-    simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2) ], latency=250)))
+    job = qmm.simulate(
+        config,
+        multi_res_spec,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -90,6 +104,7 @@ else:
 
 try:
     from qualang_tools.plot.fitting import Fit
+
     fit = Fit()
     plt.figure()
     plt.subplot(121)
@@ -98,5 +113,5 @@ try:
     plt.subplot(122)
     fit.reflection_resonator_spectroscopy((resonator_IF_q2 + dfs) / u.MHz, np.abs(s2), plot=True)
     plt.xlabel("rr21 IF (MHz)")
-except (Exception, ):
+except (Exception,):
     pass

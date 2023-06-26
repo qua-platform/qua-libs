@@ -74,9 +74,13 @@ def allXY(pulses, qubit, resonator):
         measure("readout", "rr2", None)
     elif resonator == "rr2":
         measure("readout", "rr1", None)
-    measure("readout", resonator, None,
-            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_xy),
-            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_xy))
+    measure(
+        "readout",
+        resonator,
+        None,
+        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_xy),
+        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_xy),
+    )
     return I_xy, Q_xy
 
 
@@ -141,13 +145,13 @@ else:
         progress_counter(n, n_points, start_time=results.start_time)
 
         ax[0].cla()
-        ax[0].plot(-I, '-*')
-        ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, '-')
+        ax[0].plot(-I, "-*")
+        ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
         ax[0].set_ylabel("I quadrature [a.u.]")
         ax[0].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
         ax[1].cla()
-        ax[1].plot(-I, '-*')
-        ax[1].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, '-')
+        ax[1].plot(-I, "-*")
+        ax[1].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
         ax[1].set_ylabel("Q quadrature [a.u.]")
         ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
         plt.suptitle("All XY (n: %s)" % (n))

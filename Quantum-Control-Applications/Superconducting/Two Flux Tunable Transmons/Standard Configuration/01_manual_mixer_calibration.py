@@ -5,7 +5,7 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-element =  "rr1"
+element = "rr1"
 
 with program() as manual_mixer_calib:
     with infinite_loop_():

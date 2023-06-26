@@ -17,7 +17,7 @@ amps = np.arange(0.1, 1.7, 0.01)
 cooldown_time = 1 * u.us
 n_avg = 1000
 N_pi = 10
-N_pi_vec = np.linspace(1, N_pi, N_pi).astype('int')[::2]
+N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
 with program() as rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -30,7 +30,7 @@ with program() as rabi:
         save(n, n_st)
         with for_(*from_array(npi, N_pi_vec)):
             with for_(*from_array(a, amps)):
-            # Loop for error amplification (perform many qubit pulses)
+                # Loop for error amplification (perform many qubit pulses)
                 with for_(count, 0, count < npi, count + 1):
                     play("x180" * amp(a), "q1_xy")
                     # play("x180" * amp(a), "q2_xy")
@@ -43,11 +43,11 @@ with program() as rabi:
     with stream_processing():
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(len(amps)).buffer(np.ceil(N_pi/2)).average().save("I1")
-        Q_st[0].buffer(len(amps)).buffer(np.ceil(N_pi/2)).average().save("Q1")
+        I_st[0].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("I1")
+        Q_st[0].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(len(amps)).buffer(np.ceil(N_pi/2)).average().save("I2")
-        Q_st[1].buffer(len(amps)).buffer(np.ceil(N_pi/2)).average().save("Q2")
+        I_st[1].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("I2")
+        Q_st[1].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("Q2")
 
 #####################################
 #  Open Communication with the QOP  #

@@ -66,7 +66,7 @@ else:
     qm = qmm.open_qm(config)
     job = qm.execute(ramsey)
 
-    fig, ax = plt.subplots(2,2)
+    fig, ax = plt.subplots(2, 2)
     interrupt_on_close(fig, job)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
 
@@ -110,5 +110,5 @@ try:
     plt.subplot(224)
     fit.ramsey(4 * idle_times * 1e-9, Q2, plot=True)
     plt.xlabel("idle_times (ns)")
-except (Exception, ):
+except (Exception,):
     pass

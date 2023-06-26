@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
@@ -49,7 +48,7 @@ with program() as iq_blobs:
             save(D, D_st)
 
     with stream_processing():
-        D_st.buffer(len(dfs)).average().save('D')
+        D_st.buffer(len(dfs)).average().save("D")
 
 #####################################
 #  Open Communication with the QOP  #
