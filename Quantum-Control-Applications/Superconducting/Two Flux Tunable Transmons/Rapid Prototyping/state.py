@@ -36,7 +36,7 @@ state = {
             "z": {
                 "wiring": {
                     "port": 7,
-                    "filter": {"iir_taps": [0.0], "fir_taps": [0.0]},
+                    "filter": {"iir_taps": [], "fir_taps": []},
                 },
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
@@ -71,7 +71,7 @@ state = {
             "z": {
                 "wiring": {
                     "port": 8,
-                    "filter": {"iir_taps": [0.0], "fir_taps": [0.0]},
+                    "filter": {"iir_taps": [], "fir_taps": []},
                 },
                 "flux_pulse_length": 16,
                 "flux_pulse_amp": 0.175,
