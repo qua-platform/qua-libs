@@ -1,7 +1,3 @@
-"""
-allxy.py: Performs an ALLXY experiment to correct for gates imperfections
-(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -11,6 +7,11 @@ from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
+
+"""
+allxy.py: Performs an ALLXY experiment to correct for gates imperfections
+(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
+"""
 
 ##############################
 # Program-specific variables #

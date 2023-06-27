@@ -1,6 +1,3 @@
-"""
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -13,6 +10,9 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
 
+"""
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
+"""
 
 ##############################
 # Program-specific variables #
