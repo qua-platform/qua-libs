@@ -117,7 +117,7 @@ try:
     fit = Fit()
     plt.figure()
     plt.subplot(121)
-    res_1 = fit.reflection_resonator_spectroscopy((machine.resonators[1].f_res + dfs) / u.MHz, np.abs(s1), plot=True)
+    res_1 = fit.reflection_resonator_spectroscopy((machine.resonators[0].f_res + dfs) / u.MHz, np.abs(s1), plot=True)
     plt.xlabel("rr1 IF (MHz)")
     machine.resonators[0].f_res = res_1["f"] * u.MHz
     machine.resonators[0].f_opt = machine.resonators[0].f_res
