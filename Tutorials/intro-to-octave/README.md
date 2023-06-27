@@ -20,7 +20,36 @@ It is organized in the following sections:
 
 ### `hello_octave.py` 
 This file shows an example of how to run a program with a setup contains OPX + octave. It uses the `configuration.py` file and `set_octave.py`  file for all the octave commands.
-
+   1. In `Set octave configuration` section, you initiate a data class `OctavesSettings` and set the octave parameters:
+      1. name - the name of the octave, for example "octave1"
+      2. con - the name of the controller that is connected to this octave, for example "con1"
+      3. ip - the ip of the octave, for example "192.168.88.50"
+      4. port - the port of the octave, for example 50.
+      5. clock - the clock settings of the octave. Can be "Internal", "External_10MHz", "External_100MHz", "External_1000MHz". 
+         * Note: the default is "Internal".
+   2. In `Octave settings` section, you initiate a data class "ElementsSettings" and define all the parameters for the up-converter and down-converter modules:
+      1. name - element's name as defined in the configuration, for example "qe1"
+      2. LO_source - LO source for the up-converter module. Cen be "Internal", "LO1", "LO2", "LO3", "LO4", "LO5".
+         * Note: the default is "Internal".
+      3. gain - octave's gain. The default is 0
+      4. switch_mode -  fast switch's mode. Can be "on", "trig_normal", "trig_inverse", "off".
+         * Note: the default is "on".
+      5. RF_in_port - list of the octave and the port of the down converter module. for example ["octave1", 1]. 
+      6. Down_convert_LO_source - LO source for the down-converter module. Cen be "Internal"
+         * Note: The default for down converter 1 is "Internal".
+         * Note: There is no internal LO source for down converter 2. If one wants to use down converter 2, inputting a signal to Dmd2LO is needed.
+      7. IF_mode - the mode of the IF module. Can be "direct", "envelope", "mixer".
+         * Note: The default is "direct".
+      * Note: if you want to define a different port mapping that is not the default one, you need to add 
+ 
+      * Note: If you don't initiate this class for an element used in the program, the following parameters will be set:
+        * LO_source - "Internal"
+        * gain - 0
+        * switch_mode - "on"
+        * RF_in_port - 1 for element with analog outputs 1,2 and 2 for element with analog outputs 3,4.
+        * Down_convert_LO_source - "Internal" for down converter 1 (that RF_in_port 1 is using), "Dmd2LO" for down converter 2 (that RF_in_port 2 is using).
+        * IF_mode - "direct"
+        
 ### `configuration.py` 
 This file contains the config dictionary that the `hello_octave.py` file uses.
 Note that while using your configuration file, there are two things to pay attention to:
@@ -39,25 +68,14 @@ Let's talk about each function separately:
    1. Creates a `calibration_db.json` file where the calibration parameters will be updated
    2. Adds the octave devices to the octave_config object
    3. Sets the port mapping for each OPX-octave pair
-   
-   * Note: the default is to use only one octave. If you have more than one use the flag `more_than_one_octave=True`, enter the `set_octave.py` file and modify the relevant parameters under this flag. 
 
 
 3. `octave_settings` function:
-   1. Sets the clock. The default is internal. 
-      1. If you want to use an external, use the flag `external_clock=True` and set the relevant external clock frequency.
-         2. If you want to use the clock from the OPT use the `ClockType.Buffered`.
-      * Note: the above is related to configuring clock in. The Octave's clock out is fixed to 1GHz. 
+   1. Sets the octave's clock in.
+      * Note: The Octave's clock out is fixed to 1GHz. 
    2. Sets the up-converters modules.
-      1. LO  - The default LO source is internal. If you want to use an external LO you need to enter `set_octave.py` file and change the LO to the relevant external one (LO1, LO2, LO3, LO4 or LO5)
-         Note: setting the LO frequency may be done only if LO source is internal.
-      2. Gain - The default is zero gain. You can change it by entering `set_octave.py` file and modify the relevant command
-      3. Trigger - The default is on. You can change it by entering `set_octave.py` file and modify the relevant command
-        * Note: the 4 options for the trigger are: on, off, trig_normal and trig_inverse. 
+      * Note: the 4 options for the trigger are: on, off, trig_normal and trig_inverse. 
    3. Sets the down-converters modules
-      1. The default is: 
-         1. connecting RF1 -> RF1in, RF2 -> RF2in
-         2. The LO source for down converter module 1 is internal. You can change it by entering `set_octave.py` file and modify the relevant command.
-      2. If using down-converter module 2 don't forget to connect the LO to Dmd2LO in the back panel
+      * Note: If using down-converter module 2 don't forget to connect the LO to Dmd2LO in the back panel
    4. Calibration:
-      1. It is set to True by default
+      * Note: It is set to True by default

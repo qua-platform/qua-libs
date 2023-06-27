@@ -9,13 +9,38 @@ from qm.octave import QmOctaveConfig
 import re
 from qm.elements.element_with_octave import ElementWithOctave
 from qm.octave.octave_manager import ClockMode
+from dataclasses import dataclass, field
+from typing import Optional, Dict
 
 
-def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=None):
+class RegularClass:
+    pass
+
+
+@dataclass
+class OctavesSettings:
+    """Class for keeping track of OctavesSettings in inventory."""
+    name: Optional[str] = None
+    con: Optional[str] = None
+    ip: Optional[str] = None
+    port: Optional[int] = None
+    clock: str = "Internal"
+
+@dataclass
+class ElementsSettings:
+    """Class for keeping track of ElementsSettings in inventory."""
+    name: Optional[str] = None
+    LO_source: str = "Internal"
+    gain: int = 0
+    switch_mode: str = "on"
+    RF_in_port: Optional[int] = None
+    Down_convert_LO_source: Optional[list] = None
+    IF_mode: Optional[str] = "direct"
+
+def get_elements_used_in_octave(qm=None, config=None, prog=None):
     """
     Extract the elements used in program that are connected to the octave
     :param qm: Quantum Machine object
-    :param octave_config: octave configuration
     :param prog: QUA program object
     :return: a list of elements which are used in the program and are connected to the octave
     """
@@ -24,8 +49,6 @@ def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=N
         raise "Can not find qm object"
     if config is None:
         raise "Can not find configuration"
-    if octave_config is None:
-        raise "Can not find octave configuration"
     if prog is None:
         raise "Can not find QUA program object"
 
@@ -48,74 +71,34 @@ def get_elements_used_in_octave(qm=None, config=None, octave_config=None, prog=N
     return np.array(elements_used_in_octave)
 
 
-def octave_configuration(default_port_mapping=True, more_than_one_octave=False, octave_ip=None, octave_port=None):
+def octave_configuration(octaves_settings=None, port_mapping=True):
     """
     Initiate octave_config class, set the calibration file, add octaves info and set the port mapping between the OPX and the octaves.
 
-    :param default_port_mapping: When set to True (default) the default port mapping will be set
-    :param more_than_one_octave: When set to False (default) octave_config object will get information for a single octave
-    :param octave_ip: IP address of the Octave (usually it is the IP address of the router to which the Octave is connected)
-    :param octave_port: Port of the Octave (usually 50 for octave1, 51 for octave2...)
-    :return: octave_config object
+    :param port_mapping: When set to True (default) the default port mapping will be set
+    :param octaves_settings: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings
     """
-    if octave_ip is None:
-        raise "Please insert the octave ip"
-    if octave_port is None:
-        raise "Please insert the octave port"
-
     octave_config = QmOctaveConfig()
-    octave_config.set_calibration_db(
-        os.getcwd()
-    )  # Saves the `calibration_db` file in the current working directory. Can change this by giving a specific path
-    octave_config.add_device_info("octave1", octave_ip, octave_port)
-
-    ##########################################################
-    # define the port mapping between the OPX and the octave #
-    ##########################################################
-    if default_port_mapping:
-        octave_config.set_opx_octave_mapping([("con1", "octave1")])
-    else:
-        portmap = {
-            ("con1", 1): ("octave1", "I1"),
-            ("con1", 2): ("octave1", "Q1"),
-            ("con1", 3): ("octave1", "I2"),
-            ("con1", 4): ("octave1", "Q2"),
-            ("con1", 5): ("octave1", "I3"),
-            ("con1", 6): ("octave1", "Q3"),
-            ("con1", 7): ("octave1", "I4"),
-            ("con1", 8): ("octave1", "Q4"),
-            ("con1", 9): ("octave1", "I5"),
-            ("con1", 10): ("octave1", "Q5"),
-        }
-        octave_config.add_opx_octave_port_mapping(portmap)
-    #################################################
-    # add the other octaves to octave_config object #
-    #################################################
-    if more_than_one_octave:
-        octave_2_port = 51  # Insert the relevant port
-        octave_config.add_device_info("octave2", octave_ip, octave_2_port)  # if having more than one octave
-        default_port_mapping_octave_2 = True
-        if default_port_mapping_octave_2:
-            octave_config.set_opx_octave_mapping([("con2", "octave2")])
+    octave_config.set_calibration_db(os.getcwd())
+    for i in range(len(octaves_settings)):
+        if octaves_settings[i].name is None:
+            raise TypeError(f"Please insert the octave name for the {i}'s octave")
+        if octaves_settings[i].con is None:
+            raise TypeError(f"Please insert the controller that is connected to the {i}'s octave")
+        if octaves_settings[i].ip is None:
+            raise TypeError(f"Please insert the octave ip for the {i}'s octave")
+        if octaves_settings[i].port is None:
+            raise TypeError(f"Please insert the octave port for the {i}'s octave")
+        octave_config.add_device_info(octaves_settings[i].name, octaves_settings[i].ip, octaves_settings[i].port)
+        if port_mapping == True:
+            octave_config.set_opx_octave_mapping([(octaves_settings[i].con, octaves_settings[i].name)])
         else:
-            portmap = {
-                ("con1", 1): ("octave2", "I1"),
-                ("con1", 2): ("octave2", "Q1"),
-                ("con1", 3): ("octave2", "I2"),
-                ("con1", 4): ("octave2", "Q2"),
-                ("con1", 5): ("octave2", "I3"),
-                ("con1", 6): ("octave2", "Q3"),
-                ("con1", 7): ("octave2", "I4"),
-                ("con1", 8): ("octave2", "Q4"),
-                ("con1", 9): ("octave2", "I5"),
-                ("con1", 10): ("octave2", "Q5"),
-            }
-            octave_config.add_opx_octave_port_mapping(portmap)
+            port_mapping = port_mapping[i]
+            octave_config.add_opx_octave_port_mapping(port_mapping)
 
     return octave_config
 
-
-def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, calibration=True):
+def octave_settings(qmm, qm, prog, config,  octaves_settings, elements_settings=None, calibration=True):
     """
     Set all the octave settings including: clock, up-converters modules, down-converters modules and calibration.
     The default parameters are internal LO for the up-conversion modules with a 0dB gain and RFOutputMode.on.
@@ -125,66 +108,156 @@ def octave_settings(qmm, qm, prog, config, octave_config, external_clock=False, 
     :param qm: Quantum Machine object
     :param prog: The QUA program
     :param config: The QM configuration
-    :param octave_config: octave_config object
-    :param external_clock: When False (default) sets the clock to be internal.
+    :param octaves_settings: ojects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings
+    :param elements_settings: objects that holds the information about the up-converter and down-converter parameters
     :param calibration: When True (default) calibrates all the elements in the program
     """
     #####################
     # setting the clock #
     #####################
-    if external_clock:
-        # Change to the relevant external frequency
-        qm.octave.set_clock("octave1", clock_mode=ClockMode.External_10MHz)
-    else:
-        qm.octave.set_clock("octave1", clock_mode=ClockMode.Internal)
+    for i in range(len(octaves_settings)):
+        if octaves_settings[i].clock == "External_10MHz":
+            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_10MHz)
+        elif octaves_settings[i].clock == "External_100MHz":
+            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_100MHz)
+        elif octaves_settings[i].clock == "External_1000MHz":
+            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_1000MHz)
+        else:
+            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.Internal)
 
     ##############################################################
     # extracting octave elements and their LO and IF frequencies #
     ##############################################################
-    octave_elements = get_elements_used_in_octave(qm=qm, config=config, octave_config=octave_config, prog=prog)
+    octave_elements = get_elements_used_in_octave(qm=qm, config=config, prog=prog)
     lo_freq = [config["elements"][octave_elements[i]]["mixInputs"]["lo_frequency"] for i in range(len(octave_elements))]
 
+    if elements_settings is None:
+        elements_settings = []
     #################################
     # setting up-converters modules #
     #################################
     for i in range(len(octave_elements)):
-        qm.octave.set_lo_source(octave_elements[i], OctaveLOSource.Internal)  # Can change to external
-        qm.octave.set_lo_frequency(octave_elements[i], lo_freq[i])
-        qm.octave.set_rf_output_gain(octave_elements[i], 0)
-        # Set the behaviour of the RF switch to be on. Can change it to : off, trig_normal, trig_inverse
-        qm.octave.set_rf_output_mode(octave_elements[i], RFOutputMode.on)
+        if octave_elements[i] not in [elements_settings[j].name for j in range(len(elements_settings))]:
+            qm.octave.set_lo_source(octave_elements[i], OctaveLOSource.Internal)  # Can change to external
+            qm.octave.set_lo_frequency(octave_elements[i], lo_freq[i])
+            qm.octave.set_rf_output_gain(octave_elements[i], 0)
+            qm.octave.set_rf_output_mode(octave_elements[i], RFOutputMode.on)
+        else:
+            pass
+    for i in range(len(elements_settings)):
+        if elements_settings[i].LO_source=="LO1":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.LO1)
+        elif elements_settings[i].LO_source=="LO2":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.LO2)
+        elif elements_settings[i].LO_source=="LO3":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.LO3)
+        elif elements_settings[i].LO_source=="LO4":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.LO4)
+        elif elements_settings[i].LO_source=="LO5":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.LO5)
+        elif elements_settings[i].LO_source=="Internal":
+            qm.octave.set_lo_source(elements_settings[i].name, OctaveLOSource.Internal)
+            qm.octave.set_lo_frequency(elements_settings[i].name,
+                                       config["elements"][elements_settings[i].name]["mixInputs"]["lo_frequency"])
+        else:
+            raise TypeError(f"Please insert LO source for element {elements_settings[i].name}")
 
+        qm.octave.set_rf_output_gain(elements_settings[i].name, elements_settings[i].gain)
+
+        if elements_settings[i].switch_mode=="trig_normal":
+            qm.octave.set_rf_output_mode(elements_settings[i].name, RFOutputMode.trig_normal)
+        elif elements_settings[i].switch_mode=="trig_inverse":
+            qm.octave.set_rf_output_mode(elements_settings[i].name, RFOutputMode.trig_inverse)
+        elif elements_settings[i].switch_mode=="off":
+            qm.octave.set_rf_output_mode(elements_settings[i].name, RFOutputMode.off)
+        else:
+            qm.octave.set_rf_output_mode(elements_settings[i].name, RFOutputMode.on)
     ###################################
     # setting down-converters modules #
     ###################################
-    for element_name in octave_elements:
-        element = qm.elements[element_name]
-        if isinstance(element, ElementWithOctave):
-            # This assumes that: FR1in measures RF1's output (which is connected to Analog output 1 and 2), FR2in measures RF2's output (which is connected to Analog output 3 and 4)
-            if (element.q_port.number == 1 or element.q_port.number == 2) and "outputs" in config["elements"][
-                element_name
-            ].keys():
-                qm.octave.set_qua_element_octave_rf_in_port(element_name, "octave1", 1)
-                qm.octave.set_downconversion(
-                    element_name, lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
-                )
-            if (element.q_port.number == 3 or element.q_port.number == 4) and "outputs" in config["elements"][
-                element_name
-            ].keys():
-                qm.octave.set_qua_element_octave_rf_in_port(element_name, "octave1", 2)
-                qm.octave.set_downconversion(
-                    element_name, lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
-                )  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
+    for i in range(len(octave_elements)):
+        if octave_elements[i] not in [elements_settings[j].name for j in range(len(elements_settings))]:
+            for element_name in octave_elements:
+                element = qm.elements[element_name]
+                if isinstance(element, ElementWithOctave):
+                    # This assumes that: FR1in measures RF1's output (which is connected to Analog output 1 and 2), FR2in measures RF2's output (which is connected to Analog output 3 and 4)
+                    if (element.q_port.number == 1 or element.q_port.number == 2) and "outputs" in config["elements"][
+                        element_name
+                    ].keys():
+                        qm.octave.set_qua_element_octave_rf_in_port(element_name, "octave1", 1)
+                        qm.octave.set_downconversion(
+                            element_name, lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
+                        )
+                    if (element.q_port.number == 3 or element.q_port.number == 4) and "outputs" in config["elements"][
+                        element_name
+                    ].keys():
+                        qm.octave.set_qua_element_octave_rf_in_port(element_name, "octave1", 2)
+                        qm.octave.set_downconversion(
+                            element_name, lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
+                        )  # Don't forget to connect external LO to Dmd2LO or Synth2 from back panel
+        else:
+            pass
+    for i in range(len(elements_settings)):
+        if elements_settings[i].RF_in_port[1] == 1:
+            qm.octave.set_qua_element_octave_rf_in_port(elements_settings[i].name,
+                                                        elements_settings[i].RF_in_port[0], 1)
+            if elements_settings[i].Down_convert_LO_source == "Internal":
+                if elements_settings[i].IF_mode == "direct":
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct,
+                                                 if_mode_q=IFMode.direct)
+
+                elif elements_settings[i].IF_mode == "envelope":
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.envelope,
+                                                 if_mode_q=IFMode.envelope)
+                else:
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.mixer,
+                                                 if_mode_q=IFMode.mixer)
+            elif elements_settings[i].Down_convert_LO_source == "Dmd1LO":
+                if elements_settings[i].IF_mode == "direct":
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Dmd1LO, if_mode_i=IFMode.direct,
+                                                 if_mode_q=IFMode.direct)
+                elif elements_settings[i].IF_mode == "envelope":
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Dmd1LO, if_mode_i=IFMode.envelope,
+                                                 if_mode_q=IFMode.envelope)
+                else:
+                    qm.octave.set_downconversion(elements_settings[i].name,
+                                                 lo_source=RFInputLOSource.Dmd1LO, if_mode_i=IFMode.mixer,
+                                                 if_mode_q=IFMode.mixer)
+            else:
+                raise TypeError(f"Please insert Down converter LO for element {elements_settings[i].name}")
+        elif elements_settings[i].RF_in_port[1] == 2:
+            qm.octave.set_qua_element_octave_rf_in_port(elements_settings[i].name, elements_settings[i].RF_in_port[0], 2)
+            if elements_settings[i].IF_mode == "direct":
+                qm.octave.set_downconversion(elements_settings[i].name,
+                                             lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct,
+                                             if_mode_q=IFMode.direct)
+            elif elements_settings[i].IF_mode == "envelope":
+                qm.octave.set_downconversion(elements_settings[i].name,
+                                             lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.envelope,
+                                             if_mode_q=IFMode.envelope)
+            else:
+                qm.octave.set_downconversion(elements_settings[i].name,
+                                             lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.mixer,
+                                             if_mode_q=IFMode.mixer)
 
     #########################################################################
     # calibrate all the elements in the program that are used by the octave #
     #########################################################################
     if calibration:
-        if_freq = [
-            config["elements"][octave_elements[i]]["intermediate_frequency"] for i in range(len(octave_elements))
-        ]
         for i in range(len(octave_elements)):
-            print("-" * 37 + f" Calibrates {octave_elements[i]}")
-            qm.octave.calibrate_element(octave_elements[i], [(float(lo_freq[i]), float(if_freq[i]))])
+            if octave_elements[i] not in [elements_settings[j].name for j in range(len(elements_settings))]:
+                print("-" * 37 + f" Calibrates {octave_elements[i]}")
+                qm.octave.calibrate_element(octave_elements[i], [(float(config["elements"][octave_elements[i]]["mixInputs"]["lo_frequency"]), float(config["elements"][octave_elements[i]]["intermediate_frequency"]))])
+                qm = qmm.open_qm(config)
+            else:
+                pass
+        for i in range(len(elements_settings)):
+            print("-" * 37 + f" Calibrates {elements_settings[i].name}")
+            qm.octave.calibrate_element(elements_settings[i].name, [(float(config["elements"][elements_settings[i].name]["mixInputs"]["lo_frequency"]), float(config["elements"][elements_settings[i].name]["intermediate_frequency"]))])
             qm = qmm.open_qm(config)
     return qmm, qm
