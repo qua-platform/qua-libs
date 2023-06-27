@@ -1,9 +1,7 @@
 import quam_sdk.constructor
 
-# system state is high level abstraction of the experiment
-# written in the language of physicists
-# structure is almost completely free
-
+# The system state is a high level abstraction of the experiment written in the language of physicists
+# The structure is almost completely free
 state = {
     "network": {"qop_ip": "172.16.33.100", "qop_port": 83, "save_dir": ""},
     "local_oscillators": {
@@ -13,10 +11,6 @@ state = {
         "readout": [
             {"freq": 6.5e9, "power": 15},
         ],
-    },
-    "crosstalk": {
-        "flux": {"dc": [[0.0, 0.0], [0.0, 0.0]], "fast_flux": [[0.0, 0.0], [0.0, 0.0]]},
-        "rf": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
     },
     "qubits": [
         {
@@ -118,6 +112,10 @@ state = {
             },
         },
     ],
+    "crosstalk": {
+        "flux": {"dc": [[0.0, 0.0], [0.0, 0.0]], "fast_flux": [[0.0, 0.0], [0.0, 0.0]]},
+        "rf": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+    },
     "global_parameters": {
         "time_of_flight": 24,
         "downconversion_offset_I": 0.0,
@@ -125,6 +123,5 @@ state = {
     },
 }
 
-# Now we use QuAM SDK
-
+# Now we use QuAM SDK to construct the Python class out of the state
 quam_sdk.constructor.quamConstructor(state)
