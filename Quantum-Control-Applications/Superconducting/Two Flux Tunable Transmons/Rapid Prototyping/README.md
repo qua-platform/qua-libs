@@ -15,15 +15,16 @@ While these can serve as a template for new labs or for new experiments, certain
 Use with care.
 
 ## QuAM and Rapid Prototyping
-The goal of the rapid prototyping is to give users the possibility to define their own structure (JSON file) to store the different parameters describing the state of the quantum system (LO and IF frequencies, wiring, flux points, pulse amplitudes and durations...).
-Additionally, the QuAM SDK creates a python class out of the user-defined JSON structure that can then be used in the calibration scripts to set and get the qubit parameters.
+The goal of the rapid prototyping is to give users the possibility to define their own structure (JSON file) to store 
+the different parameters describing the state of the quantum system (LO and IF frequencies, wiring, flux points, 
+pulse amplitudes and durations...).
+Additionally, the QuAM SDK creates a python class out of the user-defined JSON structure that can then be used in the 
+calibration scripts to set and get the qubit parameters.
 
-The configuration dictionary that the OPX expects is then built using a one-to-one mapping between the config fields and the values from the user-defined structure as shown below.
+The configuration dictionary that the OPX expects is then built using a one-to-one mapping between the config fields and 
+the values from the user-defined structure as shown below.
 
-
-
-
-The first step is to install the QuAM SDK using
+A step-by-step [tutorial](../../../../Tutorials/intro-to-quam-rapid-prototyping/README.md) details the basics of this framework and shows how to create your own QuAM (Quantum Abstract Machine).
 
 
 ## Basic Files
@@ -69,14 +70,3 @@ fidelity.
 21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
     * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
     * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-    
-
-## Use Cases
-
-These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
-a specific setup and would require changes to run on different setups. Current use-cases:
-
-* [Two qubit gate optimization with cryoscope](./Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
-The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse 
-distortion using Cryoscope and the OPX IIR and FIR filters..
-
