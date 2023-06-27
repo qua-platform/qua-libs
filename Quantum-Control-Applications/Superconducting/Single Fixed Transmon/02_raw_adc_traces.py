@@ -1,6 +1,3 @@
-"""
-raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2,
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

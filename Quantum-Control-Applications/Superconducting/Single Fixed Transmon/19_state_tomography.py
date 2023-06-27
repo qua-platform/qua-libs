@@ -1,6 +1,3 @@
-"""
-A template to perform state tomography
-"""
 from qm import SimulationConfig
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

@@ -1,6 +1,3 @@
-"""
-wigner_tomography.py: A template for performing Wigner tomography using a superconducting qubit
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

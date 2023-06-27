@@ -1,15 +1,16 @@
-"""
-An experiment to calibrate the DRAG coefficient: drag_coef
-This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from macros import single_measurement
+from macros import readout_macro
 from qualang_tools.loops import from_array
+
+"""
+An experiment to calibrate the DRAG coefficient: drag_coef
+This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
+"""
 
 ###################
 # The QUA program #
@@ -52,7 +53,7 @@ with program() as drag:
                     play("x180" * amp(1, 0, 0, a), "qubit")
                     play("x180" * amp(-1, 0, 0, -a), "qubit")
             align("qubit", "resonator")
-            state, I, Q = single_measurement(threshold=ge_threshold, state=state, I=I, Q=Q)
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
             save(I, I_st)
             save(Q, Q_st)
             save(state, state_st)

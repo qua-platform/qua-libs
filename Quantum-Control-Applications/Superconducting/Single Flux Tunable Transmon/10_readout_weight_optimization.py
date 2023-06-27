@@ -1,6 +1,3 @@
-"""
-optimal_weights.py: Optimal weights for the readout pulse
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

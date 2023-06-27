@@ -1,6 +1,3 @@
-"""
-resonator_spec.py: performs the 1D resonator spectroscopy
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

@@ -1,7 +1,3 @@
-"""
-An experiment to calibrate the AC stark shift using DRAG waveforms
-This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -9,6 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from macros import readout_macro
+
+"""
+An experiment to calibrate the AC stark shift using DRAG waveforms
+This protocol is described in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
+"""
 
 ###################
 # The QUA program #

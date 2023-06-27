@@ -1,6 +1,3 @@
-"""
-qubit_spec_vs_flux.py: performs the 2D qubit spectroscopy versus flux
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

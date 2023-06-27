@@ -1,6 +1,3 @@
-"""
-time_rabi.py: A Rabi experiment sweeping the duration of the MW pulse
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

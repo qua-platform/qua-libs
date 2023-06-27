@@ -1,6 +1,3 @@
-"""
-readout_duration_optimization.py: optimal readout duration that maximizes the SNR between ground and excited
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

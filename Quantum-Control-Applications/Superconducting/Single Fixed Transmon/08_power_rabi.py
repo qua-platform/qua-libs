@@ -1,6 +1,3 @@
-"""
-power_rabi.py: A Rabi experiment sweeping the amplitude of the MW pulse
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

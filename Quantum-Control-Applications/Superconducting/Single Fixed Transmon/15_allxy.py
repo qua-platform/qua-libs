@@ -1,7 +1,3 @@
-"""
-allxy.py: Performs an ALLXY experiment to correct for gates imperfections
-(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -17,6 +13,7 @@ n_points = 1e6
 cooldown_time = 5 * qubit_T1 // 4
 
 # All XY sequences. The sequence names must match corresponding operation in the config
+# (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
 sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pdf-optimized_driving_0.pdf
     ("I", "I"),
     ("x180", "x180"),

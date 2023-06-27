@@ -1,7 +1,3 @@
-"""
-allxy.py: Performs an ALLXY experiment to correct for gates imperfections
-(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -9,6 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 
+"""
+Performs an ALLXY experiment to estimate gates imperfection
+(see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
+"""
 
 ##############################
 # Program-specific variables #

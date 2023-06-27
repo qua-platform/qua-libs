@@ -1,6 +1,3 @@
-"""
-resonator_spec_vs_amplitude.py: performs the 2D resonator spectroscopy vs readout amplitude.
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

@@ -1,6 +1,3 @@
-"""
-QUA script to optimize the readout frequency
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

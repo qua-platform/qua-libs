@@ -1,7 +1,3 @@
-"""
-calibrations.py: template for easily performing single qubit calibration protocols.
-"""
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 from qualang_tools.addons.calibration.calibrations import QUA_calibrations

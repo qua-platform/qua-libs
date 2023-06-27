@@ -1,6 +1,3 @@
-"""
-qubit_spec.py: performs a 1D frequency sweep on the qubit, measuring the resonator
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

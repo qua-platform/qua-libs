@@ -1,16 +1,17 @@
-"""
-An experiment to calibrate the DRAG coefficient: drag_coef
-This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
-This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from macros import single_measurement
+from macros import readout_macro
 from qualang_tools.loops import from_array
+
+"""
+An experiment to calibrate the DRAG coefficient: drag_coef
+This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
+This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
+"""
 
 ###################
 # The QUA program #
@@ -47,7 +48,7 @@ with program() as drag:
             play("x180" * amp(1, 0, 0, a), "qubit")
             play("y90" * amp(a, 0, 0, 1), "qubit")
             align("qubit", "resonator")
-            state, I, Q = single_measurement(threshold=ge_threshold, state=state, I=I, Q=Q)
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
             save(I, I1_st)
             save(Q, Q1_st)
             save(state, state1_st)
@@ -58,7 +59,7 @@ with program() as drag:
             play("y180" * amp(a, 0, 0, 1), "qubit")
             play("x90" * amp(1, 0, 0, a), "qubit")
             align("qubit", "resonator")
-            state, I, Q = single_measurement(threshold=ge_threshold, state=state, I=I, Q=Q)
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
             save(I, I2_st)
             save(Q, Q2_st)
             save(state, state2_st)

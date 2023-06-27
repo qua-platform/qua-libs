@@ -1,6 +1,3 @@
-"""
-ramsey.py: Measures T2* using detuning
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

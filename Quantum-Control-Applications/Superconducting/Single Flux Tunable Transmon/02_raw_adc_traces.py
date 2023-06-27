@@ -1,7 +1,3 @@
-"""
-raw_adc_traces.py: template for acquiring raw ADC traces from inputs 1 and 2
-"""
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

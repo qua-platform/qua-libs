@@ -1,6 +1,3 @@
-"""
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -11,6 +8,7 @@ import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 
+# Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
 
 ##############################
 # Program-specific variables #

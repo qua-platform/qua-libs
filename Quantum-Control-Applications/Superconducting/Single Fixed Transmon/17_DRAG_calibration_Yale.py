@@ -1,8 +1,3 @@
-"""
-An experiment to calibrate the DRAG coefficient: drag_coef
-This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
-This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
@@ -11,6 +6,12 @@ import numpy as np
 from qm import SimulationConfig
 from macros import readout_macro
 from qualang_tools.loops import from_array
+
+"""
+An experiment to calibrate the DRAG coefficient: drag_coef
+This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
+This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
+"""
 
 ###################
 # The QUA program #

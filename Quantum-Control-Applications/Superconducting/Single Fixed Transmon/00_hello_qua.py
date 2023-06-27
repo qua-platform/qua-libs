@@ -1,6 +1,3 @@
-"""
-hello_qua.py: template for basic qua program demonstration
-"""
 import time
 from qm import SimulationConfig
 from qm.qua import *

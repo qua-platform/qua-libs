@@ -1,6 +1,3 @@
-"""
-T1.py: Measures T1
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

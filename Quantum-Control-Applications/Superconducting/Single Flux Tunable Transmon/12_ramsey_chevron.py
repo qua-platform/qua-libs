@@ -1,6 +1,3 @@
-"""
-ramsey_chevron.py: template for acquiring the 2D (idle time & pulse frequency sweeps) Ramsey oscillations
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

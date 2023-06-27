@@ -1,7 +1,3 @@
-"""
-cryoscope_amplitude_calibration.py: template for performing the detuning vs flux pulse amplitude calibration prior to Cryoscope
-protocol.
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

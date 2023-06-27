@@ -1,6 +1,3 @@
-"""
-resonator_spec_g_e.py: template for performing the 1D resonator spectroscopy for a ground and excited qubit (IO values)
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

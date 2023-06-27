@@ -1,7 +1,3 @@
-"""
-hello_qua.py: template for basic qua program demonstration
-"""
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface

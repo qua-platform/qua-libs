@@ -1,6 +1,3 @@
-"""
-ramsey_w_frame_rotation.py: Measures T2* using virtual rotation
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *

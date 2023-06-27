@@ -1,6 +1,3 @@
-"""
-active_reset.py: template for performing a single shot discrimination and active reset
-"""
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
