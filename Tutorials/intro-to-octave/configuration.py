@@ -1,16 +1,16 @@
-from set_octave import OctavesSettings, octave_configuration, disable_octave_ports
+from set_octave import OctaveUnit, octave_declaration
 
 ######################
 # Network parameters #
 ######################
-opx_ip = "172.16.33.100"
+opx_ip = "1127.0.0.1"
 opx_port = 80
 
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctavesSettings("octave1", opx_ip, port=50, con="con1", clock="Internal")
-# octave_2 = OctavesSettings("octave2", opx_ip, port=51, con="con1", clock="Internal")
+octave_1 = OctaveUnit("octave1", opx_ip, port=50, con="con1", clock="Internal")
+# octave_2 = OctaveUnit("octave2", opx_ip, port=51, con="con1", clock="Internal")
 # Custom port mapping example
 port_mapping = [
     {
@@ -28,9 +28,9 @@ port_mapping = [
 ]
 
 # Add the octaves
-octaves_settings = [octave_1]
+octaves = [octave_1]
 # Configure the Octaves
-octave_config = octave_configuration(octaves_settings=octaves_settings)
+octave_config = octave_declaration(octaves)
 
 #####################
 # OPX configuration #

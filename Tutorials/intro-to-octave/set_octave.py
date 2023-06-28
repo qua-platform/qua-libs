@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Union
 
 
-class OctavesSettings:
+class OctaveUnit:
     """Class for keeping track of OctavesSettings in inventory."""
 
     def __init__(
@@ -38,7 +38,6 @@ class OctavesSettings:
         self.port_mapping = port_mapping
 
 
-@dataclass
 class ElementsSettings:
     """Class for keeping track of ElementsSettings in inventory."""
 
@@ -60,7 +59,7 @@ class ElementsSettings:
         :param switch_mode: RF switch mode of the Octave. Can be "on", "off", "trig_normal" or "trig_inverse".
         :param rf_in_port: RF input port of the Octave if the element is used to measure signals from the fridge. The syntax is [octave_name, RF input port] as in ["octave1", 1].
         :param down_convert_LO_source: LO source for the down-conversion mixer if the element is used to measure signals from the fridge. Can be "Internal", "Dmd1LO" or "Dmd2LO".
-        :param if_mode: Specify the IF down-conversion mode. Can be "direct" for standard down-conversion, "envelope" for reading the signals from the envelope detector inside the Octave, or "mixer" TODO:??.
+        :param if_mode: Specify the IF down-conversion mode. Can be "direct" for standard down-conversion, "envelope" for reading the signals from the envelope detector inside the Octave, or "mixer" to up-convert the down-converted signals using the IF port in the back of the Octave.
         """
         self.name = name
         self.lo_source = lo_source
@@ -71,39 +70,39 @@ class ElementsSettings:
         self.if_mode = if_mode
 
 
-def octave_configuration(octaves_settings: list = ()):
+def octave_declaration(octaves: list = ()):
     """
     Initiate octave_config class, set the calibration file, add octaves info and set the port mapping between the OPX and the octaves.
 
-    :param octaves_settings: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings
+    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings
     """
     octave_config = QmOctaveConfig()
     octave_config.set_calibration_db(os.getcwd())
-    for i in range(len(octaves_settings)):
-        if octaves_settings[i].name is None:
+    for i in range(len(octaves)):
+        if octaves[i].name is None:
             raise TypeError(f"Please insert the octave name for the {i}'s octave")
-        if octaves_settings[i].con is None:
+        if octaves[i].con is None:
             raise TypeError(f"Please insert the controller that is connected to the {i}'s octave")
-        if octaves_settings[i].ip is None:
+        if octaves[i].ip is None:
             raise TypeError(f"Please insert the octave ip for the {i}'s octave")
-        if octaves_settings[i].port is None:
+        if octaves[i].port is None:
             raise TypeError(f"Please insert the octave port for the {i}'s octave")
-        octave_config.add_device_info(octaves_settings[i].name, octaves_settings[i].ip, octaves_settings[i].port)
-        if octaves_settings[i].port_mapping == "default":
-            octave_config.set_opx_octave_mapping([(octaves_settings[i].con, octaves_settings[i].name)])
+        octave_config.add_device_info(octaves[i].name, octaves[i].ip, octaves[i].port)
+        if octaves[i].port_mapping == "default":
+            octave_config.set_opx_octave_mapping([(octaves[i].con, octaves[i].name)])
         else:
-            octave_config.add_opx_octave_port_mapping(octaves_settings[i].port_mapping)
+            octave_config.add_opx_octave_port_mapping(octaves[i].port_mapping)
 
     return octave_config
 
 
-def octave_settings(qmm, config, octaves_settings, elements_settings=None, calibration=True):
+def octave_settings(qmm, config, octaves, elements_settings=None, calibration=True):
     """
     Set all the octave settings including: clock, up-converters modules, down-converters modules and calibration according to the elements_settings.
 
     :param qmm: Quantum Machines Manager object.
     :param config: The QM configuration.
-    :param octaves_settings: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings.
+    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings.
     :param elements_settings: objects that holds the information about the up-converter and down-converter parameters.
     :param calibration: When True (default) calibrates all the octave elements.
     """
@@ -112,15 +111,15 @@ def octave_settings(qmm, config, octaves_settings, elements_settings=None, calib
     qm = qmm.open_qm(config)
 
     # setting the clock
-    for i in range(len(octaves_settings)):
-        if octaves_settings[i].clock == "External_10MHz":
-            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_10MHz)
-        elif octaves_settings[i].clock == "External_100MHz":
-            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_100MHz)
-        elif octaves_settings[i].clock == "External_1000MHz":
-            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.External_1000MHz)
+    for i in range(len(octaves)):
+        if octaves[i].clock == "External_10MHz":
+            qm.octave.set_clock(octaves[i].name, clock_mode=ClockMode.External_10MHz)
+        elif octaves[i].clock == "External_100MHz":
+            qm.octave.set_clock(octaves[i].name, clock_mode=ClockMode.External_100MHz)
+        elif octaves[i].clock == "External_1000MHz":
+            qm.octave.set_clock(octaves[i].name, clock_mode=ClockMode.External_1000MHz)
         else:
-            qm.octave.set_clock(octaves_settings[i].name, clock_mode=ClockMode.Internal)
+            qm.octave.set_clock(octaves[i].name, clock_mode=ClockMode.Internal)
 
     if elements_settings is None:
         elements_settings = []

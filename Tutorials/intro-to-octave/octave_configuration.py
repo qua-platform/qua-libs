@@ -19,7 +19,7 @@ qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config, l
 octave_settings(
     qmm=qmm,
     config=config,
-    octaves_settings=octaves_settings,
+    octaves=octaves,
     elements_settings=elements_settings,
     calibration=True,
 )

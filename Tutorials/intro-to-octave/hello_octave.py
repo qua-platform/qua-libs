@@ -4,6 +4,7 @@ hello_octave.py: template for basic usage of the Octave
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm.octave import *
 from configuration import *
 from qm import SimulationConfig
 import time
@@ -33,8 +34,6 @@ if simulate:
     job_sim = qmm.simulate(config, hello_octave, simulation_config)
     job_sim.get_simulated_samples().con1.plot()
 else:
-    from qm.octave import *
-
     qm = qmm.open_qm(config)
     job = qm.execute(hello_octave)
     # Execute does not block python! As this is an infinite loop, the job would run forever.
