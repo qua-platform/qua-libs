@@ -21,8 +21,8 @@ qmm = QuantumMachinesManager(host=opx_ip, cluster_name="Cluster_81", octave=octa
 ###################
 with program() as hello_octave:
     with infinite_loop_():
-        play("cw"*amp(0.5), "qe1")
-        play("cw"*amp(0.5), "qe2")
+        play("cw" * amp(0.5), "qe1")
+        play("cw" * amp(0.5), "qe2")
 
 #######################################
 # Execute or Simulate the QUA program #
@@ -34,6 +34,7 @@ if simulate:
     job_sim.get_simulated_samples().con1.plot()
 else:
     from qm.octave import *
+
     qm = qmm.open_qm(config)
     job = qm.execute(hello_octave)
     # Execute does not block python! As this is an infinite loop, the job would run forever.

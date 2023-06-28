@@ -279,7 +279,8 @@ def octave_settings(qmm, config, octaves_settings, elements_settings=None, calib
             )
             qm.octave.calibrate_element(elements_settings[i].name, [(LO, IF)])
 
-def disable_octave_ports(qm, element_list: list=()):
+
+def disable_octave_ports(qm, element_list: list = ()):
     """
     Switch off the Octave synthesizers corresponding to the element list.
 

@@ -15,7 +15,7 @@ elements_settings = [qe1, qe2]
 # Octave settings #
 ###################
 # Configure the Octave according to the elements settings and calibrate
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config, log_level='ERROR')
+qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config, log_level="ERROR")
 octave_settings(
     qmm=qmm,
     config=config,
