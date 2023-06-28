@@ -3,13 +3,13 @@ from set_octave import OctaveUnit, octave_declaration
 ######################
 # Network parameters #
 ######################
-opx_ip = "1127.0.0.1"
-opx_port = 80
+qop_ip = "1127.0.0.1"
+qop_port = 80
 
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", opx_ip, port=50, con="con1", clock="Internal")
+octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
 # octave_2 = OctaveUnit("octave2", opx_ip, port=51, con="con1", clock="Internal")
 # Custom port mapping example
 port_mapping = [

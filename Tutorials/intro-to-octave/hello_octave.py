@@ -13,8 +13,8 @@ import time
 ###################################
 # Open Communication with the QOP #
 ###################################
-# qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
-qmm = QuantumMachinesManager(host=opx_ip, cluster_name="Cluster_81", octave=octave_config)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name="Cluster_81", octave=octave_config)
 
 
 ###################
