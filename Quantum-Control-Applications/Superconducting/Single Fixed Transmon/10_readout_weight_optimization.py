@@ -74,7 +74,7 @@ number_of_divisions = int(readout_len / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
-n_avg = 1e4  # number of averages
+n_avg = 1e1  # number of averages
 cooldown_time = 5 * qubit_T1 // 4  # thermal decay time of the qubit
 
 qubit_operation = "x180"
@@ -154,7 +154,7 @@ qmm = QuantumMachinesManager(qop_ip)
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles
@@ -169,7 +169,7 @@ else:
     # Live plotting
     while results.is_processing():
         # Fetch results
-        iteration = results.fetch_all()
+        iteration = results.fetch_all()[0]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
 
@@ -189,14 +189,14 @@ else:
     subtracted_trace = subtract_complex_arrays(excited_trace, ground_trace)
     norm_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
     plot_three_complex_arrays(ground_trace, excited_trace, norm_subtracted_trace)
-
     # after obtaining the optimal weights, you need to be loaded to 'integration_weights' dictionary
     # in the config dictionary
     # for example
-    # weights_plus_cos = norm_subtracted_trace.real
-    # weights_minus_sin = (-1) * norm_subtracted_trace.imag
-    # weights_sin = norm_subtracted_trace.imag
-    # weights_minus_cos = (-1) * norm_subtracted_trace.real
+    # from qualang_tools.config.integration_weights_tools import convert_integration_weights
+    # weights_plus_cos = convert_integration_weights(list(norm_subtracted_trace.real))
+    # weights_minus_sin = convert_integration_weights(list((-1) * norm_subtracted_trace.imag))
+    # weights_sin = convert_integration_weights(list(norm_subtracted_trace.imag))
+    # weights_minus_cos = convert_integration_weights(list((-1) * norm_subtracted_trace.real))
     # then
     # config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_plus_cos, "sine": weights_minus_sin}
     # config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
