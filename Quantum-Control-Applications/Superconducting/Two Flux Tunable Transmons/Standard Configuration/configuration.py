@@ -28,8 +28,8 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "172.16.33.100"
-qop_port = 83
+qop_ip = "127.0.0.1"
+qop_port = 80
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
