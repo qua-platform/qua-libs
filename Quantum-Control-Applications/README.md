@@ -6,10 +6,10 @@ It also includes various examples and results from labs as listed below.
 Note that for them to work, you would need to download the latest version of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools#installation).
 
 ## Superconducting Qubits
-### [Multiple flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons)
+### [Two flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons)
 These files showcase various experiments that can be done on a several flux-tunable transmons.
 #### <u> Advanced use-cases: </u>
-* [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope#two-qubit-swap-spectroscopy-improved-with-pre-distortion-digital-filters).
+* [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope#two-qubit-swap-spectroscopy-improved-with-pre-distortion-digital-filters).
 
 ### [Single fixed frequency transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon)
 These files showcase various experiments that can be done on a single fixed-frequency transmon.
