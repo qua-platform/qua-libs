@@ -79,7 +79,6 @@ with program() as cryoscope:
                 play("x90", "q1_xy")
 
                 align()
-                # TODO: this wait() creates time between pi and flux pulses, it is possible to calibrate the delay
                 wait(20 * u.ns)
 
                 with switch_(segment):

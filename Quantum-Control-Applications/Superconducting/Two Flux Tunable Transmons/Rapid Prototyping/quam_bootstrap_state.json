@@ -1,6 +1,6 @@
 {
-  "network.qop_ip": "172.16.33.100",
-  "network.qop_port": 83,
+  "network.qop_ip": "127.0.0.1",
+  "network.qop_port": 80,
   "network.save_dir": "",
   "local_oscillators.qubits[].freq": [3300000000.0],
   "local_oscillators.qubits[].power": [18],

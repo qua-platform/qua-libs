@@ -187,8 +187,10 @@ state = {
 quam_sdk.constructor.quamConstructor(state)
 ```
 It will create a file called ``quam.py`` containing the Python class built from the defined state stored in a json file 
-called `"quam_bootstrap_state.json"`.
+called `"quam_bootstrap_state.json"`. 
 As shown in the next section, this class can then be accessed by importing it from quam: ``from quam import QuAM``
+
+__You will need to execute this files everytime you modify the state so that QuAM can be updated__.
 
 Note that it is also possible to directly define the state in a json file `"quam_bootstrap_state.json"` and then 
 construct the QuAM directly from it.
