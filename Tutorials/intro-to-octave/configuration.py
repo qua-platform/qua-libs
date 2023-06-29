@@ -1,8 +1,40 @@
-opx_ip = "172.0.0.1"
-opx_port = 80
+from set_octave import OctaveUnit, octave_declaration
 
-octave_ip = "172.0.0.1"
-octave_port = 50
+######################
+# Network parameters #
+######################
+qop_ip = "1127.0.0.1"
+qop_port = 80
+
+############################
+# Set octave configuration #
+############################
+octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
+# octave_2 = OctaveUnit("octave2", opx_ip, port=51, con="con1", clock="Internal")
+# Custom port mapping example
+port_mapping = [
+    {
+        ("con1", 1): ("octave1", "I1"),
+        ("con1", 2): ("octave1", "Q1"),
+        ("con1", 3): ("octave1", "I2"),
+        ("con1", 4): ("octave1", "Q2"),
+        ("con1", 5): ("octave1", "I3"),
+        ("con1", 6): ("octave1", "Q3"),
+        ("con1", 7): ("octave1", "I4"),
+        ("con1", 8): ("octave1", "Q4"),
+        ("con1", 9): ("octave1", "I5"),
+        ("con1", 10): ("octave1", "Q5"),
+    }
+]
+
+# Add the octaves
+octaves = [octave_1]
+# Configure the Octaves
+octave_config = octave_declaration(octaves)
+
+#####################
+# OPX configuration #
+#####################
 IF = 50e6
 LO = 6e9
 
