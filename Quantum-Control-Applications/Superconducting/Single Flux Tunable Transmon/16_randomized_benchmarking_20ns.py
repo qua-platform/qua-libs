@@ -372,7 +372,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager("172.16.33.100", cluster_name="Cluster_81")
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulate = False
 
