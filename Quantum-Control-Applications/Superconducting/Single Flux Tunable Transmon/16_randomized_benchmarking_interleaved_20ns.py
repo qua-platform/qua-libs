@@ -67,8 +67,10 @@ cooldown_time = 5 * qubit_T1 // 4
 delta_clifford = 50  # must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
+
 
 def single_gate_indices_from_clifford(clifford_index):
     """
@@ -82,6 +84,7 @@ def single_gate_indices_from_clifford(clifford_index):
         out.append(single_qubit_gates.index(gate))
     return out
 
+
 def pairs_of_gate_indices_from_single(ind1, ind2):
     """
     Returns the index of the single-qubit-gate pait corresponding to the two single-qubit gate indices provided.
@@ -93,6 +96,7 @@ def pairs_of_gate_indices_from_single(ind1, ind2):
     for pair in single_qubit_gate_pairs:
         if pair[0] == single_qubit_gates[ind1] and pair[1] == single_qubit_gates[ind2]:
             return single_qubit_gate_pairs.index(pair)
+
 
 def from_clifford_to_single(clifford_seq, single_qubit_seq, single_qubit_ind):
     """
@@ -122,6 +126,7 @@ def from_clifford_to_single(clifford_seq, single_qubit_seq, single_qubit_ind):
 
     return single_qubit_seq, single_qubit_ind
 
+
 def generate_sequence(interleaved_gate_index):
     """
     Generates the random sequence of single-qubit Clifford gates, convert it as a sequence of single-qubit gates and regroup these gates by pairs.
@@ -130,8 +135,10 @@ def generate_sequence(interleaved_gate_index):
     # Random single-qubit Clifford gate sequence variables
     cayley = declare(int, value=list(c1_table.flatten()))  # Load the Cayley table in QUA
     inv_list = declare(int, value=inv_gates)  # Load the list of invert gates in QUA
-    sequence = declare(int, size=2*max_circuit_depth + 1)  # The random Clifford sequence
-    inv_gate = declare(int, size=2*max_circuit_depth + 1)  # The list containing the recovery gates to play at each depth
+    sequence = declare(int, size=2 * max_circuit_depth + 1)  # The random Clifford sequence
+    inv_gate = declare(
+        int, size=2 * max_circuit_depth + 1
+    )  # The list containing the recovery gates to play at each depth
     rand = Random(seed=seed)
 
     current_state = declare(int)
@@ -139,12 +146,12 @@ def generate_sequence(interleaved_gate_index):
     i = declare(int)
 
     # Conversion to single-qubit gate sequence variables
-    sequence_single = declare(int, size=2*2 * max_circuit_depth + 1)  # The sequence of single-qubit gates
+    sequence_single = declare(int, size=2 * 2 * max_circuit_depth + 1)  # The sequence of single-qubit gates
     sequence_single_len = declare(int)  # Length of the current single-qubit gate sequence
     sequence_single_len_prev = declare(int)  # Length of the current single-qubit gate sequence
 
     # Conversion to pairs single-qubit gate sequence variables
-    sequence_pairs_lengths = declare(int, size=2*max_circuit_depth)
+    sequence_pairs_lengths = declare(int, size=2 * max_circuit_depth)
     even = declare(bool)
     sequence_pairs_len = declare(int)
     last = declare(int)
@@ -155,7 +162,9 @@ def generate_sequence(interleaved_gate_index):
     # Recovery gate
     recovery_single = declare(int, size=4)  # Single-qubit gates defining the recovery sequence
     recovery_index_single = declare(int)  # Current index of the recovery sequence made of single-qubit gates
-    recovery_pairs = declare(int, size=2*2 * max_circuit_depth)  # Pairs of single-qubit gates defining the recovery sequence
+    recovery_pairs = declare(
+        int, size=2 * 2 * max_circuit_depth
+    )  # Pairs of single-qubit gates defining the recovery sequence
     recovery_index_pairs = declare(int)  # Current index of the recovery sequence made of pairs of single-qubit gates
     assign(recovery_index_pairs, 0)
 
@@ -163,11 +172,13 @@ def generate_sequence(interleaved_gate_index):
     assign(sequence_single_len, 0)
     assign(sequence_pairs_len, 0)
     assign(even, True)
-    with for_(i, 0, i < 2*max_circuit_depth, i + 2):
+    with for_(i, 0, i < 2 * max_circuit_depth, i + 2):
         ## Get the random sequence of Clifford gates
         # ------------------------------------------
         assign(step, rand.rand_int(24))  # Get a random number
-        assign(current_state, cayley[current_state * 24 + step])  # Find the current state based on the random index and the Cayley table
+        assign(
+            current_state, cayley[current_state * 24 + step]
+        )  # Find the current state based on the random index and the Cayley table
         assign(sequence[i], step)  # Update the Clifford sequence with the random index
         assign(inv_gate[i], inv_list[current_state])  # Update the recovery gate to play after this random gate
         # interleaved gate
@@ -176,11 +187,12 @@ def generate_sequence(interleaved_gate_index):
         assign(sequence[i + 1], step)
         assign(inv_gate[i + 1], inv_list[current_state])
 
-    with for_(i, 0, i < 2*max_circuit_depth, i + 1):
+    with for_(i, 0, i < 2 * max_circuit_depth, i + 1):
         ## Split this sequence into single-qubit gates
         # --------------------------------------------
-        sequence_single, sequence_single_len = from_clifford_to_single(sequence[i], sequence_single, sequence_single_len)
-
+        sequence_single, sequence_single_len = from_clifford_to_single(
+            sequence[i], sequence_single, sequence_single_len
+        )
 
         ## Regroup the single-qubit gates into pairs
         # ------------------------------------------
@@ -204,7 +216,7 @@ def generate_sequence(interleaved_gate_index):
             assign(first, sequence_single_len_prev + 1)  # Shift the index of the first gate by one
 
         # Check if we are dealing with an odd or even number of single-qubit gates
-        with if_(sequence_single_len == (sequence_single_len>>1)<<1):
+        with if_(sequence_single_len == (sequence_single_len >> 1) << 1):
             assign(even, True)
         with else_():
             assign(even, False)
@@ -216,7 +228,7 @@ def generate_sequence(interleaved_gate_index):
             for j in range(len(single_qubit_gates)):
                 with if_(sequence_single[ii] == j):
                     for k in range(len(single_qubit_gates)):
-                        with if_(sequence_single[ii + 1] == k): # Get the corresponding pair as (j, k)
+                        with if_(sequence_single[ii + 1] == k):  # Get the corresponding pair as (j, k)
                             assign(sequence[sequence_pairs_len], pairs_of_gate_indices_from_single(j, k))
                             assign(sequence_pairs_len, sequence_pairs_len + 1)
         # Get the length of the sequence of pairs of single-qubit gates for each depth
@@ -230,7 +242,9 @@ def generate_sequence(interleaved_gate_index):
         assign(recovery_single[2], 0)
         assign(recovery_single[3], 0)
         # Convert the recovery sequence from Clifford gates to single-qubit gates
-        recovery_single, recovery_index_single = from_clifford_to_single(inv_gate[i], recovery_single, recovery_index_single)
+        recovery_single, recovery_index_single = from_clifford_to_single(
+            inv_gate[i], recovery_single, recovery_index_single
+        )
         # If the current sequence has an even number of gates, then add a new pair for the recovery sequence
         with if_(even):
             with for_(ii, 0, ii < recovery_index_single, ii + 2):
@@ -263,6 +277,7 @@ def generate_sequence(interleaved_gate_index):
         assign(sequence_single_len_prev, sequence_single_len)
     return sequence, sequence_pairs_lengths, recovery_pairs
 
+
 def play_sequence(sequence_list, number_of_gates):
     i = declare(int)
     with for_(i, 0, i < number_of_gates, i + 1):
@@ -275,19 +290,20 @@ def play_sequence(sequence_list, number_of_gates):
                         else:
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
 
+
 # ###################
 # # The QUA program #
 # ###################
 with program() as rb:
-    depth = declare(int)    # Current depth
-    depth_target = declare(int)     # Play the sequence every depth target
+    depth = declare(int)  # Current depth
+    depth_target = declare(int)  # Play the sequence every depth target
     saved_gates = declare(int, size=2)  # Gates that will be replaced by the recovery gates for each depth
-    random_sequence_index = declare(int)    # Index of the current random sequence
-    n = declare(int)        # Averaging index
-    I = declare(fixed)      # I quadrature from the measurement
-    Q = declare(fixed)      # Q quadrature from the measurement
-    state = declare(bool)   # Qubit state if state discrimination
-    seq_length = declare(int)   # Length of the current sequence
+    random_sequence_index = declare(int)  # Index of the current random sequence
+    n = declare(int)  # Averaging index
+    I = declare(fixed)  # I quadrature from the measurement
+    Q = declare(fixed)  # Q quadrature from the measurement
+    state = declare(bool)  # Qubit state if state discrimination
+    seq_length = declare(int)  # Length of the current sequence
     # Declare the streams
     rnd_seq_ind_st = declare_stream()
     if state_discrimination:
@@ -313,8 +329,8 @@ with program() as rb:
                 assign(saved_gates[1], sequence_pairs[sequence_pairs_lengths[depth - 1] + 1])
 
                 # Get the recovery gate to play at the end of this sequence which can be made of 1, 2 or 3 single-qubit gates
-                assign(sequence_pairs[sequence_pairs_lengths[depth - 1]], recovery_pairs[2*depth - 2])
-                assign(sequence_pairs[sequence_pairs_lengths[depth - 1] + 1], recovery_pairs[2*depth-1])
+                assign(sequence_pairs[sequence_pairs_lengths[depth - 1]], recovery_pairs[2 * depth - 2])
+                assign(sequence_pairs[sequence_pairs_lengths[depth - 1] + 1], recovery_pairs[2 * depth - 1])
                 assign(seq_length, sequence_pairs_lengths[depth - 1] + 2)
 
                 # Averaging loop
@@ -333,7 +349,7 @@ with program() as rb:
                         save(Q, Q_st)
 
                 # Update the depth target to the next desired value
-                assign(depth_target, depth_target + 2*delta_clifford)
+                assign(depth_target, depth_target + 2 * delta_clifford)
                 # Restore the original gates
                 assign(sequence_pairs[sequence_pairs_lengths[depth - 1]], saved_gates[0])
                 assign(sequence_pairs[sequence_pairs_lengths[depth - 1] + 1], saved_gates[1])
@@ -342,10 +358,16 @@ with program() as rb:
         rnd_seq_ind_st.save("iteration")
         # return a 1D array of averaged random pulse sequences vs circuit depth
         if state_discrimination:
-            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save("state_avg")
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save("Q")
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save(
+                "I"
+            )
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save(
+                "Q"
+            )
 
 
 #####################################
@@ -406,13 +428,14 @@ else:
             plt.title("Single qubit RB")
             plt.pause(0.1)
 
-
             stdevs = np.sqrt(np.diag(cov))
 
         print("#########################")
         print("### Fitted Parameters ###")
         print("#########################")
-        print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+        print(
+            f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+        )
         print("Covariance Matrix")
         print(cov)
 
