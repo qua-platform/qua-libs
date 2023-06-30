@@ -4,13 +4,13 @@ You need to run this file in order to update the Octaves with the new parameters
 """
 from set_octave import ElementsSettings, octave_settings
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration_with_octaves import *
+from configuration_with_octave import *
 
 # Configure the Octave parameters for each element
-qe1 = ElementsSettings("qe1", gain=0, rf_in_port=["octave1", 1], down_convert_LO_source="Internal")
-qe2 = ElementsSettings("qe2", gain=-10, rf_in_port=["octave1", 2], down_convert_LO_source="Dmd2LO")
+resonator = ElementsSettings("resonator", gain=0, rf_in_port=["octave1", 1], down_convert_LO_source="Internal")
+qubit = ElementsSettings("qubit", gain=-10, rf_in_port=["octave1", 2])
 # Add the "octave" elements
-elements_settings = [qe1, qe2]
+elements_settings = [resonator, qubit]
 
 ###################
 # Octave settings #

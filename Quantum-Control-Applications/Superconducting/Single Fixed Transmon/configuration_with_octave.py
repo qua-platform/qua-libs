@@ -187,10 +187,10 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit
-                2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
+                1: {"offset": 0.0},  # I resonator
+                2: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
             },
             "digital_outputs": {},
             "analog_inputs": {
@@ -202,10 +202,10 @@ config = {
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO,
-                "mixer": "octave_octave1_1",
+                "mixer": "octave_octave1_2",  # a fixed name, do not change.
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
@@ -224,10 +224,10 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": resonator_LO,
-                "mixer": "octave_octave1_2",
+                "mixer": "octave_octave1_1",  # a fixed name, do not change.
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -422,14 +422,14 @@ config = {
         },
     },
     "mixers": {
-        "octave_octave1_1": [
+        "octave_octave1_2": [
             {
                 "intermediate_frequency": qubit_IF,
                 "lo_frequency": qubit_LO,
                 "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
             }
         ],
-        "octave_octave1_2": [
+        "octave_octave1_1": [
             {
                 "intermediate_frequency": resonator_IF,
                 "lo_frequency": resonator_LO,
