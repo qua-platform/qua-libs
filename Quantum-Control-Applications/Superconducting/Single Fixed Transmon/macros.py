@@ -134,7 +134,6 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
     return state, I, Q
 
 
-
 # Frequency tracking class
 class qubit_frequency_tracking:
     def __init__(self, qubit, rr, f_res, ge_threshold, frame_rotation_flag=False):
@@ -531,4 +530,3 @@ class qubit_frequency_tracking:
 
         save(self.f_res_corr, self.f_res_corr_st)
         save(self.corr, self.corr_st)
-
