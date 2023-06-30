@@ -10,7 +10,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name="Cluster_81")
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 # Open quantum machine
 qm = qmm.open_qm(config)
@@ -83,21 +83,32 @@ freq_track_obj.freq_domain_ramsey_full_sweep_analysis(job.result_handles, "Pe_fd
 # In this example the two-point Ramsey is performed between two standard time Ramsey experiment in order to evaluate the
 # quality of the tracking.
 n_avg = 20
-n_repetitions = 100
+# Total duration of the experiment in minutes
+minutes = 2
+# Time between two successive run in seconds
+time_between_two_runs = 10
+# Time vector for the time domain Ramsey measurement
 tau_vec = np.arange(4, 50_000, 200)
 with program() as prog:
 
     i = declare(int)
     i_st = declare_stream()
-    with for_(i, 0, i < n_repetitions, i + 1):
+    # with for_(i, 0, i < 100, i + 1):
+    with infinite_loop_():
         freq_track_obj.initialization()
         freq_track_obj.time_domain_ramsey_full_sweep(n_avg, freq_track_obj.f_det, tau_vec, False)
         freq_track_obj.two_points_ramsey(n_avg_power_of_2=1)
         freq_track_obj.time_domain_ramsey_full_sweep(n_avg, freq_track_obj.f_det, tau_vec, True)
+        assign(i, i + 1)
         save(i, i_st)
+        pause()
     with stream_processing():
-        freq_track_obj.state_estimation_st[0].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save("Pe_td_ref")
-        freq_track_obj.state_estimation_st[1].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save("Pe_td_corr")
+        freq_track_obj.state_estimation_st[0].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save(
+            "Pe_td_ref"
+        )
+        freq_track_obj.state_estimation_st[1].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save(
+            "Pe_td_corr"
+        )
         i_st.save("iteration")
         freq_track_obj.f_res_corr_st.save_all("f_res_corr")
         freq_track_obj.corr_st.save_all("corr")
@@ -109,8 +120,6 @@ results = fetching_tool(job, ["Pe_td_ref", "Pe_td_corr", "iteration", "f_res_cor
 
 # Starting time
 t0 = time.time()
-
-minutes = 2
 t_ = t0
 cond = (t_ - t0) / 60 < minutes
 
@@ -122,19 +131,23 @@ t = []
 fig = plt.figure()
 interrupt_on_close(fig, job)
 while results.is_processing():
-    # Fetch results
-    Pe_td_ref_, Pe_td_corr_, iteration, f_res_corr, corr = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_repetitions, start_time=t0)
-    # Get current time
-    t_ = time.time()
-    # Update while loop condition
-    cond = (t_ - t0) / 60 < minutes
-    # Update time vector and results
-    t.append((t_ - t0) / 60)
-    Pe_td_ref.append(Pe_td_ref_)
-    Pe_td_corr.append(Pe_td_corr_)
-
+    if cond:
+        # Fetch results
+        Pe_td_ref_, Pe_td_corr_, iteration, f_res_corr, corr = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, int(minutes / (time_between_two_runs / 60)), start_time=t0)
+        # Get current time
+        t_ = time.time()
+        # Update while loop condition
+        cond = (t_ - t0) / 60 < minutes
+        # Update time vector and results
+        t.append((t_ - t0) / 60)
+        Pe_td_ref.append(Pe_td_ref_)
+        Pe_td_corr.append(Pe_td_corr_)
+        time.sleep(time_between_two_runs)
+        job.resume()
+    else:
+        job.halt()
     # Plot results
     plt.subplot(121)
     plt.pcolormesh(freq_track_obj.tau_vec, t, Pe_td_ref)
@@ -147,4 +160,4 @@ while results.is_processing():
     plt.xlabel("tau [ns]")
     plt.ylabel("time [minutes]")
     plt.tight_layout()
-    plt.pause(1)
+    plt.pause(0.01)
