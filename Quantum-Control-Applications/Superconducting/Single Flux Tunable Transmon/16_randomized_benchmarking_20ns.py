@@ -1,5 +1,9 @@
 """
-Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates between 20ns and 40ns)
+Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates between 20ns and 40ns).
+The 40ns limitation is due to the latency of the switch/case statements. To overcome it, the idea is to convert the
+random sequence made of Clifford operations into a sequence of single qubit gates (X, Y, X/2...) and play them by pairs.
+this way we can have gap-less RB with gates as short as 20ns.
+The drawback is that the max depth is currently limited to 2600 due to data memory.
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
