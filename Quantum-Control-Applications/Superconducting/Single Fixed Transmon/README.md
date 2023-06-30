@@ -67,3 +67,14 @@ a specific setup and would require changes to run on different setups. Current u
 The goal of this measurement is to track the frequency fluctuations of the transmon qubit, and update the frequency of the qubit element accordingly using a closed-loop feedback.
 * [Optimized Readout with Optimal Weights](./Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights) 
 The goal of this experiment is to optimize the information obtained from the readout of a superconducting resonator by deriving the optimal integration weights. With the usage of optimal integration weights we maximize the separation of the IQ blobs when the ground and excited state are measured.
+
+
+## Set-ups with Octave
+
+The configuration included in this folder correspond to a set-up without Octave. 
+However, a few files are there to facilitate the integration of the Octave:
+1. [configuration_with_octave.py](configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
+2. [octave_configuration.py](octave_configuration.py): A file __to execute__ in order to configure and/or calibrate the Octave.
+3. [set_octave.py](set_octave.py): A set of helper function to ease the octave parametrization.
+
+If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).
