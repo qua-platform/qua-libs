@@ -8,7 +8,7 @@ from configuration_with_octave import *
 
 # Configure the Octave parameters for each element
 resonator = ElementsSettings("resonator", gain=0, rf_in_port=["octave1", 1], down_convert_LO_source="Internal")
-qubit = ElementsSettings("qubit", gain=-10, rf_in_port=["octave1", 2])
+qubit = ElementsSettings("qubit", gain=-10)
 # Add the "octave" elements
 elements_settings = [resonator, qubit]
 

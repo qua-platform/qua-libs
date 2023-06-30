@@ -9,23 +9,6 @@ from qualang_tools.results import progress_counter, fetching_tool
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
-
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-
-    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
 u = unit(coerce_to_integer=True)
 
 ######################
@@ -426,14 +409,14 @@ config = {
             {
                 "intermediate_frequency": qubit_IF,
                 "lo_frequency": qubit_LO,
-                "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
+                "correction": (1, 0, 0, 1),
             }
         ],
         "octave_octave1_1": [
             {
                 "intermediate_frequency": resonator_IF,
                 "lo_frequency": resonator_LO,
-                "correction": IQ_imbalance(mixer_resonator_g, mixer_resonator_phi),
+                "correction": (1, 0, 0, 1),
             }
         ],
     },
