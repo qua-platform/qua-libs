@@ -40,8 +40,10 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    *  [Interleaved Single Qubit Randomized Benchmarking](16_randomized_benchmarking_interleaved.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
-    * [Single Qubit Randomized Benchmarking](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking_interleaved.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
+    * [Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Cliffords).
+    * [Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Cliffords).
 17. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](17_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`.

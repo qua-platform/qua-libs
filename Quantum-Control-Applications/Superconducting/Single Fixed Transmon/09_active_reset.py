@@ -45,7 +45,7 @@ with program() as active_reset_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulation = False
 if simulation:

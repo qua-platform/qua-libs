@@ -67,7 +67,7 @@ with program() as drag:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulate = True
 

@@ -66,7 +66,7 @@ with program() as qubit_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulation = True
 if simulation:
