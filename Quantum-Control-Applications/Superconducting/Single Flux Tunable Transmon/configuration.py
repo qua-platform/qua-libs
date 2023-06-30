@@ -33,6 +33,9 @@ u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"
 qop_port = 80
 
+# Set octave_config to None if no octave are present
+octave_config = None
+
 # Qubits
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_IF = 110 * u.MHz

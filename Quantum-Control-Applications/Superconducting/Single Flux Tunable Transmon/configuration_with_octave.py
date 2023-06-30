@@ -186,9 +186,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # flux line
-                9: {"offset": 0.0},  # I resonator
-                10: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
+                5: {"offset": 0.0},  # flux line
             },
             "digital_outputs": {
                 1: {},
@@ -202,10 +202,10 @@ config = {
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO,
-                "mixer": "octave_octave1_1",
+                "mixer": "octave_octave1_2",  # a fixed name, do not change.
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
@@ -223,10 +223,10 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 9),
-                "Q": ("con1", 10),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": resonator_LO,
-                "mixer": "octave_octave1_2",
+                "mixer": "octave_octave1_1",  # a fixed name, do not change.
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -242,7 +242,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -437,14 +437,14 @@ config = {
         },
     },
     "mixers": {
-        "octave_octave1_1": [
+        "octave_octave1_2": [
             {
                 "intermediate_frequency": qubit_IF,
                 "lo_frequency": qubit_LO,
                 "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
             }
         ],
-        "octave_octave1_2": [
+        "octave_octave1_1": [
             {
                 "intermediate_frequency": resonator_IF,
                 "lo_frequency": resonator_LO,
