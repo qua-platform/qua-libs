@@ -10,7 +10,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(qop_ip, qop_port)
+qmm = QuantumMachinesManager(qop_ip, cluster_name="Cluster_81")
 
 # Open quantum machine
 qm = qmm.open_qm(config)
@@ -96,8 +96,8 @@ with program() as prog:
         freq_track_obj.time_domain_ramsey_full_sweep(n_avg, freq_track_obj.f_det, tau_vec, True)
         save(i, i_st)
     with stream_processing():
-        freq_track_obj.state_estimation_st[0].buffer(len(tau_vec)).average().save("Pe_td_ref")
-        freq_track_obj.state_estimation_st[1].buffer(len(tau_vec)).average().save("Pe_td_corr")
+        freq_track_obj.state_estimation_st[0].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save("Pe_td_ref")
+        freq_track_obj.state_estimation_st[1].buffer(len(tau_vec)).buffer(n_avg).map(FUNCTIONS.average()).save("Pe_td_corr")
         i_st.save("iteration")
         freq_track_obj.f_res_corr_st.save_all("f_res_corr")
         freq_track_obj.corr_st.save_all("corr")
@@ -110,9 +110,9 @@ results = fetching_tool(job, ["Pe_td_ref", "Pe_td_corr", "iteration", "f_res_cor
 # Starting time
 t0 = time.time()
 
-hours = 2
+minutes = 2
 t_ = t0
-cond = (t_ - t0) / 3600 < hours
+cond = (t_ - t0) / 60 < minutes
 
 # Initialize results lists
 Pe_td_ref = []
@@ -129,9 +129,9 @@ while results.is_processing():
     # Get current time
     t_ = time.time()
     # Update while loop condition
-    cond = (t_ - t0) / 3600 < hours
+    cond = (t_ - t0) / 60 < minutes
     # Update time vector and results
-    t.append((t_ - t0) / 3600)
+    t.append((t_ - t0) / 60)
     Pe_td_ref.append(Pe_td_ref_)
     Pe_td_corr.append(Pe_td_corr_)
 
@@ -140,11 +140,11 @@ while results.is_processing():
     plt.pcolormesh(freq_track_obj.tau_vec, t, Pe_td_ref)
     plt.title("TD Ramsey feedback off")
     plt.xlabel("tau [ns]")
-    plt.ylabel("time [hours]")
+    plt.ylabel("time [minutes]")
     plt.subplot(122)
     plt.pcolormesh(freq_track_obj.tau_vec, t, Pe_td_corr)
     plt.title("TD Ramsey feedback on")
     plt.xlabel("tau [ns]")
-    plt.ylabel("time [hours]")
+    plt.ylabel("time [minutes]")
     plt.tight_layout()
     plt.pause(1)
