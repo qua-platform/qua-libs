@@ -49,7 +49,7 @@ The QuAM Rapid Prototyping is a tool that has been developed to enable the user 
 stored in a .json file and create a python class out of it to seamlessly set and get the different entries directly 
 from the calibration scripts.
 
-A detailed example focusing on calibrating two flux-tunable transmons can be found [here](../../../qua-libs/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons/Rapid%20Prototyping).
+A detailed example focusing on calibrating two flux-tunable transmons can be found [here](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons/Rapid%20Prototyping#two-flux-tunable-transmons-with-the-rapid-prototyping).
 
 ## Getting started
 
