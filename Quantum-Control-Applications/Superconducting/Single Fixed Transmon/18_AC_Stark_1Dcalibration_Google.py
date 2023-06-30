@@ -57,7 +57,7 @@ with program() as ac_stark_shift:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles

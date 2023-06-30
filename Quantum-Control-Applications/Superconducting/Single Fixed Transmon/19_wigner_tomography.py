@@ -79,7 +79,7 @@ qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 qm = qmm.open_qm(config)
 
-simulate = True
+simulate = False
 if simulate:
     simulation_config = SimulationConfig(
         duration=int(2e5),  # need to run the simulation for long enough to get all points

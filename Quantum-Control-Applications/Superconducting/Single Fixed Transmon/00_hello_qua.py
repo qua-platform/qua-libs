@@ -20,7 +20,7 @@ with program() as hello_QUA:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=400)  # in clock cycles
