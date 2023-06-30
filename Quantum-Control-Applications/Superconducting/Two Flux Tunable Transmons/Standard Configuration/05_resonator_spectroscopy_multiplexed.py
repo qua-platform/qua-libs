@@ -65,7 +65,7 @@ with program() as multi_res_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
 
 simulate = False
 if simulate:

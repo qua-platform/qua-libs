@@ -54,13 +54,13 @@ with program() as qubit_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)

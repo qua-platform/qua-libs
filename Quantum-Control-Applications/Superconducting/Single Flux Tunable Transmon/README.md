@@ -78,3 +78,13 @@ The goal of this use-case is to implement Cryoscope.
 The goal of this experiment is to calibrate the DRAG coefficient and AC Start shift
 to increase the single qubit gate fidelity as well as to minimize the leakage out of the
 computational space.
+
+## Set-ups with Octave
+
+The configuration included in this folder correspond to a set-up without Octave. 
+However, a few files are there to facilitate the integration of the Octave:
+1. [configuration_with_octave.py](configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
+2. [octave_configuration.py](octave_configuration.py): A file __to execute__ in order to configure and/or calibrate the Octave.
+3. [set_octave.py](set_octave.py): A set of helper function to ease the octave parametrization.
+
+If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).

@@ -16,8 +16,8 @@ def IQ_imbalance(g, phi):
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
     be seen here:
     https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the I & Q ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians), set to 0 for no phase imbalance.
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
     """
     c = np.cos(phi)
     s = np.sin(phi)
@@ -32,6 +32,9 @@ u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
 qop_port = 80
+
+# Set octave_config to None if no octave are present
+octave_config = None
 
 # Qubits
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation

@@ -3,7 +3,7 @@ from qm.qua import *
 from configuration import *
 import matplotlib.pyplot as plt
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
 
 n_avg = 100  # Number of averaging loops
 depletion_time = 1000 // 4

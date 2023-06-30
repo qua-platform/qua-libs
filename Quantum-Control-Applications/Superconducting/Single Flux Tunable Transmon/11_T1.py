@@ -52,13 +52,13 @@ with program() as T1:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 #######################
 # Simulate or execute #
 #######################
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles
