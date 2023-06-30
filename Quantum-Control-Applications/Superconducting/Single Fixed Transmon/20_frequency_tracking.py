@@ -10,7 +10,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(qop_ip, qop_port)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 # Open quantum machine
 qm = qmm.open_qm(config)

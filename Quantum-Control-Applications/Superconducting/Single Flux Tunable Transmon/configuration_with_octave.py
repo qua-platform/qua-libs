@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.signal.windows import gaussian
+from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
@@ -24,15 +25,43 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
-
-#############
-# VARIABLES #
-#############
 u = unit(coerce_to_integer=True)
 
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"
 qop_port = 80
 
+############################
+# Set octave configuration #
+############################
+octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
+# Custom port mapping example
+port_mapping = [
+    {
+        ("con1", 1): ("octave1", "I1"),
+        ("con1", 2): ("octave1", "Q1"),
+        ("con1", 3): ("octave1", "I2"),
+        ("con1", 4): ("octave1", "Q2"),
+        ("con1", 5): ("octave1", "I3"),
+        ("con1", 6): ("octave1", "Q3"),
+        ("con1", 7): ("octave1", "I4"),
+        ("con1", 8): ("octave1", "Q4"),
+        ("con1", 9): ("octave1", "I5"),
+        ("con1", 10): ("octave1", "Q5"),
+    }
+]
+
+# Add the octaves
+octaves = [octave_1]
+# Configure the Octaves
+octave_config = octave_declaration(octaves)
+
+#####################
+# OPX configuration #
+#####################
 # Qubits
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_IF = 110 * u.MHz
@@ -176,7 +205,7 @@ config = {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
                 "lo_frequency": qubit_LO,
-                "mixer": "mixer_qubit",
+                "mixer": "octave_octave1_1",
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
@@ -197,7 +226,7 @@ config = {
                 "I": ("con1", 9),
                 "Q": ("con1", 10),
                 "lo_frequency": resonator_LO,
-                "mixer": "mixer_resonator",
+                "mixer": "octave_octave1_2",
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -408,14 +437,14 @@ config = {
         },
     },
     "mixers": {
-        "mixer_qubit": [
+        "octave_octave1_1": [
             {
                 "intermediate_frequency": qubit_IF,
                 "lo_frequency": qubit_LO,
                 "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
             }
         ],
-        "mixer_resonator": [
+        "octave_octave1_2": [
             {
                 "intermediate_frequency": resonator_IF,
                 "lo_frequency": resonator_LO,

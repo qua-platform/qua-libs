@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.signal.windows import gaussian
+from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
-
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -16,6 +16,7 @@ def IQ_imbalance(g, phi):
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
     be seen here:
     https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+
     :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
     :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
     """
@@ -25,27 +26,57 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
 u = unit(coerce_to_integer=True)
 
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"
 qop_port = 80
 
+############################
+# Set octave configuration #
+############################
+octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
+# Custom port mapping example
+port_mapping = [
+    {
+        ("con1", 1): ("octave1", "I1"),
+        ("con1", 2): ("octave1", "Q1"),
+        ("con1", 3): ("octave1", "I2"),
+        ("con1", 4): ("octave1", "Q2"),
+        ("con1", 5): ("octave1", "I3"),
+        ("con1", 6): ("octave1", "Q3"),
+        ("con1", 7): ("octave1", "I4"),
+        ("con1", 8): ("octave1", "Q4"),
+        ("con1", 9): ("octave1", "I5"),
+        ("con1", 10): ("octave1", "Q5"),
+    }
+]
+
+# Add the octaves
+octaves = [octave_1]
+# Configure the Octaves
+octave_config = octave_declaration(octaves)
+
+#####################
+# OPX configuration #
+#####################
 # Qubits
-qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-qubit_IF = 110 * u.MHz
+qubit_IF = 50 * u.MHz
+qubit_LO = 7 * u.GHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
 
+saturation_len = 1000
+saturation_amp = 0.1
 const_len = 100
-const_amp = 50 * u.mV
-
-pi_len = 100
-pi_amp = 0.05
+const_amp = 0.1
+square_pi_len = 100
+square_pi_amp = 0.1
 
 drag_coef = 0
 anharmonicity = -200 * u.MHz
@@ -55,6 +86,11 @@ gauss_len = 200
 gauss_sigma = gauss_len / 5
 gauss_amp = 0.25
 gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
+
+displace_len = 40
+displace_sigma = displace_len / 5
+displace_amp = 0.35
+displace_wf = displace_amp * gaussian(displace_len, displace_sigma)
 
 x180_len = 40
 x180_sigma = x180_len / 5
@@ -131,24 +167,20 @@ minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
 # Resonator
-resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
+resonator_LO = 5.5 * u.GHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
-readout_len = 20
-readout_amp = 0.25
+time_of_flight = 180
 
-time_of_flight = 300
+readout_len = 5000
+readout_amp = 0.2
 
-# Flux line
-const_flux_len = 200
-const_flux_amp = 0.45
-
-# IQ Plane Angle
-rotation_angle = (0 / 180) * np.pi
-# Threshold for single shot g-e discrimination
+# IQ Plane
+rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+
 
 config = {
     "version": 1,
@@ -157,13 +189,10 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # flux line
-                9: {"offset": 0.0},  # I resonator
-                10: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
             },
-            "digital_outputs": {
-                1: {},
-            },
+            "digital_outputs": {},
             "analog_inputs": {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
@@ -176,16 +205,17 @@ config = {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
                 "lo_frequency": qubit_LO,
-                "mixer": "mixer_qubit",
+                "mixer": "octave_octave1_1",
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "gauss": "gaussian_pulse",
-                "pi": "pi_pulse",
-                "pi_half": "pi_half_pulse",
-                "x180": "x180_pulse",
+                "pi": "square_pi_pulse",
+                "pi_half": "square_pi_half_pulse",
                 "x90": "x90_pulse",
+                "x180": "x180_pulse",
                 "-x90": "-x90_pulse",
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
@@ -194,14 +224,15 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 9),
-                "Q": ("con1", 10),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": resonator_LO,
-                "mixer": "mixer_resonator",
+                "mixer": "octave_octave1_2",
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",
+                "displace": "displace_pulse",
                 "readout": "readout_pulse",
             },
             "outputs": {
@@ -211,39 +242,8 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "flux_line": {
-            "singleInput": {
-                "port": ("con1", 3),
-            },
-            "operations": {
-                "const": "const_flux_pulse",
-            },
-        },
-        "flux_line_sticky": {
-            "singleInput": {
-                "port": ("con1", 3),
-            },
-            "hold_offset": {"duration": 1},  # in clock cycles (4ns)
-            "operations": {
-                "const": "const_flux_pulse",
-            },
-        },
     },
     "pulses": {
-        "const_single_pulse": {
-            "operation": "control",
-            "length": const_len,
-            "waveforms": {
-                "single": "const_wf",
-            },
-        },
-        "const_flux_pulse": {
-            "operation": "control",
-            "length": const_flux_len,
-            "waveforms": {
-                "single": "const_flux_wf",
-            },
-        },
         "const_pulse": {
             "operation": "control",
             "length": const_len,
@@ -252,20 +252,41 @@ config = {
                 "Q": "zero_wf",
             },
         },
-        "pi_pulse": {
+        "square_pi_pulse": {
             "operation": "control",
-            "length": pi_len,
+            "length": square_pi_len,
             "waveforms": {
-                "I": "pi_wf",
+                "I": "square_pi_wf",
                 "Q": "zero_wf",
             },
         },
-        "pi_half_pulse": {
+        "square_pi_half_pulse": {
             "operation": "control",
-            "length": pi_len,
+            "length": square_pi_len,
             "waveforms": {
-                "I": "pi_half_wf",
+                "I": "square_pi_half_wf",
                 "Q": "zero_wf",
+            },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
+        },
+        "gaussian_pulse": {
+            "operation": "control",
+            "length": gauss_len,
+            "waveforms": {
+                "I": "gauss_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "displace_pulse": {
+            "operation": "control",
+            "length": displace_len,
+            "waveforms": {
+                "I": "displace_wf",
+                "Q": "displace_wf",
             },
         },
         "x90_pulse": {
@@ -316,14 +337,6 @@ config = {
                 "Q": "minus_y90_Q_wf",
             },
         },
-        "gaussian_pulse": {
-            "operation": "control",
-            "length": gauss_len,
-            "waveforms": {
-                "I": "gauss_wf",
-                "Q": "zero_wf",
-            },
-        },
         "readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
@@ -347,9 +360,10 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
-        "pi_wf": {"type": "constant", "sample": pi_amp},
-        "pi_half_wf": {"type": "constant", "sample": pi_amp / 2},
-        "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
+        "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
+        "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
+        "square_pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
+        "displace_wf": {"type": "arbitrary", "samples": displace_wf.tolist()},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
@@ -408,14 +422,14 @@ config = {
         },
     },
     "mixers": {
-        "mixer_qubit": [
+        "octave_octave1_1": [
             {
                 "intermediate_frequency": qubit_IF,
                 "lo_frequency": qubit_LO,
                 "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
             }
         ],
-        "mixer_resonator": [
+        "octave_octave1_2": [
             {
                 "intermediate_frequency": resonator_IF,
                 "lo_frequency": resonator_LO,

@@ -3,7 +3,7 @@ from set_octave import OctaveUnit, octave_declaration
 ######################
 # Network parameters #
 ######################
-qop_ip = "1127.0.0.1"
+qop_ip = "127.0.0.1"
 qop_port = 80
 
 ############################
