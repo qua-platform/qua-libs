@@ -15,7 +15,7 @@ with program() as cw_output:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 qm = qmm.open_qm(config)
 
 job = qm.execute(cw_output)

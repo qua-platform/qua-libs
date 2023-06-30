@@ -30,6 +30,7 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"
+qop_port = 80
 
 # Qubits
 qubit_IF = 50 * u.MHz

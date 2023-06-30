@@ -76,7 +76,7 @@ with program() as ramsey_freq_duration:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulation = True
 if simulation:

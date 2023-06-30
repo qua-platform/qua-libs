@@ -52,7 +52,7 @@ with program() as T1:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 #######################
 # Simulate or execute #

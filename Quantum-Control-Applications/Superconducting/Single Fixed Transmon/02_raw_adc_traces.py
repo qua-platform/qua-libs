@@ -33,7 +33,7 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 qm = qmm.open_qm(config)
 job = qm.execute(raw_trace_prog)

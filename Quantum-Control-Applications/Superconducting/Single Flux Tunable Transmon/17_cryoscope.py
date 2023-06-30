@@ -105,7 +105,7 @@ with program() as cryoscope:
 #  Open Communication with the QOP  #
 #####################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port)
 
 simulation = True
 if simulation:
