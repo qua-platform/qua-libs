@@ -15,7 +15,7 @@ from qualang_tools.units import unit
 # Flags to switch between different modes defined below
 check_up_converters = False
 check_triggers = False
-check_down_converters = True
+check_down_converters = False
 calibration = False
 
 #################################
