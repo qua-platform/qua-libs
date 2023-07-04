@@ -5,7 +5,6 @@ from qm.octave import *
 import os
 from qm.octave import QmOctaveConfig
 from qm.octave.octave_manager import ClockMode
-from dataclasses import dataclass
 from typing import Union
 
 
