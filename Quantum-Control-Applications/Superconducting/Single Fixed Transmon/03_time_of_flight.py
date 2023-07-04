@@ -9,7 +9,7 @@ from scipy.signal import savgol_filter
 # The QUA program #
 ###################
 n_avg = 100  # Number of averaging loops
-cooldown_time = 2 * u.mus // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 
 with program() as raw_trace_prog:
     n = declare(int)
