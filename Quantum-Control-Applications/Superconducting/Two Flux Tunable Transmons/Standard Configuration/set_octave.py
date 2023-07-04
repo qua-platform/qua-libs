@@ -5,7 +5,7 @@ from qm.octave import *
 import os
 from qm.octave import QmOctaveConfig
 from qm.octave.octave_manager import ClockMode
-from dataclasses import dataclass
+import json
 from typing import Union
 
 
@@ -279,3 +279,30 @@ def octave_settings(qmm, config, octaves, elements_settings=None, calibration=Tr
             qm.octave.calibrate_element(elements_settings[i].name, [(LO, IF)])
             # Re-open a quantum machine to apply the calibration parameters
             qm = qmm.open_qm(config)
+
+
+def update_correction(qm, element: str, freq_pair: list):
+    """Update the calibration parameters for a given (LO, IF) pair assuming that this pair was calibrated beforehand.
+
+    :param qm: the quantum machine object.
+    :param element: the element linked to the Octave mixer to update.
+    :param freq_pair: list containing the desired LO and IF frequency pair. This pair must be calibrated and present in the calibration database. For instance freq_pair=(6.5e9, 75e6).
+    """
+    calibration_parameters = json.load(open("calibration_db.json"))["_default"]
+    config = qm.get_config()
+    mixer_id = config["elements"][element]["mixInputs"]["mixer"]
+    LO = freq_pair[0]
+    IF = freq_pair[1]
+    for i in calibration_parameters.keys():
+        if calibration_parameters[i]["mixer_id"] == mixer_id and calibration_parameters[i]["lo_frequency"] == LO:
+            if IF is None or calibration_parameters[i]["if_frequency"] == IF:
+                I_offset = calibration_parameters[i]["i_offset"]
+                Q_offset = calibration_parameters[i]["q_offset"]
+                correction = calibration_parameters[i]["correction"]
+                qm.set_output_dc_offset_by_element(element, ("I", "Q"), (I_offset, Q_offset))
+                qm.set_mixer_correction(mixer_id, IF, LO, correction)
+                break
+            else:
+                raise ValueError(f"The specified IF={IF} is not in the calibration database.")
+        else:
+            raise ValueError(f"The specified LO={LO} is not in the calibration database.")
