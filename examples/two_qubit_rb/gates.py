@@ -3,12 +3,12 @@ import os
 import pathlib
 import pickle
 import random
-from typing import Set
+from typing import Set, List
 
 import cirq
 import numpy as np
 
-from simple_tableau import SimpleTableau
+from .simple_tableau import SimpleTableau
 
 q1, q2 = cirq.LineQubit.range(2)
 
@@ -84,7 +84,94 @@ native_2_qubit_gates = {
         ],
         "SWAP": [cirq.CNOT(q2, q1), cirq.CNOT(q1, q2), cirq.CNOT(q2, q1)],
     },
+    "CZ": {
+        "CNOT": [cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+                 cirq.CZ(q1, q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1)],
+        "iSWAP": [cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),
+                  cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q2),
+                  cirq.CZ(q1, q2),
+                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                  cirq.CZ(q1, q2),
+                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2)],
+        "SWAP": [cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+                 cirq.CZ(q1, q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.CZ(q1, q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.CZ(q1, q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1)]
+    }
 }
+
+
+##### Conversion from unitary / cirq to tableau
+
+I = np.matrix([[1, 0], [0, 1]])  # identity
+X = np.matrix([[0, 1], [1, 0]])  # pi x
+Y = np.matrix([[0, -1j], [1j, 0]])  # pi y
+Z = np.matrix([[1, 0], [0, -1]])  # pi z
+
+paulis = [I, X, Y, Z]
+twoQBPaulis = [np.kron(i, j) for i in paulis for j in paulis]
+
+symplecticTable = [[0, 0, 0, 0],  # II
+                   [0, 0, 1, 0],  # IX
+                   [0, 0, 1, 1],  # IY
+                   [0, 0, 0, 1],  # IZ
+                   [1, 0, 0, 0],  # XI
+                   [1, 0, 1, 0],  # XX
+                   [1, 0, 1, 1],  # XY
+                   [1, 0, 0, 1],  # XZ
+                   [1, 1, 0, 0],  # YI
+                   [1, 1, 1, 0],  # YX
+                   [1, 1, 1, 1],  # YY
+                   [1, 1, 0, 1],  # YZ
+                   [0, 1, 0, 0],  # ZI
+                   [0, 1, 1, 0],  # ZX
+                   [0, 1, 1, 1],  # ZY
+                   [0, 1, 0, 1]]  # ZZ
+
+
+def get_pauli_prod(m):
+    # input: tensor product of two Pauli matrices
+    # output: tableau column of m
+
+    for i, p in enumerate(twoQBPaulis):
+        prod = m @ p
+        if np.trace(prod) > 3.9:
+            return symplecticTable[i], 0
+        if np.trace(prod) < -3.9:
+            return symplecticTable[i], 1
+
+
+def tableau_from_unitary(m):
+    # Turns a two-qubit unitary into the full tableau representation
+    # input: two-qubit unitary m
+    # outputs: simple tableau
+    s = np.zeros([4, 4])
+    p = np.zeros(4)
+
+    s[:, 0], p[0] = get_pauli_prod(m @ np.kron(X, I) @ m.H)
+    s[:, 1], p[1] = get_pauli_prod(m @ np.kron(Z, I) @ m.H)
+    s[:, 2], p[2] = get_pauli_prod(m @ np.kron(I, X) @ m.H)
+    s[:, 3], p[3] = get_pauli_prod(m @ np.kron(I, Z) @ m.H)
+
+    return SimpleTableau(s, p)
+
+
+def tableau_from_cirq(gates: List[cirq.GateOperation]) -> SimpleTableau:
+    return tableau_from_unitary(np.matrix(cirq.Circuit(gates).unitary()))
+
+#########################################################
 
 
 @dataclasses.dataclass
@@ -163,6 +250,9 @@ class _GateDatabase:
 
     def rand_pauli(self):
         return random.randrange(*self._pauli_range)
+
+    def get_interleaving_gate(self):
+        return self._pauli_range[1]
 
     def find_symplectic_gate_id_by_tableau_g(self, tableau: SimpleTableau):
         tableaus = self._tableaus[self._symplectic_range[0] : self._symplectic_range[1]]
