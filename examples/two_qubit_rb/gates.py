@@ -174,6 +174,13 @@ def tableau_from_cirq(gates: List[cirq.GateOperation]) -> SimpleTableau:
 #########################################################
 
 
+def combine_to_phased_x_z(first_gate: cirq.GateOperation, second_gate: cirq.GateOperation) -> cirq.GateOperation:
+    unitary = cirq.Circuit([first_gate, second_gate]).unitary()
+    if unitary.shape != (2,2):
+        raise RuntimeError("Cannot combine multi qubit gate to PhasedXZ")
+    return cirq.PhasedXZGate.from_matrix(unitary)(first_gate.qubits[0])
+
+
 @dataclasses.dataclass
 class GateCommand:
     type: str
@@ -286,6 +293,27 @@ class GateGenerator:
             two_qubit_dict[k] = available_imp[0]
         return two_qubit_dict
 
+    @staticmethod
+    def _reduce_gate(gate: List[cirq.GateOperation]):
+        qubit_ops = {0: None, 1: None}
+        output = []
+
+        def append_qubit_ops():
+            for q in [0, 1]:
+                if qubit_ops[q] is not None:
+                    output.append(qubit_ops[q])
+                qubit_ops[q] = None
+
+        for op in gate:
+            if len(op.qubits) == 1:
+                prev_op = qubit_ops[op.qubits[0].x]
+                qubit_ops[op.qubits[0].x] = op if prev_op is None else combine_to_phased_x_z(prev_op, op)
+            else:
+                append_qubit_ops()
+                output.append(op)
+        append_qubit_ops()
+        return output
+
     def generate(self, cmd_id):
         gate = []
         command = gate_db.get_command(cmd_id)
@@ -314,4 +342,4 @@ class GateGenerator:
             gate.append(pauli[command.q2[0]](q2))
         else:
             raise RuntimeError(f"unknown command {command.type}")
-        return gate
+        return self._reduce_gate(gate)
