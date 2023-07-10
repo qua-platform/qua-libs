@@ -1,13 +1,14 @@
-from typing import Callable, Dict, List, Literal, Tuple
+from typing import Callable, List, Literal
 import cirq
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm.jobs.running_qm_job import RunningQmJob
 from qm.qua import *
 from qm.qua._dsl import _Expression
 
 from qualang_tools.bakery.bakery import Baking
 from .RBBaker import RBBaker
 from .RBResult import RBResult
-from .gates import GateGenerator, gate_db
+from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .simple_tableau import SimpleTableau
 from .util import run_in_thread, pbar
 
@@ -23,6 +24,7 @@ class TwoQubitRb:
         prep_func: Callable[[], None],
         measure_func: Callable[[], Tuple[_Expression, _Expression]],
         verify_generation: bool = False,
+        interleaving_gate: Optional[List[cirq.GateOperation]] = None,
     ):
         """ 
         A class for running two qubit randomized benchmarking experiments.
@@ -65,12 +67,16 @@ class TwoQubitRb:
                     The expression must evaluate to a boolean value. False means |0>, True means |1>. The MSB is the first qubit.
 
             verify_generation: A boolean indicating whether to verify the generated sequences. Not be used in production, as it is very slow.
+
+            interleaving_gate: Interleaved gate represented as list of cirq GateOperation
         """
         for i, qe in config["elements"].items():
             if "operations" not in qe:
                 qe["operations"] = {}
         self._rb_baker = RBBaker(
-            config, single_qubit_gate_generator, two_qubit_gate_generators)
+            config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate)
+        self._interleaving_gate = interleaving_gate
+        self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
         self._config = self._rb_baker.bake()
         self._symplectic_generator = GateGenerator(
             set(two_qubit_gate_generators.keys()))
@@ -78,12 +84,21 @@ class TwoQubitRb:
         self._measure_func = measure_func
         self._verify_generation = verify_generation
 
+    def convert_sequence_to_cirq(self, sequence: List[int]) -> List[cirq.GateOperation]:
+        gates = []
+        for cmd_id in sequence:
+            gates.extend(self._rb_baker.gates_from_cmd_id(cmd_id))
+        return gates
+
     def _verify_rb_sequence(self, gate_ids, final_tableau: SimpleTableau):
         if final_tableau != SimpleTableau(np.eye(4), [0, 0, 0, 0]):
             raise RuntimeError("Verification of RB sequence failed")
         gates = []
         for gate_id in gate_ids:
-            gates.extend(self._symplectic_generator.generate(gate_id))
+            if gate_id == gate_db.get_interleaving_gate():
+                gates.extend(self._interleaving_gate)
+            else:
+                gates.extend(self._symplectic_generator.generate(gate_id))
 
         unitary = cirq.Circuit(gates).unitary()
         fixed_phase_unitary = np.conj(np.trace(unitary) / 4) * unitary
@@ -101,6 +116,10 @@ class TwoQubitRb:
 
             tableau = tableau.then(gate_db.get_tableau(
                 symplectic)).then(gate_db.get_tableau(pauli))
+
+            if self._interleaving_tableau is not None:
+                gate_ids.append(gate_db.get_interleaving_gate())
+                tableau = tableau.then(self._interleaving_tableau)
 
         inv_tableau = tableau.inverse()
         inv_id = gate_db.find_symplectic_gate_id_by_tableau_g(inv_tableau)
@@ -133,14 +152,11 @@ class TwoQubitRb:
             progress = declare(int)
             progress_os = declare_stream()
             state_os = declare_stream()
-            gates_len_is = declare_input_stream(
-                int, name="gates_len_is", size=1)
-            qubit1_gates_is = declare_input_stream(
-                int, name="qubit1_gates_is", size=self._buffer_length)
-            qubit2_gates_is = declare_input_stream(
-                int, name="qubit2_gates_is", size=self._buffer_length)
-            two_qubits_gates_is = declare_input_stream(
-                int, name="two_qubits_gates_is", size=self._buffer_length)
+            gates_len_is = declare_input_stream(int, name="__gates_len_is__", size=1)
+            gates_is = {
+                qe: declare_input_stream(int, name=f"{qe}_is", size=self._buffer_length)
+                for qe in self._rb_baker.all_elements
+            }
 
             assign(progress, 0)
             with for_each_(sequence_depth, sequence_depths):
@@ -148,17 +164,14 @@ class TwoQubitRb:
                     assign(progress, progress + 1)
                     save(progress, progress_os)
                     advance_input_stream(gates_len_is)
-                    advance_input_stream(qubit1_gates_is)
-                    advance_input_stream(qubit2_gates_is)
-                    advance_input_stream(two_qubits_gates_is)
+                    for gate_is in gates_is.values():
+                        advance_input_stream(gate_is)
                     assign(length, gates_len_is[0])
                     with for_(n_avg, 0, n_avg < num_averages, n_avg + 1):
                         self._prep_func()
-                        self._rb_baker.run(
-                            qubit1_gates_is, qubit2_gates_is, two_qubits_gates_is, length)
+                        self._rb_baker.run(gates_is, length)
                         out1, out2 = self._measure_func()
-                        assign(state, (Cast.to_int(out2) << 1) +
-                               Cast.to_int(out1))
+                        assign(state, (Cast.to_int(out2) << 1) + Cast.to_int(out1))
                         save(state, state_os)
 
             with stream_processing():
@@ -167,34 +180,32 @@ class TwoQubitRb:
                 progress_os.save("progress")
         return prog
 
-    def _decode_sequence_for_channel(self, channel: str, seq: list):
-        seq = [self._rb_baker.decode(i, channel) for i in seq]
+    def _decode_sequence_for_element(self, element: str, seq: list):
+        seq = [self._rb_baker.decode(i, element) for i in seq]
         if len(seq) > self._buffer_length:
             RuntimeError("Buffer is too small")
         return seq + [0] * (self._buffer_length - len(seq))
 
     @run_in_thread
-    def _insert_all_input_stream(self, job, sequence_depths, num_repeats):
+    def _insert_all_input_stream(self, job: RunningQmJob, sequence_depths: List[int], num_repeats: int,
+                                 callback: Optional[Callable[[List[int]], None]] = None):
         for sequence_depth in sequence_depths:
             for repeat in range(num_repeats):
                 sequence = self._gen_rb_sequence(sequence_depth)
-                job.insert_input_stream("gates_len_is", len(sequence))
-                job.insert_input_stream(
-                    "qubit1_gates_is", self._decode_sequence_for_channel("qubit1", sequence))
-                job.insert_input_stream(
-                    "qubit2_gates_is", self._decode_sequence_for_channel("qubit2", sequence))
-                job.insert_input_stream(
-                    "two_qubits_gates_is", self._decode_sequence_for_channel(
-                        "two_qubit_gates", sequence)
-                )
+                job.insert_input_stream("__gates_len_is__", len(sequence))
+                for qe in self._rb_baker.all_elements:
+                    job.insert_input_stream(f"{qe}_is", self._decode_sequence_for_element(qe, sequence))
+
+                if callback is not None:
+                    callback(sequence)
 
     def run(
         self,
         qmm: QuantumMachinesManager,
         circuit_depths: List[int],
         num_circuits_per_depth: int, 
-        num_shots_per_circuit: int, 
-        interleaving_gate: Optional[list] = None,
+        num_shots_per_circuit: int,
+        **kwargs
     ):
         """
         Runs the randomized benchmarking experiment. The experiment is sweep over Clifford circuits with varying depths.
@@ -206,7 +217,6 @@ class TwoQubitRb:
             circuit_depths (List[int]): A list of the number of Cliffords per circuit (not including inverse).
             num_circuits_per_depth (int): The number of different circuit randomizations per depth.
             num_shots_per_circuit (int): The number of shots per particular circuit.
-            interleaving_gate (Optional[list]): Not supported yet. Please contact QM if you need this feature.
 
         Example:
             >>> from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -217,8 +227,6 @@ class TwoQubitRb:
             
         """
 
-        if interleaving_gate is not None:
-            raise NotImplementedError("Interleaving gates are not supported yet")
         prog = self._gen_qua_program(
             circuit_depths, num_circuits_per_depth, num_shots_per_circuit
         )
@@ -226,7 +234,8 @@ class TwoQubitRb:
         qm = qmm.open_qm(self._config)
         job = qm.execute(prog)
 
-        self._insert_all_input_stream(job, circuit_depths, num_circuits_per_depth)
+        gen_sequence_callback = kwargs['gen_sequence_callback'] if 'gen_sequence_callback' in kwargs else None
+        self._insert_all_input_stream(job, circuit_depths, num_circuits_per_depth, gen_sequence_callback)
 
         full_progress = len(circuit_depths) * num_circuits_per_depth
         pbar(job.result_handles, full_progress, "progress")

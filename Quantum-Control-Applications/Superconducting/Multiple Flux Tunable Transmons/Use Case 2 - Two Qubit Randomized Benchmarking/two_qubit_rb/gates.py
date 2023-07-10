@@ -3,7 +3,7 @@ import os
 import pathlib
 import pickle
 import random
-from typing import Set
+from typing import Set, List
 
 import cirq
 import numpy as np
@@ -113,6 +113,74 @@ native_2_qubit_gates = {
 }
 
 
+##### Conversion from unitary / cirq to tableau
+
+I = np.matrix([[1, 0], [0, 1]])  # identity
+X = np.matrix([[0, 1], [1, 0]])  # pi x
+Y = np.matrix([[0, -1j], [1j, 0]])  # pi y
+Z = np.matrix([[1, 0], [0, -1]])  # pi z
+
+paulis = [I, X, Y, Z]
+twoQBPaulis = [np.kron(i, j) for i in paulis for j in paulis]
+
+symplecticTable = [[0, 0, 0, 0],  # II
+                   [0, 0, 1, 0],  # IX
+                   [0, 0, 1, 1],  # IY
+                   [0, 0, 0, 1],  # IZ
+                   [1, 0, 0, 0],  # XI
+                   [1, 0, 1, 0],  # XX
+                   [1, 0, 1, 1],  # XY
+                   [1, 0, 0, 1],  # XZ
+                   [1, 1, 0, 0],  # YI
+                   [1, 1, 1, 0],  # YX
+                   [1, 1, 1, 1],  # YY
+                   [1, 1, 0, 1],  # YZ
+                   [0, 1, 0, 0],  # ZI
+                   [0, 1, 1, 0],  # ZX
+                   [0, 1, 1, 1],  # ZY
+                   [0, 1, 0, 1]]  # ZZ
+
+
+def get_pauli_prod(m):
+    # input: tensor product of two Pauli matrices
+    # output: tableau column of m
+
+    for i, p in enumerate(twoQBPaulis):
+        prod = m @ p
+        if np.trace(prod) > 3.9:
+            return symplecticTable[i], 0
+        if np.trace(prod) < -3.9:
+            return symplecticTable[i], 1
+
+
+def tableau_from_unitary(m):
+    # Turns a two-qubit unitary into the full tableau representation
+    # input: two-qubit unitary m
+    # outputs: simple tableau
+    s = np.zeros([4, 4])
+    p = np.zeros(4)
+
+    s[:, 0], p[0] = get_pauli_prod(m @ np.kron(X, I) @ m.H)
+    s[:, 1], p[1] = get_pauli_prod(m @ np.kron(Z, I) @ m.H)
+    s[:, 2], p[2] = get_pauli_prod(m @ np.kron(I, X) @ m.H)
+    s[:, 3], p[3] = get_pauli_prod(m @ np.kron(I, Z) @ m.H)
+
+    return SimpleTableau(s, p)
+
+
+def tableau_from_cirq(gates: List[cirq.GateOperation]) -> SimpleTableau:
+    return tableau_from_unitary(np.matrix(cirq.Circuit(gates).unitary()))
+
+#########################################################
+
+
+def combine_to_phased_x_z(first_gate: cirq.GateOperation, second_gate: cirq.GateOperation) -> cirq.GateOperation:
+    unitary = cirq.Circuit([first_gate, second_gate]).unitary()
+    if unitary.shape != (2,2):
+        raise RuntimeError("Cannot combine multi qubit gate to PhasedXZ")
+    return cirq.PhasedXZGate.from_matrix(unitary)(first_gate.qubits[0])
+
+
 @dataclasses.dataclass
 class GateCommand:
     type: str
@@ -190,6 +258,9 @@ class _GateDatabase:
     def rand_pauli(self):
         return random.randrange(*self._pauli_range)
 
+    def get_interleaving_gate(self):
+        return self._pauli_range[1]
+
     def find_symplectic_gate_id_by_tableau_g(self, tableau: SimpleTableau):
         tableaus = self._tableaus[self._symplectic_range[0] : self._symplectic_range[1]]
         return next(i for i, x in enumerate(tableaus) if np.array_equal(x.g, tableau.g))
@@ -222,6 +293,27 @@ class GateGenerator:
             two_qubit_dict[k] = available_imp[0]
         return two_qubit_dict
 
+    @staticmethod
+    def _reduce_gate(gate: List[cirq.GateOperation]):
+        qubit_ops = {0: None, 1: None}
+        output = []
+
+        def append_qubit_ops():
+            for q in [0, 1]:
+                if qubit_ops[q] is not None:
+                    output.append(qubit_ops[q])
+                qubit_ops[q] = None
+
+        for op in gate:
+            if len(op.qubits) == 1:
+                prev_op = qubit_ops[op.qubits[0].x]
+                qubit_ops[op.qubits[0].x] = op if prev_op is None else combine_to_phased_x_z(prev_op, op)
+            else:
+                append_qubit_ops()
+                output.append(op)
+        append_qubit_ops()
+        return output
+
     def generate(self, cmd_id):
         gate = []
         command = gate_db.get_command(cmd_id)
@@ -250,4 +342,4 @@ class GateGenerator:
             gate.append(pauli[command.q2[0]](q2))
         else:
             raise RuntimeError(f"unknown command {command.type}")
-        return gate
+        return self._reduce_gate(gate)

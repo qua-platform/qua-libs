@@ -1,29 +1,32 @@
 import copy
-from typing import Callable, Dict, Tuple
+import json
+from typing import Callable, Dict, Optional, List
 
 import cirq
 from cirq import GateOperation
 from qm.qua import switch_, case_, declare, align, for_
 from qualang_tools.bakery.bakery import Baking, baking
 
-from .gates import GateCommand, GateGenerator, gate_db
+from .gates import GateGenerator, gate_db
 
 
 class RBBaker:
-    def __init__(self, config, single_qubit_gate_generator: Callable, two_qubit_gate_generators: Dict[str, Callable]):
+    def __init__(self, config,
+                 single_qubit_gate_generator: Callable,
+                 two_qubit_gate_generators: Dict[str, Callable],
+                 interleaving_gate: Optional[List[cirq.GateOperation]] = None):
         self._config = copy.deepcopy(config)
         self._single_qubit_gate_generator = single_qubit_gate_generator
         self._two_qubit_gate_generators = two_qubit_gate_generators
+        self._interleaving_gate = interleaving_gate
         self._symplectic_generator = GateGenerator(set(two_qubit_gate_generators.keys()))
-        self._gate_length = {}
-        self._bakers = {}
-        self._op_id_by_cmd_ids = {}
-        tmp_config = copy.deepcopy(config)
-        self._two_qubits_qes = set()
-        for gen in two_qubit_gate_generators.values():
-            with baking(tmp_config) as b:
-                gen(b, 0, 1)
-                self._two_qubits_qes.update(b.get_qe_set())
+        self._all_elements = self._collect_all_elements()
+        self._cmd_to_op = {}
+        self._op_to_baking = {}
+
+    @property
+    def all_elements(self):
+        return self._all_elements
 
     @staticmethod
     def _get_qubits(op):
@@ -52,141 +55,99 @@ class RBBaker:
         else:
             raise RuntimeError("unsupported gate")
 
-    def _get_gate_op_time(self, gate_op: GateOperation):
-        if gate_op in self._gate_length:
-            return self._gate_length[gate_op]
+    def _collect_all_elements(self):
         config = copy.deepcopy(self._config)
-        with baking(config) as b:
+        qes = set()
+        for cmd_id, command in enumerate(gate_db.commands):
+            with baking(config) as b:
+                self._update_baking_from_cmd_id(b, cmd_id)
+                qes.update(b.get_qe_set())
+                b.update_config = False
+            if self._interleaving_gate is not None:
+                with baking(config) as b:
+                    self._update_baking_from_gates(b, self._interleaving_gate)
+                    qes.update(b.get_qe_set())
+                    b.update_config = False
+        return qes
+
+    def _update_baking_from_gates(self, b: Baking, gate_ops, elements=None):
+        prev_gate_qubits = []
+        for gate_op in gate_ops:
+            gate_qubits = self._get_qubits(gate_op)
+            if len(gate_qubits) != len(prev_gate_qubits) and elements is not None:
+                b.align(*elements)
+            prev_gate_qubits = gate_qubits
             self._gen_gate(b, gate_op)
-            length = b.get_current_length()
-        self._gate_length[gate_op] = length
-        return length
+        if elements is not None:
+            b.align(*elements)
 
-    def _gen_cmd_per_qubits(self, config: dict, cmd_id, qubits):
-        gate_ops = self._symplectic_generator.generate(cmd_id)
-        with baking(config) as b:
-            for gate_op in gate_ops:
-                gate_qubits = self._get_qubits(gate_op)
-                # Kevin -> because cirq.CNOT(q2,q1) had to add the case to eval [1, 0]
-                if len(qubits) == 2:
-                    if gate_qubits == [0, 1] or gate_qubits == [1, 0]:
-                        self._gen_gate(b, gate_op)
-                    elif (len(qubits) == 1 and len(gate_qubits) == 2) or (len(qubits) == 2 and gate_qubits == [0]):
-                        qes = b.get_qe_set()
-                        if len(qes) == 0 and len(qubits) == 2:
-                            qes = self._two_qubits_qes
-                        b.wait(self._get_gate_op_time(gate_op), *qes)
-                # Kevin
-                elif gate_qubits == qubits:
-                    self._gen_gate(b, gate_op)
-                elif (len(qubits) == 1 and len(gate_qubits) == 2) or (len(qubits) == 2 and gate_qubits == [0]):
-                    qes = b.get_qe_set()
-                    if len(qes) == 0 and len(qubits) == 2:
-                        qes = self._two_qubits_qes
-                    b.wait(self._get_gate_op_time(gate_op), *qes)
-        return b
+    def gates_from_cmd_id(self, cmd_id):
+        if 0 <= cmd_id < len(gate_db.commands):
+            gate_ops = self._symplectic_generator.generate(cmd_id)
+        elif self._interleaving_gate is not None and cmd_id == len(gate_db.commands):   # Interleaving gate
+            gate_ops = self._interleaving_gate
+        else:
+            raise RuntimeError("command out of range")
+        return gate_ops
 
-    def _partial_bake_qubit_ops(self, config: dict, qubit):
-        output = {}
-        op_id = 0
-        for cmd_id, command in enumerate(gate_db.commands):
-            if command.type not in output:
-                output[command.type] = {}
-            ops = command.get_qubit_ops(qubit)
-            if ops in output[command.type]:
-                continue
-            output[command.type][ops] = (op_id, self._gen_cmd_per_qubits(config, cmd_id, [qubit]))
-            op_id += 1
+    def _update_baking_from_cmd_id(self, b: Baking, cmd_id, elements=None):
+        gate_ops = self.gates_from_cmd_id(cmd_id)
+        return self._update_baking_from_gates(b, gate_ops, elements)
 
-        return output
+    @staticmethod
+    def _unique_baker_identifier_for_qe(b: Baking, qe: str):
+        identifier = {
+            "samples": b._samples_dict[qe],
+            "info": b._qe_dict[qe]
+        }
+        return json.dumps(identifier)
 
-    def _partial_bake_two_qubit_ops(self, config: dict, qubits):
-        output = {}
-        op_id = 0
-        for cmd_id, command in enumerate(gate_db.commands):
-            if command.type in output:
-                continue
-            output[command.type] = (op_id, self._gen_cmd_per_qubits(config, cmd_id, qubits))
-            op_id += 1
-        return output
-
-    def _get_baker(self, channel: str, command: GateCommand) -> Tuple[int, Baking]:
-        if channel == "qubit1":
-            return self._bakers[channel][command.type][command.q1]
-        elif channel == "qubit2":
-            return self._bakers[channel][command.type][command.q2]
-        elif channel == "two_qubit_gates":
-            return self._bakers[channel][command.type]
-
-    def _validate_bakers(self):
-        all_qubit1_qes = set()
-        all_qubit2_qes = set()
-        all_two_qubit_gates_qes = set()
-        for cmd_id, command in enumerate(gate_db.commands):
-            qubit1_baker = self._get_baker("qubit1", command)[1]
-            qubit2_baker = self._get_baker("qubit2", command)[1]
-            two_qubit_gates_baker = self._get_baker("two_qubit_gates", command)[1]
-            all_qubit1_qes.update(qubit1_baker.get_qe_set())
-            all_qubit2_qes.update(qubit2_baker.get_qe_set())
-            all_two_qubit_gates_qes.update(two_qubit_gates_baker.get_qe_set())
-            qubit1_len = qubit1_baker.get_current_length()
-            qubit2_len = qubit2_baker.get_current_length()
-            two_qubit_gates_len = two_qubit_gates_baker.get_current_length()
-            if len({qubit1_len, qubit2_len, two_qubit_gates_len}) > 1:
-                print(qubit1_len, qubit2_len, two_qubit_gates_len, all_two_qubit_gates_qes, command)
-                print(len({qubit1_len, qubit2_len, two_qubit_gates_len}))
-                print({qubit1_len, qubit2_len, two_qubit_gates_len})
-
-                raise RuntimeError("All gates should be of the same length")
-        if (
-            len(all_qubit1_qes.intersection(all_qubit2_qes)) > 0
-            or len(all_qubit1_qes.intersection(all_two_qubit_gates_qes)) > 0
-            or len(all_qubit2_qes.intersection(all_two_qubit_gates_qes)) > 0
-        ):
-            raise RuntimeError("Overlapped QEs were used for Qubit1/Qubit2/Two qubit gates")
+    def _bake_all_ops(self, config: dict):
+        waveform_id_per_qe = {qe: 0 for qe in self._all_elements}
+        waveform_to_baking = {qe: {} for qe in self._all_elements}
+        cmd_to_op = {qe: {} for qe in self._all_elements}
+        op_to_baking = {qe: [] for qe in self._all_elements}
+        num_of_commands = len(gate_db.commands) + (0 if self._interleaving_gate is None else 1)
+        for cmd_id in range(num_of_commands):
+            with baking(config) as b:
+                self._update_baking_from_cmd_id(b, cmd_id, self._all_elements)
+                any_qe_used = False
+                for qe in self._all_elements:
+                    key = self._unique_baker_identifier_for_qe(b, qe)
+                    if key not in waveform_to_baking[qe]:
+                        waveform_to_baking[qe][key] = waveform_id_per_qe[qe], b
+                        op_to_baking[qe].append(b)
+                        waveform_id_per_qe[qe] += 1
+                        any_qe_used = True
+                    cmd_to_op[qe][cmd_id] = waveform_to_baking[qe][key][0]
+                b.update_config = any_qe_used
+        return cmd_to_op, op_to_baking
 
     def bake(self) -> dict:
         config = copy.deepcopy(self._config)
-        self._bakers = {
-            "qubit1": self._partial_bake_qubit_ops(config, 0),
-            "qubit2": self._partial_bake_qubit_ops(config, 1),
-            "two_qubit_gates": self._partial_bake_two_qubit_ops(config, [0, 1]),
-        }
-        self._validate_bakers()
-        self._op_id_by_cmd_ids = {
-            "qubit1": [self._get_baker("qubit1", c)[0] for c in gate_db.commands],
-            "qubit2": [self._get_baker("qubit2", c)[0] for c in gate_db.commands],
-            "two_qubit_gates": [self._get_baker("two_qubit_gates", c)[0] for c in gate_db.commands],
-        }
-
+        self._cmd_to_op, self._op_to_baking = self._bake_all_ops(config)
         return config
 
     def decode(self, cmd_id, element):
-        return self._op_id_by_cmd_ids[element][cmd_id]
+        return self._cmd_to_op[element][cmd_id]
 
-    def run(self, q1_cmds, q2_cmds, two_qubit_cmds, length, unsafe=True):
-        q1_cmd_i = declare(int)
-        q2_cmd_i = declare(int)
-        two_qubit_cmd_i = declare(int)
+    @staticmethod
+    def _run_baking_for_qe(b: Baking, qe: str):
+        orig_get_qe_set = b.get_qe_set
+        b.get_qe_set = lambda: {qe}
+        b.run()
+        b.get_qe_set = orig_get_qe_set
+
+    def run(self, op_list_per_qe: dict, length, unsafe=True):
+        if set(op_list_per_qe.keys()) != self._all_elements:
+            raise RuntimeError(f"must specify ops for all elements: {', '.join(self._all_elements)} ")
 
         align()
-        with for_(q1_cmd_i, 0, q1_cmd_i < length, q1_cmd_i + 1):
-            with switch_(q1_cmds[q1_cmd_i], unsafe=unsafe):
-                for type_ops in self._bakers["qubit1"].values():
-                    for case_id, b in type_ops.values():
-                        with case_(case_id):
-                            b.run()
-
-        with for_(q2_cmd_i, 0, q2_cmd_i < length, q2_cmd_i + 1):
-            with switch_(q2_cmds[q2_cmd_i], unsafe=unsafe):
-                for type_ops in self._bakers["qubit2"].values():
-                    for case_id, b in type_ops.values():
-                        with case_(case_id):
-                            b.run()
-
-        with for_(two_qubit_cmd_i, 0, two_qubit_cmd_i < length, two_qubit_cmd_i + 1):
-            with switch_(two_qubit_cmds[two_qubit_cmd_i], unsafe=unsafe):
-                for case_id, b in self._bakers["two_qubit_gates"].values():
-                    with case_(case_id):
-                        b.run()
+        for qe, op_list in op_list_per_qe.items():
+            cmd_i = declare(int)
+            with for_(cmd_i, 0, cmd_i < length, cmd_i + 1):
+                with switch_(op_list[cmd_i], unsafe=unsafe):
+                    for op_id, b in enumerate(self._op_to_baking[qe]):
+                        with case_(op_id):
+                            self._run_baking_for_qe(b, qe)
         align()

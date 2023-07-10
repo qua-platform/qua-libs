@@ -27,7 +27,7 @@ class RBResult:
         plt.figure()
         for i, circuit_depth in enumerate(self.circuit_depths, start=1):
             ax = plt.subplot(n_rows, n_cols, i)
-            self.data.state.sel(circuit_depth=circuit_depth).plot.hist(ax, xticks=range(4))
+            self.data.state.sel(circuit_depth=circuit_depth).plot.hist(ax=ax, xticks=range(4))
         plt.tight_layout()
 
     def plot_fidelity(self):
