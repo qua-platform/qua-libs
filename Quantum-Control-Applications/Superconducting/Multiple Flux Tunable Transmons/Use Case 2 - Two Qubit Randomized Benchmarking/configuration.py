@@ -42,7 +42,7 @@ config = {
             "intermediate_frequency": -251827527.6672637,
             "operations": {
                 "cw$rect": "qubit0_xy$cw$rect",
-                "x": "qubit0_xy$x$drag",
+                "pi": "qubit0_xy$x$drag",
             },
         },
         "qubit0_z": {"singleInput": {"port": ["con1", 7]}, "intermediate_frequency": 0},
@@ -69,7 +69,7 @@ config = {
             "intermediate_frequency": -219480775.3785769,
             "operations": {
                 "cw$rect": "qubit1_xy$cw$rect",
-                "x": "qubit1_xy$x$drag",
+                "pi": "qubit1_xy$x$drag",
             },
         },
         "qubit1_z": {
