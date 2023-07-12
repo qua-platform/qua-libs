@@ -26,12 +26,12 @@ The use-case in this example is tailored for a superconducting quantum processor
 The code and configuration in this folder are an example on how to implement two-qubit randomized benchmarking for a specific set of parameters. For a quick implementation just clone the [*qua-libs repository*](https://github.com/qua-platform/qua-libs/) or download the [*Use Case 2 - Two Qubit Randomized Benchmarking*](https://github.com/qua-platform/qua-libs/tree/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking) folder and edit the [*two_qubit_rb_example.py*](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py) python file according to your configuration parameters.
 
 ## Single Qubit Gates
-The function for the single qubit gates requires that the operation "x" was previously calibrated by the user and corresponds to a pi-pulse on the target qubits. The *amp=x* condition inside the *baker.play* statement allows to scale the amplitude of the pulse. Together with the first *baker.frame_rotation_2pi* it allows the *baker.play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *baker.frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis, thus realizing the operation $Z^{z}Z^{a}X^{x}Z^{-a}$ similar to the `phasedXZ` gate of Google's Cirq (see https://quantumai.google/reference/python/cirq/PhasedXZGate).
+The function for the single qubit gates requires that the user expresses the calibrated qubit pulses with the input parameters x,z and a for qubits q. In this case the operation "pi" points to an operation in the configuration and corresponds to a pi-pulse on the target qubit. The *amp=x* condition inside the *baker.play* statement allows to scale the amplitude of the pulse. Together with the first *baker.frame_rotation_2pi* it allows the *baker.play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *baker.frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis, thus realizing the operation $Z^{z}Z^{a}X^{x}Z^{-a}$ similar to the `phasedXZ` gate of Google's Cirq (see https://quantumai.google/reference/python/cirq/PhasedXZGate).
 ```python
 def bake_phased_xz(baker: Baking, q, x, z, a):
     element = f"qubit{q}_xy"
     baker.frame_rotation_2pi(-a, element)
-    baker.play("x", element, amp=x)
+    baker.play("pi", element, amp=x)
     baker.frame_rotation_2pi(a + z, element)
 ```
 
@@ -155,7 +155,7 @@ Gate generation is performed using the *baking* class. This class adds to QUA th
 def bake_phased_xz(baker: Baking, q, x, z, a):
     element = f"qubit{q}_xy"
     baker.frame_rotation_2pi(-a, element)
-    baker.play("x", element, amp=x)
+    baker.play("pi", element, amp=x)
     baker.frame_rotation_2pi(a + z, element)
 ```
 single_qubit_gate_generator: A callable used to generate a single qubit gate using a signature similar to `phasedXZ` (see https://quantumai.google/reference/python/cirq/PhasedXZGate).
