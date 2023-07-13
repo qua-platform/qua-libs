@@ -338,7 +338,7 @@ if external_clock:
     # Change to the relevant external frequency
     qmm.octave_manager.set_clock(octave, ClockType.External, ClockFrequency.MHZ_10)
     # If using a clock from the OPT, use this command instead
-    #qmm.octave_manager.set_clock(octave, ClockType.Buffered, ClockFrequency.MHZ_1000)
+    # qmm.octave_manager.set_clock(octave, ClockType.Buffered, ClockFrequency.MHZ_1000)
 else:
     qmm.octave_manager.set_clock(octave, ClockType.Internal, ClockFrequency.MHZ_10)
 # You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
@@ -356,8 +356,7 @@ if external_LO:
 # For internal LO only:
 else:
     for el in elements:
-        qm.octave.set_lo_source(el,
-                                OctaveLOSource.Internal)  # Use the internal synthetizer to generate the LO.
+        qm.octave.set_lo_source(el, OctaveLOSource.Internal)  # Use the internal synthetizer to generate the LO.
         qm.octave.set_lo_frequency(el, LO)  # assign the LO inside the octave to element
         qm.octave.set_rf_output_gain(el, 0)  # can set the gain from -10dB to 20dB
         qm.octave.set_rf_output_mode(el, RFOutputMode.on)  # set the behaviour of the RF switch to be 'on'.
@@ -389,7 +388,7 @@ if check_triggers:
         with infinite_loop_():
             for el in elements:
                 play("cw", el, duration=1e9)
-                play('cw_wo_trig', el, duration=1e9)
+                play("cw_wo_trig", el, duration=1e9)
     job = qm.execute(hello_octave_trigger)
     time.sleep(60)  #  The program will run for 1 minute
     job.halt()
@@ -410,7 +409,9 @@ if check_down_converters:
         # Set the Octave down-conversion port to be RF1In1 for the first element "qe1"
         qm.octave.set_qua_element_octave_rf_in_port(elements[0], octave, 1)
         # Set the source of the down-conversion LO to be internal (only for RF1In1)
-        qm.octave.set_downconversion(elements[0], lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
+        qm.octave.set_downconversion(
+            elements[0], lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
+        )
         with program() as hello_octave_readout_1:
             raw_ADC_1 = declare_stream(adc_trace=True)
             measure("readout", elements[0], raw_ADC_1)
@@ -443,7 +444,9 @@ if check_down_converters:
         # Set the Octave down-conversion port to be RF1In2 for the second element "qe2"
         qm.octave.set_qua_element_octave_rf_in_port(elements[1], octave, 2)
         # Set the source of the down-conversion LO to be external from the port Dmd2LO in the rear panel
-        qm.octave.set_downconversion(elements[1], lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct)
+        qm.octave.set_downconversion(
+            elements[1], lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
+        )
         with program() as hello_octave_readout_2:
             raw_ADC_2 = declare_stream(adc_trace=True)
             measure("readout", elements[1], raw_ADC_2)

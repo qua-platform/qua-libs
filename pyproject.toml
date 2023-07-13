@@ -28,7 +28,7 @@ target-version = ['py37']
 #include = '(Tutorials)/.+\.pyi?$'
 
 [tool.poe.tasks]
-format="black examples"
+format="black Tutorials"
 check_format="black --check ."
 
 [build-system]
