@@ -32,7 +32,7 @@ from qualang_tools.config.waveform_tools import drag_cosine_pulse_waveforms
 x180_wf, x180_der_wf = np.array(
     drag_cosine_pulse_waveforms(x180_amp, x180_len, 
                                 alpha=drag_coef, 
-                                anharmonicity=(-2 * np.pi * 0.163e9), 
+                                anharmonicity=(-0.163e9), 
                                 detuning=det))
 ```
 In the function above, $\alpha$ is the DRAG parameter, the anharmonicity is defined as the difference in frequency (Hz) 

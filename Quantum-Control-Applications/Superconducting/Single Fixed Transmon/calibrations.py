@@ -1,7 +1,3 @@
-"""
-calibrations.py: template for easily performing single qubit calibration protocols.
-"""
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 from qualang_tools.addons.calibration.calibrations import QUA_calibrations
@@ -64,7 +60,7 @@ scans_ramsey = [
 
 # Open communication with QOP
 #############################################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 qm = qmm.open_qm(config)
 
 # Run calibrations

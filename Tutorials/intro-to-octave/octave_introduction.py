@@ -5,6 +5,7 @@ down-converters and calibration
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.octave import *
+from qm.octave.octave_manager import ClockMode
 from qm.qua import *
 import os
 import time
@@ -336,11 +337,9 @@ with program() as hello_octave:
 external_clock = False
 if external_clock:
     # Change to the relevant external frequency
-    qmm.octave_manager.set_clock(octave, ClockType.External, ClockFrequency.MHZ_10)
-    # If using a clock from the OPT, use this command instead
-    # qmm.octave_manager.set_clock(octave, ClockType.Buffered, ClockFrequency.MHZ_1000)
+    qm.octave.set_clock(octave, clock_mode=ClockMode.External_10MHz)
 else:
-    qmm.octave_manager.set_clock(octave, ClockType.Internal, ClockFrequency.MHZ_10)
+    qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
 # You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
 
 #########################################

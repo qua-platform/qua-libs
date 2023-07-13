@@ -16,8 +16,8 @@ def IQ_imbalance(g, phi):
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
     be seen here:
     https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the I & Q ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians), set to 0 for no phase imbalance.
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
     """
     c = np.cos(phi)
     s = np.sin(phi)
@@ -28,9 +28,13 @@ def IQ_imbalance(g, phi):
 #############
 # VARIABLES #
 #############
-u = unit()
+u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
+qop_port = 80
+
+# Set octave_config to None if no octave are present
+octave_config = None
 
 # Qubits
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
@@ -156,9 +160,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
-                5: {"offset": 0.0},  # flux line
+                3: {"offset": 0.0},  # flux line
+                9: {"offset": 0.0},  # I resonator
+                10: {"offset": 0.0},  # Q resonator
             },
             "digital_outputs": {
                 1: {},
@@ -193,8 +197,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 9),
+                "Q": ("con1", 10),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -212,7 +216,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 3),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -220,7 +224,7 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 3),
             },
             "hold_offset": {"duration": 1},  # in clock cycles (4ns)
             "operations": {
@@ -271,48 +275,48 @@ config = {
             "operation": "control",
             "length": x90_len,
             "waveforms": {
-                "I": "x90_wf",
-                "Q": "x90_der_wf",
+                "I": "x90_I_wf",
+                "Q": "x90_Q_wf",
             },
         },
         "x180_pulse": {
             "operation": "control",
             "length": x180_len,
             "waveforms": {
-                "I": "x180_wf",
-                "Q": "x180_der_wf",
+                "I": "x180_I_wf",
+                "Q": "x180_Q_wf",
             },
         },
         "-x90_pulse": {
             "operation": "control",
             "length": minus_x90_len,
             "waveforms": {
-                "I": "minus_x90_wf",
-                "Q": "minus_x90_der_wf",
+                "I": "minus_x90_I_wf",
+                "Q": "minus_x90_Q_wf",
             },
         },
         "y90_pulse": {
             "operation": "control",
             "length": y90_len,
             "waveforms": {
-                "I": "y90_der_wf",
-                "Q": "y90_wf",
+                "I": "y90_I_wf",
+                "Q": "y90_Q_wf",
             },
         },
         "y180_pulse": {
             "operation": "control",
             "length": y180_len,
             "waveforms": {
-                "I": "y180_der_wf",
-                "Q": "y180_wf",
+                "I": "y180_I_wf",
+                "Q": "y180_Q_wf",
             },
         },
         "-y90_pulse": {
             "operation": "control",
             "length": minus_y90_len,
             "waveforms": {
-                "I": "minus_y90_der_wf",
-                "Q": "minus_y90_wf",
+                "I": "minus_y90_I_wf",
+                "Q": "minus_y90_Q_wf",
             },
         },
         "gaussian_pulse": {
@@ -337,6 +341,9 @@ config = {
                 "rotated_cos": "rotated_cosine_weights",
                 "rotated_sin": "rotated_sine_weights",
                 "rotated_minus_sin": "rotated_minus_sine_weights",
+                "opt_cos": "opt_cosine_weights",
+                "opt_sin": "opt_sine_weights",
+                "opt_minus_sin": "opt_minus_sine_weights",
             },
             "digital_marker": "ON",
         },
@@ -348,18 +355,18 @@ config = {
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
-        "x90_wf": {"type": "arbitrary", "samples": x90_wf.tolist()},
-        "x90_der_wf": {"type": "arbitrary", "samples": x90_der_wf.tolist()},
-        "x180_wf": {"type": "arbitrary", "samples": x180_wf.tolist()},
-        "x180_der_wf": {"type": "arbitrary", "samples": x180_der_wf.tolist()},
-        "minus_x90_wf": {"type": "arbitrary", "samples": minus_x90_wf.tolist()},
-        "minus_x90_der_wf": {"type": "arbitrary", "samples": minus_x90_der_wf.tolist()},
-        "y90_wf": {"type": "arbitrary", "samples": y90_wf.tolist()},
-        "y90_der_wf": {"type": "arbitrary", "samples": y90_der_wf.tolist()},
-        "y180_wf": {"type": "arbitrary", "samples": y180_wf.tolist()},
-        "y180_der_wf": {"type": "arbitrary", "samples": y180_der_wf.tolist()},
-        "minus_y90_wf": {"type": "arbitrary", "samples": minus_y90_wf.tolist()},
-        "minus_y90_der_wf": {"type": "arbitrary", "samples": minus_y90_der_wf.tolist()},
+        "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
+        "x90_Q_wf": {"type": "arbitrary", "samples": x90_Q_wf.tolist()},
+        "x180_I_wf": {"type": "arbitrary", "samples": x180_I_wf.tolist()},
+        "x180_Q_wf": {"type": "arbitrary", "samples": x180_Q_wf.tolist()},
+        "minus_x90_I_wf": {"type": "arbitrary", "samples": minus_x90_I_wf.tolist()},
+        "minus_x90_Q_wf": {"type": "arbitrary", "samples": minus_x90_Q_wf.tolist()},
+        "y90_Q_wf": {"type": "arbitrary", "samples": y90_Q_wf.tolist()},
+        "y90_I_wf": {"type": "arbitrary", "samples": y90_I_wf.tolist()},
+        "y180_Q_wf": {"type": "arbitrary", "samples": y180_Q_wf.tolist()},
+        "y180_I_wf": {"type": "arbitrary", "samples": y180_I_wf.tolist()},
+        "minus_y90_Q_wf": {"type": "arbitrary", "samples": minus_y90_Q_wf.tolist()},
+        "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
         "readout_wf": {"type": "constant", "sample": readout_amp},
     },
     "digital_waveforms": {
@@ -375,6 +382,18 @@ config = {
             "sine": [(1.0, readout_len)],
         },
         "minus_sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(-1.0, readout_len)],
+        },
+        "opt_cosine_weights": {
+            "cosine": [(1.0, readout_len)],
+            "sine": [(0.0, readout_len)],
+        },
+        "opt_sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(1.0, readout_len)],
+        },
+        "opt_minus_sine_weights": {
             "cosine": [(0.0, readout_len)],
             "sine": [(-1.0, readout_len)],
         },
