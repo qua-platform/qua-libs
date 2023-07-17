@@ -117,7 +117,7 @@ res.plot_fidelity()
 # Additional Information
 
 ## Implementation in QUA
-The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using tableau calculation, also to find the inverse operation. The sequences are passed to the OPX using *input stream*.
+The python program *two_qubit_rb_example.py* implements Two-Qubit Randomized Benchmarking with the described setup and the *TwoQubitRb* class. The decomposition of the two-qubit unitaries into CZ and single qubit gates is given in Ref. [^5]. The circuit generation is done using the *baking* tool from the *py-qua-tools* library. Randomization is done prior to the execution using a pseudorandom number generator (PRNG). The inverse operation is then calculated using tableau calculation. The sequences are passed to the OPX using *input stream*.
 
 [^5]: Barends, R. et al. Nature 508, 500–503 (2014)
 
