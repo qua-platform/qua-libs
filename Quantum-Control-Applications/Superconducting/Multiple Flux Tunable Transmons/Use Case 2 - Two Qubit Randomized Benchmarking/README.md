@@ -225,7 +225,7 @@ def meas():
 Returns a tuple containing the measured values of the two qubits as QUA expressions. The expression must evaluate to a Boolean value. False means |0>, True means |1>. The MSB is the first qubit. 
 
 ### Results
-The result object *res* , that is created from the *rb* class by the running the experiment contains an xarray dataset (res.data) with the result data and the specified parameters. It has two implemented functions that easily visualize the fidelity decay with increasing circuit depth
+The result object *res* , that is created from the *rb* class by the running the experiment is a xarray dataset (res.data) with the result data and the specified parameters. It has two implemented functions that easily visualize the fidelity decay with increasing circuit depth
 
 ```python
 res.plot_fidelity()
