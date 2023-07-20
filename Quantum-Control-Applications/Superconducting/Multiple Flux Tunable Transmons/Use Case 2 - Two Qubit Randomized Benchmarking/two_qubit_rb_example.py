@@ -8,6 +8,7 @@ from two_qubit_rb import TwoQubitRb
 import cirq
 from macros import multiplexed_readout
 # %matplotlib qt
+
 # assign a string to a variable to be able to call them in the functions
 q0 = '0'
 q1 = '1'
@@ -17,6 +18,7 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     baker.frame_rotation_2pi(-a, element)
     baker.play("x180", element, amp=x)
     baker.frame_rotation_2pi(a + z, element)
+
 # single qubit phase corrections in units of 2pi applied after the CZ gate
 qubit0_frame_update = 0.23  # example values, should be taken from QPU parameters
 qubit1_frame_update = 0.12  # example values, should be taken from QPU parameters
@@ -31,10 +33,8 @@ def bake_cz(baker: Baking, q0, q1):
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
     baker.align()
 def prep():
-    T1 = 10000
-    wait(int(10*T1))  # thermal preparation in clock cycles (time = 10 x T1 x 4ns)
+    wait(int(10*qubit_T1))  # thermal preparation in clock cycles (time = 10 x T1 x 4ns)
     align()
-
 
 def meas():
     threshold0 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
