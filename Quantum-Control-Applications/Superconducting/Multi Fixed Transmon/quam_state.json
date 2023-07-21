@@ -1,0 +1,347 @@
+{
+  "global_parameters": {
+    "con1_downconversion_gain": 0,
+    "con1_downconversion_offset_I": 0.0,
+    "con1_downconversion_offset_Q": 0.0,
+    "con2_downconversion_gain": 0,
+    "con2_downconversion_offset_I": 0.0,
+    "con2_downconversion_offset_Q": 0.0,
+    "saturation_amp": 0.1,
+    "saturation_len": 14000,
+    "time_of_flight": 24
+  },
+  "network": {
+    "cluster_name": "Cluster_81",
+    "octave1_ip": "192.168.88.150",
+    "octave2_ip": "192.168.88.151",
+    "qop_ip": "172.16.33.100",
+    "qop_port": 80,
+    "save_dir": ""
+  },
+  "qubits": [{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3181700000.0,
+      "lo": 3231700000.0,
+      "mixer_name": "octave_octave1_2",
+      "name": "q0",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 3,
+        "Q": 4,
+        "controller": "con1"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3121800000.0,
+      "lo": 3231700000.0,
+      "mixer_name": "octave_octave1_3",
+      "name": "q1",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 5,
+        "Q": 6,
+        "controller": "con1"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3211300000.0,
+      "lo": 3374400000.0,
+      "mixer_name": "octave_octave1_4",
+      "name": "q2",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 7,
+        "Q": 8,
+        "controller": "con1"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3324400000.0,
+      "lo": 3374400000.0,
+      "mixer_name": "octave_octave1_5",
+      "name": "q3",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 9,
+        "Q": 10,
+        "controller": "con1"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3507800000.0,
+      "lo": 3680000000.0,
+      "mixer_name": "octave_octave2_1",
+      "name": "q4",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con2"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3630100000.0,
+      "lo": 3680000000.0,
+      "mixer_name": "octave_octave2_2",
+      "name": "q5",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 3,
+        "Q": 4,
+        "controller": "con2"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3670000000.0,
+      "lo": 3680000000.0,
+      "mixer_name": "octave_octave2_3",
+      "name": "q6",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 5,
+        "Q": 6,
+        "controller": "con2"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 4100000000.0,
+      "lo": 4000000000.0,
+      "mixer_name": "octave_octave2_4",
+      "name": "q7",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 7,
+        "Q": 8,
+        "controller": "con2"
+      }
+    },{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 4100000000.0,
+      "lo": 4000000000.0,
+      "mixer_name": "octave_octave2_5",
+      "name": "q8",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 9,
+        "Q": 10,
+        "controller": "con2"
+      }
+    }],
+  "resonators": [{
+      "depletion_time": 10000,
+      "f_readout": 7084000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr0",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7223600000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr1",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7206800000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr2",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7278000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr3",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7077600000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr4",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7340600000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr5",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7150000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr6",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7150000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr7",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    },{
+      "depletion_time": 10000,
+      "f_readout": 7150000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr8",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    }]
+}

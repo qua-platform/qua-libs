@@ -1,0 +1,59 @@
+{
+  "global_parameters": {
+    "con1_downconversion_gain": 0,
+    "con1_downconversion_offset_I": 0.0,
+    "con1_downconversion_offset_Q": 0.0,
+    "con2_downconversion_gain": 0,
+    "con2_downconversion_offset_I": 0.0,
+    "con2_downconversion_offset_Q": 0.0,
+    "saturation_amp": 0.1,
+    "saturation_len": 14000,
+    "time_of_flight": 24
+  },
+  "network": {
+    "cluster_name": "Cluster_81",
+    "octave1_ip": "192.168.88.150",
+    "octave2_ip": "192.168.88.151",
+    "qop_ip": "172.16.33.100",
+    "qop_port": 80,
+    "save_dir": ""
+  },
+  "qubits": [{
+      "T1": 1230,
+      "T2": 123,
+      "ac_stark_detuning": 0.0,
+      "anharmonicity": 250000000.0,
+      "drag_coefficient": 0.0,
+      "f_01": 3181700000.0,
+      "lo": 3231700000.0,
+      "mixer_name": "octave_octave1_2",
+      "name": "q0",
+      "pi_amp": 0.124,
+      "pi_length": 40,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "wiring": {
+        "I": 3,
+        "Q": 4,
+        "controller": "con1"
+      }
+    }],
+  "resonators": [{
+      "depletion_time": 10000,
+      "f_readout": 7084000000.0,
+      "ge_threshold": 0.0,
+      "lo": 7050000000.0,
+      "name": "rr0",
+      "optimal_pulse_length": 2000,
+      "readout_pulse_amp": 0.05,
+      "readout_pulse_length": 1000,
+      "rf_gain": 0,
+      "rf_switch_mode": "on",
+      "rotation_angle": 0.0,
+      "wiring": {
+        "I": 1,
+        "Q": 2,
+        "controller": "con1"
+      }
+    }]
+}
