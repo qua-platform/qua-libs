@@ -14,14 +14,14 @@ from configuration import *
 # The QUA program #
 ###################
 
-initial_delay_cycles = 500 // 4  # delay before laser (units of clock cycles = 4 ns)
-laser_len_cycles = 2000 // 4  # laser duration length (units of clock cycles = 4 ns)
-mw_len_cycles = 1000 // 4  # MW duration length (units of clock cycles = 4 ns)
-wait_between_runs = 3000 // 4  # (4ns)
-n_avg = 1e6
+initial_delay = 500  # delay before laser
+laser_len = 2000  # laser duration length
+mw_len = 1000  # MW duration length
+wait_between_runs = 3000 #
+n_avg = 1_000_000
 
 resolution = 12  # ns
-meas_len = laser_len_cycles * 4 + 1000  # total measurement length (ns)
+meas_len = int(laser_len + 1000 ) # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
 with program() as calib_delays:
@@ -34,14 +34,14 @@ with program() as calib_delays:
 
     with for_(n, 0, n < n_avg, n + 1):
 
-        wait(initial_delay_cycles, "AOM")  # wait before starting PL
-        play("laser_ON", "AOM", duration=laser_len_cycles)
+        wait(initial_delay * u.ns, "AOM1")  # wait before starting PL
+        play("laser_ON", "AOM1", duration=laser_len * u.ns)
 
-        wait(initial_delay_cycles + (laser_len_cycles - mw_len_cycles) // 2, "NV")  # delay the microwave pulse
-        play("cw", "NV", duration=mw_len_cycles)  # play microwave pulse
+        wait((initial_delay + (laser_len - mw_len) // 2) * u.ns, "NV")  # delay the microwave pulse
+        play("cw", "NV", duration=mw_len)  # play microwave pulse
 
-        measure("readout", "SPCM", None, time_tagging.analog(times, meas_len, counts))
-        wait(wait_between_runs, "SPCM")
+        measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
+        wait(wait_between_runs, "SPCM1")
 
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream
@@ -58,10 +58,12 @@ with program() as calib_delays:
 qmm = QuantumMachinesManager(qop_ip)
 
 simulate = True
+
 if simulate:
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, calib_delays, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
 else:
     qm = qmm.open_qm(config)
 

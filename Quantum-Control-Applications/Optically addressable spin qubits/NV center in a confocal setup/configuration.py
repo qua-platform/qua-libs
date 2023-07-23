@@ -26,7 +26,7 @@ def IQ_imbalance(g, phi):
 #############
 # VARIABLES #
 #############
-u = unit()
+u = unit(coerce_to_integer=True)
 qop_ip = "172.16.33.100"
 
 # Frequencies
