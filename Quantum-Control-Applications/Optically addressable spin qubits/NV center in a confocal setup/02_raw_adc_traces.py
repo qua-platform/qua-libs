@@ -11,15 +11,15 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
+n_avg = 1_000
 
 with program() as TimeTagging_calibration:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
     with for_(n, 0, n < n_avg, n + 1):
-        play("laser_ON", "AOM")
-        measure("long_readout", "SPCM", adc_st)
-        wait(1000, "SPCM")
+        play("laser_ON", "AOM1")
+        measure("long_readout", "SPCM1", adc_st)
+        wait(1000, "SPCM1")
 
     with stream_processing():
         # Will save average:
@@ -57,5 +57,5 @@ plt.plot(adc1, label="Input 1")
 plt.xlabel("Time [ns]")
 plt.legend()
 plt.tight_layout()
-
+plt.show()
 print(f"\nInput1 mean: {np.mean(adc1)} V")

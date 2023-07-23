@@ -6,16 +6,17 @@ from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
-
+import matplotlib.pyplot as plt
 
 ###################
 # The QUA program #
 ###################
 with program() as hello_QUA:
+    
     a = declare(fixed)
     with infinite_loop_():
         with for_(a, 0, a < 1.1, a + 0.05):
-            play("pi" * amp(a), "NV")
+            play("x180" * amp(a), "NV")
         wait(25, "NV")
 
 #####################################
@@ -27,11 +28,12 @@ simulate = True
 
 if simulate:
     simulation_config = SimulationConfig(
-        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])  # in clock cycle
+        duration=1000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])  # in clock cycle
     )
     job_sim = qmm.simulate(config, hello_QUA, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()
+    plt.show()
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(hello_QUA)

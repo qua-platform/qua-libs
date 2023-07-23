@@ -27,34 +27,40 @@ def IQ_imbalance(g, phi):
 # VARIABLES #
 #############
 u = unit()
-qop_ip = "127.0.0.1"
+qop_ip = "172.16.33.100"
 
 # Frequencies
-NV_IF_freq = 40e6  # in units of Hz
-NV_LO_freq = 2.83e9  # in units of Hz
+NV_IF_freq = 40 * u.MHz 
+NV_LO_freq = 2.83 * u.GHz
 
 # Pulses lengths
-initialization_len = 3000  # in ns
-meas_len = 500  # in ns
-long_meas_len = 5e3  # in ns
+initialization_len_1 = 3000 * u.ns
+meas_len_1 = 500 * u.ns
+long_meas_len_1 = 5_000 * u.ns
+initialization_len_2 = 3000 * u.ns
+meas_len_2 = 500 * u.ns
+long_meas_len_2 = 5_000 * u.ns
 
 # MW parameters
 mw_amp_NV = 0.2  # in units of volts
-mw_len_NV = 100  # in units of ns
+mw_len_NV = 100 * u.ns
 
 pi_amp_NV = 0.1  # in units of volts
-pi_len_NV = 100  # in units of ns
+pi_len_NV = 100 * u.ns
 
 pi_half_amp_NV = pi_amp_NV / 2  # in units of volts
-pi_half_len_NV = pi_len_NV  # in units of ns
+pi_half_len_NV = pi_len_NV
 
 # Readout parameters
-signal_threshold = -500
+signal_threshold_1 = -500  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_2 = -500  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
 
 # Delays
-detection_delay = 80
-mw_delay = 0
-laser_delay = 0
+detection_delay_1 = 80 * u.ns
+detection_delay_2 = 80 * u.ns
+mw_delay = 0 * u.ns
+laser_delay_1 = 0 * u.ns
+laser_delay_2 = 0 * u.ns
 
 config = {
     "version": 1,
@@ -67,10 +73,13 @@ config = {
             },
             "digital_outputs": {
                 1: {},  # AOM/Laser
-                2: {},  # Photo diode - indicator
+                2: {},  # AOM/Laser
+                3: {},  # SPCM1 - indicator
+                4: {},  # SPCM2 - indicator
             },
             "analog_inputs": {
-                1: {"offset": 0},  # SPCM
+                1: {"offset": 0},  # SPCM1
+                2: {"offset": 0},  # SPCM2
             },
         }
     },
@@ -80,45 +89,82 @@ config = {
             "intermediate_frequency": NV_IF_freq,
             "operations": {
                 "cw": "const_pulse",
-                "pi": "x180_pulse",
-                "pi_half": "x90_pulse",
                 "x180": "x180_pulse",
                 "x90": "x90_pulse",
+                "-x90": "-x90_pulse",
+                "-y90": "-y90_pulse",
+                "y90": "y90_pulse",
+                "y180": "y180_pulse",
             },
         },
-        "AOM": {
+        "AOM1": {
             "digitalInputs": {
                 "marker": {
                     "port": ("con1", 1),
-                    "delay": laser_delay,
+                    "delay": laser_delay_1,
                     "buffer": 0,
                 },
             },
             "operations": {
-                "laser_ON": "laser_ON",
+                "laser_ON": "laser_ON_1",
             },
         },
-        "SPCM": {
-            "singleInput": {"port": ("con1", 1)},  # not used
+        "AOM2": {
             "digitalInputs": {
                 "marker": {
                     "port": ("con1", 2),
-                    "delay": detection_delay,
+                    "delay": laser_delay_2,
                     "buffer": 0,
                 },
             },
             "operations": {
-                "readout": "readout_pulse",
-                "long_readout": "long_readout_pulse",
+                "laser_ON": "laser_ON_2",
+            },
+        },
+        "SPCM1": {
+            "singleInput": {"port": ("con1", 1)},  # not used
+            "digitalInputs": {  # for visualization in simulation
+                "marker": {
+                    "port": ("con1", 3),
+                    "delay": detection_delay_1,
+                    "buffer": 0,
+                },
+            },
+            "operations": {
+                "readout": "readout_pulse_1",
+                "long_readout": "long_readout_pulse_1",
             },
             "outputs": {"out1": ("con1", 1)},
             "outputPulseParameters": {
-                "signalThreshold": signal_threshold,
-                "signalPolarity": "Descending",
-                "derivativeThreshold": 1023,
-                "derivativePolarity": "Descending",
+                "signalThreshold": signal_threshold_1,  # ADC units
+                "signalPolarity": "Below",
+                "derivativeThreshold": -10_000,
+                "derivativePolarity": "Above",
             },
-            "time_of_flight": detection_delay,
+            "time_of_flight": detection_delay_1,
+            "smearing": 0,
+        },
+        "SPCM2": {
+            "singleInput": {"port": ("con1", 1)},  # not used
+            "digitalInputs": {  # for visualization in simulation
+                "marker": {
+                    "port": ("con1", 4),
+                    "delay": detection_delay_2,
+                    "buffer": 0,
+                },
+            },
+            "operations": {
+                "readout": "readout_pulse_2",
+                "long_readout": "long_readout_pulse_2",
+            },
+            "outputs": {"out1": ("con1", 2)},
+            "outputPulseParameters": {
+                "signalThreshold": signal_threshold_2,  # ADC units
+                "signalPolarity": "Below",
+                "derivativeThreshold": -10_000,
+                "derivativePolarity": "Above",
+            },
+            "time_of_flight": detection_delay_2,
             "smearing": 0,
         },
     },
@@ -138,20 +184,57 @@ config = {
             "length": pi_half_len_NV,
             "waveforms": {"I": "pi_half_wf", "Q": "zero_wf"},
         },
-        "laser_ON": {
+        "-x90_pulse": {
             "operation": "control",
-            "length": initialization_len,
+            "length": pi_half_len_NV,
+            "waveforms": {"I": "minus_pi_half_wf", "Q": "zero_wf"},
+        },
+        "-y90_pulse": {
+            "operation": "control",
+            "length": pi_half_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "minus_pi_half_wf"},
+        },
+        "y90_pulse": {
+            "operation": "control",
+            "length": pi_half_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "pi_half_wf"},
+        },
+        "y180_pulse": {
+            "operation": "control",
+            "length": pi_half_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "pi_wf"},
+        },
+        "laser_ON_1": {
+            "operation": "control",
+            "length": initialization_len_1,
             "digital_marker": "ON",
         },
-        "readout_pulse": {
+        "laser_ON_2": {
+            "operation": "control",
+            "length": initialization_len_2,
+            "digital_marker": "ON",
+        },
+        "readout_pulse_1": {
             "operation": "measurement",
-            "length": meas_len,
+            "length": meas_len_1,
             "digital_marker": "ON",
             "waveforms": {"single": "zero_wf"},
         },
-        "long_readout_pulse": {
+        "long_readout_pulse_1": {
             "operation": "measurement",
-            "length": long_meas_len,
+            "length": long_meas_len_1,
+            "digital_marker": "ON",
+            "waveforms": {"single": "zero_wf"},
+        },
+        "readout_pulse_2": {
+            "operation": "measurement",
+            "length": meas_len_2,
+            "digital_marker": "ON",
+            "waveforms": {"single": "zero_wf"},
+        },
+        "long_readout_pulse_2": {
+            "operation": "measurement",
+            "length": long_meas_len_2,
             "digital_marker": "ON",
             "waveforms": {"single": "zero_wf"},
         },
@@ -160,6 +243,7 @@ config = {
         "cw_wf": {"type": "constant", "sample": mw_amp_NV},
         "pi_wf": {"type": "constant", "sample": pi_amp_NV},
         "pi_half_wf": {"type": "constant", "sample": pi_half_amp_NV},
+        "minus_pi_half_wf": {"type": "constant", "sample": (-1) * pi_half_amp_NV},
         "zero_wf": {"type": "constant", "sample": 0.0},
     },
     "digital_waveforms": {
