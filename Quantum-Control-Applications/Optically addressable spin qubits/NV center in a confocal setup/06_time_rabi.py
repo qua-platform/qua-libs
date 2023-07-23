@@ -11,11 +11,8 @@ from configuration import *
 # The QUA program #
 ###################
 
-t_min = 16 // 4  # in clock cycles units (must be >= 4)
-t_max = 400 // 4  # in clock cycles units
-dt = 4 // 4  # in clock cycles units
-t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
+t_vec = np.arange(4, 100, 1)  # +0.1 to include t_max in array
+n_avg = 1_000_000
 
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
@@ -25,16 +22,16 @@ with program() as time_rabi:
     n = declare(int)  # variable to for_loop
     n_st = declare_stream()  # stream to save iterations
 
-    play("laser_ON", "AOM")
-    wait(100, "AOM")
+    play("laser_ON", "AOM1")
+    wait(100, "AOM1")
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(t, t_min, t <= t_max, t + dt):
-            play("pi", "NV", duration=t)  # pulse of varied lengths
+        with for_(*from_array(t, t_vec)):
+            play("x180", "NV", duration=t)  # pulse of varied lengths
             align()
-            play("laser_ON", "AOM")
-            measure("readout", "SPCM", None, time_tagging.analog(times, meas_len, counts))
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
-            wait(100)
+            wait(100 * u.ns)
 
         save(n, n_st)  # save number of iteration inside for_loop
 
@@ -47,11 +44,14 @@ with program() as time_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
+
 if simulate:
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, time_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
+
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
@@ -69,8 +69,9 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts / 1000 / (meas_len / u.s))
+        plt.plot(4 * t_vec, counts / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Tau [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Time Rabi")
         plt.pause(0.1)
+    plt.show()

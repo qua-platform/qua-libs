@@ -14,14 +14,14 @@ from configuration import *
 # The QUA program #
 ###################
 
-initial_delay = 500  # delay before laser
-laser_len = 2000  # laser duration length
-mw_len = 1000  # MW duration length
-wait_between_runs = 3000 #
-n_avg = 1_000_000
+initial_delay = 500  # delay before laser [ns]
+laser_len = 2_000  # laser duration length [ns]
+mw_len = 1_000  # MW duration length [ns]
+wait_between_runs = 10_000  # [ns]
+n_avg = 1_000_000 
 
 resolution = 12  # ns
-meas_len = int(laser_len + 1000 ) # total measurement length (ns)
+meas_len = int(laser_len + 1000) # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
 with program() as calib_delays:
@@ -38,14 +38,13 @@ with program() as calib_delays:
         play("laser_ON", "AOM1", duration=laser_len * u.ns)
 
         wait((initial_delay + (laser_len - mw_len) // 2) * u.ns, "NV")  # delay the microwave pulse
-        play("cw", "NV", duration=mw_len)  # play microwave pulse
+        play("cw", "NV", duration=mw_len * u.ns)  # play microwave pulse
 
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
-        wait(wait_between_runs, "SPCM1")
+        wait(wait_between_runs * u.ns, "SPCM1")
 
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream
-
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
@@ -57,7 +56,7 @@ with program() as calib_delays:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=28000)
@@ -69,20 +68,23 @@ else:
 
     job = qm.execute(calib_delays)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["times_hist", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        times_hist, iteration = results.fetch_all()
+        iteration = results.fetch_all()
         # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
-        # Plot data
-        plt.cla()
-        plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
-        plt.xlabel("t [ns]")
-        plt.ylabel(f"counts [kcps / {resolution}ns]")
-        plt.title("Delays")
-        plt.pause(0.1)
+        progress_counter(iteration[0], n_avg, start_time=results.get_start_time())
+    results = fetching_tool(job, data_list=["times_hist", "iteration"])
+    times_hist, iteration = results.fetch_all()
+    # Plot data
+    # plt.cla()
+    plt.plot(t_vec[::resolution] + resolution / 2, times_hist / 1000 / (resolution / u.s) / iteration)
+    plt.xlabel("t [ns]")
+    plt.ylabel(f"counts [kcps / {resolution}ns]")
+    plt.title("Delays")
+    # plt.pause(0.1)
+    plt.show()

@@ -11,11 +11,8 @@ from configuration import *
 # The QUA program #
 ###################
 
-f_min = -30 * u.MHz  # start of freq sweep
-f_max = 70 * u.MHz  # end of freq sweep
-df = 2 * u.MHz  # freq step
-f_vec = np.arange(f_min, f_max + 0.1, df)  # f_max + 0.1 so that f_max is included
-n_avg = 1e6  # number of averages
+f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)  # f_max + 0.1 so that f_max is included
+n_avg = 1_000_000  # number of averages
 
 with program() as cw_odmr:
     times = declare(int, size=100)
@@ -26,12 +23,12 @@ with program() as cw_odmr:
     n_st = declare_stream()  # stream for number of iterations
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(*from_array(f, f_vec)):
             update_frequency("NV", f)  # update frequency
             align()  # align all elements
-            play("cw", "NV", duration=int(long_meas_len // 4))  # play microwave pulse
-            play("laser_ON", "AOM", duration=int(long_meas_len // 4))
-            measure("long_readout", "SPCM", None, time_tagging.analog(times, long_meas_len, counts))
+            play("cw", "NV", duration= long_meas_len_1 * u.ns)  # play microwave pulse
+            play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
+            measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_st)  # save counts on stream
             save(n, n_st)  # save number of iteration inside for_loop
@@ -45,21 +42,17 @@ with program() as cw_odmr:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
+
 if simulate:
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, cw_odmr, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
 else:
     qm = qmm.open_qm(config)
 
     job = qm.execute(cw_odmr)  # execute QUA program
-
-    # res_handles = job.result_handles  # get access to handles
-    # counts_handle = res_handles.get("counts")
-    # iteration_handle = res_handles.get("iteration")
-    # counts_handle.wait_for_values(1)
-    # iteration_handle.wait_for_values(1)
 
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
@@ -68,19 +61,15 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
-
-        # counts = counts_handle.fetch_all()
-        # iteration = iteration_handle.fetch_all()
-
         # Fetch results
         counts, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot((NV_LO_freq * 0 + f_vec) / u.MHz, counts / 1000 / (long_meas_len * 1e-9))
+        plt.plot((NV_LO_freq * 0 + f_vec) / u.MHz, counts / 1000 / (long_meas_len_1 * 1e-9))
         plt.xlabel("Frequency [MHz]")
         plt.ylabel("Intensity [kcps]")
         plt.title("ODMR")
-
         plt.pause(0.1)
+    plt.show()

@@ -12,11 +12,8 @@ from qualang_tools.loops import from_array
 # The QUA program #
 ###################
 
-t_min = 16 // 4  # in clock cycles units (must be >= 4)
-t_max = 1000 // 4  # in clock cycles units
-dt = 40 // 4  # in clock cycles units
-t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
-n_avg = 1e6
+t_vec = np.arange(4, 250, 10) 
+n_avg = 1_000_000
 
 with program() as ramsey:
     counts1 = declare(int)  # saves number of photon counts
@@ -29,35 +26,34 @@ with program() as ramsey:
     n = declare(int)  # variable to for_loop
     n_st = declare_stream()  # stream to save iterations
 
-    play("laser_ON", "AOM")
+    play("laser_ON", "AOM1")
     wait(100)
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            play("pi_half", "NV")  # Pi/2 pulse to qubit
+            play("x90", "NV")  # Pi/2 pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("pi_half", "NV")  # Pi/2 pulse to qubit
+            play("x90", "NV")  # Pi/2 pulse to qubit
 
             align()
 
-            play("laser_ON", "AOM")
-            measure("readout", "SPCM", None, time_tagging.analog(times1, meas_len, counts1))
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times1, meas_len_1, counts1))
             save(counts1, counts_1_st)  # save counts
-            wait(100, "AOM")
+            wait(100 * u.ns, "AOM1")
 
             align()
 
-            play("pi_half", "NV")  # Pi/2 pulse to qubit
+            play("x90", "NV")  # Pi/2 pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            frame_rotation_2pi(0.5, "NV")  # Turns next pulse to -x
-            play("pi_half", "NV")  # Pi/2 pulse to qubit
+            play("-x90", "NV")  # Pi/2 pulse to qubit
             reset_frame("NV")
 
             align()
 
-            play("laser_ON", "AOM")
-            measure("readout", "SPCM", None, time_tagging.analog(times2, meas_len, counts2))
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
             save(counts2, counts_2_st)  # save counts
-            wait(100, "AOM")
+            wait(100 * u.ns, "AOM1")
 
         save(n, n_st)  # save number of iteration inside for_loop
 
@@ -71,11 +67,13 @@ with program() as ramsey:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
+
 if simulate:
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, ramsey, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
@@ -93,9 +91,10 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), counts2 / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Dephasing time [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.legend(("counts 1", "counts 2"))
         plt.title("Ramsey")
         plt.pause(0.1)
+    plt.show()

@@ -2,6 +2,7 @@ import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.loops import from_array
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -52,8 +53,8 @@ pi_half_amp_NV = pi_amp_NV / 2  # in units of volts
 pi_half_len_NV = pi_len_NV
 
 # Readout parameters
-signal_threshold_1 = -500  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
-signal_threshold_2 = -500  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_1 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
+signal_threshold_2 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
 
 # Delays
 detection_delay_1 = 80 * u.ns
@@ -138,7 +139,7 @@ config = {
             "outputPulseParameters": {
                 "signalThreshold": signal_threshold_1,  # ADC units
                 "signalPolarity": "Below",
-                "derivativeThreshold": -10_000,
+                "derivativeThreshold": -2_000,
                 "derivativePolarity": "Above",
             },
             "time_of_flight": detection_delay_1,
@@ -161,7 +162,7 @@ config = {
             "outputPulseParameters": {
                 "signalThreshold": signal_threshold_2,  # ADC units
                 "signalPolarity": "Below",
-                "derivativeThreshold": -10_000,
+                "derivativeThreshold": -2_000,
                 "derivativePolarity": "Above",
             },
             "time_of_flight": detection_delay_2,

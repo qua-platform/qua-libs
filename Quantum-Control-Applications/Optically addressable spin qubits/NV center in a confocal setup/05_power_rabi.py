@@ -12,11 +12,8 @@ from qualang_tools.loops import from_array
 # The QUA program #
 ###################
 
-a_min = 0.1  # proportional factor to the pulse amplitude
-a_max = 1  # proportional factor to the pulse amplitude
-da = 0.02
-a_vec = np.arange(a_min, a_max + da / 2, da)  # +da/2 to include a_max
-n_avg = 1e6  # number of iterations
+a_vec = np.arange(0.1, 1, 0.02)  # +da/2 to include a_max
+n_avg = 1_000_000  # number of iterations
 
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
@@ -26,16 +23,16 @@ with program() as power_rabi:
     counts_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
-    play("laser_ON", "AOM")
-    wait(100, "AOM")
+    play("laser_ON", "AOM1")
+    wait(100 * u.ns, "AOM1")
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(a, a_vec)):
-            play("pi" * amp(a), "NV")  # pulse of varied amplitude
+            play("x180" * amp(a), "NV")  # pulse of varied amplitude
             align()
-            play("laser_ON", "AOM")
-            measure("readout", "SPCM", None, time_tagging.analog(times, meas_len, counts))
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
-            wait(100)
+            wait(100 * u.ns)  # wait in between iterations
 
         save(n, n_st)  # save number of iteration inside for_loop
 
@@ -48,11 +45,15 @@ with program() as power_rabi:
 #####################################
 qmm = QuantumMachinesManager(qop_ip)
 
-simulate = True
+simulate = False
+
 if simulate:
+
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
+
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
@@ -70,7 +71,7 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len * 1e-9))
+        plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len_1 * 1e-9))
         plt.xlabel("Amplitude [volts]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Power Rabi")
