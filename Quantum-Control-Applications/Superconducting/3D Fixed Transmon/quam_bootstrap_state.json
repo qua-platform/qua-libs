@@ -1,0 +1,100 @@
+{
+  "opx_ip": "172.16.33.100",
+  "qubits": [{
+      "T1": 5e-05,
+      "T2": 1e-05,
+      "anharmonicity": -200000000.0,
+      "f_01": 4350000000.0,
+      "lo": 4200000000.0,
+      "name": "qubit",
+      "pulse_params": {
+        "ac_stark_shift": 0.0,
+        "amplitude": {
+          "minus_x90": -0.075,
+          "minus_y90": -0.075,
+          "x180": 0.15,
+          "x90": 0.075,
+          "y180": 0.15,
+          "y90": 0.075
+        },
+        "drag_coef": 0.0,
+        "length": 1e-07,
+        "saturation_amp": 0.1,
+        "saturation_len": 5e-05,
+        "short_pi_amp": 0.25,
+        "short_pi_len": 1.6e-08
+      },
+      "storage_chi": 1500000.0,
+      "wiring": {
+        "I": {
+          "ao": 3,
+          "con": "con1"
+        },
+        "Q": {
+          "ao": 4,
+          "con": "con1"
+        }
+      }
+    }],
+  "resonators": [{
+      "frequency": 5500000000.0,
+      "lo": 5400000000.0,
+      "name": "resonator",
+      "readout_params": {
+        "ge_threshold": 0.0,
+        "readout_amplitude": 0.1,
+        "readout_length": 1e-06,
+        "rotation_angle": 0.0
+      },
+      "time_constant": 2.8e-07,
+      "tof": 260,
+      "wiring_input": {
+        "I": {
+          "ao": 1,
+          "con": "con1"
+        },
+        "Q": {
+          "ao": 2,
+          "con": "con1"
+        }
+      },
+      "wiring_output": {
+        "I": {
+          "ai": 1,
+          "con": "con1",
+          "offset": 0.0
+        },
+        "Q": {
+          "ai": 2,
+          "con": "con1",
+          "offset": 0.0
+        },
+        "gain": 0
+      }
+    }],
+  "storage": [{
+      "T1": 0.0005,
+      "decay_rate": 1e-05,
+      "displacement_params": {
+        "amplitude": 0.35,
+        "length": 16
+      },
+      "frequency": 6910000000.0,
+      "lo": 6900000000.0,
+      "name": "storage",
+      "saturation_params": {
+        "amplitude": 0.1,
+        "length": 0.001
+      },
+      "wiring": {
+        "I": {
+          "ao": 7,
+          "con": "con1"
+        },
+        "Q": {
+          "ao": 8,
+          "con": "con1"
+        }
+      }
+    }]
+}
