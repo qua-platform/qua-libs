@@ -38,7 +38,7 @@ with program() as resonator_spec:
     assign(flag, IO1)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(f, *from_array(f, freqs)):  # Notice it's <= to include f_max (This is only for integers!)
+        with for_(*from_array(f, freqs)):  # Notice it's <= to include f_max (This is only for integers!)
             # Adjust the flux line
             play("const" * amp(0), "flux_line")
             wait(flux_settle_time, "resonator")
