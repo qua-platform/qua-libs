@@ -58,8 +58,8 @@ qubit_T1 = int(10 * u.us)
 const_len = 100
 const_amp = 50 * u.mV
 
-pi_len = 100
-pi_amp = 0.05
+square_pi_len = 100
+square_pi_amp = 0.05
 
 drag_coef = 0
 anharmonicity = -200 * u.MHz
@@ -268,7 +268,7 @@ config = {
         },
         "pi_pulse": {
             "operation": "control",
-            "length": pi_len,
+            "length": square_pi_len,
             "waveforms": {
                 "I": "pi_wf",
                 "Q": "zero_wf",
@@ -276,7 +276,7 @@ config = {
         },
         "pi_half_pulse": {
             "operation": "control",
-            "length": pi_len,
+            "length": square_pi_len,
             "waveforms": {
                 "I": "pi_half_wf",
                 "Q": "zero_wf",
@@ -361,8 +361,8 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
-        "pi_wf": {"type": "constant", "sample": pi_amp},
-        "pi_half_wf": {"type": "constant", "sample": pi_amp / 2},
+        "pi_wf": {"type": "constant", "sample": square_pi_amp},
+        "pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
