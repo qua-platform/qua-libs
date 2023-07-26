@@ -68,8 +68,8 @@ with program() as qubit_spec_2D:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(freqs)).buffer(len(flux)).average().save("I")
-        Q_st.buffer(len(freqs)).buffer(len(flux)).average().save("Q")
+        I_st.buffer(len(flux)).buffer(len(freqs)).average().save("I")
+        Q_st.buffer(len(flux)).buffer(len(freqs)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -102,13 +102,13 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title("qubit spectroscopy amplitude")
-        plt.pcolor(freqs / u.MHz, flux, np.sqrt(I**2 + Q**2))
+        plt.pcolor(flux, freqs / u.MHz, np.sqrt(I**2 + Q**2))
         plt.xlabel("qubit frequency [MHz]")
         plt.ylabel("flux level [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("qubit spectroscopy phase")
-        plt.pcolor(freqs / u.MHz, flux, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.pcolor(flux, freqs / u.MHz, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
         plt.xlabel("qubit frequency [MHz]")
         plt.ylabel("flux level [V]")
         plt.pause(0.1)
