@@ -277,14 +277,5 @@ def octave_settings(qmm, config, octaves, elements_settings=None, calibration=Tr
                 + f" Calibrates {elements_settings[i].name} for (LO, IF) = ({LO*1e-9:.3f} GHz, {IF*1e-6:.3f} MHz)"
             )
             qm.octave.calibrate_element(elements_settings[i].name, [(LO, IF)])
-
-
-def disable_octave_ports(qm, element_list: list = ()):
-    """
-    Switch off the Octave synthesizers corresponding to the element list.
-
-    :param qm: The quantum machine object.
-    :param element_list: List of the elements to switch off.
-    """
-    for el in element_list:
-        qm.octave.set_lo_source(el, OctaveLOSource.Off)
+            # Re-open a quantum machine to apply the calibration parameters
+            qm = qmm.open_qm(config)

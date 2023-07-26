@@ -80,8 +80,8 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.plot(amps * pi_amp, I, ".", label="I")
-        plt.plot(amps * pi_amp, Q, ".", label="Q")
+        plt.plot(amps * x180_amp, I, ".", label="I")
+        plt.plot(amps * x180_amp, Q, ".", label="Q")
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("I & Q amplitude [a.u.]")
         plt.legend()

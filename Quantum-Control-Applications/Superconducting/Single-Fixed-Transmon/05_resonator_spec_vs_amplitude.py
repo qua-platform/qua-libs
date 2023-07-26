@@ -1,55 +1,48 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+from qm import SimulationConfig
 from qualang_tools.loops import from_array
-
-##############################
-# Program-specific variables #
-##############################
-n_avg = 200  # Number of averaging loops
-
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
-
-# Frequency sweep in Hz (Needs to be a list of int)
-freq_span = 20 * u.MHz
-n_freq = 41
-freq_array = (np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF).astype(int)
-
-# Pulse amplitude sweep (as a pre-factor of the flux amplitude)
-a_min = 0
-a_max = 1.99
-n_a = 161
-a_array = np.linspace(a_min, a_max, n_a)
 
 ###################
 # The QUA program #
 ###################
 
-with program() as rabi_amp_freq:
+n_avg = 100
+
+cooldown_time = 10 * u.us // 4
+
+f_min = 30e6
+f_max = 70e6
+df = 0.5e6
+freqs = np.arange(f_min, f_max + 0.1, df)  # + 0.1 to add f_max to freqs
+# Readout amplitude sweep (as a pre-factor of the readout amplitude)
+a_min = 0
+a_max = 2
+da = 0.01
+amplitude = np.arange(a_min, a_max + da / 2, da)  # +da/2 to add a_max to the scan
+
+with program() as resonator_spec_2D:
     n = declare(int)  # Averaging index
     f = declare(int)  # Resonator frequency
-    a = declare(fixed)  # Pulse amplitude
+    a = declare(fixed)  # Readout amplitude pre-factor
     I = declare(fixed)
     Q = declare(fixed)
-    n_st = declare_stream()
     I_st = declare_stream()
     Q_st = declare_stream()
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(a, a_array)):
-            with for_(*from_array(f, freq_array)):
+        with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
+            with for_(*from_array(f, freqs)):
                 # Update the resonator frequency
-                update_frequency("qubit", f)
-                # Adjust the pulse amplitude
-                play("x180" * amp(a), "qubit")
-                align("qubit", "resonator")
+                update_frequency("resonator", f)
                 # Measure the resonator
                 measure(
-                    "readout",
+                    "readout" * amp(a),
                     "resonator",
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I),
@@ -63,26 +56,29 @@ with program() as rabi_amp_freq:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(n_freq).buffer(n_a).average().save("I")
-        Q_st.buffer(n_freq).buffer(n_a).average().save("Q")
+        I_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("I")
+        Q_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("Q")
         n_st.save("iteration")
-
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
-if simulation:
-    simulation_config = SimulationConfig(
-        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
-    )
-    job = qmm.simulate(config, rabi_amp_freq, simulation_config)
+#######################
+# Simulate or execute #
+#######################
+
+simulate = False
+
+if simulate:
+    simulation_config = SimulationConfig(duration=1000)
+    job = qmm.simulate(config, resonator_spec_2D, simulation_config)
     job.get_simulated_samples().con1.plot()
+
 else:
     qm = qmm.open_qm(config)
-    job = qm.execute(rabi_amp_freq)
+    job = qm.execute(resonator_spec_2D)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
@@ -91,20 +87,25 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
+        # Normalize data
+        s1 = u.demod2volts(I + 1j * Q, readout_len)
+        A1 = np.abs(s1)
+        row_sums = A1.sum(axis=1)
+        A1 = A1 / row_sums[np.newaxis, :]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
-        # Plot results
+        # 2D spectroscopy plot
         plt.subplot(211)
         plt.cla()
-        plt.title("Resonator spectroscopy amplitude")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, np.sqrt(I**2 + Q**2))
-        plt.xlabel("Frequency [MHz]")
-        plt.ylabel("Pulse amplitude [V]")
+        plt.title("resonator spectroscopy amplitude (normalized)")
+        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, A1)
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel("readout amplitude [V]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Resonator spectroscopy phase")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * pi_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("Frequency [MHz]")
-        plt.ylabel("Pulse amplitude [V]")
+        plt.title("resonator spectroscopy phase")
+        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.xlabel("frequency [MHz]")
+        plt.ylabel("readout amplitude [V]")
+        plt.pause(0.1)
         plt.tight_layout()
-        plt.pause(0.01)

@@ -10,6 +10,21 @@ from qm import SimulationConfig, LoopbackInterface
 # Program-specific variables #
 ##############################
 cavity_element = "resonator"
+# You can also add the 'displace' pulse and waveform directly in the config.
+displace_len = 40
+displace_sigma = displace_len / 5
+displace_amp = 0.35
+displace_wf = displace_amp * gaussian(displace_len, displace_sigma)
+config["elements"][cavity_element]["operations"]["displace"] = "displace_pulse"
+config["pulses"]["displace_pulse"] = {
+    "operation": "control",
+    "length": displace_len,
+    "waveforms": {
+        "I": "displace_wf",
+        "Q": "displace_wf",
+    },
+}
+config["waveforms"]["displace_wf"] = {"type": "arbitrary", "samples": displace_wf.tolist()}
 threshold = ge_threshold
 cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
 chi = 10 * u.MHz / u.GHz  # cavity  coupling strength in GHz
