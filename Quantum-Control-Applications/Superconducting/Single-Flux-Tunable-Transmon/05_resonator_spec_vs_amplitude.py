@@ -17,7 +17,7 @@ cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
-f_max = 65 * u.MHz
+f_max = 75 * u.MHz
 df = 500 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
 # Readout amplitude sweep (as a pre-factor of the readout amplitude)
@@ -99,13 +99,13 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy amplitude (normalized)")
-        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, A1)
+        plt.pcolor(amplitude * readout_amp, freqs / u.MHz, A1)
         plt.xlabel("frequency [MHz]")
         plt.ylabel("readout amplitude [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
-        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.pcolor(amplitude * readout_amp, freqs / u.MHz, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
         plt.xlabel("frequency [MHz]")
         plt.ylabel("readout amplitude [V]")
         plt.pause(0.1)
