@@ -1,28 +1,21 @@
-# %%
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.analysis import two_state_discriminator
-
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("quam_state.json", flat_data=False)
-config = build_config(machine)
+from qualang_tools.loops import from_array
 
 ###################
 # The QUA program #
 ###################
 qubit_operation = "x180"
 
-n_avg = 100
+n_runs = 1000
 
-cooldown_time = 20_000
+cooldown_time = 5 * qubit_T1 // 4
 
 amps = np.arange(0.1, 1.7, 0.1)
 
-qubit_index = 0
 
 with program() as IQ_blobs:
     n = declare(int)
@@ -40,68 +33,65 @@ with program() as IQ_blobs:
 
     with for_(*from_array(a, amps)):
         save(counter, amps_st)
-        with for_(n, 0, n < n_avg, n + 1):
+        with for_(n, 0, n < n_runs, n + 1):
             measure(
                 "readout" * amp(a),
-                machine.resonators[qubit_index].name,
+                "resonator",
                 None,
                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
                 dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g),
             )
             save(I_g, I_g_st)
             save(Q_g, Q_g_st)
-            wait(cooldown_time * u.ns, machine.resonators[qubit_index].name)
+            wait(cooldown_time * u.ns, "resonator")
 
             align()  # global align
 
-            play(qubit_operation, machine.qubits[qubit_index].name)
-            align(machine.qubits[qubit_index].name, machine.resonators[qubit_index].name)
+            play(qubit_operation, "qubit")
+            align("qubit", "resonator")
             measure(
                 "readout" * amp(a),
-                machine.resonators[qubit_index].name,
+                "resonator",
                 None,
                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e),
                 dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e),
             )
             save(I_e, I_e_st)
             save(Q_e, Q_e_st)
-            wait(cooldown_time * u.ns, machine.resonators[qubit_index].name)
+            wait(cooldown_time * u.ns, "resonator")
         assign(counter, counter + 1)
 
     with stream_processing():
         amps_st.save("iteration")
         # mean values
-        I_g_st.buffer(n_avg).buffer(len(amps)).save("I_g")
-        Q_g_st.buffer(n_avg).buffer(len(amps)).save("Q_g")
-        I_e_st.buffer(n_avg).buffer(len(amps)).save("I_e")
-        Q_e_st.buffer(n_avg).buffer(len(amps)).save("Q_e")
+        I_g_st.buffer(n_runs).buffer(len(amps)).save("I_g")
+        Q_g_st.buffer(n_runs).buffer(len(amps)).save("Q_g")
+        I_e_st.buffer(n_runs).buffer(len(amps)).save("I_e")
+        Q_e_st.buffer(n_runs).buffer(len(amps)).save("Q_e")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 qm = qmm.open_qm(config)
 
 job = qm.execute(IQ_blobs)  # execute QUA program
 
 # Get results from QUA program
-results = fetching_tool(
-    job,
-    data_list=["iteration"],
-    mode="live",
-)
-
+results = fetching_tool(job, data_list=["iteration"], mode="live")
+# Get progress counter to monitor runtime of the program
 while results.is_processing():
     # Fetch results
     iteration = results.fetch_all()
     # Progress bar
     progress_counter(iteration[0], len(amps), start_time=results.get_start_time())
 
+# Fetch the results at the end
 results = fetching_tool(job, data_list=["I_g", "Q_g", "I_e", "Q_e"])
-
 I_g, Q_g, I_e, Q_e = results.fetch_all()
 
+# Process the data
 fidelities = []
 for i in range(len(amps)):
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
@@ -109,10 +99,9 @@ for i in range(len(amps)):
     )
     fidelities.append(fidelity)
 
+# Plot the data
 plt.figure()
 plt.plot(amps, fidelities)
-plt.title("Readout optimization")
-plt.xlabel("Readout amp [a.u.]")
-plt.ylabel("Fidelity")
-plt.show()
-# %%
+plt.title("Readout amplitude optimization")
+plt.xlabel("Readout amp pre-factor [a.u.]")
+plt.ylabel("Fidelity [%]")
