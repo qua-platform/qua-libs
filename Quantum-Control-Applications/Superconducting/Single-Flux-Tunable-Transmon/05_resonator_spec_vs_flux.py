@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from qualang_tools.loops import from_array
+from scipy.optimize import curve_fit
 
 ##############################
 # Program-specific variables #
@@ -110,3 +111,32 @@ else:
         plt.ylabel("frequency [MHz]")
         plt.pause(0.1)
         plt.tight_layout()
+    plt.show()
+
+    # Fitting to cosine resonator frequency response
+    def cosine_func(x, amplitude, frequency, phase, offset):
+        return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+
+    Z = I + 1j*Q
+    mag = np.abs(Z)
+    mag_transpose = mag.T
+    minimas = []
+    for i in range(len(flux)):
+        minimas.append(freqs[np.argmin(mag_transpose[i])])
+    minimas = np.array(minimas)
+    initial_guess = [1, 0.5, 0, 0]  # Initial guess for the parameters
+    fit_params, _ = curve_fit(cosine_func, flux, minimas/1e6, p0=initial_guess)
+
+    # Get the fitted values
+    amplitude_fit, frequency_fit, phase_fit, offset_fit = fit_params
+    print('fittins parameters', fit_params)
+    
+    # Generate the fitted curve using the fitted parameters
+    fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
+
+    plt.figure()
+    plt.pcolor(flux, freqs, np.abs(Z))
+    plt.plot(flux, minimas, '.-', color='red')
+    plt.plot(flux, fitted_curve*1e6, label='Fitted Cosine', color='orange')
+
+    print('DC value at which it maxes', flux[np.argmax(fitted_curve)])

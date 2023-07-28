@@ -6,6 +6,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from qualang_tools.loops import from_array
+from scipy.optimize import curve_fit
+
+def cosine_func(x, amplitude, frequency, phase, offset):
+    return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+
+amplitude_fit = 0
+frequency_fit = 0
+phase_fit = 0
+offset_fit = 0
 
 ##############################
 # Program-specific variables #
@@ -27,6 +36,10 @@ dc_max = 0.49
 step = 0.01
 flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the scan
 
+fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
+fitted_curve = fitted_curve*1e6
+fitted_curve = fitted_curve.astype(int)
+
 ###################
 # The QUA program #
 ###################
@@ -37,15 +50,19 @@ with program() as qubit_spec_2D:
     dc = declare(fixed)  # flux dc level
     I = declare(fixed)
     Q = declare(fixed)
+    resonator_freqs = declare(int, value=fitted_curve.tolist())
+    index = declare(int, value=0)
     I_st = declare_stream()
     Q_st = declare_stream()
     n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, freqs)):
-            # Update the resonator frequency
-            update_frequency("resonator", f)
+            # Update the qubit frequency
+            update_frequency("qubit", f)
+            assign(index, 0)
             with for_(*from_array(dc, flux)):
+                update_frequency("resonator", resonator_freqs[index] + resonator_IF)
                 # Flux sweeping
                 set_dc_offset("flux_line", "single", dc)
                 wait(flux_settle_time, "resonator", "qubit")
@@ -65,6 +82,7 @@ with program() as qubit_spec_2D:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+                assign(index, index+1)
         save(n, n_st)
 
     with stream_processing():
