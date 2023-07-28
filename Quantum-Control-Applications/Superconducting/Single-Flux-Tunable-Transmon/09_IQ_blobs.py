@@ -24,12 +24,12 @@ with program() as IQ_blob:
 
     with for_(n, 0, n < n_shot, n + 1):
         # Reset qubit state
-        reset_qubit("cooldown_time", cooldown_time=cooldown_time)
+        reset_qubit("cooldown", cooldown_time=cooldown_time)
         # Measure the ground state
         align("qubit", "resonator")
         I_g, Q_g = readout_macro()
         # Reset qubit state
-        reset_qubit("cooldown_time", cooldown_time=cooldown_time)
+        reset_qubit("cooldown", cooldown_time=cooldown_time)
         # Excited state measurement
         align("qubit", "resonator")
         play("x180", "qubit")
