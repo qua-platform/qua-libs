@@ -18,12 +18,12 @@ cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
 f_max = 65 * u.MHz
-df = 50 * u.kHz
+df = 500 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
 # Readout amplitude sweep (as a pre-factor of the readout amplitude)
 a_min = 0
 a_max = 2
-da = 0.01
+da = 0.1
 amplitude = np.arange(a_min, a_max + da / 2, da)  # +da/2 to add a_max to the scan
 
 ###################
@@ -40,10 +40,10 @@ with program() as resonator_spec_2D:
     n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
-            with for_(*from_array(f, freqs)):
-                # Update the resonator frequency
-                update_frequency("resonator", f)
+        with for_(*from_array(f, freqs)):
+            # Update the resonator frequency
+            update_frequency("resonator", f)
+            with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
                 # Measure the resonator
                 measure(
                     "readout" * amp(a),
@@ -60,8 +60,8 @@ with program() as resonator_spec_2D:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("I")
-        Q_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("Q")
+        I_st.buffer(len(amplitude)).buffer(len(freqs)).average().save("I")
+        Q_st.buffer(len(amplitude)).buffer(len(freqs)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -70,7 +70,7 @@ with program() as resonator_spec_2D:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
@@ -91,7 +91,7 @@ else:
         # Normalize data
         s1 = u.demod2volts(I + 1j * Q, readout_len)
         A1 = np.abs(s1)
-        row_sums = A1.sum(axis=1)
+        row_sums = A1.sum(axis=0)
         A1 = A1 / row_sums[np.newaxis, :]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
