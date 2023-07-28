@@ -6,11 +6,6 @@ import numpy as np
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("quam_state.json", flat_data=False)
-config = build_config(machine)
 
 ###################
 # The QUA program #
@@ -18,11 +13,11 @@ config = build_config(machine)
 
 n_avg = 1_000
 
-cooldown_time = 20_000
+cooldown_time = 5 * qubit_T1
+ramsey_idle_time = 1 * u.us
 
-taus = np.arange(4, 100, 1)
-
-qubit_index = 0
+# Time between populating the resonator and playing a Ramsey sequence in clock-cycles
+taus = np.arange(4, 1000, 1)
 
 with program() as power_rabi:
     n = declare(int)
@@ -36,31 +31,25 @@ with program() as power_rabi:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, taus)):
             # qubit cooldown
-            wait(cooldown_time * u.ns, machine.resonators[qubit_index].name)
-
+            wait(cooldown_time * u.ns, "resonator")
             measure(
                 "readout",
-                machine.resonators[qubit_index].name,
+                "resonator",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
+            # Play a fixed duration Ramsey sequence after a varying time to estimate the effect of photons in the resonator
+            wait(t, "resonator")
 
-            wait(t, machine.resonators[qubit_index].name)
-
-            align(machine.qubits[qubit_index].name, machine.resonators[qubit_index].name)
-
-            play("x90", machine.qubits[qubit_index].name)
-
-            wait(100)  # fixed time ramsey
-
-            play("x90", machine.qubits[qubit_index].name)
-
-            align(machine.qubits[qubit_index].name, machine.resonators[qubit_index].name)
-
+            align("qubit", "resonator")
+            play("x90", "qubit")
+            wait(ramsey_idle_time * u.ns)  # fixed time ramsey
+            play("x90", "qubit")
+            align("qubit", "resonator")
             measure(
                 "readout",
-                machine.resonators[qubit_index].name,
+                "resonator",
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
@@ -78,7 +67,7 @@ with program() as power_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 simulate = False
 
@@ -105,8 +94,7 @@ else:
         plt.cla()
         plt.plot(4 * taus, I, ".", label="I")
         plt.plot(4 * taus, Q, ".", label="Q")
-        plt.xlabel("Delay [clock cycles]")
+        plt.xlabel("Delay [ns]")
         plt.ylabel("I & Q amplitude [a.u.]")
         plt.legend()
         plt.pause(0.1)
-    plt.show()
