@@ -117,7 +117,7 @@ else:
     def cosine_func(x, amplitude, frequency, phase, offset):
         return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 
-    Z = I + 1j*Q
+    Z = I + 1j * Q
     mag = np.abs(Z)
     minima = np.zeros(len(flux))
     for i in range(len(flux)):
@@ -128,17 +128,17 @@ else:
 
     # Get the fitted values
     amplitude_fit, frequency_fit, phase_fit, offset_fit = fit_params
-    print('fitting parameters', fit_params)
-    
+    print("fitting parameters", fit_params)
+
     # Generate the fitted curve using the fitted parameters
     fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
 
     plt.figure()
     plt.pcolor(flux, freqs / u.MHz, np.abs(Z))
-    plt.plot(flux, minima, 'x-', color='red', label="Flux minima")
-    plt.plot(flux, fitted_curve, label='Fitted Cosine', color='orange')
+    plt.plot(flux, minima, "x-", color="red", label="Flux minima")
+    plt.plot(flux, fitted_curve, label="Fitted Cosine", color="orange")
     plt.xlabel("flux level [V]")
     plt.ylabel("frequency [MHz]")
     plt.legend()
 
-    print('DC value at which it maxes', flux[np.argmax(fitted_curve)])
+    print("DC value at which it maxes", flux[np.argmax(fitted_curve)])

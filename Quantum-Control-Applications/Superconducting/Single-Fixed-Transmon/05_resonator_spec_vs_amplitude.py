@@ -91,7 +91,7 @@ else:
         s1 = u.demod2volts(I + 1j * Q, readout_len)
         A1 = np.abs(s1)
         row_sums = A1.sum(axis=0)
-        A1 = A1 / row_sums[np.newaxis,  :]
+        A1 = A1 / row_sums[np.newaxis, :]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # 2D spectroscopy plot

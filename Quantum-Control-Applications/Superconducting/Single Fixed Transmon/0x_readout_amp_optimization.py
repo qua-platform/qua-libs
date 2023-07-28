@@ -66,7 +66,7 @@ with program() as IQ_blobs:
             save(I_e, I_e_st)
             save(Q_e, Q_e_st)
             wait(cooldown_time * u.ns, machine.resonators[qubit_index].name)
-        assign(counter, counter+1)
+        assign(counter, counter + 1)
 
     with stream_processing():
         amps_st.save("iteration")
@@ -98,16 +98,15 @@ while results.is_processing():
     # Progress bar
     progress_counter(iteration[0], len(amps), start_time=results.get_start_time())
 
-results = fetching_tool(
-    job,
-    data_list=["I_g", "Q_g", "I_e", "Q_e"]
-)
+results = fetching_tool(job, data_list=["I_g", "Q_g", "I_e", "Q_e"])
 
 I_g, Q_g, I_e, Q_e = results.fetch_all()
 
 fidelities = []
 for i in range(len(amps)):
-    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False)
+    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+        I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False
+    )
     fidelities.append(fidelity)
 
 plt.figure()

@@ -33,6 +33,7 @@ flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the s
 def cosine_func(x, amplitude, frequency, phase, offset):
     return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 
+
 amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
 fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit) * u.MHz
 fitted_curve = fitted_curve.astype(int)

@@ -20,7 +20,7 @@ n_avg = 1_000
 
 cooldown_time = 20_000
 
-taus = np.arange(4, 100, 1) 
+taus = np.arange(4, 100, 1)
 
 qubit_index = 0
 
