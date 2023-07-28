@@ -12,15 +12,15 @@ from scipy.optimize import curve_fit
 # Program-specific variables #
 ##############################
 
-n_avg = 3000  # Number of averaging loops
+n_avg = 6000  # Number of averaging loops
 
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 20 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 flux_settle_time = 100 * u.ns // 4  # Flux settle time in clock cycles (4ns)
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
 f_max = 65 * u.MHz
-df = 50 * u.kHz
+df = 500 * u.kHz
 freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
 # Flux amplitude sweep (as a pre-factor of the flux amplitude)
 dc_min = -0.49
@@ -76,7 +76,7 @@ with program() as resonator_spec_2D:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
@@ -119,24 +119,26 @@ else:
 
     Z = I + 1j*Q
     mag = np.abs(Z)
-    mag_transpose = mag.T
-    minimas = []
+    minima = np.zeros(len(flux))
     for i in range(len(flux)):
-        minimas.append(freqs[np.argmin(mag_transpose[i])])
-    minimas = np.array(minimas)
+        minima[i] = freqs[np.argmin(mag.T[i])] / u.MHz
+
     initial_guess = [1, 0.5, 0, 0]  # Initial guess for the parameters
-    fit_params, _ = curve_fit(cosine_func, flux, minimas/1e6, p0=initial_guess)
+    fit_params, _ = curve_fit(cosine_func, flux, minima, p0=initial_guess)
 
     # Get the fitted values
     amplitude_fit, frequency_fit, phase_fit, offset_fit = fit_params
-    print('fittins parameters', fit_params)
+    print('fitting parameters', fit_params)
     
     # Generate the fitted curve using the fitted parameters
     fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
 
     plt.figure()
-    plt.pcolor(flux, freqs, np.abs(Z))
-    plt.plot(flux, minimas, '.-', color='red')
-    plt.plot(flux, fitted_curve*1e6, label='Fitted Cosine', color='orange')
+    plt.pcolor(flux, freqs / u.MHz, np.abs(Z))
+    plt.plot(flux, minima, 'x-', color='red', label="Flux minima")
+    plt.plot(flux, fitted_curve, label='Fitted Cosine', color='orange')
+    plt.xlabel("flux level [V]")
+    plt.ylabel("frequency [MHz]")
+    plt.legend()
 
     print('DC value at which it maxes', flux[np.argmax(fitted_curve)])
