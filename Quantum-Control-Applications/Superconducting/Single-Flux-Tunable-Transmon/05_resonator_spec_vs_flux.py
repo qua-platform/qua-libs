@@ -141,4 +141,4 @@ else:
     plt.ylabel("frequency [MHz]")
     plt.legend()
 
-    print("DC value at which it maxes", flux[np.argmax(fitted_curve)])
+    print("DC flux value corresponding to the maximum frequency point", flux[np.argmax(fitted_curve)])
