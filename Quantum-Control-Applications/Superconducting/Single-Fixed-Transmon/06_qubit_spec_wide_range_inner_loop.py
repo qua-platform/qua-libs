@@ -7,6 +7,7 @@ from time import sleep
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
+from scipy import signal
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -27,6 +28,7 @@ f_min_external = 3e9 - f_min
 f_max_external = 8e9 - f_max
 df_external = f_max - f_min
 freqs_external = np.arange(f_min_external, f_max_external + 0.1, df_external)
+frequency = np.array(np.concatenate([freqs + freqs_external[i] for i in range(len(freqs_external))]))
 
 with program() as qubit_spec:
     i = declare(int)
@@ -55,10 +57,12 @@ with program() as qubit_spec:
                 save(I, I_st)
                 save(Q, Q_st)
                 wait(cooldown_time, "resonator")
+        save(n, n_st)
 
     with stream_processing():
         I_st.buffer(len(freqs)).buffer(len(freqs_external)).average().save("I")
         Q_st.buffer(len(freqs)).buffer(len(freqs_external)).average().save("Q")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -75,20 +79,44 @@ job = qm.execute(qubit_spec)
 res_handles = job.result_handles
 I_handle = res_handles.get("I")
 Q_handle = res_handles.get("Q")
-skip_first = True
+n_handle = res_handles.get("iteration")
 
+# Live plotting
+fig = plt.figure()
+interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 for i in range(n_avg):
     for j in range(len(freqs_external)):
         while not job.is_paused():
             sleep(0.1)
             pass
-        if not skip_first:
-            # This is the latest data
-            I = I_handle.fetch_all()
-            Q = Q_handle.fetch_all()
-        else:
-            skip_first = False
-
         lo_source.set_freq(freqs_external[j])  # Replace by your own function
         job.resume()
+
+    # This is the latest data
+    I_handle.wait_for_values(1)
+    Q_handle.wait_for_values(1)
+    n_handle.wait_for_values(1)
+    I = I_handle.fetch_all()
+    Q = Q_handle.fetch_all()
+    iteration = n_handle.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg)
+    plt.cla()
+    # Plot results
+    plt.subplot(211)
+    plt.cla()
+    plt.title("Qubit spectroscopy amplitude")
+    plt.plot(frequency / u.MHz, np.concatenate(np.sqrt(I**2 + Q**2)), ",")
+    plt.xlabel("qubit frequency [MHz]")
+    plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [a.u.]")
+    plt.subplot(212)
+    plt.cla()
+    # detrend removes the linear increase of phase
+    phase = np.concatenate(signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+    plt.title("Qubit spectroscopy phase")
+    plt.plot(frequency / u.MHz, phase, ",")
+    plt.xlabel("qubit frequency [MHz]")
+    plt.ylabel("Phase [rad]")
+    plt.pause(0.1)
+    plt.tight_layout()
