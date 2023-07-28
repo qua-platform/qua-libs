@@ -14,7 +14,7 @@ from scipy import signal
 ###################
 
 n_avg = 10000  # Number of averages
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4
 
 # FLux pulse waveform generation
 flux_amp = -0.1
@@ -87,7 +87,7 @@ with program() as cryoscope:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait cooldown time and save the results
-                wait(cooldown_time, "resonator", "qubit")
+                wait(cooldown_time * u.ns, "resonator", "qubit")
                 save(I, I_st)
                 save(Q, Q_st)
         save(n, n_st)

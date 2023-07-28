@@ -25,7 +25,7 @@ lsb = False
 
 rr_qe = "resonator"
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 
 discriminator = TwoStateDiscriminator(
@@ -54,7 +54,7 @@ with program() as benchmark:
         save(I, I_st)
         save(Q, Q_st)
         save(res, res_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
         align()  # global align
 
@@ -64,7 +64,7 @@ with program() as benchmark:
         save(I, I_st)
         save(Q, Q_st)
         save(res, res_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
         seq0 = [0, 1] * n_runs
 

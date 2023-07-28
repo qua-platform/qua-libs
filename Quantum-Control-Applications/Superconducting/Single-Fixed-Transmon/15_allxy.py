@@ -10,7 +10,7 @@ from qm import SimulationConfig
 # Program-specific variables #
 ##############################
 n_points = 1e6
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 # All XY sequences. The sequence names must match corresponding operation in the config
 # (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
@@ -82,7 +82,7 @@ with program() as ALLXY:
     with for_(n, 0, n < n_points, n + 1):
         assign(r_, r.rand_int(len(sequence)))
         # Can replace by active reset
-        wait(cooldown_time, "qubit")
+        wait(cooldown_time * u.ns, "qubit")
         # Plays a random XY sequence
         with switch_(r_):
             for i in range(len(sequence)):

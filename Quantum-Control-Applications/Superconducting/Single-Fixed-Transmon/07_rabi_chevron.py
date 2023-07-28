@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 ##############################
 n_avg = 200  # Number of averaging loops
 
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1
 
 # Frequency sweep in Hz (Needs to be a list of int)
 freq_span = 20 * u.MHz
@@ -56,7 +56,7 @@ with program() as rabi_amp_freq:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)

@@ -16,7 +16,7 @@ d_tau = 2  # in clock cycles
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add t_max to taus
 
 n_avg = 1e4
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 with program() as T1:
     n = declare(int)
@@ -41,7 +41,7 @@ with program() as T1:
             )
             save(I, I_st)
             save(Q, Q_st)
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():

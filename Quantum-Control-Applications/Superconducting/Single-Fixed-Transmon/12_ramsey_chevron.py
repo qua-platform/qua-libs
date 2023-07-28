@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = 5 * qubit_T1 // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1
 
 # Frequency sweep in Hz (Needs to be a list of int)
 freq_span = 10 * u.MHz
@@ -61,7 +61,7 @@ with program() as ramsey_freq_duration:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator", "qubit")
+                wait(cooldown_time * u.ns, "resonator", "qubit")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)

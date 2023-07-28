@@ -14,7 +14,7 @@ Performs an ALLXY experiment to estimate gates imperfection
 # Program-specific variables #
 ##############################
 n_points = 1e6
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pdf-optimized_driving_0.pdf
@@ -85,7 +85,7 @@ with program() as ALLXY:
     with for_(n, 0, n < n_points, n + 1):
         assign(r_, r.rand_int(len(sequence)))
         # Can replace by active reset
-        wait(cooldown_time, "qubit")
+        wait(cooldown_time * u.ns, "qubit")
         # Plays a random XY sequence
         with switch_(r_):
             for i in range(len(sequence)):

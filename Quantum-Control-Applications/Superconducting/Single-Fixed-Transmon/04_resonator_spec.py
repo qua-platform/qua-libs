@@ -12,7 +12,7 @@ from qm import SimulationConfig
 
 n_avg = 100
 
-cooldown_time = 10 * u.us // 4
+cooldown_time = 10 * u.us
 
 f_min = 30e6
 f_max = 70e6
@@ -37,7 +37,7 @@ with program() as resonator_spec:
                 dual_demod.full("cos", "out1", "sin", "out2", I),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
             save(I, I_st)
             save(Q, Q_st)
 

@@ -9,7 +9,7 @@ from qualang_tools.analysis import two_state_discriminator
 # Program-specific variables #
 ##############################
 n_shot = 10000  # Number of acquired shots
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4
 
 ###################
 # The QUA program #

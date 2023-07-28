@@ -14,8 +14,8 @@ from scipy.optimize import curve_fit
 
 n_avg = 6000  # Number of averaging loops
 
-cooldown_time = 20 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = 100 * u.ns // 4  # Flux settle time in clock cycles (4ns)
+cooldown_time = 20 * u.us  # Resonator cooldown time in ns
+flux_settle_time = 100 * u.ns // 4  # Flux settle time in ns
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
@@ -49,7 +49,7 @@ with program() as resonator_spec_2D:
             with for_(*from_array(dc, flux)):
                 # Flux sweeping
                 set_dc_offset("flux_line", "single", dc)
-                wait(flux_settle_time, "resonator", "qubit")
+                wait(flux_settle_time * u.ns, "resonator", "qubit")
                 # Measure the resonator
                 measure(
                     "readout",
@@ -59,7 +59,7 @@ with program() as resonator_spec_2D:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)

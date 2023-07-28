@@ -59,7 +59,7 @@ print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
 n_avg = 1e4  # number of averages
-cooldown_time = 5 * qubit_T1 // 4  # thermal decay time of the qubit
+cooldown_time = 5 * qubit_T1 # thermal decay time of the qubit
 
 qubit_operation = "x180"
 
@@ -95,7 +95,7 @@ with program() as opt_weights:
             assign(Q[ind], QQ[ind] + QI[ind])
             save(Q[ind], Q_st)
 
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
         align()
 
@@ -118,7 +118,7 @@ with program() as opt_weights:
             assign(Q[ind], QQ[ind] + QI[ind])
             save(Q[ind], Q_st)
 
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
         save(n, n_st)
 

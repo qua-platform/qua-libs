@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 threshold = ge_threshold  # Threshold used for ge state discrimination
 n_shot = 10000  # Number of acquired shots
 max_tries = 2  # Maximum number of tries for active reset (no feedback if set to 0)
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1
 
 ###################
 # The QUA program #

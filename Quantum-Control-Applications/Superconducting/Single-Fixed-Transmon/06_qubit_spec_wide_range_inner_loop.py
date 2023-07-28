@@ -17,7 +17,7 @@ import numpy as np
 
 n_avg = 1000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 f_min = 20e6
 f_max = 100e6
@@ -56,7 +56,7 @@ with program() as qubit_spec:
                 )
                 save(I, I_st)
                 save(Q, Q_st)
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():

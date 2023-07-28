@@ -12,7 +12,7 @@ qubit_operation = "x180"
 
 n_runs = 1000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 amps = np.arange(0.1, 1.7, 0.1)
 

@@ -13,7 +13,7 @@ from qualang_tools.loops import from_array
 
 n_avg = 100
 
-cooldown_time = 10 * u.us // 4
+cooldown_time = 10 * u.us
 
 f_min = 30e6
 f_max = 70e6
@@ -49,7 +49,7 @@ with program() as resonator_spec_2D:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)

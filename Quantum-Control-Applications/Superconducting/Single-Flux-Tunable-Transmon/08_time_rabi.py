@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 
 n_avg = 10000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 t_min = 10
 t_max = 1000
@@ -41,7 +41,7 @@ with program() as time_rabi:
             )
             save(I, I_st)
             save(Q, Q_st)
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():
