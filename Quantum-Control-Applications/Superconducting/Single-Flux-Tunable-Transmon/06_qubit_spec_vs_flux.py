@@ -8,21 +8,13 @@ from scipy import signal
 from qualang_tools.loops import from_array
 from scipy.optimize import curve_fit
 
-def cosine_func(x, amplitude, frequency, phase, offset):
-    return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
-
-amplitude_fit = 0
-frequency_fit = 0
-phase_fit = 0
-offset_fit = 0
-
 ##############################
 # Program-specific variables #
 ##############################
 
 n_avg = 3000  # Number of averaging loops
 
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 20 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
 flux_settle_time = 100 * u.ns // 4  # Flux settle time in clock cycles (4ns)
 
 # Frequency sweep in Hz
@@ -36,8 +28,13 @@ dc_max = 0.49
 step = 0.01
 flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the scan
 
-fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
-fitted_curve = fitted_curve*1e6
+# Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
+# resonance while sweeping the flux
+def cosine_func(x, amplitude, frequency, phase, offset):
+    return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit) * u.MHz
 fitted_curve = fitted_curve.astype(int)
 
 ###################
@@ -50,8 +47,8 @@ with program() as qubit_spec_2D:
     dc = declare(fixed)  # flux dc level
     I = declare(fixed)
     Q = declare(fixed)
-    resonator_freqs = declare(int, value=fitted_curve.tolist())
-    index = declare(int, value=0)
+    resonator_freq = declare(int, value=fitted_curve.tolist())  # res freq vs flux table
+    index = declare(int, value=0)  # index to get the right resonator freq for a given flux
     I_st = declare_stream()
     Q_st = declare_stream()
     n_st = declare_stream()
@@ -62,7 +59,8 @@ with program() as qubit_spec_2D:
             update_frequency("qubit", f)
             assign(index, 0)
             with for_(*from_array(dc, flux)):
-                update_frequency("resonator", resonator_freqs[index] + resonator_IF)
+                # Update the resonator frequency to always measure on resonance
+                update_frequency("resonator", resonator_freq[index] + resonator_IF)
                 # Flux sweeping
                 set_dc_offset("flux_line", "single", dc)
                 wait(flux_settle_time, "resonator", "qubit")
@@ -82,7 +80,7 @@ with program() as qubit_spec_2D:
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
-                assign(index, index+1)
+                assign(index, index + 1)
         save(n, n_st)
 
     with stream_processing():
@@ -96,7 +94,7 @@ with program() as qubit_spec_2D:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
