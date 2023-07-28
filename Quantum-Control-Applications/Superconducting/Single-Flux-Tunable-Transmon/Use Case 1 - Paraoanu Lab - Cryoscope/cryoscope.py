@@ -157,12 +157,9 @@ with program() as cryoscope:
 #  Open Communication with the QOP  #
 #####################################
 
-# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
-from qm.simulate.credentials import create_credentials
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-qmm = QuantumMachinesManager(host="theo-4c195fa0.dev.quantum-machines.co", port=443, credentials=create_credentials())
-
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=3000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])

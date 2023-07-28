@@ -38,8 +38,8 @@ with program() as qubit_spec:
     # set_dc_offset("flux_line", "single", 0.0)
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, freqs)):
-            # Update the resonator frequency
-            update_frequency("resonator", f)
+            # Update the qubit frequency
+            update_frequency("qubit", f)
             # Play a saturation pulse on the qubit
             play("cw", "qubit")
             align("qubit", "resonator")
@@ -68,7 +68,7 @@ with program() as qubit_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])

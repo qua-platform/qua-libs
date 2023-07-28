@@ -65,7 +65,7 @@ with program() as resonator_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
