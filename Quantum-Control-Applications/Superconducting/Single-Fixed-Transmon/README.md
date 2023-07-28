@@ -25,9 +25,11 @@ is not saturated, correct for DC offsets.
     * [Time Rabi](08_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
 9. [IQ Blobs](09_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
 and the fidelity are good enough, gives the parameters needed for active reset.
+    * [Resonator Emptying Time](09_resonator_emptying_time.py) - Measure the resonator depletion time using a fixed time Ramsey sequence to know how long one needs to wait after measuring the resonator for active reset protocols.
     * [Active Reset](09_active_reset.py) - Script for performing a single shot discrimination and active reset.
 10. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
     * [Frequency optimization](10_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Amplitude optimization](10_readout_amp_optimization.py) - The script measures the readout fidelity for different readout powers.
     * [Duration optimization](10_readout_duration_optimization.py) - The script performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as as a function of readout time.
     * [Integration Weights optimization](10_readout_weight_optimization.py) -Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
 11. [T1](11_T1.py) - Measures T1.
