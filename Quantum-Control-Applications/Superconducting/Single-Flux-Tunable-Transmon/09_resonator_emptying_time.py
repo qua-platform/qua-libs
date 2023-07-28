@@ -6,33 +6,45 @@ import numpy as np
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
 
+
 ###################
 # The QUA program #
 ###################
 
-tau_min = 4  # in clock cycles
-tau_max = 100  # in clock cycles
-d_tau = 2  # in clock cycles
-taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
+n_avg = 1_000
 
-n_avg = 1e4
 cooldown_time = 5 * qubit_T1
+ramsey_idle_time = 1 * u.us
 
-with program() as echo:
+# Time between populating the resonator and playing a Ramsey sequence in clock-cycles
+taus = np.arange(4, 1000, 1)
+
+with program() as power_rabi:
     n = declare(int)
     n_st = declare_stream()
+    t = declare(int)
     I = declare(fixed)
-    I_st = declare_stream()
     Q = declare(fixed)
+    I_st = declare_stream()
     Q_st = declare_stream()
-    tau = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(tau, taus)):
+        with for_(*from_array(t, taus)):
+            # qubit cooldown
+            wait(cooldown_time * u.ns, "resonator")
+            measure(
+                "readout",
+                "resonator",
+                None,
+                dual_demod.full("cos", "out1", "sin", "out2", I),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            )
+            # Play a fixed duration Ramsey sequence after a varying time to estimate the effect of photons in the resonator
+            wait(t, "resonator")
+
+            align("qubit", "resonator")
             play("x90", "qubit")
-            wait(tau, "qubit")
-            play("x180", "qubit")
-            wait(tau, "qubit")
+            wait(ramsey_idle_time * u.ns)  # fixed time ramsey
             play("x90", "qubit")
             align("qubit", "resonator")
             measure(
@@ -44,7 +56,7 @@ with program() as echo:
             )
             save(I, I_st)
             save(Q, Q_st)
-            wait(cooldown_time * u.ns, "resonator")
+
         save(n, n_st)
 
     with stream_processing():
@@ -52,26 +64,22 @@ with program() as echo:
         Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
-######################################
+#####################################
 #  Open Communication with the QOP  #
-######################################
+#####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
-
-#######################
-# Simulate or execute #
-#######################
 
 simulate = False
 
 if simulate:
     simulation_config = SimulationConfig(duration=1000)  # in clock cycles
-    job = qmm.simulate(config, echo, simulation_config)
+    job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
-
     qm = qmm.open_qm(config)
-    job = qm.execute(echo)
+
+    job = qm.execute(power_rabi)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
@@ -84,10 +92,9 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.plot(2 * taus, I, ".", label="I")
-        plt.plot(2 * taus, Q, ".", label="Q")
-        plt.xlabel("Echo time [ns]")
+        plt.plot(4 * taus, I, ".", label="I")
+        plt.plot(4 * taus, Q, ".", label="Q")
+        plt.xlabel("Delay [ns]")
         plt.ylabel("I & Q amplitude [a.u.]")
-        plt.title("Ramsey with spin echo")
         plt.legend()
         plt.pause(0.1)

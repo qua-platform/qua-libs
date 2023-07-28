@@ -12,8 +12,8 @@ from qualang_tools.loops import from_array
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = 10 * u.us // 4  # Flux settle time in clock cycles (4ns)
+cooldown_time = 2 * u.us  # Resonator cooldown time in ns
+flux_settle_time = 100 * u.ns  # Flux settle time in ns
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
@@ -41,7 +41,7 @@ with program() as resonator_spec:
         with for_(*from_array(f, freqs)):
             # Adjust the flux line
             play("const" * amp(0), "flux_line")
-            wait(flux_settle_time, "resonator")
+            wait(flux_settle_time * u.ns, "resonator")
             # Update the resonator frequency
             update_frequency("resonator", f)
             # Play a pi pulse on conditional flag (I/O values)
@@ -57,7 +57,7 @@ with program() as resonator_spec:
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
             # Wait for the resonator to cooldown
-            wait(cooldown_time, "resonator", "flux_line")
+            wait(cooldown_time * u.ns, "resonator", "flux_line")
             # Save data to the stream processing
             save(I, I_st)
             save(Q, Q_st)

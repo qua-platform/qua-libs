@@ -12,7 +12,7 @@ from qualang_tools.loops import from_array
 ##############################
 n_avg = 200  # Number of averaging loops
 
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1
 
 # Frequency sweep in Hz (Needs to be a list of int)
 freq_span = 20 * u.MHz
@@ -56,7 +56,7 @@ with program() as rabi_amp_freq:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
@@ -73,7 +73,7 @@ with program() as rabi_amp_freq:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
@@ -96,15 +96,15 @@ else:
         # Plot results
         plt.subplot(211)
         plt.cla()
-        plt.title("Resonator spectroscopy amplitude")
+        plt.title("Rabi chevron amplitude")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * x180_amp, np.sqrt(I**2 + Q**2))
-        plt.xlabel("Frequency [MHz]")
+        plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Resonator spectroscopy phase")
+        plt.title("Rabi chevron phase")
         plt.pcolor((freq_array - qubit_IF) / u.MHz, a_array * x180_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("Frequency [MHz]")
+        plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()
         plt.pause(0.01)

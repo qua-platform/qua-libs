@@ -113,7 +113,7 @@ with program() as cryoscope_amp:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])

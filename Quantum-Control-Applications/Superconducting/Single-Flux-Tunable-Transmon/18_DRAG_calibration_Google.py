@@ -21,7 +21,7 @@ drag_coef = 1
 
 n_avg = 1000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 a_min = 0.0
 a_max = 1.0
@@ -57,7 +57,7 @@ with program() as drag:
             save(I, I_st)
             save(Q, Q_st)
             save(state, state_st)
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():

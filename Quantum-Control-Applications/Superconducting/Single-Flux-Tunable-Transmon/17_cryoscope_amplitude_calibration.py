@@ -13,7 +13,7 @@ from qualang_tools.loops import from_array
 ###################
 
 n_avg = 10000  # Number of averages
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1 // 4
 # Flux amplitude sweep (as a pre-factor of the flux amplitude)
 n_flux_amp = 401
 flux_amp_array = np.linspace(0, -0.2, n_flux_amp)
@@ -54,7 +54,7 @@ with program() as cryoscope_amp:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait cooldown time and save the results
-                wait(cooldown_time, "resonator", "qubit")
+                wait(cooldown_time * u.ns, "resonator", "qubit")
                 save(I, I_st)
                 save(Q, Q_st)
 
@@ -71,7 +71,7 @@ with program() as cryoscope_amp:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])

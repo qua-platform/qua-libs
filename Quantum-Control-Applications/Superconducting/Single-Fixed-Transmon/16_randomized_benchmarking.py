@@ -19,7 +19,7 @@ max_circuit_depth = 1000
 num_of_sequences = 500
 n_avg = 20
 seed = 345324
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 delta_clifford = 10  # Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
@@ -158,7 +158,7 @@ with program() as rb:
                 with for_(n, 0, n < n_avg, n + 1):
 
                     # Can replace by active reset
-                    wait(cooldown_time, "resonator")
+                    wait(cooldown_time * u.ns, "resonator")
 
                     align("resonator", "qubit")
                     with strict_timing_():

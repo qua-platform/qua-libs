@@ -11,7 +11,7 @@ from qm import SimulationConfig, LoopbackInterface
 ##############################
 cavity_element = "resonator"
 threshold = ge_threshold
-cooldown_time = 5 * qubit_T1 // 4  # Cooldown time in clock cycles (4ns)
+cooldown_time = 5 * qubit_T1
 chi = 10 * u.MHz / u.GHz  # cavity  coupling strength in GHz
 revival_time = int(np.pi / chi) // 4  # Revival time in multiples of 4 ns
 # range to sample alpha
@@ -64,7 +64,7 @@ with program() as wigner_tomo:
                 with else_():
                     assign(excited, excited + 1)
                 # wait and let all elements relax
-                wait(cooldown_time, cavity_element, "qubit", "resonator")
+                wait(cooldown_time * u.ns, cavity_element, "qubit", "resonator")
             save(ground, ground_st)
             save(excited, excited_st)
 

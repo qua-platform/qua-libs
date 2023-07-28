@@ -12,7 +12,7 @@ from macros import readout_macro
 
 n_avg = 100
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 with program() as state_tomography:
     n = declare(int)  # variable for average loop
@@ -35,11 +35,11 @@ with program() as state_tomography:
                     align("qubit", "resonator")
                     state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
-                    wait(cooldown_time, "qubit")
+                    wait(cooldown_time * u.ns, "qubit")
                 with case_(2):  # projection along Z
                     state, _, _ = readout_macro(threshold=ge_threshold, state=state)
                     save(state, state_st)
-                    wait(cooldown_time, "qubit")
+                    wait(cooldown_time * u.ns, "qubit")
         save(n, n_st)
 
     with stream_processing():

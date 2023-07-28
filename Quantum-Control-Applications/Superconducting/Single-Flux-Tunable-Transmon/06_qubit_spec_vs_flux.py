@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from qualang_tools.loops import from_array
+from scipy.optimize import curve_fit
 
 ##############################
 # Program-specific variables #
@@ -13,8 +14,8 @@ from qualang_tools.loops import from_array
 
 n_avg = 3000  # Number of averaging loops
 
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
-flux_settle_time = 100 * u.ns // 4  # Flux settle time in clock cycles (4ns)
+cooldown_time = 20 * u.us  # Resonator cooldown time in ns
+flux_settle_time = 100 * u.ns  # Flux settle time in ns
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
@@ -27,6 +28,16 @@ dc_max = 0.49
 step = 0.01
 flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the scan
 
+# Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
+# resonance while sweeping the flux
+def cosine_func(x, amplitude, frequency, phase, offset):
+    return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+
+
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit) * u.MHz
+fitted_curve = fitted_curve.astype(int)
+
 ###################
 # The QUA program #
 ###################
@@ -37,18 +48,23 @@ with program() as qubit_spec_2D:
     dc = declare(fixed)  # flux dc level
     I = declare(fixed)
     Q = declare(fixed)
+    resonator_freq = declare(int, value=fitted_curve.tolist())  # res freq vs flux table
+    index = declare(int, value=0)  # index to get the right resonator freq for a given flux
     I_st = declare_stream()
     Q_st = declare_stream()
     n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, freqs)):
-            # Update the resonator frequency
-            update_frequency("resonator", f)
+            # Update the qubit frequency
+            update_frequency("qubit", f)
+            assign(index, 0)
             with for_(*from_array(dc, flux)):
+                # Update the resonator frequency to always measure on resonance
+                update_frequency("resonator", resonator_freq[index] + resonator_IF)
                 # Flux sweeping
                 set_dc_offset("flux_line", "single", dc)
-                wait(flux_settle_time, "resonator", "qubit")
+                wait(flux_settle_time * u.ns, "resonator", "qubit")
                 # Play a saturation pulse on the qubit
                 play("cw", "qubit")
                 align("qubit", "resonator")
@@ -61,15 +77,16 @@ with program() as qubit_spec_2D:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
+                assign(index, index + 1)
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(freqs)).buffer(len(flux)).average().save("I")
-        Q_st.buffer(len(freqs)).buffer(len(flux)).average().save("Q")
+        I_st.buffer(len(flux)).buffer(len(freqs)).average().save("I")
+        Q_st.buffer(len(flux)).buffer(len(freqs)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -78,7 +95,7 @@ with program() as qubit_spec_2D:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
@@ -102,14 +119,14 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title("qubit spectroscopy amplitude")
-        plt.pcolor(freqs / u.MHz, flux, np.sqrt(I**2 + Q**2))
-        plt.xlabel("qubit frequency [MHz]")
-        plt.ylabel("flux level [V]")
+        plt.pcolor(flux, freqs / u.MHz, np.sqrt(I**2 + Q**2))
+        plt.ylabel("qubit frequency [MHz]")
+        plt.xlabel("flux level [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("qubit spectroscopy phase")
-        plt.pcolor(freqs / u.MHz, flux, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("qubit frequency [MHz]")
-        plt.ylabel("flux level [V]")
+        plt.pcolor(flux, freqs / u.MHz, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.ylabel("qubit frequency [MHz]")
+        plt.xlabel("flux level [V]")
         plt.pause(0.1)
         plt.tight_layout()

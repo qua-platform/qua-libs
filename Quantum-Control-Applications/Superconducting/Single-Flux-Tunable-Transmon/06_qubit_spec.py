@@ -13,7 +13,7 @@ from qualang_tools.loops import from_array
 
 n_avg = 3000  # Number of averaging loops
 
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 2 * u.us
 
 # Frequency sweep in Hz
 f_min = 55 * u.MHz
@@ -38,8 +38,8 @@ with program() as qubit_spec:
     # set_dc_offset("flux_line", "single", 0.0)
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, freqs)):
-            # Update the resonator frequency
-            update_frequency("resonator", f)
+            # Update the qubit frequency
+            update_frequency("qubit", f)
             # Play a saturation pulse on the qubit
             play("cw", "qubit")
             align("qubit", "resonator")
@@ -52,7 +52,7 @@ with program() as qubit_spec:
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
             )
             # Wait for the resonator to cooldown
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
             # Save data to the stream processing
             save(I, I_st)
             save(Q, Q_st)
@@ -68,7 +68,7 @@ with program() as qubit_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-simulation = True
+simulation = False
 if simulation:
     simulation_config = SimulationConfig(
         duration=8000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])

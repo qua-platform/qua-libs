@@ -9,7 +9,7 @@ from qualang_tools.analysis.discriminator import two_state_discriminator
 
 n_runs = 10000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 with program() as IQ_blobs:
     n = declare(int)
@@ -32,7 +32,7 @@ with program() as IQ_blobs:
         )
         save(I_g, I_g_st)
         save(Q_g, Q_g_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
         align()  # global align
 
@@ -47,7 +47,7 @@ with program() as IQ_blobs:
         )
         save(I_e, I_e_st)
         save(Q_e, Q_e_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
     with stream_processing():
         I_g_st.save_all("I_g")

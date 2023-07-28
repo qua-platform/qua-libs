@@ -9,7 +9,7 @@ from scipy.signal import savgol_filter
 # The QUA program #
 ###################
 n_avg = 100  # Number of averaging loops
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 2 * u.us
 
 with program() as raw_trace_prog:
     n = declare(int)
@@ -18,7 +18,7 @@ with program() as raw_trace_prog:
     with for_(n, 0, n < n_avg, n + 1):
         reset_phase("resonator")
         measure("readout", "resonator", adc_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
     with stream_processing():
         # Will save average:
@@ -62,6 +62,8 @@ plt.plot(adc1_single_run, "b", label="Input 1")
 plt.plot(adc2_single_run, "r", label="Input 2")
 xl = plt.xlim()
 yl = plt.ylim()
+plt.axhline(y=0.5)
+plt.axhline(y=-0.5)
 plt.plot(xl, adc1_mean * np.ones(2), "k--")
 plt.plot(xl, adc2_mean * np.ones(2), "k--")
 plt.plot(delay * np.ones(2), yl, "k--")

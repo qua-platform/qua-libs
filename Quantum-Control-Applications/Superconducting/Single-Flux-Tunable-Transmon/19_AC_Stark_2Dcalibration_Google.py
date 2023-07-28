@@ -18,7 +18,7 @@ This protocol is described in https://journals.aps.org/prl/abstract/10.1103/Phys
 
 n_avg = 1000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 iter_min = 0
 iter_max = 50
@@ -48,7 +48,7 @@ with program() as ac_stark_shift:
         save(I, I_st)
         save(Q, Q_st)
         save(state, state_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():

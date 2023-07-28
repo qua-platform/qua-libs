@@ -13,7 +13,7 @@ from qualang_tools.loops import from_array
 
 n_avg = 100
 
-cooldown_time = 10 * u.us // 4
+cooldown_time = 10 * u.us
 
 f_min = 30e6
 f_max = 70e6
@@ -36,10 +36,10 @@ with program() as resonator_spec_2D:
     n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
-            with for_(*from_array(f, freqs)):
-                # Update the resonator frequency
-                update_frequency("resonator", f)
+        with for_(*from_array(f, freqs)):
+            # Update the resonator frequency
+            update_frequency("resonator", f)
+            with for_(a, a_min, a < a_max + da / 2, a + da):  # Notice it's < a_max + da/2 to include a_max
                 # Measure the resonator
                 measure(
                     "readout" * amp(a),
@@ -49,15 +49,15 @@ with program() as resonator_spec_2D:
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
-                wait(cooldown_time, "resonator")
+                wait(cooldown_time * u.ns, "resonator")
                 # Save data to the stream processing
                 save(I, I_st)
                 save(Q, Q_st)
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("I")
-        Q_st.buffer(len(freqs)).buffer(len(amplitude)).average().save("Q")
+        I_st.buffer(len(amplitude)).buffer(len(freqs)).average().save("I")
+        Q_st.buffer(len(amplitude)).buffer(len(freqs)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -90,7 +90,7 @@ else:
         # Normalize data
         s1 = u.demod2volts(I + 1j * Q, readout_len)
         A1 = np.abs(s1)
-        row_sums = A1.sum(axis=1)
+        row_sums = A1.sum(axis=0)
         A1 = A1 / row_sums[np.newaxis, :]
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
@@ -98,14 +98,14 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title("resonator spectroscopy amplitude (normalized)")
-        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, A1)
-        plt.xlabel("frequency [MHz]")
-        plt.ylabel("readout amplitude [V]")
+        plt.pcolor(amplitude * readout_amp, freqs / u.MHz, A1)
+        plt.ylabel("frequency [MHz]")
+        plt.xlabel("readout amplitude [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("resonator spectroscopy phase")
-        plt.pcolor(freqs / u.MHz, amplitude * readout_amp, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
-        plt.xlabel("frequency [MHz]")
-        plt.ylabel("readout amplitude [V]")
+        plt.pcolor(amplitude * readout_amp, freqs / u.MHz, signal.detrend(np.unwrap(np.angle(I + 1j * Q))))
+        plt.ylabel("frequency [MHz]")
+        plt.xlabel("readout amplitude [V]")
         plt.pause(0.1)
         plt.tight_layout()

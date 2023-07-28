@@ -10,7 +10,7 @@ qubit_operation = "x180"
 
 n_avg = 10000
 
-cooldown_time = 5 * qubit_T1 // 4
+cooldown_time = 5 * qubit_T1
 
 f_min = 70e6
 f_max = 80e6
@@ -45,7 +45,7 @@ with program() as IQ_blobs:
             )
             save(I_g, I_g_st)
             save(Q_g, Q_g_st)
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
 
             align()  # global align
 
@@ -60,7 +60,7 @@ with program() as IQ_blobs:
             )
             save(I_e, I_e_st)
             save(Q_e, Q_e_st)
-            wait(cooldown_time, "resonator")
+            wait(cooldown_time * u.ns, "resonator")
 
     with stream_processing():
         n_st.save("iteration")

@@ -8,7 +8,7 @@ import numpy as np
 # Program-specific variables #
 ##############################
 n_avg = 100  # Number of averaging loops
-cooldown_time = 2 * u.us // 4  # Resonator cooldown time in clock cycles (4ns)
+cooldown_time = 2 * u.us
 
 ###################
 # The QUA program #
@@ -20,7 +20,7 @@ with program() as raw_trace_prog:
     with for_(n, 0, n < n_avg, n + 1):
         reset_phase("resonator")
         measure("readout", "resonator", adc_st)
-        wait(cooldown_time, "resonator")
+        wait(cooldown_time * u.ns, "resonator")
 
     with stream_processing():
         # Will save average:
