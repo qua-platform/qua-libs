@@ -68,19 +68,20 @@ else:
     # execute QUA program
     job = qm.execute(time_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_dark", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        counts, iteration = results.fetch_all()
+        counts, counts_dark, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot(4 * t_vec, counts / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts_dark / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Tau [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Time Rabi")
