@@ -21,10 +21,12 @@ with program() as power_rabi:
     a = declare(fixed)  # variable to sweep over the amplitude
     n = declare(int)  # variable to for_loop
     counts_st = declare_stream()  # stream for counts
+    counts_dark_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
     play("laser_ON", "AOM1")
     wait(100 * u.ns, "AOM1")
+
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(a, a_vec)):
             play("x180" * amp(a), "NV")  # pulse of varied amplitude
@@ -34,10 +36,20 @@ with program() as power_rabi:
             save(counts, counts_st)  # save counts
             wait(100 * u.ns)  # wait in between iterations
 
+            align()
+
+            play("x180" * amp(0), "NV")  
+            align()
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            save(counts, counts_dark_st)  # save counts
+            wait(100 * u.ns)  # wait in between iterations
+
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
         counts_st.buffer(len(a_vec)).average().save("counts")
+        counts_dark_st.buffer(len(a_vec)).average().save("counts_dark")
         n_st.save("iteration")
 
 #####################################
@@ -59,19 +71,20 @@ else:
     # execute QUA program
     job = qm.execute(power_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_dark", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        counts, iteration = results.fetch_all()
+        counts, counts_dark, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
         plt.plot(a_vec * pi_amp_NV, counts / 1000 / (meas_len_1 * 1e-9))
+        plt.plot(a_vec * pi_amp_NV, counts_dark / 1000 / (meas_len_1 * 1e-9))
         plt.xlabel("Amplitude [volts]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Power Rabi")
