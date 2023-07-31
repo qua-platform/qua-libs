@@ -17,6 +17,7 @@ n_avg = 1_000_000
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts
+    counts_dark_st = declare_stream()  # stream for counts
     times = declare(int, size=100)
     t = declare(int)  # variable to sweep over in time
     n = declare(int)  # variable to for_loop
@@ -26,17 +27,27 @@ with program() as time_rabi:
     wait(100, "AOM1")
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            play("x180", "NV", duration=t)  # pulse of varied lengths
+            play("x180"*amp(1), "NV", duration=t)  # pulse of varied lengths
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
             save(counts, counts_st)  # save counts
-            wait(100 * u.ns)
+            wait(1_000 * u.ns)
+
+            align()
+
+            play("x180"*amp(0), "NV", duration=t)  # pulse of varied lengths
+            align()
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
+            save(counts, counts_st)  # save counts
+            wait(1_000 * u.ns)
 
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
         counts_st.buffer(len(t_vec)).average().save("counts")
+        counts_dark_st.buffer(len(t_vec)).average().save("counts_dark")
         n_st.save("iteration")
 
 #####################################

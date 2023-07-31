@@ -13,7 +13,7 @@ from configuration import *
 
 f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)  # f_max + 0.1 so that f_max is included
 n_avg = 1_000_000  # number of averages
-wait_between_runs = 10_000
+wait_between_runs = 100
 
 with program() as cw_odmr:
     times = declare(int, size=100)
@@ -32,6 +32,7 @@ with program() as cw_odmr:
 
             play("cw"*amp(1), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
+            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_st)  # save counts on stream
@@ -42,6 +43,7 @@ with program() as cw_odmr:
 
             play("cw"*amp(0), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
+            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_dark_st)  # save counts on stream
