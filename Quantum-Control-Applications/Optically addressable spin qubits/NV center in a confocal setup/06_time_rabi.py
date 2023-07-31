@@ -11,7 +11,7 @@ from configuration import *
 # The QUA program #
 ###################
 
-t_vec = np.arange(4, 100, 1)  # +0.1 to include t_max in array
+t_vec = np.arange(16, 400, 4)  # lengths in clock cycles
 n_avg = 1_000_000
 
 with program() as time_rabi:
@@ -27,7 +27,7 @@ with program() as time_rabi:
     wait(100, "AOM1")
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            play("x180"*amp(1), "NV", duration=t)  # pulse of varied lengths
+            play("x180"*amp(1), "NV", duration=t * u.ns)  # pulse of varied lengths
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -36,7 +36,7 @@ with program() as time_rabi:
 
             align()
 
-            play("x180"*amp(0), "NV", duration=t)  # pulse of varied lengths
+            play("x180"*amp(0), "NV", duration=t * u.ns)  # pulse of varied lengths
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -80,8 +80,8 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts / 1000 / (meas_len_1 / u.s))
-        plt.plot(4 * t_vec, counts_dark / 1000 / (meas_len_1 / u.s))
+        plt.plot(t_vec, counts / 1000 / (meas_len_1 / u.s))
+        plt.plot(t_vec, counts_dark / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Tau [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.title("Time Rabi")
