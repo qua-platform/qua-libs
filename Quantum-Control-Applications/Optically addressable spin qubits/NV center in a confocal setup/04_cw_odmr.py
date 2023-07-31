@@ -32,7 +32,7 @@ with program() as cw_odmr:
 
             play("cw"*amp(1), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
-            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part
+            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part of spin reinitializaiton
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_st)  # save counts on stream
@@ -43,7 +43,7 @@ with program() as cw_odmr:
 
             play("cw"*amp(0), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
-            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part
+            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part of spin reinitialization
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_dark_st)  # save counts on stream
