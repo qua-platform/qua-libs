@@ -30,7 +30,7 @@ with program() as cw_odmr:
 
             align()  # align all elements
 
-            play("cw"*amp(1), "NV", duration= long_meas_len_1 * u.ns)  # play microwave pulse
+            play("cw"*amp(1), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
@@ -40,7 +40,7 @@ with program() as cw_odmr:
 
             align()  # align all elements
 
-            play("cw"*amp(0), "NV", duration= long_meas_len_1 * u.ns)  # play microwave pulse
+            play("cw"*amp(0), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
