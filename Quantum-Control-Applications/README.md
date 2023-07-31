@@ -6,24 +6,24 @@ It also includes various examples and results from labs as listed below.
 Note that for them to work, you would need to download the latest version of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools#installation).
 
 ## Superconducting Qubits
-### [Two flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons)
-These files showcase various experiments that can be done on a several flux-tunable transmons.
+### [Two flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons)
+These files showcase various experiments that can be done on a several flux-tunable transmons using the [standard configuration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Standard%20Configuration#two-flux-tunable-transmons-with-the-standard-configuration) or the [QuAM rapid prototyping](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Rapid%20Prototyping#two-flux-tunable-transmons-with-the-rapid-prototyping).
 #### <u> Advanced use-cases: </u>
-* [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope#two-qubit-swap-spectroscopy-improved-with-pre-distortion-digital-filters).
+* [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope#two-qubit-swap-spectroscopy-improved-with-pre-distortion-digital-filters).
 
-### [Single fixed frequency transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon)
+### [Single fixed frequency transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon#single-fixed-transmon-superconducting-qubit)
 These files showcase various experiments that can be done on a single fixed-frequency transmon.
 #### <u> Advanced use-cases: </u>
-* [Qubit Frequency Tracking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon/Use%20Case%201%20-%20Schuster%20Lab%20-%20Qubit%20Frequency%20Tracking#qubit-frequency-tracking) 
+* [Qubit Frequency Tracking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/Use%20Case%201%20-%20Schuster%20Lab%20-%20Qubit%20Frequency%20Tracking#qubit-frequency-tracking) 
   performed in the lab of Prof. David Schuster in the University of Chicago.
-* [Optimized readout with optimal weights](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Fixed%20Transmon/Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights#optimized-readout-with-optimal-weights).
+* [Optimized readout with optimal weights](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon/Use%20Case%202%20-%20Optimized%20readout%20with%20optimal%20weights#optimized-readout-with-optimal-weights).
 
-### [Single flux tunable transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon#single-flux-tunable-transmon-with-ssb-mixer-for-readout)
+### [Single flux tunable transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon#single-flux-tunable-transmon)
 These files showcase various experiments that can be done on a single flux-tunable transmon.
 #### <u> Advanced use-cases: </u>
-* [Cryoscope](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope#cryoscope) 
+* [Cryoscope](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope#cryoscope) 
   performed in the lab of Prof. Sorin Paraoanu in Aalto University.
-* [DRAG Pulse Calibration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single%20Flux%20Tunable%20Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration#derivative-removal-by-adiabatic-gate-drag-and-ac-stark-shift-calibration).
+* [DRAG Pulse Calibration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration#derivative-removal-by-adiabatic-gate-drag-and-ac-stark-shift-calibration).
 
 ## [AMO Qubits](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO)
 ### Rydberg Arrays
