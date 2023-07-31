@@ -11,7 +11,7 @@ from configuration import *
 # The QUA program #
 ###################
 
-t_vec = np.arange(16, 400, 4)  # lengths in clock cycles
+t_vec = np.arange(16, 400, 4)  # ns
 n_avg = 1_000_000
 
 with program() as time_rabi:
