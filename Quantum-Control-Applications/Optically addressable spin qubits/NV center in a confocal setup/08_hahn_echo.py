@@ -58,7 +58,7 @@ with program() as hahn_echo:
             align()
 
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
+            measure("readout", "SPCM1", None, time_tagging.analog(times2_dark, meas_len_1, counts2_dark))
             save(counts2, counts_2_st)  # save counts
             wait(100 * u.ns, "AOM1")
 
@@ -75,7 +75,7 @@ with program() as hahn_echo:
 
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
-            save(counts2, counts_2_st)  # save counts
+            save(counts2_dark, counts_2_st_dark)  # save counts
             wait(100 * u.ns, "AOM1")
 
         save(n, n_st)  # save number of iteration inside for_loop

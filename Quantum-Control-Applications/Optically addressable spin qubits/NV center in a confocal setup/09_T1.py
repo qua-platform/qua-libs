@@ -19,12 +19,15 @@ start_from_one = False
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts
+    counts2_dark = declare(int)  # saves number of photon counts
     times1 = declare(int, size=100)
     times2 = declare(int, size=100)
+    times2_dark = declare(int, size=100)
     t = declare(int)  # variable to sweep over in time
     n = declare(int)  # variable to for_loop
     counts_1_st = declare_stream()  # stream for counts
     counts_2_st = declare_stream()  # stream for counts
+    counts_2_st_dark = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
     play("laser_ON", "AOM1")
@@ -32,8 +35,9 @@ with program() as T1:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
             if start_from_one:
-                play("x180", "NV")
+                play("x180"*amp(1), "NV")
             wait(t, "NV")  # variable delay in spin Echo
+            play('x180'*amp(0), "NV")
 
             align()
 
@@ -45,9 +49,9 @@ with program() as T1:
             align()
 
             if start_from_one:
-                play("x180", "NV")
+                play("x180"*amp(1), "NV")
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180", "NV")  # Pi pulse to qubit to measure second state
+            play("x180"*amp(1), "NV")  # Pi pulse to qubit to measure second state
 
             align()
 
@@ -56,11 +60,24 @@ with program() as T1:
             save(counts2, counts_2_st)  # save counts
             wait(100 * u.ns, "AOM1")
 
+            if start_from_one:
+                play("x180"*amp(0), "NV")
+            wait(t, "NV")  # variable delay in spin Echo
+            play("x180"*amp(0), "NV")  # Pi pulse to qubit to measure second state
+
+            align()
+
+            play("laser_ON", "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times2_dark, meas_len_1, counts2_dark))
+            save(counts2_dark, counts_2_st_dark)  # save counts
+            wait(100 * u.ns, "AOM1")
+
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
         counts_1_st.buffer(len(t_vec)).average().save("counts1")
         counts_2_st.buffer(len(t_vec)).average().save("counts2")
+        counts_2_st_dark.buffer(len(t_vec)).average().save("counts2_dark")
         n_st.save("iteration")
 
 #####################################
@@ -92,7 +109,9 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), counts2 / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts2 / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts2_dark / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Tau [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.legend(("counts 1", "counts 2"))
