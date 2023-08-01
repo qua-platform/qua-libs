@@ -13,6 +13,8 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
+# MW relative to AOM = 500 ns
+# AOM relative to SPCM = 484 ns
 
 initial_delay = 500  # delay before laser [ns]
 laser_len = 2_000  # laser duration length [ns]
@@ -85,7 +87,7 @@ else:
 
     job = qm.execute(calib_delays)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["times_hist", "times_hist_dark", "iteration"])
+    results = fetching_tool(job, data_list=["times_hist", "times_hist_dark", "iteration"], mode='live')
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
