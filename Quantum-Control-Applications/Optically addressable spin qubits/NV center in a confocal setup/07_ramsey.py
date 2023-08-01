@@ -91,7 +91,8 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), counts2 / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s))
+        plt.plot(4 * t_vec, counts2 / 1000 / (meas_len_1 / u.s))
         plt.xlabel("Dephasing time [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.legend(("counts 1", "counts 2"))
