@@ -36,8 +36,8 @@ with program() as power_rabi:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
             )
             # Play a fixed duration Ramsey sequence after a varying time to estimate the effect of photons in the resonator
             wait(t, "resonator")
@@ -51,8 +51,8 @@ with program() as power_rabi:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
             )
             save(I, I_st)
             save(Q, Q_st)
