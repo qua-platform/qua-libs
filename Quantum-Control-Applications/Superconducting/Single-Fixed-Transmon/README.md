@@ -22,6 +22,7 @@ is not saturated, correct for DC offsets.
 7. [Rabi Chevron](07_rabi_chevron.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
 8. **1D Rabi** - Calibrate a $\pi$ pulse:
     * [Power Rabi](08_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
+    * [Power Rabi with error amplification](08_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
     * [Time Rabi](08_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
 9. [IQ Blobs](09_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
 and the fidelity are good enough, gives the parameters needed for active reset.

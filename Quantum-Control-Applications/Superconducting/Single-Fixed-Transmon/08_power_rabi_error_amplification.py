@@ -14,13 +14,18 @@ n_avg = 10000
 
 cooldown_time = 5 * qubit_T1
 
-a_min = 0.0
-a_max = 1.0
-da = 0.05
+a_min = 0.8
+a_max = 1.2
+da = 0.005
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
+
+max_nb_of_pulses = 80  # Number of played qubit pulses for getting a better estimate of the pi amplitude
+nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play a odd/even number of pulses to end up in the same state
 
 with program() as power_rabi:
     n = declare(int)
+    n2 = declare(int)
+    n_rabi = declare(int)
     n_st = declare_stream()
     a = declare(fixed)
     I = declare(fixed)
@@ -29,24 +34,27 @@ with program() as power_rabi:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(a, amps)):
-            play("x180" * amp(a), "qubit")
-            align("qubit", "resonator")
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("cos", "out1", "sin", "out2", I),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
-            )
-            save(I, I_st)
-            save(Q, Q_st)
-            wait(cooldown_time * u.ns, "resonator")
+        with for_(*from_array(n_rabi, nb_of_pulses)):
+            with for_(*from_array(a, amps)):
+                # Loop for error amplification (perform many qubit pulses)
+                with for_(n2, 0, n2 < n_rabi, n2 + 1):
+                    play("x180" * amp(a), "qubit")
+                align("qubit", "resonator")
+                measure(
+                    "readout",
+                    "resonator",
+                    None,
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                )
+                save(I, I_st)
+                save(Q, Q_st)
+                wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(amps)).average().save("I")
-        Q_st.buffer(len(amps)).average().save("Q")
+        I_st.buffer(len(amps)).buffer(len(nb_of_pulses)).average().save("I")
+        Q_st.buffer(len(amps)).buffer(len(nb_of_pulses)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -77,9 +85,7 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.plot(amps * x180_amp, I, ".", label="I")
-        plt.plot(amps * x180_amp, Q, ".", label="Q")
+        plt.pcolor(amps * x180_amp, nb_of_pulses, I)
         plt.xlabel("Rabi pulse amplitude [V]")
-        plt.ylabel("I & Q amplitude [a.u.]")
-        plt.legend()
+        plt.ylabel("# of Rabi pulses")
         plt.pause(0.1)
