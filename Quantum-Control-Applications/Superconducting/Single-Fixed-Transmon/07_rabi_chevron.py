@@ -52,8 +52,8 @@ with program() as rabi_amp_freq:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
                 # Wait for the resonator to cooldown
                 wait(cooldown_time * u.ns, "resonator")

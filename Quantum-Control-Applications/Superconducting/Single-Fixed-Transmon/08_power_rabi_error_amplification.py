@@ -6,62 +6,55 @@ import numpy as np
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
 
-
 ###################
 # The QUA program #
 ###################
 
-n_avg = 1_000
+n_avg = 10000
 
 cooldown_time = 5 * qubit_T1
-ramsey_idle_time = 1 * u.us
 
-# Time between populating the resonator and playing a Ramsey sequence in clock-cycles
-taus = np.arange(4, 1000, 1)
+a_min = 0.8
+a_max = 1.2
+da = 0.005
+amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
+
+max_nb_of_pulses = 80  # Number of played qubit pulses for getting a better estimate of the pi amplitude
+nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play a odd/even number of pulses to end up in the same state
 
 with program() as power_rabi:
     n = declare(int)
+    n2 = declare(int)
+    n_rabi = declare(int)
     n_st = declare_stream()
-    t = declare(int)
+    a = declare(fixed)
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(t, taus)):
-            # qubit cooldown
-            wait(cooldown_time * u.ns, "resonator")
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-            )
-            # Play a fixed duration Ramsey sequence after a varying time to estimate the effect of photons in the resonator
-            wait(t, "resonator")
-
-            align("qubit", "resonator")
-            play("x90", "qubit")
-            wait(ramsey_idle_time * u.ns)  # fixed time ramsey
-            play("x90", "qubit")
-            align("qubit", "resonator")
-            measure(
-                "readout",
-                "resonator",
-                None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
-            )
-            save(I, I_st)
-            save(Q, Q_st)
-
+        with for_(*from_array(n_rabi, nb_of_pulses)):
+            with for_(*from_array(a, amps)):
+                # Loop for error amplification (perform many qubit pulses)
+                with for_(n2, 0, n2 < n_rabi, n2 + 1):
+                    play("x180" * amp(a), "qubit")
+                align("qubit", "resonator")
+                measure(
+                    "readout",
+                    "resonator",
+                    None,
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                )
+                save(I, I_st)
+                save(Q, Q_st)
+                wait(cooldown_time * u.ns, "resonator")
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(taus)).average().save("I")
-        Q_st.buffer(len(taus)).average().save("Q")
+        I_st.buffer(len(amps)).buffer(len(nb_of_pulses)).average().save("I")
+        Q_st.buffer(len(amps)).buffer(len(nb_of_pulses)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -92,9 +85,7 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.cla()
-        plt.plot(4 * taus, I, ".", label="I")
-        plt.plot(4 * taus, Q, ".", label="Q")
-        plt.xlabel("Delay [ns]")
-        plt.ylabel("I & Q amplitude [a.u.]")
-        plt.legend()
+        plt.pcolor(amps * x180_amp, nb_of_pulses, I)
+        plt.xlabel("Rabi pulse amplitude [V]")
+        plt.ylabel("# of Rabi pulses")
         plt.pause(0.1)

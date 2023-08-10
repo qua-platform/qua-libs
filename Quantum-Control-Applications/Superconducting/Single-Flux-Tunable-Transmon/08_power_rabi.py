@@ -18,7 +18,6 @@ a_min = 0.0
 a_max = 1.0
 da = 0.05
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
-err_amp = 1  # Number of played qubit pulses for getting a better estimate of the pi amplitude
 
 with program() as power_rabi:
     n = declare(int)
@@ -31,9 +30,7 @@ with program() as power_rabi:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(a, amps)):
-            # Loop for error amplification (perform many qubit pulses)
-            for i in range(err_amp):
-                play("x180" * amp(a), "qubit")
+            play("x180" * amp(a), "qubit")
             align("qubit", "resonator")
             measure(
                 "readout",
