@@ -295,3 +295,82 @@ machine._save("quam_state_after_res_spec.json", flat_data=False)
 ```
 
 A detailed example focusing on calibrating two flux-tunable transmons can be found [here](../../../qua-libs/Quantum-Control-Applications/Superconducting/Two%20Flux%20Tunable%20Transmons/Rapid%20Prototyping).
+
+
+## QuAM Good practice guide
+
+ - Don't hard code names into structure, instead keep name as property. 
+ In this way you can have same structure regardless of number of qubits/resonators. 
+ Also, you keep the structure regardless of small differences in connectivity topology, since these can be recorded under `wiring`.
+
+DON'T
+```json
+{
+    "qubits":{
+        "q1":{...},
+        "q2":{...},
+    }
+}
+```
+DO
+```json
+{
+    "qubits":[
+        {"name":"q1", ...},
+        {"name":"q2", ...},
+    ]
+}
+```
+
+Example of modification applied to your original quam: local oscillators, qubits, readout resonators and couplers are grouped together now.
+
+- Keep references by index, not by name. Keep index in component from
+which you will access the second component (example: first component qubit; second component: readout resonator for that qubit; keep index of resonator in qubit info )
+
+DON'T
+```json
+{
+    "qubits":[
+        {
+            "name":"q1"
+        }
+    ]
+    "redout_resonators":[
+        "q1": { ...}  # indicates this is readout resonator for q1
+    ]
+}
+```
+DO
+```json
+{
+    "qubits":[
+        {
+            "name":"q1",
+            "wiring":{
+                "readout": 0,  # indicates that it uses resonator 0
+                "readout_docs":"index of readout resonator"
+            }
+        }
+    ]
+    "readout_resonators":[
+        { ...}
+    ]
+}
+```
+
+Then it is easy to do something like
+
+```
+for q in machine.qubits:
+    redout_resonator = machine.readout_resonators[q.wiring.redout]
+    ...
+
+```
+
+Example of modification applied to your original quam: qubits and readout resonators now reference in wiring their respective LOs.
+
+- Components that have same structure group under lists (qubits, readout resonators). 
+In case that you have two types of readout resonators, with different parameters,
+you might opt to create two lists of readout resonators, or keep one list of resonators, that contains union of all parameters.
+
+Example of modification applied to your original quam: feed-line is now separate from the list of standard readout resonators.

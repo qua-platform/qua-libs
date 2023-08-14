@@ -24,7 +24,7 @@ calibration scripts to set and get the qubit parameters.
 The configuration dictionary that the OPX expects is then built using a one-to-one mapping between the config fields and 
 the values from the user-defined structure as shown below.
 
-A step-by-step [tutorial](https://github.com/qua-platform/qua-libs/tree/main/Tutorials/intro-to-quam-rapid-prototyping/README.md) details the basics of this framework and shows how to create your own QuAM (Quantum Abstract Machine).
+A step-by-step [tutorial with best practices](https://github.com/qua-platform/qua-libs/tree/main/Tutorials/intro-to-quam-rapid-prototyping/README.md) details the basics of this framework and shows how to create your own QuAM (Quantum Abstract Machine).
 
 
 ## Basic Files
