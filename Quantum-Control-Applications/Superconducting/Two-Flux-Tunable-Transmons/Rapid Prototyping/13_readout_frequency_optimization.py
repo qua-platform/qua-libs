@@ -1,5 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
@@ -23,7 +24,7 @@ cooldown_time = 1 * u.us
 res_if_1 = machine.resonators[0].f_opt - machine.local_oscillators.readout[0].freq
 res_if_2 = machine.resonators[1].f_opt - machine.local_oscillators.readout[0].freq
 
-with program() as iq_blobs:
+with program() as ro_freq_opt:
     n = declare(int)
     I_g = [declare(fixed) for _ in range(2)]
     Q_g = [declare(fixed) for _ in range(2)]
@@ -47,6 +48,8 @@ with program() as iq_blobs:
 
             # excited iq blobs for both qubits
             align()
+            # Wait for thermalization again in case of measurement induced transitions
+            wait(cooldown_time * u.ns)
             play("x180", "q0_xy")
             # play("x180", "q1_xy")
             align()
@@ -65,20 +68,25 @@ with program() as iq_blobs:
 #####################################
 qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
 
-# open quantum machine
-qm = qmm.open_qm(config)
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, ro_freq_opt, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-# run job
-job = qm.execute(iq_blobs)
+else:
+    # open quantum machine
+    qm = qmm.open_qm(config)
+    # run job
+    job = qm.execute(ro_freq_opt)
+    # fetch data
+    results = fetching_tool(job, ["D"])
+    D = results.fetch_all()[0]
+    plt.plot(dfs, D)
+    plt.xlabel("Readout detuning (MHz)")
+    plt.ylabel("Distance between IQ blobs (a.u.)")
+    print(f"Shift readout frequency by {dfs[np.argmax(D)]} Hz")
 
-# fetch data
-results = fetching_tool(job, ["D"])
-D = results.fetch_all()[0]
-plt.plot(dfs, D)
-plt.xlabel("Readout detuning (MHz)")
-plt.ylabel("Distance between IQ blobs (a.u.)")
-print(f"Shift readout frequency by {dfs[np.argmax(D)]} Hz")
-
-# machine.resonators[0].f_opt += dfs[np.argmax(D)]
-# machine.resonators[1].f_opt += dfs[np.argmax(D)]
-# machine._save("quam_bootstrap_state.json")
+    # machine.resonators[0].f_opt += dfs[np.argmax(D)]
+    # machine.resonators[1].f_opt += dfs[np.argmax(D)]
+    # machine._save("quam_bootstrap_state.json")
