@@ -1,3 +1,8 @@
+"""
+        RAW ADC TRACES
+The goal of this script is to measure the raw ADC traces without demodulation or integration.
+It can be used to check the signals before demodulation, make sure that the ADCs are not saturated and estimate the SNR.
+"""
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -34,8 +39,11 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
 if simulate:
     # simulate the test_config QUA program

@@ -14,13 +14,15 @@ Use with care.
 2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
 is not saturated, correct for DC offsets.
 3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
-4. [Resonator Spectroscopy](04_resonator_spec.py) - Performs a 1D frequency sweep on the resonator.
-5. [Resonator Spectroscopy vs readout power](05_resonator_spec_vs_amplitude.py) - Performs the resonator spectroscopy versus readout power to find the maximum desired readout amplitude.
-6. [Qubit Spectroscopy](06_qubit_spec.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator.
-   * [Qubit Spectroscopy Wide Range](06_qubit_spec_wide_range.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop.
-   * [Qubit Spectroscopy Wide Range Inner Loop](06_qubit_spec_wide_range_inner_loop_TBD.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the inner loop.
-7. [Rabi Chevron](07_rabi_chevron.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
-8. **1D Rabi** - Calibrate a $\pi$ pulse:
+4. [Resonator Spectroscopy](04_resonator_spectroscopy.py) - Performs a 1D frequency sweep on the resonator.
+5. [Resonator Spectroscopy vs readout power](05_resonator_spectroscopy_vs_amplitude.py) - Performs the resonator spectroscopy versus readout power to find the maximum desired readout amplitude.
+6. [Qubit Spectroscopy](06a_qubit_spectroscopy.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator.
+   * [Qubit Spectroscopy Wide Range](06b_qubit_spectroscopy_wide_range_outer_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop.
+   * [Qubit Spectroscopy Wide Range Inner Loop](06c_qubit_spectroscopy_wide_range_inner_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the inner loop.
+7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
+    * [duration vs frequency](07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
+    * [amplitude vs frequency](07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
+8. **1D Rabi** - Precisely calibrate a $\pi$ pulse:
     * [Power Rabi](08_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
     * [Power Rabi with error amplification](08_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
     * [Time Rabi](08_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
