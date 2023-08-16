@@ -58,7 +58,6 @@ the DRAG coefficient `$\alpha$`.
 
 19. **Tomography:**
     * [State Tomography](19_state_tomography.py) - A template to perform state tomography.
-    * [Wigner Tomography](19_wigner_tomography.py) <span style="color:red">__to be tested on a real device, use with care__</span> - A template to perform Wigner tomography of a photon mode in a cavity.
 20.  [Frequency Tracking](20_frequency_tracking.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Script to implement tracking of the qubit frequency over time. More details about the usage and the method can be found in [Schuster Lab - Qubit Frequency Tracking](./Use%20Case%201%20-%20Schuster%20Lab%20-%20Qubit%20Frequency%20Tracking).
 21.  [Calibration](calibrations.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Uses an API to perform several single qubit calibrations easily from a single file.
 
