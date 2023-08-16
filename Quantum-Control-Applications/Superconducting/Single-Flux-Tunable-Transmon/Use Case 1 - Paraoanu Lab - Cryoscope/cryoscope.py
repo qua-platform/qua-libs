@@ -188,7 +188,6 @@ else:
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
     xplot = range(const_flux_len)
     while res_handles.is_processing():
-
         I = I_handles.fetch_all()
         Q = Q_handles.fetch_all()
         Ie = Ie_handles.fetch_all()

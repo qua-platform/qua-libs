@@ -154,9 +154,7 @@ with program() as rb:
             assign(sequence_list[depth], inv_gate_list[depth - 1])
 
             with if_((depth == 1) | (depth == depth_target)):
-
                 with for_(n, 0, n < n_avg, n + 1):
-
                     # Can replace by active reset
                     wait(cooldown_time * u.ns, "resonator")
 

@@ -28,6 +28,7 @@ dc_max = 0.49
 step = 0.01
 flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the scan
 
+
 # Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
 # resonance while sweeping the flux
 def cosine_func(x, amplitude, frequency, phase, offset):

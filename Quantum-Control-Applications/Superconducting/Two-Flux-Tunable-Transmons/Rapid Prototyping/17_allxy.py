@@ -138,7 +138,6 @@ if simulate:
     plt.show()
 
 else:
-
     qm = qmm.open_qm(config)
 
     job = qm.execute(ALLXY)

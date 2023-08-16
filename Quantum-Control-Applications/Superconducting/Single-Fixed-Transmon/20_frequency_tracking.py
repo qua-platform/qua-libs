@@ -90,7 +90,6 @@ time_between_two_runs = 10
 # Time vector for the time domain Ramsey measurement
 tau_vec = np.arange(4, 50_000, 200)
 with program() as prog:
-
     i = declare(int)
     i_st = declare_stream()
     # with for_(i, 0, i < 100, i + 1):

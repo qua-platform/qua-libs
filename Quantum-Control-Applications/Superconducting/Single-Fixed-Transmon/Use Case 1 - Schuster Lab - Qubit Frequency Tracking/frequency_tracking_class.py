@@ -14,7 +14,6 @@ discriminator = TwoStateDiscriminator(qmm, config, True, "rr", disc_file_jpa, ls
 
 class qubit_frequency_tracking:
     def __init__(self, qubit, rr, f_res):
-
         self.qubit = qubit
         self.rr = rr
         self.fres = f_res
@@ -28,7 +27,6 @@ class qubit_frequency_tracking:
         self.frequency_sweep_amp = None
 
     def _fit_ramsey(self, x, y):
-
         # y = Pe
         # taus = self.tau_vec
 
@@ -123,7 +121,6 @@ class qubit_frequency_tracking:
         return out
 
     def qua_declarations(self):
-
         self.I = declare(fixed)
         self.Q = declare(fixed)
         self.state_estimation = declare(fixed)
@@ -148,7 +145,6 @@ class qubit_frequency_tracking:
         self.corr_st = declare_stream()
 
     def time_domain_ramesy_full_sweep(self, reps, f_ref, tau_min, tau_max, dtau, stream_name, correct=False):
-
         self.f_ref = f_ref
         self.tau_vec = np.arange(tau_min, tau_max, dtau).astype(int).tolist()
         print(f"fres is {self.fres}, playing {self.fres + self.f_ref}")
@@ -158,7 +154,6 @@ class qubit_frequency_tracking:
             update_frequency(self.qubit, self.fres + self.f_ref)
         with for_(self.n, 0, self.n < reps, self.n + 1):
             with for_(self.tau, tau_min, self.tau < tau_max, self.tau + dtau):
-
                 play("pump_square", "jpa_pump")
                 discriminator.measure_state("readout", "out1", "out2", self.res)
                 align(self.qubit, self.rr, "jpa_pump")
@@ -189,7 +184,6 @@ class qubit_frequency_tracking:
         # find A and T2
 
     def time_domain_ramesy_full_sweep_analysis(self, result_handles, stream_name):
-
         Pe = result_handles.get(stream_name).fetch_all()
         t = np.array(self.tau_vec) * 4
         plt.plot(t, Pe)
@@ -222,7 +216,6 @@ class qubit_frequency_tracking:
 
         with for_(self.m, 0, self.m < reps, self.m + 1):
             with for_(self.f, fmin, self.f < fmax, self.f + df):
-
                 if correct:
                     update_frequency(self.qubit, self.fres_corr)
                 else:
@@ -273,18 +266,15 @@ class qubit_frequency_tracking:
         plt.ylabel("P(|e>)")
 
     def two_points_ramsey(self):
-
         c = int(1 / (2 * np.pi * self.tau0 * 4e-9 * self.frequency_sweep_amp))
         print(f"c = {c}")
         assign(self.se_vec[0], 0)
         assign(self.se_vec[1], 0)
 
         with for_(self.p, 0, self.p < 32768, self.p + 1):
-
             assign(self.f, self.fres - self.delta)
 
             with for_(self.idx, 0, self.idx < 2, self.idx + 1):
-
                 update_frequency(self.qubit, self.fres)
 
                 play("pump_square", "jpa_pump")

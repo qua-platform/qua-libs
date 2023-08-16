@@ -69,7 +69,6 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
-
     qm = qmm.open_qm(config)
     job = qm.execute(echo)
     # Get results from QUA program

@@ -37,6 +37,8 @@ sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pd
     ("x90", "x90"),
     ("y90", "y90"),
 ]
+
+
 # All XY macro generating the pulse sequences from a python list.
 def allXY(pulses):
     """

@@ -20,6 +20,7 @@ cooldown_time = 50000 // 4  # Cooldown time between sequences in clock cycles
 n_flux_amp = 401
 flux_amp_array = np.linspace(0, -0.2, n_flux_amp)
 
+
 # Macro for measuring the averaged ground and excited states for calibration
 def ge_calibration(n_avg_cal):
     Ical = declare(fixed)
@@ -147,7 +148,6 @@ else:
     fig.canvas.mpl_connect("close_event", on_close)
     xplot = flux_amp_array * const_flux_amp
     while res_handles.is_processing():
-
         I = I_handles.fetch_all()
         Q = Q_handles.fetch_all()
         Ie = Ie_handles.fetch_all()

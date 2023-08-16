@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # Exponential decay
 def expdecay(x, a, t):
     """Exponential decay defined as 1 + a * np.exp(-x / t).
