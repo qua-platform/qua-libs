@@ -78,8 +78,10 @@ def allXY(pulses, qubit, resonator):
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
     if resonator == "rr0":
+        align(qubit, "rr1")
         measure("readout", "rr1", None)
     elif resonator == "rr1":
+        align(qubit, "rr0")
         measure("readout", "rr0", None)
 
     measure(
