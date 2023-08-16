@@ -31,8 +31,9 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "127.0.0.1"
+qop_ip = "172.16.33.100"
 qop_port = 80
+cluster_name = "Cluster_83"
 
 # Set octave_config to None if no octave are present
 octave_config = None
@@ -44,6 +45,7 @@ mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
+thermalization_time = 5 * qubit_T1
 
 saturation_len = 1000
 saturation_amp = 0.1
@@ -137,6 +139,7 @@ mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
 time_of_flight = 180
+depletion_time = 2 * u.us
 
 readout_len = 5000
 readout_amp = 0.2
