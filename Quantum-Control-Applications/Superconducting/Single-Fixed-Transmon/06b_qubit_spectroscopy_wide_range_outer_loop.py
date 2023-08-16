@@ -6,7 +6,7 @@ The user will need to update the LO source frequency using the corresponding API
 (lo_source.set_freq(freqs_external[i])).
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy.py).
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
     - Set the saturation pulse amplitude and duration in the configuration to put the qubit in a mixed state.
 """
@@ -19,6 +19,7 @@ from scipy import signal
 import numpy as np
 from qualang_tools.loops import from_array
 import warnings
+
 warnings.filterwarnings("ignore")
 
 ###################
@@ -49,7 +50,7 @@ with program() as qubit_spec:
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
-    with for_(i, 0, i < len(freqs_external)+1, i + 1):
+    with for_(i, 0, i < len(freqs_external) + 1, i + 1):
         pause()  # This waits until it is resumed from python
         with for_(n, 0, n < n_avg, n + 1):
             with for_(*from_array(f, frequencies)):
@@ -88,6 +89,7 @@ with program() as qubit_spec:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
+
 def wait_until_job_is_paused(current_job):
     """
     Waits until the OPX FPGA reaches the pause statement.
@@ -99,6 +101,7 @@ def wait_until_job_is_paused(current_job):
         sleep(0.1)
         pass
     return True
+
 
 ###############
 # Run Program #

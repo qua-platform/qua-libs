@@ -6,7 +6,7 @@ TThe data is post-processed to extract the bare resonator resonance frequency th
 intermediate frequency in the configuration (resonator_IF).
 
 Prerequisites:
-    - Having calibrated the time of flight, offsets and gains (time_of_flight.py).
+    - Having calibrated the time of flight, offsets and gains (time_of_flight).
     - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port)
     - Set the readout pulse amplitude and duration in the configuration.
 """
@@ -19,6 +19,7 @@ import numpy as np
 from scipy import signal
 from qualang_tools.loops import from_array
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -119,11 +120,14 @@ else:
     # Fit the results to extract the resonance frequency
     try:
         from qualang_tools.plot.fitting import Fit
+
         fit = Fit()
         plt.figure()
         res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies, R, plot=True)
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [V]")
-        print(f"Bare resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0] / u.MHz:.6f} MHz")
+        print(
+            f"Bare resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0] / u.MHz:.6f} MHz"
+        )
     except (Exception,):
         pass

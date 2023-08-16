@@ -47,7 +47,7 @@ qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_co
 simulate = False
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11000))
+    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11_000))  # In clock cycles = 4ns
     job.get_simulated_samples().con1.plot()
 
 else:

@@ -22,10 +22,10 @@ is not saturated, correct for DC offsets.
 7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
     * [duration vs frequency](07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
     * [amplitude vs frequency](07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
-8. **1D Rabi** - Precisely calibrate a $\pi$ pulse:
-    * [Power Rabi](08_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
-    * [Power Rabi with error amplification](08_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
-    * [Time Rabi](08_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
+8. **1D Rabi** - Precisely calibrate a $\pi$ pulse: 
+    * [Time Rabi](08a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
+    * [Power Rabi](08b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
+    * [Power Rabi with error amplification](08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
 9. [IQ Blobs](09_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
 and the fidelity are good enough, gives the parameters needed for active reset.
     * [Resonator Emptying Time](09_resonator_emptying_time.py) - Measure the resonator depletion time using a fixed time Ramsey sequence to know how long one needs to wait after measuring the resonator for active reset protocols.

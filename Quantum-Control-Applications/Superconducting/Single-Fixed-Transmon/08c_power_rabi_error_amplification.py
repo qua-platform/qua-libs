@@ -1,51 +1,48 @@
 """
-        RABI CHEVRON (DURATION VS FREQUENCY)
-The sequence consists in playing the qubit pulse (x180 or square_pi or else) and measuring the state of the resonator
-for different qubit intermediate frequencies and pulse durations.
-From the results, one can find the qubit and estimate the x180 pulse duration for the chosen amplitude.
+        POWER RABI WITH ERROR AMPLIFICATION
+The sequence consists in playing 'N' times the qubit pulse (x180 or square_pi or else) and measuring the state of the
+resonator for different qubit pulse amplitudes and number of pulses. This will amplify the effect of an amplitude
+inaccuracy and allow to measure the pi pulse amplitude more precisely.
+The results are then post-processed to find the qubit pulse amplitude for the chosen duration.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency (qubit_spectroscopy).
-    - Set the qubit frequency and desired pi pulse amplitude in the configuration.
+    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
+    - Having found the pi pulse amplitude (power_rabi).
+    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the configuration.
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
+from qm import SimulationConfig
 from qualang_tools.loops import from_array
 import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-
-n_avg = 1000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
-# Pulse duration sweep (in clock cycles = 4ns)
-t_min = 4
-t_max = 250
-dt = 4
-durations = np.arange(t_min, t_max, dt)
-
 ###################
 # The QUA program #
 ###################
 
-with program() as rabi_amp_freq:
+n_avg = 1000  # The number of averages
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
+a_min = 0.9
+a_max = 1.1
+n_a = 101
+amplitudes = np.linspace(a_min, a_max, n_a)
+# Number of applied Rabi pulses sweep
+max_nb_of_pulses = 80  # Maximum number of qubit pulses
+nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play an odd/even number of pulses to end up in the same state
+
+with program() as power_rabi_err:
     n = declare(int)  # QUA variable for the averaging loop
-    f = declare(int)  # QUA variable for the qubit frequency
-    t = declare(int)  # QUA variable for the qubit pulse duration
+    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
+    n_rabi = declare(int)  # QUA variable for the number of qubit pulses
+    n2 = declare(int)  # QUA variable for counting the qubit pulses
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature
@@ -53,15 +50,14 @@ with program() as rabi_amp_freq:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(*from_array(t, durations)):  # QUA for_ loop for sweeping the pulse duration
-            with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
-                # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f)
-                # Play the qubit pulse with a variable duration (in clock cycles = 4ns)
-                play("x180", "qubit", duration=t)
+        with for_(*from_array(n_rabi, nb_of_pulses)):  # QUA for_ loop for sweeping the number of pulses
+            with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the pulse amplitude
+                # Loop for error amplification (perform many qubit pulses with varying amplitudes)
+                with for_(n2, 0, n2 < n_rabi, n2 + 1):
+                    play("x180" * amp(a), "qubit")
                 # Align the two elements to measure after playing the qubit pulse.
                 align("qubit", "resonator")
-                # Measure the state of the resonator.
+                # Measure the state of the resonator
                 # The integration weights have changed to maximize the SNR after having calibrated the IQ blobs.
                 measure(
                     "readout",
@@ -80,58 +76,55 @@ with program() as rabi_amp_freq:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).buffer(len(durations)).average().save("I")
-        Q_st.buffer(len(frequencies)).buffer(len(durations)).average().save("Q")
+        I_st.buffer(len(amplitudes)).buffer(len(nb_of_pulses)).average().save("I")
+        Q_st.buffer(len(amplitudes)).buffer(len(nb_of_pulses)).average().save("Q")
         n_st.save("iteration")
-
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, rabi_amp_freq, simulation_config)
+    job = qmm.simulate(config, power_rabi_err, simulation_config)
     job.get_simulated_samples().con1.plot()
+
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(rabi_amp_freq)
+    job = qm.execute(power_rabi_err)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
-    interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
-        # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, readout_len)
-        R = np.abs(S)  # Amplitude
-        phase = np.angle(S)  # Phase
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.subplot(211)
+        plt.suptitle("Power Rabi with error amplification")
+        plt.subplot(121)
         plt.cla()
-        plt.title("Rabi chevron amplitude")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, durations * 4, R)
-        plt.xlabel("Frequency detuning [MHz]")
-        plt.ylabel("Pulse duration [ns]")
-        plt.subplot(212)
+        plt.pcolor(amplitudes * x180_amp, nb_of_pulses, I)
+        plt.xlabel("Rabi pulse amplitude [V]")
+        plt.ylabel("# of Rabi pulses")
+        plt.title("I quadrature [V]")
+        plt.subplot(122)
         plt.cla()
-        plt.title("Rabi chevron phase")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, durations * 4, np.unwrap(phase))
-        plt.xlabel("Frequency detuning [MHz]")
-        plt.ylabel("Pulse duration [ns]")
-        plt.tight_layout()
+        plt.pcolor(amplitudes * x180_amp, nb_of_pulses, Q)
+        plt.xlabel("Rabi pulse amplitude [V]")
+        plt.title("Q quadrature [V]")
         plt.pause(0.1)
+        plt.tight_layout()

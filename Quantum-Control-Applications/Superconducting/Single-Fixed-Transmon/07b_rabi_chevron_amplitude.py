@@ -5,10 +5,10 @@ for different qubit intermediate frequencies and pulse amplitudes.
 From the results, one can find the qubit and estimate the x180 pulse amplitude for the chosen duration.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy.py).
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency (qubit_spectroscopy.py).
-    - Set the desired pi pulse duration in the configuration.
+    - Having found the rough qubit frequency (qubit_spectroscopy).
+    - Set the qubit frequency and desired pi pulse duration in the configuration.
 """
 
 from qm.qua import *
@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.loops import from_array
 import warnings
+
 warnings.filterwarnings("ignore")
 
 ##############################
@@ -31,7 +32,7 @@ f_min = 30 * u.MHz
 f_max = 70 * u.MHz
 df = 500 * u.kHz
 frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
-# Pulse amplitude sweep (as a pre-factor of the flux amplitude)
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
 a_min = 0
 a_max = 1.0
 n_a = 101
@@ -61,6 +62,7 @@ with program() as rabi_amp_freq:
                 # Align the two elements to measure after playing the qubit pulse.
                 align("qubit", "resonator")
                 # Measure the state of the resonator
+                # The integration weights have changed to maximize the SNR after having calibrated the IQ blobs.
                 measure(
                     "readout",
                     "resonator",
@@ -96,7 +98,7 @@ simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, rabi_amp_freq, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
@@ -132,4 +134,4 @@ else:
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()
-        plt.pause(0.01)
+        plt.pause(0.1)

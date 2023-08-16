@@ -6,9 +6,9 @@ From the results, one can check if a qubit is coupled to the resonator by observ
 and adjust the readout amplitude to sit right before the splitting.
 
 Prerequisites:
-    - Having calibrated the time of flight, offsets and gains (time_of_flight.py).
+    - Having calibrated the time of flight, offsets and gains (time_of_flight).
     - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port).
-    - Having found the resonance frequency of the resonator (resonator_spectroscopy.py).
+    - Having found the resonance frequency of the resonator (resonator_spectroscopy).
     - Set the readout pulse amplitude (to 0.25V) and duration in the configuration.
 """
 from qm.qua import *
@@ -20,6 +20,7 @@ from scipy import signal
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
 import warnings
+
 warnings.filterwarnings("ignore")
 
 ###################
