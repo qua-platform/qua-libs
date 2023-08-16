@@ -1,4 +1,5 @@
 from qm.qua import *
+from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
@@ -17,7 +18,7 @@ cooldown_time = 5 * qubit_T1
 amps = np.arange(0.1, 1.7, 0.1)
 
 
-with program() as IQ_blobs:
+with program() as ro_amp_opt:
     n = declare(int)
     I_g = declare(fixed)
     Q_g = declare(fixed)
@@ -74,34 +75,41 @@ with program() as IQ_blobs:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-qm = qmm.open_qm(config)
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, ro_amp_opt, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-job = qm.execute(IQ_blobs)  # execute QUA program
+else:
+    qm = qmm.open_qm(config)
 
-# Get results from QUA program
-results = fetching_tool(job, data_list=["iteration"], mode="live")
-# Get progress counter to monitor runtime of the program
-while results.is_processing():
-    # Fetch results
-    iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration[0], len(amps), start_time=results.get_start_time())
+    job = qm.execute(ro_amp_opt)  # execute QUA program
 
-# Fetch the results at the end
-results = fetching_tool(job, data_list=["I_g", "Q_g", "I_e", "Q_e"])
-I_g, Q_g, I_e, Q_e = results.fetch_all()
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["iteration"], mode="live")
+    # Get progress counter to monitor runtime of the program
+    while results.is_processing():
+        # Fetch results
+        iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration[0], len(amps), start_time=results.get_start_time())
 
-# Process the data
-fidelities = []
-for i in range(len(amps)):
-    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
-        I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False
-    )
-    fidelities.append(fidelity)
+    # Fetch the results at the end
+    results = fetching_tool(job, data_list=["I_g", "Q_g", "I_e", "Q_e"])
+    I_g, Q_g, I_e, Q_e = results.fetch_all()
 
-# Plot the data
-plt.figure()
-plt.plot(amps, fidelities)
-plt.title("Readout amplitude optimization")
-plt.xlabel("Readout amp pre-factor [a.u.]")
-plt.ylabel("Fidelity [%]")
+    # Process the data
+    fidelities = []
+    for i in range(len(amps)):
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+            I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False
+        )
+        fidelities.append(fidelity)
+
+    # Plot the data
+    plt.figure()
+    plt.plot(amps, fidelities)
+    plt.title("Readout amplitude optimization")
+    plt.xlabel("Readout amp pre-factor [a.u.]")
+    plt.ylabel("Fidelity [%]")

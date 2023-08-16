@@ -1,5 +1,6 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool
@@ -45,18 +46,25 @@ with program() as iq_blobs:
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
 
-# open quantum machine
-qm = qmm.open_qm(config)
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, iq_blobs, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-# run job
-job = qm.execute(iq_blobs)
+else:
+    # open quantum machine
+    qm = qmm.open_qm(config)
 
-# fetch data
-results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+    # run job
+    job = qm.execute(iq_blobs)
 
-two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
-plt.suptitle("qubit 1")
-two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
-plt.suptitle("qubit 2")
-plt.show()
+    # fetch data
+    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
+    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+
+    two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
+    plt.suptitle("qubit 1")
+    two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
+    plt.suptitle("qubit 2")
+    plt.show()

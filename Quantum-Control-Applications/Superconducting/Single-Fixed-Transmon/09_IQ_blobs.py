@@ -1,4 +1,5 @@
 from qm.qua import *
+from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
@@ -60,56 +61,63 @@ with program() as IQ_blobs:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-qm = qmm.open_qm(config)
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, IQ_blobs, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-job = qm.execute(IQ_blobs)
-res_handles = job.result_handles
-res_handles.wait_for_all_values()
-Ig = res_handles.get("I_g").fetch_all()["value"]
-Qg = res_handles.get("Q_g").fetch_all()["value"]
-Ie = res_handles.get("I_e").fetch_all()["value"]
-Qe = res_handles.get("Q_e").fetch_all()["value"]
+else:
+    qm = qmm.open_qm(config)
 
-angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)
+    job = qm.execute(IQ_blobs)
+    res_handles = job.result_handles
+    res_handles.wait_for_all_values()
+    Ig = res_handles.get("I_g").fetch_all()["value"]
+    Qg = res_handles.get("Q_g").fetch_all()["value"]
+    Ie = res_handles.get("I_e").fetch_all()["value"]
+    Qe = res_handles.get("Q_e").fetch_all()["value"]
 
-#########################################
-# The two_state_discriminator gives us the rotation angle which makes it such that all of the information will be in
-# the I axis. This is being done by setting the `rotation_angle` parameter in the configuration.
-# See this for more information: https://qm-docs.qualang.io/guides/demod#rotating-the-iq-plane
-# Once we do this, we can perform active reset using:
-#########################################
-#
-# # Active reset:
-# with if_(I > threshold):
-#     play("pi", "qubit")
-#
-#########################################
-#
-# # Active reset (faster):
-# play("pi", "qubit", condition=I > threshold)
-#
-#########################################
-#
-# # Repeat until success active reset
-# with while_(I > threshold):
-#     play("pi", "qubit")
-#     align("qubit", "resonator")
-#     measure("readout", "resonator", None,
-#                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
-#
-#########################################
-#
-# # Repeat until success active reset, up to 3 iterations
-# count = declare(int)
-# assign(count, 0)
-# cont_condition = declare(bool)
-# assign(cont_condition, ((I > threshold) & (count < 3)))
-# with while_(cont_condition):
-#     play("pi", "qubit")
-#     align("qubit", "resonator")
-#     measure("readout", "resonator", None,
-#                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
-#     assign(count, count + 1)
-#     assign(cont_condition, ((I > threshold) & (count < 3)))
-#
-#########################################
+    angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)
+
+    #########################################
+    # The two_state_discriminator gives us the rotation angle which makes it such that all of the information will be in
+    # the I axis. This is being done by setting the `rotation_angle` parameter in the configuration.
+    # See this for more information: https://qm-docs.qualang.io/guides/demod#rotating-the-iq-plane
+    # Once we do this, we can perform active reset using:
+    #########################################
+    #
+    # # Active reset:
+    # with if_(I > threshold):
+    #     play("pi", "qubit")
+    #
+    #########################################
+    #
+    # # Active reset (faster):
+    # play("pi", "qubit", condition=I > threshold)
+    #
+    #########################################
+    #
+    # # Repeat until success active reset
+    # with while_(I > threshold):
+    #     play("pi", "qubit")
+    #     align("qubit", "resonator")
+    #     measure("readout", "resonator", None,
+    #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
+    #
+    #########################################
+    #
+    # # Repeat until success active reset, up to 3 iterations
+    # count = declare(int)
+    # assign(count, 0)
+    # cont_condition = declare(bool)
+    # assign(cont_condition, ((I > threshold) & (count < 3)))
+    # with while_(cont_condition):
+    #     play("pi", "qubit")
+    #     align("qubit", "resonator")
+    #     measure("readout", "resonator", None,
+    #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
+    #     assign(count, count + 1)
+    #     assign(cont_condition, ((I > threshold) & (count < 3)))
+    #
+    #########################################

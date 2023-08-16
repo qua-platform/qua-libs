@@ -1,4 +1,5 @@
 from qm.qua import *
+from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ df = 0.1e6
 
 freqs = np.arange(f_min, f_max + df / 2, df)  # + df/2 to add f_max to freqs
 
-with program() as IQ_blobs:
+with program() as ro_freq_opt:
     n = declare(int)
     I_g = declare(fixed)
     Q_g = declare(fixed)
@@ -90,37 +91,43 @@ with program() as IQ_blobs:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-
 qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
 
-qm = qmm.open_qm(config)
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, ro_freq_opt, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-job = qm.execute(IQ_blobs)  # execute QUA program
+else:
+    qm = qmm.open_qm(config)
 
-# Get results from QUA program
-results = fetching_tool(
-    job,
-    data_list=["I_g_avg", "Q_g_avg", "I_e_avg", "Q_e_avg", "I_g_var", "Q_g_var", "I_e_var", "Q_e_var", "iteration"],
-    mode="live",
-)
+    job = qm.execute(ro_freq_opt)  # execute QUA program
 
-# Live plotting
-fig = plt.figure()
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    # Get results from QUA program
+    results = fetching_tool(
+        job,
+        data_list=["I_g_avg", "Q_g_avg", "I_e_avg", "Q_e_avg", "I_g_var", "Q_g_var", "I_e_var", "Q_e_var", "iteration"],
+        mode="live",
+    )
 
-while results.is_processing():
-    # Fetch results
-    I_g_avg, Q_g_avg, I_e_avg, Q_e_avg, I_g_var, Q_g_var, I_e_var, Q_e_var, iteration = results.fetch_all()
-    # Progress bar
-    progress_counter(iteration, n_avg, start_time=results.get_start_time())
-    # Plot results
-    plt.cla()
-    Z = (I_e_avg - I_g_avg) + 1j * (Q_e_avg - Q_g_avg)
-    var = (I_g_var + Q_g_var + I_e_var + Q_e_var) / 4
-    SNR = ((np.abs(Z)) ** 2) / (2 * var)
-    plt.plot(freqs, SNR, ".-")
-    plt.title("Readout optimization")
-    plt.xlabel("Readout frequency [Hz]")
-    plt.ylabel("SNR")
-    plt.pause(0.1)
-print(f"The optimal readout frequency is {freqs[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+
+    while results.is_processing():
+        # Fetch results
+        I_g_avg, Q_g_avg, I_e_avg, Q_e_avg, I_g_var, Q_g_var, I_e_var, Q_e_var, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plot results
+        plt.cla()
+        Z = (I_e_avg - I_g_avg) + 1j * (Q_e_avg - Q_g_avg)
+        var = (I_g_var + Q_g_var + I_e_var + Q_e_var) / 4
+        SNR = ((np.abs(Z)) ** 2) / (2 * var)
+        plt.plot(freqs, SNR, ".-")
+        plt.title("Readout optimization")
+        plt.xlabel("Readout frequency [Hz]")
+        plt.ylabel("SNR")
+        plt.pause(0.1)
+    print(f"The optimal readout frequency is {freqs[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
