@@ -86,7 +86,8 @@ else:
     plt.xlabel("Readout detuning (MHz)")
     plt.ylabel("Distance between IQ blobs (a.u.)")
     print(f"Shift readout frequency by {dfs[np.argmax(D)]} Hz")
-
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
     # machine.resonators[0].f_opt += dfs[np.argmax(D)]
     # machine.resonators[1].f_opt += dfs[np.argmax(D)]
     # machine._save("quam_bootstrap_state.json")

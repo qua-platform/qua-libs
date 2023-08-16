@@ -98,3 +98,5 @@ else:
         plt.pcolor(iters, amps * drag_coef, state, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.ylabel("Drag coef")
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

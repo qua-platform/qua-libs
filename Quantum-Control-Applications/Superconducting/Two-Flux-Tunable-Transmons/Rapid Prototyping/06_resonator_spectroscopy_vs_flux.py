@@ -109,7 +109,8 @@ else:
         plt.pcolor(dcs, res_if_2 / u.MHz + dfs / u.MHz, A2)
         plt.tight_layout()
         plt.pause(0.1)
-
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
 plt.show()
 # Update machine with max frequency point for both resonator and qubit
 # machine.qubits[0].z.max_frequency_point =

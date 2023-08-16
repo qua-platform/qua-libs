@@ -94,21 +94,22 @@ else:
         plt.xlabel("idle_times (ns)")
         plt.tight_layout()
         plt.pause(0.1)
-
-try:
-    fit = Fit()
-    plt.figure()
-    plt.subplot(221)
-    fit.ramsey(4 * idle_times * 1e-9, I1, plot=True)
-    plt.xlabel("idle_times (ns)")
-    plt.subplot(223)
-    fit.ramsey(4 * idle_times * 1e-9, Q1, plot=True)
-    plt.xlabel("idle_times (ns)")
-    plt.subplot(222)
-    fit.ramsey(4 * idle_times * 1e-9, I2, plot=True)
-    plt.xlabel("idle_times (ns)")
-    plt.subplot(224)
-    fit.ramsey(4 * idle_times * 1e-9, Q2, plot=True)
-    plt.xlabel("idle_times (ns)")
-except (Exception,):
-    pass
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
+    try:
+        fit = Fit()
+        plt.figure()
+        plt.subplot(221)
+        fit.ramsey(4 * idle_times * 1e-9, I1, plot=True)
+        plt.xlabel("idle_times (ns)")
+        plt.subplot(223)
+        fit.ramsey(4 * idle_times * 1e-9, Q1, plot=True)
+        plt.xlabel("idle_times (ns)")
+        plt.subplot(222)
+        fit.ramsey(4 * idle_times * 1e-9, I2, plot=True)
+        plt.xlabel("idle_times (ns)")
+        plt.subplot(224)
+        fit.ramsey(4 * idle_times * 1e-9, Q2, plot=True)
+        plt.xlabel("idle_times (ns)")
+    except (Exception,):
+        pass

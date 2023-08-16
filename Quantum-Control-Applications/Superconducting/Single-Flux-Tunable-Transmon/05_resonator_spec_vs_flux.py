@@ -142,3 +142,5 @@ else:
     plt.legend()
 
     print("DC flux value corresponding to the maximum frequency point", flux[np.argmax(fitted_curve)])
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

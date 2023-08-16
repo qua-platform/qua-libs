@@ -93,3 +93,5 @@ else:
         plt.tight_layout()
         plt.pause(0.1)
     # np.savez(save_dir / 'iswap', I1=I1, Q1=Q1, I2=I2, ts=ts, amps=amps)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
