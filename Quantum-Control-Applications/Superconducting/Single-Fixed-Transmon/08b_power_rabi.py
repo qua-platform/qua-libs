@@ -66,6 +66,7 @@ with program() as power_rabi:
         save(n, n_st)
 
     with stream_processing():
+        # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         I_st.buffer(len(amplitudes)).average().save("I")
         Q_st.buffer(len(amplitudes)).average().save("Q")
         n_st.save("iteration")

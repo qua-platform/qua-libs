@@ -26,10 +26,10 @@ is not saturated, correct for DC offsets.
     * [Time Rabi](08a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
     * [Power Rabi](08b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
     * [Power Rabi with error amplification](08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
-9. [IQ Blobs](09_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
+9. [IQ Blobs](09a_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
 and the fidelity are good enough, gives the parameters needed for active reset.
-    * [Resonator Emptying Time](09_resonator_emptying_time.py) - Measure the resonator depletion time using a fixed time Ramsey sequence to know how long one needs to wait after measuring the resonator for active reset protocols.
-    * [Active Reset](09_active_reset.py) - Script for performing a single shot discrimination and active reset.
+    * [Resonator Depletion Time](09b_resonator_depletion_time.py) - Measure the resonator depletion time using a fixed time Ramsey sequence to know how long one needs to wait after measuring the resonator for active reset protocols.
+    * [Active Reset](09c_active_reset.py) - Script for performing a single shot discrimination and active reset.
 10. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
     * [Frequency optimization](10_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
     * [Amplitude optimization](10_readout_amp_optimization.py) - The script measures the readout fidelity for different readout powers.
