@@ -44,7 +44,6 @@ with program() as ro_amp_opt:
     Q_e_st = declare_stream()
     n_st = declare_stream()
 
-
     with for_(*from_array(a, amplitudes)):
         save(counter, n_st)
         with for_(n, 0, n < n_runs, n + 1):
@@ -135,7 +134,7 @@ else:
 
     # Plot the data
     plt.figure()
-    plt.plot(amplitudes * readout_amp, fidelity_vec, '.-')
+    plt.plot(amplitudes * readout_amp, fidelity_vec, ".-")
     plt.title("Readout amplitude optimization")
     plt.xlabel("Readout amp pre-factor [V]")
     plt.ylabel("Fidelity [%]")

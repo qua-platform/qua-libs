@@ -135,12 +135,10 @@ else:
         fit = Fit()
         plt.figure()
         decay_fit = fit.T1(4 * taus, I, plot=True)
-        depletion_time = np.round(np.abs(decay_fit['T1'][0]) / 4) * 4
+        depletion_time = np.round(np.abs(decay_fit["T1"][0]) / 4) * 4
         plt.xlabel("Delay [ns]")
         plt.ylabel("I quadrature [V]")
-        print(
-            f"Resonator depletion time to update in the config: depletion_time = {depletion_time:.0f} ns"
-        )
+        print(f"Resonator depletion time to update in the config: depletion_time = {depletion_time:.0f} ns")
         plt.legend((f"depletion time = {depletion_time:.0f} ns",))
     except (Exception,):
         pass

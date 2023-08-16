@@ -150,7 +150,7 @@ else:
     results = fetching_tool(
         job,
         data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"],
-        mode = "live"
+        mode="live",
     )
     # Live plotting
     fig = plt.figure()

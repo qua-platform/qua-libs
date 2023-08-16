@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-n_avg = 1000 # The number of averages
+n_avg = 1000  # The number of averages
 # The frequency sweep parameters
 f_min = 70e6
 f_max = 80e6
