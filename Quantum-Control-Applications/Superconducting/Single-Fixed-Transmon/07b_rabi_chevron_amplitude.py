@@ -123,7 +123,7 @@ else:
         # Plot results
         plt.subplot(211)
         plt.cla()
-        plt.title("Rabi chevron amplitude")
+        plt.title(r"Rabi chevron $R=\sqrt{I^2 + Q^2}$")
         plt.pcolor((frequencies - qubit_IF) / u.MHz, amplitudes * x180_amp, R)
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
