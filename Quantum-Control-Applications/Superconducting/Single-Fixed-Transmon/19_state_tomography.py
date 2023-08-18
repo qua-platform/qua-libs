@@ -18,11 +18,141 @@ from configuration import *
 import numpy as np
 from macros import readout_macro
 
+
+######################################
+# Set-up a Bloch sphere for plotting #  (can be removed if not used)
+######################################
+def bra_tex(s):
+    return rf"$\left| {s} \right\rangle$"
+
+
+class BlochSpherePlot:
+    North = np.array((0, 0, 1))
+    South = np.array((0, 0, -1))
+    East = np.array((1, 0, 0))
+    West = np.array((0, 1, 0))
+
+    def __init__(self, elev=20, azim=15, sphere_style=None, circles_style=None, axes_style=None, *args, **kwargs):
+        self.fig, self.ax = plt.subplots(subplot_kw={"projection": "3d"}, *args, **kwargs)
+        self.ax.view_init(elev=elev, azim=azim)
+
+        self.sphere_style = {
+            "color": "#ccf3ff",
+            "alpha": 0.1,
+        }
+        if sphere_style:
+            self.sphere_style.update(sphere_style)
+
+        self.circles_style = {
+            "color": "#333",
+            "alpha": 0.2,
+            "lw": 1.0,
+        }
+        if circles_style:
+            self.circles_style.update(circles_style)
+
+        self.axes_style = {
+            "color": "#333",
+            "alpha": 0.2,
+            "lw": 1.0,
+        }
+        if axes_style:
+            self.axes_style.update(axes_style)
+
+        self.add_sphere()
+        self.add_circles()
+        self.add_axes()
+
+        self._prepare_axes()
+
+    def plot_vector(
+        self,
+        v,
+        label=None,
+        **kwargs,
+    ):
+        self.ax.quiver(
+            0,
+            0,
+            0,
+            v[0],
+            v[1],
+            v[2],
+            normalize=True,
+            arrow_length_ratio=0.08,
+            **kwargs,
+        )
+        if label:
+            vn = 1.1 * np.array(v) / np.linalg.norm(v)
+            self.ax.text(*vn, label, fontsize="large")
+
+    def label(self, position, label, **kwargs):
+        self.ax.text(*position, label, fontsize="large", **kwargs)
+
+    def label_bra(self, position, label, **kwargs):
+        self.label(position, bra_tex(label), **kwargs)
+
+    def add_circles(self):
+        theta = np.linspace(0, 2 * np.pi, 100)
+        c = np.cos(theta)
+        s = np.sin(theta)
+        z = np.zeros_like(theta)
+
+        self.ax.plot(c, s, z, **self.circles_style)
+        self.ax.plot(z, c, s, **self.circles_style)
+        self.ax.plot(s, z, c, **self.circles_style)
+
+    def add_sphere(self):
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+        x = np.outer(np.cos(u), np.sin(v))
+        y = np.outer(np.sin(u), np.sin(v))
+        z = np.outer(np.ones_like(u), np.cos(v))
+        self.ax.plot_surface(x, y, z, **self.sphere_style)
+
+    def add_axes(self):
+        u = np.linspace(-1, 1, 2)
+        z = np.zeros_like(u)
+        self.ax.plot(u, z, z, **self.axes_style)
+        self.ax.plot(z, z, u, **self.axes_style)
+        self.ax.plot(z, u, z, **self.axes_style)
+
+    def _prepare_axes(self):
+        self.ax.set(
+            aspect="equal",
+        )
+
+        self.ax.tick_params(
+            labelbottom=False,
+            labelleft=False,
+        )
+        self.ax.set_axis_off()
+        self.ax.grid(False)
+        self.ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        self.ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+        self.ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+
+
+bloch_sphere = BlochSpherePlot(
+    sphere_style={"alpha": 0.03, "color": "#333", "shade": False},
+    axes_style={"alpha": 0.8},
+    elev=20,
+    azim=-30,
+    dpi=100,
+    figsize=(8, 6),
+)
+bloch_sphere.label_bra(bloch_sphere.North * 1.1, "g")
+bloch_sphere.label_bra(bloch_sphere.South * 1.1, "e")
+bloch_sphere.label_bra(bloch_sphere.East * 1.1, "X")
+bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
+# bloch_sphere.plot_vector((1, 1, 0), 'Test', color='r')
+# bloch_sphere.plot_vector((1, 0, 1), bra_tex('k'), color='g')
+
 ###################
 # The QUA program #
 ###################
 
-n_avg = 100
+n_avg = 100000
 
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop
@@ -94,11 +224,14 @@ else:
     results = fetching_tool(job, data_list=["states", "iteration"], mode="live")
     while results.is_processing():
         # Fetch results
-        state, iteration = results.fetch_all()
+        states, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Converts the (0,1) -> |g>,|e> convention to (1,-1) -> |g>,|e>
-        states = -2 * (state - 0.5)
+        state = -2 * (states - 0.5)
+        # Plot the Bloch vector on the Bloch sphere
+        bloch_sphere.plot_vector((state[0], state[1], state[2]), "", color="r")
+        plt.pause(0.1)
 
     # Derive the density matrix
     I = np.array([[1, 0], [0, 1]])

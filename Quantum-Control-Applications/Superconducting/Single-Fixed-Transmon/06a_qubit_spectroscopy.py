@@ -9,6 +9,10 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
     - Set the saturation pulse amplitude and duration in the configuration to put the qubit in a mixed state.
+    - Set the expected qubit T1 in the configuration.
+
+Next steps before going to the next node:
+    - Update the qubit frequency (qubit_IF) in the configuration
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

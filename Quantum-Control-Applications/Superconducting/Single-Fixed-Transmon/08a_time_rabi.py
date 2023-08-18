@@ -8,7 +8,10 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
     - Having found the rough qubit frequency and pi pulse amplitude (rabi_chevron_amplitude or power_rabi).
-    - Set the qubit frequency and desired pi pulse amplitude in the configuration.
+    - Set the qubit frequency and desired pi pulse amplitude (x180_amp) in the configuration.
+
+Next steps before going to the next node:
+    - Update the qubit pulse duration (x180_len) in the configuration.
 """
 
 from qm.qua import *

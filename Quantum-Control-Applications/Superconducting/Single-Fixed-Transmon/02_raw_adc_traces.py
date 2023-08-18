@@ -13,20 +13,22 @@ import numpy as np
 ##############################
 # Program-specific variables #
 ##############################
-n_avg = 100  # Number of averaging loops
-cooldown_time = 2 * u.us
+n_avg = 100  # The number of averages
 
 ###################
 # The QUA program #
 ###################
 with program() as raw_trace_prog:
-    n = declare(int)
-    adc_st = declare_stream(adc_trace=True)
+    n = declare(int)  # QUA variable for the averaging loop
+    adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
-    with for_(n, 0, n < n_avg, n + 1):
+    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+        # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
         reset_phase("resonator")
+        # Measure the resonator (send a readout pulse and record the raw ADC trace)
         measure("readout", "resonator", adc_st)
-        wait(cooldown_time * u.ns, "resonator")
+        # Wait for the resonator to deplete
+        wait(depletion_time * u.ns, "resonator")
 
     with stream_processing():
         # Will save average:

@@ -15,6 +15,9 @@ Prerequisites:
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
     - Having calibrated the DRAG coefficient.
+
+Next steps before going to the next node:
+    - Update the DRAG detuning (AC_stark_detuning) in the configuration.
 """
 
 from qm.qua import *

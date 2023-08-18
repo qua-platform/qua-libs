@@ -9,6 +9,10 @@ Prerequisites:
     - Having calibrated the time of flight, offsets and gains (time_of_flight).
     - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port)
     - Set the readout pulse amplitude and duration in the configuration.
+    - Set the expected resonator depletion time in the configuration.
+
+Next steps before going to the next node:
+    - Update the readout frequency (resonator_IF) in the configuration.
 """
 from qm.qua import *
 from qm import SimulationConfig

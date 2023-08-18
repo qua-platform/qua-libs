@@ -12,6 +12,9 @@ Prerequisites:
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
     - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = 1
+
+Next steps before going to the next node:
+    - Update the DRAG coefficient (drag_coef) in the configuration.
 """
 
 from qm.qua import *

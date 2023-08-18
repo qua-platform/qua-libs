@@ -10,6 +10,11 @@ Prerequisites:
     - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port).
     - Having found the resonance frequency of the resonator (resonator_spectroscopy).
     - Set the readout pulse amplitude (to 0.25V) and duration in the configuration.
+    - Set the expected resonator depletion time in the configuration.
+
+Next steps before going to the next node:
+    - Update the readout frequency (resonator_IF) in the configuration
+    - Update the readout amplitude (readout_amp) in the configuration
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

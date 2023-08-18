@@ -8,6 +8,10 @@ The optimal readout amplitude is chosen as to maximize the readout fidelity.
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated the readout frequency and updated the configuration.
+
+Next steps before going to the next node:
+    - Update the readout amplitude (readout_amp) in the configuration.
 """
 
 from qm.qua import *

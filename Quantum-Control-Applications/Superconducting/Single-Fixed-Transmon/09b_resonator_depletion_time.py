@@ -9,6 +9,9 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Having precisely measured the qubit frequency (ramsey).
+
+Next steps before going to the next node:
+    - Update the resonator depletion time (depletion_time) in the configuration.
 """
 
 from qm.qua import *
