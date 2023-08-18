@@ -55,7 +55,7 @@ with program() as power_rabi_err:
                 # Loop for error amplification (perform many qubit pulses with varying amplitudes)
                 with for_(n2, 0, n2 < n_rabi, n2 + 1):
                     play("x180" * amp(a), "qubit")
-                # Align the two elements to measure after playing the qubit pulse.
+                # Align the two elements to measure after playing the qubit pulses.
                 align("qubit", "resonator")
                 # Measure the state of the resonator
                 # The integration weights have changed to maximize the SNR after having calibrated the IQ blobs.
