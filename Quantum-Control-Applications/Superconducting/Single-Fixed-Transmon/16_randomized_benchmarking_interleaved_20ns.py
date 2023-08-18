@@ -84,10 +84,10 @@ for i in range(len(single_qubit_gates)):
 ##############################
 # Program-specific variables #
 ##############################
-num_of_sequences = 500  # Number of random sequences
+num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 50  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -104,6 +104,23 @@ interleaved_gate_index = 2
 ###################################
 # Helper functions and QUA macros #
 ###################################
+def get_interleaved_gate(gate_index):
+    if gate_index == 0:
+        return "I"
+    elif gate_index == 1:
+        return "x180"
+    elif gate_index == 2:
+        return "y180"
+    elif gate_index == 12:
+        return "x90"
+    elif gate_index == 13:
+        return "-x90"
+    elif gate_index == 14:
+        return "y90"
+    elif gate_index == 15:
+        return "-y90"
+
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
 
@@ -397,11 +414,15 @@ with program() as rb:
 
     with stream_processing():
         rnd_seq_ind_st.save("iteration")
-        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
         if state_discrimination:
+            # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
                 max_circuit_depth / delta_clifford + 1
             ).buffer(num_of_sequences).save("state")
+            # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save("state_avg")
         else:
             I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
                 num_of_sequences
@@ -409,18 +430,12 @@ with program() as rb:
             Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
                 num_of_sequences
             ).save("Q")
-        # # return a 1D array of averaged random pulse sequences vs circuit depth  TODO: TO BE TESTED
-        # if state_discrimination:
-        #     state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-        #         max_circuit_depth / delta_clifford + 1
-        #     ).average().save("state_avg")
-        # else:
-        #     I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save(
-        #         "I"
-        #     )
-        #     Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth // delta_clifford + 1).average().save(
-        #         "Q"
-        #     )
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "I_avg"
+            )
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+                "Q_avg"
+            )
 
 
 #####################################
@@ -449,7 +464,7 @@ else:
     if state_discrimination:
         results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
     else:
-        results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+        results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -459,40 +474,44 @@ else:
     while results.is_processing():
         # data analysis
         if state_discrimination:
-            # state_avg, iteration = results.fetch_all() TODO: TO BE TESTED
-            # value_avg = 1 - state_avg
-            # error_avg = np.std(state_avg)
-            state, iteration = results.fetch_all()
-            value_avg = 1 - np.mean(state, axis=1)
-            error_avg = np.std(state, axis=1)
+            state_avg, iteration = results.fetch_all()
+            value_avg = state_avg
         else:
             I, Q, iteration = results.fetch_all()
-            # value_avg = np.sqrt(I**2 + Q**2)  TODO: TO BE TESTED
-            # error_avg = np.std(np.sqrt(I**2 + Q**2))
-            value_avg = np.mean(np.sqrt(I**2 + Q**2), axis=1)
-            error_avg = np.std(np.sqrt(I**2 + Q**2), axis=1)
+            value_avg = I
 
         # Progress bar
         progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
-        # Plot results
+        # Plot averaged values
         plt.cla()
-        plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
-        pars, cov = curve_fit(
-            f=power_law,
-            xdata=x,
-            ydata=value_avg,
-            p0=[0.5, 0.5, 0.9],
-            bounds=(-np.inf, np.inf),
-            maxfev=2000,
-        )
-        plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+        plt.plot(x, value_avg, marker=".")
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
-        plt.title("Single qubit RB")
+        plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
         plt.pause(0.1)
 
-    # Post process the data to extract the gate fidelity
+    # At the end of the program, fetch the non-averaged results to get the error-bars
+    if state_discrimination:
+        results = fetching_tool(job, data_list=["state"])
+        state = results.fetch_all()[0]
+        value_avg = np.mean(state, axis=0)
+        error_avg = np.std(state, axis=0)
+    else:
+        results = fetching_tool(job, data_list=["I", "Q"])
+        I, Q = results.fetch_all()
+        value_avg = np.mean(I, axis=0)
+        error_avg = np.std(I, axis=0)
+    # data analysis
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value_avg,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
     stdevs = np.sqrt(np.diag(cov))
+
     print("#########################")
     print("### Fitted Parameters ###")
     print("#########################")
@@ -514,5 +533,13 @@ else:
         f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
         f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
     )
+
+    # Plots
+    plt.figure()
+    plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    plt.xlabel("Number of Clifford gates")
+    plt.ylabel("Sequence Fidelity")
+    plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
 
     # np.savez("rb_values", value)

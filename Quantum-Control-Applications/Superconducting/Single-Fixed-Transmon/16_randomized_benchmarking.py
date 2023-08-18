@@ -42,7 +42,7 @@ delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_cl
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
-state_discrimination = True
+state_discrimination = False
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
@@ -213,15 +213,19 @@ with program() as rb:
         if state_discrimination:
             # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1).buffer(num_of_sequences).save("state")
+                max_circuit_depth / delta_clifford + 1
+            ).buffer(num_of_sequences).save("state")
             # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1).average().save("state_avg")
+                max_circuit_depth / delta_clifford + 1
+            ).average().save("state_avg")
         else:
             I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-                num_of_sequences).save("I")
+                num_of_sequences
+            ).save("I")
             Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-                num_of_sequences).save("Q")
+                num_of_sequences
+            ).save("Q")
             I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
                 "I_avg"
             )
