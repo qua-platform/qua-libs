@@ -1,20 +1,22 @@
 """
         RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
-The sequence consists in measuring the resonator (send a readout pulse and demodulate the signals to extract the 'I'
-and 'Q' quadratures) for different readout intermediate frequencies and amplitudes.
-From the results, one can check if a qubit is coupled to the resonator by observing the resonator frequency splitting
-and adjust the readout amplitude to sit right before the splitting.
+This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
+extract the 'I' and 'Q' quadratures.
+This is done across various readout intermediate frequencies and amplitudes.
+Based on the results, one can determine if a qubit is coupled to the resonator by noting the resonator frequency
+splitting. This information can then be used to adjust the readout amplitude, choosing a readout amplitude value
+just before the observed frequency splitting.
 
 Prerequisites:
-    - Having calibrated the time of flight, offsets and gains (time_of_flight).
-    - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port).
-    - Having found the resonance frequency of the resonator (resonator_spectroscopy).
-    - Set the readout pulse amplitude (to 0.25V) and duration in the configuration.
-    - Set the expected resonator depletion time in the configuration.
 
-Next steps before going to the next node:
-    - Update the readout frequency (resonator_IF) in the configuration
-    - Update the readout amplitude (readout_amp) in the configuration
+    - Calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
+    - Calibration of the IQ mixer connected to the readout line (be it an external mixer or an Octave port).
+    - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy").
+    - Configuration of the readout pulse amplitude (set to 0.25V) and duration.
+    - Specification of the expected resonator depletion time in the configuration.
+Before proceeding to the next node:
+    - Update the readout frequency, labeled as "resonator_IF", in the configuration.
+    - Adjust the readout amplitude, labeled as "readout_amp", in the configuration.
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

@@ -1,22 +1,21 @@
 """
         READOUT OPTIMISATION: DURATION
-The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
-playing a pi pulse to the qubit (qubit in |e>) successively.
-The "demod.accumulated" method is used in order to measure the state of the resonator for different durations.
-(https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=accumulated#accumulated-demodulation)
-The averaged I & Q quadratures when the qubit is in |g> and |e> and their variances are extracted to derive the SNR.
-The optimal readout duration is chosen as to maximize the SNR.
-
-Note that if you want to obtain the behavior of the resonator during the ringdown, the integration weights length
-needs to be larger than the readout_pulse length.
+This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
+(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
+|e> state). The "demod.accumulated" method is employed to assess the state of the resonator over varying durations.
+Reference: (https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=accumulated#accumulated-demodulation)
+The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to determine
+the Signal-to-Noise Ratio (SNR). The readout duration that offers the highest SNR is identified as the optimal choice.
+Note: To observe the resonator's behavior during ringdown, the integration weights length should exceed the readout_pulse length.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
-    - Having calibrated the readout frequency and amplitude and updated the configuration.
+    - Determination of the resonator's resonance frequency when coupled to the qubit in focus (referred to as "resonator_spectroscopy").
+    - Calibration of the qubit pi pulse (x180) using methods like qubit spectroscopy, rabi_chevron, and power_rabi,
+      followed by an update to the configuration.
+    - Calibration of both the readout frequency and amplitude, with subsequent configuration updates.
 
-Next steps before going to the next node:
-    - Update the readout duration (readout_len) in the configuration.
+Before proceeding to the next node:
+    - Adjust the readout duration setting, labeled as "readout_len", in the configuration.
 """
 
 from qm.qua import *

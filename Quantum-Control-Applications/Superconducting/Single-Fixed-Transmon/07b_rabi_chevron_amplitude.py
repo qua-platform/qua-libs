@@ -1,18 +1,17 @@
 """
         RABI CHEVRON (AMPLITUDE VS FREQUENCY)
-The sequence consists in playing the qubit pulse (x180 or square_pi or else) and measuring the state of the resonator
-for different qubit intermediate frequencies and pulse amplitudes.
-From the results, one can find the qubit and estimate the x180 pulse amplitude for the chosen duration.
+This sequence involves executing the qubit pulse (such as x180, square_pi, or other types) and measuring the state
+of the resonator across various qubit intermediate frequencies and pulse amplitudes.
+By analyzing the results, one can determine the qubit and estimate the x180 pulse amplitude for a specified duration.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency (qubit_spectroscopy).
-    - Set the qubit frequency and desired pi pulse duration (x180_len) in the configuration.
-
-Next steps before going to the next node:
-    - Update the qubit frequency (qubit_IF) in the configuration.
-    - Update the qubit pulse amplitude (x180_amp) in the configuration.
+    - Determination of the resonator's resonance frequency when coupled to the qubit of interest (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
+    - Identification of the approximate qubit frequency (referred to as "qubit_spectroscopy").
+    - Configuration of the qubit frequency and the desired pi pulse duration (labeled as "x180_len").
+Before proceeding to the next node:
+    - Adjust the qubit frequency setting, labeled as "qubit_IF", in the configuration.
+    - Modify the qubit pulse amplitude setting, labeled as "x180_amp", in the configuration.
 """
 
 from qm.qua import *

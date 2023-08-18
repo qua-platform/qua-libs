@@ -1,9 +1,11 @@
 """
         READOUT OPTIMISATION: FREQUENCY
-The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
-playing a pi pulse to the qubit (qubit in |e>) successively while sweeping the readout frequency.
-The averaged I & Q quadratures when the qubit is in |g> and |e> and their variances are extracted to derive the SNR.
-The optimal readout frequency is chosen as to maximize the SNR.
+This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
+(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
+|e> state). This is done while varying the readout frequency.
+The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to
+determine the Signal-to-Noise Ratio (SNR). The readout frequency that yields the highest SNR is selected as the
+optimal choice.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

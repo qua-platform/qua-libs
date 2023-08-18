@@ -1,18 +1,18 @@
 """
         QUBIT SPECTROSCOPY
-The sequence consists in sending a saturation pulse to the qubit to put it in a mixed state and measuring the state of
-the resonator for different qubit intermediate frequencies.
-TThe data is post-processed to extract the qubit resonance frequency that can be used to update the qubit intermediate
-frequency in the configuration (qubit_IF).
+This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
+and then measuring the state of the resonator across various qubit drive intermediate frequencies.
+The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
+the qubit intermediate frequency in the configuration under "qubit_IF".
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Set the saturation pulse amplitude and duration in the configuration to put the qubit in a mixed state.
-    - Set the expected qubit T1 in the configuration.
+    -Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    -Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    -Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
+    -Specification of the expected qubit T1 in the configuration.
 
-Next steps before going to the next node:
-    - Update the qubit frequency (qubit_IF) in the configuration
+Before proceeding to the next node:
+    - Update the qubit frequency, labeled as "qubit_IF", in the configuration.
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager

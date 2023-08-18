@@ -1,9 +1,9 @@
 """
         POWER RABI WITH ERROR AMPLIFICATION
-The sequence consists in playing 'N' times the qubit pulse (x180 or square_pi or else) and measuring the state of the
-resonator for different qubit pulse amplitudes and number of pulses. This will amplify the effect of an amplitude
-inaccuracy and allow to measure the pi pulse amplitude more precisely.
-The results are then post-processed to find the qubit pulse amplitude for the chosen duration.
+This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
+measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
+By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
+amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

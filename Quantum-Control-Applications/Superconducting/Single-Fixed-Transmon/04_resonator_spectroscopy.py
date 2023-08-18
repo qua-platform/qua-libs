@@ -1,18 +1,18 @@
 """
         RESONATOR SPECTROSCOPY
-The sequence consists in measuring the resonator (send a readout pulse and demodulate the signals to extract the 'I'
-and 'Q' quadratures) for different readout intermediate frequencies.
-TThe data is post-processed to extract the bare resonator resonance frequency that can be used to update the readout
-intermediate frequency in the configuration (resonator_IF).
+This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
+'I' and 'Q' quadratures across varying readout intermediate frequencies.
+The data is then post-processed to determine the resonator resonance frequency.
+This frequency can be used to update the readout intermediate frequency in the configuration under "resonator_IF".
 
 Prerequisites:
-    - Having calibrated the time of flight, offsets and gains (time_of_flight).
-    - Having calibrated the IQ mixer connected to the readout line (external mixer or Octave port)
-    - Set the readout pulse amplitude and duration in the configuration.
-    - Set the expected resonator depletion time in the configuration.
+    - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
+    - Calibrate the IQ mixer connected to the readout line (whether it's an external mixer or an Octave port).
+    - Define the readout pulse amplitude and duration in the configuration.
+    - Specify the expected resonator depletion time in the configuration.
 
-Next steps before going to the next node:
-    - Update the readout frequency (resonator_IF) in the configuration.
+Before proceeding to the next node:
+    - Update the readout frequency, labeled as "resonator_IF", in the configuration.
 """
 from qm.qua import *
 from qm import SimulationConfig

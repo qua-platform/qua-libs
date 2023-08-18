@@ -1,18 +1,17 @@
 """
         QUBIT SPECTROSCOPY OVER A WIDE RANGE (INNER LOOP)
-Performs a wide 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source.
-In this version, the external LO source is being swept in the inner loop in order to minimize noise.
-The user will need to update the LO source frequency using the corresponding API at the bottom of the script
+This procedure conducts an extensive 1D frequency sweep of the qubit, measuring the resonator while sweeping an
+external LO source simultaneously. In this iteration, the external LO source is swept in the inner loop to reduce noise.
+Users should adjust the LO source frequency using the provided API at the end of the script
 (lo_source.set_freq(freqs_external[i])).
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Set the saturation pulse amplitude and duration in the configuration to put the qubit in a mixed state.
+    - Determination of the resonator's resonance frequency when coupled to the qubit in focus (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
 
-
-Next steps before going to the next node:
-    - Update the qubit frequency (qubit_IF & qubit_LO) in the configuration
+Before proceeding to the next node:
+    - Modify the qubit frequency settings, labeled as "qubit_IF" and "qubit_LO", in the configuration.
 """
 from time import sleep
 from qm.qua import *

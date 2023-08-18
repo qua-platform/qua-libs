@@ -2,7 +2,7 @@
         POWER RABI
 The sequence consists in playing the qubit pulse (x180 or square_pi or else) and measuring the state of the resonator
 for different qubit pulse amplitudes.
-The results are then post-processed to find the qubit pulse amplitude for the chosen duration.
+The experimental results are then analyzed to find the qubit pulse amplitude for the chosen duration.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

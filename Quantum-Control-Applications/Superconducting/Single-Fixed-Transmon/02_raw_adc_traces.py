@@ -1,7 +1,11 @@
 """
         RAW ADC TRACES
-The goal of this script is to measure the raw ADC traces without demodulation or integration.
-It can be used to check the signals before demodulation, make sure that the ADCs are not saturated and estimate the SNR.
+This script aims to measure data captured within a specific window defined by the measure() function.
+We term the digitized, unprocessed data as "raw ADC traces" because they represent the acquired waveforms without any
+real-time processing by the pulse processor, such as demodulation, integration, or time-tagging.
+
+The script is useful for inspecting signals prior to demodulation, ensuring the ADCs are not saturated,
+correcting any non-zero DC offsets, and estimating the SNR.
 """
 from qm.qua import *
 from qm import SimulationConfig

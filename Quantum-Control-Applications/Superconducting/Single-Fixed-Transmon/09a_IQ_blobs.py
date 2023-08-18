@@ -1,11 +1,12 @@
 """
         IQ BLOBS
-The sequence consists in measuring 'N' times the state of the resonator after thermalization (qubit in |g>) and after
-playing a pi pulse to the qubit (qubit in |e>) successively. The corresponding IQ blobs are displayed and the results
-are processed to extract:
-    - The rotation angle to apply through the integration weights in order to place the separation between |g> and |e> along the 'I' quadrature.
-    - The threshold along the 'I' quadrature to perform qubit state discrimination.
-    - The readout fidelity matrix (which is also affected by the pi pulse fidelity)
+This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
+in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
+The resulting IQ blobs are displayed, and the data is processed to determine:
+    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
+      aligns with the 'I' quadrature.
+    - The threshold along the 'I' quadrature for effective qubit state discrimination.
+    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

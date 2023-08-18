@@ -1,9 +1,11 @@
 """
         RESONATOR DEPLETION TIME
-The sequence consists in measuring the resonator depletion time, by first measuring it (to fill it with photons) and then
-performing a Ramsey measurement after having waited a varying time (wait(t) - x90 - idle_time - x90 - measurement).
-Since the qubit frequency depends on the number of photons contained in the resonator, an exponential decay should be
-visible in the measured I/Q quadratures giving access to the resonator depletion time which can be updated in the config.
+This sequence is designed to measure the resonator depletion time.
+It begins by sending a MW pulse to the resonator to fill it with photons via measure().
+Subsequently, a Ramsey measurement is performed after allowing a variable waiting time (structured as:
+wait(t) - x90 - idle_time - x90 - measurement). Given that the qubit frequency is influenced by the number of photons
+in the resonator, an exponential decay should be evident in the measured I/Q quadratures.
+This provides insight into the resonator depletion time, which can then be updated in the configuration.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
