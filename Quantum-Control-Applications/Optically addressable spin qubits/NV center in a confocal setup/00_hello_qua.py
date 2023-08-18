@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 # The QUA program #
 ###################
 with program() as hello_QUA:
-    
     a = declare(fixed)
     with infinite_loop_():
         with for_(a, 0, a < 1.1, a + 0.05):
@@ -22,7 +21,7 @@ with program() as hello_QUA:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = True
 

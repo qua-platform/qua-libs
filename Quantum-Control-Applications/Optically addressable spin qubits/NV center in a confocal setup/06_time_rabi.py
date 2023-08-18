@@ -6,6 +6,9 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
@@ -27,7 +30,7 @@ with program() as time_rabi:
     wait(100, "AOM1")
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            play("x180"*amp(1), "NV", duration=t)  # pulse of varied lengths
+            play("x180" * amp(1), "NV", duration=t)  # pulse of varied lengths
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -36,7 +39,7 @@ with program() as time_rabi:
 
             align()
 
-            play("x180"*amp(0), "NV", duration=t)  # pulse of varied lengths
+            play("x180" * amp(0), "NV", duration=t)  # pulse of varied lengths
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -53,7 +56,7 @@ with program() as time_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 

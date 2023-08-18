@@ -8,6 +8,7 @@ from qualang_tools.loops import from_array
 # AUXILIARY FUNCTIONS #
 #######################
 
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -29,9 +30,10 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 qop_ip = "172.16.33.100"
+cluster_name = "my_cluster"
 
 # Frequencies
-NV_IF_freq = 40 * u.MHz 
+NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz
 
 # Pulses lengths

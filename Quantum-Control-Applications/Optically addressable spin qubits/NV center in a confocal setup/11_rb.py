@@ -6,6 +6,9 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
+import warnings
+
+warnings.filterwarnings("ignore")
 
 # Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
 
@@ -20,8 +23,10 @@ seed = 345324
 delta_clifford = 10  # Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
+
 
 def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -145,12 +150,13 @@ with program() as rb:
             assign(sequence_list[depth], inv_gate_list[depth - 1])
 
             with if_((depth == 1) | (depth == depth_target)):
-                
                 play("laser_ON", "AOM1")
                 wait(100 * u.ns, "AOM1")
 
                 with for_(n, 0, n < n_avg, n + 1):
-                    play_sequence(sequence_list, depth)
+                    # The strict_timing ensures that the sequence will be played without gaps
+                    with strict_timing_():
+                        play_sequence(sequence_list, depth)
                     align()
                     play("laser_ON", "AOM1")
                     measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -164,12 +170,17 @@ with program() as rb:
 
     with stream_processing():
         m_st.save("iteration")
-        counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save('counts')
+        counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            "counts"
+        )
+        counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+            num_of_sequences
+        ).save("counts_2d")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 
@@ -183,7 +194,7 @@ else:
 
     job = qm.execute(rb)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts", "counts_2d", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -192,12 +203,12 @@ else:
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while results.is_processing():
         # data analysis
-        counts, iteration = results.fetch_all()
+        counts, counts_2d, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
         value_avg = counts
         # need renormalization to contrast to be able to do fitting
-        error_avg = np.std(counts)
+        error_avg = np.std(counts_2d, axis=0)
         # Plot results
         plt.cla()
         plt.errorbar(x, value_avg, yerr=error_avg, marker=".")

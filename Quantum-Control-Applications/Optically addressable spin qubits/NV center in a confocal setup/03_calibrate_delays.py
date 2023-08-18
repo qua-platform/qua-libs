@@ -9,6 +9,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -20,10 +21,10 @@ initial_delay = 500  # delay before laser [ns]
 laser_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
 wait_between_runs = 10_000  # [ns]
-n_avg = 1_000_000 
+n_avg = 1_000_000
 
 resolution = 12  # ns
-meas_len = int(laser_len + 1000) # total measurement length (ns)
+meas_len = int(laser_len + 1000)  # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
 with program() as calib_delays:
@@ -36,12 +37,11 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-
         wait(initial_delay * u.ns, "AOM1")  # wait before starting PL
         play("laser_ON", "AOM1", duration=laser_len * u.ns)
 
         wait((initial_delay + (laser_len - mw_len) // 2) * u.ns, "NV")  # delay the microwave pulse
-        play("cw"*amp(1), "NV", duration=mw_len * u.ns)  # play microwave pulse
+        play("cw" * amp(1), "NV", duration=mw_len * u.ns)  # play microwave pulse
 
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
         wait(wait_between_runs * u.ns, "SPCM1")
@@ -49,31 +49,33 @@ with program() as calib_delays:
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream
 
-        align() # global align
+        align()  # global align
 
         wait(initial_delay * u.ns, "AOM1")  # wait before starting PL
         play("laser_ON", "AOM1", duration=laser_len * u.ns)
 
         wait((initial_delay + (laser_len - mw_len) // 2) * u.ns, "NV")  # delay the microwave pulse
-        play("cw"*amp(0), "NV", duration=mw_len * u.ns)  # play microwave pulse
+        play("cw" * amp(0), "NV", duration=mw_len * u.ns)  # play microwave pulse
 
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
         wait(wait_between_runs * u.ns, "SPCM1")
 
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st_dark)  # save time tags to stream
-        
+
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
         times_st.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist")
-        times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist_dark")
+        times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save(
+            "times_hist_dark"
+        )
         n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 
@@ -87,7 +89,7 @@ else:
 
     job = qm.execute(calib_delays)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["times_hist", "times_hist_dark", "iteration"], mode='live')
+    results = fetching_tool(job, data_list=["times_hist", "times_hist_dark", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure

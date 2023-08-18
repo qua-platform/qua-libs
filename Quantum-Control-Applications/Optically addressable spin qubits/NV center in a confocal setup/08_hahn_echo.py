@@ -7,6 +7,9 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
@@ -33,11 +36,11 @@ with program() as hahn_echo:
     wait(100 * u.ns)
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            play("x90"*amp(1), "NV")  # Pi/2 pulse to qubit
+            play("x90" * amp(1), "NV")  # Pi/2 pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180"*amp(1), "NV")  # Pi pulse to qubit
+            play("x180" * amp(1), "NV")  # Pi pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("x90"*amp(1), "NV")  # Pi/2 pulse to qubit
+            play("x90" * amp(1), "NV")  # Pi/2 pulse to qubit
 
             align()
 
@@ -48,11 +51,11 @@ with program() as hahn_echo:
 
             align()
 
-            play("x90"*amp(1), "NV")  # Pi/2 pulse to qubit
+            play("x90" * amp(1), "NV")  # Pi/2 pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180"*amp(1), "NV")  # Pi pulse to qubit
+            play("x180" * amp(1), "NV")  # Pi pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("-x90"*amp(1), "NV")  # Pi/2 pulse to qubit
+            play("-x90" * amp(1), "NV")  # Pi/2 pulse to qubit
             reset_frame("NV")
 
             align()
@@ -64,11 +67,11 @@ with program() as hahn_echo:
 
             align()
 
-            play("x90"*amp(0), "NV")  # Pi/2 pulse to qubit
+            play("x90" * amp(0), "NV")  # Pi/2 pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180"*amp(0), "NV")  # Pi pulse to qubit
+            play("x180" * amp(0), "NV")  # Pi pulse to qubit
             wait(t, "NV")  # variable delay in spin Echo
-            play("-x90"*amp(0), "NV")  # Pi/2 pulse to qubit
+            play("-x90" * amp(0), "NV")  # Pi/2 pulse to qubit
             reset_frame("NV")
 
             align()
@@ -89,7 +92,7 @@ with program() as hahn_echo:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 

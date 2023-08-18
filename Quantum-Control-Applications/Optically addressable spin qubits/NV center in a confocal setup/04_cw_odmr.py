@@ -6,12 +6,15 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
 ###################
 
-f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)  # f_max + 0.1 so that f_max is included
+f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)
 n_avg = 1_000_000  # number of averages
 wait_between_runs = 100
 
@@ -30,9 +33,9 @@ with program() as cw_odmr:
 
             align()  # align all elements
 
-            play("cw"*amp(1), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
+            play("cw" * amp(1), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
-            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part of spin reinitializaiton
+            wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitializaiton
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_st)  # save counts on stream
@@ -41,9 +44,9 @@ with program() as cw_odmr:
 
             align()  # align all elements
 
-            play("cw"*amp(0), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
+            play("cw" * amp(0), "NV", duration=long_meas_len_1 * u.ns)  # play microwave pulse
             play("laser_ON", "AOM1", duration=long_meas_len_1 * u.ns)
-            wait(1_000 * u.ns, 'SPCM1')  # so readout don't catch the first part of spin reinitialization
+            wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, long_meas_len_1, counts))
 
             save(counts, counts_dark_st)  # save counts on stream
@@ -60,7 +63,7 @@ with program() as cw_odmr:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 

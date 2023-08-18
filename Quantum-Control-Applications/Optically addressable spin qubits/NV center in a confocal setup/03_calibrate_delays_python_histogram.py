@@ -7,6 +7,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
+from qm import SimulationConfig
 
 ###################
 # The QUA program #
@@ -16,10 +17,10 @@ initial_delay = 500  # delay before laser [ns]
 laser_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
 wait_between_runs = 10_000  # [ns]
-n_avg = 1_000_000 
+n_avg = 1_000_000
 
 buffer_len = 10
-meas_len = (laser_len + 2 * initial_delay)  # total measurement length (ns)
+meas_len = laser_len + 2 * initial_delay  # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
 assert (laser_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
@@ -33,7 +34,6 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-
         wait(initial_delay * u.ns, "AOM1")  # wait before starting PL
         play("laser_ON", "AOM1", duration=laser_len * u.ns)
 
@@ -55,46 +55,55 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
-qm = qmm.open_qm(config)
+simulate = False
 
-job = qm.execute(calib_delays)
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, calib_delays, simulation_config)
+    plt.figure()
+    job.get_simulated_samples().con1.plot()
+else:
+    qm = qmm.open_qm(config)
 
-res_handles = job.result_handles
-times_handle = res_handles.get("times")
-iteration_handle = res_handles.get("iteration")
-times_handle.wait_for_values(1)
-iteration_handle.wait_for_values(1)
-counts_vec = np.zeros(meas_len, int)
-old_count = 0
+    job = qm.execute(calib_delays)
 
-# Live plotting
-fig = plt.figure()
-interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    res_handles = job.result_handles
+    times_handle = res_handles.get("times")
+    iteration_handle = res_handles.get("iteration")
+    times_handle.wait_for_values(1)
+    iteration_handle.wait_for_values(1)
+    counts_vec = np.zeros(meas_len, int)
+    old_count = 0
 
-b_cont = res_handles.is_processing()
-b_last = not b_cont
-
-while b_cont or b_last:
-    plt.cla()
-    new_count = times_handle.count_so_far()
-    iteration = iteration_handle.fetch_all() + 1
-    # Progress bar
-    progress_counter(iteration, n_avg)
-
-    if new_count > old_count:
-        times = times_handle.fetch(slice(old_count, new_count))["value"]
-        for i in range(new_count - old_count):
-            for j in range(buffer_len):
-                counts_vec[times[i][j]] += 1
-        old_count = new_count
-
-    plt.plot(t_vec + 0.5, counts_vec / 1000 / (1 * 1e-9) / iteration)
-    plt.xlabel("t [ns]")
-    plt.ylabel(f"counts [kcps / 1ns]")
-    plt.title("Delays")
-    plt.pause(0.1)
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     b_cont = res_handles.is_processing()
-    b_last = not (b_cont or b_last)
+    b_last = not b_cont
+
+    while b_cont or b_last:
+        plt.cla()
+        new_count = times_handle.count_so_far()
+        iteration = iteration_handle.fetch_all() + 1
+        # Progress bar
+        progress_counter(iteration, n_avg)
+
+        if new_count > old_count:
+            times = times_handle.fetch(slice(old_count, new_count))["value"]
+            for i in range(new_count - old_count):
+                for j in range(buffer_len):
+                    counts_vec[times[i][j]] += 1
+            old_count = new_count
+
+        plt.plot(t_vec + 0.5, counts_vec / 1000 / (1 * 1e-9) / iteration)
+        plt.xlabel("t [ns]")
+        plt.ylabel(f"counts [kcps / 1ns]")
+        plt.title("Delays")
+        plt.pause(0.1)
+
+        b_cont = res_handles.is_processing()
+        b_last = not (b_cont or b_last)

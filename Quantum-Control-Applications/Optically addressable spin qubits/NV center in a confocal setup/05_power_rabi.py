@@ -7,6 +7,9 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
@@ -38,7 +41,7 @@ with program() as power_rabi:
 
             align()
 
-            play("x180" * amp(0), "NV")  
+            play("x180" * amp(0), "NV")
             align()
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
@@ -55,12 +58,11 @@ with program() as power_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 
 if simulate:
-
     simulation_config = SimulationConfig(duration=28000)
     job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()

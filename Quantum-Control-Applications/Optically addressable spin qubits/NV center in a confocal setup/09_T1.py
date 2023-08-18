@@ -7,6 +7,9 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
@@ -35,9 +38,9 @@ with program() as T1:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
             if start_from_one:
-                play("x180"*amp(1), "NV")
+                play("x180" * amp(1), "NV")
             wait(t, "NV")  # variable delay in spin Echo
-            play('x180'*amp(0), "NV")
+            play("x180" * amp(0), "NV")
 
             align()
 
@@ -49,9 +52,9 @@ with program() as T1:
             align()
 
             if start_from_one:
-                play("x180"*amp(1), "NV")
+                play("x180" * amp(1), "NV")
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180"*amp(1), "NV")  # Pi pulse to qubit to measure second state
+            play("x180" * amp(1), "NV")  # Pi pulse to qubit to measure second state
 
             align()
 
@@ -61,9 +64,9 @@ with program() as T1:
             wait(100 * u.ns, "AOM1")
 
             if start_from_one:
-                play("x180"*amp(0), "NV")
+                play("x180" * amp(0), "NV")
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180"*amp(0), "NV")  # Pi pulse to qubit to measure second state
+            play("x180" * amp(0), "NV")  # Pi pulse to qubit to measure second state
 
             align()
 
@@ -83,7 +86,7 @@ with program() as T1:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
 
 simulate = False
 
