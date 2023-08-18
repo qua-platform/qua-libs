@@ -1,14 +1,24 @@
 """
-manual_mixer_calibration.py: Calibration for mixer imperfections
+The program simply consists in playing a single tone continuously to calibrate an IQ mixer.
+The output of the mixer need to be connected to a spectrum analyzer and the setting of the DC offsets, gain and phase
+needs to be done manually.
+If the API to get the data from the spectrum analyzer is available, then the commented lines below can be used to
+semi-automatize the process.
+
+Next steps before going to the next node:
+    - Update the DC offsets (config/controllers/"con1"/analog_outputs) in the configuration.
+    - Update the DC gain and phase of the IQ signals (mixer_qubit_g & mixer_qubit_g or mixer_resonator_g & mixer_resonator_g)
+    in the configuration.
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
-import time
+
 
 ###################
 # The QUA program #
 ###################
+
 with program() as cw_output:
     with infinite_loop_():
         play("cw" * amp(0), "NV")
@@ -24,7 +34,6 @@ job = qm.execute(cw_output)
 
 # When done, the halt command can be called and the offsets can be written directly into the config file.
 
-# time.sleep(10)
 # job.halt()
 
 # These are the 2 commands used to correct for mixer imperfections. The first is used to set the DC of the `I` and `Q`
@@ -38,6 +47,7 @@ job = qm.execute(cw_output)
 # qm.set_mixer_correction(f'mixer_NV', int(NV_IF_freq), int(NV_LO_freq), IQ_imbalance(0.015, 0.01))
 
 # Automatic LO leakage correction
+# element = "NV"
 # centers = [0.5, 0]
 # span = 0.1
 #
