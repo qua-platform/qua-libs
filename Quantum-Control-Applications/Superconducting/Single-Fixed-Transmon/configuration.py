@@ -31,9 +31,9 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "172.16.33.100"
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
-cluster_name = "Cluster_83"
 
 # Set octave_config to None if no octave are present
 octave_config = None
