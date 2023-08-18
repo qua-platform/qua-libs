@@ -5,7 +5,8 @@ Here the detuning sweep has to be performed in python, because it involves chang
 non-linear manner.
 After such a sequence, the qubit is expected to always be in the ground state if the AC Stark shift is
 properly compensated by the DRAG detuning.
-One can fit the final results with an inverted parabola to precisely determined the optimal detuning.
+One can fit the final results with an inverted parabola to precisely determined the optimal detuning and update it in
+the configuration.
 
 This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
@@ -13,7 +14,7 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = 1
+    - Having calibrated the DRAG coefficient.
 """
 
 from qm.qua import *
