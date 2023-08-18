@@ -36,7 +36,7 @@ if simulate:
     job_sim = qmm.simulate(config, hello_QUA, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()
-    plt.show()
+
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(hello_QUA)

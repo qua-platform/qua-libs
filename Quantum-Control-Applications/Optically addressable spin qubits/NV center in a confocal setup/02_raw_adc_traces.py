@@ -1,8 +1,20 @@
 """
-raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2,
-this allows checking that the ADC is not saturated, correct for DC offsets and define the time of flight and
-threshold for time-tagging.
+        RAW ADC TRACES
+The goal of this script is to measure the raw ADC traces without demodulation or integration.
+It can be used to check the signals before demodulation, make sure that the ADCs are not saturated and estimate the SNR.
+It also allows to calibrate several parameters:
+    - The time of flight: it corresponds to some internal processing time and propagation delay of the readout pulse.
+      Its value can be updated in the configuration (time_of_flight) and is used to delay the acquisition window with
+      respect to the time at which the readout pulse is sent.
+    - The analog inputs offset: due to some small impedance mismatch, the signals acquired by the OPX can have small
+      offsets that can be removed in the configuration (config/controllers/"con1"/analog_inputs) to improve demodulation.
+    - The analog inputs gain: if the signal is limited by digitization or saturates the ADC, the variable gain of the
+      OPX analog input can be set to adjust the signal within the ADC range +/-0.5V.
+      The gain (-12 dB to 20 dB) can also be set in the configuration (config/controllers/"con1"/analog_inputs).
+    - The threshold for time-tagging: it corresponds to the ADC value above or below which the signal is considered to
+      be an event that can be detected and time-tagged in the subsequent scripts.
 """
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
@@ -15,11 +27,14 @@ from qm import SimulationConfig
 n_avg = 1_000
 
 with program() as TimeTagging_calibration:
-    n = declare(int)
-    adc_st = declare_stream(adc_trace=True)
-    with for_(n, 0, n < n_avg, n + 1):
+    n = declare(int)  # QUA variable for the averaging loop
+    adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
+    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+        # Drive the AOM to play the readout laser pulse
         play("laser_ON", "AOM1")
+        # Record the raw ADC traces in the stream called "adc_st"
         measure("long_readout", "SPCM1", adc_st)
+        # Waits for the
         wait(1000, "SPCM1")
 
     with stream_processing():
@@ -48,7 +63,7 @@ else:
     job = qm.execute(TimeTagging_calibration)
     # create a handle to get results
     res_handles = job.result_handles
-    # Wait untill the program is done
+    # Wait until the program is done
     res_handles.wait_for_all_values()
     # Fetch results and convert traces to volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
@@ -60,13 +75,11 @@ else:
     plt.plot(adc1_single_run, label="Input 1")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
-    plt.legend()
 
     plt.subplot(122)
     plt.title("Averaged run")
     plt.plot(adc1, label="Input 1")
     plt.xlabel("Time [ns]")
-    plt.legend()
     plt.tight_layout()
-    plt.show()
+
     print(f"\nInput1 mean: {np.mean(adc1)} V")

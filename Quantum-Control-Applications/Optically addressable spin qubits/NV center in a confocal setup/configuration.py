@@ -30,7 +30,7 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 qop_ip = "172.16.33.100"
-cluster_name = "my_cluster"
+cluster_name = "Cluster_83"
 
 # Frequencies
 NV_IF_freq = 40 * u.MHz

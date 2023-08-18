@@ -84,18 +84,22 @@ with program() as ramsey:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=28000)
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
     job.get_simulated_samples().con1.plot()
-    plt.show()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-    # execute QUA program
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ramsey)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "counts2_dark", "iteration"], mode="live")
@@ -118,4 +122,4 @@ else:
         plt.legend(("counts 1", "counts 2"))
         plt.title("Ramsey")
         plt.pause(0.1)
-    plt.show()
+

@@ -63,20 +63,23 @@ with program() as cw_odmr:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=28000)
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, cw_odmr, simulation_config)
     job.get_simulated_samples().con1.plot()
-    plt.show()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
-    job = qm.execute(cw_odmr)  # execute QUA program
-
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(cw_odmr)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts", "counts_dark", "iteration"], mode="live")
     # Live plotting
@@ -96,4 +99,3 @@ else:
         plt.ylabel("Intensity [kcps]")
         plt.title("ODMR")
         plt.pause(0.1)
-    plt.show()

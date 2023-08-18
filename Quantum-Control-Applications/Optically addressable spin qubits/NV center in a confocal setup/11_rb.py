@@ -180,18 +180,22 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=20_000)  # in clock cycles
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
-    plt.show()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts", "counts_2d", "iteration"], mode="live")

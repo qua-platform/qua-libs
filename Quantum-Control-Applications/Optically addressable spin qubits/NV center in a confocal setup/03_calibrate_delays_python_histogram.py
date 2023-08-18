@@ -1,8 +1,14 @@
 """
-Plays a MW pulse during a laser pulse, while performing time tagging throughout the sequence. This allows measuring all
-the delays in the system, as well as the NV initialization duration.
-This version process the data in Python, which makes it slower but works better when the counts are high.
+        CALIBRATE DELAYS
+The program consists in playing a mw pulse during a laser pulse and while performing time tagging throughout the sequence.
+This allows measuring all the delays in the system, as well as the NV initialization duration.
+
+This version processes the data in Python, which makes it slower but works better when the counts are high.
+
+Next steps before going to the next node:
+    - Update the ?? in the configuration.
 """
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
@@ -13,17 +19,17 @@ from qm import SimulationConfig
 # The QUA program #
 ###################
 
-initial_delay = 500  # delay before laser [ns]
-laser_len = 2_000  # laser duration length [ns]
+laser_delay = 500  # delay before laser [ns]
+initialization_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
 wait_between_runs = 10_000  # [ns]
 n_avg = 1_000_000
 
-buffer_len = 10
-meas_len = laser_len + 2 * initial_delay  # total measurement length (ns)
+buffer_len = 10  # The size of each chunk of data handled by the stream processing
+meas_len = initialization_len + 2 * laser_delay  # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
-assert (laser_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
+assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
@@ -34,15 +40,21 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-        wait(initial_delay * u.ns, "AOM1")  # wait before starting PL
-        play("laser_ON", "AOM1", duration=laser_len * u.ns)
+        # Wait before starting the play the laser pulse
+        wait(laser_delay * u.ns, "AOM1")
+        # Play the laser pulse for a duration given here by "initialization_len"
+        play("laser_ON", "AOM1", duration=initialization_len * u.ns)
 
-        wait((initial_delay + (laser_len - mw_len) // 2) * u.ns, "NV")  # delay the microwave pulse
-        play("cw", "NV", duration=mw_len)  # play microwave pulse
+        # Delay the microwave pulse with respect to the laser pulse so that it arrive at the middle of the laser pulse
+        wait((laser_delay + (initialization_len - mw_len) // 2) * u.ns, "NV")
+        # Play microwave pulse
+        play("cw" * amp(1), "NV", duration=mw_len * u.ns)
 
+        # Measure the photon counted by the SPCM
         measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len, counts))
+        # Adjust the wait time between each averaging iteration
         wait(wait_between_runs * u.ns, "SPCM1")
-
+        # Save the time tags to the stream
         with for_(i, 0, i < counts, i + 1):
             save(times[i], times_st)  # save time tags to stream
 
@@ -55,19 +67,22 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, calib_delays, simulation_config)
-    plt.figure()
     job.get_simulated_samples().con1.plot()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(calib_delays)
 
     res_handles = job.result_handles
