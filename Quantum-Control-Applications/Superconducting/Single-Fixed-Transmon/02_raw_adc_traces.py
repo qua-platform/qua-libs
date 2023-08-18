@@ -43,13 +43,15 @@ with program() as raw_trace_prog:
 #####################################
 qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
-#######################
-# Simulate or execute #
-#######################
+###########################
+# Run or Simulate Program #
+###########################
+
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11_000))  # In clock cycles = 4ns
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job.get_simulated_samples().con1.plot()
 
 else:
