@@ -1,3 +1,16 @@
+"""
+The program simply consists in playing a single tone continuously to calibrate an IQ mixer.
+The output of the mixer need to be connected to a spectrum analyzer and the setting of the DC offsets, gain and phase
+needs to be done manually.
+If the API to get the data from the spectrum analyzer is available, then the commented lines below can be used to
+semi-automatize the process.
+
+Next steps before going to the next node:
+    - Update the DC offsets (config/controllers/"con1"/analog_outputs) in the configuration.
+    - Update the DC gain and phase of the IQ signals (mixer_qubit_g & mixer_qubit_g or mixer_resonator_g & mixer_resonator_g)
+    in the configuration.
+"""
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
@@ -5,7 +18,7 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-element = "qubit"
+element = "resonator"
 
 with program() as cw_output:
     with infinite_loop_():
@@ -15,7 +28,7 @@ with program() as cw_output:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 qm = qmm.open_qm(config)
 
 job = qm.execute(cw_output)
