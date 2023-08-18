@@ -98,7 +98,7 @@ with program() as drag:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -117,23 +117,36 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(drag)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["state1", "state2", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["I1", "I2", "Q1", "Q2", "state1", "state2", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        state1, state2, iteration = results.fetch_all()
+        I1, I2, Q1, Q2, state1, state2, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
+        plt.suptitle("DRAG coefficient calibration (Yale)")
+        plt.subplot(311)
         plt.cla()
-        plt.suptitle(311)
+        plt.plot(amps * drag_coef, I1, label="x180y90")
+        plt.plot(amps * drag_coef, I2, label="y180x90")
+        plt.ylabel("I [a.u.]")
+        plt.legend()
+        plt.subplot(312)
+        plt.cla()
+        plt.plot(amps * drag_coef, Q1, label="x180y90")
+        plt.plot(amps * drag_coef, Q2, label="y180x90")
+        plt.ylabel("Q [a.u.]")
+        plt.legend()
+        plt.subplot(313)
+        plt.cla()
         plt.plot(amps * drag_coef, state1, label="x180y90")
         plt.plot(amps * drag_coef, state2, label="y180x90")
         plt.xlabel("Drag coefficient")
         plt.ylabel("g-e transition probability")
-        plt.title("DRAG coefficient calibration (Yale)")
         plt.legend()
         plt.tight_layout()
+        plt.pause(0.1)

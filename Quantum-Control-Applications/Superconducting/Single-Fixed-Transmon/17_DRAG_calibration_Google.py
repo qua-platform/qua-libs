@@ -62,16 +62,16 @@ with program() as drag:
                 with for_(pulses, iter_min, pulses <= it, pulses + d):
                     play("x180" * amp(1, 0, 0, a), "qubit")
                     play("x180" * amp(-1, 0, 0, -a), "qubit")
-            # Align the two elements to measure after playing the qubit pulses.
-            align("qubit", "resonator")
-            # Measure the resonator and extract the qubit state
-            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
-            # Wait for the qubit to decay to the ground state
-            wait(thermalization_time * u.ns, "resonator")
-            # Save the 'I' & 'Q' quadratures to their respective streams
-            save(I, I_st)
-            save(Q, Q_st)
-            save(state, state_st)
+                # Align the two elements to measure after playing the qubit pulses.
+                align("qubit", "resonator")
+                # Measure the resonator and extract the qubit state
+                state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+                # Wait for the qubit to decay to the ground state
+                wait(thermalization_time * u.ns, "resonator")
+                # Save the 'I' & 'Q' quadratures to their respective streams
+                save(I, I_st)
+                save(Q, Q_st)
+                save(state, state_st)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
@@ -85,7 +85,7 @@ with program() as drag:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -116,19 +116,21 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.suptitle("DRAG calibration (Google)")
-        plt.subplot(311)
+        plt.subplot(131)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, I, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.ylabel(r"Drag coefficient $\alpha$")
         plt.title("I")
-        plt.subplot(312)
+        plt.subplot(132)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, Q, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.title("Q")
-        plt.subplot(313)
+        plt.subplot(133)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, state, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.title("State")
+        plt.tight_layout()
+        plt.pause(0.1)
