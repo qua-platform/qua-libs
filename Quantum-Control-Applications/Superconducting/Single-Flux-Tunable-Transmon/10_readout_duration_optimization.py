@@ -1,69 +1,47 @@
+"""
+        READOUT OPTIMISATION: DURATION
+This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
+(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
+|e> state). The "demod.accumulated" method is employed to assess the state of the resonator over varying durations.
+Reference: (https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=accumulated#accumulated-demodulation)
+The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to determine
+the Signal-to-Noise Ratio (SNR). The readout duration that offers the highest SNR is identified as the optimal choice.
+Note: To observe the resonator's behavior during ringdown, the integration weights length should exceed the readout_pulse length.
+
+Prerequisites:
+    - Determination of the resonator's resonance frequency when coupled to the qubit in focus (referred to as "resonator_spectroscopy").
+    - Calibration of the qubit pi pulse (x180) using methods like qubit spectroscopy, rabi_chevron, and power_rabi,
+      followed by an update to the configuration.
+    - Calibration of both the readout frequency and amplitude, with subsequent configuration updates.
+    - Set the desired flux bias
+
+Before proceeding to the next node:
+    - Adjust the readout duration setting, labeled as "readout_len", in the configuration.
+"""
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
+import warnings
 
-###########
-# Helpers #
-###########
-
-
-def divide_array_in_half(arr):
-    split_index = len(arr) // 2
-    arr1 = arr[:split_index]
-    arr2 = arr[split_index:]
-    return arr1, arr2
-
-
-def create_complex_array(arr1, arr2):
-    return arr1 + 1j * arr2
-
-
-def plot_three_complex_arrays(arr1, arr2, arr3):
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real, label="real")
-    ax1.plot(arr1.imag, label="imag")
-    ax1.set_title("ground state")
-    ax1.set_xlabel("Clock cycles")
-    ax1.set_ylabel("demod traces [a.u.]")
-    ax1.legend()
-    ax2.plot(arr2.real, label="real")
-    ax2.plot(arr2.imag, label="imag")
-    ax2.set_title("excited state")
-    ax2.set_xlabel("Clock cycles")
-    ax2.set_ylabel("demod traces [a.u.]")
-    ax2.legend()
-    ax3.plot(arr3.real, label="real")
-    ax3.plot(arr3.imag, label="imag")
-    ax3.set_title("SNR")
-    ax3.set_xlabel("Clock cycles")
-    ax3.set_ylabel("subtracted traces [a.u.]")
-    ax3.legend()
-    plt.show()
+warnings.filterwarnings("ignore")
 
 
 ###################
 # The QUA program #
 ###################
-"""
-If you want to obtain the behavior of the resonator during the ringdown, the integration weights
-length needs to be larger than the readout_pulse length.
-"""
 
-division_length = 1  # in clock cycles
+division_length = 10  # in clock cycles
 number_of_divisions = int(readout_len / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
 n_avg = 1e4  # number of averages
-cooldown_time = 5 * qubit_T1  # thermal decay time of the qubit
 
-qubit_operation = "x180"
-
-with program() as opt_weights:
+with program() as ro_weights_opt:
     n = declare(int)
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
@@ -74,11 +52,14 @@ with program() as opt_weights:
     ind = declare(int)
 
     n_st = declare_stream()
-    I_st = declare_stream()
-    Q_st = declare_stream()
+    Ig_st = declare_stream()
+    Qg_st = declare_stream()
+    Ie_st = declare_stream()
+    Qe_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        # ground state
+        # Measure the ground state.
+        # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
         measure(
             "readout",
             "resonator",
@@ -88,19 +69,20 @@ with program() as opt_weights:
             demod.accumulated("minus_sin", QI, division_length, "out1"),
             demod.accumulated("cos", QQ, division_length, "out2"),
         )
-
+        # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
-            save(I[ind], I_st)
+            save(I[ind], Ig_st)
             assign(Q[ind], QQ[ind] + QI[ind])
-            save(Q[ind], Q_st)
-
-        wait(cooldown_time * u.ns, "resonator")
+            save(Q[ind], Qg_st)
+        # Wait for the qubit to decay to the ground state
+        wait(thermalization_time * u.ns, "resonator")
 
         align()
 
-        # excited state
-        play(qubit_operation, "qubit")
+        # Measure the excited state.
+        # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
+        play("x180", "qubit")
         align("qubit", "resonator")
         measure(
             "readout",
@@ -111,75 +93,109 @@ with program() as opt_weights:
             demod.accumulated("minus_sin", QI, division_length, "out1"),
             demod.accumulated("cos", QQ, division_length, "out2"),
         )
-
+        # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
-            save(I[ind], I_st)
+            save(I[ind], Ie_st)
             assign(Q[ind], QQ[ind] + QI[ind])
-            save(Q[ind], Q_st)
+            save(Q[ind], Qe_st)
 
-        wait(cooldown_time * u.ns, "resonator")
-
+        # Wait for the qubit to decay to the ground state
+        wait(thermalization_time * u.ns, "resonator")
+        # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
     with stream_processing():
         n_st.save("iteration")
         # mean values
-        I_st.buffer(2 * number_of_divisions).average().save("I")
-        Q_st.buffer(2 * number_of_divisions).average().save("Q")
+        Ig_st.buffer(number_of_divisions).average().save("Ig_avg")
+        Qg_st.buffer(number_of_divisions).average().save("Qg_avg")
+        Ie_st.buffer(number_of_divisions).average().save("Ie_avg")
+        Qe_st.buffer(number_of_divisions).average().save("Qe_avg")
         # variances
         (
-            ((I_st.buffer(2 * number_of_divisions) * I_st.buffer(2 * number_of_divisions)).average())
-            - (I_st.buffer(2 * number_of_divisions).average() * I_st.buffer(2 * number_of_divisions).average())
-        ).save("I_var")
+            ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
+            - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
+        ).save("Ig_var")
         (
-            ((Q_st.buffer(2 * number_of_divisions) * Q_st.buffer(2 * number_of_divisions)).average())
-            - (Q_st.buffer(2 * number_of_divisions).average() * Q_st.buffer(2 * number_of_divisions).average())
-        ).save("Q_var")
+            ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
+            - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
+        ).save("Qg_var")
+        (
+            ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
+            - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
+        ).save("Ie_var")
+        (
+            ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
+            - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
+        ).save("Qe_var")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
-#######################
-# Simulate or execute #
-#######################
+###########################
+# Run or Simulate Program #
+###########################
 
 simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=1000)  # in clock cycles
-    job = qmm.simulate(config, opt_weights, simulation_config)
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, ro_weights_opt, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
-    job = qm.execute(opt_weights)
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(ro_weights_opt)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["iteration"], mode="live")
+    results = fetching_tool(
+        job,
+        data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"],
+        mode="live",
+    )
     # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        iteration = results.fetch_all()[0]
+        Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Derive the SNR
+        ground_trace = Ig_avg + 1j * Qg_avg
+        excited_trace = Ie_avg + 1j * Qe_avg
+        var = (Ie_var + Qe_var + Ig_var + Qg_var) / 4
+        SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
+        # Plot results
+        plt.subplot(221)
+        plt.cla()
+        plt.plot(ground_trace.real, label="ground")
+        plt.plot(excited_trace.real, label="excited")
+        plt.xlabel("Clock cycles [4ns]")
+        plt.ylabel("demodulated traces [V]")
+        plt.title("Real part")
+        plt.legend()
 
-    res_handles = job.result_handles
+        plt.subplot(222)
+        plt.cla()
+        plt.plot(ground_trace.imag, label="ground")
+        plt.plot(excited_trace.imag, label="excited")
+        plt.xlabel("Clock cycles [4ns]")
+        plt.title("Imaginary part")
+        plt.legend()
 
-    Ie, Ig = divide_array_in_half(res_handles.get("I").fetch_all())
-    Qe, Qg = divide_array_in_half(res_handles.get("Q").fetch_all())
-    Ie_var, Ig_var = divide_array_in_half(res_handles.get("I_var").fetch_all())
-    Qe_var, Qg_var = divide_array_in_half(res_handles.get("Q_var").fetch_all())
-
-    var = (Ie_var + Qe_var + Ig_var + Qg_var) / 4
-
-    ground_trace = create_complex_array(Ig, Qg)
-    excited_trace = create_complex_array(Ie, Qe)
-    SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
-    plot_three_complex_arrays(ground_trace, excited_trace, SNR)
-    print(
-        f"The optimal readout length is {np.argmax(SNR)*number_of_divisions*division_length} clock cycles (SNR={max(SNR)})"
-    )
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
-    qm.close()
+        plt.subplot(212)
+        plt.cla()
+        plt.plot(SNR, ".-")
+        plt.xlabel("Clock cycles [4ns]")
+        plt.ylabel("SNR")
+        plt.title("SNR")
+        plt.pause(0.1)
+        plt.tight_layout()
+        # Get the optimal readout length in ns
+        opt_readout_length = int(np.round(np.argmax(SNR) * division_length / 4) * 4 * 4)
+    print(f"The optimal readout length is {opt_readout_length} ns (SNR={max(SNR)})")
