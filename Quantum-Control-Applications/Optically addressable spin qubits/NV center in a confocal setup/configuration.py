@@ -64,6 +64,7 @@ detection_delay_2 = 80 * u.ns
 mw_delay = 0 * u.ns
 laser_delay_1 = 0 * u.ns
 laser_delay_2 = 0 * u.ns
+wait_between_runs = 100
 
 config = {
     "version": 1,

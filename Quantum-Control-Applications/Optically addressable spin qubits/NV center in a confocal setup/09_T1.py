@@ -1,5 +1,19 @@
 """
-T1.py: Measures T1. Can measure the decay from either |1> or |0>.
+       T1 MEASUREMENT
+The program consists in measuring the photon counts (in |0> and |1> successively) received by the SPCM across 
+varying wait times either after initialization (start from |0>), or after a pi pulse (start from |1>).
+The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
+
+The data is then post-processed to determine the thermal relaxation time T1.
+
+Prerequisites:
+    - Ensure calibration of the different delays in the system (calibrate_delays).
+    - Having updated the different delays in the configuration.
+    - Having updated the NV frequency, labeled as "NV_IF_freq", in the configuration.
+    - Having set the pi pulse amplitude and duration in the configuration
+
+Next steps before going to the next node:
+    -
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
@@ -15,72 +29,78 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-t_vec = np.arange(4, 250, 10)  # +0.1 to include t_max in array
-n_avg = 1_000_000
+# The wait time vector in clock cycles (4ns)
+t_vec = np.arange(4, 250, 10)
+n_avg = 1_000_000  # The number averaging iterations
 start_from_one = False
 
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts
-    counts2_dark = declare(int)  # saves number of photon counts
-    times1 = declare(int, size=100)
-    times2 = declare(int, size=100)
-    times2_dark = declare(int, size=100)
+    counts_dark = declare(int)  # saves number of photon counts
+    times1 = declare(int, size=100)  # QUA vector for storing the time-tags
+    times2 = declare(int, size=100)  # QUA vector for storing the time-tags
+    times_dark = declare(int, size=100)  # QUA vector for storing the time-tags
     t = declare(int)  # variable to sweep over in time
     n = declare(int)  # variable to for_loop
     counts_1_st = declare_stream()  # stream for counts
     counts_2_st = declare_stream()  # stream for counts
-    counts_2_st_dark = declare_stream()  # stream for counts
+    counts_dark_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
+    # Spin initialization
     play("laser_ON", "AOM1")
-    wait(100)
+    wait(100 * u.ns, "AOM1")
+
+    # T1 sequence
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-            if start_from_one:
+            # Measure in |0>
+            if start_from_one:  # Choose to start either from |0> or |1>
                 play("x180" * amp(1), "NV")
-            wait(t, "NV")  # variable delay in spin Echo
+            wait(t, "NV")  # variable delay before measurement
+            # To measure in |0> keeping the sequence time constant
             play("x180" * amp(0), "NV")
-
-            align()
-
+            align()  # Play the laser pulse after the mw sequence
+            # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times1, meas_len_1, counts1))
             save(counts1, counts_1_st)  # save counts
-            wait(100 * u.ns, "AOM1")
+            wait(wait_between_runs * u.ns, "AOM1")
 
             align()
-
-            if start_from_one:
+            # Measure in |1>
+            if start_from_one:  # Choose to start either from |0> or |1>
                 play("x180" * amp(1), "NV")
             wait(t, "NV")  # variable delay in spin Echo
-            play("x180" * amp(1), "NV")  # Pi pulse to qubit to measure second state
-
-            align()
-
+            # To measure in |1>
+            play("x180" * amp(1), "NV")
+            align()  # Play the laser pulse after the mw sequence
+            # Measure and detect the photons on SPCM1
             play("laser_ON", "AOM1")
             measure("readout", "SPCM1", None, time_tagging.analog(times2, meas_len_1, counts2))
             save(counts2, counts_2_st)  # save counts
-            wait(100 * u.ns, "AOM1")
+            wait(wait_between_runs * u.ns, "AOM1")
 
-            if start_from_one:
+            # Measure dark counts
+            if start_from_one:  # Choose to start either from |0> or |1>
                 play("x180" * amp(0), "NV")
             wait(t, "NV")  # variable delay in spin Echo
             play("x180" * amp(0), "NV")  # Pi pulse to qubit to measure second state
-
-            align()
-
+            align()  # Play the laser pulse after the mw sequence
+            # Measure and detect the dark counts on SPCM1
             play("laser_ON", "AOM1")
-            measure("readout", "SPCM1", None, time_tagging.analog(times2_dark, meas_len_1, counts2_dark))
-            save(counts2_dark, counts_2_st_dark)  # save counts
-            wait(100 * u.ns, "AOM1")
+            measure("readout", "SPCM1", None, time_tagging.analog(times_dark, meas_len_1, counts_dark))
+            save(counts_dark, counts_dark_st)  # save counts
+            wait(wait_between_runs * u.ns, "AOM1")
 
         save(n, n_st)  # save number of iteration inside for_loop
 
     with stream_processing():
+        # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         counts_1_st.buffer(len(t_vec)).average().save("counts1")
         counts_2_st.buffer(len(t_vec)).average().save("counts2")
-        counts_2_st_dark.buffer(len(t_vec)).average().save("counts2_dark")
+        counts_dark_st.buffer(len(t_vec)).average().save("counts_dark")
         n_st.save("iteration")
 
 #####################################
@@ -104,24 +124,23 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts1", "counts2", "counts_dark", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
         # Fetch results
-        counts1, counts2, iteration = results.fetch_all()
+        counts1, counts2, counts_dark, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot data
         plt.cla()
-        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s))
-        plt.plot(4 * t_vec, counts2 / 1000 / (meas_len_1 / u.s))
-        plt.plot(4 * t_vec, counts2_dark / 1000 / (meas_len_1 / u.s))
-        plt.xlabel("Tau [ns]")
+        plt.plot(4 * t_vec, counts1 / 1000 / (meas_len_1 / u.s), label="counts in |0>")
+        plt.plot(4 * t_vec, counts2 / 1000 / (meas_len_1 / u.s), label="counts in |1>")
+        plt.plot(4 * t_vec, counts_dark / 1000 / (meas_len_1 / u.s), label="dark counts")
+        plt.xlabel("Wait time [ns]")
         plt.ylabel("Intensity [kcps]")
-        plt.legend(("counts 1", "counts 2"))
-        plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
+        plt.title(f"T1 - starting from  {'|1>' if start_from_one else '|0>'}")
+        plt.legend()
         plt.pause(0.1)
-

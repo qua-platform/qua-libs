@@ -30,7 +30,7 @@ n_avg = 1_000_000
 
 resolution = 12  # ns
 # total measurement length (ns), add 2*laser_delay to ensure that the window is larger than the laser pulse
-meas_len = int(initialization_len + 2*laser_delay)
+meas_len = int(initialization_len + 2 * laser_delay)
 # Time vector for plotting
 t_vec = np.arange(0, meas_len, 1)
 
@@ -89,7 +89,9 @@ with program() as calib_delays:
     with stream_processing():
         # Directly derive the histograms in the stream processing
         times_st.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist")
-        times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save("times_hist_dark")
+        times_st_dark.histogram([[i, i + (resolution - 1)] for i in range(0, meas_len, resolution)]).save(
+            "times_hist_dark"
+        )
         n_st.save("iteration")
 
 #####################################

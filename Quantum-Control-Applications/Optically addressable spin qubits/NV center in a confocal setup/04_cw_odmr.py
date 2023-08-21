@@ -2,9 +2,14 @@
         CW Optically Detected Magnetic Resonance (ODMR)
 The program consists in playing a mw pulse and the readout laser pulse simultaneously to extract
 the photon counts received by the SPCM across varying intermediate frequencies.
+The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
 
 The data is then post-processed to determine the spin resonance frequency.
 This frequency can be used to update the NV intermediate frequency in the configuration under "NV_IF_freq".
+
+Prerequisites:
+    - Ensure calibration of the different delays in the system (calibrate_delays).
+    - Update the different delays in the configuration
 
 Next steps before going to the next node:
     - Update the NV frequency, labeled as "NV_IF_freq", in the configuration.
@@ -23,7 +28,7 @@ from configuration import *
 
 # Frequency vector
 f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)
-n_avg = 100_000  # number of averages
+n_avg = 1_000_000  # number of averages
 readout_len = long_meas_len_1  # Readout duration for this experiment
 
 with program() as cw_odmr:
@@ -46,7 +51,7 @@ with program() as cw_odmr:
             # ... and the laser pulse simultaneously (the laser pulse is delayed by 'laser_delay_1')
             play("laser_ON", "AOM1", duration=readout_len * u.ns)
             wait(1_000 * u.ns, "SPCM1")  # so readout don't catch the first part of spin reinitialization
-            # Measure and detect the photons of SPCM1
+            # Measure and detect the photons on SPCM1
             measure("long_readout", "SPCM1", None, time_tagging.analog(times, readout_len, counts))
 
             save(counts, counts_st)  # save counts on stream

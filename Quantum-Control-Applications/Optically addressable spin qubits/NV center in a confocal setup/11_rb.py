@@ -1,3 +1,21 @@
+"""
+        SINGLE QUBIT RANDOMIZED BENCHMARKING (for gates >= 40ns)
+The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterwards.
+Each random sequence is derived on the FPGA for the maximum depth (specified as an input) and played for each depth
+asked by the user (the sequence is truncated to the desired depth). Each truncated sequence ends with the recovery gate,
+found at each step thanks to a preloaded lookup table (Cayley table), that will bring the qubit back to its ground state.
+
+Each sequence is played n_avg times for averaging. A second averaging is performed by playing different random sequences.
+
+The data is then post-processed to extract the single-qubit gate fidelity and error per gate
+.
+Prerequisites:
+    - Ensure calibration of the different delays in the system (calibrate_delays).
+    - Having updated the different delays in the configuration.
+    - Having updated the NV frequency, labeled as "NV_IF_freq", in the configuration.
+    - Having set the pi pulse amplitude and duration in the configuration
+"""
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -10,18 +28,18 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
 
 ##############################
 # Program-specific variables #
 ##############################
-inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-max_circuit_depth = 1000
-num_of_sequences = 500
-n_avg = 20
-seed = 345324
-delta_clifford = 10  # Must be > 1
+num_of_sequences = 50  # Number of random sequences
+n_avg = 20  # Number of averaging loops for each random sequence
+max_circuit_depth = 1000  # Maximum circuit depth
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+seed = 345324  # Pseudo-random number generator seed
+# List of recovery gates from the lookup table
+inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
 
 def power_law(power, a, b, p):
@@ -127,29 +145,31 @@ def play_sequence(sequence_list, depth):
 # The QUA program #
 ###################
 with program() as rb:
-    depth = declare(int)
-    depth_target = declare(int)
+    depth = declare(int)  # QUA variable for the varying depth
+    depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)
+    # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
-    m = declare(int)
-    n = declare(int)
-    counts = declare(int)
-    times = declare(int, size=100)
+    m = declare(int)  # QUA variable for the loop over random sequences
+    n = declare(int)  # QUA variable for the averaging loop
+    counts = declare(int)  # saves number of photon counts
+    times = declare(int, size=100)  # QUA vector for storing the time-tags
+    # The relevant streams
+    m_st = declare_stream()
     counts_st = declare_stream()
     times_st = declare_stream()
-    m_st = declare_stream()
 
-    with for_(m, 0, m < num_of_sequences, m + 1):
-        sequence_list, inv_gate_list = generate_sequence()
+    with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
+        sequence_list, inv_gate_list = generate_sequence()  # Generate the random sequence of length max_circuit_depth
 
-        assign(depth_target, 0)
-
+        assign(depth_target, 0)  # Initialize the current depth to 0
         with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
-
+            # Only played the depth corresponding to target_depth
             with if_((depth == 1) | (depth == depth_target)):
+                # Spin initialization
                 play("laser_ON", "AOM1")
                 wait(100 * u.ns, "AOM1")
 
@@ -157,25 +177,31 @@ with program() as rb:
                     # The strict_timing ensures that the sequence will be played without gaps
                     with strict_timing_():
                         play_sequence(sequence_list, depth)
-                    align()
+                    align()  # Play the laser pulse after the Echo sequence
+                    # Measure and detect the photons on SPCM1
                     play("laser_ON", "AOM1")
                     measure("readout", "SPCM1", None, time_tagging.analog(times, meas_len_1, counts))
                     save(counts, counts_st)  # save counts
-                    wait(100 * u.ns)  # wait in between iterations
+                    wait(wait_between_runs * u.ns)  # wait in between iterations
 
+                # Go to the next depth
                 assign(depth_target, depth_target + delta_clifford)
-
+            # Reset the last gate of the sequence back to the original Clifford gate
+            # (that was replaced by the recovery gate at the beginning)
             assign(sequence_list[depth], saved_gate)
+        # Save the counter for the progress bar
         save(m, m_st)
 
     with stream_processing():
         m_st.save("iteration")
-        counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-            "counts"
-        )
+        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
         counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
             num_of_sequences
-        ).save("counts_2d")
+        ).save("counts")
+        # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+        counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            "counts_avg"
+        )
 
 #####################################
 #  Open Communication with the QOP  #
@@ -198,7 +224,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["counts", "counts_2d", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["counts_avg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -207,51 +233,61 @@ else:
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while results.is_processing():
         # data analysis
-        counts, counts_2d, iteration = results.fetch_all()
+        counts_avg, iteration = results.fetch_all()
         # Progress bar
         progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
-        value_avg = counts
-        # need renormalization to contrast to be able to do fitting
-        error_avg = np.std(counts_2d, axis=0)
-        # Plot results
+        # Plot averaged values
         plt.cla()
-        plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
-        # pars, cov = curve_fit(
-        #     f=power_law,
-        #     xdata=x,
-        #     ydata=value_avg,
-        #     p0=[0.5, 0.5, 0.9],
-        #     bounds=(-np.inf, np.inf),
-        #     maxfev=2000,
-        # )
-        # plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+        plt.plot(x, counts_avg, marker=".")
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
         plt.title("Single qubit RB")
         plt.pause(0.1)
+    # At the end of the program, fetch the non-averaged results to get the error-bars
 
-    # stdevs = np.sqrt(np.diag(cov))
+    results = fetching_tool(job, data_list=["counts"])
+    counts = results.fetch_all()[0]
+    value_avg = np.mean(counts, axis=0)
+    error_avg = np.std(counts, axis=0)
+    # data analysis
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value_avg,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
+    stdevs = np.sqrt(np.diag(cov))
 
-    # print("#########################")
-    # print("### Fitted Parameters ###")
-    # print("#########################")
-    # print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
-    # print("Covariance Matrix")
-    # print(cov)
+    print("#########################")
+    print("### Fitted Parameters ###")
+    print("#########################")
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+    print("Covariance Matrix")
+    print(cov)
 
-    # one_minus_p = 1 - pars[2]
-    # r_c = one_minus_p * (1 - 1 / 2**1)
-    # r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-    # r_c_std = stdevs[2] * (1 - 1 / 2**1)
-    # r_g_std = r_c_std / 1.875
+    one_minus_p = 1 - pars[2]
+    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
+    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_g_std = r_c_std / 1.875
 
-    # print("#########################")
-    # print("### Useful Parameters ###")
-    # print("#########################")
-    # print(
-    #     f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-    #     f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-    #     f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-    # )
+    print("#########################")
+    print("### Useful Parameters ###")
+    print("#########################")
+    print(
+        f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+        f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+        f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+    )
+
+    # Plots
+    plt.figure()
+    plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    plt.xlabel("Number of Clifford gates")
+    plt.ylabel("Sequence Fidelity")
+    plt.title("Single qubit RB")
 
     # np.savez("rb_values", value)
