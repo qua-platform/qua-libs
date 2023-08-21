@@ -20,7 +20,6 @@ freq_track_obj.f_ref = int(0.06e6)
 reps = 20
 oscillation = 1
 for arg in ["Pe_0", "Pe_corrected"]:
-
     with program() as prog:
         freq_track_obj.qua_declarations()
         freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 50, arg)
@@ -96,12 +95,10 @@ freq_track_obj.freq_domain_ramsey_full_sweep_analysis(job.result_handles, "Pe_fd
 # goal experiment #
 ###################
 with program() as prog:
-
     freq_track_obj.qua_declarations()
     i = declare(int)
 
     with for_(i, 0, i < 10000, i + 1):
-
         freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_ref", False)
         freq_track_obj.two_points_ramsey()
         freq_track_obj.time_domain_ramesy_full_sweep(reps, freq_track_obj.f_ref, 4, 50000, 200, "Pe_td_corr", True)
@@ -132,7 +129,6 @@ Pe_td_corr = []
 t = []
 
 while cond:
-
     Pe_td_ref_ = td_ref_handle.fetch_all()
     Pe_td_corr_ = td_corr_handle.fetch_all()
     t_ = time.time()

@@ -19,6 +19,8 @@ cooldown_time = 5 * qubit_T1 // 4
 # FLux pulse waveform generation
 flux_amp = -0.1
 flux_waveform = np.array([flux_amp] * const_flux_len)
+
+
 # signal.triang(const_flux_len)
 # np.cos(2 * np.pi * 10e6 * np.arange(0,const_flux_len)*1e-9)**2
 def baked_waveform(waveform, pulse_duration):
@@ -176,3 +178,5 @@ else:
         plt.legend(("exp", "theory"), loc="upper right")
         plt.tight_layout()
         plt.pause(0.1)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

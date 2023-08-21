@@ -1,9 +1,9 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
 
 n_avg = 100  # Number of averaging loops
 depletion_time = 1000 // 4
@@ -34,31 +34,40 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qm = qmm.open_qm(config)
-job = qm.execute(raw_trace_prog)
-res_handles = job.result_handles
-res_handles.wait_for_all_values()
-adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
-adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
 
-plt.figure()
-plt.subplot(121)
-plt.title("Single run")
-plt.plot(adc1_single_run, label="Input 1")
-plt.plot(adc2_single_run, label="Input 2")
-plt.xlabel("Time [ns]")
-plt.ylabel("Signal amplitude [V]")
-plt.legend()
+simulate = False
+if simulate:
+    # simulate the test_config QUA program
+    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11000))
+    job.get_simulated_samples().con1.plot()
 
-plt.subplot(122)
-plt.title("Averaged run")
-plt.plot(adc1, label="Input 1")
-plt.plot(adc2, label="Input 2")
-plt.xlabel("Time [ns]")
-plt.legend()
-plt.tight_layout()
+else:
+    qm = qmm.open_qm(config)
+    job = qm.execute(raw_trace_prog)
+    res_handles = job.result_handles
+    res_handles.wait_for_all_values()
+    adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
+    adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
+    adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
+    adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
 
-print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
-plt.show()
+    plt.figure()
+    plt.subplot(121)
+    plt.title("Single run")
+    plt.plot(adc1_single_run, label="Input 1")
+    plt.plot(adc2_single_run, label="Input 2")
+    plt.xlabel("Time [ns]")
+    plt.ylabel("Signal amplitude [V]")
+    plt.legend()
+
+    plt.subplot(122)
+    plt.title("Averaged run")
+    plt.plot(adc1, label="Input 1")
+    plt.plot(adc2, label="Input 2")
+    plt.xlabel("Time [ns]")
+    plt.legend()
+    plt.tight_layout()
+
+    print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+    plt.show()

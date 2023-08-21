@@ -210,7 +210,6 @@ class qubit_frequency_tracking:
 
     @staticmethod
     def _fit_ramsey(x, y):
-
         w = np.fft.fft(y)
         freq = np.fft.fftfreq(len(x))
         new_w = w[1 : len(freq // 2)]

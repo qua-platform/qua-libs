@@ -102,16 +102,18 @@ else:
     ax[1].set_xlabel("Freq (MHz)")
     plt.tight_layout()
 
-try:
-    from qualang_tools.plot.fitting import Fit
+    try:
+        from qualang_tools.plot.fitting import Fit
 
-    fit = Fit()
-    plt.figure()
-    plt.subplot(121)
-    fit.reflection_resonator_spectroscopy((resonator_IF_q1 + dfs) / u.MHz, np.abs(s1), plot=True)
-    plt.xlabel("rr1 IF (MHz)")
-    plt.subplot(122)
-    fit.reflection_resonator_spectroscopy((resonator_IF_q2 + dfs) / u.MHz, np.abs(s2), plot=True)
-    plt.xlabel("rr21 IF (MHz)")
-except (Exception,):
-    pass
+        fit = Fit()
+        plt.figure()
+        plt.subplot(121)
+        fit.reflection_resonator_spectroscopy((resonator_IF_q1 + dfs) / u.MHz, np.abs(s1), plot=True)
+        plt.xlabel("rr1 IF (MHz)")
+        plt.subplot(122)
+        fit.reflection_resonator_spectroscopy((resonator_IF_q2 + dfs) / u.MHz, np.abs(s2), plot=True)
+        plt.xlabel("rr21 IF (MHz)")
+    except (Exception,):
+        pass
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

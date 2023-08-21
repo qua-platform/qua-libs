@@ -9,6 +9,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 # AUXILIARY FUNCTIONS #
 #######################
 
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -31,6 +32,7 @@ def IQ_imbalance(g, phi):
 u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 # Set octave_config to None if no octave are present
@@ -43,6 +45,7 @@ mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
+thermalization_time = 5 * qubit_T1
 
 saturation_len = 1000
 saturation_amp = 0.1
@@ -54,16 +57,6 @@ square_pi_amp = 0.1
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
-
-gauss_len = 200
-gauss_sigma = gauss_len / 5
-gauss_amp = 0.25
-gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
-
-displace_len = 40
-displace_sigma = displace_len / 5
-displace_amp = 0.35
-displace_wf = displace_amp * gaussian(displace_len, displace_sigma)
 
 x180_len = 40
 x180_sigma = x180_len / 5
@@ -146,6 +139,7 @@ mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
 time_of_flight = 180
+depletion_time = 2 * u.us
 
 readout_len = 5000
 readout_amp = 0.2
@@ -184,7 +178,6 @@ config = {
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
-                "gauss": "gaussian_pulse",
                 "pi": "square_pi_pulse",
                 "pi_half": "square_pi_half_pulse",
                 "x90": "x90_pulse",
@@ -205,7 +198,6 @@ config = {
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",
-                "displace": "displace_pulse",
                 "readout": "readout_pulse",
             },
             "outputs": {
@@ -245,22 +237,6 @@ config = {
             "operation": "control",
             "length": saturation_len,
             "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
-        },
-        "gaussian_pulse": {
-            "operation": "control",
-            "length": gauss_len,
-            "waveforms": {
-                "I": "gauss_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "displace_pulse": {
-            "operation": "control",
-            "length": displace_len,
-            "waveforms": {
-                "I": "displace_wf",
-                "Q": "displace_wf",
-            },
         },
         "x90_pulse": {
             "operation": "control",
@@ -336,9 +312,7 @@ config = {
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "square_pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
-        "displace_wf": {"type": "arbitrary", "samples": displace_wf.tolist()},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
         "x90_Q_wf": {"type": "arbitrary", "samples": x90_Q_wf.tolist()},
         "x180_I_wf": {"type": "arbitrary", "samples": x180_I_wf.tolist()},

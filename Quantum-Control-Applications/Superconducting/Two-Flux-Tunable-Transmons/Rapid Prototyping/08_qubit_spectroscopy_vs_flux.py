@@ -114,7 +114,8 @@ else:
         plt.ylabel("q2_ifreq (MHz)")
         plt.tight_layout()
         plt.pause(0.1)
-
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
 # Set the relevant flux points
 # machine.qubits[0].z. =
 # machine.qubits[1].z. =

@@ -78,8 +78,10 @@ def allXY(pulses, qubit, resonator):
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
     if resonator == "rr0":
+        align(qubit, "rr1")
         measure("readout", "rr1", None)
     elif resonator == "rr1":
+        align(qubit, "rr0")
         measure("readout", "rr0", None)
 
     measure(
@@ -136,7 +138,6 @@ if simulate:
     plt.show()
 
 else:
-
     qm = qmm.open_qm(config)
 
     job = qm.execute(ALLXY)
@@ -165,3 +166,5 @@ else:
         plt.suptitle("All XY (n: %s)" % (n))
         plt.tight_layout()
         plt.pause(1.0)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

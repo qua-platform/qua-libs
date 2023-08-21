@@ -69,7 +69,6 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
-
     qm = qmm.open_qm(config)
     job = qm.execute(echo)
     # Get results from QUA program
@@ -91,3 +90,5 @@ else:
         plt.title("Ramsey with spin echo")
         plt.legend()
         plt.pause(0.1)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

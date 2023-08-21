@@ -110,3 +110,5 @@ else:
         plt.ylabel("g-e transition probability")
         plt.legend()
         plt.tight_layout()
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

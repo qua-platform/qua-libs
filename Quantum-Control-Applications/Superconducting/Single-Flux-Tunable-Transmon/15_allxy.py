@@ -40,6 +40,8 @@ sequence = [  # based on https://rsl.yale.edu/sites/default/files/physreva.82.pd
     ("x90", "x90"),
     ("y90", "y90"),
 ]
+
+
 # All XY macro generating the pulse sequences from a python list.
 def allXY(pulses):
     """
@@ -141,3 +143,5 @@ else:
         plt.suptitle("All XY")
         plt.tight_layout()
         plt.pause(0.1)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

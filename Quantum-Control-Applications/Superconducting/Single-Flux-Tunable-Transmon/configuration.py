@@ -10,6 +10,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 # AUXILIARY FUNCTIONS #
 #######################
 
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -53,11 +54,6 @@ square_pi_amp = 0.05
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
-
-gauss_len = 200
-gauss_sigma = gauss_len / 5
-gauss_amp = 0.25
-gauss_wf = gauss_amp * gaussian(gauss_len, gauss_sigma)
 
 x180_len = 40
 x180_sigma = x180_len / 5
@@ -184,7 +180,6 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
-                "gauss": "gaussian_pulse",
                 "pi": "pi_pulse",
                 "pi_half": "pi_half_pulse",
                 "x180": "x180_pulse",
@@ -319,14 +314,6 @@ config = {
                 "Q": "minus_y90_Q_wf",
             },
         },
-        "gaussian_pulse": {
-            "operation": "control",
-            "length": gauss_len,
-            "waveforms": {
-                "I": "gauss_wf",
-                "Q": "zero_wf",
-            },
-        },
         "readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
@@ -354,7 +341,6 @@ config = {
         "pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "gauss_wf": {"type": "arbitrary", "samples": gauss_wf.tolist()},
         "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
         "x90_Q_wf": {"type": "arbitrary", "samples": x90_Q_wf.tolist()},
         "x180_I_wf": {"type": "arbitrary", "samples": x180_I_wf.tolist()},

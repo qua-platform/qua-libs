@@ -70,3 +70,5 @@ else:
     # Plot data
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, b_print=True, b_plot=True)
     # If the readout fidelity is satisfactory enough, then the angle and threshold can be updated in the config file.
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

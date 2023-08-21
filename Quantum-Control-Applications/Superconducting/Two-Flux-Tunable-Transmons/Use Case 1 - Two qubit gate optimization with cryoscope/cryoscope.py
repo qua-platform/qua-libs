@@ -80,7 +80,6 @@ with program() as cryoscope:
     with for_(n, 0, n < n_avg, n + 1):
         # Notice it's <= to include t_max (This is only for integers!)
         with for_(segment, 0, segment <= total_len, segment + 1):
-
             with for_each_(flag, [True, False]):
                 # Cooldown
                 measure("readout", res_name, None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g))

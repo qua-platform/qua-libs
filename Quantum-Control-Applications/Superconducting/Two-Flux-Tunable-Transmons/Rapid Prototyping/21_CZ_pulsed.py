@@ -136,7 +136,8 @@ else:
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()
         plt.pause(0.1)
-
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
 # machine.qubits[0].z.cz.length =
 # machine.qubits[0].z.cz.level =
 # machine._save("quam_bootstrap_state.json")
