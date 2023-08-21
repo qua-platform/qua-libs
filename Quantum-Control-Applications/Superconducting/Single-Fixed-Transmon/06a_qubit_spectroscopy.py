@@ -123,7 +123,7 @@ else:
         plt.subplot(212)
         plt.cla()
         plt.plot(frequencies / u.MHz, signal.detrend(np.unwrap(phase)), ".")
-        plt.xlabel("qubit intermediate frequency [MHz]")
+        plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()

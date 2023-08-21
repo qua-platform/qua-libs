@@ -55,13 +55,18 @@ mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
+thermalization_time = 5 * qubit_T1
 
+# Continuous wave
 const_len = 100
-const_amp = 50 * u.mV
-
+const_amp = 0.1
+# Saturation_pulse
+saturation_len = 1000
+saturation_amp = 0.1
+# Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.05
-
+square_pi_amp = 0.1
+# Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
@@ -192,6 +197,7 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "pi": "pi_pulse",
                 "pi_half": "pi_half_pulse",
                 "x180": "x180_pulse",
@@ -261,6 +267,11 @@ config = {
                 "I": "const_wf",
                 "Q": "zero_wf",
             },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
         },
         "pi_pulse": {
             "operation": "control",
@@ -349,6 +360,7 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "pi_wf": {"type": "constant", "sample": square_pi_amp},
         "pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
