@@ -16,6 +16,7 @@ u = unit(coerce_to_integer=True)
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 ############################
@@ -148,7 +149,8 @@ mixer_resonator_phi = 0.0
 readout_len = 20
 readout_amp = 0.25
 
-time_of_flight = 300
+time_of_flight = 24
+depletion_time = 2 * u.us
 
 # Flux line
 const_flux_len = 200
