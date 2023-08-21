@@ -1,6 +1,10 @@
 """
-counter.py: Starts a counter which reports the current counts from the SPCM.
+        COUNTER
+The program consists in playing a laser pulse while performing time tagging continuously.
+This allows measuring the received photons as a function of time while adjusting external parameters
+to validate the experimental set-up.
 """
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -11,22 +15,32 @@ from configuration import *
 # The QUA program #
 ###################
 
+# Total duration of the measurement
 total_integration_time = int(100 * u.ms)  # 100ms
+# Duration of a single chunk. Needed because the OPX cannot measure for more than ~1ms
 single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
+# Number of chunks to get the total measurement time
 n_count = int(total_integration_time / single_integration_time_ns)
 
 with program() as counter:
-    times = declare(int, size=1000)
-    counts = declare(int)
-    total_counts = declare(int)
-    n = declare(int)
-    counts_st = declare_stream()
+    times = declare(int, size=1000)  # QUA vector for storing the time-tags
+    counts = declare(int)  # variable for number of counts of a single chunk
+    total_counts = declare(int)  # variable for the total number of counts
+    n = declare(int)  # number of iterations
+    counts_st = declare_stream()  # stream for counts
+
+    # Infinite loop to allow the user to work on the experimental set-up while looking at the counts
     with infinite_loop_():
+        # Loop over the chunks to measure for the total integration time
         with for_(n, 0, n < n_count, n + 1):
+            # Play the laser pulse...
             play("laser_ON", "AOM", duration=single_integration_time_cycles)
+            # ... while measuring the events from the SPCM
             measure("readout", "SPCM", None, time_tagging.analog(times, single_integration_time_ns, counts))
+            # Increment the received counts
             assign(total_counts, total_counts + counts)
+        # Save the counts
         save(total_counts, counts_st)
         assign(total_counts, 0)
 
@@ -36,12 +50,16 @@ with program() as counter:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
-simulate = True
+#######################
+# Simulate or execute #
+#######################
+simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=4000)  # in clock cycles
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job_sim = qmm.simulate(config, counter, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()
@@ -61,14 +79,14 @@ else:
     while res_handles.is_processing():
         new_counts = counts_handle.fetch_all()
         counts.append(new_counts["value"] / total_integration_time / 1000)
-        time.append(new_counts["timestamp"] / u.s)  # Convert timestams to seconds
+        time.append(new_counts["timestamp"] / u.s)  # Convert timestamps to seconds
         plt.cla()
         if len(time) > 50:
             plt.plot(time[-50:], counts[-50:])
         else:
             plt.plot(time, counts)
 
-        plt.xlabel("time [s]")
-        plt.ylabel("counts [kcps]")
+        plt.xlabel("Time [s]")
+        plt.ylabel("Counts [kcps]")
         plt.title("Counter")
         plt.pause(0.1)
