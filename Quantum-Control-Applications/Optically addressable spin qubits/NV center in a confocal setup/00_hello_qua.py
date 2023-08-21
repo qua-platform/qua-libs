@@ -1,4 +1,5 @@
 """
+        HELLO QUA
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
 

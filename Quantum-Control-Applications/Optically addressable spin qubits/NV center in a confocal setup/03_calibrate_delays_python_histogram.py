@@ -2,11 +2,12 @@
         CALIBRATE DELAYS
 The program consists in playing a mw pulse during a laser pulse and while performing time tagging throughout the sequence.
 This allows measuring all the delays in the system, as well as the NV initialization duration.
-
 This version processes the data in Python, which makes it slower but works better when the counts are high.
 
 Next steps before going to the next node:
-    - Update the ?? in the configuration.
+    - Update the initial laser delay (laser_delay_1) and initialization length (initialization_len_1) in the configuration.
+    - Update the delay between the laser and mw (mw_delay) and the mw length (mw_len) in the configuration.
+    - Update the measurement length (meas_len_1) in the configuration.
 """
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -84,12 +85,13 @@ else:
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(calib_delays)
-
+    # Get results from QUA program
     res_handles = job.result_handles
     times_handle = res_handles.get("times")
     iteration_handle = res_handles.get("iteration")
     times_handle.wait_for_values(1)
     iteration_handle.wait_for_values(1)
+    # Data processing initialization
     counts_vec = np.zeros(meas_len, int)
     old_count = 0
 
@@ -106,14 +108,14 @@ else:
         iteration = iteration_handle.fetch_all() + 1
         # Progress bar
         progress_counter(iteration, n_avg)
-
+        # Populate the histogram
         if new_count > old_count:
             times = times_handle.fetch(slice(old_count, new_count))["value"]
             for i in range(new_count - old_count):
                 for j in range(buffer_len):
                     counts_vec[times[i][j]] += 1
             old_count = new_count
-
+        # Plot the histogram
         plt.plot(t_vec + 0.5, counts_vec / 1000 / (1 * 1e-9) / iteration)
         plt.xlabel("t [ns]")
         plt.ylabel(f"counts [kcps / 1ns]")

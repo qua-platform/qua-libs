@@ -1,4 +1,5 @@
 """
+        MIXER CALIBRATION
 The program simply consists in playing a single tone continuously to calibrate an IQ mixer.
 The output of the mixer need to be connected to a spectrum analyzer and the setting of the DC offsets, gain and phase
 needs to be done manually.
