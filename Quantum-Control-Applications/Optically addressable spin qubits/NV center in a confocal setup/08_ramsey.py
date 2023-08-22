@@ -48,7 +48,7 @@ with program() as ramsey:
 
     # Spin initialization
     play("laser_ON", "AOM1")
-    wait(100 * u.ns, "AOM1")
+    wait(wait_for_initialization * u.ns, "AOM1")
 
     # Ramsey sequence
     with for_(n, 0, n < n_avg, n + 1):

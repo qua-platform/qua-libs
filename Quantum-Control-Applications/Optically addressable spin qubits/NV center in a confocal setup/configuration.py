@@ -44,6 +44,10 @@ initialization_len_2 = 3000 * u.ns
 meas_len_2 = 500 * u.ns
 long_meas_len_2 = 5_000 * u.ns
 
+# Relaxation time from the metastable state to the ground state after during initialization
+relaxation_time = 300 * u.ns
+wait_for_initialization = 5 * relaxation_time
+
 # MW parameters
 mw_amp_NV = 0.2  # in units of volts
 mw_len_NV = 100 * u.ns

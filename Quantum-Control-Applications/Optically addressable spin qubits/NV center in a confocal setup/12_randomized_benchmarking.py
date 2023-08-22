@@ -171,7 +171,7 @@ with program() as rb:
             with if_((depth == 1) | (depth == depth_target)):
                 # Spin initialization
                 play("laser_ON", "AOM1")
-                wait(100 * u.ns, "AOM1")
+                wait(wait_for_initialization * u.ns, "AOM1")
 
                 with for_(n, 0, n < n_avg, n + 1):
                     # The strict_timing ensures that the sequence will be played without gaps
