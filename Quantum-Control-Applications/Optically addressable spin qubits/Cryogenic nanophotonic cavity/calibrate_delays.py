@@ -33,7 +33,6 @@ with program() as calib_delays:
     n_st = declare_stream()  # stream for 'iteration'
 
     with for_(n, 0, n < n_avg, n + 1):
-
         wait(initial_delay_cycles, "AOM")  # wait before starting PL
         play("laser_ON", "AOM", duration=laser_len_cycles)
 
