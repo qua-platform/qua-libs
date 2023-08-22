@@ -1,12 +1,14 @@
 """
-hello_qua.py: template for basic qua program demonstration
+        HELLO QUA
+A simple sandbox to showcase different QUA functionalities during the installation.
 """
+
 import time
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
-
+import matplotlib.pyplot as plt
 
 ###################
 # The QUA program #
@@ -15,23 +17,27 @@ with program() as hello_QUA:
     a = declare(fixed)
     with infinite_loop_():
         with for_(a, 0, a < 1.1, a + 0.05):
-            play("pi" * amp(a), "NV")
+            play("x180" * amp(a), "NV")
         wait(25, "NV")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+
+###########################
+# Run or Simulate Program #
+###########################
 
 simulate = True
 
 if simulate:
-    simulation_config = SimulationConfig(
-        duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])  # in clock cycle
-    )
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job_sim = qmm.simulate(config, hello_QUA, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()
+
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(hello_QUA)
