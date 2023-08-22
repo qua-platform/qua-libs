@@ -1,5 +1,4 @@
 import numpy as np
-from single_photon_trace import photon_signal, photon_signal_shifted
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
@@ -192,13 +191,6 @@ config = {
                 "switch_ON": "switch_ON",
             },
         },
-        "photon_source": {
-            "singleInput": {"port": ("con1", 9)},
-            "operations": {
-                "photon": "photon_pulse",
-                "photon2": "photon_pulse2",
-            },
-        },
         "SNSPD": {
             # "singleInput": {"port": ("con1", 1)},  # not used
             "intermediate_frequency": Yb_IF_freq,
@@ -225,12 +217,6 @@ config = {
         },
     },
     "pulses": {
-        "photon_pulse": {"operation": "control", "length": len(photon_signal), "waveforms": {"single": "photon_wf"}},
-        "photon_pulse2": {
-            "operation": "control",
-            "length": len(photon_signal_shifted),
-            "waveforms": {"single": "photon_shifted_wf"},
-        },
         "const_pulse": {
             "operation": "control",
             "length": mw_len_NV,
@@ -329,8 +315,6 @@ config = {
         "pi_half_wf": {"type": "constant", "sample": pi_half_amp_NV},
         "minus_pi_half_wf": {"type": "constant", "sample": -pi_half_amp_NV},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "photon_wf": {"type": "arbitrary", "samples": (photon_signal / 5).tolist()},
-        "photon_shifted_wf": {"type": "arbitrary", "samples": (photon_signal_shifted / 5).tolist()},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},  # [(on/off, ns)]
