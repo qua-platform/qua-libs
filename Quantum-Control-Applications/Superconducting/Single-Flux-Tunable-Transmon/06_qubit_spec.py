@@ -8,8 +8,8 @@ the qubit intermediate frequency in the configuration under "qubit_IF".
 Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
 This is why calibrating the qubit mixer is highly recommended.
 
-This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters before
-performing the next calibration nodes.
+This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters (amplitude,
+duration, frequency) before performing the next calibration nodes.
 
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
