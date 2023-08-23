@@ -91,7 +91,7 @@ with program() as res_depletion_time:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
