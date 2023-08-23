@@ -167,11 +167,14 @@ with program() as cryoscope:
                 play("x90", "qubit")
                 # Play truncated flux pulse
                 align("qubit", "flux_line")
+                # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
+                wait(20 * u.ns)
                 with switch_(segment):
                     for j in range(0, len(flux_waveform) + 1):
                         with case_(j):
                             square_pulse_segments[j].run()
-                # Wait for the idle time set slightly above the maximum flux pulse duration
+                # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
+                # pulse arrives after the longest flux pulse
                 wait((len(flux_waveform) + 20) * u.ns, "qubit")
                 # Play second X/2 or Y/2
                 with if_(flag):
@@ -199,16 +202,20 @@ with program() as cryoscope:
         save(n, n_st)
 
     with stream_processing():
+        # Cast the data into a 2D matrix (x90/y90, flux pulse length), average the 2D matrices together and store the
+        # results on the OPX processor
         I_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I")
         Q_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q")
-        n_st.save("iteration")
         if state_discrimination:
+            # Also save the qubit state
             state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state")
         else:
+            # Also save the averaged I/Q values for the qubit in |g> and |e>
             Ig_st.average().save("Ig")
             Qg_st.average().save("Qg")
             Ie_st.average().save("Ie")
             Qe_st.average().save("Qe")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -227,7 +234,9 @@ if simulate:
     job = qmm.simulate(config, cryoscope, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope)
     # Get results from QUA program
     if state_discrimination:

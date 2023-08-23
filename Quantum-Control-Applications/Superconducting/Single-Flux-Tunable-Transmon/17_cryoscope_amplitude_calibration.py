@@ -51,8 +51,7 @@ n_avg = 10_000  # Number of averages
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
 # Flux amplitude sweep (as a pre-factor of the flux amplitude)
-n_flux_amp = 401
-flux_amp_array = np.linspace(0, -0.2, n_flux_amp)
+flux_amp_array = np.linspace(0, -0.2, 101)
 
 with program() as cryoscope_amp:
     n = declare(int)  # QUA variable for the averaging loop
@@ -78,12 +77,16 @@ with program() as cryoscope_amp:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(flux_amp, flux_amp_array)):
             with for_each_(flag, [True, False]):
-                wait(int(const_len / 4 * 2 + const_flux_len / 4), "resonator")
                 # Play first X/2
                 play("x90", "qubit")
                 # Play truncated flux pulse with varying amplitude
                 align("qubit", "flux_line")
+                # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
+                wait(20 * u.ns)
                 play("const" * amp(flux_amp), "flux_line")
+                align("qubit", "flux_line")
+                # Wait some time to ensure that the 2nd x90 pulse will arrive after the flux pulse
+                wait(20 * u.ns)
                 # Play second X/2 or Y/2
                 align("qubit", "flux_line")
                 with if_(flag):
@@ -107,17 +110,23 @@ with program() as cryoscope_amp:
                 wait(thermalization_time * u.ns, "resonator", "qubit")
                 save(I, I_st)
                 save(Q, Q_st)
+        save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(2).buffer(n_flux_amp).average().save("I")
-        Q_st.buffer(2).buffer(n_flux_amp).average().save("Q")
+        # Cast the data into a 2D matrix (x90/y90, flux amplitudes), average the 2D matrices together and store the
+        # results on the OPX processor
+        I_st.buffer(2).buffer(len(flux_amp_array)).average().save("I")
+        Q_st.buffer(2).buffer(len(flux_amp_array)).average().save("Q")
         if state_discrimination:
-            state_st.boolean_to_int().buffer(2).buffer(n_flux_amp).average().save("state")
+            # Also save the qubit state
+            state_st.boolean_to_int().buffer(2).buffer(len(flux_amp_array)).average().save("state")
         else:
+            # Also save the averaged I/Q values for the qubit in |g> and |e>
             Ig_st.average().save("Ig")
             Qg_st.average().save("Qg")
             Ie_st.average().save("Ie")
             Qe_st.average().save("Qe")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -135,28 +144,41 @@ if simulate:
     job = qmm.simulate(config, cryoscope_amp, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope_amp)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg"], mode="live")
-
+    if state_discrimination:
+        results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
+    else:
+        results = fetching_tool(job, data_list=["I", "Q", "Ie", "Qe", "Ig", "Qg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     xplot = flux_amp_array * const_flux_amp
     while results.is_processing():
         # Fetch results
-        I, Q, Ie, Qe, Ig, Qg = results.fetch_all()
+        if state_discrimination:
+            I, Q, state, iteration = results.fetch_all()
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+            # Bloch vector Sx + iSy
+            qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
+        else:
+            I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
+            # Phase of ground and excited states
+            phase_g = np.angle(Ig + 1j * Qg)
+            phase_e = np.angle(Ie + 1j * Qe)
+            # Phase of cryoscope measurement
+            phase = np.unwrap(np.angle(I + 1j * Q))
+            # Population in excited state
+            state = (phase - phase_g) / (phase_e - phase_g)
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+            # Bloch vector Sx + iSy
+            qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
 
-        # Phase of ground and excited states
-        phase_g = np.angle(Ig + 1j * Qg)
-        phase_e = np.angle(Ie + 1j * Qe)
-        # Phase of Cryoscope measurement
-        phase = np.unwrap(np.angle(I + 1j * Q))
-        # Population in excited state
-        pop = (phase - phase_g) / (phase_e - phase_g)
-        # Bloch vector Sx + iSy
-        qubit_state = (pop[:, 0] * 2 - 1) + 1j * (pop[:, 1] * 2 - 1)
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
         # qubit_phase = qubit_phase - qubit_phase[-1]
@@ -165,7 +187,9 @@ else:
         qubit_coherence = np.abs(qubit_state)
         # Quadratic fit of detuning versus flux pulse amplitude
         pol = np.polyfit(xplot, qubit_phase, deg=2)
-
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plots
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, np.sqrt(I**2 + Q**2))
@@ -182,7 +206,7 @@ else:
 
         plt.subplot(223)
         plt.cla()
-        plt.plot(xplot, pop)
+        plt.plot(xplot, state)
         plt.xlabel("Flux pulse amplitude [V]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
