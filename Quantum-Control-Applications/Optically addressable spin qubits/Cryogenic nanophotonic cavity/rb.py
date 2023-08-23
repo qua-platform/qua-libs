@@ -132,7 +132,6 @@ with program() as rb:
         sequence_list, inv_gate_list = generate_sequence()
 
         with for_(depth, 1, depth <= max_circuit_depth, depth + delta_depth):
-
             with for_(n, 0, n < n_avg, n + 1):
                 # Replacing the last gate in the sequence with the sequence's inverse gate
                 # The original gate is saved in 'saved_gate' and is being restored at the end

@@ -27,7 +27,6 @@ with program() as cw_odmr:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(f, f_min, f <= f_max, f + df):  # Notice it's <= to include f_max (This is only for integers!)
-
             # initialization
             play("laser_ON", "F_transition")
             align()
@@ -85,7 +84,6 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
     while results.is_processing():
-
         # counts = counts_handle.fetch_all()
         # iteration = iteration_handle.fetch_all()
 

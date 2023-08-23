@@ -32,7 +32,6 @@ with program() as T1:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, t_vec)):
-
             # initialization
             play("laser_ON", "F_transition")
             align()

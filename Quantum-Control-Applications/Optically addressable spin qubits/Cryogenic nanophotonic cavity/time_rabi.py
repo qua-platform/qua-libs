@@ -27,7 +27,6 @@ with program() as time_rabi:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(t, t_min, t <= t_max, t + dt):
-
             # initialization
             play("laser_ON", "F_transition")
             align()

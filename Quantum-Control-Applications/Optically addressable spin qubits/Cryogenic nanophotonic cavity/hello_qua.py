@@ -18,7 +18,6 @@ qmm = QuantumMachinesManager(
 # The QUA program #
 ###################
 with program() as hello_QUA:
-
     # amplitude modulation
     a = declare(fixed)
     with infinite_loop_():
