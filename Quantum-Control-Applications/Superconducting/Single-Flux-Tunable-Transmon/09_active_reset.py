@@ -1,23 +1,21 @@
 """
         ACTIVE RESET
-This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
-in the |g> state) and then after applying a pi pulse to the qubit (bringing the qubit to the |e> state) successively.
-The resulting IQ blobs are displayed, and the data is processed to determine:
-    - The rotation angle required for the integration weights, ensuring that the separation between |g> and |e> states
-      aligns with the 'I' quadrature.
-    - The threshold along the 'I' quadrature for effective qubit state discrimination.
-    - The readout fidelity matrix, which is also influenced by the pi pulse fidelity.
+This script is used to benchmark different types of qubit initialization including active reset protocols.
+the different methods are written in macros for better readability.
+
+Each protocol is detailed in the corresponding docstring, but the idea behind active reset is to first measure one
+quadrature of the resonator ("I") and compare it to one or two threshold in order to decide whether to apply a pi-pulse
+(qubit in |e>), do nothing (qubit in |g>) or measure again if the qubit state is undetermined (active_reset_two_thresholds).
+
+Then, after qubit initialization, the IQ blobs for |g> and |e> are measured again and the readout fidelity is derived
+similarly to what is done in IQ_blobs.py.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Having calibrated the IQ blobs (rotation_angle and ge_threshold).
     - (optional) Having calibrated the readout (readout_frequency_, _amplitude_, _duration_optimization).
-    - Set the desired flux bias
-
-Next steps before going to the next node:
-    - Update the rotation angle (rotation_angle) in the configuration.
-    - Update the g -> e threshold (ge_threshold) in the configuration.
+    - Having updated the rotation angle (rotation_angle) and g -> e threshold (ge_threshold) in the configuration (IQ_blobs.py).
 """
 
 from qm.qua import *
@@ -31,54 +29,114 @@ import matplotlib.pyplot as plt
 ##############################
 # Program-specific variables #
 ##############################
-threshold = ge_threshold  # Threshold used for ge state discrimination
+# "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
+initialization_method = "active_reset_one_threshold"
 n_shot = 10000  # Number of acquired shots
-max_tries = 2  # Maximum number of tries for active reset (no feedback if set to 0)
+# The thresholds ar calibrated with the IQ_blobs.py script:
+# If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
+# If I < threshold_g, then the qubit is assumed to be in |g>.
+# else, the qubit state is not determined accurately enough, so we just measure again.
+ge_threshold_g = ge_threshold*0.5
+ge_threshold_e = ge_threshold
+# Maximum number of tries for active reset
+max_tries = 2
 
 
-def qubit_initialization():
-    assign(count, 0)
-    assign(cont_condition, ((I > threshold) & (count < max_tries)))
-    with while_(cont_condition):
-        play("x180", "qubit")
-        align("qubit", "resonator")
-        measure("readout", "resonator", None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
-        assign(count, count + 1)
-        assign(cont_condition, ((I > threshold) & (count < max_tries)))
-    return count
+def qubit_initialization(method: str="thermalization"):
+    """
+    Allows to switch between several initialization methods.
 
-def active_reset_one_threshold(threshold_g, max_tries):
+    :param method: the desired initialization method among "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast".
+    :return: the number of tries to reset the qubit.
+    """
+    if method == "thermalization":
+        wait(thermalization_time * u.ns)
+        return 1
+    elif method == "active_reset_fast":
+        return active_reset_fast(ge_threshold_e)
+    elif method == "active_reset_one_threshold":
+        return active_reset_one_threshold(ge_threshold_e, max_tries)
+    elif method == "active_reset_two_thresholds":
+        return active_reset_two_thresholds(ge_threshold_g, ge_threshold_e, max_tries)
+    else:
+        raise ValueError(f"method {method} is not implemented.")
+
+def active_reset_one_threshold(threshold_g: float, max_tries: int):
+    """
+    Active reset protocol where the outcome of the measurement is compared to a pre-calibrated threshold (IQ_blobs.py).
+    If the qubit is in |e> (I>threshold), then play a pi pulse and measure again, else (qubit in |g>) return the number
+    of pi-pulses needed to reset the qubit.
+    The program waits for the resonator to deplete before playing the conditional pi-pulse so that the calibrated
+    pi-pulse parameters are still valid.
+
+    :param threshold_g: threshold between the |g> and |e> blobs - calibrated in IQ_blobs.py
+    :param max_tries: maximum number of iterations needed to reset the qubit before exiting the loop anyway.
+    :return: the number of tries to reset the qubit.
+    """
     I_reset = declare(fixed)
     counter = declare(int)
     assign(counter, 0)
     align("resonator", "qubit")
-    while (I_reset > threshold_g) & (counter < max_tries):
+    with while_((I_reset > threshold_g) & (counter < max_tries)):
+        # Measure the state of the resonator
         measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
         align("resonator", "qubit")
+        # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
+        # Play a conditional pi-pulse to actively reset the qubit
         play("x180", "qubit", condition=(I_reset > threshold_g))
+        # Update the counter for benchmarking purposes
         assign(counter, counter + 1)
-    return count
-def active_reset_two_thresholds(threshold_g, threshold_e, max_tries):
+    return counter
+def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_tries: int):
+    """
+    Active reset protocol where the outcome of the measurement is compared to two pre-calibrated thresholds (IQ_blobs.py).
+    If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
+    If I < threshold_g, then the qubit is assumed to be in |g> and the loop can be exited.
+    else, the qubit state is not determined accurately enough, so we just repeat the process.
+    The program waits for the resonator to deplete before playing the conditional pi-pulse so that the calibrated
+    pi-pulse parameters are still valid.
+
+    :param threshold_g: threshold "inside" the |g> blob, below which the qubit is in |g> with great certainty.
+    :param threshold_e: threshold between the |g> and |e> blobs - calibrated in IQ_blobs.py
+    :param max_tries: maximum number of iterations needed to reset the qubit before exiting the loop anyway.
+    :return: the number of tries to reset the qubit.
+    """
     I_reset = declare(fixed)
     counter = declare(int)
     assign(counter, 0)
     align("resonator", "qubit")
-    while (I_reset > threshold_g) & (counter < max_tries):
+    with while_((I_reset > threshold_g) & (counter < max_tries)):
+        # Measure the state of the resonator
         measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
         align("resonator", "qubit")
+        # Wait for the resonator to deplete
         wait(depletion_time * u.ns, "qubit")
+        # Play a conditional pi-pulse to actively reset the qubit
         play("x180", "qubit", condition=(I_reset > threshold_e))
+        # Update the counter for benchmarking purposes
         assign(counter, counter + 1)
-    return count
-def active_reset_fast(threshold_g):
+    return counter
+def active_reset_fast(threshold_g: float):
+    """
+    Active reset protocol where the outcome of the measurement is compared to a pre-calibrated threshold (IQ_blobs.py).
+    If the qubit is in |e> (I>threshold), then play a pi pulse, else (qubit in |g>) do nothing and proceed to the sequence.
+    The program waits for the resonator to deplete before playing the conditional pi-pulse so that the calibrated
+    pi-pulse parameters are still valid.
+
+    :param threshold_g: threshold between the |g> and |e> blobs - calibrated in IQ_blobs.py.
+    :return: 1
+    """
     I_reset = declare(fixed)
     align("resonator", "qubit")
+    # Measure the state of the resonator
     measure("readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_reset))
     align("resonator", "qubit")
+    # Wait for the resonator to deplete
     wait(depletion_time * u.ns, "qubit")
+    # Play a conditional pi-pulse to actively reset the qubit
     play("x180", "qubit", condition=(I > threshold_g))
+    return 1
 
 ###################
 # The QUA program #
@@ -98,15 +156,15 @@ with program() as active_reset_prog:
     Q_e = declare(fixed)
     I_e_st = declare_stream()
     Q_e_st = declare_stream()
-    count = declare(int)
+
     cont_condition = declare(bool)
     tries_st = declare_stream()
 
     with for_(n, 0, n < n_shot, n + 1):
         # Active reset
-        count = qubit_initialization()
+        count = qubit_initialization(method=initialization_method)
         align()
-        # Measure the state of the resonator
+        # Measure the state of the resonator after reset, qubit should be in |g>
         measure(
             "readout",
             "resonator",
@@ -122,13 +180,13 @@ with program() as active_reset_prog:
 
         align()  # global align
         # Active reset
-        count = qubit_initialization()
+        count = qubit_initialization(method=initialization_method)
         align()
         # Play the x180 gate to put the qubit in the excited state
         play("x180", "qubit")
         # Align the two elements to measure after playing the qubit pulse.
         align("qubit", "resonator")
-        # Measure the state of the resonator
+        # Measure the state of the resonator, qubit should be in |e>
         measure(
             "readout",
             "resonator",
@@ -139,6 +197,7 @@ with program() as active_reset_prog:
         # Save the 'I' & 'Q' quadratures to their respective streams for the excited state
         save(I_e, I_e_st)
         save(Q_e, Q_e_st)
+        # Save only the count when the qubit was not directly measured in |g>
         with if_(count > 0):
             save(count, tries_st)
 
@@ -174,7 +233,7 @@ else:
     Qg = res_handles.get("Q_g").fetch_all()["value"]
     Ie = res_handles.get("I_e").fetch_all()["value"]
     Qe = res_handles.get("Q_e").fetch_all()["value"]
-    average_tries = res_handles.get("average_tries").fetch_all()["value"]
+    average_tries = res_handles.get("average_tries").fetch_all()
     # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
     # for state discrimination and derive the fidelity matrix
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)
