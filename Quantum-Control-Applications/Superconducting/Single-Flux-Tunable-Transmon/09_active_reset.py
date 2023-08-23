@@ -36,13 +36,13 @@ n_shot = 10000  # Number of acquired shots
 # If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
 # If I < threshold_g, then the qubit is assumed to be in |g>.
 # else, the qubit state is not determined accurately enough, so we just measure again.
-ge_threshold_g = ge_threshold*0.5
+ge_threshold_g = ge_threshold * 0.5
 ge_threshold_e = ge_threshold
 # Maximum number of tries for active reset
 max_tries = 2
 
 
-def qubit_initialization(method: str="thermalization"):
+def qubit_initialization(method: str = "thermalization"):
     """
     Allows to switch between several initialization methods.
 
@@ -60,6 +60,7 @@ def qubit_initialization(method: str="thermalization"):
         return active_reset_two_thresholds(ge_threshold_g, ge_threshold_e, max_tries)
     else:
         raise ValueError(f"method {method} is not implemented.")
+
 
 def active_reset_one_threshold(threshold_g: float, max_tries: int):
     """
@@ -88,6 +89,8 @@ def active_reset_one_threshold(threshold_g: float, max_tries: int):
         # Update the counter for benchmarking purposes
         assign(counter, counter + 1)
     return counter
+
+
 def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_tries: int):
     """
     Active reset protocol where the outcome of the measurement is compared to two pre-calibrated thresholds (IQ_blobs.py).
@@ -117,6 +120,8 @@ def active_reset_two_thresholds(threshold_g: float, threshold_e: float, max_trie
         # Update the counter for benchmarking purposes
         assign(counter, counter + 1)
     return counter
+
+
 def active_reset_fast(threshold_g: float):
     """
     Active reset protocol where the outcome of the measurement is compared to a pre-calibrated threshold (IQ_blobs.py).
@@ -137,6 +142,7 @@ def active_reset_fast(threshold_g: float):
     # Play a conditional pi-pulse to actively reset the qubit
     play("x180", "qubit", condition=(I > threshold_g))
     return 1
+
 
 ###################
 # The QUA program #

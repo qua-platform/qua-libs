@@ -102,6 +102,7 @@ def filter_calc(exponential):
 
     return feedforward_taps, feedback_taps
 
+
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
@@ -116,6 +117,7 @@ def baked_waveform(waveform, pulse_duration):
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
+
 
 ###################
 # The QUA program #
@@ -134,7 +136,9 @@ flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_f
 
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
-step_response_th = [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse  # Perfect step response (square)
+step_response_th = (
+    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
+)  # Perfect step response (square)
 xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting
 
 with program() as cryoscope:
@@ -277,7 +281,7 @@ else:
         # Filtering and derivative of the phase to get the averaged frequency
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2):])
+        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
         step_response_volt = np.sqrt(step_response_freq)
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
@@ -339,10 +343,18 @@ else:
     plt.plot(xplot, no_filter, label="Fitted response without filter")
     plt.plot(xplot, with_filter, label="Fitted response with filter")
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
-    plt.text(max(xplot) // 2, max(step_response_volt) / 2, f"IIR = {iir}\nFIR = {fir}",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.text(max(xplot) // 4, max(step_response_volt) / 2, f"A = {A:.2f}\ntau = {tau:.2f}",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    plt.text(
+        max(xplot) // 2,
+        max(step_response_volt) / 2,
+        f"IIR = {iir}\nFIR = {fir}",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
+    plt.text(
+        max(xplot) // 4,
+        max(step_response_volt) / 2,
+        f"A = {A:.2f}\ntau = {tau:.2f}",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
     plt.legend(loc="upper right")

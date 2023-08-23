@@ -251,7 +251,7 @@ else:
         # Filtering and derivative of the phase to get the averaged frequency
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2):])
+        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
         step_response_volt = np.sqrt(step_response_freq)
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
@@ -314,10 +314,18 @@ else:
     plt.plot(xplot, no_filter, label="Fitted response without filter")
     plt.plot(xplot, with_filter, label="Fitted response with filter")
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
-    plt.text(max(durations)//2, max(step_response_volt)/2, f"IIR = {iir}\nFIR = {fir}",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.text(max(durations) // 4, max(step_response_volt)/2, f"A = {A:.2f}\ntau = {tau:.2f}",
-             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    plt.text(
+        max(durations) // 2,
+        max(step_response_volt) / 2,
+        f"IIR = {iir}\nFIR = {fir}",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
+    plt.text(
+        max(durations) // 4,
+        max(step_response_volt) / 2,
+        f"A = {A:.2f}\ntau = {tau:.2f}",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5),
+    )
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
     plt.legend(loc="upper right")

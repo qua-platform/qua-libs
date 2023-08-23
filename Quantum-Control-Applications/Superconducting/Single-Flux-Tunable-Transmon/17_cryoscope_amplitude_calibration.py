@@ -66,7 +66,6 @@ with program() as cryoscope_amp:
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
-
     if not state_discrimination:
         # Calibrate the ground and excited states readout for deriving the Bloch vector
         # The ge_averaged_measurement() function is defined in macros.py
