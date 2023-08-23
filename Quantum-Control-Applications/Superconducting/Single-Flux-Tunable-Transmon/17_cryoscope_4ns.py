@@ -14,7 +14,10 @@ measured by alternatively closing the Ramsey sequence with a "x90" or "y90" gate
 The results are then post-processed to retrieve the step function of the flux line which is fitted with an exponential
 function. The corresponding exponential parameters are then used to derive the FIR and IIR filter taps that will
 compensate for the distortions introduced by the flux line (wiring, bias-tee...).
-Such digital filters are then implemented on the OPX.
+Such digital filters are then implemented on the OPX. Note that these filters will introduce a global delay on all the
+output channels that may rotate the IQ blobs so that you may need to recalibrate them for state discrimination or
+active reset protocols for instance. You can read more about these filters here:
+https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/output_filter/?h=filter#hardware-implementation
 
 The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more details about the sequence and
 the post-processing of the data.
@@ -103,19 +106,14 @@ def filter_calc(exponential):
 # The QUA program #
 ###################
 n_avg = 10_000  # Number of averages
-# Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the I quadrature).
-# Otherwise a preliminary sequence will be played to measured the averaged I and Q values when the qubit is in |g> and |e>.
+# Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
+# Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
 # FLux pulse waveform generation
-# The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
-# fitting the step response with an exponential.
-zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
-zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
-total_zeros = zeros_after_pulse + zeros_before_pulse
-durations = np.arange(0, const_flux_len, 10)  # Flux pulse durations in clock cycles (4ns)
-flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * max(durations) + [0.0] * zeros_after_pulse)
-step_response_th = [1.0] * max(durations)  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 0.1, 1)  # x-axis for plotting
+durations = np.arange(0, const_flux_len // 4, 100)  # Flux pulse durations in clock cycles (4ns)
+flux_waveform = np.array([const_flux_amp] * max(durations))
+xplot = durations  # x-axis for plotting
+step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
@@ -147,13 +145,9 @@ with program() as cryoscope:
                 play("x90", "qubit")
                 # Play truncated flux pulse
                 align("qubit", "flux_line")
-                if zeros_before_pulse > 16:
-                    wait(zeros_before_pulse, "flux_line")
                 play("const", "flux_line", duration=t)
-                if zeros_after_pulse > 16:
-                    wait(zeros_after_pulse, "flux_line")
                 # Wait for the idle time set slightly above the maximum flux pulse duration
-                wait((len(flux_waveform) + 20) * u.ns, "qubit")
+                wait((int(max(durations)) + 20) * u.ns, "qubit")
                 # Play second X/2 or Y/2
                 with if_(flag):
                     play("x90", "qubit")
@@ -180,11 +174,11 @@ with program() as cryoscope:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I")
-        Q_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q")
+        I_st.buffer(2).buffer(len(durations)).average().save("I")
+        Q_st.buffer(2).buffer(len(durations)).average().save("Q")
         n_st.save("iteration")
         if state_discrimination:
-            state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state")
+            state_st.boolean_to_int().buffer(2).buffer(len(durations)).average().save("state")
         else:
             Ig_st.average().save("Ig")
             Qg_st.average().save("Qg")
@@ -218,7 +212,6 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    xplot = range(const_flux_len + 1)
     while results.is_processing():
         # Fetch results
         if state_discrimination:
@@ -282,6 +275,7 @@ else:
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
+        plt.legend()
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -307,26 +301,17 @@ else:
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
-    plt.subplot(121)
-    plt.plot(xplot, step_response_volt, "o-", label="Data")
-    plt.plot(xplot, exponential_decay(xplot, A, tau), label="Fit")
-    plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.axhline(y=1.01)
-    plt.axhline(y=0.99)
+    plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
+    plt.plot(xplot, no_filter, label="Fitted response without filter")
+    plt.plot(xplot, with_filter, label="Fitted response with filter")
+    plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
+    plt.text(max(durations)//2, max(step_response_volt)/2, f"IIR = {iir}\nFIR = {fir}",
+             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    plt.text(max(durations) // 4, max(step_response_volt)/2, f"A = {A:.2f}\ntau = {tau:.2f}",
+             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
-    # plt.legend()
-
-    plt.subplot(122)
-    plt.plot()
-    plt.plot(no_filter, label="After Bias-T without filter")
-    plt.plot(with_filter, label="After Bias-T with filter")
-    plt.plot(step_response_th, label="Ideal WF")  # pulse
-    plt.plot(step_response_volt, label="Experimental data")
-    plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.xlabel("Flux pulse duration [ns]")
-    plt.ylabel("Step response")
-    plt.tight_layout()
     plt.legend(loc="upper right")
+    plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

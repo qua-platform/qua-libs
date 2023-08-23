@@ -14,13 +14,17 @@ measured by alternatively closing the Ramsey sequence with a "x90" or "y90" gate
 The results are then post-processed to retrieve the step function of the flux line which is fitted with an exponential
 function. The corresponding exponential parameters are then used to derive the FIR and IIR filter taps that will
 compensate for the distortions introduced by the flux line (wiring, bias-tee...).
-Such digital filters are then implemented on the OPX.
+Such digital filters are then implemented on the OPX. Note that these filters will introduce a global delay on all the
+output channels that may rotate the IQ blobs so that you may need to recalibrate them for state discrimination or
+active reset protocols for instance. You can read more about these filters here:
+https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/output_filter/?h=filter#hardware-implementation
 
 The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more details about the sequence and
 the post-processing of the data.
 
 This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
-a 1ns resolution, but must be shorter than ~#TODO !!
+a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
+resolution (do 2ns steps instead of 1ns) or use the 4ns version (cryoscope_4ns.py).
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -117,8 +121,8 @@ def baked_waveform(waveform, pulse_duration):
 # The QUA program #
 ###################
 n_avg = 10_000  # Number of averages
-# Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the I quadrature).
-# Otherwise a preliminary sequence will be played to measured the averaged I and Q values when the qubit is in |g> and |e>.
+# Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
+# Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
@@ -130,8 +134,8 @@ flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_f
 
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
-step_response_th = [1.0] * (const_flux_len + 1)  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 0.1, 1)  # x-axis for plotting
+step_response_th = [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse  # Perfect step response (square)
+xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
@@ -233,7 +237,7 @@ else:
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
-    xplot = range(const_flux_len + 1)
+
     while results.is_processing():
         # Fetch results
         if state_discrimination:
@@ -322,26 +326,17 @@ else:
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
-    plt.subplot(121)
-    plt.plot(xplot, step_response_volt, "o-", label="Data")
-    plt.plot(xplot, exponential_decay(xplot, A, tau), label="Fit")
-    plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.axhline(y=1.01)
-    plt.axhline(y=0.99)
+    plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
+    plt.plot(xplot, no_filter, label="Fitted response without filter")
+    plt.plot(xplot, with_filter, label="Fitted response with filter")
+    plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
+    plt.text(max(xplot) // 2, max(step_response_volt) / 2, f"IIR = {iir}\nFIR = {fir}",
+             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    plt.text(max(xplot) // 4, max(step_response_volt) / 2, f"A = {A:.2f}\ntau = {tau:.2f}",
+             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
-    plt.legend()
-
-    plt.subplot(122)
-    plt.plot()
-    plt.plot(no_filter, label="After Bias-T without filter")
-    plt.plot(with_filter, label="After Bias-T with filter")
-    plt.plot(step_response_th, label="Ideal WF")  # pulse
-    plt.plot(step_response_volt, label="Experimental data")
-    plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
-    plt.xlabel("Flux pulse duration [ns]")
-    plt.ylabel("Step response")
-    plt.tight_layout()
     plt.legend(loc="upper right")
+    plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

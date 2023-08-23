@@ -56,7 +56,8 @@ fidelity.
     * [Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Cliffords).
 17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
     * [Cryoscope_amplitude_calibration](17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
-    * [Cryoscope](17_cryoscope.py) - Performs the cryoscope measurement.
+    * [Cryoscope with 1ns resolution](17_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
+    * [Cryoscope with 4ns resolution](17_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity bu no limitation of the flux pulse duration.
 18. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](18_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`.
