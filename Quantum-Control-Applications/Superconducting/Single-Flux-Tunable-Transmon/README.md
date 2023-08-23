@@ -4,7 +4,7 @@
 
 ## Experimental setup and context
 
-These files showcase various experiments that can be done on an single flux tunable transmon.
+These files showcase various experiments that can be done on a single flux tunable transmon.
 The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer. 
 Qubit addressing is being done with and IQ mixer.
 
@@ -38,8 +38,8 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 10. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
     * [Frequency optimization](10_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
     * [Amplitude optimization](10_readout_amp_optimization.py) - The script measures the readout fidelity for different readout powers.
-    * [Duration optimization](10_readout_duration_optimization.py) - The script performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as as a function of readout time.
-    * [Integration Weights optimization](10_readout_weight_optimization.py) -Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and from them it calculates the normalized optimal readout weights.
+    * [Duration optimization](10_readout_duration_optimization.py) - The script performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as a function of readout time.
+    * [Integration Weights optimization](10_readout_weight_optimization.py) -Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and calculates the normalized optimal readout weights.
 11. [T1](11_T1.py) - Measures T1.
 13. [Ramsey Chevron](12_ramsey_chevron.py) - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
 12. **1D Ramsey** - Measures T2*.
@@ -57,7 +57,7 @@ fidelity.
 17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
     * [Cryoscope_amplitude_calibration](17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
     * [Cryoscope with 1ns resolution](17_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
-    * [Cryoscope with 4ns resolution](17_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity bu no limitation of the flux pulse duration.
+    * [Cryoscope with 4ns resolution](17_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration.
 18. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](18_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`.
