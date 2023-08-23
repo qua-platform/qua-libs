@@ -68,7 +68,7 @@ the DRAG coefficient `$\alpha$`.
     * [1D](19_AC_Stark_1Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by scanning the DRAG pulse detuning for a given number of pulses.
 20. **Tomography:**
     * [State Tomography](20_state_tomography.py) - A template to perform state tomography.
-20. [Calibration](calibrations.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Uses an API to perform several single qubit calibrations easily from a single file.
+20. [Calibration](advanced_automatic_calibrations.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Uses an API to perform several single qubit calibrations easily from a single file.
 
 ## Use Cases
 
