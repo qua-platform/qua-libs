@@ -56,6 +56,7 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, raw_trace_prog, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:

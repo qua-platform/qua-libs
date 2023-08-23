@@ -5,6 +5,12 @@ and then measuring the state of the resonator across various qubit drive interme
 The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
 the qubit intermediate frequency in the configuration under "qubit_IF".
 
+Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
+This is why calibrating the qubit mixer is highly recommended.
+
+This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters before
+performing the next calibration nodes.
+
 Prerequisites:
     -Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
     -Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
@@ -123,7 +129,7 @@ else:
         plt.subplot(212)
         plt.cla()
         plt.plot(frequencies / u.MHz, signal.detrend(np.unwrap(phase)), ".")
-        plt.xlabel("qubit intermediate frequency [MHz]")
+        plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()

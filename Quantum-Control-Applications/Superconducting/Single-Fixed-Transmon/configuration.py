@@ -138,7 +138,7 @@ resonator_LO = 5.5 * u.GHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
-time_of_flight = 180
+time_of_flight = 24
 depletion_time = 2 * u.us
 
 readout_len = 5000

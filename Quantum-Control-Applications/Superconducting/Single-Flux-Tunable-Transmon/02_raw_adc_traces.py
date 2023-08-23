@@ -1,3 +1,12 @@
+"""
+        RAW ADC TRACES
+This script aims to measure data captured within a specific window defined by the measure() function.
+We term the digitized, unprocessed data as "raw ADC traces" because they represent the acquired waveforms without any
+real-time processing by the pulse processor, such as demodulation, integration, or time-tagging.
+
+The script is useful for inspecting signals prior to demodulation, ensuring the ADCs are not saturated,
+correcting any non-zero DC offsets, and estimating the SNR.
+"""
 from qm.qua import *
 from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -5,25 +14,25 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 ##############################
 # Program-specific variables #
 ##############################
-n_avg = 100  # Number of averaging loops
-cooldown_time = 2 * u.us
+n_avg = 100  # The number of averages
 
 ###################
 # The QUA program #
 ###################
 with program() as raw_trace_prog:
-    n = declare(int)
-    adc_st = declare_stream(adc_trace=True)
+    n = declare(int)  # QUA variable for the averaging loop
+    adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
-    with for_(n, 0, n < n_avg, n + 1):
-        play("const" * amp(0), "flux_line")
+    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+        # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
         reset_phase("resonator")
+        # Measure the resonator (send a readout pulse and record the raw ADC trace)
         measure("readout", "resonator", adc_st)
-        wait(cooldown_time * u.ns, "resonator")
+        # Wait for the resonator to deplete
+        wait(depletion_time * u.ns, "resonator")
 
     with stream_processing():
         # Will save average:
@@ -36,12 +45,18 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+
+###########################
+# Run or Simulate Program #
+###########################
 
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11000))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, raw_trace_prog, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:

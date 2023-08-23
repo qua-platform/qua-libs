@@ -32,6 +32,7 @@ def IQ_imbalance(g, phi):
 u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 # Set octave_config to None if no octave are present
@@ -44,13 +45,18 @@ mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
+thermalization_time = 5 * qubit_T1
 
+# Continuous wave
 const_len = 100
-const_amp = 50 * u.mV
-
+const_amp = 0.1
+# Saturation_pulse
+saturation_len = 1000
+saturation_amp = 0.1
+# Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.05
-
+square_pi_amp = 0.1
+# Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
@@ -135,12 +141,21 @@ resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
-readout_len = 20
+readout_len = 5000
 readout_amp = 0.25
 
-time_of_flight = 300
+time_of_flight = 24
+depletion_time = 2 * u.us
+
 
 # Flux line
+max_frequency_point = 0.0
+flux_settle_time = 100 * u.ns
+
+# Resonator frequency versus flux fit parameters according to resonator_spec_vs_flux
+# amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+
 const_flux_len = 200
 const_flux_amp = 0.45
 
@@ -156,7 +171,7 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # flux line
+                3: {"offset": max_frequency_point},  # flux line
                 9: {"offset": 0.0},  # I resonator
                 10: {"offset": 0.0},  # Q resonator
             },
@@ -180,6 +195,7 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "pi": "pi_pulse",
                 "pi_half": "pi_half_pulse",
                 "x180": "x180_pulse",
@@ -249,6 +265,11 @@ config = {
                 "I": "const_wf",
                 "Q": "zero_wf",
             },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
         },
         "pi_pulse": {
             "operation": "control",
@@ -337,6 +358,7 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "pi_wf": {"type": "constant", "sample": square_pi_amp},
         "pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},

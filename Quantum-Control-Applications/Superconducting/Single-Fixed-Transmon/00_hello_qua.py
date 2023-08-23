@@ -34,6 +34,8 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, hello_QUA, simulation_config)
+    # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 else:
     qm = qmm.open_qm(config)

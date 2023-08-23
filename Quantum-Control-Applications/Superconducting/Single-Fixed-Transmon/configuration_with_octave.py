@@ -15,6 +15,7 @@ u = unit(coerce_to_integer=True)
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 ############################
@@ -53,6 +54,7 @@ mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
+thermalization_time = 5 * qubit_T1
 
 saturation_len = 1000
 saturation_amp = 0.1
@@ -145,7 +147,8 @@ resonator_LO = 5.5 * u.GHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
-time_of_flight = 180
+time_of_flight = 24
+depletion_time = 2 * u.us
 
 readout_len = 5000
 readout_amp = 0.2
