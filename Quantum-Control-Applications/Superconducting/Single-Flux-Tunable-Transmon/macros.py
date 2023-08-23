@@ -163,7 +163,7 @@ def ge_averaged_measurement(cooldown_time, n_avg):
 
         # Excited state calibration
         align("qubit", "resonator")
-        play("pi", "qubit")
+        play("x180", "qubit")
         align("qubit", "resonator")
         measure(
             "readout",

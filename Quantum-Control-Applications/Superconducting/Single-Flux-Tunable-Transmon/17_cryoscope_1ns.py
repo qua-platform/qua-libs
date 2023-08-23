@@ -19,8 +19,8 @@ Such digital filters are then implemented on the OPX.
 The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more details about the sequence and
 the post-processing of the data.
 
-This version sweeps the flux pulse duration using real-time QUA, which means that the flux pulse can be arbitrarily long
-but the step must be larger than 1 clock cycle (4ns).
+This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
+a 1ns resolution, but must be shorter than ~#TODO !!
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -37,8 +37,8 @@ from configuration import *
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
 import numpy as np
+from qualang_tools.bakery import baking
 from scipy import signal, optimize
-from qualang_tools.loops import from_array
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -98,6 +98,20 @@ def filter_calc(exponential):
 
     return feedforward_taps, feedback_taps
 
+def baked_waveform(waveform, pulse_duration):
+    pulse_segments = []  # Stores the baking objects
+    # Create the different baked sequences, each one corresponding to a different truncated duration
+    for i in range(0, pulse_duration + 1):
+        with baking(config, padding_method="right") as b:
+            if i == 0:  # Otherwise, the baking will be empty and will not be created
+                wf = [0.0] * 16
+            else:
+                wf = waveform[:i].tolist()
+            b.add_op("flux_pulse", "flux_line", wf)
+            b.play("flux_pulse", "flux_line")
+        # Append the baking object in the list to call it from the QUA program
+        pulse_segments.append(b)
+    return pulse_segments
 
 ###################
 # The QUA program #
@@ -112,14 +126,16 @@ state_discrimination = False
 zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-durations = np.arange(0, const_flux_len, 10)  # Flux pulse durations in clock cycles (4ns)
-flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * max(durations) + [0.0] * zeros_after_pulse)
-step_response_th = [1.0] * max(durations)  # Perfect step response (square)
+flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse)
+
+# Baked flux pulse segments with 1ns resolution
+square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
+step_response_th = [1.0] * (const_flux_len + 1)  # Perfect step response (square)
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)  # x-axis for plotting
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
-    t = declare(int)  # QUA variable for the flux pulse duration
+    segment = declare(int)  # QUA variable for the flux pulse segment index
     flag = declare(bool)  # QUA boolean to switch between x90 and y90
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
@@ -140,18 +156,17 @@ with program() as cryoscope:
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
         # Loop over the truncated flux pulse
-        with for_(*from_array(t, durations)):
+        with for_(segment, 0, segment <= const_flux_len + total_zeros, segment + 1):
             # Alternate between X/2 and Y/2 pulses
             with for_each_(flag, [True, False]):
                 # Play first X/2
                 play("x90", "qubit")
                 # Play truncated flux pulse
                 align("qubit", "flux_line")
-                if zeros_before_pulse > 16:
-                    wait(zeros_before_pulse, "flux_line")
-                play("const", "flux_line", duration=t)
-                if zeros_after_pulse > 16:
-                    wait(zeros_after_pulse, "flux_line")
+                with switch_(segment):
+                    for j in range(0, len(flux_waveform) + 1):
+                        with case_(j):
+                            square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration
                 wait((len(flux_waveform) + 20) * u.ns, "qubit")
                 # Play second X/2 or Y/2
@@ -299,7 +314,7 @@ else:
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot, a=A, t=tau)
+    no_filter = exponential_decay(xplot, A, tau)
     # Response with filters
     with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th)  # Output filter , DAC Output
 
@@ -315,7 +330,7 @@ else:
     plt.axhline(y=0.99)
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
-    # plt.legend()
+    plt.legend()
 
     plt.subplot(122)
     plt.plot()
