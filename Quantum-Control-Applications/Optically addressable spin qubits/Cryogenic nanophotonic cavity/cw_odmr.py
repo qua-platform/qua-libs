@@ -48,7 +48,7 @@ with program() as cw_odmr:
             align()  # global align
 
             # decay readout
-            measure("long_readout", "SNSPD", None, time_tagging.analog(times, meas_len, counts))
+            measure("long_readout", "SNSPD", None, time_tagging.analog(times, long_meas_len, counts))
 
             save(counts, counts_st)  # save counts on stream
             save(n, n_st)  # save number of iteration inside for_loop
