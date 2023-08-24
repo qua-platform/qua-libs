@@ -30,7 +30,7 @@ def IQ_imbalance(g, phi):
 u = unit(coerce_to_integer=True)
 
 qop_ip = "172.16.33.100"
-cluster_name = 'Cluster_81'
+cluster_name = "Cluster_81"
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -572,7 +572,7 @@ config = {
                 "intermediate_frequency": cr_IF_c1t2,
                 "lo_frequency": qubit_LO_q1,
                 "correction": IQ_imbalance(mixer_qubit_g_c1t2, mixer_qubit_phi_c1t2),
-            }
+            },
         ],
         "mixer_qubit_q2": [
             {
@@ -584,7 +584,7 @@ config = {
                 "intermediate_frequency": cr_IF_c2t1,
                 "lo_frequency": qubit_LO_q2,
                 "correction": IQ_imbalance(mixer_qubit_g_c2t1, mixer_qubit_phi_c2t1),
-            }
+            },
         ],
         "mixer_resonator": [
             {

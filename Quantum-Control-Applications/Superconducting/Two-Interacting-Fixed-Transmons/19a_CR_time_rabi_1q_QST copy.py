@@ -9,6 +9,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
+
 def one_qb_QST(qb: str, len: float):
     """
     QUA macro to do single qubit quantum state tomography
@@ -21,6 +22,7 @@ def one_qb_QST(qb: str, len: float):
         with case_(2):  # projection along Z
             wait(len * u.ns, qb)
 
+
 def plot_tomography_results(array, xaxis, fig=None, axs=None):
     """
     Helper function to display quantum state tomography data
@@ -30,8 +32,8 @@ def plot_tomography_results(array, xaxis, fig=None, axs=None):
     axs = axs.ravel()
     for i in range(3):
         axs[i].cla()
-        axs[i].plot(xaxis, array[:, i, 0], label='control |0>')
-        axs[i].plot(xaxis, array[:, i, 1], label='control |0>')
+        axs[i].plot(xaxis, array[:, i, 0], label="control |0>")
+        axs[i].plot(xaxis, array[:, i, 1], label="control |0>")
         axs[i].set_title(f"<{chr(88 + i)}>")
         axs[i].set_xlabel("CR length [ns]")
         axs[i].set_ylabel("State probability")
@@ -42,6 +44,7 @@ def plot_tomography_results(array, xaxis, fig=None, axs=None):
     plt.tight_layout()
     plt.pause(0.1)
     plt.show()
+
 
 ###################
 # The QUA program #
@@ -59,24 +62,26 @@ with program() as CR_time_rabi_one_qst:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, times)):
-            with for_(c, 0, c < 3, c+1):
+            with for_(c, 0, c < 3, c + 1):
                 # |0> control - CR
-                play('square_positive', 'cr_c1t2', duration=t)
+                play("square_positive", "cr_c1t2", duration=t)
                 align()
-                one_qb_QST('q2_xy', pi_len)
+                one_qb_QST("q2_xy", pi_len)
                 align()
                 # Start using Rotated-Readout:
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
                 wait(cooldown_time * u.ns)
 
-                align() # global align
+                align()  # global align
 
                 # |1> control - CR
-                play('x180', 'q1_xy')
+                play("x180", "q1_xy")
                 align()
-                play('square_positive', 'cr_c1t2', duration=t)
+                play("square_positive", "cr_c1t2", duration=t)
                 align()
-                one_qb_QST('q2_xy', pi_len)
+                play("x180", "q1_xy")
+                align()
+                one_qb_QST("q2_xy", pi_len)
                 align()
                 # Start using Rotated-Readout:
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
@@ -115,6 +120,6 @@ else:
         n, I1, Q1, I2, Q2 = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
 
-        plot_tomography_results(I2, times*4)
+        plot_tomography_results(I2, times * 4)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
