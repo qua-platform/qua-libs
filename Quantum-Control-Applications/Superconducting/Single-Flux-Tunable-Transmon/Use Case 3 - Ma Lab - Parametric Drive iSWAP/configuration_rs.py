@@ -140,7 +140,7 @@ config = {
         },
     },
     "elements": {
-        "qubit1": {
+        "qubit": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
@@ -220,7 +220,7 @@ config = {
                 "pi_half": "pi_half_pulse_ef",
             },
         },
-        "resonator1": {
+        "resonator": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
@@ -262,7 +262,7 @@ config = {
                 "out2": ("con1", 2),
             },
         },
-        "flux1": {
+        "flux": {
             "singleInput": {"port": ("con1", 5)},
             "intermediate_frequency": sideband,
             "operations": {

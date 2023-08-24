@@ -18,7 +18,7 @@ In this use-case, the parametric drive is demonstrated through the red- and blue
 
 ### 2.1 Experimental set-up
 
-The schematic of the device is presented below. Each qubit is equipped with a readout resonator. The XY control of the qubits is facilitated through the readout line. The qubits are interconnected via a co-planar-waveguide (CPW). The subsequent results detail the energy exchange between a qubit and the CPW coupler. For the resonator readout and XY control, the OPX's analog outputs are linked to IQ mixers. Both RF signals, corresponding to the resonator and the qubit, are merged prior to entering the dilution refrigerator with a power combiner. To realize the red-sideband transition, users can directly connect the OPX analog outputs to the flux line. However, for the blue-sideband transition, which occurs at GHz frequencies, it's necessary to drive the transition through a Mixer.
+The schematic of the device is presented below. Each qubit is equipped with a readout resonator. The XY control of the qubits is facilitated through the readout line. The qubits are interconnected via a co-planar-waveguide (CPW). The subsequent results detail the energy exchange between a qubit and the CPW coupler. For the resonator readout and XY control, the OPX's analog outputs are linked to IQ mixers. Both RF signals, corresponding to the resonator and the qubit, are merged prior to entering the dilution refrigerator with a power combiner. To realize the red-sideband transition, users can directly connect the OPX analog outputs to the flux line. However, for the blue-sideband transition, which occurs at GHz frequencies, it's necessary to up-convert the OPX intermediate frequency with an IQ mixer before connecting to the flux line.
 
 ![device_and_OPX_schematic](device_and_OPX_schematic.png)
 
@@ -32,25 +32,25 @@ For the execution of sideband experiments, calibration of the qubit readout reso
 
 ## 3. Red-sideband transition
 
+To characterize the red-sideband energy exchange, the qubit must first be excited. A flux pulse of variable frequency and duration is then applied. Subsequently, the resonator is probed to determine the qubit's state. If the flux pulse frequency aligns with the red-sideband transition, the qubit oscillates between the |e, 0> and |g, 1> hybrid states, populating the resonator with a single photon.
+
 To replicate the figure presented below, refer to the protocol in red_sideband_chevron.py. The associated configuration dictionary is available in configuration_rs.py. Within this documentation, you'll find the code block pertinent to the pulse sequence.
 
 ```python
     with for_(n, 0, n < N_max, n+1):
         with for_(tau, t_min, tau <= t_max, tau + dt):
             with for_(f, f_min, f <= f_max, f + df):
-                update_frequency('flux1', f)  # update frequency of operations to the qubit
-                wait(cooldown_time, 'qubit1', 'flux1')  # for qubit to decay
-                play('pi' * amp(q1_ge_amp), 'qubit1')   # drive the qubit to the |e> state
-                align('qubit1', 'flux1')
-                play('offset' * amp(a), 'flux1', duration=tau) # apply red sideband flux modulation
-                align('resonator1', 'flux1')
-                measure('readout', 'resonator1', None,
-                        dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
-                        dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
+                update_frequency('flux', f)  # update frequency of operations to the flux
+                wait(cooldown_time, 'qubit', 'flux')  # for qubit to decay
+                play('pi' * amp(q1_ge_amp), 'qubit')   # drive the qubit to the |e> state
+                align('qubit', 'flux')
+                play('offset' * amp(a), 'flux', duration=tau) # apply red sideband flux modulation
+                align('resonator', 'flux')
+                measure('readout', 'resonator', None,
+                        dual_demod.full('cos', 'out1', 'sin', 'out2', I),
+                        dual_demod.full('minus_sin', 'out1', 'cos', 'out2', Q))
                 save(I, I_st)
                 save(Q, Q_st)
-
-            align()
         save(n, n_st)
 ```
 
@@ -69,18 +69,17 @@ To replicate the figure presented below, refer to the protocol in blue_sideband_
 
         with for_(tau, t_min, tau <= t_max, tau + dt):
             with for_(f, f_min, f <= f_max, f + df):
-                update_frequency('flux1', f)  # update frequency of operations to the qubit
-                wait(cooldown_time, 'qubit1', 'flux1')  # for qubit to decay
-                align('qubit1', 'flux1')
-                play('const' * amp(a), 'flux1', duration=tau) # apply blue sideband flux modulation for the qubit
-                align('resonator1', 'flux1')
+                update_frequency('flux', f)  # update frequency of operations to the flux
+                wait(cooldown_time, 'qubit', 'flux')  # for qubit to decay
+                play('pi' * amp(q1_ge_amp), 'qubit')   # drive the qubit to the |e> state
+                align('qubit', 'flux')
+                play('const' * amp(a), 'flux', duration=tau) # apply blue sideband flux modulation for the qubit
+                align('resonator1', 'flux')
                 measure('readout', 'resonator1', None,
-                        dual_demod.full('cos', 'out1', 'minus_sin', 'out2', I),
-                        dual_demod.full('sin', 'out1', 'cos', 'out2', Q))
+                        dual_demod.full('cos', 'out1', 'sin', 'out2', I),
+                        dual_demod.full('minus_sin', 'out1', 'cos', 'out2', Q))
                 save(I, I_st)
                 save(Q, Q_st)
-
-            align()
         save(n, n_st)
 ```
 

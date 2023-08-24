@@ -1,6 +1,5 @@
 from qm import SimulationConfig
 from qm.qua import *
-from qm import LoopbackInterface
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration_bs import *
 
@@ -61,17 +60,17 @@ with program() as chevron_rabi:
     with for_(n, 0, n < N_max, n + 1):
         with for_(tau, t_min, tau <= t_max, tau + dt):
             with for_(f, f_min, f <= f_max, f + df):
-                update_frequency("flux1", f)  # update frequency of operations to the qubit
-                wait(cooldown_time, "qubit1", "flux1")  # for qubit to decay
-                align("qubit1", "flux1")
-                play("const" * amp(a), "flux1", duration=tau)  # apply blue sideband flux modulation for the qubit
-                align("resonator1", "flux1")
+                update_frequency("flux", f)  # update frequency of operations to the qubit
+                wait(cooldown_time, "qubit1", "flux")  # for qubit to decay
+                align("qubit1", "flux")
+                play("const" * amp(a), "flux", duration=tau)  # apply blue sideband flux modulation for the qubit
+                align("resonator1", "flux")
                 measure(
                     "readout",
                     "resonator1",
                     None,
-                    dual_demod.full("cos", "out1", "minus_sin", "out2", I),
-                    dual_demod.full("sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("cos", "out1", "sin", "out2", I),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 save(I, I_st)
                 save(Q, Q_st)
@@ -94,9 +93,7 @@ simulate = True
 
 if simulate:
     # simulation properties
-    simulate_config = SimulationConfig(
-        duration=100000, simulation_interface=LoopbackInterface(([("con1", 1, "con1", 1)]))
-    )
+    simulate_config = SimulationConfig(duration=100000)
     job = qmm.simulate(config, chevron_rabi, simulate_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
