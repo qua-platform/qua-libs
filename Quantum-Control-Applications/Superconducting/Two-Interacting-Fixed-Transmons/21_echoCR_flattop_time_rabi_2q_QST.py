@@ -52,7 +52,17 @@ def plot_tomography_results(data_q1, data_q2, xaxis, fig=None, axs=None):
     Helper function to display quantum state tomography data
     """
     # Define the column titles
-    col_titles = ["<-Y/2-Y/2>", "<-Y/2-X/2>", "<-X/2-Y/2>", "<-X/2-X/2>", "<-Y/2,I>", "<I,-Y/2>", "<-X/2,I>", "<I,-X/2>", "<I,I>"]
+    col_titles = [
+        "<-Y/2-Y/2>",
+        "<-Y/2-X/2>",
+        "<-X/2-Y/2>",
+        "<-X/2-X/2>",
+        "<-Y/2,I>",
+        "<I,-Y/2>",
+        "<-X/2,I>",
+        "<I,-X/2>",
+        "<I,I>",
+    ]
 
     # Set up the figure and axes if not provided
     if fig is None and axs is None:
@@ -61,21 +71,21 @@ def plot_tomography_results(data_q1, data_q2, xaxis, fig=None, axs=None):
     # Loop through the columns in the data array
     for i in range(9):
         # Clear the current axis
-        axs[i//3, i%3].cla()
+        axs[i // 3, i % 3].cla()
 
         # Get the current column data
         col_data = data_q1[:, i]
         col_data1 = data_q2[:, i]
 
         # Plot the data on the current axis
-        axs[i//3, i%3].plot(xaxis, col_data)
-        axs[i//3, i%3].plot(xaxis, col_data1)
+        axs[i // 3, i % 3].plot(xaxis, col_data)
+        axs[i // 3, i % 3].plot(xaxis, col_data1)
 
         # Set the x-axis label
-        axs[i//3, i%3].set_xlabel("CR time [ns]")
+        axs[i // 3, i % 3].set_xlabel("CR time [ns]")
 
         # Set the y-axis label
-        axs[i//3, i%3].set_ylabel(col_titles[i])
+        axs[i // 3, i % 3].set_ylabel(col_titles[i])
 
     # Pause for 0.1 seconds
     fig.suptitle("CR power rabi two qubit QST")
@@ -83,24 +93,26 @@ def plot_tomography_results(data_q1, data_q2, xaxis, fig=None, axs=None):
     plt.show()
     plt.pause(0.1)
 
+
 def play_flattop(cr: str, duration: int, sign: str):
     """
     QUA macro to play a gapless flat_top gaussian
     """
-    if sign == 'positive':
+    if sign == "positive":
         wait(17, cr + "_twin")
-        play('gaussian_rise', cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top', cr, duration=duration)
+        play("gaussian_rise", cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top", cr, duration=duration)
         wait(duration, cr + "_twin")
-        play('gaussian_fall', cr + "_twin")
-    elif sign == 'negative':
+        play("gaussian_fall", cr + "_twin")
+    elif sign == "negative":
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(-1), cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(-1), cr, duration=duration)
+        play("gaussian_rise" * amp(-1), cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top" * amp(-1), cr, duration=duration)
         wait(duration, cr + "_twin")
-        play('gaussian_fall'*amp(-1), cr + "_twin")
+        play("gaussian_fall" * amp(-1), cr + "_twin")
+
 
 ###################
 # The QUA program #
@@ -120,13 +132,13 @@ with program() as CR_time_rabi_one_qst:
         with for_(*from_array(t, times)):
             with for_(c, 0, c < 9, c + 1):
                 # |0>+|1> (superposition) control - CR
-                play('x90', 'q1_xy')
+                play("x90", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', duration=t, sign='positive')
+                play_flattop("cr_c1t2", duration=t, sign="positive")
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', duration=t, sign='negative')
+                play_flattop("cr_c1t2", duration=t, sign="negative")
                 align()
                 play("x180", "q1_xy")
                 align()

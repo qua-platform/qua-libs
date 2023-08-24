@@ -45,24 +45,26 @@ def plot_tomography_results(array, xaxis, fig=None, axs=None):
     plt.pause(0.1)
     plt.show()
 
+
 def play_flattop(cr: str, duration: int, sign: str):
     """
     QUA macro to play a gapless flat_top gaussian
     """
-    if sign == 'positive':
+    if sign == "positive":
         wait(17, cr + "_twin")
-        play('gaussian_rise', cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top', cr, duration=duration)
+        play("gaussian_rise", cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top", cr, duration=duration)
         wait(duration, cr + "_twin")
-        play('gaussian_fall', cr + "_twin")
-    elif sign == 'negative':
+        play("gaussian_fall", cr + "_twin")
+    elif sign == "negative":
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(-1), cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(-1), cr, duration=duration)
+        play("gaussian_rise" * amp(-1), cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top" * amp(-1), cr, duration=duration)
         wait(duration, cr + "_twin")
-        play('gaussian_fall'*amp(-1), cr + "_twin")
+        play("gaussian_fall" * amp(-1), cr + "_twin")
+
 
 ###################
 # The QUA program #
@@ -82,11 +84,11 @@ with program() as CR_time_rabi_one_qst:
         with for_(*from_array(t, times)):
             with for_(c, 0, c < 3, c + 1):
                 # |0> control - CR
-                play_flattop('cr_c1t2', duration=t, sign='positive')
+                play_flattop("cr_c1t2", duration=t, sign="positive")
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', duration=t, sign='negative')
+                play_flattop("cr_c1t2", duration=t, sign="negative")
                 align()
                 play("x180", "q1_xy")
                 align()
@@ -101,11 +103,11 @@ with program() as CR_time_rabi_one_qst:
                 # |1> control - CR
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', duration=t, sign='positive')
+                play_flattop("cr_c1t2", duration=t, sign="positive")
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', duration=t, sign='negative')
+                play_flattop("cr_c1t2", duration=t, sign="negative")
                 align()
                 one_qb_QST("q2_xy", pi_len)
                 align()

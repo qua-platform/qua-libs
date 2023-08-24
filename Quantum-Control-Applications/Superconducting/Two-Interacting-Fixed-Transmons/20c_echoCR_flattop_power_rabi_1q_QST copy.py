@@ -48,24 +48,26 @@ def plot_tomography_results(array, xaxis, fig=None, axs=None):
     plt.pause(0.1)
     plt.show()
 
+
 def play_flattop(cr: str, amplitude: int, sign: str):
     """
     QUA macro to play a gapless flat_top gaussian
     """
-    if sign == 'positive':
+    if sign == "positive":
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(amplitude), cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(amplitude), cr)
-        wait(int(rise_fall_length//4), cr)
-        play('gaussian_fall'*amp(amplitude), cr + "_twin")
-    elif sign == 'negative':
+        play("gaussian_rise" * amp(amplitude), cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top" * amp(amplitude), cr)
+        wait(int(rise_fall_length // 4), cr)
+        play("gaussian_fall" * amp(amplitude), cr + "_twin")
+    elif sign == "negative":
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(-1*amplitude), cr + "_twin")
-        wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(-1*amplitude), cr)
-        wait(int(rise_fall_length//4), cr)
-        play('gaussian_fall'*amp(-1*amplitude), cr + "_twin")
+        play("gaussian_rise" * amp(-1 * amplitude), cr + "_twin")
+        wait(int(rise_fall_length // 4), cr)
+        play("flat_top" * amp(-1 * amplitude), cr)
+        wait(int(rise_fall_length // 4), cr)
+        play("gaussian_fall" * amp(-1 * amplitude), cr + "_twin")
+
 
 ###################
 # The QUA program #
@@ -85,11 +87,11 @@ with program() as CR_power_rabi_one_qst:
         with for_(*from_array(a, amplitudes)):
             with for_(c, 0, c < 3, c + 1):
                 # |0> control - CR
-                play_flattop('cr_c1t2', amplitude=a, sign='positive')
+                play_flattop("cr_c1t2", amplitude=a, sign="positive")
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='negative')
+                play_flattop("cr_c1t2", amplitude=a, sign="negative")
                 align()
                 play("x180", "q1_xy")
                 align()
@@ -104,11 +106,11 @@ with program() as CR_power_rabi_one_qst:
                 # |1> control - CR
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='positive')
+                play_flattop("cr_c1t2", amplitude=a, sign="positive")
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='negative')
+                play_flattop("cr_c1t2", amplitude=a, sign="negative")
                 align()
                 one_qb_QST("q2_xy", pi_len)
                 align()
