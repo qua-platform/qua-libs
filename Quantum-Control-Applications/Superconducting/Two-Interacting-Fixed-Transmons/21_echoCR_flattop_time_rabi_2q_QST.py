@@ -1,5 +1,5 @@
 """
-Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
+Reference: J. M. Chow et al., Phys. Rev. Letters 107, 080502 (2011)
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
@@ -48,48 +48,48 @@ def plot_tomography_results(array, xaxis, fig=None, axs=None):
     plt.pause(0.1)
     plt.show()
 
-def play_flattop(cr: str, amplitude: int, sign: str):
+def play_flattop(cr: str, duration: int, sign: str):
     """
     QUA macro to play a gapless flat_top gaussian
     """
     if sign == 'positive':
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(amplitude), cr + "_twin")
+        play('gaussian_rise', cr + "_twin")
         wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(amplitude), cr)
-        wait(int(rise_fall_length//4), cr)
-        play('gaussian_fall'*amp(amplitude), cr + "_twin")
+        play('flat_top', cr, duration=duration)
+        wait(duration, cr + "_twin")
+        play('gaussian_fall', cr + "_twin")
     elif sign == 'negative':
         wait(17, cr + "_twin")
-        play('gaussian_rise'*amp(-1*amplitude), cr + "_twin")
+        play('gaussian_rise'*amp(-1), cr + "_twin")
         wait(int(rise_fall_length//4), cr)
-        play('flat_top'*amp(-1*amplitude), cr)
-        wait(int(rise_fall_length//4), cr)
-        play('gaussian_fall'*amp(-1*amplitude), cr + "_twin")
+        play('flat_top'*amp(-1), cr, duration=duration)
+        wait(duration, cr + "_twin")
+        play('gaussian_fall'*amp(-1), cr + "_twin")
 
 ###################
 # The QUA program #
 ###################
-amplitudes = np.arange(0.0, 1.9, 0.1)
+times = np.arange(4, 200, 2)  # In clock cycles = 4ns
 cooldown_time = 1 * u.us
 n_avg = 1000
 
-with program() as CR_power_rabi_one_qst:
+with program() as CR_time_rabi_one_qst:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     f = declare(int)
-    a = declare(fixed)
+    t = declare(int)
     c = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
-        with for_(*from_array(a, amplitudes)):
+        with for_(*from_array(t, times)):
             with for_(c, 0, c < 3, c + 1):
                 # |0> control - CR
-                play_flattop('cr_c1t2', amplitude=a, sign='positive')
+                play_flattop('cr_c1t2', duration=t, sign='positive')
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='negative')
+                play_flattop('cr_c1t2', duration=t, sign='negative')
                 align()
                 play("x180", "q1_xy")
                 align()
@@ -104,11 +104,11 @@ with program() as CR_power_rabi_one_qst:
                 # |1> control - CR
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='positive')
+                play_flattop('cr_c1t2', duration=t, sign='positive')
                 align()
                 play("x180", "q1_xy")
                 align()
-                play_flattop('cr_c1t2', amplitude=a, sign='negative')
+                play_flattop('cr_c1t2', duration=t, sign='negative')
                 align()
                 one_qb_QST("q2_xy", pi_len)
                 align()
@@ -119,11 +119,11 @@ with program() as CR_power_rabi_one_qst:
     with stream_processing():
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(2).buffer(3).buffer(len(amplitudes)).average().save("I1")
-        Q_st[0].buffer(2).buffer(3).buffer(len(amplitudes)).average().save("Q1")
+        I_st[0].buffer(2).buffer(3).buffer(len(times)).average().save("I1")
+        Q_st[0].buffer(2).buffer(3).buffer(len(times)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(2).buffer(3).buffer(len(amplitudes)).average().save("I2")
-        Q_st[1].buffer(2).buffer(3).buffer(len(amplitudes)).average().save("Q2")
+        I_st[1].buffer(2).buffer(3).buffer(len(times)).average().save("I2")
+        Q_st[1].buffer(2).buffer(3).buffer(len(times)).average().save("Q2")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -133,14 +133,14 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octa
 simulate = True
 if simulate:
     # simulate the test_config QUA program
-    job = qmm.simulate(config, CR_power_rabi_one_qst, SimulationConfig(11000))
+    job = qmm.simulate(config, CR_time_rabi_one_qst, SimulationConfig(11000))
     job.get_simulated_samples().con1.plot()
     plt.show()
 
 else:
     # execute QUA:
     qm = qmm.open_qm(config)
-    job = qm.execute(CR_power_rabi_one_qst)
+    job = qm.execute(CR_time_rabi_one_qst)
 
     fig, ax = plt.subplots(2, 2)
     interrupt_on_close(fig, job)
@@ -149,6 +149,6 @@ else:
         n, I1, Q1, I2, Q2 = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
 
-        plot_tomography_results(I2, amplitudes)
+        plot_tomography_results(I2, times * 4)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
