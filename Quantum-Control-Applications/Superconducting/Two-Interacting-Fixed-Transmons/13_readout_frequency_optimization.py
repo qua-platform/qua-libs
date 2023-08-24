@@ -56,7 +56,7 @@ with program() as ro_freq_opt:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:

@@ -54,7 +54,7 @@ with program() as multi_qubit_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
@@ -80,7 +80,7 @@ else:
         plt.cla()
         plt.plot(dfs / u.MHz, np.abs(s1))
         plt.ylabel("amplitude (V)")
-        plt.title(f"q1 (f_res1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.title(f"q1 (f_res1: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s1))
@@ -89,7 +89,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.plot(dfs / u.MHz, np.abs(s2))
-        plt.title(f"q2 (f_res2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.title(f"q2 (f_res2: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
         plt.subplot(224)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s2))

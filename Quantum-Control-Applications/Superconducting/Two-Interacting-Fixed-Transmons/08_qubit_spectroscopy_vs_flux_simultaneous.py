@@ -59,7 +59,7 @@ with program() as multi_qubit_spec_vs_flux:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
@@ -86,7 +86,7 @@ else:
         plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, np.abs(s1))
         plt.xlabel("flux (V)")
         plt.ylabel("q1_ifreq (MHz)")
-        plt.title(f"q1 (f_res1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.title(f"q1 (f_res1: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
         plt.subplot(235)
         plt.cla()
         plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, np.unwrap(np.angle(s1)))
@@ -95,7 +95,7 @@ else:
         plt.subplot(232)
         plt.cla()
         plt.pcolor(dcs, (qubit_IF_q2 + dfs) / u.MHz, np.abs(s2))
-        plt.title(f"q2 (f_res2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.title(f"q2 (f_res2: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
         plt.ylabel("q2_ifreq (MHz)")
         plt.xlabel("flux (V)")
         plt.subplot(234)

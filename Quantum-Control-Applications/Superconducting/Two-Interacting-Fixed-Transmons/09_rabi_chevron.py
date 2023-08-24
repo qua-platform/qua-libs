@@ -55,7 +55,7 @@ with program() as rabi_chevron:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
@@ -88,7 +88,7 @@ else:
         plt.pcolor(amps * pi_amp_q1, dfs, I1)
         plt.xlabel("qubit pulse amplitude (V)")
         plt.ylabel("qubit 1 detuning (MHz)")
-        plt.title(f"q1 (f_res1: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.title(f"q1 (f_res1: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(amps * pi_amp_q1, dfs, Q1)
@@ -97,7 +97,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(amps * pi_amp_q2, dfs, I2)
-        plt.title(f"q2 (f_res2: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.title(f"q2 (f_res2: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
         plt.ylabel("qubit 2 detuning (MHz)")
         plt.xlabel("qubit pulse amplitude (V)")
         plt.subplot(224)
