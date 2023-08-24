@@ -171,7 +171,7 @@ ge_threshold_q1 = 0.0
 ge_threshold_q2 = 0.0
 
 #############################################
-#                Cross-resonance                 #
+#                Cross-resonance            #
 #############################################
 cr_IF_c1t2 = (qubit_IF_q2 + qubit_LO_q2) - (qubit_IF_q1 + qubit_LO_q1)
 cr_IF_c2t1 = (qubit_IF_q1 + qubit_LO_q1) - (qubit_IF_q2 + qubit_LO_q2)
@@ -187,6 +187,39 @@ c1t2_square_positive_amp = 0.1
 c1t2_square_negative_amp = -0.1
 c2t1_square_positive_amp = 0.1
 c2t1_square_negative_amp = -0.1
+
+#############################################
+#         Flat-top generation               #
+#############################################
+# flattop wf generation
+rise_fall_length = 16
+flat_top_length = 200
+flat_top_amp = 0.1
+zero_pad = []
+if round(rise_fall_length) < 16:
+    zero_pad = [0] * (16 - round(rise_fall_length))
+elif round(rise_fall_length) % 4:
+    zero_pad = [0] * (4 - round(rise_fall_length) % 4)
+rise = np.array(
+    zero_pad
+    + flattop_gaussian_waveform(
+        flat_top_amp,
+        round(flat_top_length),
+        rise_fall_length=round(rise_fall_length),
+        return_part="rise",
+    )
+).tolist()
+fall = np.array(
+    flattop_gaussian_waveform(
+        flat_top_amp,
+        round(flat_top_length),
+        rise_fall_length=round(rise_fall_length),
+        return_part="fall",
+    )
+    + zero_pad
+).tolist()
+flat = np.array([flat_top_amp] * round(flat_top_length)).tolist()
+
 
 #############################################
 #                  Config                   #
@@ -300,6 +333,20 @@ config = {
                 "square_negative": "cr_c1t2_square_negative_pulse",
             },
         },
+        "cr_c1t2_twin": {
+            "mixInputs": {
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
+                "lo_frequency": qubit_LO_q1,
+                "mixer": "mixer_qubit_q2",
+            },
+            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "operations": {
+                "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
+                "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
+                "flat_top": "cr_c1t2_flat_top_pulse",
+            },
+        },
         "cr_c2t1": {
             "mixInputs": {
                 "I": ("con1", 3),
@@ -311,6 +358,20 @@ config = {
             "operations": {
                 "square_positive": "cr_c2t1_square_positive_pulse",
                 "square_negative": "cr_c2t1_square_negative_pulse",
+            },
+        },
+        "cr_c2t1_twin": {
+            "mixInputs": {
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
+                "lo_frequency": qubit_LO_q2,
+                "mixer": "mixer_qubit_q2",
+            },
+            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "operations": {
+                "guassian_rise": "cr_c2t1_gaussian_rise_pulse",
+                "gaussian_fall": "cr_c2t1_gaussian_fall_pulse",
+                "flat_top": "cr_c2t1_flat_top_pulse",
             },
         },
     },
@@ -352,6 +413,54 @@ config = {
             "length": c2t1_square_positive_len,
             "waveforms": {
                 "I": "c2t1_square_negative_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c1t2_gaussian_rise_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c1t2_gaussian_rise_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c1t2_gaussian_fall_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c1t2_gaussian_fall_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c1t2_flat_top_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c1t2_flat_top_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c2t1_gaussian_rise_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c2t1_gaussian_rise_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c2t1_gaussian_fall_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c2t1_gaussian_fall_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c2t1_flat_top_pulse": {
+            "operation": "control",
+            "length": rise_fall_length,
+            "waveforms": {
+                "I": "cr_c2t1_flat_top_wf",
                 "Q": "zero_wf",
             },
         },
@@ -492,6 +601,12 @@ config = {
         "c1t2_square_negative_wf": {"type": "constant", "sample": c1t2_square_negative_amp},
         "c2t1_square_positive_wf": {"type": "constant", "sample": c2t1_square_positive_amp},
         "c2t1_square_negative_wf": {"type": "constant", "sample": c2t1_square_negative_amp},
+        "cr_c1t2_gaussian_rise_wf": {"type": "arbitrary", "samples": rise},
+        "cr_c1t2_gaussian_fall_wf": {"type": "arbitrary", "samples": fall},
+        "cr_c1t2_flat_top_wf": {"type": "arbitrary", "samples": flat},
+        "cr_c2t1_gaussian_rise_wf": {"type": "arbitrary", "samples": rise},
+        "cr_c2t1_gaussian_fall_wf": {"type": "arbitrary", "samples": fall},
+        "cr_c2t1_flat_top_wf": {"type": "arbitrary", "samples": flat},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
         "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
