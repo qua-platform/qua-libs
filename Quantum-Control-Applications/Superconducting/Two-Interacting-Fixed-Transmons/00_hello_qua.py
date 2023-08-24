@@ -8,14 +8,13 @@ from configuration import *
 # The QUA program #
 ###################
 with program() as hello_qua:
-    set_dc_offset("q1_z", "single", 0.153)
     play("cw", "q1_xy")
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulation = True
 if simulation:

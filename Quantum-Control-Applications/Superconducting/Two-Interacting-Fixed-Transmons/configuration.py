@@ -29,8 +29,8 @@ def IQ_imbalance(g, phi):
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "127.0.0.1"
-qop_port = 80
+qop_ip = "172.16.33.100"
+cluster_name = 'Cluster_81'
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -40,7 +40,8 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
@@ -145,10 +146,6 @@ minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Flux line
-const_flux_len = 200
-const_flux_amp = 0.45
-
 #############################################
 #                Resonators                 #
 #############################################
@@ -174,6 +171,24 @@ ge_threshold_q1 = 0.0
 ge_threshold_q2 = 0.0
 
 #############################################
+#                Cross-resonance                 #
+#############################################
+cr_IF_c1t2 = (qubit_IF_q2 + qubit_LO_q2) - (qubit_IF_q1 + qubit_LO_q1)
+cr_IF_c2t1 = (qubit_IF_q1 + qubit_LO_q1) - (qubit_IF_q2 + qubit_LO_q2)
+mixer_qubit_g_c1t2 = 0.0
+mixer_qubit_phi_c1t2 = 0.0
+mixer_qubit_g_c2t1 = 0.0
+mixer_qubit_phi_c2t1 = 0.0
+c1t2_square_positive_len = 100
+c1t2_square_negative_len = 100
+c2t1_square_positive_len = 100
+c2t1_square_negative_len = 100
+c1t2_square_positive_amp = 0.1
+c1t2_square_negative_amp = -0.1
+c2t1_square_positive_amp = 0.1
+c2t1_square_negative_amp = -0.1
+
+#############################################
 #                  Config                   #
 #############################################
 config = {
@@ -187,8 +202,6 @@ config = {
                 4: {"offset": 0.0},  # Q qubit2 XY
                 5: {"offset": 0.0},  # I readout line
                 6: {"offset": 0.0},  # Q readout line
-                7: {"offset": 0.0},  # qubit1 Z
-                8: {"offset": 0.0},  # qubit2 Z
             },
             "digital_outputs": {
                 1: {},
@@ -242,7 +255,7 @@ config = {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
@@ -260,7 +273,7 @@ config = {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q2",
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
@@ -274,36 +287,71 @@ config = {
                 "-y90": "-y90_pulse_q2",
             },
         },
-        "q1_z": {
-            "singleInput": {
-                "port": ("con1", 7),
+        "cr_c1t2": {
+            "mixInputs": {
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
+                "lo_frequency": qubit_LO_q1,
+                "mixer": "mixer_qubit_q2",
             },
+            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
-                "const": "const_flux_pulse",
+                "square_positive": "cr_c1t2_square_positive_pulse",
+                "square_negative": "cr_c1t2_square_negative_pulse",
             },
         },
-        "q2_z": {
-            "singleInput": {
-                "port": ("con1", 8),
+        "cr_c2t1": {
+            "mixInputs": {
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
+                "lo_frequency": qubit_LO_q2,
+                "mixer": "mixer_qubit_q2",
             },
+            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
-                "const": "const_flux_pulse",
+                "square_positive": "cr_c2t1_square_positive_pulse",
+                "square_negative": "cr_c2t1_square_negative_pulse",
             },
         },
     },
     "pulses": {
-        "const_flux_pulse": {
-            "operation": "control",
-            "length": const_flux_len,
-            "waveforms": {
-                "single": "const_flux_wf",
-            },
-        },
         "const_pulse": {
             "operation": "control",
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c1t2_square_positive_pulse": {
+            "operation": "control",
+            "length": c1t2_square_positive_len,
+            "waveforms": {
+                "I": "c1t2_square_positive_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c1t2_square_negative_pulse": {
+            "operation": "control",
+            "length": c1t2_square_positive_len,
+            "waveforms": {
+                "I": "c1t2_square_negative_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c2t1_square_positive_pulse": {
+            "operation": "control",
+            "length": c2t1_square_positive_len,
+            "waveforms": {
+                "I": "c2t1_square_positive_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "cr_c2t1_square_negative_pulse": {
+            "operation": "control",
+            "length": c2t1_square_positive_len,
+            "waveforms": {
+                "I": "c2t1_square_negative_wf",
                 "Q": "zero_wf",
             },
         },
@@ -440,7 +488,10 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
-        "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
+        "c1t2_square_positive_wf": {"type": "constant", "sample": c1t2_square_positive_amp},
+        "c1t2_square_negative_wf": {"type": "constant", "sample": c1t2_square_negative_amp},
+        "c2t1_square_positive_wf": {"type": "constant", "sample": c2t1_square_positive_amp},
+        "c2t1_square_negative_wf": {"type": "constant", "sample": c2t1_square_negative_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
         "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
@@ -514,15 +565,25 @@ config = {
         "mixer_qubit_q1": [
             {
                 "intermediate_frequency": qubit_IF_q1,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
+            },
+            {
+                "intermediate_frequency": cr_IF_c1t2,
+                "lo_frequency": qubit_LO_q1,
+                "correction": IQ_imbalance(mixer_qubit_g_c1t2, mixer_qubit_phi_c1t2),
             }
         ],
         "mixer_qubit_q2": [
             {
                 "intermediate_frequency": qubit_IF_q2,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q2,
                 "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
+            },
+            {
+                "intermediate_frequency": cr_IF_c2t1,
+                "lo_frequency": qubit_LO_q2,
+                "correction": IQ_imbalance(mixer_qubit_g_c2t1, mixer_qubit_phi_c2t1),
             }
         ],
         "mixer_resonator": [

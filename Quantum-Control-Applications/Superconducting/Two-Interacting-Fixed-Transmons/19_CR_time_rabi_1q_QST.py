@@ -9,6 +9,17 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 
+def one_qb_QST(qb: str, len: float):
+    """
+    QUA macro to do single qubit quantum state tomography
+    """
+    with switch_(c):
+        with case_(0):  # projection along X
+            play("-y90", qb)
+        with case_(1):  # projection along Y
+            play("x90", qb)
+        with case_(2):  # projection along Z
+            wait(len * u.ns, qb)
 
 ###################
 # The QUA program #
@@ -21,37 +32,55 @@ with program() as rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     f = declare(int)
     t = declare(int)
+    c = declare(int)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, times)):
-            play("x180", "q1_xy", duration=t)
-            # play("x180", "q2_xy", duration=t*u.ns)
-            align()
+            with for_(c, 0, c < 3, c+1):
+                # |0> - CR
+                play('square_positive', 'cr_c1t2', duration=t)
+                align()
+                one_qb_QST('q2_xy', pi_len)
+                align()
+                # Start using Rotated-Readout:
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                wait(cooldown_time * u.ns)
 
-            # Start using Rotated-Readout:
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
-            wait(cooldown_time * u.ns)
+                align() # global align
+
+                # |1> state - CR
+                play('x180', 'q1_xy')
+                align()
+                play('square_positive', 'cr_c1t2', duration=t)
+                align()
+                one_qb_QST('q2_xy', pi_len)
+                align()
+                # Start using Rotated-Readout:
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                wait(cooldown_time * u.ns)
+
 
     with stream_processing():
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(len(times)).average().save("I1")
-        Q_st[0].buffer(len(times)).average().save("Q1")
+        I_st[0].buffer(2).buffer(3).buffer(len(times)).average().save("I1")
+        Q_st[0].buffer(2).buffer(3).buffer(len(times)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(len(times)).average().save("I2")
-        Q_st[1].buffer(len(times)).average().save("Q2")
+        I_st[1].buffer(2).buffer(3).buffer(len(times)).average().save("I2")
+        Q_st[1].buffer(2).buffer(3).buffer(len(times)).average().save("Q2")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
-simulate = False
+simulate = True
 if simulate:
     # simulate the test_config QUA program
     job = qmm.simulate(config, rabi, SimulationConfig(11000))
     job.get_simulated_samples().con1.plot()
+    plt.show()
 
 else:
     # execute QUA:
