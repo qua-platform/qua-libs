@@ -16,7 +16,7 @@ pikepdf = "^4.2.0"
 websockets = "^10.1"
 
 [tool.poetry.dev-dependencies]
-black = "^22.3.0"
+black = "^23.7.0"
 poethepoet = "^0.10.0"
 flake8 = "^3.9.1"
 
