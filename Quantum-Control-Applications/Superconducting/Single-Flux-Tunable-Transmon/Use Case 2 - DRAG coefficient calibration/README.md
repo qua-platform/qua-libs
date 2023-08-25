@@ -17,13 +17,13 @@ computational space. The single qubit fidelity was quantified with randomized be
 
 ## 2. Experimental setup and required pre-calibrations
 
-### 1.1 Experimental set-up
+### 2.1 Experimental set-up
 The chip contains 5 2D-transmons, where some of them have nearest-neighbor connectivity, 
 with flux tunable lines. For this experiment, we focus only in one transmon with a drive
 to its flux line to put the transmon in the **sweet-spot**. All other transmons are left
 unbiased leaving them effectively at their zero frequency point.
 
-### 1.2 Pre-calibrations
+### 2.2 Pre-calibrations
 
 We used *cosine* pulses of 16 ns as the envelope for the control (180 and 90 gates) as defined below using our 
 [waveform tools](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/config/waveform_tools.py). 
