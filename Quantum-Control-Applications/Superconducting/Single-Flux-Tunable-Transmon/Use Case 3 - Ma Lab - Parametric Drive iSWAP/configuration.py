@@ -9,6 +9,7 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
+
 #############
 # VARIABLES #
 #############
@@ -72,7 +73,9 @@ pi_wf = (pi_amp * (gaussian(pi_len, pi_len / 5) - gaussian(pi_len, pi_len / 5)[-
 # Pi_half pulse parameters
 pi_half_len = 80  # in units of ns
 pi_half_amp = 0.4 * 0.5  # in units of volts
-pi_half_wf = (pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])).tolist()
+pi_half_wf = (
+    pi_half_amp * (gaussian(pi_half_len, pi_half_len / 5) - gaussian(pi_half_len, pi_half_len / 5)[-1])
+).tolist()
 
 # #ef
 # Pi pulse parameters
@@ -106,12 +109,12 @@ config = {
         "con1": {
             "type": "opx1",
             "analog_outputs": {
-                2: {"offset": +0.0},     # Fast Flux red sideband
+                2: {"offset": +0.0},  # Fast Flux red sideband
                 3: {"offset": +0.0031},  # Fast Flux I blue sideband
                 4: {"offset": -0.0074},  # Fast Flux Q blue sideband
                 5: {"offset": +0.0088},  # qubit I
                 6: {"offset": +0.0027},  # qubit Q
-                9: {"offset": -0.0366},   # Resonator I
+                9: {"offset": -0.0366},  # Resonator I
                 10: {"offset": +0.0044},  # Resonator Q
             },
             "digital_outputs": {},
@@ -237,7 +240,7 @@ config = {
             },
         },
         "flux_line_rs": {
-            'singleInput': {'port': ('con1', 2)},
+            "singleInput": {"port": ("con1", 2)},
             "intermediate_frequency": red_sideband,
             "operations": {
                 "offset": "square_pulse",
@@ -357,7 +360,11 @@ config = {
     },
     "mixers": {
         "mixer_flux1": [
-            {"intermediate_frequency": blue_sideband, "lo_frequency": qubit_LO, "correction": IQ_imbalance(0.004, 0.088)},
+            {
+                "intermediate_frequency": blue_sideband,
+                "lo_frequency": qubit_LO,
+                "correction": IQ_imbalance(0.004, 0.088),
+            },
         ],
         "mixer_qubit1": [
             {"intermediate_frequency": qubit1_if, "lo_frequency": qubit_LO, "correction": IQ_imbalance(0.01, 0.082)},

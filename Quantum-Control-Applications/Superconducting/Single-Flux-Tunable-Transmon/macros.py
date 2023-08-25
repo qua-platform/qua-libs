@@ -10,6 +10,7 @@ from qm.qua import *
 # QUA macros #
 ##############
 
+
 # Macro for measuring the qubit state with single shot
 def readout_macro(threshold=None, state=None, I=None, Q=None):
     """

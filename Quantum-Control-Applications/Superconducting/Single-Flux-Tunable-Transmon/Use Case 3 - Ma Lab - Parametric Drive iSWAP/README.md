@@ -14,11 +14,11 @@ and set up. Thus, this is code is for inspirational purposes._
 
 In this use-case, the parametric drive is demonstrated through the red- and blue-sideband transitions between a superconducting resonator and a flux-tunable transmon. The resonator acts as a coupler between two qubits. The use-case highlights the capability to facilitate iSWAP transitions between photons in the qubit and those in the resonator (coupler). The particle exchange is driven by the flux line to the qubit using RF tones. Notably, the red-sideband operates in the MHz frequency range, while the blue-sideband functions in the GHz range. Below, you'll find a schematic of the energy diagram, accompanied by an illustration depicting the two qubits and the coupler. Note that the flux-tunable transmon has separate readout resonator.
 
-<img align="right" src="device_and_OPX_schematic.png" alt="drawing" width="400"/>
-
 ## 2. Experimental setup and required pre-calibrations
 
 ### 2.1 Experimental set-up
+
+<img align="right" src="device_and_OPX_schematic.png" alt="drawing" width="400"/>
 
 The schematic of the device is presented on the drawing next to the main text. Each qubit is equipped with a readout resonator. The XY control of the qubits is facilitated through the readout line. The qubits are interconnected via a co-planar-waveguide (CPW). The subsequent results detail the energy exchange between a qubit and the CPW coupler. For the resonator readout and XY control, the OPX's analog outputs are linked to IQ mixers. Both RF signals, corresponding to the resonator and the qubit, are merged prior to entering the dilution refrigerator with a power combiner. To realize the red-sideband transition, users can directly connect the OPX analog outputs to the flux line. However, for the blue-sideband transition, which occurs at GHz frequencies, it's necessary to up-convert the OPX intermediate frequency with an IQ mixer before connecting to the flux line.
 
