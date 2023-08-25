@@ -21,6 +21,8 @@ These files showcase various experiments that can be done on a single fixed-freq
 ### [Single flux tunable transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon#single-flux-tunable-transmon)
 These files showcase various experiments that can be done on a single flux-tunable transmon.
 #### <u> Advanced use-cases: </u>
+* [Parametric Drive between flux-tunable-qubit and qubit-coupler](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%203%20-%20Ma%20Lab%20-%20Parametric%20Drive%20iSWAP#parametric-drive-between-flux-tunable-qubit-and-qubit-coupler) 
+  performed in the lab of Prof. Alex Ma at Purdue University.
 * [Cryoscope](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope#cryoscope) 
   performed in the lab of Prof. Sorin Paraoanu in Aalto University.
 * [DRAG Pulse Calibration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%202%20-%20DRAG%20coefficient%20calibration#derivative-removal-by-adiabatic-gate-drag-and-ac-stark-shift-calibration).

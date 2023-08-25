@@ -75,6 +75,8 @@ the DRAG coefficient `$\alpha$`.
 These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
 a specific setup and would require changes to run on different setups. Current use-cases:
 
+* [Ma Lab - Parametric Drive between flux-tunable-qubit and qubit-coupler](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%203%20-%20Ma%20Lab%20-%20Parametric%20Drive%20iSWAP#parametric-drive-between-flux-tunable-qubit-and-qubit-coupler) 
+  In this use-case, the parametric drive is demonstrated through the red- and blue-sideband transitions between a superconducting resonator and a flux-tunable transmon.
 * [Paraoanu Lab - Cryoscope](./Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope)
 The goal of this use-case is to implement Cryoscope.
 * [DRAG coefficient calibration](./Use%20Case%202%20-%20DRAG%20coefficient%20calibration) 
