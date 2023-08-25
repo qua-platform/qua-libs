@@ -1,36 +1,60 @@
+"""
+        RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
+This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
+extract the 'I' and 'Q' quadratures.
+This is done across various readout intermediate frequencies and amplitudes.
+Based on the results, one can determine if a qubit is coupled to the resonator by noting the resonator frequency
+splitting. This information can then be used to adjust the readout amplitude, choosing a readout amplitude value
+just before the observed frequency splitting.
+
+Prerequisites:
+
+    - Calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
+    - Calibration of the IQ mixer connected to the readout line (be it an external mixer or an Octave port).
+    - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy_multiplexed").
+    - Configuration of the readout pulse amplitude (set to 0.25V) and duration.
+    - Specification of the expected resonator depletion time in the configuration.
+
+Before proceeding to the next node:
+    - Update the readout frequency, labeled as "resonator_IF_q", in the configuration.
+    - Adjust the readout amplitude, labeled as "readout_amp_q", in the configuration.
+"""
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *
-from qm.simulate import LoopbackInterface
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration
+import warnings
 
-amps = np.arange(0.05, 1.99, 0.10)
-dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
-n_avg = 2000
-
-depletion_time = 1000
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
 ###################
+# The readout amplitude sweep (as a pre-factor of the readout amplitude)
+amps = np.arange(0.05, 1.99, 0.10)
+# The frequency sweep parameters for both resonators around their respective resonance
+dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
+n_avg = 2000
+
 with program() as multi_res_spec_vs_amp:
+    # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    df = declare(int)
-    a = declare(fixed)
+    df = declare(int)  # QUA variable for sweeping the readout frequency detuning around the resonance
+    a = declare(fixed)  # QUA variable for sweeping the readout amplitude pre-factor
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
-
-        with for_(*from_array(df, dfs)):
+    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+        with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
+            # Update the frequency of the two resonator elements
             update_frequency("rr1", df + resonator_IF_q1)
             update_frequency("rr2", df + resonator_IF_q2)
 
-            with for_(*from_array(a, amps)):
+            with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
                 wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
                 measure(
@@ -40,10 +64,11 @@ with program() as multi_res_spec_vs_amp:
                     dual_demod.full("cos", "out1", "sin", "out2", I[0]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
                 )
+                # Save the 'I' & 'Q' quadratures for rr1 to their respective streams
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
-                # align("rr1", "rr2") # sequential to avoid overflow
+                # align("rr1", "rr2")  # Uncomment to measure sequentially
 
                 # resonator 2
                 wait(depletion_time * u.ns, "rr2")  # wait for the resonator to relax
@@ -54,11 +79,15 @@ with program() as multi_res_spec_vs_amp:
                     dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
                 )
+                # Save the 'I' & 'Q' quadratures for rr2 to their respective streams
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])
+        save(n, n_st)
 
     with stream_processing():
         n_st.save("n")
+        # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
+        # Note that the buffering goes from the most inner loop (left) to the most outer one (right)
         # resonator 1
         I_st[0].buffer(len(amps)).buffer(len(dfs)).average().save("I1")
         Q_st[0].buffer(len(amps)).buffer(len(dfs)).average().save("Q1")
@@ -69,26 +98,25 @@ with program() as multi_res_spec_vs_amp:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
+#######################
+# Simulate or execute #
+#######################
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(
-        config,
-        multi_res_spec_vs_amp,
-        SimulationConfig(
-            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
-        ),
-    )
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, multi_res_spec_vs_amp, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
-    # Execute the QUA program
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_amp)
-    # Prepare the figures for live plotting
+    # Prepare the figure for live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
@@ -103,26 +131,27 @@ else:
         s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
         s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
 
-        A1 = np.abs(s1)
-        A2 = np.abs(s2)
+        R1 = np.abs(s1)
+        R2 = np.abs(s2)
         # Normalize data
-        row_sums = A1.sum(axis=0)
-        A1 = A1 / row_sums[np.newaxis, :]
-        row_sums = A2.sum(axis=0)
-        A2 = A2 / row_sums[np.newaxis, :]
+        row_sums = R1.sum(axis=0)
+        R1 = R1 / row_sums[np.newaxis, :]
+        row_sums = R2.sum(axis=0)
+        R2 = R2 / row_sums[np.newaxis, :]
         # Plot
+        plt.suptitle("Resonator spectroscopy")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz})")
-        plt.xlabel("amplitude pre-factor")
-        plt.ylabel("detuning (MHz)")
-        plt.pcolor(amps, dfs / u.MHz, A1)
+        plt.title(f"Resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz} MHz")
+        plt.xlabel("Amplitude pre-factor")
+        plt.ylabel("Detuning [MHz]")
+        plt.pcolor(amps, dfs / u.MHz, R1)
         plt.subplot(122)
         plt.cla()
-        plt.title(f"resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz})")
-        plt.xlabel("amplitude pre-factor")
-        plt.ylabel("detuning (MHz)")
-        plt.pcolor(amps, dfs / u.MHz, A2)
+        plt.title(f"Resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz} MHz")
+        plt.xlabel("Amplitude pre-factor")
+        plt.ylabel("Detuning [MHz]")
+        plt.pcolor(amps, dfs / u.MHz, R2)
         plt.tight_layout()
 
         plt.pause(0.1)

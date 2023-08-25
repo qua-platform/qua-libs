@@ -156,6 +156,7 @@ flux_settle_time = 100 * u.ns
 # amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
 
+# FLux pulse parameters
 const_flux_len = 200
 const_flux_amp = 0.45
 

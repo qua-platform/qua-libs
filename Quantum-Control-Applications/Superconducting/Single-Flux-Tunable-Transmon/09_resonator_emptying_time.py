@@ -134,6 +134,9 @@ else:
         plt.ylabel("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
     # Fit the results to extract the resonator depletion time
     try:
         from qualang_tools.plot.fitting import Fit

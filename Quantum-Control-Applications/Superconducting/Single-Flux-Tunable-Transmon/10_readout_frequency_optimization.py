@@ -162,3 +162,6 @@ else:
         plt.ylabel("SNR")
         plt.pause(0.1)
     print(f"The optimal readout frequency is {frequencies[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

@@ -1,3 +1,26 @@
+"""
+        SINGLE QUBIT INTERLEAVED RANDOMIZED BENCHMARKING (for gates >= 40ns)
+The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterwards.
+Each random sequence is derived on the FPGA for the maximum depth (specified as an input) and played for each depth
+asked by the user (the sequence is truncated to the desired depth). Each truncated sequence ends with the recovery gate,
+found at each step thanks to a preloaded lookup table (Cayley table), that will bring the qubit back to its ground state.
+In this version, a Clifford gate chosen by the user is interleaved between each random gate in the sequence. This allows
+to characterize the fidelity of a specific gate.
+
+If the readout has been calibrated and is good enough, then state discrimination can be applied to only return the state
+of the qubit. Otherwise, the 'I' and 'Q' quadratures are returned.
+Each sequence is played n_avg times for averaging. A second averaging is performed by playing different random sequences.
+
+The data is then post-processed to extract the single-qubit gate fidelity and error per gate
+.
+Prerequisites:
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having the qubit frequency perfectly calibrated (ramsey).
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+    - Set the desired flux bias.
+"""
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -9,10 +32,10 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
+import warnings
 
-"""
-Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity (works for gates longer than 40ns)
-"""
+warnings.filterwarnings("ignore")
+
 
 #############################################
 # Program dependent variables and functions #
@@ -25,21 +48,42 @@ elif qubit == 2:
     threshold = ge_threshold_q2
 else:
     threshold = 0
-state_discrimination = False
 
+num_of_sequences = 50  # Number of random sequences
+n_avg = 20  # Number of averaging loops for each random sequence
+max_circuit_depth = 1000  # Maximum circuit depth
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+seed = 345324  # Pseudo-random number generator seed
+# Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
+state_discrimination = False
+# List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-# index from play_sequence() function defined below of the gate under study
+# index of the gate to interleave from the play_sequence() function defined below
 # Correspondence table:
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
-max_circuit_depth = 1000
-num_of_sequences = 5
-n_avg = 100
-seed = 345323
-cooldown_time = 5 * qubit_T1
-delta_clifford = 10  # Must be > 1
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+
+
+###################################
+# Helper functions and QUA macros #
+###################################
+def get_interleaved_gate(gate_index):
+    if gate_index == 0:
+        return "I"
+    elif gate_index == 1:
+        return "x180"
+    elif gate_index == 2:
+        return "y180"
+    elif gate_index == 12:
+        return "x90"
+    elif gate_index == 13:
+        return "-x90"
+    elif gate_index == 14:
+        return "y90"
+    elif gate_index == 15:
+        return "-y90"
 
 
 def power_law(power, a, b, p):
@@ -150,22 +194,23 @@ def play_sequence(sequence_list, depth, qubit):
 # The QUA program #
 ###################
 with program() as rb:
-    depth = declare(int)
-    depth_target = declare(int)
+    depth = declare(int)  # QUA variable for the varying depth
+    depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)
+    # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
-    m = declare(int)
-    n = declare(int)
-    I = declare(fixed)
-    Q = declare(fixed)
-    state = declare(bool)
+    m = declare(int)  # QUA variable for the loop over random sequences
+    n = declare(int)  # QUA variable for the averaging loop
+    I = declare(fixed)  # QUA variable for the 'I' quadrature
+    Q = declare(fixed)  # QUA variable for the 'Q' quadrature
+    state = declare(bool)  # QUA variable for state discrimination
+    # The relevant streams
+    m_st = declare_stream()
+    I_st = declare_stream()
+    Q_st = declare_stream()
     if state_discrimination:
         state_st = declare_stream()
-    else:
-        I_st = declare_stream()
-        Q_st = declare_stream()
-    m_st = declare_stream()
 
-    with for_(m, 0, m < num_of_sequences, m + 1):
+    with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
         # Generates the RB sequence with a gate interleaved after each Clifford
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
@@ -175,65 +220,88 @@ with program() as rb:
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
-
+            # Only played the depth corresponding to target_depth
             with if_((depth == 2) | (depth == depth_target)):
-                with for_(n, 0, n < n_avg, n + 1):
+                with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can replace by active reset
-                    wait(cooldown_time * u.ns, f"rr{qubit}")
-
+                    wait(thermalization_time * u.ns, f"rr{qubit}")
+                    # Align the two elements to play the sequence after qubit initialization
                     align()
+                    # The strict_timing ensures that the sequence will be played without gaps
                     with strict_timing_():
+                        # Play the random sequence of desired depth
                         play_sequence(sequence_list, depth, qubit)
-
+                    # Align the two elements to measure after playing the circuit.
                     align()
                     # Play through the 2nd resonator to be in the same condition as when the readout was optimized
                     measure("readout", f"rr{qubit%2 + 1}", None)
+                    # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                     multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[qubit], weights="rotated_")
-                    # Make sure you updated the ge_threshold
                     if state_discrimination:
                         assign(state, I > threshold)
                         save(state, state_st)
-                # always play the random gate followed by the interleaved gate
+                # always play the random gate followed by the interleaved gate. The factor of 2 is there to always
+                # play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
                 assign(depth_target, depth_target + 2 * delta_clifford)
+            # Reset the last gate of the sequence back to the original Clifford gate
+            # (that was replaced by the recovery gate at the beginning)
             assign(sequence_list[depth], saved_gate)
+        # Save the counter for the progress bar
         save(m, m_st)
 
     with stream_processing():
         m_st.save("iteration")
         if state_discrimination:
+            # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).buffer(num_of_sequences).save("state")
+            # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
                 max_circuit_depth / delta_clifford + 1
             ).average().save("state_avg")
         else:
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+                num_of_sequences
+            ).save("I")
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+                num_of_sequences
+            ).save("Q")
             I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                "I"
+                "I_avg"
             )
             Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                "Q"
+                "Q_avg"
             )
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
-simulate = True
+###########################
+# Run or Simulate Program #
+###########################
+
+simulate = False
 
 if simulate:
-    simulation_config = SimulationConfig(duration=100000)  # in clock cycles
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program
     if state_discrimination:
         results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
     else:
-        results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+        results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -244,32 +312,41 @@ else:
         # data analysis
         if state_discrimination:
             state_avg, iteration = results.fetch_all()
-            value_avg = 1 - state_avg
-            error_avg = np.std(state_avg)
+            value_avg = state_avg
         else:
             I, Q, iteration = results.fetch_all()
-            value_avg = np.sqrt(I**2 + Q**2)
-            error_avg = np.std(np.sqrt(I**2 + Q**2))
+            value_avg = I
 
         # Progress bar
         progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
-        # Plot results
+        # Plot averaged values
         plt.cla()
-        plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
-        pars, cov = curve_fit(
-            f=power_law,
-            xdata=x,
-            ydata=value_avg,
-            p0=[0.5, 0.5, 0.9],
-            bounds=(-np.inf, np.inf),
-            maxfev=2000,
-        )
-        plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+        plt.plot(x, value_avg, marker=".")
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
-        plt.title("Single qubit RB")
+        plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
         plt.pause(0.1)
 
+    # At the end of the program, fetch the non-averaged results to get the error-bars
+    if state_discrimination:
+        results = fetching_tool(job, data_list=["state"])
+        state = results.fetch_all()[0]
+        value_avg = np.mean(state, axis=0)
+        error_avg = np.std(state, axis=0)
+    else:
+        results = fetching_tool(job, data_list=["I", "Q"])
+        I, Q = results.fetch_all()
+        value_avg = np.mean(I, axis=0)
+        error_avg = np.std(I, axis=0)
+    # data analysis
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=x,
+        ydata=value_avg,
+        p0=[0.5, 0.5, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
     stdevs = np.sqrt(np.diag(cov))
 
     print("#########################")
@@ -294,6 +371,15 @@ else:
         f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
     )
 
+    # Plots
+    plt.figure()
+    plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
+    plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+    plt.xlabel("Number of Clifford gates")
+    plt.ylabel("Sequence Fidelity")
+    plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
+
     # np.savez("rb_values", value)
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

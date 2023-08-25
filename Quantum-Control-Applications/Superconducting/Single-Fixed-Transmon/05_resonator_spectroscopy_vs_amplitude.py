@@ -81,6 +81,7 @@ with program() as resonator_spec_2D:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
+        # Note that the buffering goes from the most inner loop (left) to the most outer one (right)
         I_st.buffer(len(amplitudes)).buffer(len(frequencies)).average().save("I")
         Q_st.buffer(len(amplitudes)).buffer(len(frequencies)).average().save("Q")
         n_st.save("iteration")

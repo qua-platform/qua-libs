@@ -168,7 +168,7 @@ else:
     fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
 
     plt.figure()
-    plt.pcolor(flux, frequencies / u.MHz, np.abs(Z))
+    plt.pcolor(flux, frequencies / u.MHz, mag)
     plt.plot(flux, minima, "x-", color="red", label="Flux minima")
     plt.plot(flux, fitted_curve, label="Fitted Cosine", color="orange")
     plt.xlabel("Flux level [V]")

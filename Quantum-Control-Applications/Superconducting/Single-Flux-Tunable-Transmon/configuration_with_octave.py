@@ -158,6 +158,14 @@ time_of_flight = 24
 depletion_time = 2 * u.us
 
 # Flux line
+max_frequency_point = 0.0
+flux_settle_time = 100 * u.ns
+
+# Resonator frequency versus flux fit parameters according to resonator_spec_vs_flux
+# amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+
+# FLux pulse parameters
 const_flux_len = 200
 const_flux_amp = 0.45
 
@@ -171,11 +179,11 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit
-                2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
-                5: {"offset": 0.0},  # flux line
+                1: {"offset": 0.0},  # I resonator
+                2: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
+                5: {"offset": max_frequency_point},  # flux line
             },
             "digital_outputs": {
                 1: {},

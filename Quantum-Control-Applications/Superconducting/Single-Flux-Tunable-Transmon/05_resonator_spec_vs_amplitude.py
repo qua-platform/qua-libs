@@ -14,6 +14,7 @@ Prerequisites:
     - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy").
     - Configuration of the readout pulse amplitude (set to 0.25V) and duration.
     - Specification of the expected resonator depletion time in the configuration.
+
 Before proceeding to the next node:
     - Update the readout frequency, labeled as "resonator_IF", in the configuration.
     - Adjust the readout amplitude, labeled as "readout_amp", in the configuration.
@@ -81,6 +82,7 @@ with program() as resonator_spec_2D:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
+        # Note that the buffering goes from the most inner loop (left) to the most outer one (right)
         I_st.buffer(len(amplitudes)).buffer(len(frequencies)).average().save("I")
         Q_st.buffer(len(amplitudes)).buffer(len(frequencies)).average().save("Q")
         n_st.save("iteration")

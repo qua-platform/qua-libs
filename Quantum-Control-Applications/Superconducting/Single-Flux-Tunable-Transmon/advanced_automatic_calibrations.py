@@ -79,3 +79,6 @@ options = {
 }
 my_calib.simulate_calibrations(machine=qm, simulation_duration=5000)
 # my_calib.run_calibrations(quantum_machine=qm, plot="live", plot_options=options)
+
+# Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+qm.close()

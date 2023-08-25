@@ -92,8 +92,9 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
@@ -120,6 +121,9 @@ else:
         plt.ylabel("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
 
     # Fit the results to extract the qubit decay time T1
     try:

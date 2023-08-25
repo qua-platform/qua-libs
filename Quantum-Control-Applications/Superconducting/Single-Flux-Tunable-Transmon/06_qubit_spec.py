@@ -24,7 +24,7 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
