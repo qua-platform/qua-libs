@@ -1,24 +1,13 @@
 from qm import SimulationConfig
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration_bs import *
-
-# from malab import *
+from configuration import *
+from qualang_tools.loops import from_array
+from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-################################
-# Open quantum machine manager #
-################################
-
-qmm = QuantumMachinesManager()
-
-########################
-# Open quantum machine #
-########################
-
-qm = qmm.open_qm(config)
 
 ###############
 # QUA program #
@@ -27,44 +16,46 @@ qm = qmm.open_qm(config)
 t_min = 16 // 4  # in units of clock cycles
 t_max = 1200 // 4  # in units of clock cycles
 dt = 8 // 4
-
 times = np.arange(t_min, t_max + dt / 2, dt)
 
 # sideband modulation freq
 f_min = 95e6
 f_max = 110e6
 df = 0.1e6
-
 freqs = np.arange(f_min, f_max + df / 2, df)  # + df/2 to add f_max to freqs
 
-N_max = 50
+n_avg = 50
 
 cooldown_time = 100000 // 4
-flux_dur = 100000 // 4
 
-with program() as chevron_rabi:
+
+with program() as blue_sideband:
     # Declare QUA variables
     ###################
     f = declare(int)  # variable for freqs sweep
     n = declare(int)  # variable for average loop
-    n_st = declare_stream()  # stream for 'n'
-    tau = declare(int)
-    I = declare(fixed)
-    Q = declare(fixed)
-    I_st = declare_stream()
-    Q_st = declare_stream()
-    a = declare(fixed, value=ff_a)
+    tau = declare(int)  # Variable for the flux pulse duration sweep
+    I = declare(fixed)  # QUA variable for the measured 'I' quadrature
+    Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
+    I_st = declare_stream()  # Stream for the 'I' quadrature
+    Q_st = declare_stream()  # Stream for the 'Q' quadrature
+    n_st = declare_stream()  # Stream for the averaging iteration 'n'
+    a = declare(fixed, value=bs_a)  # Update the amplitude of the flux pulse directly in QUA
 
     # Pulse sequence
     ################
-    with for_(n, 0, n < N_max, n + 1):
-        with for_(tau, t_min, tau <= t_max, tau + dt):
-            with for_(f, f_min, f <= f_max, f + df):
-                update_frequency("flux", f)  # update frequency of operations to the qubit
-                wait(cooldown_time, "qubit1", "flux")  # for qubit to decay
-                align("qubit1", "flux")
-                play("const" * amp(a), "flux", duration=tau)  # apply blue sideband flux modulation for the qubit
-                align("resonator1", "flux")
+    with for_(n, 0, n < n_avg, n + 1):
+        with for_(*from_array(tau, times)):
+            with for_(*from_array(f, freqs)):
+                # update the frequency of the flux line
+                update_frequency("flux_line_bs", f)
+                # Wait for the qubit to decay
+                wait(cooldown_time, "qubit1", "flux_line_bs")
+                # Play the blue sideband after the qubit pulse with varying duration
+                align("qubit1", "flux_line_bs")
+                play("const" * amp(a), "flux_line_bs", duration=tau)
+                # Measure the state of the resonator after the flux pulse
+                align("resonator1", "flux_line_bs")
                 measure(
                     "readout",
                     "resonator1",
@@ -72,61 +63,56 @@ with program() as chevron_rabi:
                     dual_demod.full("cos", "out1", "sin", "out2", I),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
+                # Save the 'I' & 'Q' quadratures to their respective streams
                 save(I, I_st)
                 save(Q, Q_st)
-
-            align()
-        save(n, n_st)
+                # Save the averaging iteration to get the progress bar
+            save(n, n_st)
 
     # Stream processing
     ###################
     with stream_processing():
+        # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
+        I_st.buffer(len(freqs)).buffer(len(times)).average().save("I")
+        Q_st.buffer(len(freqs)).buffer(len(times)).average().save("Q")
         n_st.save("iteration")
-        I_st.buffer(len(times), len(freqs)).average().save("I")
-        Q_st.buffer(len(times), len(freqs)).average().save("Q")
 
-#######################
-# Simulate or execute #
-#######################
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+
+###########################
+# Run or Simulate Program #
+###########################
 
 simulate = True
 
 if simulate:
-    # simulation properties
-    simulate_config = SimulationConfig(duration=100000)
-    job = qmm.simulate(config, chevron_rabi, simulate_config)  # do simulation with qmm
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, blue_sideband, simulation_config)  # do simulation with qmm
     job.get_simulated_samples().con1.plot()  # visualize played pulses
 
 else:
-    job = qm.execute(chevron_rabi)  # execute QUA program
-
-    res_handles = job.result_handles  # get access to handles
-    I_handle = res_handles.get("I")
-    I_handle.wait_for_values(1)
-    Q_handle = res_handles.get("Q")
-    Q_handle.wait_for_values(1)
-    iteration_handle = res_handles.get("iteration")
-    iteration_handle.wait_for_values(1)
-
-    while res_handles.is_processing():
-        try:
-            I = I_handle.fetch_all()
-            Q = Q_handle.fetch_all()
-            iteration = iteration_handle.fetch_all() + 1
-            plt.title("Chevron pattern")
-            plt.pcolor(freqs, times * 4, I)
-            plt.xlabel("modulation freqs")
-            plt.ylabel("Variable pulse length [ns]")
-            plt.pause(0.1)
-            plt.clf()
-            print(iteration)
-
-        except Exception as e:
-            pass
-
-    I = I_handle.fetch_all()
-    Q = Q_handle.fetch_all()
-    plt.title("Chevron pattern")
-    plt.pcolor(freqs, times * 4, I)
-    plt.xlabel("modulation freqs")
-    plt.ylabel("Variable pulse length [ns]")
+    # Open the quantum machine
+    qm = qmm.open_qm(config)
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(blue_sideband)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
+        # Fetch results
+        I, Q, iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration, n_avg, start_time=results.get_start_time())
+        # Plot results
+        plt.cla()
+        plt.title("Blue sideband chevron pattern")
+        plt.pcolor(freqs, times * 4, I)
+        plt.xlabel("Modulation frequency [Hz]")
+        plt.ylabel("Variable pulse length [ns]")
+        plt.pause(0.1)
