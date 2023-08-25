@@ -19,29 +19,29 @@ def two_qb_QST(qb1: str, qb2: str, len1: float, len2: float):
     """
     with switch_(c):
         with case_(0):
-            play("y-90", qb1)
-            play("y-90", qb2)
+            play("-y90", qb1)
+            play("-y90", qb2)
         with case_(1):
             play("y-90", qb1)
-            play("x-90", qb2)
+            play("-x90", qb2)
         with case_(2):
-            play("x-90", qb1)
-            play("y-90", qb2)
+            play("-x90", qb1)
+            play("-y90", qb2)
         with case_(3):
-            play("x-90", qb1)
-            play("x-90", qb2)
+            play("-x90", qb1)
+            play("-x90", qb2)
         with case_(4):
-            play("y-90", qb1)
+            play("-y90", qb1)
             wait(int(len2 * 1e9 // 4), qb2)
         with case_(5):
             wait(int(len1 * 1e9 // 4), qb1)
-            play("y-90", qb2)
+            play("-y90", qb2)
         with case_(6):
-            play("x-90", qb1)
+            play("-x90", qb1)
             wait(int(len2 * 1e9 // 4), qb2)
         with case_(7):
             wait(int(len1 * 1e9 // 4), qb1)
-            play("x-90", qb2)
+            play("-x90", qb2)
         with case_(8):
             wait(int(len1 * 1e9 // 4), qb1)
             wait(int(len2 * 1e9 // 4), qb2)

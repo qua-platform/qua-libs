@@ -46,27 +46,16 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 18. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
     * [Single Qubit Randomized Benchmarking](18_single_qubit_RB.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
-19. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
-    * [Cryoscope](19_cryoscope.py) - Performs the cryoscope measurement.
-20. ** SWAP spectroscopy ** by driving the energy exchange |10> <--> |01>:
-    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
-    * [iSWAP pulsed](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-
-
-
-21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
-    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
-    * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-    
-
-## Use Cases
-
-These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
-a specific setup and would require changes to run on different setups. Current use-cases:
-
-* [Two qubit gate optimization with cryoscope](./Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
-The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse 
-distortion using Cryoscope and the OPX IIR and FIR filters..
+19. **CR time rabi** - Performs cross-resonance gate while varying the cross-resonance pulse duration; includes single-qubit tomography on target qubit.
+    * [CR_square_time_rabi](19a_CR_time_rabi_1q_QST.py) - CR gate with rectangular pulse of varying length.
+    * [CR_echo_square_time_rabi](19b_CR_time_rabi_1q_QST.py) - echo CR gate with rectangular pulse of varying length.
+    * [CR_echo_flat_top_gaussian_time_rabi](19c_echoCR_flattop_time_rabi_1q_QST.py) - echo CR gate with flat top pulse with gaussian rise and fall edges of vaying length.
+20. **CR power rabi** - Performs cross-resonance gate while varying the cross-resonance pulse amplitude; includes single-qubit tomography on target qubit.
+    * [CR_square_time_rabi](20a_CR_power_rabi_1q_QST.py) - CR gate with rectangular pulse of varying length.
+    * [CR_echo_square_time_rabi](20b_CR_power_rabi_1q_QST.py) - echo CR gate with rectangular pulse of varying length.
+    * [CR_echo_flat_top_gaussian_time_rabi](20c_echoCR_flattop_power_rabi_1q_QST.py) - echo CR gate with flat top pulse with gaussian rise and fall edges of vaying length.
+21. **CR two-qubit state tomography** CR gate with two qubit state tomography to reconstruct the full density matrix.
+    * [CR_echo_flat_top_gaussian_time_rabi_2q_QST](21_echoCR_flattop_time_rabi_2q_QST.py) - Prepares the control qubit in a superposition and then performs echo CR with a flat top pulse with gaussian rise and fall, and captures two-qubit state tomography that will be used to reconstruct the density matrix.
 
 ## Set-ups with Octave
 

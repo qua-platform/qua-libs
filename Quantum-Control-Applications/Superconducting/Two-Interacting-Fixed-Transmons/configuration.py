@@ -331,6 +331,7 @@ config = {
             "operations": {
                 "square_positive": "cr_c1t2_square_positive_pulse",
                 "square_negative": "cr_c1t2_square_negative_pulse",
+                "flat_top": "cr_c1t2_flat_top_pulse",
             },
         },
         "cr_c1t2_twin": {
@@ -344,7 +345,6 @@ config = {
             "operations": {
                 "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
-                "flat_top": "cr_c1t2_flat_top_pulse",
             },
         },
         "cr_c2t1": {
@@ -358,6 +358,7 @@ config = {
             "operations": {
                 "square_positive": "cr_c2t1_square_positive_pulse",
                 "square_negative": "cr_c2t1_square_negative_pulse",
+                "flat_top": "cr_c2t1_flat_top_pulse",
             },
         },
         "cr_c2t1_twin": {
@@ -371,7 +372,6 @@ config = {
             "operations": {
                 "guassian_rise": "cr_c2t1_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c2t1_gaussian_fall_pulse",
-                "flat_top": "cr_c2t1_flat_top_pulse",
             },
         },
     },
@@ -434,7 +434,7 @@ config = {
         },
         "cr_c1t2_flat_top_pulse": {
             "operation": "control",
-            "length": rise_fall_length,
+            "length": flat_top_length,
             "waveforms": {
                 "I": "cr_c1t2_flat_top_wf",
                 "Q": "zero_wf",
@@ -458,7 +458,7 @@ config = {
         },
         "cr_c2t1_flat_top_pulse": {
             "operation": "control",
-            "length": rise_fall_length,
+            "length": flat_top_length,
             "waveforms": {
                 "I": "cr_c2t1_flat_top_wf",
                 "Q": "zero_wf",
