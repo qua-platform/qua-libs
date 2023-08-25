@@ -63,9 +63,9 @@ def exponential_decay(x, a, t):
 
 
 def exponential_correction(A, tau, Ts=1e-9):
-    """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+    """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
-    :param A: amplitude of the exponential decay
+    :param A: amplitude of the exponential decay.
     :param tau: decay time of the exponential decay
     :param Ts: sampling period. Default is 1e-9
     :return: FIR and IIR taps
@@ -314,6 +314,7 @@ else:
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
+        plt.legend()
         plt.tight_layout()
         plt.pause(0.1)
 
