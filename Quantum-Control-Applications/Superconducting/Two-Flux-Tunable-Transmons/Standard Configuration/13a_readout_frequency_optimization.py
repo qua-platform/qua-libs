@@ -98,7 +98,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ro_freq_opt)  # execute QUA program
+    job = qm.execute(ro_freq_opt)
     # Get results from QUA program
     results = fetching_tool(job, ["D1", "D2"])
     D1, D2 = results.fetch_all()
