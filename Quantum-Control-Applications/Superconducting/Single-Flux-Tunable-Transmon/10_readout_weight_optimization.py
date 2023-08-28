@@ -194,10 +194,10 @@ else:
 
     # Fetch and reshape the data
     res_handles = job.result_handles
-    IIe, IIg = divide_array_in_half(res_handles.get("II").fetch_all())
-    IQe, IQg = divide_array_in_half(res_handles.get("IQ").fetch_all())
-    QIe, QIg = divide_array_in_half(res_handles.get("QI").fetch_all())
-    QQe, QQg = divide_array_in_half(res_handles.get("QQ").fetch_all())
+    IIg, IIe = divide_array_in_half(res_handles.get("II").fetch_all())
+    IQg, IQe = divide_array_in_half(res_handles.get("IQ").fetch_all())
+    QIg, QIe = divide_array_in_half(res_handles.get("QI").fetch_all())
+    QQg, QQe = divide_array_in_half(res_handles.get("QQ").fetch_all())
     # Sum the quadrature to fully demodulate the traces
     Ie = IIe + IQe
     Ig = IIg + IQg
