@@ -130,9 +130,6 @@ qubit = 1
 
 
 n_avg = 10_000  # Number of averages
-# Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
-# Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
-state_discrimination = False
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
 # fitting the step response with an exponential.
@@ -151,7 +148,7 @@ xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be
 
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    segment = declare(int)    # QUA variable for the flux pulse segment index
+    segment = declare(int)  # QUA variable for the flux pulse segment index
     flag = declare(bool)  # QUA boolean to switch between x90 and y90
     state = [declare(bool) for _ in range(2)]
     state_st = [declare_stream() for _ in range(2)]
@@ -258,6 +255,7 @@ else:
         step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
         step_response_volt = np.sqrt(step_response_freq)
         # Plots
+        plt.suptitle(f"Cryoscope for qubit {qubit} (qubit 1 (2) displayed on top (bottom))")
         plt.subplot(241)
         plt.cla()
         plt.plot(xplot, I1)

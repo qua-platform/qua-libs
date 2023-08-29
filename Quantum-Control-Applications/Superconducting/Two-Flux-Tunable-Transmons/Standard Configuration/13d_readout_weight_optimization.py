@@ -206,8 +206,13 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
 
     # Fetch and reshape the data
-    ground_trace = [[], []]; excited_trace = [[], []]; norm_subtracted_trace = [[], []]
-    weights_cos = [[], []]; weights_sin = [[], []]; weights_minus_sin = [[], []]; weights_minus_cos = [[]]
+    ground_trace = [[], []]
+    excited_trace = [[], []]
+    norm_subtracted_trace = [[], []]
+    weights_cos = [[], []]
+    weights_sin = [[], []]
+    weights_minus_sin = [[], []]
+    weights_minus_cos = [[]]
     res_handles = job.result_handles
     for i in range(2):
         IIe, IIg = divide_array_in_half(res_handles.get(f"II_q{i}").fetch_all())
@@ -230,6 +235,7 @@ else:
         plt.tight_layout()
         # Reshape the optimal integration weights to match the configuration
         from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
         # TODO: understand the weights!!
         weights_cos[i] = convert_integration_weights(list(norm_subtracted_trace[i].real))
         weights_minus_sin[i] = convert_integration_weights(list((-1) * norm_subtracted_trace[i].imag))
@@ -243,7 +249,6 @@ else:
     # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_cosine_weights_q1"
     # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_sine_weights_q1"
     # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_minus_sine_weights_q1"
-
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

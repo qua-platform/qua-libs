@@ -58,7 +58,6 @@ with program() as ro_weights_opt:
     Qe_st = [declare_stream() for _ in range(2)]  # Stream for 'Q' in the excited state
     n_st = declare_stream()
 
-
     with for_(n, 0, n < n_avg, n + 1):
         # Measure the ground state.
         wait(thermalization_time * u.ns)
@@ -162,7 +161,26 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_weights_opt)
     # Get results from QUA program
-    data_list = ["Ig_avg_q0", "Qg_avg_q0", "Ie_avg_q0", "Qe_avg_q0", "Ig_var_q0", "Qg_var_q0", "Ie_var_q0", "Qe_var_q0"] + ["Ig_avg_q1", "Qg_avg_q1", "Ie_avg_q1", "Qe_avg_q1", "Ig_var_q1", "Qg_var_q1", "Ie_var_q1", "Qe_var_q1", "iteration"]
+    data_list = [
+        "Ig_avg_q0",
+        "Qg_avg_q0",
+        "Ie_avg_q0",
+        "Qe_avg_q0",
+        "Ig_var_q0",
+        "Qg_var_q0",
+        "Ie_var_q0",
+        "Qe_var_q0",
+    ] + [
+        "Ig_avg_q1",
+        "Qg_avg_q1",
+        "Ie_avg_q1",
+        "Qe_avg_q1",
+        "Ig_var_q1",
+        "Qg_var_q1",
+        "Ie_var_q1",
+        "Qe_var_q1",
+        "iteration",
+    ]
     results = fetching_tool(
         job,
         data_list=data_list,
@@ -173,7 +191,25 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        Ig_avg_q1, Qg_avg_q1, Ie_avg_q1, Qe_avg_q1, Ig_var_q1, Qg_var_q1, Ie_var_q1, Qe_var_q1, Ig_avg_q2, Qg_avg_q2, Ie_avg_q2, Qe_avg_q2, Ig_var_q2, Qg_var_q2, Ie_var_q2, Qe_var_q2, iteration = results.fetch_all()
+        (
+            Ig_avg_q1,
+            Qg_avg_q1,
+            Ie_avg_q1,
+            Qe_avg_q1,
+            Ig_var_q1,
+            Qg_var_q1,
+            Ie_var_q1,
+            Qe_var_q1,
+            Ig_avg_q2,
+            Qg_avg_q2,
+            Ie_avg_q2,
+            Qe_avg_q2,
+            Ig_var_q2,
+            Qg_var_q2,
+            Ie_var_q2,
+            Qe_var_q2,
+            iteration,
+        ) = results.fetch_all()
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Derive the SNR
