@@ -146,14 +146,13 @@ square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform), qubit)
 step_response_th = (
     [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting
+xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
 
 
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    a = declare(fixed)
-    segment = declare(int)  # Flux pulse segment
-    flag = declare(bool)
+    segment = declare(int)    # QUA variable for the flux pulse segment index
+    flag = declare(bool)  # QUA boolean to switch between x90 and y90
     state = [declare(bool) for _ in range(2)]
     state_st = [declare_stream() for _ in range(2)]
 

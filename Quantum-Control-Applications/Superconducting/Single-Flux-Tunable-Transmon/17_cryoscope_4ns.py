@@ -63,12 +63,12 @@ def exponential_decay(x, a, t):
 
 
 def exponential_correction(A, tau, Ts=1e-9):
-    """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+    """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
-    :param A: amplitude of the exponential decay
-    :param tau: decay time of the exponential decay
-    :param Ts: sampling period. Default is 1e-9
-    :return: FIR and IIR taps
+    :param A: amplitude of the exponential decay.
+    :param tau: decay time of the exponential decay.
+    :param Ts: sampling period. Default is 1e-9.
+    :return: FIR and IIR taps.
     """
     tau = tau * Ts
     k1 = Ts + 2 * tau * (A + 1)

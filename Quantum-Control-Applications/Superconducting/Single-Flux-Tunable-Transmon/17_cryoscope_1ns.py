@@ -139,7 +139,7 @@ square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
 step_response_th = (
     [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting
+xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
