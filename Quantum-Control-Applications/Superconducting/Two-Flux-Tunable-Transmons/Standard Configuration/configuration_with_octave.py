@@ -16,6 +16,8 @@ u = unit(coerce_to_integer=True)
 ######################
 qop_ip = "127.0.0.1"
 qop_port = 80
+cluster_name = "my_cluster"
+
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
@@ -52,24 +54,33 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-
+qubit_LO = 3.95 * u.GHz
+# Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
+
+# Mixer parameters
 mixer_qubit_g_q1 = 0.00
 mixer_qubit_g_q2 = 0.00
 mixer_qubit_phi_q1 = 0.0
 mixer_qubit_phi_q2 = 0.0
 
-qubit_T1 = int(3 * u.us)
+# Relaxation time
+qubit1_T1 = int(3 * u.us)
+qubit2_T1 = int(3 * u.us)
+thermalization_time = 5 * max(qubit1_T1, qubit2_T1)
 
+# CW pulse parameter
 const_len = 1000
 const_amp = 270 * u.mV
 
+# Pi pulse parameters
 pi_len = 40
 pi_sigma = pi_len / 5
 pi_amp_q1 = 0.22
 pi_amp_q2 = 0.22
+
+# DRAG coefficients
 drag_coef_q1 = 0
 drag_coef_q2 = 0
 anharmonicity_q1 = -200 * u.MHz
@@ -77,6 +88,7 @@ anharmonicity_q2 = -180 * u.MHz
 AC_stark_detuning_q1 = 0 * u.MHz
 AC_stark_detuning_q2 = 0 * u.MHz
 
+# DRAG waveforms
 x180_wf_q1, x180_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
 )
@@ -157,27 +169,44 @@ minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
 minus_y90_Q_wf_q2 = minus_y90_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Flux line
+##########################################
+#               Flux line                #
+##########################################
+flux_settle_time = 100 * u.ns
+
+max_frequency_point1 = 0.0
+max_frequency_point2 = 0.0
+
+# Resonator frequency versus flux fit parameters according to resonator_spec_vs_flux
+# amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+amplitude_fit1, frequency_fit1, phase_fit1, offset_fit1 = [0, 0, 0, 0]
+amplitude_fit2, frequency_fit2, phase_fit2, offset_fit2 = [0, 0, 0, 0]
+
 const_flux_len = 200
 const_flux_amp = 0.45
 
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 6.35 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-
+resonator_LO = 6.35 * u.GHz
+# Resonators IF
 resonator_IF_q1 = int(75 * u.MHz)
 resonator_IF_q2 = int(133 * u.MHz)
+
+# Mixer parameters
 mixer_resonator_g_q1 = 0.0
 mixer_resonator_g_q2 = 0.0
 mixer_resonator_phi_q1 = -0.00
 mixer_resonator_phi_q2 = -0.00
 
+# Readout pulse parameters
 readout_len = 4000
 readout_amp_q1 = 0.07
 readout_amp_q2 = 0.07
 
+# TOF and depletion time
 time_of_flight = 24  # must be a multiple of 4
+depletion_time = 2 * u.us
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi
@@ -199,8 +228,8 @@ config = {
                 4: {"offset": 0.0},  # Q qubit1 XY
                 5: {"offset": 0.0},  # I qubit2 XY
                 6: {"offset": 0.0},  # Q qubit2 XY
-                7: {"offset": 0.0},  # qubit1 Z
-                8: {"offset": 0.0},  # qubit2 Z
+                7: {"offset": max_frequency_point1},  # qubit1 Z
+                8: {"offset": max_frequency_point2},  # qubit2 Z
             },
             "digital_outputs": {
                 1: {},
