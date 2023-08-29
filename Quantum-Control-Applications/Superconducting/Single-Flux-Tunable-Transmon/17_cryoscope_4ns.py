@@ -110,7 +110,7 @@ n_avg = 10_000  # Number of averages
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
 # FLux pulse waveform generation
-durations = np.arange(0, const_flux_len // 4, 100)  # Flux pulse durations in clock cycles (4ns)
+durations = np.arange(4, const_flux_len // 4, 1)  # Flux pulse durations in clock cycles (4ns) - must be > 4.
 flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations  # x-axis for plotting
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
