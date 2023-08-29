@@ -28,6 +28,7 @@ but the step must be larger than 1 clock cycle (4ns).
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
+    - (optional) Having calibrated the readout to perform state discrimination (IQ_blobs).
 
 Next steps before going to the next node:
     - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
@@ -108,11 +109,11 @@ def filter_calc(exponential):
 n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
-state_discrimination = False
+state_discrimination = True
 # FLux pulse waveform generation
 durations = np.arange(4, const_flux_len // 4, 1)  # Flux pulse durations in clock cycles (4ns) - must be > 4.
 flux_waveform = np.array([const_flux_amp] * max(durations))
-xplot = durations  # x-axis for plotting
+xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 
 with program() as cryoscope:
