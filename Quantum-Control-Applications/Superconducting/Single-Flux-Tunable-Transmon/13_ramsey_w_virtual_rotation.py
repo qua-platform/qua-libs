@@ -33,8 +33,8 @@ warnings.filterwarnings("ignore")
 ###################
 
 n_avg = 1e4
-tau_min = 4  # in clock cycles
-tau_max = 2500  # in clock cycles
+tau_min = 4  # in clock cycles - minimum is 4 clock cycles
+tau_max = 2000 // 4  # in clock cycles
 d_tau = 10  # in clock cycles
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
 

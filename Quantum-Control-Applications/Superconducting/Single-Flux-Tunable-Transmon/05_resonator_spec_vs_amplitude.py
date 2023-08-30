@@ -38,10 +38,9 @@ warnings.filterwarnings("ignore")
 n_avg = 1000  # The number of averages
 
 # The frequency sweep
-f_min = 50 * u.MHz
-f_max = 52 * u.MHz
-df = 50 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
+span = 10 * u.MHz
+df = 100 * u.kHz
+frequencies = np.arange(-span, +span + 0.1, df)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude)
 a_min = 0.001
 a_max = 1.99
@@ -61,7 +60,7 @@ with program() as resonator_spec_2D:
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element
-            update_frequency("resonator", f)
+            update_frequency("resonator", f + resonator_IF)
             with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the readout amplitude
                 # Measure the resonator (send a readout pulse whose amplitude is rescaled by the pre-factor 'a' [-2, 2)
                 # and demodulate the signals to get the 'I' & 'Q' quadratures)

@@ -33,10 +33,9 @@ warnings.filterwarnings("ignore")
 
 n_avg = 1000  # The number of averages
 # The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
+span = 5 * u.MHz
+df = 100 * u.kHz
+frequencies = np.arange(-span, +span + 0.1, df)  # The frequency vector
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
 a_min = 0
 a_max = 1.0
@@ -61,7 +60,7 @@ with program() as rabi_amp_freq:
         with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the pulse amplitude pre-factor
             with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f)
+                update_frequency("qubit", f + qubit_IF)
                 # Adjust the qubit pulse amplitude
                 play("x180" * amp(a), "qubit")
                 # Align the two elements to measure after playing the qubit pulse.
@@ -129,13 +128,13 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title(r"Rabi chevron $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, amplitudes * x180_amp, R)
+        plt.pcolor((frequencies + qubit_IF) / u.MHz, amplitudes * x180_amp, R)
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("Rabi chevron phase")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, amplitudes * x180_amp, np.unwrap(phase))
+        plt.pcolor((frequencies + qubit_IF) / u.MHz, amplitudes * x180_amp, np.unwrap(phase))
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()

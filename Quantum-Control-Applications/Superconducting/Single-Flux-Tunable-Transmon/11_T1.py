@@ -33,7 +33,7 @@ tau_min = 4  # in clock cycles
 tau_max = 10_000  # in clock cycles
 d_tau = 20  # in clock cycles
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
-taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
+# taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
 with program() as T1:
     n = declare(int)  # QUA variable for the averaging loop

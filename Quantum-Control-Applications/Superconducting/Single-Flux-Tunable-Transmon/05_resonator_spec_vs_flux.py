@@ -40,10 +40,9 @@ warnings.filterwarnings("ignore")
 n_avg = 6000  # Number of averaging loops
 
 # Frequency sweep in Hz
-f_min = 55 * u.MHz
-f_max = 65 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
+span = 10 * u.MHz
+df = 100 * u.kHz
+frequencies = np.arange(-span, +span + 0.1, df)
 # Flux amplitude sweep (as a pre-factor of the flux amplitude)
 dc_min = -0.49
 dc_max = 0.49
@@ -67,7 +66,7 @@ with program() as resonator_spec_2D:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(f, frequencies)):
             # Update the frequency of the digital oscillator linked to the resonator element
-            update_frequency("resonator", f)
+            update_frequency("resonator", f + resonator_IF)
             with for_(*from_array(dc, flux)):
                 # Flux sweeping by tuning the OPX dc offset
                 set_dc_offset("flux_line", "single", dc)

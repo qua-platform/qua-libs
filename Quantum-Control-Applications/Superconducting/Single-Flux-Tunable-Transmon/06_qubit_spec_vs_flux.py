@@ -32,10 +32,9 @@ warnings.filterwarnings("ignore")
 n_avg = 3000  # Number of averaging loops
 
 # Frequency sweep in Hz
-f_min = 55 * u.MHz
-f_max = 65 * u.MHz
-df = 50 * u.kHz
-freqs = np.arange(f_min, f_max + df / 2, df)  # +df/2 to add f_max to the scan
+span = 10 * u.MHz
+df = 100 * u.kHz
+frequencies = np.arange(-span, +span + 0.1, df)
 # Flux amplitude sweep (as a pre-factor of the flux amplitude)
 dc_min = -0.49
 dc_max = 0.49
@@ -70,9 +69,9 @@ with program() as qubit_spec_2D:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(f, freqs)):
+        with for_(*from_array(f, frequencies)):
             # Update the qubit frequency
-            update_frequency("qubit", f)
+            update_frequency("qubit", f + qubit_IF)
             assign(index, 0)
             with for_(*from_array(dc, flux)):
                 # Update the resonator frequency to always measure on resonance
@@ -105,8 +104,8 @@ with program() as qubit_spec_2D:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(flux)).buffer(len(freqs)).average().save("I")
-        Q_st.buffer(len(flux)).buffer(len(freqs)).average().save("Q")
+        I_st.buffer(len(flux)).buffer(len(frequencies)).average().save("I")
+        Q_st.buffer(len(flux)).buffer(len(frequencies)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -148,13 +147,13 @@ else:
         plt.subplot(211)
         plt.cla()
         plt.title(r"resonator spectroscopy $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor(flux, freqs / u.MHz, R)
+        plt.pcolor(flux, frequencies / u.MHz, R)
         plt.ylabel("Qubit frequency [MHz]")
         plt.xlabel("Flux level [V]")
         plt.subplot(212)
         plt.cla()
         plt.title("Qubit spectroscopy phase")
-        plt.pcolor(flux, freqs / u.MHz, np.unwrap(phase))
+        plt.pcolor(flux, frequencies / u.MHz, np.unwrap(phase))
         plt.ylabel("Qubit frequency [MHz]")
         plt.xlabel("Flux level [V]")
         plt.pause(0.1)
