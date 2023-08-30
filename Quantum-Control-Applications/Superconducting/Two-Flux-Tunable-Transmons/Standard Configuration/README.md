@@ -51,16 +51,16 @@ fidelity.
     * [Single Qubit Randomized Benchmarking](18_single_qubit_RB.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
 19. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
     * [Cryoscope with 1ns resolution](19_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
-    * [Cryoscope with 4ns resolution](19_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration.
+    * [Cryoscope with 4ns resolution](19_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration. ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
 20. ** SWAP spectroscopy ** by driving the energy exchange |10> <--> |01>:
-    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
-    * [iSWAP pulsed](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with a 4ns granularity.
+    * [iSWAP pulsed](20_iSWAP_1ns.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
 
 
 
-21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
-    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
-    * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |20>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
+    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the flux pulse with a 4ns granularity.
+    * [CZ pulsed](21_CZ_1ns.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
     
 
 ## Use Cases

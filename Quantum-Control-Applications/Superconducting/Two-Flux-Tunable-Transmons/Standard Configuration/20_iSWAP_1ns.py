@@ -1,11 +1,13 @@
 """
         iSWAP CHEVRON - 1ns granularity
-The goal of this protocol is to find the parameters of the iSWAP gate between two qubits.
+The goal of this protocol is to find the parameters of the iSWAP gate between two flux-tunable qubits.
 The protocol consists in flux tuning one qubit (the one with the highest frequency) so that it becomes resonant with the second qubit.
 If one qubit is excited, then they will start swapping their states by exchanging one photon when they are on resonance.
+The process can be seen as an energy exchange between |10> and |01>.
 
 By scanning the flux pulse amplitude and duration, the iSWAP chevron can be obtained and post-processed to extract the
-iSWAP gate parameters (flux pulse amplitude and interation time).
+iSWAP gate parameters corresponding to half an oscillation so that the states are fully swapped (flux pulse amplitude
+and interation time).
 
 This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
 a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
@@ -158,26 +160,28 @@ else:
         plt.suptitle(f"SWAP chevron sweeping the flux on qubit {qubit_to_flux_tune}")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(amps * const_flux_amp + flux_bias, xplot, I1.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I1.T)
         plt.title("q1 - I")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(amps * const_flux_amp + flux_bias, xplot, Q1.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q1.T)
         plt.title("q1 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.ylabel("Interaction time (ns)")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(amps * const_flux_amp + flux_bias, xplot, I2.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, I2.T)
         plt.title("q2 - I")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(amps * const_flux_amp + flux_bias, xplot, Q2.T)
+        plt.pcolor(xplot, amps * const_flux_amp + flux_bias, Q2.T)
         plt.title("q2 - Q")
         plt.xlabel("FLux amplitude (V)")
         plt.tight_layout()
         plt.pause(0.1)
-    # np.savez(save_dir / 'iswap', I1=I1, Q1=Q1, I2=I2, ts=ts, amps=amps)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # np.savez(save_dir / 'iswap', I1=I1, Q1=Q1, I2=I2, ts=ts, amps=amps)
+
