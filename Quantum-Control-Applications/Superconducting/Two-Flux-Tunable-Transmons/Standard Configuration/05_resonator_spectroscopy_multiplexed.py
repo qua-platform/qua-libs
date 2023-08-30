@@ -18,6 +18,7 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from qm.qua import *
 from configuration import *
+from scipy import signal
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
@@ -78,6 +79,8 @@ with program() as multi_res_spec:
             # Save the 'I' & 'Q' quadratures for rr2 to their respective streams
             save(I[1], I_st[1])
             save(Q[1], Q_st[1])
+        # Save the averaging iteration to get the progress bar
+        save(n, n_st)
 
     with stream_processing():
         n_st.save("iteration")
@@ -129,23 +132,23 @@ else:
         phase2 = np.angle(S1)  # Phase
         # Plot
         plt.suptitle("Resonator spectroscopy")
-        plt.subplots(221)
+        plt.subplot(221)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1) / u.MHz + dfs / u.MHz, R1)
+        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, R1)
         plt.title("resonator 1")
         plt.ylabel("Amplitude [V]")
-        plt.subplots(222)
+        plt.subplot(222)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q2) / u.MHz + dfs / u.MHz, R2)
+        plt.plot((resonator_LO + resonator_IF_q2 + dfs) / u.MHz, R2)
         plt.title("resonator 2")
-        plt.subplots(223)
+        plt.subplot(223)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1) / u.MHz + dfs / u.MHz, phase1)
+        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase1)))
         plt.xlabel("Freq (MHz)")
         plt.ylabel("Phase [rad]")
-        plt.subplots(224)
+        plt.subplot(224)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1) / u.MHz + dfs / u.MHz, phase1)
+        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase2)))
         plt.xlabel("Freq (MHz)")
         plt.tight_layout()
 
@@ -162,6 +165,7 @@ else:
         fit.reflection_resonator_spectroscopy((resonator_IF_q2 + dfs) / u.MHz, R2, plot=True)
         plt.xlabel("rr2 IF [MHz]")
         plt.title(f"Multiplexed resonator spectroscopy")
+        plt.tight_layout()
     except (Exception,):
         pass
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

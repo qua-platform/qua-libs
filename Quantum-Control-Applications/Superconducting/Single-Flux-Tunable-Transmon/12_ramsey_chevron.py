@@ -31,8 +31,6 @@ warnings.filterwarnings("ignore")
 ##############################
 n_avg = 1000  # Number of averaging loops
 
-cooldown_time = 5 * qubit_T1
-
 # Frequency sweep in Hz
 freq_span = 10 * u.MHz
 n_freq = 41

@@ -32,10 +32,9 @@ warnings.filterwarnings("ignore")
 
 n_avg = 1000  # The number of averages
 # The frequency sweep parameters
-f_min = 70e6
-f_max = 80e6
-df = 0.1e6
-frequencies = np.arange(f_min, f_max + df / 2, df)  # + df/2 to add f_max to frequencies
+span = 10 * u.MHz
+df = 200 * u.kHz
+frequencies = np.arange(-span, +span + 0.1, df)
 
 with program() as ro_freq_opt:
     n = declare(int)  # QUA variable for the averaging loop

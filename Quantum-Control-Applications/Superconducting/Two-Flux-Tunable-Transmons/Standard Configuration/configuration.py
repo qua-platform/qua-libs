@@ -177,8 +177,8 @@ const_flux_amp = 0.45
 #############################################
 resonator_LO = 6.35 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 # Resonators IF
-resonator_IF_q1 = int(75 * u.MHz)
-resonator_IF_q2 = int(133 * u.MHz)
+resonator_IF_q1 = 75 * u.MHz
+resonator_IF_q2 = 133 * u.MHz
 
 # Mixer parameters
 mixer_resonator_g_q1 = 0.0

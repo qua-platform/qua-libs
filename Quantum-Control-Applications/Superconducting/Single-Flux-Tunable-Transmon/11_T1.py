@@ -136,7 +136,7 @@ else:
         plt.xlabel("Delay [ns]")
         plt.ylabel("I quadrature [V]")
         print(f"Qubit decay time to update in the config: qubit_T1 = {qubit_T1:.0f} ns")
-        plt.legend((f"depletion time = {qubit_T1:.0f} ns",))
+        plt.legend((f"Relaxation time T1 = {qubit_T1:.0f} ns",))
         plt.title("T1 measurement")
     except (Exception,):
         pass

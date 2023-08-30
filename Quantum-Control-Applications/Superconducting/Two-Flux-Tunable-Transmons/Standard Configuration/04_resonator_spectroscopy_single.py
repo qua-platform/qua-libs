@@ -67,6 +67,7 @@ with program() as res_spec:
             save(I, I_st)
             save(Q, Q_st)
         # Save the averaging iteration to get the progress bar
+        save(n, n_st)
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor

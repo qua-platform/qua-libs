@@ -132,5 +132,6 @@ else:
         plt.title("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+    print(f"Optimal x180_amp = {amplitudes[np.argmax(np.sum(I, axis=0))] * x180_amp:.4f} V")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
