@@ -2,27 +2,28 @@
         RESONATOR SPECTROSCOPY MULTIPLEXED
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
 'I' and 'Q' quadratures across varying readout intermediate frequencies for the two resonators simultaneously.
-The data is then post-processed to determine the resonators resonance frequency.
+The data is then post-processed to determine the resonators' resonance frequency.
 This frequency can be used to update the readout intermediate frequency in the configuration.
 
 Prerequisites:
     - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
     - Calibrate the IQ mixer connected to the readout line (whether it's an external mixer or an Octave port).
     - Having found each resonator resonant frequency and updated the configuration (resonator_spectroscopy).
+    - Specify the expected resonator depletion time in the configuration.
 
 Before proceeding to the next node:
     - Update the readout frequency, labeled as "resonator_IF_q1" and "resonator_IF_q2", in the configuration.
 """
 
+from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from qm.qua import *
 from configuration import *
-from scipy import signal
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
+from scipy import signal
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -131,25 +132,25 @@ else:
         phase1 = np.angle(S1)
         phase2 = np.angle(S1)  # Phase
         # Plot
-        plt.suptitle("Resonator spectroscopy")
+        plt.suptitle("Multiplexed resonator spectroscopy")
         plt.subplot(221)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, R1)
-        plt.title("resonator 1")
-        plt.ylabel("Amplitude [V]")
+        plt.plot((resonator_IF_q1 + dfs) / u.MHz, R1)
+        plt.title(f"Resonator 1 - LO: {resonator_LO / u.GHz} GHz")
+        plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(222)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q2 + dfs) / u.MHz, R2)
-        plt.title("resonator 2")
+        plt.plot((resonator_IF_q2 + dfs) / u.MHz, R2)
+        plt.title(f"Resonator 2 - LO: {resonator_LO / u.GHz} GHz")
         plt.subplot(223)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase1)))
-        plt.xlabel("Freq (MHz)")
+        plt.plot((resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase1)))
+        plt.xlabel("Readout IF frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.subplot(224)
         plt.cla()
-        plt.plot((resonator_LO + resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase2)))
-        plt.xlabel("Freq (MHz)")
+        plt.plot((resonator_IF_q2 + dfs) / u.MHz, signal.detrend(np.unwrap(phase2)))
+        plt.xlabel("Readout IF frequency [MHz]")
         plt.tight_layout()
 
     try:

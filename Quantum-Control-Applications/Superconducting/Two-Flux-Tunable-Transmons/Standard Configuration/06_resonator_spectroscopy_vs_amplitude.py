@@ -8,11 +8,10 @@ splitting. This information can then be used to adjust the readout amplitude, ch
 just before the observed frequency splitting.
 
 Prerequisites:
-
     - Calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
     - Calibration of the IQ mixer connected to the readout line (be it an external mixer or an Octave port).
     - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy_multiplexed").
-    - Configuration of the readout pulse amplitude (set to 0.25V) and duration.
+    - Configuration of the readout pulse amplitude (the pulse processor will sweep up to twice this value) and duration.
     - Specification of the expected resonator depletion time in the configuration.
 
 Before proceeding to the next node:
@@ -20,27 +19,34 @@ Before proceeding to the next node:
     - Adjust the readout amplitude, labeled as "readout_amp_q", in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from macros import qua_declaration
+import matplotlib.pyplot as plt
+from scipy import signal
 import warnings
 
 warnings.filterwarnings("ignore")
 
+
 ###################
 # The QUA program #
 ###################
-# The readout amplitude sweep (as a pre-factor of the readout amplitude)
-amps = np.arange(0.05, 1.99, 0.10)
-# The frequency sweep parameters for both resonators around their respective resonance
-dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
-n_avg = 2000
+n_avg = 1000  # The number of averages
+# The frequency sweep around the resonators' frequency "resonator_IF_q"
+span = 10 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)
+# The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
+a_min = 0.001
+a_max = 1.99
+da = 0.01
+amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
 
 with program() as multi_res_spec_vs_amp:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
@@ -54,7 +60,7 @@ with program() as multi_res_spec_vs_amp:
             update_frequency("rr1", df + resonator_IF_q1)
             update_frequency("rr2", df + resonator_IF_q2)
 
-            with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
+            with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
                 wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
                 measure(
@@ -82,6 +88,7 @@ with program() as multi_res_spec_vs_amp:
                 # Save the 'I' & 'Q' quadratures for rr2 to their respective streams
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])
+        # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
     with stream_processing():
@@ -89,11 +96,11 @@ with program() as multi_res_spec_vs_amp:
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
         # Note that the buffering goes from the most inner loop (left) to the most outer one (right)
         # resonator 1
-        I_st[0].buffer(len(amps)).buffer(len(dfs)).average().save("I1")
-        Q_st[0].buffer(len(amps)).buffer(len(dfs)).average().save("Q1")
+        I_st[0].buffer(len(amplitudes)).buffer(len(dfs)).average().save("I1")
+        Q_st[0].buffer(len(amplitudes)).buffer(len(dfs)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(len(amps)).buffer(len(dfs)).average().save("I2")
-        Q_st[1].buffer(len(amps)).buffer(len(dfs)).average().save("Q2")
+        I_st[1].buffer(len(amplitudes)).buffer(len(dfs)).average().save("I2")
+        Q_st[1].buffer(len(amplitudes)).buffer(len(dfs)).average().save("Q2")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -132,28 +139,40 @@ else:
         s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
 
         R1 = np.abs(s1)
+        phase1 = np.angle(s1)
         R2 = np.abs(s2)
+        phase2 = np.angle(s2)
         # Normalize data
         row_sums = R1.sum(axis=0)
-        R1 = R1 / row_sums[np.newaxis, :]
+        R1 /= row_sums[np.newaxis, :]
         row_sums = R2.sum(axis=0)
-        R2 = R2 / row_sums[np.newaxis, :]
+        R2 /= row_sums[np.newaxis, :]
         # Plot
         plt.suptitle("Resonator spectroscopy")
-        plt.subplot(121)
+        plt.subplot(221)
         plt.cla()
-        plt.title(f"Resonator 1 - f_cent: {(resonator_LO + resonator_IF_q1) / u.MHz} MHz")
-        plt.xlabel("Amplitude pre-factor")
-        plt.ylabel("Detuning [MHz]")
-        plt.pcolor(amps, dfs / u.MHz, R1)
-        plt.subplot(122)
+        plt.title(f"Resonator 1 - LO: {resonator_LO / u.GHz} GHz")
+        plt.ylabel("IF readout frequency [MHz]")
+        plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, R1)
+        plt.axhline(resonator_IF_q1 / u.MHz, color="k")
+        plt.subplot(222)
         plt.cla()
-        plt.title(f"Resonator 2 - f_cent: {(resonator_LO + resonator_IF_q2) / u.MHz} MHz")
-        plt.xlabel("Amplitude pre-factor")
-        plt.ylabel("Detuning [MHz]")
-        plt.pcolor(amps, dfs / u.MHz, R2)
+        plt.title(f"Resonator 2 - LO: {resonator_LO / u.GHz} GHz")
+        plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, R2)
+        plt.axhline(resonator_IF_q2 / u.MHz, color="k")
+        plt.subplot(223)
+        plt.cla()
+        plt.xlabel("Readout amplitude [V]")
+        plt.ylabel("IF readout frequency [MHz]")
+        plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, signal.detrend(np.unwrap(phase1)))
+        plt.axhline(resonator_IF_q1 / u.MHz, color="k")
+        plt.subplot(224)
+        plt.cla()
+        plt.xlabel("Readout amplitude [V]")
+        plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, signal.detrend(np.unwrap(phase2)))
+        plt.axhline(resonator_IF_q2 / u.MHz, color="k")
         plt.tight_layout()
-
         plt.pause(0.1)
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

@@ -14,8 +14,8 @@ The data undergoes post-processing to calibrate three distinct parameters:
     This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
@@ -25,13 +25,12 @@ from scipy.signal import savgol_filter
 ###################
 # The QUA program #
 ###################
-
 resonator = "rr1"  # The resonator element
 n_avg = 100  # Number of averaging loops
 
 with program() as raw_trace_prog:
-    n = declare(int)
-    adc_st = declare_stream(adc_trace=True)
+    n = declare(int)  # QUA variable for the averaging loop
+    adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
     with for_(n, 0, n < n_avg, n + 1):
         # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
@@ -60,8 +59,11 @@ qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_co
 #######################
 simulate = False
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11_000))  # In clock cycles = 4ns
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 
 else:

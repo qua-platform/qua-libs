@@ -3,7 +3,6 @@ import numpy as np
 from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qualang_tools.config.waveform_tools import flattop_gaussian_waveform
 
 
 #######################

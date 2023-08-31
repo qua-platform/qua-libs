@@ -35,7 +35,7 @@ if simulate:
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 else:
+    # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
-    # Execute does not block python! As this is an infinite loop, the job would run forever. In this case, we've put a 10
-    # seconds sleep and then halted the job.
+    # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
     job = qm.execute(hello_qua)
