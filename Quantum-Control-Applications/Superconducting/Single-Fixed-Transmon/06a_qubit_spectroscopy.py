@@ -1,51 +1,56 @@
 """
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
-and then measuring the state of the resonator across various qubit drive intermediate frequencies.
+and then measuring the state of the resonator across various qubit drive intermediate dfs.
+In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually in the QUA
+program directly without having to modify the configuration.
+
 The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
 the qubit intermediate frequency in the configuration under "qubit_IF".
 
 Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
 This is why calibrating the qubit mixer is highly recommended.
 
-This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters before
-performing the next calibration nodes.
+This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters (amplitude,
+duration, frequency) before performing the next calibration steps.
 
 Prerequisites:
-    -Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
-    -Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    -Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
-    -Specification of the expected qubit T1 in the configuration.
+    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
+    - Specification of the expected qubit T1 in the configuration.
 
 Before proceeding to the next node:
     - Update the qubit frequency, labeled as "qubit_IF", in the configuration.
 """
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
+
 ###################
 # The QUA program #
 ###################
-
 n_avg = 10000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
+t = 5 * u.us  # Qubit pulse length
+# Qubit detuning sweep with respect to qubit_IF
+span = 10 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)
+
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
-    f = declare(int)  # QUA variable for the qubit frequency
+    df = declare(int)  # QUA variable for the qubit frequency
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature
@@ -53,11 +58,11 @@ with program() as qubit_spec:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(f, frequencies)):
+        with for_(*from_array(df, dfs)):
             # Update the frequency of the digital oscillator linked to the qubit element
-            update_frequency("qubit", f)
+            update_frequency("qubit", df + qubit_IF)
             # Play the saturation pulse to put the qubit in a mixed state
-            play("saturation", "qubit")
+            play("saturation", "qubit", duration=t * u.ns)
             # Align the two elements to measure after playing the qubit pulse.
             # One can also measure the resonator while driving the qubit (2-tone spectroscopy) by commenting the 'align'
             align("qubit", "resonator")
@@ -79,8 +84,8 @@ with program() as qubit_spec:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).average().save("I")
-        Q_st.buffer(len(frequencies)).average().save("Q")
+        I_st.buffer(len(dfs)).average().save("I")
+        Q_st.buffer(len(dfs)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
@@ -120,15 +125,15 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle("Qubit spectroscopy")
+        plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.Ghz} GHz")
         plt.subplot(211)
         plt.cla()
-        plt.plot(frequencies / u.MHz, R, ".")
+        plt.plot((dfs + qubit_IF) / u.MHz, R, ".")
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212)
         plt.cla()
-        plt.plot(frequencies / u.MHz, signal.detrend(np.unwrap(phase)), ".")
+        plt.plot((dfs + qubit_IF) / u.MHz, phase, ".")
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)

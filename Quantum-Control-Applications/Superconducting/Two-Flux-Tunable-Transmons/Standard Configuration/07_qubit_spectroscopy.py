@@ -2,14 +2,17 @@
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
 and then measuring the state of the resonator across various qubit drive intermediate dfs.
+In order to facilitate the qubit search, the qubit pulse duration and amplitude can be changed manually in the QUA
+program directly without having to modify the configuration.
+
 The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
 the qubit intermediate frequency in the configuration under "qubit_IF".
 
 Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
 This is why calibrating the qubit mixer is highly recommended.
 
-This step can be repeated using the "x180" operation instead of "saturation" to adjust the pulse parameters (amplitude,
-duration, frequency) before performing the next calibration nodes.
+This step can be repeated using the "x180" operation to adjust the pulse parameters (amplitude, duration, frequency)
+before performing the next calibration steps.
 
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy_multiplexed").
@@ -22,16 +25,15 @@ Before proceeding to the next node:
     - Update the qubit frequency, labeled as "qubit_IF_q", in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from macros import qua_declaration, multiplexed_readout
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -40,15 +42,21 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-n_avg = 10000  # The number of averages
+n_avg = 1000  # The number of averages
 t = 5 * u.us  # Qubit pulse length
-dfs = np.arange(-5e6, 5e6, 0.05e6)  # Qubit detuning sweep with respect to qubit_IF
+# Qubit detuning sweep with respect to qubit_IF
+span = 10 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)
 
 
 with program() as multi_qubit_spec:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency
 
+    # Adjust the flux line biases if needed
+    # set_dc_offset("q1_z", "single", 0.0)
+    # set_dc_offset("q2_z", "single", 0.0)
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # Update the frequency of the two qubit elements

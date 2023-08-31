@@ -126,7 +126,7 @@ else:
         R /= row_sums[np.newaxis, :]
         # 2D spectroscopy plot
         plt.subplot(211)
-        plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO}")
+        plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$ (normalized)")
         plt.pcolor(amplitudes * readout_amp, dfs / u.MHz, R)
