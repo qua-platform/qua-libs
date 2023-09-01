@@ -1,7 +1,7 @@
 """
         RESONATOR SPECTROSCOPY VERSUS FLUX
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
-extract the 'I' and 'Q' quadratures. This is done across various readout intermediate frequencies and flux biases.
+extract the 'I' and 'Q' quadratures. This is done across various readout intermediate dfs and flux biases.
 The resonator frequency as a function of flux bias is then extracted and fitted so that the parameters can be stored in the configuration.
 
 This information can then be used to adjust the readout frequency for the maximum frequency point.
@@ -40,7 +40,7 @@ n_avg = 6000  # Number of averaging loops
 # The frequency sweep around the resonator frequency "resonator_IF"
 span = 10 * u.MHz
 df = 100 * u.kHz
-frequencies = np.arange(-span, +span + 0.1, df)
+dfs = np.arange(-span, +span + 0.1, df)
 # Flux bias sweep in V
 flux_min = -0.49
 flux_max = 0.49
@@ -62,7 +62,7 @@ with program() as resonator_spec_2D:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(f, frequencies)):
+        with for_(*from_array(f, dfs)):
             # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency("resonator", f + resonator_IF)
             with for_(*from_array(dc, flux)):
@@ -88,8 +88,8 @@ with program() as resonator_spec_2D:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(flux)).buffer(len(frequencies)).average().save("I")
-        Q_st.buffer(len(flux)).buffer(len(frequencies)).average().save("Q")
+        I_st.buffer(len(flux)).buffer(len(dfs)).average().save("I")
+        Q_st.buffer(len(flux)).buffer(len(dfs)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -132,14 +132,14 @@ else:
         plt.cla()
         plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
         plt.title(r"$R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor(flux, frequencies / u.MHz, R)
-        plt.xlabel("Flux level [V]")
+        plt.pcolor(flux, (dfs + resonator_IF) / u.MHz, R)
+        plt.xlabel("Flux bias [V]")
         plt.ylabel("Readout IF frequency [MHz]")
         plt.subplot(212)
         plt.cla()
         plt.title("Phase")
-        plt.pcolor(flux, frequencies / u.MHz, signal.detrend(np.unwrap(phase)))
-        plt.xlabel("Flux level [V]")
+        plt.pcolor(flux, (dfs + resonator_IF) / u.MHz, signal.detrend(np.unwrap(phase)))
+        plt.xlabel("Flux bias [V]")
         plt.ylabel("Readout IF frequency [MHz]")
         plt.pause(0.1)
         plt.tight_layout()
@@ -154,7 +154,7 @@ else:
     # Find the resonator frequency vs flux minima
     minima = np.zeros(len(flux))
     for i in range(len(flux)):
-        minima[i] = frequencies[np.argmin(R.T[i])] / u.MHz
+        minima[i] = dfs[np.argmin(R.T[i])] / u.MHz
     # Cosine fit
     initial_guess = [1, 1 / 0.4, 0, 0]  # Initial guess for the parameters
     fit_params, _ = curve_fit(cosine_func, flux, minima, p0=initial_guess)
@@ -166,10 +166,10 @@ else:
 
     plt.figure()
     plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
-    plt.pcolor(flux, frequencies / u.MHz, R)
+    plt.pcolor(flux, dfs / u.MHz, R)
     plt.plot(flux, minima, "x-", color="red", label="Flux minima")
     plt.plot(flux, fitted_curve, label="Fitted Cosine", color="orange")
-    plt.xlabel("Flux level [V]")
+    plt.xlabel("Flux bias [V]")
     plt.ylabel("Readout frequency [MHz]")
     plt.legend()
 

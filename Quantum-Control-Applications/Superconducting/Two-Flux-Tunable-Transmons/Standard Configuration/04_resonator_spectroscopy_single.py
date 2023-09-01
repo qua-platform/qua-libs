@@ -131,12 +131,12 @@ else:
 
         fit = Fit()
         plt.figure()
-        res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies, R, plot=True)
+        res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies / u.MHz, R, plot=True)
         plt.title(f"Resonator spectroscopy for {resonator} - LO = {resonator_LO / u.GHz} GHz")
-        plt.xlabel("Intermediate frequency [MHz]")
+        plt.xlabel("Intermediate frequency [Hz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         print(
-            f"Resonator resonance IF frequency to update in the config for {resonator}: {res_spec_fit['f'][0] / u.MHz:.6f} MHz"
+            f"Resonator resonance IF frequency to update in the config for {resonator}: {res_spec_fit['f'][0]:.6f} MHz"
         )
     except (Exception,):
         pass

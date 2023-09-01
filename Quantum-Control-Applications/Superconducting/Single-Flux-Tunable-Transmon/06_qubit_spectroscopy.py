@@ -38,19 +38,15 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-##############################
-# Program-specific variables #
-##############################
+###################
+# The QUA program #
+###################
 n_avg = 1000  # The number of averages
 t = 5 * u.us  # Qubit pulse length
 # Qubit detuning sweep with respect to qubit_IF
 span = 10 * u.MHz
 df = 100 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
-
-###################
-# The QUA program #
-###################
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -131,7 +127,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.Ghz} GHz")
+        plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.GHz} GHz")
         plt.subplot(211)
         plt.cla()
         plt.plot((dfs + qubit_IF) / u.MHz, R, ".")

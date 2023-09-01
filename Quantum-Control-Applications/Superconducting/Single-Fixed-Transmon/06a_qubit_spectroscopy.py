@@ -125,7 +125,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.Ghz} GHz")
+        plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.GHz} GHz")
         plt.subplot(211)
         plt.cla()
         plt.plot((dfs + qubit_IF) / u.MHz, R, ".")
