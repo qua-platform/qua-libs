@@ -133,14 +133,13 @@ else:
         plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
         plt.title(r"$R=\sqrt{I^2 + Q^2}$")
         plt.pcolor(flux, (dfs + resonator_IF) / u.MHz, R)
-        plt.xlabel("Flux bias [V]")
-        plt.ylabel("Readout IF frequency [MHz]")
+        plt.ylabel("Readout IF [MHz]")
         plt.subplot(212)
         plt.cla()
         plt.title("Phase")
         plt.pcolor(flux, (dfs + resonator_IF) / u.MHz, signal.detrend(np.unwrap(phase)))
         plt.xlabel("Flux bias [V]")
-        plt.ylabel("Readout IF frequency [MHz]")
+        plt.ylabel("Readout IF [MHz]")
         plt.pause(0.1)
         plt.tight_layout()
 
@@ -154,7 +153,7 @@ else:
     # Find the resonator frequency vs flux minima
     minima = np.zeros(len(flux))
     for i in range(len(flux)):
-        minima[i] = dfs[np.argmin(R.T[i])] / u.MHz
+        minima[i] = dfs[np.argmin(R.T[i])] + resonator_IF
     # Cosine fit
     initial_guess = [1, 1 / 0.4, 0, 0]  # Initial guess for the parameters
     fit_params, _ = curve_fit(cosine_func, flux, minima, p0=initial_guess)
@@ -167,10 +166,10 @@ else:
     plt.figure()
     plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
     plt.pcolor(flux, dfs / u.MHz, R)
-    plt.plot(flux, minima, "x-", color="red", label="Flux minima")
-    plt.plot(flux, fitted_curve, label="Fitted Cosine", color="orange")
+    plt.plot(flux, minima / u.MHz, "x-", color="red", label="Flux minima")
+    plt.plot(flux, fitted_curve / u.MHz, label="Fitted Cosine", color="orange")
     plt.xlabel("Flux bias [V]")
-    plt.ylabel("Readout frequency [MHz]")
+    plt.ylabel("Readout IF [MHz]")
     plt.legend()
 
     print("DC flux value corresponding to the maximum frequency point", flux[np.argmax(fitted_curve)])

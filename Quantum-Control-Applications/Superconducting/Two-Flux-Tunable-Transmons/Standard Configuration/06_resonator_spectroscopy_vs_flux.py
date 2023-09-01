@@ -128,7 +128,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.title(f"Resonator 1 - LO: {resonator_LO / u.GHz} GHz")
-        plt.ylabel("IF readout frequency [MHz]")
+        plt.ylabel("Readout IF [MHz]")
         plt.pcolor(flux, (dfs + resonator_IF_q1) / u.MHz, R1)
         plt.axhline(resonator_IF_q1 / u.MHz, color="k")
         plt.subplot(222)
@@ -139,7 +139,7 @@ else:
         plt.subplot(223)
         plt.cla()
         plt.xlabel("Flux bias [V]")
-        plt.ylabel("IF readout frequency [MHz]")
+        plt.ylabel("Readout IF [MHz]")
         plt.pcolor(flux, (dfs + resonator_IF_q1) / u.MHz, signal.detrend(np.unwrap(phase1)))
         plt.axhline(resonator_IF_q1 / u.MHz, color="k")
         plt.subplot(224)
@@ -167,7 +167,7 @@ else:
         print(f"Resonator rr{rr+1}")
         # Find the resonator frequency vs flux minima
         for i in range(len(flux)):
-            minima[i] = frequencies[rr][np.argmin(R[rr].T[i])] / u.MHz
+            minima[i] = frequencies[rr][np.argmin(R[rr].T[i])]
 
         # Cosine fit
         initial_guess = [1, 0.5, 0, 0]  # Initial guess for the parameters
@@ -181,10 +181,10 @@ else:
         fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
         plt.subplot(2, 1, rr + 1)
         plt.pcolor(flux, frequencies[rr] / u.MHz, R1)
-        plt.plot(flux, minima, "x-", color="red", label="Flux minima")
-        plt.plot(flux, fitted_curve, label="Fitted Cosine", color="orange")
+        plt.plot(flux, minima / u.MHz, "x-", color="red", label="Flux minima")
+        plt.plot(flux, fitted_curve / u.MHz, label="Fitted Cosine", color="orange")
         plt.xlabel("Flux bias [V]")
-        plt.ylabel("IF readout frequency [MHz]")
+        plt.ylabel("Readout IF [MHz]")
         plt.title(f"Resonator rr{rr+1}")
         plt.legend()
         plt.tight_layout()

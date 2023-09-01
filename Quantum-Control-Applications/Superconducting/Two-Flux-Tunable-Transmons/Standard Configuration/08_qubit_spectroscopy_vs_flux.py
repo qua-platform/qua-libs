@@ -14,16 +14,15 @@ Before proceeding to the next node:
     - Update the relevant flux points in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter
+from qualang_tools.loops import from_array
 from macros import qua_declaration, multiplexed_readout
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -39,13 +38,15 @@ def cosine_func(x, amplitude, frequency, phase, offset):
 # The QUA program #
 ###################
 n_avg = 1000  # The number of averages
-t = 5 * u.us  # Qubit drive duration
+# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
+saturation_len = 10 * u.us  # In ns
+saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
 dfs = np.arange(-20e6, +20e6, 0.5e6)  # Qubit detuning sweep with respect to qubit_IF
 dcs = np.arange(-0.5, 0.49, 0.02)  # Flux sweep
 
 # The fit parameters are take from the config
-fitted_curve1 = (cosine_func(dcs, amplitude_fit1, frequency_fit1, phase_fit1, offset_fit1) * u.MHz).astype(int)
-fitted_curve2 = (cosine_func(dcs, amplitude_fit2, frequency_fit2, phase_fit2, offset_fit2) * u.MHz).astype(int)
+fitted_curve1 = (cosine_func(dcs, amplitude_fit1, frequency_fit1, phase_fit1, offset_fit1)).astype(int)
+fitted_curve2 = (cosine_func(dcs, amplitude_fit2, frequency_fit2, phase_fit2, offset_fit2)).astype(int)
 
 
 with program() as multi_qubit_spec_vs_flux:
@@ -72,8 +73,8 @@ with program() as multi_qubit_spec_vs_flux:
                 # update_frequency("rr2", resonator_freq2[index] + resonator_IF_q2)
 
                 # Saturate qubit
-                play("cw" * amp(1), "q1_xy", duration=t * u.ns)
-                # play("cw" * amp(1), "q2_xy", duration=t * u.ns)
+                play("cw" * amp(saturation_amp), "q1_xy", duration=saturation_len * u.ns)
+                # play("cw" * amp(saturation_amp), "q2_xy", duration=saturation_len * u.ns)
 
                 # Multiplexed readout, also saves the measurement outcomes
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2])

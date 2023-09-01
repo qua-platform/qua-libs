@@ -18,9 +18,10 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -28,9 +29,10 @@ warnings.filterwarnings("ignore")
 ##############################
 # Program-specific variables #
 ##############################
-
 n_avg = 3000  # Number of averaging loops
-
+# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
+saturation_len = 10 * u.us  # In ns
+saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
 # Frequency sweep in Hz
 span = 10 * u.MHz
 df = 100 * u.kHz
@@ -49,7 +51,7 @@ def cosine_func(x, amplitude, frequency, phase, offset):
 
 
 # The fit parameters are take from the config
-fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit) * u.MHz
+fitted_curve = cosine_func(flux, amplitude_fit, frequency_fit, phase_fit, offset_fit)
 fitted_curve = fitted_curve.astype(int)
 
 ###################
@@ -80,9 +82,9 @@ with program() as qubit_spec_2D:
                 set_dc_offset("flux_line", "single", dc)
                 wait(flux_settle_time * u.ns, "resonator", "qubit")
                 # Play a qubit pulse on the qubit
-                play("x180", "qubit")
+                play("saturation"*amp(saturation_amp), "qubit", duration=saturation_len)
                 # Align the two elements to measure after playing the qubit pulse.
-                # One can also measure the resonator while driving the qubit (2-tone spectroscopy) by commenting the 'align'
+                # One can also measure the resonator while driving the qubit by commenting the 'align'
                 align("qubit", "resonator")
                 # Measure the state of the resonator
                 measure(

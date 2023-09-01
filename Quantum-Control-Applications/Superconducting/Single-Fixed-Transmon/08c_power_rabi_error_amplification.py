@@ -18,11 +18,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -32,7 +33,7 @@ warnings.filterwarnings("ignore")
 ###################
 
 n_avg = 1000  # The number of averages
-# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 a_min = 0.9
 a_max = 1.1
 n_a = 101
@@ -118,16 +119,21 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.suptitle("Power Rabi with error amplification")
-        plt.subplot(121)
+        plt.subplot(221)
         plt.cla()
         plt.pcolor(amplitudes * x180_amp, nb_of_pulses, I)
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("# of Rabi pulses")
         plt.title("I quadrature [V]")
-        plt.subplot(122)
+        plt.subplot(222)
         plt.cla()
         plt.pcolor(amplitudes * x180_amp, nb_of_pulses, Q)
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.title("Q quadrature [V]")
+        plt.subplot(212)
+        plt.plot(amplitudes * x180_amp, np.sum(I, axis=0))
+        plt.xlabel("Rabi pulse amplitude [V]")
+        plt.ylabel("Sum along the # of Rabi pulses")
         plt.pause(0.1)
         plt.tight_layout()
+    print(f"Optimal x180_amp = {amplitudes[np.argmin(np.sum(I, axis=0))] * x180_amp:.4f} V")

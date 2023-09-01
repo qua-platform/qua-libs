@@ -6,7 +6,7 @@ In order to facilitate the qubit search, the qubit pulse duration and amplitude 
 program directly without having to modify the configuration.
 
 The data is post-processed to determine the qubit resonance frequency, which can then be used to adjust
-the qubit intermediate frequency in the configuration under "qubit_IF".
+the qubit intermediate frequency in the configuration under "center".
 
 Note that it can happen that the qubit is excited by the image sideband or LO leakage instead of the desired sideband.
 This is why calibrating the qubit mixer is highly recommended.
@@ -43,7 +43,8 @@ warnings.filterwarnings("ignore")
 ###################
 n_avg = 1000  # The number of averages
 t = 5 * u.us  # Qubit pulse length
-# Qubit detuning sweep with respect to qubit_IF
+# Qubit detuning sweep
+center = 0 * u.MHz
 span = 10 * u.MHz
 df = 100 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
@@ -62,11 +63,11 @@ with program() as qubit_spec:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # Update the frequency of the digital oscillator linked to the qubit element
-            update_frequency("qubit", df + qubit_IF)
-            # Play the saturation pulse to put the qubit in a mixed state
-            play("saturation", "qubit", duration=t * u.ns)
+            update_frequency("qubit", df + center)
+            # Play the saturation pulse to put the qubit in a mixed state - Can adjust the amplitude on the fly [-2; 2)
+            play("saturation" * amp(1), "qubit", duration=t * u.ns)
             # Align the two elements to measure after playing the qubit pulse.
-            # One can also measure the resonator while driving the qubit (2-tone spectroscopy) by commenting the 'align'
+            # One can also measure the resonator while driving the qubit by commenting the 'align'
             align("qubit", "resonator")
             # Measure the state of the resonator
             measure(
@@ -130,12 +131,12 @@ else:
         plt.suptitle(f"Qubit spectroscopy - LO = {qubit_LO / u.GHz} GHz")
         plt.subplot(211)
         plt.cla()
-        plt.plot((dfs + qubit_IF) / u.MHz, R, ".")
+        plt.plot((dfs + center) / u.MHz, R, ".")
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212)
         plt.cla()
-        plt.plot((dfs + qubit_IF) / u.MHz, phase, ".")
+        plt.plot((dfs + center) / u.MHz, phase, ".")
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)

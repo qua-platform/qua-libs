@@ -16,11 +16,13 @@ Next steps before going to the next node:
 """
 
 from qm.qua import *
-from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")

@@ -17,11 +17,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -31,7 +32,7 @@ warnings.filterwarnings("ignore")
 ###################
 
 n_avg = 1000  # The number of averages
-# Pulse duration sweep (in clock cycles = 4ns)
+# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 t_min = 4
 t_max = 250
 dt = 4
@@ -121,5 +122,19 @@ else:
         plt.ylabel("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # Fit the results to extract the x180 length
+    try:
+        from qualang_tools.plot.fitting import Fit
+
+        fit = Fit()
+        plt.figure()
+        rabi_fit = fit.rabi(4 * durations, I, plot=True)
+        plt.title(f"Time Rabi")
+        plt.xlabel("Rabi pulse duration [ns]")
+        plt.ylabel("I quadrature [V]")
+    except (Exception,):
+        pass

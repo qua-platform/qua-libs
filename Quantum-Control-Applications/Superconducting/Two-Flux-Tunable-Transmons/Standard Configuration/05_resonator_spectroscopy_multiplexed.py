@@ -145,12 +145,12 @@ else:
         plt.subplot(223)
         plt.cla()
         plt.plot((resonator_IF_q1 + dfs) / u.MHz, signal.detrend(np.unwrap(phase1)))
-        plt.xlabel("Readout IF frequency [MHz]")
+        plt.xlabel("Readout IF [MHz]")
         plt.ylabel("Phase [rad]")
         plt.subplot(224)
         plt.cla()
         plt.plot((resonator_IF_q2 + dfs) / u.MHz, signal.detrend(np.unwrap(phase2)))
-        plt.xlabel("Readout IF frequency [MHz]")
+        plt.xlabel("Readout IF [MHz]")
         plt.tight_layout()
 
     try:
