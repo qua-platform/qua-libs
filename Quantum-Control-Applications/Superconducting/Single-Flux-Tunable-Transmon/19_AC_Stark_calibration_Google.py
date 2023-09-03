@@ -1,12 +1,12 @@
 """
-        AC STARK-SHIFT CALIBRATION WITH DRAG PULSES 1D (GOOGLE METHOD)
-The sequence consists in applying an given number of x180 and -x180 pulses successively for different DRAG detunings.
-Here the detuning sweep has to be performed in python, because it involves changing the DRAG waveforms in a
+        AC STARK-SHIFT CALIBRATION WITH DRAG PULSES (GOOGLE METHOD)
+The sequence consists in applying an increasing number of x180 and -x180 pulses successively for different DRAG
+detunings. Here the detuning sweep has to be performed in python, because it involves changing the DRAG waveforms in a
 non-linear manner.
 After such a sequence, the qubit is expected to always be in the ground state if the AC Stark shift is
 properly compensated by the DRAG detuning.
-One can fit the final results with an inverted parabola to precisely determined the optimal detuning and update it in
-the configuration.
+One can then take a line cut for a given number of pulse and fit the 1D trace with a parabola to get the optimum
+detuning and update its value in the configuration.
 
 This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
@@ -23,27 +23,34 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import fetching_tool
+from qualang_tools.loops import from_array
 from macros import readout_macro
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
+
 
 ###################
 # The QUA program #
 ###################
 
-n_avg = 1000
-number_of_pulses = 20
+n_avg = 100
 # Detuning to compensate for the AC STark-shift
-detunings = np.arange(-3e6, 0e6, 0.1e6)
+detunings = np.arange(-10e6, 10e6, 1e6)
+# Scan the number of pulses
+iter_min = 0
+iter_max = 25
+d = 1
+iters = np.arange(iter_min, iter_max + 0.1, d)
 
 with program() as ac_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     it = declare(int)  # QUA variable for the number of qubit pulses
+    pulses = declare(int)  # QUA variable for counting the qubit pulses
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     state = declare(bool)  # QUA variable for the qubit state
@@ -51,27 +58,28 @@ with program() as ac_stark_shift:
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
     state_st = declare_stream()  # Stream for the qubit state
 
-    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        # Loop for error amplification (perform many qubit pulses with varying DRAG coefficients)
-        with for_(it, 0, it < number_of_pulses, it + 1):
-            play("x180" * amp(1), "qubit")
-            play("x180" * amp(-1), "qubit")
-        # Align the two elements to measure after playing the qubit pulses.
-        align("qubit", "resonator")
-        # Measure the resonator and extract the qubit state
-        state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
-        # Wait for the qubit to decay to the ground state
-        wait(thermalization_time * u.ns, "resonator")
-        # Save the 'I' & 'Q' quadratures to their respective streams
-        save(I, I_st)
-        save(Q, Q_st)
-        save(state, state_st)
+    with for_(n, 0, n < n_avg, n + 1):
+        with for_(*from_array(it, iters)):  # QUA for_ loop for sweeping the number of pulses
+            # Loop for error amplification (perform many qubit pulses with varying DRAG coefficients)
+            with for_(pulses, iter_min, pulses <= it, pulses + d):
+                play("x180" * amp(1), "qubit")
+                play("x180" * amp(-1), "qubit")
+            # Align the two elements to measure after playing the qubit pulses.
+            align("qubit", "resonator")
+            # Measure the resonator and extract the qubit state
+            state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
+            # Wait for the qubit to decay to the ground state
+            wait(thermalization_time * u.ns, "resonator")
+            # Save the 'I' & 'Q' quadratures to their respective streams
+            save(I, I_st)
+            save(Q, Q_st)
+            save(state, state_st)
 
     with stream_processing():
-        # Since the Stark shift is swept in Python, we just need to stream 1 point per OPX run.
-        I_st.average().save("I")
-        Q_st.average().save("Q")
-        state_st.boolean_to_int().average().save("state")
+        # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
+        I_st.buffer(len(iters)).average().save("I")
+        Q_st.buffer(len(iters)).average().save("Q")
+        state_st.boolean_to_int().buffer(len(iters)).average().save("state")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -122,21 +130,31 @@ else:
         state_tot.append(state)
         # Plot results
         plt.suptitle("AC stark shift calibration")
-        plt.subplot(311)
+        plt.subplot(231)
         plt.cla()
-        plt.plot(xaxis, I_tot, "o")
-        plt.ylabel("I [a.u.]")
-        plt.subplot(312)
+        plt.pcolor(iters, xaxis, I_tot)
+        plt.xlabel("# of x180-x180 pulses")
+        plt.ylabel("Detuning [Hz]")
+        plt.title("I [a.u.]")
+        plt.subplot(232)
         plt.cla()
-        plt.plot(xaxis, Q_tot, "o")
-        plt.ylabel("Q [a.u.]")
-        plt.subplot(313)
+        plt.pcolor(iters, xaxis, Q_tot)
+        plt.xlabel("# of x180-x180 pulses")
+        plt.ylabel("Detuning [Hz]")
+        plt.title("Q [a.u.]")
+        plt.subplot(233)
         plt.cla()
-        plt.plot(xaxis, state_tot, "o")
-        plt.xlabel("Detuning [Hz]")
-        plt.ylabel("state")
+        plt.pcolor(iters, xaxis, state_tot)
+        plt.xlabel("# of x180-x180 pulses")
+        plt.ylabel("Detuning [Hz]")
+        plt.title("state")
+        plt.subplot(212)
+        plt.plot(xaxis, np.sum(I_tot, axis=1))
+        plt.xlabel("DRAG detuning [Hz]")
+        plt.ylabel("Sum along the iterations")
         plt.tight_layout()
         plt.pause(0.01)
+    print(f"Optimal DRAG detuning = {xaxis[np.argmin(np.sum(I_tot, axis=1))]:.0f} Hz")
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

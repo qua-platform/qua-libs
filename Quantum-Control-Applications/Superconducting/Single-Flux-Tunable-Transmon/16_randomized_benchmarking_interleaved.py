@@ -24,12 +24,13 @@ Prerequisites:
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from scipy.optimize import curve_fit
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -296,7 +297,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
-    x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+    x = np.arange(0, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while results.is_processing():
         # data analysis

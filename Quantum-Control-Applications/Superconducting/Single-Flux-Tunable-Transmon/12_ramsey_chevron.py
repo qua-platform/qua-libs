@@ -19,17 +19,18 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-n_avg = 1000  # Number of averaging loops
+###################
+# The QUA program #
+###################
+n_avg = 100  # Number of averaging loops
 
 # Frequency sweep in Hz
 freq_span = 10 * u.MHz
@@ -42,9 +43,7 @@ d_tau = 40 // 4
 taus = np.arange(0, tau_max, d_tau)
 if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
     raise Exception("Delay must be either 0 or an integer larger than 4.")
-###################
-# The QUA program #
-###################
+
 with program() as ramsey_freq_duration:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the qubit frequency
@@ -121,23 +120,22 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
-        # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, readout_len)
-        R = np.abs(S)  # Amplitude
-        phase = np.angle(S)  # Phase
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
+        plt.suptitle("Ramsey chevron")
         plt.cla()
-        plt.title(r"Ramsey chevron $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor(frequencies / u.MHz, taus * 4, R)
+        plt.title("I quadrature [V]")
+        plt.pcolor(frequencies / u.MHz, taus * 4, I)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Ramsey chevron phase")
-        plt.pcolor(frequencies / u.MHz, taus * 4, np.unwrap(phase))
+        plt.title("Q quadrature [V]")
+        plt.pcolor(frequencies / u.MHz, taus * 4, Q)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()

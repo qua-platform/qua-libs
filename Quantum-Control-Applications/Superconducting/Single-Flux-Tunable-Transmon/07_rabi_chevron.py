@@ -28,10 +28,11 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-n_avg = 1000  # The number of averages
+
+###################
+# The QUA program #
+###################
+n_avg = 100  # The number of averages
 # The frequency sweep parameters
 span = 5 * u.MHz
 df = 100 * u.kHz
@@ -41,10 +42,6 @@ a_min = 0
 a_max = 1.0
 n_a = 51
 amplitudes = np.linspace(a_min, a_max, n_a)
-
-###################
-# The QUA program #
-###################
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop

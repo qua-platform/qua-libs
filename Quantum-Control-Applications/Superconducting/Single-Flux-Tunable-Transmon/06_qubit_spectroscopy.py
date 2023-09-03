@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 t = 5 * u.us  # Qubit pulse length
 # Qubit detuning sweep
 center = 0 * u.MHz

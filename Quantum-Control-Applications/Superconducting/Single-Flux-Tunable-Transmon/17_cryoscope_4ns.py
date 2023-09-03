@@ -38,11 +38,12 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from macros import ge_averaged_measurement
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal, optimize
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from macros import ge_averaged_measurement
+from scipy import signal, optimize
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -153,7 +154,7 @@ with program() as cryoscope:
                     play("const", "flux_line", duration=t)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
-                wait((int(max(durations)) + 20) * u.ns, "qubit")
+                wait((int(max(durations)) * 4 + 20) * u.ns, "qubit")
                 # Play second X/2 or Y/2
                 with if_(flag):
                     play("x90", "qubit")
@@ -165,8 +166,8 @@ with program() as cryoscope:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:

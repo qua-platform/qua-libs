@@ -153,7 +153,7 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # The QUA program #
 ###################
 
-n_avg = 100000
+n_avg = 10000
 
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop

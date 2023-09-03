@@ -19,11 +19,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -31,35 +32,42 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1e4
-tau_min = 4  # in clock cycles - minimum is 4 clock cycles
-tau_max = 2000 // 4  # in clock cycles
-d_tau = 10  # in clock cycles
+n_avg = 1000
+# Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+tau_min = 4
+tau_max = 2000 // 4
+d_tau = 40 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
-
+# Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = 1 * u.MHz  # in Hz
 
 with program() as ramsey:
     n = declare(int)  # QUA variable for the averaging loop
     tau = declare(int)  # QUA variable for the idle time
+    phase = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
+    state = declare(bool)  # QUA variable for the qubit state
     I_st = declare_stream()  # Stream for the 'I' quadrature
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
+    state_st = declare_stream()  # Stream for the qubit state
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
-            # 1st x90 gate
-            play("x90", "qubit")
-            # Wait a varying idle time
-            wait(tau, "qubit")
             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-            frame_rotation_2pi(Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau), "qubit")
-            # 2nd x90 gate
-            play("x90", "qubit")
+            assign(phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau))
+            with strict_timing_():
+                # 1st x90 gate
+                play("x90", "qubit")
+                # Wait a varying idle time
+                wait(tau, "qubit")
+                # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
+                # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
+                frame_rotation_2pi(phase, "qubit")
+                # 2nd x90 gate
+                play("x90", "qubit")
             # Align the two elements to measure after playing the qubit pulse.
             align("qubit", "resonator")
             # Measure the state of the resonator
@@ -72,9 +80,12 @@ with program() as ramsey:
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")
-            # Save the 'I' & 'Q' quadratures to their respective streams
+            # State discrimination
+            assign(state, I > ge_threshold)
+            # Save the 'I', 'Q' and 'state' to their respective streams
             save(I, I_st)
             save(Q, Q_st)
+            save(state, state_st)
             # Reset the frame of the qubit in order not to accumulate rotations
             reset_frame("qubit")
         # Save the averaging iteration to get the progress bar
@@ -84,6 +95,7 @@ with program() as ramsey:
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         I_st.buffer(len(taus)).average().save("I")
         Q_st.buffer(len(taus)).average().save("Q")
+        state_st.boolean_to_int().buffer(len(taus)).average().save("state")
         n_st.save("iteration")
 
 #####################################
@@ -121,15 +133,20 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.suptitle(f"Ramsey with frame rotation ({detuning / u.MHz} MHz)")
-        plt.subplot(211)
+        plt.subplot(311)
         plt.cla()
         plt.plot(4 * taus, I, ".")
         plt.ylabel("I quadrature [V]")
-        plt.subplot(212)
+        plt.subplot(312)
         plt.cla()
         plt.plot(4 * taus, Q, ".")
-        plt.xlabel("Idle time [ns]")
         plt.ylabel("Q quadrature [V]")
+        plt.subplot(313)
+        plt.cla()
+        plt.plot(4 * taus, state, ".")
+        plt.ylim((0, 1))
+        plt.xlabel("Idle time [ns]")
+        plt.ylabel("State")
         plt.pause(0.1)
         plt.tight_layout()
 
@@ -147,9 +164,10 @@ else:
         qubit_detuning = ramsey_fit["f"][0] * u.GHz - detuning
         plt.xlabel("Idle time [ns]")
         plt.ylabel("I quadrature [V]")
-        print(f"Qubit detuning to update in the config: qubit_IF += {qubit_detuning:.0f} Hz")
+        print(f"Qubit detuning to update in the config: qubit_IF += {-qubit_detuning:.0f} Hz")
         print(f"T2* = {qubit_T2:.0f} ns")
-        plt.legend((f"detuning = {qubit_detuning:.0f} Hz", f"T2* = {qubit_T2:.0f} ns"))
+        plt.legend((f"detuning = {-qubit_detuning / u.kHz:.3f} kHz", f"T2* = {qubit_T2:.0f} ns"))
         plt.title("Ramsey measurement with virtual Z rotations")
+        print(f"Detuning to add: {-qubit_detuning / u.kHz:.3f} kHz")
     except (Exception,):
         pass

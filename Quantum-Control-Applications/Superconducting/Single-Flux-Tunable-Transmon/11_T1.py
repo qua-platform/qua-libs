@@ -19,7 +19,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
+from qualang_tools.loops import from_array, get_equivalent_log_array
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -27,11 +27,11 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1e4
-tau_min = 4  # in clock cycles
-tau_max = 10_000  # in clock cycles
-d_tau = 20  # in clock cycles
+n_avg = 1000
+# The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+tau_min = 16 // 4
+tau_max = 40_000 // 4
+d_tau = 100 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
 # taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
@@ -70,8 +70,15 @@ with program() as T1:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        I_st.buffer(len(taus)).average().save("I")
-        Q_st.buffer(len(taus)).average().save("Q")
+        # If log sweep, then the swept values will be slightly different from np.logspace because of integer rounding in QUA.
+        # get_equivalent_log_array() is used to get the exact values used in the QUA program.
+        if np.isclose(np.std(taus[1:] / taus[:-1]), 0, atol=1e-3):
+            taus = get_equivalent_log_array(taus)
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
+        else:
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 #####################################

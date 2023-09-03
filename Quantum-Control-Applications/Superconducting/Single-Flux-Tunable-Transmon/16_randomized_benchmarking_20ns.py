@@ -27,16 +27,36 @@ Prerequisites:
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from scipy.optimize import curve_fit
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
+
+##############################
+# Program-specific variables #
+##############################
+num_of_sequences = 50  # Number of random sequences
+n_avg = 20  # Number of averaging loops for each random sequence
+max_circuit_depth = 1000  # Maximum circuit depth < 2600 (6*max_circuit_depth < 16k)
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+seed = 345324  # Pseudo-random number generator seed
+# Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
+state_discrimination = False
+# List of recovery gates from the lookup table
+inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
+
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # Single qubit Clifford operations
 c1_ops = [
     ("I",),
@@ -79,25 +99,6 @@ single_qubit_gate_pairs = []
 for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
-
-##############################
-# Program-specific variables #
-##############################
-num_of_sequences = 50  # Number of random sequences
-n_avg = 20  # Number of averaging loops for each random sequence
-max_circuit_depth = 1000  # Maximum circuit depth < 2600 (6*max_circuit_depth < 16k)
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
-seed = 345324  # Pseudo-random number generator seed
-# Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
-state_discrimination = False
-# List of recovery gates from the lookup table
-inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-
-
-###################################
-# Helper functions and QUA macros #
-###################################
 def power_law(power, a, b, p):
     return a * (p**power) + b
 

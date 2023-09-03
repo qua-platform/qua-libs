@@ -19,12 +19,13 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from macros import readout_macro
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -32,7 +33,7 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
+n_avg = 100
 
 # Scan the DRAG coefficient pre-factor
 a_min = 0.0
@@ -120,24 +121,29 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.suptitle("DRAG calibration (Google)")
-        plt.subplot(131)
+        plt.subplot(231)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, I, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.ylabel(r"Drag coefficient $\alpha$")
         plt.title("I")
-        plt.subplot(132)
+        plt.subplot(232)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, Q, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.title("Q")
-        plt.subplot(133)
+        plt.subplot(233)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, state, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.title("State")
+        plt.subplot(212)
+        plt.plot(amps * drag_coef, np.sum(I, axis=1))
+        plt.xlabel(r"Drag coefficient $\alpha$")
+        plt.ylabel("Sum along the iterations")
         plt.tight_layout()
         plt.pause(0.1)
+    print(f"Optimal DRAG alpha = {drag_coef * amps[np.argmin(np.sum(I, axis=1))]:.3f}")
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

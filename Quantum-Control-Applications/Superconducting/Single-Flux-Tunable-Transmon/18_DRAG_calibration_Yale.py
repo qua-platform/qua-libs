@@ -20,12 +20,13 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from macros import readout_macro
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -34,10 +35,10 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-n_avg = 1000
+n_avg = 100
 
 # Scan the DRAG coefficient pre-factor
-a_min = 0.0
+a_min = -1.0
 a_max = 1.0
 da = 0.1
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes

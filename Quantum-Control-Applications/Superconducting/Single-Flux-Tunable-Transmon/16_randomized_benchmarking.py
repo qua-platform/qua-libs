@@ -22,12 +22,13 @@ Prerequisites:
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from scipy.optimize import curve_fit
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")

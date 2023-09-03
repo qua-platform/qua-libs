@@ -38,11 +38,12 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from macros import ge_averaged_measurement
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery import baking
+from macros import ge_averaged_measurement
 from scipy import signal, optimize
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -191,8 +192,8 @@ with program() as cryoscope:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:
