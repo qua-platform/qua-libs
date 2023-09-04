@@ -26,6 +26,7 @@ is not saturated, correct for DC offsets.
 6. **Qubit spectroscopy**
     * [Qubit Spectroscopy](06a_qubit_spectroscopy.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator.
     * [Qubit Spectroscopy vs flux](06b_qubit_spectroscopy_vs_flux.py) - Performs the qubit spectroscopy versus flux, measuring the resonator.
+    * [Qubit Spectroscopy Wide Range](06c_qubit_spectroscopy_wide_range_outer_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop.
 7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
     * [duration vs frequency](07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
     * [amplitude vs frequency](07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
@@ -52,10 +53,10 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
-    * [Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
-    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Cliffords).
-    * [Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Cliffords).
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16b_randomized_benchmarking_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
+    * [Single Qubit Randomized Benchmarking for gates > 40ns](16a_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Cliffords).
+    * [Single Qubit Randomized Benchmarking for gates > 20ns](16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Cliffords).
 17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
     * [Cryoscope_amplitude_calibration](17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
     * [Cryoscope with 1ns resolution](17_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.

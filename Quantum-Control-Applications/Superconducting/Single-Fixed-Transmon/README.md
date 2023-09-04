@@ -38,17 +38,17 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 11. [T1](11_T1.py) - Measures T1.
 13. [Ramsey Chevron](12_ramsey_chevron.py) - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
 12. **1D Ramsey** - Measures T2*.
-    * [Ramsey with detuning](13_ramsey_w_detuning.py) - Perform a Ramsey measurement by scanning the idle time with a given detuning.
-    * [Ramsey with virtual Z rotations](13_ramsey_w_virtual_rotation.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
+    * [Ramsey with virtual Z rotations](13a_ramsey_w_virtual_rotation.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
+    * [Ramsey with detuning](13b_ramsey_w_detuning.py) - Perform a Ramsey measurement by scanning the idle time with a given detuning.
 14. [Echo](14_echo.py) - Measures T2 by apply an echo pulse.
 15. [ALL XY](15_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking_interleaved.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
-    * [Single Qubit Randomized Benchmarking for gates > 40ns](16_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
-    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
-    * [Single Qubit Randomized Benchmarking for gates > 20ns](16_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16b_randomized_benchmarking_interleaved.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
+    * [Single Qubit Randomized Benchmarking for gates > 40ns](16a_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
+    * [Single Qubit Randomized Benchmarking for gates > 20ns](16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
 17. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
     * [Google method](17_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
 the DRAG coefficient `$\alpha$`.

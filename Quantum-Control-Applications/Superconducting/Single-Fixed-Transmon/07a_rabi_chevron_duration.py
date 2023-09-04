@@ -28,7 +28,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-
 ###################
 # The QUA program #
 ###################
