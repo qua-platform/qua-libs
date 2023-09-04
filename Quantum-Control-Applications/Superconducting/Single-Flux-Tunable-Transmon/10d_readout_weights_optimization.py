@@ -20,12 +20,7 @@ Prerequisites:
     - Set the desired flux bias.
 
 Next steps before going to the next node:
-    - Update the integration weights in the configuration by adding
-    config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}
-    config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
-    config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
+    - Update the integration weights in the configuration by following the steps at the end of the script.
 """
 
 from qm.qua import *
@@ -233,23 +228,40 @@ else:
     weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
     weights_imag = list(norm_subtracted_trace.imag)
     weights_minus_real = list((-1) * norm_subtracted_trace.real)
-
+    # Save the weights for later use in the config
     np.savez(
-        "opt_weights",
+        "optimal_weights",
         weights_real=weights_real,
         weights_minus_imag=weights_minus_imag,
         weights_imag=weights_imag,
         weights_minus_real=weights_minus_real,
     )
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
 
-    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config
-    # config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}
-    # config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
-    # config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    # config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
+    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
+    # For this, you can just copy and paste the following lines into the "integration_weights" section:
+    # "opt_cosine_weights": {
+    #     "cosine": opt_weights_real,
+    #     "sine": opt_weights_minus_imag,
+    # },
+    # "opt_sine_weights": {
+    #     "cosine": opt_weights_imag,
+    #     "sine": opt_weights_real,
+    # },
+    # "opt_minus_sine_weights": {
+    #     "cosine": opt_weights_minus_imag,
+    #     "sine": opt_weights_minus_real,
+    # },
 
-    # IN THE CONFIG TODO:
+    # also need to add the new weights to readout_pulse under the "integration_weights" section:
+    # "opt_cos": "opt_cosine_weights",
+    # "opt_sin": "opt_sine_weights",
+    # "opt_minus_sin": "opt_minus_sine_weights",
+
+    # And finally extract the weights from the saved file and reformat them using the integration_weights_tools.
+    # For this you just need to copy and paste the following lines at the beginning of the config, where the readout
+    # parameters are defined as Python variables:
     # opt_weights = True
     # if opt_weights:
     #     from qualang_tools.config.integration_weights_tools import convert_integration_weights
@@ -264,5 +276,3 @@ else:
     #     opt_weights_minus_imag = [(1.0, readout_len)]
     #     opt_weights_imag = [(1.0, readout_len)]
     #     opt_weights_minus_real = [(1.0, readout_len)]
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
-    qm.close()
