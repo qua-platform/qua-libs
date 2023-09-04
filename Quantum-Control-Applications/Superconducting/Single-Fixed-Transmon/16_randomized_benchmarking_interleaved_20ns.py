@@ -28,16 +28,40 @@ Prerequisites:
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from scipy.optimize import curve_fit
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
+##############################
+# Program-specific variables #
+##############################
+num_of_sequences = 50  # Number of random sequences
+n_avg = 20  # Number of averaging loops for each random sequence
+max_circuit_depth = 1000  # Maximum circuit depth
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+seed = 345324  # Pseudo-random number generator seed
+# Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
+state_discrimination = False
+# List of recovery gates from the lookup table
+inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
+# index of the gate to interleave from the play_sequence() function defined below
+# Correspondence table:
+#  0: identity |  1: x180 |  2: y180
+# 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
+interleaved_gate_index = 2
+
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # Single qubit Clifford operations
 c1_ops = [
     ("I",),
@@ -81,29 +105,7 @@ for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
 
-##############################
-# Program-specific variables #
-##############################
-num_of_sequences = 50  # Number of random sequences
-n_avg = 20  # Number of averaging loops for each random sequence
-max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
-seed = 345324  # Pseudo-random number generator seed
-# Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
-state_discrimination = False
-# List of recovery gates from the lookup table
-inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
-# index of the gate to interleave from the play_sequence() function defined below
-# Correspondence table:
-#  0: identity |  1: x180 |  2: y180
-# 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
-interleaved_gate_index = 2
 
-
-###################################
-# Helper functions and QUA macros #
-###################################
 def get_interleaved_gate(gate_index):
     if gate_index == 0:
         return "I"
@@ -469,7 +471,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
-    x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+    x = np.arange(0, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
     x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
     while results.is_processing():
         # data analysis

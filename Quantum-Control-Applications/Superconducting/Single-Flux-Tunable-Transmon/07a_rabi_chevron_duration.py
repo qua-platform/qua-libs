@@ -131,7 +131,7 @@ else:
         plt.ylabel("Pulse duration [ns]")
         plt.subplot(212)
         plt.cla()
-        plt.title("phase")
+        plt.title("Phase")
         plt.pcolor(dfs / u.MHz, durations * 4, np.unwrap(phase))
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse duration [ns]")

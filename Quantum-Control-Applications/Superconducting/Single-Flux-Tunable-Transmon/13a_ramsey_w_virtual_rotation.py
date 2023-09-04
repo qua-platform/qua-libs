@@ -58,6 +58,7 @@ with program() as ramsey:
             # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
             assign(phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * tau))
+            # Strict_timing ensures that the sequence will be played without gaps
             with strict_timing_():
                 # 1st x90 gate
                 play("x90", "qubit")

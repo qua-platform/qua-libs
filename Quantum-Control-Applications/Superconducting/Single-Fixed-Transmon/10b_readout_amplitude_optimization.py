@@ -14,25 +14,28 @@ Next steps before going to the next node:
     - Update the readout amplitude (readout_amp) in the configuration.
 """
 
+
 from qm.qua import *
-from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #
 ###################
-
-n_runs = 1000
-# The readout amplitude sweep (as a pre-factor of the readout amplitude)
-a_min = 0.9
-a_max = 1.1
+n_avg = 1000
+# The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
+a_min = 0.5
+a_max = 1.5
 da = 0.01
 amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
-
 
 with program() as ro_amp_opt:
     n = declare(int)  # QUA variable for the number of runs
@@ -50,7 +53,7 @@ with program() as ro_amp_opt:
 
     with for_(*from_array(a, amplitudes)):
         save(counter, n_st)
-        with for_(n, 0, n < n_runs, n + 1):
+        with for_(n, 0, n < n_avg, n + 1):
             measure(
                 "readout" * amp(a),
                 "resonator",
@@ -87,10 +90,10 @@ with program() as ro_amp_opt:
 
     with stream_processing():
         # mean values
-        I_g_st.buffer(n_runs).buffer(len(amplitudes)).save("I_g")
-        Q_g_st.buffer(n_runs).buffer(len(amplitudes)).save("Q_g")
-        I_e_st.buffer(n_runs).buffer(len(amplitudes)).save("I_e")
-        Q_e_st.buffer(n_runs).buffer(len(amplitudes)).save("Q_e")
+        I_g_st.buffer(n_avg).buffer(len(amplitudes)).save("I_g")
+        Q_g_st.buffer(n_avg).buffer(len(amplitudes)).save("Q_g")
+        I_e_st.buffer(n_avg).buffer(len(amplitudes)).save("I_e")
+        Q_e_st.buffer(n_avg).buffer(len(amplitudes)).save("Q_e")
         n_st.save("iteration")
 
 #####################################
@@ -140,5 +143,13 @@ else:
     plt.figure()
     plt.plot(amplitudes * readout_amp, fidelity_vec, ".-")
     plt.title("Readout amplitude optimization")
-    plt.xlabel("Readout amp pre-factor [V]")
-    plt.ylabel("Fidelity [%]")
+    plt.xlabel("Readout amplitude [V]")
+    plt.ylabel("Readout fidelity [%]")
+    plt.legend(
+        (
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% fidelity",
+        )
+    )
+    print(
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Fidelity={max(fidelity_vec):.1f}%)"
+    )

@@ -53,7 +53,7 @@ dfs = np.arange(-span, +span + 0.1, df)
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
-    df = declare(int)  # QUA variable for the readout frequency
+    df = declare(int)  # QUA variable for the qubit frequency
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature

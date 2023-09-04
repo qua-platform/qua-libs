@@ -26,16 +26,15 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-
 ###################
 # The QUA program #
 ###################
 
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 # Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
-t_min = 4
-t_max = 250
-dt = 4
+t_min = 16 // 4
+t_max = 2000 // 4
+dt = 4 // 4
 durations = np.arange(t_min, t_max, dt)
 
 with program() as time_rabi:
@@ -79,7 +78,7 @@ with program() as time_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -128,9 +127,10 @@ else:
 
         fit = Fit()
         plt.figure()
-        res_spec_fit = fit.rabi(4 * durations, I, plot=True)
+        rabi_fit = fit.rabi(4 * durations, I, plot=True)
         plt.title(f"Time Rabi")
         plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
+        print(f"Optimal x180_len = {round(1 / rabi_fit['f'][0] / 2 / 4) * 4} ns for {x180_amp:} V")
     except (Exception,):
         pass

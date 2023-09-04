@@ -26,25 +26,20 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-
-n_avg = 1000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-dfs = np.arange(f_min, f_max + 0.1, df)
-# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-a_min = 0
-a_max = 1.0
-n_a = 101
-amplitudes = np.linspace(a_min, a_max, n_a)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 100  # The number of averages
+# The frequency sweep parameters
+span = 5 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)  # The frequency vector
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+a_min = 0
+a_max = 1.0
+n_a = 51
+amplitudes = np.linspace(a_min, a_max, n_a)
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
@@ -126,10 +121,11 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
-        plt.cla()
         plt.suptitle(f"Rabi chevron with LO={qubit_LO / u.GHz}GHz and IF={qubit_IF / u.MHz}MHz")
+        plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$")
         plt.pcolor(dfs / u.MHz, amplitudes * x180_amp, R)
+        plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.subplot(212)
         plt.cla()

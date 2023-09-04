@@ -31,12 +31,11 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 a_min = 0.9
 a_max = 1.1
-n_a = 101
+n_a = 51
 amplitudes = np.linspace(a_min, a_max, n_a)
 # Number of applied Rabi pulses sweep
 max_nb_of_pulses = 80  # Maximum number of qubit pulses
@@ -87,7 +86,7 @@ with program() as power_rabi_err:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -131,6 +130,7 @@ else:
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.title("Q quadrature [V]")
         plt.subplot(212)
+        plt.cla()
         plt.plot(amplitudes * x180_amp, np.sum(I, axis=0))
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("Sum along the # of Rabi pulses")

@@ -59,9 +59,9 @@ fitted_curve = fitted_curve.astype(int)
 ###################
 
 with program() as qubit_spec_2D:
-    n = declare(int)  # Averaging index
-    f = declare(int)  # Resonator frequency
-    dc = declare(fixed)  # flux dc level
+    n = declare(int)  # QUA variable for the averaging index
+    f = declare(int)  # QUA variable for the qubit frequency
+    dc = declare(fixed)  # QUA variable for the flux dc level
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     resonator_freq = declare(int, value=fitted_curve.tolist())  # res freq vs flux table

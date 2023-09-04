@@ -16,11 +16,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -28,13 +29,13 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1e4
-tau_min = 4  # in clock cycles
-tau_max = 2500  # in clock cycles
-d_tau = 10  # in clock cycles
+n_avg = 1000
+# Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+tau_min = 4
+tau_max = 2000 // 4
+d_tau = 40 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
-
+# Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = 1 * u.MHz  # in Hz
 
 with program() as ramsey:
@@ -139,9 +140,10 @@ else:
         qubit_detuning = ramsey_fit["f"][0] * u.GHz - detuning
         plt.xlabel("Idle time [ns]")
         plt.ylabel("I quadrature [V]")
-        print(f"Qubit detuning to update in the config: qubit_IF += {qubit_detuning:.0f} Hz")
+        print(f"Qubit detuning to update in the config: qubit_IF += {-qubit_detuning:.0f} Hz")
         print(f"T2* = {qubit_T2:.0f} ns")
-        plt.legend((f"detuning = {qubit_detuning:.0f} Hz", f"T2* = {qubit_T2:.0f} ns"))
+        plt.legend((f"detuning = {-qubit_detuning / u.kHz:.3f} kHz", f"T2* = {qubit_T2:.0f} ns"))
         plt.title("Ramsey measurement with detuned gates")
+        print(f"Detuning to add: {-qubit_detuning / u.kHz:.3f} kHz")
     except (Exception,):
         pass

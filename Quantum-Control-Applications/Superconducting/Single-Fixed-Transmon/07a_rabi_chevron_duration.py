@@ -27,25 +27,21 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
 
-n_avg = 1000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-dfs = np.arange(f_min, f_max + 0.1, df)
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
-t_min = 4
-t_max = 250
-dt = 4
-durations = np.arange(t_min, t_max, dt)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 50  # The number of averages
+# The frequency sweep parameters
+span = 20 * u.MHz
+df = 200 * u.kHz
+dfs = np.arange(-span, span + 0.1, df)
+# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+t_min = 4
+t_max = 1000
+dt = 10
+durations = np.arange(t_min, t_max, dt)
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop

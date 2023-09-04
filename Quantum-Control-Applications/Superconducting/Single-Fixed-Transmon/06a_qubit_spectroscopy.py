@@ -41,7 +41,9 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 n_avg = 10000  # The number of averages
-t = 5 * u.us  # Qubit pulse length
+# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
+saturation_len = 10 * u.us  # In ns
+saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
 # Qubit detuning sweep
 center = 0 * u.MHz
 span = 10 * u.MHz
@@ -63,7 +65,7 @@ with program() as qubit_spec:
             # Update the frequency of the digital oscillator linked to the qubit element
             update_frequency("qubit", df + center)
             # Play the saturation pulse to put the qubit in a mixed state - Can adjust the amplitude on the fly [-2; 2)
-            play("saturation" * amp(1), "qubit", duration=t * u.ns)
+            play("saturation" * amp(saturation_amp), "qubit", duration=saturation_len * u.ns)
             # Align the two elements to measure after playing the qubit pulse.
             # One can also measure the resonator while driving the qubit by commenting the 'align'
             align("qubit", "resonator")

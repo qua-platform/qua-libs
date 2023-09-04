@@ -21,12 +21,13 @@ Prerequisites:
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from scipy.optimize import curve_fit
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
+from scipy.optimize import curve_fit
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -154,7 +155,7 @@ def play_sequence(sequence_list, depth):
 ###################
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
-    depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)
+    depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences

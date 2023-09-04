@@ -35,7 +35,7 @@ n_avg = 100  # Number of averaging loops
 # Frequency sweep in Hz
 freq_span = 10 * u.MHz
 df = 100 * u.kHz
-frequencies = np.arange(-freq_span, freq_span, df)
+dfs = np.arange(-freq_span, freq_span, df)
 
 # Idle time sweep (Needs to be a list of integers) - in clock cycles (4ns)
 tau_max = 2000 // 4
@@ -56,7 +56,7 @@ with program() as ramsey_freq_duration:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(delay, taus)):  # QUA for_ loop for sweeping the idle time
-            with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the qubit frequency
+            with for_(*from_array(f, dfs)):  # QUA for_ loop for sweeping the qubit frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
                 update_frequency("qubit", f + qubit_IF)
                 # Adjust the idle time
@@ -86,8 +86,8 @@ with program() as ramsey_freq_duration:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).buffer(len(taus)).average().save("I")
-        Q_st.buffer(len(frequencies)).buffer(len(taus)).average().save("Q")
+        I_st.buffer(len(dfs)).buffer(len(taus)).average().save("I")
+        Q_st.buffer(len(dfs)).buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 
@@ -125,17 +125,17 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.subplot(211)
         plt.suptitle("Ramsey chevron")
+        plt.subplot(211)
         plt.cla()
         plt.title("I quadrature [V]")
-        plt.pcolor(frequencies / u.MHz, taus * 4, I)
+        plt.pcolor(dfs / u.MHz, taus * 4, I)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.subplot(212)
         plt.cla()
         plt.title("Q quadrature [V]")
-        plt.pcolor(frequencies / u.MHz, taus * 4, Q)
+        plt.pcolor(dfs / u.MHz, taus * 4, Q)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()

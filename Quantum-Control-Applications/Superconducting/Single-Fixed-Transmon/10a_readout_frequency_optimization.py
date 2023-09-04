@@ -30,17 +30,15 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1000  # The number of averages
+n_avg = 100  # The number of averages
 # The frequency sweep parameters
-f_min = 70e6
-f_max = 80e6
-df = 0.1e6
-frequencies = np.arange(f_min, f_max + df / 2, df)  # + df/2 to add f_max to frequencies
+span = 10 * u.MHz
+df = 200 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)
 
 with program() as ro_freq_opt:
     n = declare(int)  # QUA variable for the averaging loop
-    f = declare(int)  # QUA variable for the readout frequency
+    df = declare(int)  # QUA variable for the readout frequency
     I_g = declare(fixed)  # QUA variable for the 'I' quadrature when the qubit is in |g>
     Q_g = declare(fixed)  # QUA variable for the 'Q' quadrature when the qubit is in |g>
     Ig_st = declare_stream()
@@ -52,9 +50,9 @@ with program() as ro_freq_opt:
     n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(f, frequencies)):
+        with for_(*from_array(df, dfs)):
             # Update the frequency of the digital oscillator linked to the qubit element
-            update_frequency("resonator", f)
+            update_frequency("resonator", df + resonator_IF)
             # Measure the state of the resonator
             measure(
                 "readout",
@@ -93,26 +91,26 @@ with program() as ro_freq_opt:
     with stream_processing():
         n_st.save("iteration")
         # mean values
-        Ig_st.buffer(len(frequencies)).average().save("Ig_avg")
-        Qg_st.buffer(len(frequencies)).average().save("Qg_avg")
-        Ie_st.buffer(len(frequencies)).average().save("Ie_avg")
-        Qe_st.buffer(len(frequencies)).average().save("Qe_avg")
+        Ig_st.buffer(len(dfs)).average().save("Ig_avg")
+        Qg_st.buffer(len(dfs)).average().save("Qg_avg")
+        Ie_st.buffer(len(dfs)).average().save("Ie_avg")
+        Qe_st.buffer(len(dfs)).average().save("Qe_avg")
         # variances to get the SNR
         (
-            ((Ig_st.buffer(len(frequencies)) * Ig_st.buffer(len(frequencies))).average())
-            - (Ig_st.buffer(len(frequencies)).average() * Ig_st.buffer(len(frequencies)).average())
+            ((Ig_st.buffer(len(dfs)) * Ig_st.buffer(len(dfs))).average())
+            - (Ig_st.buffer(len(dfs)).average() * Ig_st.buffer(len(dfs)).average())
         ).save("Ig_var")
         (
-            ((Qg_st.buffer(len(frequencies)) * Qg_st.buffer(len(frequencies))).average())
-            - (Qg_st.buffer(len(frequencies)).average() * Qg_st.buffer(len(frequencies)).average())
+            ((Qg_st.buffer(len(dfs)) * Qg_st.buffer(len(dfs))).average())
+            - (Qg_st.buffer(len(dfs)).average() * Qg_st.buffer(len(dfs)).average())
         ).save("Qg_var")
         (
-            ((Ie_st.buffer(len(frequencies)) * Ie_st.buffer(len(frequencies))).average())
-            - (Ie_st.buffer(len(frequencies)).average() * Ie_st.buffer(len(frequencies)).average())
+            ((Ie_st.buffer(len(dfs)) * Ie_st.buffer(len(dfs))).average())
+            - (Ie_st.buffer(len(dfs)).average() * Ie_st.buffer(len(dfs)).average())
         ).save("Ie_var")
         (
-            ((Qe_st.buffer(len(frequencies)) * Qe_st.buffer(len(frequencies))).average())
-            - (Qe_st.buffer(len(frequencies)).average() * Qe_st.buffer(len(frequencies)).average())
+            ((Qe_st.buffer(len(dfs)) * Qe_st.buffer(len(dfs))).average())
+            - (Qe_st.buffer(len(dfs)).average() * Qe_st.buffer(len(dfs)).average())
         ).save("Qe_var")
 
 #####################################
@@ -157,9 +155,10 @@ else:
         SNR = ((np.abs(Z)) ** 2) / (2 * var)
         # Plot results
         plt.cla()
-        plt.plot(frequencies / u.MHz, SNR, ".-")
-        plt.title("Readout optimization")
-        plt.xlabel("Readout frequency [MHz]")
+        plt.plot(dfs / u.MHz, SNR, ".-")
+        plt.title(f"Readout frequency optimization around {resonator_IF / u.MHz} MHz")
+        plt.xlabel("Readout frequency detuning [MHz]")
         plt.ylabel("SNR")
+        plt.grid("on")
         plt.pause(0.1)
-    print(f"The optimal readout frequency is {frequencies[np.argmax(SNR)]} Hz (SNR={max(SNR)})")
+    print(f"The optimal readout frequency is {dfs[np.argmax(SNR)] + resonator_IF} Hz (SNR={max(SNR)})")

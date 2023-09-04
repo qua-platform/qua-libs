@@ -22,12 +22,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from configuration import *
+from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
+from macros import readout_macro
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -37,7 +37,7 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-n_avg = 1000
+n_avg = 100
 # Detuning to compensate for the AC STark-shift
 detunings = np.arange(-10e6, 10e6, 1e6)
 # Scan the number of pulses
@@ -124,26 +124,36 @@ else:
         results = fetching_tool(job, data_list=["I", "Q", "state"])
         # Fetch results
         I, Q, state = results.fetch_all()
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         I_tot.append(I)
         Q_tot.append(Q)
         state_tot.append(state)
         # Plot results
         plt.suptitle("AC stark shift calibration")
-        plt.subplot(311)
+        plt.subplot(231)
         plt.cla()
         plt.pcolor(iters, xaxis, I_tot)
+        plt.xlabel("# of x180-x180 pulses")
         plt.ylabel("Detuning [Hz]")
-        plt.title("I [a.u.]")
-        plt.subplot(312)
+        plt.title("I [V]")
+        plt.subplot(232)
         plt.cla()
         plt.pcolor(iters, xaxis, Q_tot)
+        plt.xlabel("# of x180-x180 pulses")
         plt.ylabel("Detuning [Hz]")
-        plt.title("Q [a.u.]")
-        plt.subplot(313)
+        plt.title("Q [V]")
+        plt.subplot(233)
         plt.cla()
         plt.pcolor(iters, xaxis, state_tot)
         plt.xlabel("# of x180-x180 pulses")
         plt.ylabel("Detuning [Hz]")
         plt.title("state")
+        plt.subplot(212)
+        plt.cla()
+        plt.plot(xaxis, np.sum(I_tot, axis=1))
+        plt.xlabel("DRAG detuning [Hz]")
+        plt.ylabel("Sum along the iterations")
         plt.tight_layout()
         plt.pause(0.01)
+    print(f"Optimal DRAG detuning = {xaxis[np.argmin(np.sum(I_tot, axis=1))]:.0f} Hz")
