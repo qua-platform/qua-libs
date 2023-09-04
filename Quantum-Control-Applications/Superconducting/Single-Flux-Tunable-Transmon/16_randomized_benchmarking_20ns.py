@@ -99,6 +99,8 @@ single_qubit_gate_pairs = []
 for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
+
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
 

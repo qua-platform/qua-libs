@@ -105,6 +105,8 @@ single_qubit_gate_pairs = []
 for i in range(len(single_qubit_gates)):
     for j in range(len(single_qubit_gates)):
         single_qubit_gate_pairs.append(((single_qubit_gates[i],) + (single_qubit_gates[j],)))
+
+
 def get_interleaved_gate(gate_index):
     if gate_index == 0:
         return "I"

@@ -82,7 +82,7 @@ with program() as qubit_spec_2D:
                 set_dc_offset("flux_line", "single", dc)
                 wait(flux_settle_time * u.ns, "resonator", "qubit")
                 # Play a qubit pulse on the qubit
-                play("saturation"*amp(saturation_amp), "qubit", duration=saturation_len)
+                play("saturation" * amp(saturation_amp), "qubit", duration=saturation_len)
                 # Align the two elements to measure after playing the qubit pulse.
                 # One can also measure the resonator while driving the qubit by commenting the 'align'
                 align("qubit", "resonator")

@@ -146,9 +146,14 @@ else:
     plt.title("Readout amplitude optimization")
     plt.xlabel("Readout amplitude pre-factor [V]")
     plt.ylabel("Readout fidelity [%]")
-    plt.legend((f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% fidelity",))
+    plt.legend(
+        (
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% fidelity",
+        )
+    )
     print(
-        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Fidelity={max(fidelity_vec)}%)")
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Fidelity={max(fidelity_vec)}%)"
+    )
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

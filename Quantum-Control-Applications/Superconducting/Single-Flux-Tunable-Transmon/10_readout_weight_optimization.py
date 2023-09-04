@@ -86,6 +86,7 @@ def plot_three_complex_arrays(arr1, arr2, arr3):
     plt.tight_layout()
     plt.show()
 
+
 def update_readout_length(new_readout_length, ringdown_length):
     config["pulses"]["readout_pulse"]["length"] = new_readout_length
     config["integration_weights"]["cosine_weights"] = {
@@ -100,6 +101,7 @@ def update_readout_length(new_readout_length, ringdown_length):
         "cosine": [(0.0, new_readout_length + ringdown_length)],
         "sine": [(-1.0, new_readout_length + ringdown_length)],
     }
+
 
 ###################
 # The QUA program #
@@ -239,7 +241,13 @@ else:
     weights_imag = list(norm_subtracted_trace.imag)
     weights_minus_real = list((-1) * norm_subtracted_trace.real)
 
-    np.savez('opt_weights', weights_real=weights_real, weights_minus_imag=weights_minus_imag, weights_imag=weights_imag, weights_minus_real=weights_minus_real)
+    np.savez(
+        "opt_weights",
+        weights_real=weights_real,
+        weights_minus_imag=weights_minus_imag,
+        weights_imag=weights_imag,
+        weights_minus_real=weights_minus_real,
+    )
 
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config
     # config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}

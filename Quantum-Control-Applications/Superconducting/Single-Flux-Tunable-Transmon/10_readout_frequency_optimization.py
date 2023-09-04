@@ -160,7 +160,7 @@ else:
         plt.title(f"Readout frequency optimization around {resonator_IF / u.MHz} MHz")
         plt.xlabel("Readout frequency detuning [MHz]")
         plt.ylabel("SNR")
-        plt.grid('on')
+        plt.grid("on")
         plt.pause(0.1)
     print(f"The optimal readout frequency is {dfs[np.argmax(SNR)] + resonator_IF} Hz (SNR={max(SNR)})")
 
