@@ -229,13 +229,6 @@ else:
     # Plot the results
     plot_three_complex_arrays(ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
-    # weights_cos = convert_integration_weights(list(norm_subtracted_trace.real))
-    # weights_minus_sin = convert_integration_weights(list((-1) * norm_subtracted_trace.imag))
-    # weights_sin = convert_integration_weights(list(norm_subtracted_trace.imag))
-    # weights_minus_cos = convert_integration_weights(list((-1) * norm_subtracted_trace.real))
-
     weights_real = list(norm_subtracted_trace.real)
     weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
     weights_imag = list(norm_subtracted_trace.imag)

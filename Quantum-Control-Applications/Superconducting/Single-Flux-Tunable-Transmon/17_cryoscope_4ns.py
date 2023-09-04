@@ -261,6 +261,7 @@ else:
         qubit_coherence = np.abs(qubit_state)
 
         # Plots
+        plt.suptitle("Cryoscope with 4ns resolution")
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, I)

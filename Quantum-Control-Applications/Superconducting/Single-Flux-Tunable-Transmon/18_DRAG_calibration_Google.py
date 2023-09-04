@@ -47,6 +47,9 @@ iter_max = 25
 d = 1
 iters = np.arange(iter_min, iter_max + 0.1, d)
 
+# Check that the DRAG coefficient is not 0
+assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
+
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor
@@ -117,6 +120,8 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, state, iteration = results.fetch_all()
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
@@ -126,24 +131,25 @@ else:
         plt.pcolor(iters, amps * drag_coef, I, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.ylabel(r"Drag coefficient $\alpha$")
-        plt.title("I")
+        plt.title("I [V]")
         plt.subplot(232)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, Q, cmap="magma")
         plt.xlabel("Number of iterations")
-        plt.title("Q")
+        plt.title("Q [V]")
         plt.subplot(233)
         plt.cla()
         plt.pcolor(iters, amps * drag_coef, state, cmap="magma")
         plt.xlabel("Number of iterations")
         plt.title("State")
         plt.subplot(212)
+        plt.cla()
         plt.plot(amps * drag_coef, np.sum(I, axis=1))
         plt.xlabel(r"Drag coefficient $\alpha$")
         plt.ylabel("Sum along the iterations")
         plt.tight_layout()
         plt.pause(0.1)
-    print(f"Optimal DRAG alpha = {drag_coef * amps[np.argmin(np.sum(I, axis=1))]:.3f}")
+    print(f"Optimal drag_coef = {drag_coef * amps[np.argmin(np.sum(I, axis=1))]:.3f}")
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

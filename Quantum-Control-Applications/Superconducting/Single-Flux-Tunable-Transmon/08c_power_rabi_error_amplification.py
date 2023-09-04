@@ -131,6 +131,7 @@ else:
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.title("Q quadrature [V]")
         plt.subplot(212)
+        plt.cla()
         plt.plot(amplitudes * x180_amp, np.sum(I, axis=0))
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("Sum along the # of Rabi pulses")

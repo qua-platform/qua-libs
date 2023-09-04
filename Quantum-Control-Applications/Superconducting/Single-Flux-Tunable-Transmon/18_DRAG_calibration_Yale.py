@@ -43,6 +43,9 @@ a_max = 1.0
 da = 0.1
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
 
+# Check that the DRAG coefficient is not 0
+assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
+
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor
@@ -130,6 +133,9 @@ else:
     while results.is_processing():
         # Fetch results
         I1, I2, Q1, Q2, state1, state2, iteration = results.fetch_all()
+        # Convert the results into Volts
+        I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+        I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
@@ -138,13 +144,13 @@ else:
         plt.cla()
         plt.plot(amps * drag_coef, I1, label="x180y90")
         plt.plot(amps * drag_coef, I2, label="y180x90")
-        plt.ylabel("I [a.u.]")
+        plt.ylabel("I [V]")
         plt.legend()
         plt.subplot(312)
         plt.cla()
         plt.plot(amps * drag_coef, Q1, label="x180y90")
         plt.plot(amps * drag_coef, Q2, label="y180x90")
-        plt.ylabel("Q [a.u.]")
+        plt.ylabel("Q [V]")
         plt.legend()
         plt.subplot(313)
         plt.cla()

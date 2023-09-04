@@ -203,7 +203,7 @@ else:
         plt.plot(x_plot, ground_trace.real, label="ground")
         plt.plot(x_plot, excited_trace.real, label="excited")
         plt.xlabel("Readout duration [ns]")
-        plt.ylabel("demodulated traces [V]")
+        plt.ylabel("demodulated traces [a.u.]")
         plt.title("Real part")
         plt.legend()
 

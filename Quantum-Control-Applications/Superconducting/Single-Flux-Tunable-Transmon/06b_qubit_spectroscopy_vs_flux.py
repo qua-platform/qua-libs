@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore")
 ##############################
 # Program-specific variables #
 ##############################
-n_avg = 3000  # Number of averaging loops
+n_avg = 100  # Number of averaging loops
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
 saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
@@ -82,7 +82,7 @@ with program() as qubit_spec_2D:
                 set_dc_offset("flux_line", "single", dc)
                 wait(flux_settle_time * u.ns, "resonator", "qubit")
                 # Play a qubit pulse on the qubit
-                play("saturation" * amp(saturation_amp), "qubit", duration=saturation_len)
+                play("saturation" * amp(saturation_amp), "qubit", duration=saturation_len * u.ns)
                 # Align the two elements to measure after playing the qubit pulse.
                 # One can also measure the resonator while driving the qubit by commenting the 'align'
                 align("qubit", "resonator")

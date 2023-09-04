@@ -1,19 +1,19 @@
 """
-        RABI CHEVRON (DURATION VS FREQUENCY)
+        RABI CHEVRON (AMPLITUDE VS FREQUENCY)
 This sequence involves executing the qubit pulse (such as x180, square_pi, or other types) and measuring the state
-of the resonator across various qubit intermediate frequencies and pulse durations.
-Analyzing the results allows for determining the qubit and estimating the x180 pulse duration for a specific amplitude.
+of the resonator across various qubit intermediate frequencies and pulse amplitudes.
+By analyzing the results, one can determine the qubit and estimate the x180 pulse amplitude for a specified duration.
 
 Prerequisites:
     - Determination of the resonator's resonance frequency when coupled to the qubit of interest (referred to as "resonator_spectroscopy").
     - Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
     - Identification of the approximate qubit frequency (referred to as "qubit_spectroscopy").
-    - Configuration of the qubit frequency and the desired pi pulse amplitude (labeled as "x180_amp").
+    - Configuration of the qubit frequency and the desired pi pulse duration (labeled as "x180_len").
     - Set the desired flux bias
 
 Before proceeding to the next node:
     - Adjust the qubit frequency setting, labeled as "qubit_IF", in the configuration.
-    - Modify the qubit pulse duration setting, labeled as "x180_len", in the configuration.
+    - Modify the qubit pulse amplitude setting, labeled as "x180_amp", in the configuration.
 """
 
 from qm.qua import *
@@ -32,21 +32,21 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-n_avg = 50  # The number of averages
+n_avg = 100  # The number of averages
 # The frequency sweep parameters
-span = 20 * u.MHz
-df = 200 * u.kHz
-dfs = np.arange(-span, span + 0.1, df)
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
-t_min = 4
-t_max = 1000
-dt = 10
-durations = np.arange(t_min, t_max, dt)
+span = 5 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)  # The frequency vector
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+a_min = 0
+a_max = 1.0
+n_a = 51
+amplitudes = np.linspace(a_min, a_max, n_a)
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the qubit frequency
-    t = declare(int)  # QUA variable for the qubit pulse duration
+    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature
@@ -54,15 +54,15 @@ with program() as rabi_amp_freq:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(*from_array(t, durations)):  # QUA for_ loop for sweeping the pulse duration
+        with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the pulse amplitude pre-factor
             with for_(*from_array(f, dfs)):  # QUA for_ loop for sweeping the frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
                 update_frequency("qubit", f + qubit_IF)
-                # Play the qubit pulse with a variable duration (in clock cycles = 4ns)
-                play("x180", "qubit", duration=t)
+                # Adjust the qubit pulse amplitude
+                play("x180" * amp(a), "qubit")
                 # Align the two elements to measure after playing the qubit pulse.
                 align("qubit", "resonator")
-                # Measure the state of the resonator.
+                # Measure the state of the resonator
                 # The integration weights have changed to maximize the SNR after having calibrated the IQ blobs.
                 measure(
                     "readout",
@@ -81,8 +81,8 @@ with program() as rabi_amp_freq:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(dfs)).buffer(len(durations)).average().save("I")
-        Q_st.buffer(len(dfs)).buffer(len(durations)).average().save("Q")
+        I_st.buffer(len(dfs)).buffer(n_a).average().save("I")
+        Q_st.buffer(len(dfs)).buffer(n_a).average().save("Q")
         n_st.save("iteration")
 
 
@@ -126,14 +126,15 @@ else:
         plt.suptitle(f"Rabi chevron with LO={qubit_LO / u.GHz}GHz and IF={qubit_IF / u.MHz}MHz")
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor(dfs / u.MHz, durations * 4, R)
-        plt.ylabel("Pulse duration [ns]")
+        plt.pcolor(dfs / u.MHz, amplitudes * x180_amp, R)
+        plt.xlabel("Frequency detuning [MHz]")
+        plt.ylabel("Pulse amplitude [V]")
         plt.subplot(212)
         plt.cla()
-        plt.title("phase")
-        plt.pcolor(dfs / u.MHz, durations * 4, np.unwrap(phase))
+        plt.title("Phase")
+        plt.pcolor(dfs / u.MHz, amplitudes * x180_amp, np.unwrap(phase))
         plt.xlabel("Frequency detuning [MHz]")
-        plt.ylabel("Pulse duration [ns]")
+        plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()
         plt.pause(0.1)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

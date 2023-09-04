@@ -41,7 +41,7 @@ and the fidelity are good enough, gives the parameters needed for active reset.
     * [Ramsey with detuning](13_ramsey_w_detuning.py) - Perform a Ramsey measurement by scanning the idle time with a given detuning.
     * [Ramsey with virtual Z rotations](13_ramsey_w_virtual_rotation.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
 14. [Echo](14_echo.py) - Measures T2 by apply an echo pulse.
-15. [ALL XY](15_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection
+15. [ALL XY](15_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection.
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 16. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.

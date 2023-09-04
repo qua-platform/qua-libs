@@ -120,19 +120,19 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ramsey)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I, Q, iteration = results.fetch_all()
+        I, Q, state, iteration = results.fetch_all()
         # Convert the results into Volts
         I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle(f"Ramsey with frame rotation ({detuning / u.MHz} MHz)")
+        plt.suptitle(f"Ramsey with frame rotation (detuning={detuning / u.MHz} MHz)")
         plt.subplot(311)
         plt.cla()
         plt.plot(4 * taus, I, ".")

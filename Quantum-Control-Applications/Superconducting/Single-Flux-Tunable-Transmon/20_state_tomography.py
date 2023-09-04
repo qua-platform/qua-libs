@@ -11,13 +11,17 @@ Prerequisites:
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization) for better SNR.
     - Set the desired flux bias.
 """
-import matplotlib.pyplot as plt
-from qm import SimulationConfig
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
 from macros import readout_macro
+import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 ######################################
