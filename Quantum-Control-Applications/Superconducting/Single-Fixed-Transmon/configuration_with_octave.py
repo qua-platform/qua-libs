@@ -11,9 +11,9 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"
-cluster_name = "my_cluster"
-qop_port = 80
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
 
 ############################
 # Set octave configuration #
