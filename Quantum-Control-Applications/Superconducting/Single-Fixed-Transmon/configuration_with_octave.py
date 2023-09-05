@@ -54,21 +54,22 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_IF = 50 * u.MHz
 qubit_LO = 7 * u.GHz
-mixer_qubit_g = 0.0
-mixer_qubit_phi = 0.0
+qubit_IF = 50 * u.MHz
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
 
-saturation_len = 1000
-saturation_amp = 0.1
+# Continuous wave
 const_len = 100
 const_amp = 0.1
+# Saturation_pulse
+saturation_len = 10 * u.us
+saturation_amp = 0.1
+# Square pi pulse
 square_pi_len = 100
 square_pi_amp = 0.1
-
+# Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
@@ -150,16 +151,14 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_IF = 60 * u.MHz
 resonator_LO = 5.5 * u.GHz
-mixer_resonator_g = 0.0
-mixer_resonator_phi = 0.0
-
-time_of_flight = 24
-depletion_time = 2 * u.us
+resonator_IF = 60 * u.MHz
 
 readout_len = 5000
 readout_amp = 0.2
+
+time_of_flight = 24
+depletion_time = 2 * u.us
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi

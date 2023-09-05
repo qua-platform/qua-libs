@@ -55,10 +55,8 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO = 7.4 * u.GHz
 qubit_IF = 110 * u.MHz
-mixer_qubit_g = 0.0
-mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -67,7 +65,7 @@ thermalization_time = 5 * qubit_T1
 const_len = 100
 const_amp = 0.1
 # Saturation_pulse
-saturation_len = 1000
+saturation_len = 10 * u.us
 saturation_amp = 0.1
 # Square pi pulse
 square_pi_len = 100
@@ -154,13 +152,11 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 4.8 * u.GHz
 resonator_IF = 60 * u.MHz
-mixer_resonator_g = 0.0
-mixer_resonator_phi = 0.0
 
-readout_len = 20
-readout_amp = 0.25
+readout_len = 5000
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -258,9 +254,9 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
-            "hold_offset": {"duration": 1},  # in clock cycles (4ns)
+            'sticky': {'analog': True, 'duration': 50},
             "operations": {
                 "const": "const_flux_pulse",
             },

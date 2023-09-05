@@ -56,7 +56,7 @@ thermalization_time = 5 * qubit_T1
 const_len = 100
 const_amp = 0.1
 # Saturation_pulse
-saturation_len = 1000
+saturation_len = 10 * u.us
 saturation_amp = 0.1
 # Square pi pulse
 square_pi_len = 100
@@ -149,7 +149,7 @@ mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
 readout_len = 5000
-readout_amp = 0.25
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -183,9 +183,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": max_frequency_point},  # flux line
-                9: {"offset": 0.0},  # I resonator
-                10: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
+                5: {"offset": max_frequency_point},  # flux line
             },
             "digital_outputs": {
                 1: {},
@@ -220,8 +220,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 9),
-                "Q": ("con1", 10),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -239,7 +239,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -247,9 +247,9 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
-            "hold_offset": {"duration": 1},  # in clock cycles (4ns)
+            'sticky': {'analog': True, 'duration': 50},
             "operations": {
                 "const": "const_flux_pulse",
             },
