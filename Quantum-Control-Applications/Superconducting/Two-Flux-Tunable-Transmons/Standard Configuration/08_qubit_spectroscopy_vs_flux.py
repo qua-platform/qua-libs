@@ -41,8 +41,10 @@ n_avg = 1000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
 saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
-dfs = np.arange(-20e6, +20e6, 0.5e6)  # Qubit detuning sweep with respect to qubit_IF
-dcs = np.arange(-0.5, 0.49, 0.02)  # Flux sweep
+# Qubit detuning sweep with respect to qubit_IF
+dfs = np.arange(-20e6, +20e6, 0.5e6)
+# Flux sweep
+dcs = np.arange(-0.5, 0.49, 0.02)
 
 # The fit parameters are take from the config
 fitted_curve1 = (cosine_func(dcs, amplitude_fit1, frequency_fit1, phase_fit1, offset_fit1)).astype(int)
@@ -69,12 +71,12 @@ with program() as multi_qubit_spec_vs_flux:
                 # set_dc_offset("q2_z", "single", dc)
                 wait(flux_settle_time * u.ns)  # Wait for the flux to settle
                 # Update the resonator frequency to always measure on resonance
-                update_frequency("rr1", resonator_freq1[index] + resonator_IF_q1)
+                # update_frequency("rr1", resonator_freq1[index] + resonator_IF_q1)
                 # update_frequency("rr2", resonator_freq2[index] + resonator_IF_q2)
 
                 # Saturate qubit
-                play("cw" * amp(saturation_amp), "q1_xy", duration=saturation_len * u.ns)
-                # play("cw" * amp(saturation_amp), "q2_xy", duration=saturation_len * u.ns)
+                play("saturation" * amp(saturation_amp), "q1_xy", duration=saturation_len * u.ns)
+                # play("saturation" * amp(saturation_amp), "q2_xy", duration=saturation_len * u.ns)
 
                 # Multiplexed readout, also saves the measurement outcomes
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2])
@@ -128,30 +130,32 @@ else:
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Data analysis
-        s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
-        s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
+        S2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        R1 = np.abs(S1); phase1 = np.angle(S1)
+        R2 = np.abs(S2); phase2 = np.angle(S2)
         # Plots
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, np.abs(s1))
+        plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, R1)
         plt.xlabel("Flux bias [V]")
         plt.ylabel("q1 IF [MHz]")
-        plt.title(f"q1 (f_res: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.title(f"q1 (f_res: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, np.unwrap(np.angle(s1)))
+        plt.pcolor(dcs, (qubit_IF_q1 + dfs) / u.MHz, phase1)
         plt.xlabel("Flux bias [V]")
         plt.ylabel("q1 IF [MHz]")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(dcs, (qubit_IF_q2 + dfs) / u.MHz, np.abs(s2))
-        plt.title(f"q2 (f_res: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.pcolor(dcs, (qubit_IF_q2 + dfs) / u.MHz, R2)
+        plt.title(f"q2 (f_res: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
         plt.xlabel("Flux bias [V]")
         plt.ylabel("q2 IF [MHz]")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(dcs, (qubit_IF_q2 + dfs) / u.MHz, np.unwrap(np.angle(s2)))
+        plt.pcolor(dcs, (qubit_IF_q2 + dfs) / u.MHz, phase2)
         plt.xlabel("Flux bias [V]")
         plt.ylabel("q2 IF [MHz]")
         plt.tight_layout()

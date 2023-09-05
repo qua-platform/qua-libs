@@ -65,7 +65,7 @@ with program() as multi_res_spec_vs_flux:
             with for_(*from_array(dc, flux)):
                 # Flux sweeping
                 set_dc_offset("q1_z", "single", dc)
-                # set_dc_offset("q2_z", "single", dc)
+                set_dc_offset("q2_z", "single", dc)
                 wait(flux_settle_time * u.ns)  # Wait for the flux to settle
                 # Macro to perform multiplexed readout on the specified resonators
                 # It also save the 'I' and 'Q' quadratures into their respective streams
@@ -116,13 +116,10 @@ else:
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Data analysis
-        s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
-        s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
-
-        R1 = np.abs(s1)
-        phase1 = np.angle(s1)
-        R2 = np.abs(s2)
-        phase2 = np.angle(s2)
+        S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
+        S2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        R1 = np.abs(S1); phase1 = np.angle(S1)
+        R2 = np.abs(S2); phase2 = np.angle(S2)
         # Plots
         plt.suptitle("Resonator spectroscopy")
         plt.subplot(221)

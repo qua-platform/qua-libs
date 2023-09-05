@@ -24,8 +24,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 # Set octave configuration #
 ############################
 # Custom port mapping example
-port_mapping = [
-    {
+port_mapping = {
         ("con1", 1): ("octave1", "I1"),
         ("con1", 2): ("octave1", "Q1"),
         ("con1", 3): ("octave1", "I2"),
@@ -37,7 +36,6 @@ port_mapping = [
         ("con1", 9): ("octave1", "I5"),
         ("con1", 10): ("octave1", "Q5"),
     }
-]
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1", clock="Internal", port_mapping="default")

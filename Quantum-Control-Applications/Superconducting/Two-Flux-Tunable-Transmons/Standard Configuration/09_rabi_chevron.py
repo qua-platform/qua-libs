@@ -34,8 +34,10 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 n_avg = 1000  # The number of averages
-dfs = np.arange(-14e6, +14e6, 0.2e6)  # Qubit detuning sweep with respect to qubit_IF
-amps = np.arange(0.0, 1, 0.02)  # Qubit pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
+# Qubit detuning sweep with respect to qubit_IF
+dfs = np.arange(-14e6, +14e6, 0.2e6)
+# Qubit pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+amps = np.arange(0.0, 1, 0.02)
 
 with program() as rabi_chevron:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -55,7 +57,7 @@ with program() as rabi_chevron:
                 # Measure after the qubit pulses
                 align()
                 # Multiplexed readout, also saves the measurement outcomes
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2])
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
                 # Wait for the qubit to decay to the ground state
                 wait(thermalization_time * u.ns)
         # Save the averaging iteration to get the progress bar
@@ -104,9 +106,9 @@ else:
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
-        # Data analysis
-        s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
-        s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        # Convert the results into Volts
+        I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+        I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Plots
         plt.suptitle("Rabi chevron")
         plt.subplot(221)
@@ -114,7 +116,7 @@ else:
         plt.pcolor(amps * pi_amp_q1, dfs, I1)
         plt.xlabel("Qubit pulse amplitude [V]")
         plt.ylabel("Qubit 1 detuning [MHz]")
-        plt.title(f"q1 (f_res: {(qubit_LO + qubit_IF_q1) / u.MHz} MHz)")
+        plt.title(f"q1 (f_res: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(amps * pi_amp_q1, dfs, Q1)
@@ -123,7 +125,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(amps * pi_amp_q2, dfs, I2)
-        plt.title(f"q2 (f_res: {(qubit_LO + qubit_IF_q2) / u.MHz} MHz)")
+        plt.title(f"q2 (f_res: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
         plt.xlabel("Qubit pulse amplitude [V]")
         plt.ylabel("Qubit 2 detuning [MHz]")
         plt.subplot(224)

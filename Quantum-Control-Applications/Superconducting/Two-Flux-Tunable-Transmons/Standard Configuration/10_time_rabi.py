@@ -96,31 +96,51 @@ else:
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
-        # Data analysis
-        I1 = u.demod2volts(I1, readout_len)
-        Q1 = u.demod2volts(Q1, readout_len)
-        I2 = u.demod2volts(I2, readout_len)
-        Q2 = u.demod2volts(Q2, readout_len)
+        # Convert the results into Volts
+        I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+        I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Plots
+        plt.suptitle("Time Rabi")
         plt.subplot(221)
         plt.cla()
-        plt.plot(times, I1)
+        plt.plot(4 * times, I1)
         plt.title("Qubit 1")
-        plt.ylabel("I quadrature")
+        plt.ylabel("I quadrature [V]")
         plt.subplot(223)
         plt.cla()
-        plt.plot(times, Q1)
+        plt.plot(4 * times, Q1)
         plt.xlabel("Qubit pulse duration [ns]")
-        plt.ylabel("Q quadrature")
+        plt.ylabel("Q quadrature [V]")
         plt.subplot(222)
         plt.cla()
-        plt.plot(times, I2)
+        plt.plot(4 * times, I2)
         plt.title("Qubit 2")
         plt.subplot(224)
         plt.cla()
-        plt.plot(times, Q2)
+        plt.plot(4 * times, Q2)
         plt.xlabel("Qubit pulse duration [ns]")
         plt.tight_layout()
         plt.pause(1.0)
+
+    # Fit the time Rabi curves
+    try:
+        from qualang_tools.plot.fitting import Fit
+
+        fit = Fit()
+        plt.figure()
+        plt.suptitle(f"Multiplexed Time Rabi")
+        plt.subplot(121)
+        fit.rabi(4 * times, I1, plot=True)
+        plt.xlabel("Qubit pulse duration [ns]")
+        plt.ylabel("I quadrature [V]")
+        plt.title("Qubit 1")
+        plt.subplot(122)
+        fit.rabi(4 * times, I2, plot=True)
+        plt.xlabel("Qubit pulse duration [ns]")
+        plt.title("Qubit 2")
+        plt.tight_layout()
+    except (Exception,):
+        pass
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

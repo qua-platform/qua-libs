@@ -22,8 +22,8 @@ from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
-from macros import multiplexed_readout
+from qualang_tools.results import fetching_tool, progress_counter
+from macros import multiplexed_readout, qua_declaration
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -32,19 +32,13 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 n_avg = 4000
-dfs = np.arange(-0.5e6, 0.5e6, 0.02e6)
+# The frequency sweep around the resonators' frequency "resonator_IF_q"
+dfs = np.arange(-10e6, 10e6, 0.1e6)
 
 with program() as ro_freq_opt:
-    n = declare(int)  # QUA variable for the averaging loop
-    I_g = [declare(fixed) for _ in range(2)]  # QUA variable for the 'I' quadrature when the qubit is in |g>
-    Q_g = [declare(fixed) for _ in range(2)]  # QUA variable for the 'Q' quadrature when the qubit is in |g>
-    I_e = [declare(fixed) for _ in range(2)]  # QUA variable for the 'I' quadrature when the qubit is in |e>
-    Q_e = [declare(fixed) for _ in range(2)]  # QUA variable for the 'Q' quadrature when the qubit is in |e>
-    DI = declare(fixed)  # QUA variable for the distance between I in |g> abd |e>
-    DQ = declare(fixed)  # QUA variable for the distance between Q in |g> abd |e>
-    D = [declare(fixed) for _ in range(2)]  # QUA variable for the distance between the IQ blobs in |g> abd |e>
+    Ig, Ig_st, Qg, Qg_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    Ie, Ie_st, Qe, Qe_st, _, _ = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency
-    D_st = [declare_stream() for _ in range(2)]
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
@@ -55,7 +49,7 @@ with program() as ro_freq_opt:
             # Reset both qubits to ground
             wait(thermalization_time * u.ns)
             # Measure the ground IQ blobs
-            multiplexed_readout(I_g, None, Q_g, None, resonators=[1, 2], weights="rotated_")
+            multiplexed_readout(Ig, Ig_st, Qg, Qg_st, resonators=[1, 2], weights="rotated_")
 
             align()
             # Reset both qubits to ground
@@ -64,18 +58,35 @@ with program() as ro_freq_opt:
             play("x180", "q1_xy")
             play("x180", "q2_xy")
             align()
-            multiplexed_readout(I_e, None, Q_e, None, resonators=[1, 2], weights="rotated_")
-
-            # Derive the averaged distance between the blobs for the qubits in |g> and |e>
-            for i in range(2):
-                assign(DI, (I_e[i] - I_g[i]) * 100)
-                assign(DQ, (Q_e[i] - Q_g[i]) * 100)
-                assign(D[i], DI * DI + DQ * DQ)
-                save(D[i], D_st[i])
+            multiplexed_readout(Ie, Ie_st, Qe, Qe_st, resonators=[1, 2], weights="rotated_")
+        # Save the averaging iteration to get the progress bar
+        save(n, n_st)
 
     with stream_processing():
-        D_st[0].buffer(len(dfs)).average().save("D1")
-        D_st[1].buffer(len(dfs)).average().save("D2")
+        n_st.save("n")
+        for i in range(2):
+            # mean values
+            Ig_st[i].buffer(len(dfs)).average().save(f"Ig{i}_avg")
+            Qg_st[i].buffer(len(dfs)).average().save(f"Qg{i}_avg")
+            Ie_st[i].buffer(len(dfs)).average().save(f"Ie{i}_avg")
+            Qe_st[i].buffer(len(dfs)).average().save(f"Qe{i}_avg")
+            # variances to get the SNR
+            (
+                    ((Ig_st[i].buffer(len(dfs)) * Ig_st[i].buffer(len(dfs))).average())
+                    - (Ig_st[i].buffer(len(dfs)).average() * Ig_st[i].buffer(len(dfs)).average())
+            ).save(f"Ig{i}_var")
+            (
+                    ((Qg_st[i].buffer(len(dfs)) * Qg_st[i].buffer(len(dfs))).average())
+                    - (Qg_st[i].buffer(len(dfs)).average() * Qg_st[i].buffer(len(dfs)).average())
+            ).save(f"Qg{i}_var")
+            (
+                    ((Ie_st[i].buffer(len(dfs)) * Ie_st[i].buffer(len(dfs))).average())
+                    - (Ie_st[i].buffer(len(dfs)).average() * Ie_st[i].buffer(len(dfs)).average())
+            ).save(f"Ie{i}_var")
+            (
+                    ((Qe_st[i].buffer(len(dfs)) * Qe_st[i].buffer(len(dfs))).average())
+                    - (Qe_st[i].buffer(len(dfs)).average() * Qe_st[i].buffer(len(dfs)).average())
+            ).save(f"Qe{i}_var")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -100,21 +111,37 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
     # Get results from QUA program
-    results = fetching_tool(job, ["D1", "D2"])
-    D1, D2 = results.fetch_all()
-    # Plot
+    data_list = ["Ig1_avg", "Qg1_avg", "Ie1_avg", "Qe1_avg", "Ig1_var", "Qg1_var", "Ie1_var", "Qe1_var", "Ig2_avg",
+                 "Qg2_avg", "Ie2_avg", "Qe2_avg", "Ig2_var", "Qg2_var", "Ie2_var", "Qe2_var", "iteration"]
+    results = fetching_tool(job, data_list=data_list, mode="live")
+    Ig1_avg, Qg1_avg, Ie1_avg, Qe1_avg, Ig1_var, Qg1_var, Ie1_var, Qe1_var, Ig2_avg, Qg2_avg, Ie2_avg, Qe2_avg, Ig2_var, Qg2_var, Ie2_var, Qe2_var, iteration = results.fetch_all()
+    # Progress bar
+    progress_counter(iteration, n_avg, start_time=results.get_start_time())
+    # Derive the SNR
+    Z1 = (Ie1_avg - Ig1_avg) + 1j * (Qe1_avg - Qg1_avg)
+    var1 = (Ig1_var + Qg1_var + Ie1_var + Qe1_var) / 4
+    SNR1 = ((np.abs(Z1)) ** 2) / (2 * var1)
+    Z2 = (Ie2_avg - Ig2_avg) + 1j * (Qe2_avg - Qg2_avg)
+    var2 = (Ig2_var + Qg2_var + Ie2_var + Qe2_var) / 4
+    SNR2 = ((np.abs(Z2)) ** 2) / (2 * var2)
+    # Plot results
     plt.suptitle("Readout frequency optimization")
     plt.subplot(121)
-    plt.plot(dfs / u.MHz, D1)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title("Resonator 2")
-    plt.subplot(122)
-    plt.plot(dfs / u.MHz, D2)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.title("Resonator 1")
-    print(f"Shift readout frequency 1 by {dfs[np.argmax(D1)]} Hz")
-    print(f"Shift readout frequency 2 by {dfs[np.argmax(D2)]} Hz")
+    plt.cla()
+    plt.plot(dfs / u.MHz, SNR1, ".-")
+    plt.title(f"Qubit 1 around {resonator_IF_q1 / u.MHz} MHz")
+    plt.xlabel("Readout frequency detuning [MHz]")
+    plt.ylabel("SNR")
+    plt.grid("on")
+    plt.subplot(121)
+    plt.cla()
+    plt.plot(dfs / u.MHz, SNR2, ".-")
+    plt.title(f"Qubit 2 around {resonator_IF_q2 / u.MHz} MHz")
+    plt.xlabel("Readout frequency detuning [MHz]")
+    plt.grid("on")
+    plt.pause(0.1)
+    print(f"The optimal readout frequency is {dfs[np.argmax(SNR1)] + resonator_IF_q1} Hz (SNR={max(SNR1)})")
+    print(f"The optimal readout frequency is {dfs[np.argmax(SNR2)] + resonator_IF_q2} Hz (SNR={max(SNR2)})")
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

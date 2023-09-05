@@ -43,7 +43,9 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 n_avg = 1000  # The number of averages
-t = 5 * u.us  # Qubit pulse length
+# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
+saturation_len = 10 * u.us  # In ns
+saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
 # Qubit detuning sweep with respect to qubit_IF
 span = 10 * u.MHz
 df = 100 * u.kHz
@@ -64,10 +66,10 @@ with program() as multi_qubit_spec:
             update_frequency("q2_xy", df + qubit_IF_q2)
             # Play the saturation pulse to put the qubit in a mixed state - Can adjust the amplitude on the fly [-2; 2)
             # qubit 1
-            play("cw" * amp(1), "q1_xy", duration=t * u.ns)
+            play("saturation" * amp(saturation_amp), "q1_xy", duration=saturation_len * u.ns)
             align("q1_xy", "rr1")
             # qubit 2
-            play("cw" * amp(1), "q2_xy", duration=t * u.ns)
+            play("saturation" * amp(saturation_amp), "q2_xy", duration=saturation_len * u.ns)
             align("q2_xy", "rr2")
 
             # Multiplexed readout, also saves the measurement outcomes
@@ -120,27 +122,29 @@ else:
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Data analysis
-        s1 = u.demod2volts(I1 + 1j * Q1, readout_len)
-        s2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
+        S2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+        R1 = np.abs(S1); phase1 = np.angle(S1)
+        R2 = np.abs(S2); phase2 = np.angle(S2)
         # Plots
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(221)
         plt.cla()
-        plt.plot((dfs + qubit_IF_q1) / u.MHz, np.abs(s1))
+        plt.plot((dfs + qubit_IF_q1) / u.MHz, R1)
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"Qubit 1 - LO = {qubit_LO / u.GHz} GHz)")
+        plt.title(f"Qubit 1 - LO = {qubit_LO_q1 / u.GHz} GHz)")
         plt.subplot(223)
         plt.cla()
-        plt.plot((dfs + qubit_IF_q1) / u.MHz, np.angle(s1))
+        plt.plot((dfs + qubit_IF_q1) / u.MHz, np.unwrap(phase1))
         plt.ylabel("Phase [rad]")
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.subplot(222)
         plt.cla()
-        plt.plot((dfs + qubit_IF_q2) / u.MHz, np.abs(s2))
-        plt.title(f"Qubit 2 - LO = {qubit_LO / u.GHz} GHz)")
+        plt.plot((dfs + qubit_IF_q2) / u.MHz, np.abs(R2))
+        plt.title(f"Qubit 2 - LO = {qubit_LO_q2 / u.GHz} GHz)")
         plt.subplot(224)
         plt.cla()
-        plt.plot((dfs + qubit_IF_q2) / u.MHz, np.angle(s2))
+        plt.plot((dfs + qubit_IF_q2) / u.MHz, np.unwrap(phase2))
         plt.xlabel("Qubit intermediate frequency [MHz]")
         plt.tight_layout()
         plt.pause(0.1)

@@ -43,7 +43,8 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 # Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
@@ -61,13 +62,15 @@ thermalization_time = 5 * max(qubit1_T1, qubit2_T1)
 
 # CW pulse parameter
 const_len = 1000
-const_amp = 270 * u.mV
-
+const_amp = 125 * u.mV
+# Saturation_pulse
+saturation_len = 10 * u.us
+saturation_amp = 0.125
 # Pi pulse parameters
 pi_len = 40
 pi_sigma = pi_len / 5
-pi_amp_q1 = 0.22
-pi_amp_q2 = 0.22
+pi_amp_q1 = 0.125
+pi_amp_q2 = 0.125
 
 # DRAG coefficients
 drag_coef_q1 = 0
@@ -190,8 +193,8 @@ mixer_resonator_phi_q2 = -0.00
 
 # Readout pulse parameters
 readout_len = 4000
-readout_amp_q1 = 0.07
-readout_amp_q2 = 0.07
+readout_amp_q1 = 0.125
+readout_amp_q2 = 0.125
 
 # TOF and depletion time
 time_of_flight = 24  # must be a multiple of 4
@@ -272,12 +275,13 @@ config = {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q1",
                 "x90": "x90_pulse_q1",
                 "-x90": "-x90_pulse_q1",
@@ -290,12 +294,13 @@ config = {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q2",
                 "x90": "x90_pulse_q2",
                 "-x90": "-x90_pulse_q2",
@@ -334,6 +339,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {
+                "I": "saturation_wf",
                 "Q": "zero_wf",
             },
         },
@@ -470,6 +483,7 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "saturation_wf": {"type": "constant", "sample": saturation_amp},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
@@ -544,14 +558,14 @@ config = {
         "mixer_qubit_q1": [
             {
                 "intermediate_frequency": qubit_IF_q1,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
             }
         ],
         "mixer_qubit_q2": [
             {
                 "intermediate_frequency": qubit_IF_q2,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q2,
                 "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
             }
         ],
