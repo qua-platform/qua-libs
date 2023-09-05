@@ -14,7 +14,7 @@ While these can serve as a template for new labs or for new experiments, certain
 Use with care.
 
 ## Basic Files
-0. [Hello QUA](./00_hello_qua.py) - A script used for playing with QUA.
+0. [Hello QUA](<./00_hello_qua.py>) - A script used for playing with QUA.
 1. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
 2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
 is not saturated, correct for DC offsets.
