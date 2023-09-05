@@ -33,12 +33,13 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
-import numpy as np
-from qualang_tools.loops import from_array
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -50,7 +51,7 @@ n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
-# Flux amplitude sweep (as a pre-factor of the flux amplitude)
+# Flux amplitude sweep (as a pre-factor of the flux amplitude) - must be within [-2; 2)
 flux_amp_array = np.linspace(0, -0.2, 101)
 
 with program() as cryoscope_amp:
@@ -162,6 +163,8 @@ else:
             I, Q, state, iteration = results.fetch_all()
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
         else:
@@ -173,6 +176,8 @@ else:
             phase = np.unwrap(np.angle(I + 1j * Q))
             # Population in excited state
             state = (phase - phase_g) / (phase_e - phase_g)
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
@@ -191,16 +196,16 @@ else:
         # Plots
         plt.subplot(221)
         plt.cla()
-        plt.plot(xplot, np.sqrt(I**2 + Q**2))
+        plt.plot(xplot, I)
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Readout amplitude [a.u.]")
+        plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
         plt.subplot(222)
         plt.cla()
-        plt.plot(xplot, phase)
+        plt.plot(xplot, Q)
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Readout phase [rad]")
+        plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
         plt.subplot(223)
