@@ -405,14 +405,14 @@ config = {
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
-            "sine": [(-np.sin(rotation_angle), readout_len)],
+            "sine": [(np.sin(rotation_angle), readout_len)],
         },
         "rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), readout_len)],
+            "cosine": [(-np.sin(rotation_angle), readout_len)],
             "sine": [(np.cos(rotation_angle), readout_len)],
         },
         "rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), readout_len)],
+            "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
     },

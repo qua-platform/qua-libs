@@ -527,26 +527,26 @@ config = {
         },
         "rotated_cosine_weights_q1": {
             "cosine": [(np.cos(rotation_angle_q1), readout_len)],
-            "sine": [(-np.sin(rotation_angle_q1), readout_len)],
+            "sine": [(np.sin(rotation_angle_q1), readout_len)],
         },
         "rotated_sine_weights_q1": {
-            "cosine": [(np.sin(rotation_angle_q1), readout_len)],
+            "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
             "sine": [(np.cos(rotation_angle_q1), readout_len)],
         },
         "rotated_minus_sine_weights_q1": {
-            "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
+            "cosine": [(np.sin(rotation_angle_q1), readout_len)],
             "sine": [(-np.cos(rotation_angle_q1), readout_len)],
         },
         "rotated_cosine_weights_q2": {
             "cosine": [(np.cos(rotation_angle_q2), readout_len)],
-            "sine": [(-np.sin(rotation_angle_q2), readout_len)],
+            "sine": [(np.sin(rotation_angle_q2), readout_len)],
         },
         "rotated_sine_weights_q2": {
-            "cosine": [(np.sin(rotation_angle_q2), readout_len)],
+            "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
             "sine": [(np.cos(rotation_angle_q2), readout_len)],
         },
         "rotated_minus_sine_weights_q2": {
-            "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
+            "cosine": [(np.sin(rotation_angle_q2), readout_len)],
             "sine": [(-np.cos(rotation_angle_q2), readout_len)],
         },
     },
