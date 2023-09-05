@@ -21,8 +21,8 @@ is not saturated, correct for DC offsets.
 3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Resonator Spectroscopy](04_resonator_spectroscopy.py) - Performs a 1D frequency sweep on the resonator.
 5. **2D resonator spectroscopy:**
-    * [Resonator Spectroscopy vs readout power](05a_resonator_spectroscopy_vs_amplitude.py) - Performs the resonator spectroscopy versus readout power to find the maximum desired readout amplitude.
-    * [Resonator Spectroscopy vs flux](05b_resonator_spectroscopy_vs_flux.py) - Performs the resonator spectroscopy versus flux to find the desired flux points.
+    * [Resonator Spectroscopy vs readout power](05a_resonator_spectroscopy_vs_amplitude.py) - Performs the resonator spectroscopy versus readout power to find the desired readout amplitude and check if the qubit is coupled to the resonator.
+    * [Resonator Spectroscopy vs flux](05b_resonator_spectroscopy_vs_flux.py) - Performs the resonator spectroscopy versus flux.
 6. **Qubit spectroscopy**
     * [Qubit Spectroscopy](06a_qubit_spectroscopy.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator.
     * [Qubit Spectroscopy vs flux](06b_qubit_spectroscopy_vs_flux.py) - Performs the qubit spectroscopy versus flux, measuring the resonator.
@@ -33,9 +33,9 @@ is not saturated, correct for DC offsets.
 8. **1D Rabi** - Precisely calibrate a $\pi$ pulse: 
     * [Time Rabi](08a_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
     * [Power Rabi](08b_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse.
-    * [Power Rabi with error amplification](08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the pi pulse amplitude.
+    * [Power Rabi with error amplification](08c_power_rabi_error_amplification.py) - A multi-pulse Rabi experiment sweeping the amplitude of the MW pulses to better estimate the $\pi$ pulse amplitude.
 9. [IQ Blobs](09a_IQ_blobs.py) - Measure the qubit in the ground and excited state to create the IQ blobs. If the separation
-and the fidelity are good enough, gives the parameters needed for active reset.
+and the fidelity are good enough, gives the parameters needed for state discrimination and active reset.
     * [Resonator Depletion Time](09b_resonator_depletion_time.py) - Measure the resonator depletion time using a fixed time Ramsey sequence to know how long one needs to wait after measuring the resonator for active reset protocols.
     * [Active Reset](09c_active_reset.py) - Script for performing a single shot discrimination and active reset.
 10. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
@@ -46,7 +46,7 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 11. [T1](11_T1.py) - Measures T1.
 13. [Ramsey Chevron](12_ramsey_chevron.py) - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
 12. **1D Ramsey** - Measures T2*.
-    * [Ramsey with virtual Z rotations](13a_ramsey_w_virtual_rotation.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
+    * [Ramsey with virtual Z rotations](13a_ramsey_w_virtual_rotation.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second $\pi/2$ pulse to apply a virtual Z rotation.
     * [Ramsey with detuning](13b_ramsey_w_detuning.py) - Perform a Ramsey measurement by scanning the idle time with a given detuning.
 14. [Echo](14_echo.py) - Measures T2 by apply an echo pulse.
 15. [ALL XY](15_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection.
@@ -55,21 +55,21 @@ and the fidelity are good enough, gives the parameters needed for active reset.
 fidelity.
     * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](16b_randomized_benchmarking_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
     * [Single Qubit Randomized Benchmarking for gates > 40ns](16a_randomized_benchmarking.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
-    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Cliffords).
-    * [Single Qubit Randomized Benchmarking for gates > 20ns](16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Cliffords).
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](16d_randomized_benchmarking_interleaved_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
+    * [Single Qubit Randomized Benchmarking for gates > 20ns](16c_randomized_benchmarking_20ns.py) <span style="color:red">__to be tested on a real device, use with care__</span> - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
 17. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on) 
     * [Cryoscope_amplitude_calibration](17_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
     * [Cryoscope with 1ns resolution](17_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
     * [Cryoscope with 4ns resolution](17_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration.
-18. **DRAG calibration** - Calibrates the DRAG coefficient `$\alpha$` and AC-Stark shift:
+18. **DRAG calibration** - Calibrates the DRAG coefficient $`\alpha`$ and AC-Stark shift:
     * [Google method](18_DRAG_calibration_Google.py) - Performs `x180` and `-x180` pulses to obtain 
-the DRAG coefficient `$\alpha$`.
+the DRAG coefficient $`\alpha`$.
     * [Yale method](18_DRAG_calibration_Yale.py) - Performs `x180y90` and `y180x90` pulses to obtain 
-the DRAG coefficient `$\alpha$`.
-    * [AC Stark-shift calibration](19_AC_Stark_2Dcalibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
+the DRAG coefficient $`\alpha`$.
+    * [AC Stark-shift calibration](19_AC_Stark_calibration_Google.py) - Calibrates the AC Stark shift using a sequence of `x180` and `-x180` pulses by plotting the 2D map DRAG pulse detuning versus number of iterations.
 20. **Tomography:**
     * [State Tomography](20_state_tomography.py) - A template to perform state tomography.
-20. [Calibration](advanced_automatic_calibrations.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Uses an API to perform several single qubit calibrations easily from a single file (work in progress).
+21.  [Advanced calibration prototype](advanced_calibration_prototype.py) <span style="color:red">_to be tested on a real device, use with care_</span> - Uses an API to perform several single qubit calibrations easily from a single file.
 
 ## Use Cases
 
