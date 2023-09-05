@@ -13,9 +13,9 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"
-qop_port = 80
-cluster_name = "my_cluster"
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -23,8 +23,6 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
 # Custom port mapping example
 port_mapping = [
     {
@@ -40,6 +38,10 @@ port_mapping = [
         ("con1", 10): ("octave1", "Q5"),
     }
 ]
+# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
+# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1", clock="Internal", port_mapping="default")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1", clock="Internal", port_mapping=port_mapping)
 
 # Add the octaves
 octaves = [octave_1]

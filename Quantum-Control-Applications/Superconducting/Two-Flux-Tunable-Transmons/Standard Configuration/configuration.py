@@ -6,6 +6,7 @@ from qualang_tools.units import unit
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -23,17 +24,19 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
-u = unit(coerce_to_integer=True)
-
-qop_ip = "172.16.33.100"
-cluster_name = "Cluster_81"
-qop_port = 80
+######################
+# Network parameters #
+######################
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+
+#####################
+# OPX configuration #
+#####################
 # Set octave_config to None if no octave are present
 octave_config = None
 

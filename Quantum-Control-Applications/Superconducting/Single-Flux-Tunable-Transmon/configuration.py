@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
@@ -6,6 +7,7 @@ from qualang_tools.units import unit
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -23,19 +25,25 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
-u = unit(coerce_to_integer=True)
-
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+# Path to save data
+save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+
+#####################
+# OPX configuration #
+#####################
 # Set octave_config to None if no octave are present
 octave_config = None
 
-# Qubits
+#############################################
+#                  Qubits                   #
+#############################################
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_IF = 110 * u.MHz
 mixer_qubit_g = 0.0
@@ -132,7 +140,9 @@ minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Resonator
+#############################################
+#                Resonators                 #
+#############################################
 resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
@@ -144,8 +154,9 @@ readout_amp = 0.25
 time_of_flight = 24
 depletion_time = 2 * u.us
 
-
-# Flux line
+##########################################
+#               Flux line                #
+##########################################
 max_frequency_point = 0.0
 flux_settle_time = 100 * u.ns
 
@@ -162,6 +173,9 @@ rotation_angle = (0 / 180) * np.pi
 # Threshold for single shot g-e discrimination
 ge_threshold = 0.0
 
+#############################################
+#                  Config                   #
+#############################################
 config = {
     "version": 1,
     "controllers": {
