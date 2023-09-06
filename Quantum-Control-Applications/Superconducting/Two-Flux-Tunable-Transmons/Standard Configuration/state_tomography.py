@@ -17,15 +17,18 @@ from lib.plot_utils import plot_simulator_output
 from qm import SimulationConfig
 import matplotlib.pylab as plt
 from qm.qua import *
-from qw_qm_admin import get_machine, ActiveQubitPair
-from qw_qm_admin.quam import QuAM
+# from qw_qm_admin import get_machine, ActiveQubitPair
+# from qw_qm_admin.quam import QuAM
 from lib.tomography import hist_da_to_qiskit_state_tomo_results
+from configuration import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 
 #%%
 
 # %% Qua program
 shots = 10
 with program() as prog:
+            
             n = declare(int)
             basis_q1 = declare(int)
             basis_q2 = declare(int)
@@ -44,9 +47,16 @@ with program() as prog:
             tomo_amp3 = {q: declare(fixed) for q in qp_iter}
             tomo_amp4 = {q: declare(fixed) for q in qp_iter}
 
+
+            I1 = declare(fixed)
+            Q1 = declare(fixed)
+            I2 = declare(fixed)
+            Q2 = declare(fixed)
+
             state1 = declare(bool)
             state2 = declare(bool)
             state = declare(int)
+            states = declare_stream()
 
             # machine.all_flux_to_idle()
             # align()
@@ -54,7 +64,7 @@ with program() as prog:
                 with for_each_(basis_q1,bases['mbasis_q1']):
                     with for_each_(basis_q2,bases['mbasis_q2']):
                         # prep
-                        for q, basis in zip(qp_iter, [basis_q0, basis_q1]):
+                        for q, basis in zip(qp_iter, [basis_q1, basis_q2]):
                             with switch_(basis, unsafe=True):
                                 with case_(0):  # Z basis
                                     assign(tomo_amp1[q], 0.0)
@@ -71,8 +81,10 @@ with program() as prog:
                                     assign(tomo_amp2[q], 0.0)
                                     assign(tomo_amp3[q], 0.0)
                                     assign(tomo_amp4[q], 0.5)
-                        # qp.q0.initialize_active()      # put back when done simulating!!!
-                        # qp.q1.initialize_active()
+
+                        # implement active reset on both qubits and remove wait
+                        wait(10*qubit_T1)
+
 
                         ######################
                         # circuit
@@ -91,51 +103,46 @@ with program() as prog:
                         # measure
                         # play tomography pulse
                         for q in qp_iter:
-                            q.xy.play('x180', amplitude=(
-                                tomo_amp1[q], tomo_amp2[q], tomo_amp3[q], tomo_amp4[q]))
-                            wait(20, q.xy.name())
-                        for q, state_q in [(qp.q0, state0), (qp.q1, state1)]:
-                            q.rr.measure_state(state_q)
-                        
-                    measure(
-                    "readout" * amp(a),
-                    "rr1",
-                    None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I[0]),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
-                )
-                save(I[0], I_st[0])
-                save(Q[0], Q_st[0])
+                            play('x180'*amp(tomo_amp1[q], tomo_amp2[q], tomo_amp3[q], tomo_amp4[q]), f'{q}_xy')
+                            wait(20, f'{q}_xy')
+                        measure("readout" * amp(1),
+                                "rr1",
+                                None,
+                                dual_demod.full("cos", "out1", "sin", "out2", I1),
+                                dual_demod.full("minus_sin", "out1", "cos", "out2", Q1))
+                        measure("readout" * amp(1),
+                                "rr2",
+                                None,
+                                dual_demod.full("cos", "out1", "sin", "out2", I2),
+                                dual_demod.full("minus_sin", "out1", "cos", "out2", Q2))
+                        align()
+                        assign(state1, (I1 > ge_threshold_q1))
+                        assign(state2, (I2 > ge_threshold_q2))
                         
                         # this corresponds to qiskit little-endian convention
                         # TODO: do we have a macro for this?
-                        assign(state, Cast.unsafe_cast_int(state0) +
-                               (Cast.unsafe_cast_int(state1) << 1))
-                        b.save_all_results()
+                        assign(state, (Cast.unsafe_cast_int(state1)+(Cast.unsafe_cast_int(state2)<<1)))
+                        
+                        save(state, states)
+                        wait(100, )
+            with stream_processing():
+                states.buffer(10, 3, 3).save("statequbit0_qubit1")
+                    # r1.save("qubit0_qubit1")
 
-                        #########################
-                        # align()
-                        wait(100)
-
-        with stream_processing():
-            batches.do_stream_processing()
 
 
 
 
 # %% Calibrate
+qmm = QuantumMachinesManager(host='127.0.0.1', port=8080)#, octave=octave_config)
 
-    simulate = False
-    if not simulate:
-        job = prog.execute(machine)
-
-    else:
-        sim_time = 10000
-        job = prog.simulate(SimulationConfig(sim_time))
-        plot_simulator_output([[q.xy.name(), q.rr.name(), q.z.name()] for qp in machine.active_qubit_pairs() for q in [qp.q0, qp.q1]],
-                              job,
-                              prog._config,
-                              sim_time * 4)
+# simulate = False
+# if simulate:
+#     job = qmm.simulate(config, cryoscope, SimulationConfig(11000))
+#     job.get_simulated_samples().con1.plot()
+# else:
+qm = qmm.open_qm(config)
+job = qm.execute(prog)
 
 # %%
 ds = prog.get_results(job, batch_label="qp", filen='bell_state_tomo')
