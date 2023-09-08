@@ -202,7 +202,7 @@ config = {
         },
     },
     "elements": {
-        "rr1": {
+        "rr0": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
@@ -221,7 +221,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "rr2": {
+        "rr1": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
@@ -240,7 +240,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "q1_xy": {
+        "q0_xy": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
@@ -258,7 +258,7 @@ config = {
                 "-y90": "-y90_pulse_q1",
             },
         },
-        "q2_xy": {
+        "q1_xy": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
@@ -276,7 +276,7 @@ config = {
                 "-y90": "-y90_pulse_q2",
             },
         },
-        "q1_z": {
+        "q0_z": {
             "singleInput": {
                 "port": ("con1", 7),
             },
@@ -285,7 +285,7 @@ config = {
                 "cz": "cz_flux_pulse",
             },
         },
-        "q2_z": {
+        "q1_z": {
             "singleInput": {
                 "port": ("con1", 8),
             },
