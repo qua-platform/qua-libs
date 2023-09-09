@@ -1,16 +1,21 @@
+#%%
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
+
+# Get the active resonators
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
 
 ###################
 # The QUA program #
@@ -23,9 +28,9 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("rr0")
-        measure("readout", "rr0", adc_st)
-        wait(depletion_time, "rr0")
+        reset_phase(rr1.resonator_name)
+        measure("readout", rr1.resonator_name, adc_st)
+        wait(depletion_time, rr1.resonator_name)
 
     with stream_processing():
         # Will save average:
@@ -39,7 +44,7 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -70,6 +75,7 @@ else:
     dc_offset_q = -adc2_mean
     # Plot data
     fig = plt.figure()
+    plt.suptitle(f"Time of flight calibration {rr1.resonator_name}")
     plt.subplot(121)
     plt.title("Single run")
     plt.plot(adc1_single_run, "b", label="Input 1")
@@ -105,4 +111,6 @@ else:
     machine.global_parameters.downconversion_offset_I += dc_offset_i
     machine.global_parameters.downconversion_offset_Q += dc_offset_q
     machine.global_parameters.time_of_flight += delay
-    # machine._save("quam_bootstrap_state.json")
+    # machine._save("current.json")
+
+# %%

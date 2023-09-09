@@ -1,3 +1,4 @@
+#%%
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -8,43 +9,59 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
+
+# Update the readout amplitude for the sweep
+prev_amp1 = machine.resonators[active_qubits[0]].readout_pulse_amp
+prev_amp2 = machine.resonators[active_qubits[1]].readout_pulse_amp
+machine.resonators[active_qubits[0]].readout_pulse_amp = 0.01
+machine.resonators[active_qubits[1]].readout_pulse_amp = 0.01
+
 config = build_config(machine)
+
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
+q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
+q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+
+res_if_1 = rr1.f_res - machine.local_oscillators.readout[0].freq
+res_if_2 = rr2.f_res - machine.local_oscillators.readout[0].freq
 
 ###################
 # The QUA program #
 ###################
-amps = np.arange(0.05, 1.99, 0.10)
-dfs = np.arange(-1.0e6, +1.0e6, 0.01e6)
-n_avg = 2000
+amps = np.arange(0.05, 1.99, 0.01)
+dfs = np.arange(-10e6, +10e6, 0.1e6)
+n_avg = 100
 depletion_time = 1000
-
-res_if_1 = machine.resonators[0].f_res - machine.local_oscillators.readout[0].freq
-res_if_2 = machine.resonators[1].f_res - machine.local_oscillators.readout[0].freq
 
 with program() as multi_res_spec_vs_amp:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)
     a = declare(fixed)
 
+    # Bring the active qubits to the maximum frequency point
+    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency("rr0", df + res_if_1)
-            update_frequency("rr1", df + res_if_2)
+            update_frequency(rr1.resonator_name, df + res_if_1)
+            update_frequency(rr2.resonator_name, df + res_if_2)
 
             with for_(*from_array(a, amps)):
                 # resonator 1
-                wait(depletion_time * u.ns, "rr0")  # wait for the resonator to relax
+                wait(depletion_time * u.ns, rr1.resonator_name)  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    "rr0",
+                    rr1.resonator_name,
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[0]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
@@ -52,13 +69,13 @@ with program() as multi_res_spec_vs_amp:
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
-                # align("rr0", "rr1") # sequential to avoid overflow
+                # align(rr1.resonator_name, rr2.resonator_name) # sequential to avoid overflow
 
                 # resonator 2
-                wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
+                wait(depletion_time * u.ns, rr2.resonator_name)  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    "rr1",
+                    rr2.resonator_name,
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
@@ -78,7 +95,7 @@ with program() as multi_res_spec_vs_amp:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -120,20 +137,29 @@ else:
         row_sums = A2.sum(axis=0)
         A2 = A2 / row_sums[np.newaxis, :]
         # Plot
+        plt.suptitle("Resonator spectroscopy vs amplitude")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"resonator 1 - f_cent: {machine.resonators[0].f_res / u.MHz})")
-        plt.xlabel("amplitude pre-factor")
-        plt.ylabel("detuning (MHz)")
-        plt.pcolor(amps, dfs / u.MHz, A1)
+        plt.title(f"{rr1.resonator_name} - f_cent: {int(rr1.f_res / u.MHz)} MHz")
+        plt.xlabel("Readout amplitude [V]")
+        plt.ylabel("Readout detuning [MHz]")
+        plt.pcolor(amps * rr1.readout_pulse_amp, dfs / u.MHz, A1)
+        plt.axhline(0, color="k", linestyle='--')
+        plt.axvline(prev_amp1, color="k", linestyle='--')
         plt.subplot(122)
         plt.cla()
-        plt.title(f"resonator 2 - f_cent: {machine.resonators[1].f_res / u.MHz})")
-        plt.xlabel("amplitude pre-factor")
-        plt.ylabel("detuning (MHz)")
-        plt.pcolor(amps, dfs / u.MHz, A2)
+        plt.title(f"{rr2.resonator_name} - f_cent: {int(rr2.f_res / u.MHz)} MHz")
+        plt.xlabel("Readout amplitude [V]")
+        plt.ylabel("Readout detuning [MHz]")
+        plt.pcolor(amps * rr2.readout_pulse_amp, dfs / u.MHz, A2)
+        plt.axhline(0, color="k", linestyle='--')
+        plt.axvline(prev_amp2, color="k", linestyle='--')
         plt.tight_layout()
 
-        plt.pause(0.1)
+        plt.pause(3)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # machine._save("current_state.json")
+
+# %%

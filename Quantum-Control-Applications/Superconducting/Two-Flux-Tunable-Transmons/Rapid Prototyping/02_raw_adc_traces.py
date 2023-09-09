@@ -1,9 +1,10 @@
+#%%
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
@@ -40,7 +41,7 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -78,3 +79,5 @@ else:
 
     print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
     plt.show()
+
+# %%

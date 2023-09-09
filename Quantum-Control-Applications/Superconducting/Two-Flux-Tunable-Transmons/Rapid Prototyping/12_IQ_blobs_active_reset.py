@@ -1,3 +1,4 @@
+#%%
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -6,38 +7,56 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout, reset_qubit
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
 
+qb1 = machine.qubits[active_qubits[0]]
+qb2 = machine.qubits[active_qubits[1]]
+q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
+q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
+lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
+lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
+
+qb_if_1 = qb1.xy.f_01 - lo1
+qb_if_2 = qb2.xy.f_01 - lo2
 ###################
 # The QUA program #
 ###################
 pts = 20000
-cooldown_time = 1 * u.us
+cooldown_time = 5 * max(qb1.T1, qb2.T1)
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
+    # Bring the active qubits to the maximum frequency point
+    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+
     with for_(n, 0, n < pts, n + 1):
         # ground iq blobs
-        reset_qubit("cooldown", "q0_xy", "rr0", cooldown_time=cooldown_time)
-        reset_qubit("cooldown", "q1_xy", "rr1", cooldown_time=cooldown_time)
-        # reset_qubit("active", "q0_xy", "resonator", threshold=machine.qubits[0].ge_threshold, max_tries=10, Ig=I_g)
+        # reset_qubit("cooldown", qb1.qubit_name + "_xy", rr1.resonator_name, cooldown_time=cooldown_time)
+        reset_qubit("cooldown", qb2.qubit_name + "_xy", rr2.resonator_name, cooldown_time=cooldown_time)
+        # wait(cooldown_time * u.ns)
+        reset_qubit("active", qb1.qubit_name + "_xy", rr1.resonator_name, threshold=qb1.ge_threshold, max_tries=1, Ig=I_g[0])
         align()
-        multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=[0, 1], weights="rotated_")
+        multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
 
         # excited iq blobs
         align()
-        play("x180", "q0_xy")
-        # play("x180", "q1_xy")
+        # wait(cooldown_time * u.ns)
+        reset_qubit("active", qb1.qubit_name + "_xy", rr1.resonator_name, threshold=qb1.ge_threshold, max_tries=10, Ig=I_g[0])
+        play("x180", qb1.qubit_name + "_xy")
+        play("x180", qb2.qubit_name + "_xy")
         align()
-        multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=[0, 1], weights="rotated_")
+        multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
 
     with stream_processing():
         for i in range(2):
@@ -49,7 +68,7 @@ with program() as iq_blobs:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -74,3 +93,5 @@ else:
     plt.suptitle("qubit 2")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%

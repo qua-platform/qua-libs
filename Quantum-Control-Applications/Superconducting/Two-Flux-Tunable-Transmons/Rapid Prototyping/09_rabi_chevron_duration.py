@@ -1,6 +1,7 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
+from qm.simulate import LoopbackInterface
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
@@ -16,7 +17,6 @@ from configuration import *
 machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
 
-
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
 q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
@@ -30,18 +30,23 @@ qb_if_1 = qb1.xy.f_01 - lo1
 qb_if_2 = qb2.xy.f_01 - lo2
 
 ###################
+
+###################
 # The QUA program #
 ###################
-dfs = np.arange(-10e6, 10e6, 0.1e6)
-t_delay = np.arange(4, 300, 4)
-n_avg = 100
+dfs = np.arange(-150e6, +150e6, 0.5e6)
+durations = np.arange(4, 100, 2)
+
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
+n_avg = 100
 
 
-with program() as ramsey:
+with program() as rabi_chevron:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    t = declare(int)
     df = declare(int)
+    f_q1 = declare(int)
+    f_q2 = declare(int)
+    t = declare(int)
 
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
@@ -54,29 +59,22 @@ with program() as ramsey:
             update_frequency(qb1.qubit_name + "_xy", df + qb_if_1)
             update_frequency(qb2.qubit_name + "_xy", df + qb_if_2)
 
-            with for_(*from_array(t, t_delay)):
-                # qubit 1
-                play("x90", qb1.qubit_name + "_xy")
-                wait(t, qb1.qubit_name + "_xy")
-                play("x90", qb1.qubit_name + "_xy")
-
-                # qubit 2
-                play("x90", qb2.qubit_name + "_xy")
-                wait(t, qb2.qubit_name + "_xy")
-                play("x90", qb2.qubit_name + "_xy")
-
+            with for_(*from_array(t, durations)):
+                play("x180", qb1.qubit_name + "_xy", duration=t)
+                play("x180", qb2.qubit_name + "_xy", duration=t)
                 align()
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits)
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("I1")
-        Q_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q1")
+        I_st[0].buffer(len(durations)).buffer(len(dfs)).average().save("I1")
+        Q_st[0].buffer(len(durations)).buffer(len(dfs)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("I2")
-        Q_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q2")
+        I_st[1].buffer(len(durations)).buffer(len(dfs)).average().save("I2")
+        Q_st[1].buffer(len(durations)).buffer(len(dfs)).average().save("Q2")
+
 
 #####################################
 #  Open Communication with the QOP  #
@@ -85,45 +83,58 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.networ
 
 simulate = False
 if simulate:
-    job = qmm.simulate(config, ramsey, SimulationConfig(11000))
+    # simulate the test_config QUA program
+    job = qmm.simulate(
+        config,
+        rabi_chevron,
+        SimulationConfig(
+            11000, simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)], latency=250)
+        ),
+    )
     job.get_simulated_samples().con1.plot()
+    plt.show()
 else:
-    # execute QUA:
     qm = qmm.open_qm(config)
-    job = qm.execute(ramsey)
+    job = qm.execute(rabi_chevron)
 
     fig = plt.figure()
     interrupt_on_close(fig, job)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
     while results.is_processing():
         n, I1, Q1, I2, Q2 = results.fetch_all()
+        progress_counter(n, n_avg, start_time=results.start_time)
+
         I1, Q1 = u.demod2volts(I1, rr1.readout_pulse_length), u.demod2volts(Q1, rr1.readout_pulse_length)
         I2, Q2 = u.demod2volts(I2, rr2.readout_pulse_length), u.demod2volts(Q2, rr2.readout_pulse_length)
 
-        progress_counter(n, n_avg, start_time=results.start_time)
-
-        plt.suptitle("Ramsey chevron")
+        plt.suptitle("Rabi chevron")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"{qb1.qubit_name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
-        plt.ylabel("detuning [MHz]")
+        plt.pcolor(durations * 4, dfs / u.MHz, I1)
+        plt.plot(qb1.xy.pi_length, 0, "r*")
+        plt.xlabel("Qubit pulse duration [ns]")
+        plt.ylabel("Qubit detuning [MHz]")
+        plt.title(f"{qb1.qubit_name} (f_res1: {int(qb1.xy.f_01 / u.MHz)} MHz)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, Q1)
-        plt.title(f"{qb1.qubit_name} - Q")
-        plt.xlabel("Idle time [ns]")
-        plt.ylabel("detuning [MHz]")
+        plt.pcolor(durations * 4, dfs / u.MHz, Q1)
+        plt.plot(qb1.xy.pi_length, 0, "r*")
+        plt.xlabel("Qubit pulse duration [ns]")
+        plt.ylabel("Qubit detuning [MHz]")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"{qb2.qubit_name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
+        plt.pcolor(durations * 4, dfs / u.MHz, I2)
+        plt.plot(qb2.xy.pi_length, 0, "r*")
+        plt.title(f"{qb2.qubit_name} (f_res2: {int(qb2.xy.f_01 / u.MHz)} MHz)")
+        plt.ylabel("Qubit detuning [MHz]")
+        plt.xlabel("Qubit pulse duration [ns]")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
-        plt.title(f"{qb2.qubit_name} - Q")
-        plt.xlabel("Idle time [ns]")
+        plt.pcolor(durations * 4, dfs / u.MHz, Q2)
+        plt.plot(qb2.xy.pi_length, 0, "r*")
+        plt.xlabel("Qubit pulse duration [ns]")
+        plt.ylabel("Qubit detuning [MHz]")
         plt.tight_layout()
-        plt.pause(1)
+        plt.pause(5)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

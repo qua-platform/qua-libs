@@ -9,41 +9,51 @@ from qualang_tools.results import progress_counter
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
+
+qb1 = machine.qubits[active_qubits[0]]
+qb2 = machine.qubits[active_qubits[1]]
+q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
+q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+
 
 ###################
 # The QUA program #
 ###################
 ts = np.arange(4, 200, 1)
-dcs = np.arange(-0.098, -0.118, -0.0005)
-cooldown_time = 1 * u.us
-n_avg = 13000
+dcs = np.arange(-0.105, -0.10, 0.0001)
+cooldown_time = 5 * max(qb1.T1, qb2.T1)
+n_avg = 40
 
 with program() as cz:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)
     dc = declare(fixed)
 
+    # Bring the active qubits to the maximum frequency point
+    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, ts)):
             with for_(*from_array(dc, dcs)):
-                play("x180", "q0_xy")
-                play("x180", "q1_xy")
-                align("q0_xy", "q0_z")
-                set_dc_offset("q0_z", "single", dc)
-                wait(t, "q0_z")
+                play("x180", qb1.qubit_name + "_xy")
+                play("x180", qb2.qubit_name + "_xy")
                 align()
-                set_dc_offset("q0_z", "single", machine.qubits[0].z.max_frequency_point)
-                wait(10)
+                set_dc_offset(q2_z, "single", dc)
+                wait(t, q2_z)
                 align()
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], weights="rotated_")
+                set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+                wait(100)
+                align()
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
                 wait(cooldown_time * u.ns)
 
     with stream_processing():
@@ -59,9 +69,9 @@ with program() as cz:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
-simulate = True
+simulate = False
 if simulate:
     job = qmm.simulate(config, cz, SimulationConfig(11000))
     job.get_simulated_samples().con1.plot()
@@ -75,33 +85,34 @@ else:
         n, I1, Q1, I2, Q2 = results.fetch_all()
         progress_counter(n, n_avg, start_time=results.start_time)
 
+        plt.suptitle("CZ chevron")
         plt.subplot(221)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, I1)
-        plt.title("q1 - I")
-        plt.ylabel("Interaction time (ns)")
+        plt.title(f"{qb1.qubit_name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
+        plt.ylabel("Interaction time [ns]")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, Q1)
-        plt.title("q1 - Q")
-        plt.xlabel("FLux amplitude (V)")
-        plt.ylabel("Interaction time (ns)")
+        plt.title(f"{qb1.qubit_name} - Q")
+        plt.xlabel("Flux amplitude [V]")
+        plt.ylabel("Interaction time [ns]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, I2)
-        plt.title("q2 - I")
+        plt.title(f"{qb2.qubit_name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, Q2)
-        plt.title("q2 - Q")
-        plt.xlabel("FLux amplitude (V)")
+        plt.title(f"{qb2.qubit_name} - Q")
+        plt.xlabel("Flux amplitude [V]")
         plt.tight_layout()
-        plt.pause(0.1)
+        plt.pause(1)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 plt.show()
 # np.savez(save_dir/'cz', I1=I1, Q1=Q1, I2=I2, Q2=Q2, ts=ts, dcs=dcs)
 
-# machine.qubits[0].z.cz.length =
-# machine.qubits[0].z.cz.level =
+# qb1.z.cz.length =
+# qb1.z.cz.level =
 # machine._save("quam_bootstrap_state.json")

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import detrend
 from qualang_tools.loops import from_array
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
@@ -58,7 +58,7 @@ with program() as res_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -90,10 +90,10 @@ else:
     # Plot
     fig, ax = plt.subplots(2, 1)
     ax[0].plot((machine.local_oscillators.readout[0].freq + freqs) / u.MHz, np.abs(s))
-    ax[0].set_ylabel("Amp (V)")
+    ax[0].set_ylabel("Amp [V]")
     ax[1].plot((machine.local_oscillators.readout[0].freq + freqs) / u.MHz, detrend(np.unwrap(np.angle(s))))
     ax[1].set_ylabel("Phase (rad)")
-    ax[1].set_xlabel("Freq (MHz)")
+    ax[1].set_xlabel("Freq [MHz]")
     ax[1].get_shared_x_axes().join(ax[0], ax[1])
 
     print(f"IF freq at resonance: {freqs[idx]*1e-6} MHz")

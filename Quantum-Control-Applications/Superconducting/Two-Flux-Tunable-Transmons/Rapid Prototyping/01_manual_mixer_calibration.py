@@ -1,34 +1,24 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from quam import QuAM
-from configuration import build_config
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 config = build_config(machine)
 
-
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the I & Q ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians), set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+# Get the QuAM components used in this experiment
+qb1 = machine.qubits[active_qubits[0]]
+qb2 = machine.qubits[active_qubits[1]]
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
 
 
 ###################
 # The QUA program #
 ###################
-element = "q0_xy"
+element = rr1
 
 if element[:2] == "rr":
     IF = machine.resonators[int(element[2])].f_opt - machine.local_oscillators.readout[0].freq
@@ -39,6 +29,7 @@ elif element[0] == "q":
 
 
 with program() as manual_mixer_calib:
+    update_frequency("q2_xy", 100e6)
     with infinite_loop_():
         play("cw" * amp(0), element)
 
@@ -46,7 +37,7 @@ with program() as manual_mixer_calib:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 qm = qmm.open_qm(config)
 job = qm.execute(manual_mixer_calib)
 

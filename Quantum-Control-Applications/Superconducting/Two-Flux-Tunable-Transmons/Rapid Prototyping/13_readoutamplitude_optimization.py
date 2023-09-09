@@ -4,7 +4,8 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
-from macros import multiplexed_readout
+from macros import qua_declaration, multiplexed_readout
+from qualang_tools.analysis import two_state_discriminator
 from quam import QuAM
 from configuration import *
 
@@ -29,8 +30,8 @@ qb_if_2 = qb2.xy.f_01 - lo2
 ###################
 # The QUA program #
 ###################
-n_avg = 4000
-dfs = np.arange(-2e6, 2e6, 0.02e6)
+n_runs = 4000
+amplitudes = np.arange(0.5, 1.99, 0.02)
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 
 res_if_1 = rr1.f_opt - machine.local_oscillators.readout[0].freq
@@ -38,29 +39,21 @@ res_if_2 = rr2.f_opt - machine.local_oscillators.readout[0].freq
 
 with program() as ro_freq_opt:
     n = declare(int)
-    I_g = [declare(fixed) for _ in range(2)]
-    Q_g = [declare(fixed) for _ in range(2)]
-    I_e = [declare(fixed) for _ in range(2)]
-    Q_e = [declare(fixed) for _ in range(2)]
-    DI = declare(fixed)
-    DQ = declare(fixed)
-    D = [declare(fixed) for _ in range(2)]
-    df = declare(int)
-    D_st = [declare_stream() for _ in range(2)]
+    I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
+    a = declare(fixed)
 
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
-    with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(df, dfs)):
-            update_frequency(rr1.resonator_name, df + res_if_1)
-            update_frequency(rr2.resonator_name, df + res_if_2)
-
+    
+    with for_(*from_array(a, amplitudes)):
+        with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for both qubits
             wait(cooldown_time * u.ns)
             align()
-            multiplexed_readout(I_g, None, Q_g, None, resonators=active_qubits, weights="rotated_")
+            multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_", amplitude=a)
 
             # excited iq blobs for both qubits
             align()
@@ -69,16 +62,16 @@ with program() as ro_freq_opt:
             play("x180", qb1.qubit_name + "_xy")
             play("x180", qb2.qubit_name + "_xy")
             align()
-            multiplexed_readout(I_e, None, Q_e, None, resonators=active_qubits, weights="rotated_")
-            for i in range(len(active_qubits)):
-                assign(DI, (I_e[i] - I_g[i]) * 100)
-                assign(DQ, (Q_e[i] - Q_g[i]) * 100)
-                assign(D[i], DI * DI + DQ * DQ)
-                save(D[i], D_st[i])
+            multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+
 
     with stream_processing():
-        for i in range(len(active_qubits)):
-            D_st[i].buffer(len(dfs)).average().save(f"D{i+1}")
+        # Save all streamed points for plotting the IQ blobs
+        for i in range(2):
+            I_g_st[i].buffer(n_runs).buffer(len(amplitudes)).save(f"I_g_q{i}")
+            Q_g_st[i].buffer(n_runs).buffer(len(amplitudes)).save(f"Q_g_q{i}")
+            I_e_st[i].buffer(n_runs).buffer(len(amplitudes)).save(f"I_e_q{i}")
+            Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).save(f"Q_e_q{i}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -97,22 +90,34 @@ else:
     # run job
     job = qm.execute(ro_freq_opt)
     # fetch data
-    results = fetching_tool(job, ["D1", "D2"])
-    D1, D2 = results.fetch_all()
+    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
+    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+    # Process the data
+    fidelity_vec = [[], []]
+    for i in range(len(amplitudes)):
+        _, _, fidelity_q1, _, _, _, _ = two_state_discriminator(
+            I_g_q1[i], Q_g_q1[i], I_e_q1[i], Q_e_q1[i], b_print=False, b_plot=False
+        )
+        _, _, fidelity_q2, _, _, _, _ = two_state_discriminator(
+            I_g_q2[i], Q_g_q2[i], I_e_q2[i], Q_e_q2[i], b_print=False, b_plot=False
+        )
+        fidelity_vec[0].append(fidelity_q1)
+        fidelity_vec[1].append(fidelity_q2)
 
-    plt.subplot(211)
-    plt.plot(dfs, D1)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{qb1.qubit_name} - f_opt = {int(rr1.f_opt / u.MHz)} MHz")
-    plt.subplot(212)
-    plt.plot(dfs, D2)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{qb2.qubit_name} - f_opt = {int(rr2.f_opt / u.MHz)} MHz")
+    # Plot the data
+    plt.figure()
+    plt.suptitle("Readout amplitude optimization")
+    plt.subplot(121)
+    plt.plot(amplitudes * rr1.readout_pulse_amp, fidelity_vec[0], ".-")
+    plt.title(f"{rr1.resonator_name}")
+    plt.xlabel("Readout amplitude [V]")
+    plt.ylabel("Fidelity [%]")
+    plt.subplot(122)
+    plt.title(f"{rr2.resonator_name}")
+    plt.plot(amplitudes * rr2.readout_pulse_amp, fidelity_vec[1], ".-")
+    plt.xlabel("Readout amplitude [V]")
+    plt.ylabel("Fidelity [%]")
     plt.tight_layout()
-    print(f"{rr1.resonator_name}: Shift readout frequency by {dfs[np.argmax(D1)]} Hz")
-    print(f"{rr2.resonator_name}: Shift readout frequency by {dfs[np.argmax(D2)]} Hz")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
     # machine.resonators[0].f_opt += dfs[np.argmax(D)]

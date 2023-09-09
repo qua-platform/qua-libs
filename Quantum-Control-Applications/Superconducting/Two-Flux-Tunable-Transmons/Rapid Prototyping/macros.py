@@ -49,8 +49,8 @@ def qua_declaration(nb_of_qubits):
     I_st = [declare_stream() for _ in range(nb_of_qubits)]
     Q_st = [declare_stream() for _ in range(nb_of_qubits)]
     # Workaround to manually assign the results variables to the readout elements
-    for i in range(nb_of_qubits):
-        assign_variables_to_element(f"rr{i}", I[i], Q[i])
+    # for i in range(nb_of_qubits):
+    #     assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
 
 
@@ -83,7 +83,7 @@ def reset_qubit(method: str, qubit: str, resonator: str, **kwargs):
         if (cooldown_time is None) or (cooldown_time < 4):
             raise Exception("'cooldown_time' must be an integer > 4 clock cycles")
         # Reset qubit state
-        wait(cooldown_time, qubit)
+        wait(cooldown_time * u.ns, qubit)
     elif method == "active":
         # Check threshold
         threshold = kwargs.get("threshold", None)

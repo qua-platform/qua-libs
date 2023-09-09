@@ -8,12 +8,15 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration, multiplexed_readout
 from quam import QuAM
-from configuration import build_config, u
+from configuration import *
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
+
+# machine.resonators[2].readout_pulse_amp = 0.001
+# machine.resonators[4].readout_pulse_amp = 0.002
 config = build_config(machine)
 
 ###################
@@ -21,38 +24,47 @@ config = build_config(machine)
 ###################
 
 depletion_time = 1000
-n_avg = 2000
+n_avg = 200
 flux_pts = 50
 
 dcs = np.linspace(-0.49, 0.49, flux_pts)
-dfs = np.arange(-5e6, 5e6, 0.05e6)
+dfs = np.arange(-50e6, 5e6, 0.1e6)
 
-res_if_1 = machine.resonators[0].f_res - machine.local_oscillators.readout[0].freq
-res_if_2 = machine.resonators[1].f_res - machine.local_oscillators.readout[0].freq
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
+q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
+q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
 
+res_if_1 = rr1.f_res - machine.local_oscillators.readout[0].freq
+res_if_2 = rr2.f_res - machine.local_oscillators.readout[0].freq
+
+# res_if_1 = 170e6
+# res_if_2 = 225e6
 with program() as multi_res_spec_vs_flux:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     i = declare(int)
     df = declare(int)
     dc = declare(fixed)
 
-    set_dc_offset("q1_z", "single", 0)
+    # Bring the active qubits to the maximum frequency point
+    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency("rr0", df + res_if_1)
-            update_frequency("rr1", df + res_if_2)
+            update_frequency(rr1.resonator_name, df + res_if_1)
+            update_frequency(rr2.resonator_name, df + res_if_2)
 
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping
-                set_dc_offset("q0_z", "single", dc)
-                # set_dc_offset("q1_z", "single", dc)
-                wait(10)  # Wait for the flux to settle
+                set_dc_offset(q1_z, "single", dc)
+                set_dc_offset(q2_z, "single", dc)
+                wait(100)  # Wait for the flux to settle
 
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=[0, 1], sequential=False)
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, sequential=False)
 
-                wait(depletion_time * u.ns, "rr0", "rr1")  # wait for the resonators to relax
+                wait(depletion_time * u.ns, rr1.resonator_name, rr2.resonator_name)  # wait for the resonators to relax
 
     with stream_processing():
         n_st.save("n")
@@ -66,7 +78,7 @@ with program() as multi_res_spec_vs_flux:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, machine.network.qop_port)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
 
 simulate = False
 if simulate:
@@ -95,24 +107,27 @@ else:
         A1 = np.abs(s1)
         A2 = np.abs(s2)
 
+        plt.suptitle("Resonator specrtoscopy vs flux")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"rr1 (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
-        plt.xlabel("flux (V)")
-        plt.ylabel("freq (MHz)")
+        plt.title(f"{rr1.resonator_name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.xlabel("flux [V]")
+        plt.ylabel(f"{rr1.resonator_name} IF [MHz]")
         plt.pcolor(dcs, res_if_1 / u.MHz + dfs / u.MHz, A1)
+        plt.plot(machine.qubits[active_qubits[0]].z.max_frequency_point, res_if_1/ u.MHz, "r*" )
         plt.subplot(122)
         plt.cla()
-        plt.title(f"rr2 (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
-        plt.xlabel("flux (V)")
-        plt.ylabel("freq (MHz)")
+        plt.title(f"{rr2.resonator_name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.xlabel("flux [V]")
+        plt.ylabel(f"{rr2.resonator_name} IF [MHz]")
         plt.pcolor(dcs, res_if_2 / u.MHz + dfs / u.MHz, A2)
+        plt.plot(machine.qubits[active_qubits[1]].z.max_frequency_point, res_if_2/ u.MHz, "r*" )
         plt.tight_layout()
-        plt.pause(0.1)
+        plt.pause(1)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 plt.show()
 # Update machine with max frequency point for both resonator and qubit
-# machine.qubits[0].z.max_frequency_point =
-# machine.qubits[1].z.max_frequency_point =
-# machine._save("quam_bootstrap_state.json")
+# qb1.z.max_frequency_point =
+# qb2.z.max_frequency_point =
+# machine._save("current_state.json")
