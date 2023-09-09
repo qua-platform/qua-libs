@@ -186,11 +186,11 @@ else:
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
         # qubit_phase = qubit_phase - qubit_phase[-1]
-        detuning = qubit_phase / (2 * np.pi * const_flux_len) * 1000
+        detuning = qubit_phase / (2 * np.pi * const_flux_len / u.s)
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
         # Quadratic fit of detuning versus flux pulse amplitude
-        pol = np.polyfit(xplot, qubit_phase, deg=2)
+        pol = np.polyfit(xplot, detuning, deg=2)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plots
@@ -217,10 +217,10 @@ else:
 
         plt.subplot(224)
         plt.cla()
-        plt.plot(xplot, detuning, "bo")
-        plt.plot(xplot, np.polyval(pol, xplot), "r-")
+        plt.plot(xplot, detuning / u.MHz, "bo")
+        plt.plot(xplot, np.polyval(pol, xplot) / u.MHz, "r-")
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Averaged detuning [Hz]")
+        plt.ylabel("Averaged detuning [MHz]")
         plt.legend(("data", "Fit"), loc="upper right")
         plt.tight_layout()
         plt.pause(0.1)
