@@ -96,7 +96,11 @@ res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_
 The qubit states are measured after the inversion of the random circuit, which ideally is ∣00⟩. Due to gate errors, we will also measure the states ∣01⟩, ∣10⟩ & ∣11⟩. The result object *res* contains the parameters *circuit_depths*, *num_repeats*, *num_averages* and the result *state*, which is a matrix with values 0,1,2 or 3 corresponding to the possible measurement outcomes. The matrix has the dimension of the given parameters, so for the example code above it will be 5 x 50 x 1000 measured states. To create a figure, containing the histograms for the different circuit dephts we already implemented the function
 
 ### Comment on the Runtime
-The runtime strongly depends on the inputs of the 
+
+The runtime depends on the input-arguments *circuit_depths*, *num_circuits_per_depth* and *num_shots_per_circuit*. We tested the execution for a few sets of parameters and determined the runtime/argument relations (estimates):
+- 2.34 seconds / num_circuits_per_depth
+- 35 seconds / 1000 num_shots_per_circuit
+- 
 
 
 ```python
