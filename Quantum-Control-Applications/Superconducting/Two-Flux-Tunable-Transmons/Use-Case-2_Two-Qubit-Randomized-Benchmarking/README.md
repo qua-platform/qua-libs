@@ -110,4 +110,4 @@ res.plot_fidelity()
 The runtime depends on the input-arguments *num_circuits_per_depth*, *num_shots_per_circuit* and the *circuit_depths* vector. We tested the execution for a few sets of parameters and determined the runtime/argument relations (estimates):
 - 2.34 seconds / num_circuits_per_depth
 - 35 seconds / 1000 num_shots_per_circuit
-- The depth vector not only depends on the 
+- The runtime depends not only on the value of the individual elements but also on the length of the depth vector (number of different depths). The figure below shows both dependencies for selected values.
