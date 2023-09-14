@@ -18,8 +18,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -55,8 +55,8 @@ n_avg = 1e4  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 7 * u.us
 ringdown_len = 0 * u.us
-update_readout_length(qb1.qubit_name, readout_len, ringdown_len)
-update_readout_length(qb2.qubit_name, readout_len, ringdown_len)
+update_readout_length(qb1.name, readout_len, ringdown_len)
+update_readout_length(qb2.name, readout_len, ringdown_len)
 # Set the accumulated demod parameters
 division_length = 10  # size of one demodulation slice in clock cycles
 number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
@@ -95,12 +95,12 @@ with program() as ro_duration_opt:
         # Measure the ground state.
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
         if rr == rr1:
-            measure("readout", rr2.resonator_name, None)
+            measure("readout", rr2.name, None)
         else:
-            measure("readout", rr1.resonator_name, None)
+            measure("readout", rr1.name, None)
         measure(
             "readout",
-            rr.resonator_name,
+            rr.name,
             None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
@@ -114,21 +114,21 @@ with program() as ro_duration_opt:
             assign(Q[ind], QQ[ind] + QI[ind])
             save(Q[ind], Qg_st)
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.resonator_name)
+        wait(cooldown_time * u.ns, rr.name)
 
         align()
 
         # Measure the excited state.
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
-        play("x180", qb.qubit_name + "_xy")
+        play("x180", qb.name + "_xy")
         align()
         if rr == rr1:
-            measure("readout", rr2.resonator_name, None)
+            measure("readout", rr2.name, None)
         else:
-            measure("readout", rr1.resonator_name, None)
+            measure("readout", rr1.name, None)
         measure(
             "readout",
-            rr.resonator_name,
+            rr.name,
             None,
             demod.accumulated("cos", II, division_length, "out1"),
             demod.accumulated("sin", IQ, division_length, "out2"),
@@ -143,7 +143,7 @@ with program() as ro_duration_opt:
             save(Q[ind], Qe_st)
 
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.resonator_name)
+        wait(cooldown_time * u.ns, rr.name)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 

@@ -20,8 +20,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -56,8 +56,8 @@ with program() as rabi:
             with for_(*from_array(a, amps)):
                 # Loop for error amplification (perform many qubit pulses)
                 with for_(count, 0, count < npi, count + 1):
-                    play("x180" * amp(a), qb1.qubit_name + "_xy")
-                    play("x180" * amp(a), qb2.qubit_name + "_xy")
+                    play("x180" * amp(a), qb1.name + "_xy")
+                    play("x180" * amp(a), qb2.name + "_xy")
                 align()
 
                 # Start using Rotated-Readout:
@@ -104,22 +104,22 @@ else:
             plt.subplot(321)
             plt.cla()
             plt.pcolor(amps * qb1.xy.pi_amp, N_pi_vec, I1)
-            plt.title(f"{qb1.qubit_name} - I")
+            plt.title(f"{qb1.name} - I")
             
             plt.subplot(323)
             plt.cla()
             plt.pcolor(amps * qb1.xy.pi_amp, N_pi_vec, Q1)
-            plt.title(f"{qb1.qubit_name} - Q")
+            plt.title(f"{qb1.name} - Q")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Number of Rabi pulses")
             plt.subplot(322)
             plt.cla()
             plt.pcolor(amps * qb2.xy.pi_amp, N_pi_vec, I2)
-            plt.title(f"{qb2.qubit_name} - I")
+            plt.title(f"{qb2.name} - I")
             plt.subplot(324)
             plt.cla()
             plt.pcolor(amps * qb2.xy.pi_amp, N_pi_vec, Q2)
-            plt.title(f"{qb2.qubit_name} - Q")
+            plt.title(f"{qb2.name} - Q")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Number of Rabi pulses")
             plt.subplot(325)
@@ -138,7 +138,7 @@ else:
             plt.subplot(221)
             plt.cla()
             plt.plot(amps * qb1.xy.pi_amp, I1[0])
-            plt.title(f"{qb1.qubit_name}")
+            plt.title(f"{qb1.name}")
             plt.ylabel("I quadrature [V]")
             plt.subplot(223)
             plt.cla()
@@ -148,7 +148,7 @@ else:
             plt.subplot(222)
             plt.cla()
             plt.plot(amps * qb2.xy.pi_amp, I2[0])
-            plt.title(f"{qb2.qubit_name}")
+            plt.title(f"{qb2.name}")
             plt.subplot(224)
             plt.cla()
             plt.plot(amps * qb2.xy.pi_amp, Q2[0])

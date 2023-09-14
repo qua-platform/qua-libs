@@ -35,7 +35,7 @@ octave_1 = OctaveUnit("octave1", machine.local_oscillators.network.qop_ip, port=
 
 # Configure the Octaves
 octave_config = octave_declaration([octave_1])
-
+octave_config = None
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -220,7 +220,7 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
         "elements": {
             # The resonators
             **{
-                f"{machine.resonators[i].resonator_name}": {
+                f"{machine.resonators[i].name}": {
                     "mixInputs": {
                         "I": (quam.resonators[i].wiring.controller, quam.resonators[i].wiring.I[0]),
                         "Q": (quam.resonators[i].wiring.controller, quam.resonators[i].wiring.Q[0]),
@@ -243,7 +243,7 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
             },
             # The qubits
             **{
-                f"{machine.qubits[i].qubit_name}_xy": {
+                f"{machine.qubits[i].name}_xy": {
                     "mixInputs": {
                         "I": (quam.qubits[i].xy.wiring.controller, quam.qubits[i].xy.wiring.I[0]),
                         "Q": (quam.qubits[i].xy.wiring.controller, quam.qubits[i].xy.wiring.Q[0]),
@@ -265,7 +265,7 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
             },
             # The flux lines
             **{
-                f"{machine.qubits[i].qubit_name}_z": {
+                f"{machine.qubits[i].name}_z": {
                     "singleInput": {
                         "port": (quam.qubits[i].z.wiring.controller, quam.qubits[i].z.wiring.port),
                     },

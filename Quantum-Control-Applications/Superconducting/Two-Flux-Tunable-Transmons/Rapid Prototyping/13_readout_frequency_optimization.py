@@ -16,8 +16,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -54,8 +54,8 @@ with program() as ro_freq_opt:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
-            update_frequency(rr1.resonator_name, df + res_if_1)
-            update_frequency(rr2.resonator_name, df + res_if_2)
+            update_frequency(rr1.name, df + res_if_1)
+            update_frequency(rr2.name, df + res_if_2)
 
             # ground iq blobs for both qubits
             wait(cooldown_time * u.ns)
@@ -66,8 +66,8 @@ with program() as ro_freq_opt:
             align()
             # Wait for thermalization again in case of measurement induced transitions
             wait(cooldown_time * u.ns)
-            play("x180", qb1.qubit_name + "_xy")
-            play("x180", qb2.qubit_name + "_xy")
+            play("x180", qb1.name + "_xy")
+            play("x180", qb2.name + "_xy")
             align()
             multiplexed_readout(I_e, None, Q_e, None, resonators=active_qubits, weights="rotated_")
             for i in range(len(active_qubits)):
@@ -104,15 +104,15 @@ else:
     plt.plot(dfs, D1)
     plt.xlabel("Readout detuning [MHz]")
     plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{qb1.qubit_name} - f_opt = {int(rr1.f_opt / u.MHz)} MHz")
+    plt.title(f"{qb1.name} - f_opt = {int(rr1.f_opt / u.MHz)} MHz")
     plt.subplot(212)
     plt.plot(dfs, D2)
     plt.xlabel("Readout detuning [MHz]")
     plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{qb2.qubit_name} - f_opt = {int(rr2.f_opt / u.MHz)} MHz")
+    plt.title(f"{qb2.name} - f_opt = {int(rr2.f_opt / u.MHz)} MHz")
     plt.tight_layout()
-    print(f"{rr1.resonator_name}: Shift readout frequency by {dfs[np.argmax(D1)]} Hz")
-    print(f"{rr2.resonator_name}: Shift readout frequency by {dfs[np.argmax(D2)]} Hz")
+    print(f"{rr1.name}: Shift readout frequency by {dfs[np.argmax(D1)]} Hz")
+    print(f"{rr2.name}: Shift readout frequency by {dfs[np.argmax(D2)]} Hz")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
     # machine.resonators[0].f_opt += dfs[np.argmax(D)]

@@ -17,8 +17,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -42,19 +42,19 @@ with program() as iq_blobs:
 
     with for_(n, 0, n < pts, n + 1):
         # ground iq blobs
-        # reset_qubit("cooldown", qb1.qubit_name + "_xy", rr1.resonator_name, cooldown_time=cooldown_time)
-        reset_qubit("cooldown", qb2.qubit_name + "_xy", rr2.resonator_name, cooldown_time=cooldown_time)
+        # reset_qubit("cooldown", qb1.name + "_xy", rr1.name, cooldown_time=cooldown_time)
+        reset_qubit("cooldown", qb2.name + "_xy", rr2.name, cooldown_time=cooldown_time)
         # wait(cooldown_time * u.ns)
-        reset_qubit("active", qb1.qubit_name + "_xy", rr1.resonator_name, threshold=qb1.ge_threshold, max_tries=1, Ig=I_g[0])
+        reset_qubit("active", qb1.name + "_xy", rr1.name, threshold=qb1.ge_threshold, max_tries=1, Ig=I_g[0])
         align()
         multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
 
         # excited iq blobs
         align()
         # wait(cooldown_time * u.ns)
-        reset_qubit("active", qb1.qubit_name + "_xy", rr1.resonator_name, threshold=qb1.ge_threshold, max_tries=10, Ig=I_g[0])
-        play("x180", qb1.qubit_name + "_xy")
-        play("x180", qb2.qubit_name + "_xy")
+        reset_qubit("active", qb1.name + "_xy", rr1.name, threshold=qb1.ge_threshold, max_tries=10, Ig=I_g[0])
+        play("x180", qb1.name + "_xy")
+        play("x180", qb2.name + "_xy")
         align()
         multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
 

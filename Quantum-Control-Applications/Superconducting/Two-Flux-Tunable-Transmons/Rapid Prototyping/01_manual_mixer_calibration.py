@@ -20,24 +20,25 @@ rr2 = machine.resonators[active_qubits[1]]
 ###################
 element = rr1
 
-if element[:2] == "rr":
-    IF = machine.resonators[int(element[2])].f_opt - machine.local_oscillators.readout[0].freq
-    LO = machine.local_oscillators.readout[0].freq
-elif element[0] == "q":
-    IF = machine.qubits[int(element[1])].xy.f_01 - machine.local_oscillators.qubits[0].freq
-    LO = machine.local_oscillators.qubits[0].freq
+
+if element.name[:2] == "rr":
+    LO = machine.local_oscillators.readout[element.LO_index].freq
+    IF = element.f_opt - LO
+elif element.name[0] == "q":
+    LO = machine.local_oscillators.qubits[element.xy.LO_index].freq
+    IF = element.xy.f_01 - LO
 
 
 with program() as manual_mixer_calib:
-    update_frequency("q2_xy", 100e6)
+    # It is best to calibrate LO leakage first and without any power played (cf. note below)
     with infinite_loop_():
-        play("cw" * amp(0), element)
+        play("cw" * amp(0), element.name)
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 qm = qmm.open_qm(config)
 job = qm.execute(manual_mixer_calib)
 
@@ -51,9 +52,17 @@ job = qm.execute(manual_mixer_calib)
 # The 2nd command is used to correct for the phase and amplitude mismatches between the channels.
 # The output of the IQ Mixer should be connected to a spectrum analyzer and values should be chosen as to minimize the
 # unwanted peaks.
+# If python can read the output of the spectrum analyzer, then this process can be automated and the correct values can
+# be found using an optimization method such as Nelder-Mead:
+# https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html
 
-# qm.set_output_dc_offset_by_element(element, ('I', 'Q'), (-0.001, 0.003))
-# qm.set_mixer_correction(f"mixer_{element}", IF, LO, IQ_imbalance(0.015, 0.01))
+# qm.set_output_dc_offset_by_element(element_name, ('I', 'Q'), (-0.001, 0.003))
+# qm.set_mixer_correction(f"mixer_{element_name}", IF, LO, IQ_imbalance(0.015, 0.01))
+
+# Note that the LO leakage (DC Offset) depends on the 'I' & 'Q' powers, it is advised to run this step with no input power.
+# This will ensure that there is no LO leakage while the pulses are not played in the case where the is no switch.
+# This can be achieved by changing the line above to `play("cw" * amp(0), "qubit")`
+
 
 #####################################
 #  Automatic LO leakage correction  #
@@ -69,7 +78,7 @@ job = qm.execute(manual_mixer_calib)
 #     lo_leakage = np.zeros((len(offset_q), len(offset_i)))
 #     for i in range(len(offset_i)):
 #         for q in range(len(offset_q)):
-#             qm.set_output_dc_offset_by_element(element, ("I", "Q"), (offset_i[i], offset_q[q]))
+#             qm.set_output_dc_offset_by_element(element.name, ("I", "Q"), (offset_i[i], offset_q[q]))
 #             sleep(0.01)
 #             # Write functions to extract the lo leakage from the spectrum analyzer
 #             # lo_leakage[q][i] =
@@ -81,15 +90,15 @@ job = qm.execute(manual_mixer_calib)
 #     plt.xlabel("I offset [V]")
 #     plt.ylabel("Q offset [V]")
 #     plt.title(f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {lo_leakage[minimum[0]][minimum[1]]:.1f} dBm")
-# plt.suptitle(f"LO leakage correction for {element}")
+# plt.suptitle(f"LO leakage correction for {element.name}")
 #
-# print(f"For {element}, I offset is {centers[0]} and Q offset is {centers[1]}")
-# if element[:2] == "rr":
-#     machine.resonators[int(element[2])].wiring.mixer_correction.offset_I = centers[0]
-#     machine.resonators[int(element[2])].wiring.mixer_correction.offset_Q = centers[1]
-# elif element[0] == "q":
-#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.offset_I = centers[0]
-#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.offset_Q = centers[1]
+# print(f"For {element.name}, I offset is {centers[0]} and Q offset is {centers[1]}")
+# if element.name[:2] == "rr":
+#     machine.resonators[int(element.name[2])].wiring.mixer_correction.offset_I = centers[0]
+#     machine.resonators[int(element.name[2])].wiring.mixer_correction.offset_Q = centers[1]
+# elif element.name[0] == "q":
+#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.offset_I = centers[0]
+#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.offset_Q = centers[1]
 
 ##################################
 #  Automatic image cancellation  #
@@ -105,7 +114,7 @@ job = qm.execute(manual_mixer_calib)
 #     image = np.zeros((len(phase), len(gain)))
 #     for g in range(len(gain)):
 #         for p in range(len(phase)):
-#             qm.set_mixer_correction(f"mixer_{element}", IF, LO, IQ_imbalance(gain[g], phase[p]))
+#             qm.set_mixer_correction(f"mixer_{element.name}", IF, LO, IQ_imbalance(gain[g], phase[p]))
 #             sleep(0.01)
 #             # Write functions to extract the image from the spectrum analyzer
 #             # image[q][i] =
@@ -117,14 +126,14 @@ job = qm.execute(manual_mixer_calib)
 #     plt.xlabel("Gain")
 #     plt.ylabel("Phase imbalance [rad]")
 #     plt.title(f"Minimum at (I={centers[0]:.3f}, Q={centers[1]:.3f}) = {image[minimum[0]][minimum[1]]:.1f} dBm")
-# plt.suptitle(f"Image cancellation for {element}")
+# plt.suptitle(f"Image cancellation for {element.name}")
 #
-# print(f"For {element}, gain is {centers[0]} and phase is {centers[1]}")
-# if element[:2] == "rr":
-#     machine.resonators[int(element[2])].wiring.mixer_correction.gain = centers[0]
-#     machine.resonators[int(element[2])].wiring.mixer_correction.phase = centers[1]
-# elif element[0] == "q":
-#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.gain = centers[0]
-#     machine.qubits[int(element[1])].xy.wiring.mixer_correction.phase = centers[1]
+# print(f"For {element.name}, gain is {centers[0]} and phase is {centers[1]}")
+# if element.name[:2] == "rr":
+#     machine.resonators[int(element.name[2])].wiring.mixer_correction.gain = centers[0]
+#     machine.resonators[int(element.name[2])].wiring.mixer_correction.phase = centers[1]
+# elif element.name[0] == "q":
+#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.gain = centers[0]
+#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.phase = centers[1]
 
 # machine._save("quam_bootstrap_state.json", flat_data=False)

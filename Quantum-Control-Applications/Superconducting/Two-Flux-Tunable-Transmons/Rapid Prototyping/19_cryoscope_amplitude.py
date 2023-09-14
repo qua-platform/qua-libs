@@ -34,8 +34,8 @@ qb.z.flux_pulse_amp = 0.1
 
 
 
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -74,20 +74,20 @@ with program() as cryoscope:
         save(n, n_st)
         with for_(*from_array(flux_amp, flux_amp_array)):
             with for_each_(flag, [True, False]):
-                play("x90", qb.qubit_name + "_xy")
+                play("x90", qb.name + "_xy")
 
                 align()
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
-                play("const" * amp(flux_amp), qb.qubit_name+"_z")
-                align(qb.qubit_name+"_xy", qb.qubit_name+"_z")
+                play("const" * amp(flux_amp), qb.name+"_z")
+                align(qb.name+"_xy", qb.name+"_z")
                 # Wait some time to ensure that the 2nd x90 pulse will arrive after the flux pulse
                 wait(20 * u.ns)
                 align()
                 with if_(flag):
-                    play("x90", qb.qubit_name + "_xy")
+                    play("x90", qb.name + "_xy")
                 with else_():
-                    play("y90", qb.qubit_name + "_xy")
+                    play("y90", qb.name + "_xy")
 
                 align()
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
@@ -145,13 +145,13 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, state1, ".-")
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.xlabel("Flux pulse amplitude [V]")
         plt.ylabel("State")
         plt.legend(("Sx", "Sy"))
         plt.subplot(222)
         plt.cla()
-        plt.title(f"{qb2.qubit_name}")
+        plt.title(f"{qb2.name}")
         plt.plot(xplot, state2, ".-")
         plt.xlabel("Flux pulse amplitude [V]")
         plt.legend(("Sx", "Sy"))
@@ -161,7 +161,7 @@ else:
         plt.plot(xplot, np.polyval(pol, xplot) / u.MHz, "r-")
         plt.xlabel("Flux pulse amplitude [V]")
         plt.ylabel("Averaged detuning [MHz]")
-        plt.title(f"{qb.qubit_name}")
+        plt.title(f"{qb.name}")
         plt.legend(("data", "Fit"), loc="upper right")
         plt.tight_layout()
         plt.pause(5)

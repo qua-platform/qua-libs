@@ -19,8 +19,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -50,15 +50,15 @@ with program() as multi_qubit_spec:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(df, dfs)):
-            update_frequency(qb1.qubit_name + "_xy", df + qb_if_1)
-            update_frequency(qb2.qubit_name + "_xy", df + qb_if_2)
+            update_frequency(qb1.name + "_xy", df + qb_if_1)
+            update_frequency(qb2.name + "_xy", df + qb_if_2)
 
             # qubit 1
-            play("x180" * amp(1), qb1.qubit_name + "_xy", duration=t * u.ns)
-            align(qb1.qubit_name + "_xy", rr1.resonator_name)
+            play("x180" * amp(1), qb1.name + "_xy", duration=t * u.ns)
+            align(qb1.name + "_xy", rr1.name)
             # qubit 2
-            play("x180" * amp(1), qb2.qubit_name + "_xy", duration=t * u.ns)
-            align(qb2.qubit_name + "_xy", rr2.resonator_name)
+            play("x180" * amp(1), qb2.name + "_xy", duration=t * u.ns)
+            align(qb2.name + "_xy", rr2.name)
 
             # readout (reduce amplitude to minimize measurement induced transitions)
             multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, amplitude=0.9)
@@ -105,23 +105,23 @@ else:
         plt.plot(dfs / u.MHz, np.abs(s1))
         plt.grid("on")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"{qb1.qubit_name} (f_01: {qb1.xy.f_01 / u.MHz} MHz)")
+        plt.title(f"{qb1.name} (f_01: {qb1.xy.f_01 / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s1))
         plt.grid("on")
         plt.ylabel("Phase [rad]")
-        plt.xlabel(f"{qb1.qubit_name} detuning [MHz]")
+        plt.xlabel(f"{qb1.name} detuning [MHz]")
         plt.subplot(222)
         plt.cla()
         plt.plot(dfs / u.MHz, np.abs(s2))
         plt.grid("on")
-        plt.title(f"{qb2.qubit_name} (f_01: {qb2.xy.f_01 / u.MHz} MHz)")
+        plt.title(f"{qb2.name} (f_01: {qb2.xy.f_01 / u.MHz} MHz)")
         plt.subplot(224)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s2))
         plt.grid("on")
-        plt.xlabel(f"{qb1.qubit_name} detuning [MHz]")
+        plt.xlabel(f"{qb1.name} detuning [MHz]")
         plt.tight_layout()
         plt.pause(2)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
@@ -135,14 +135,14 @@ else:
         plt.subplot(121)
         res_1 = fit.reflection_resonator_spectroscopy((qb_if_1 + dfs) / u.MHz, -np.angle(s1), plot=True)
         plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr1.resonator_name} IF [MHz]")
+        plt.xlabel(f"{rr1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy((qb_if_2 + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr2.resonator_name} IF [MHz]")
-        plt.title(f"{qb2.qubit_name}")
+        plt.xlabel(f"{rr2.name} IF [MHz]")
+        plt.title(f"{qb2.name}")
         plt.tight_layout()
 
         qb1.xy.f_01 = res_1["f"][0] * u.MHz + lo1

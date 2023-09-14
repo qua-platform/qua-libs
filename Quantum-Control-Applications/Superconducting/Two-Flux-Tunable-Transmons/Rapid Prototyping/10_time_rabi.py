@@ -18,8 +18,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 ###################
@@ -41,8 +41,8 @@ with program() as rabi:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, times)):
-            play("x180", qb1.qubit_name + "_xy", duration=t)
-            play("x180", qb2.qubit_name + "_xy", duration=t)
+            play("x180", qb1.name + "_xy", duration=t)
+            play("x180", qb2.name + "_xy", duration=t)
             align()
 
             # Start using Rotated-Readout:
@@ -89,7 +89,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.plot(times * 4, I1)
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.ylabel("I quadrature [V]")
         plt.subplot(223)
         plt.cla()
@@ -99,7 +99,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.plot(times * 4, I2)
-        plt.title(f"{qb2.qubit_name}")
+        plt.title(f"{qb2.name}")
         plt.subplot(224)
         plt.cla()
         plt.plot(times * 4, Q2)

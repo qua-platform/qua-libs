@@ -17,7 +17,7 @@ state = {
     },
     "qubits": [
         {
-            "qubit_name": "q0",
+            "name": "q0",
             "xy": {
                 "LO_index": 0,
                 "f_01": 4.5e9,
@@ -53,11 +53,12 @@ state = {
                 },
             },
             "ge_threshold": 0.0,
-            "T1": 1230,
-            "T2": 123,
+            "T1": 5000,
+            "T2": 1000,
+            "T2echo": 2000,
         },
         {
-            "qubit_name": "q1",
+            "name": "q1",
             "xy": {
                 "LO_index": 1,
                 "f_01": 6.25e9,
@@ -93,11 +94,12 @@ state = {
                 },
             },
             "ge_threshold": 0.0,
-            "T1": 1232,
-            "T2": 122,
+            "T1": 5000,
+            "T2": 1000,
+            "T2echo": 2000,
         },
         {
-            "qubit_name": "q2",
+            "name": "q2",
             "xy": {
                 "LO_index": 1,
                 "f_01": 6.25e9,
@@ -133,11 +135,12 @@ state = {
                 },
             },
             "ge_threshold": 0.0,
-            "T1": 1232,
-            "T2": 122,
+            "T1": 5000,
+            "T2": 1000,
+            "T2echo": 2000,
         },
         {
-            "qubit_name": "q3",
+            "name": "q3",
             "xy": {
                 "LO_index": 2,
                 "f_01": 7.1e9,
@@ -173,11 +176,12 @@ state = {
                 },
             },
             "ge_threshold": 0.0,
-            "T1": 1232,
-            "T2": 122,
+            "T1": 5000,
+            "T2": 1000,
+            "T2echo": 2000,
         },
         {
-            "qubit_name": "q4",
+            "name": "q4",
             "xy": {
                 "LO_index": 2,
                 "f_01": 7.1e9,
@@ -213,13 +217,14 @@ state = {
                 },
             },
             "ge_threshold": 0.0,
-            "T1": 1232,
-            "T2": 122,
+            "T1": 5000,
+            "T2": 1000,
+            "T2echo": 2000,
         },
     ],
     "resonators": [
         {
-            "resonator_name": "rr0",
+            "name": "rr0",
             "LO_index": 0,
             "f_res": 7.245e9,
             "f_opt": 7.245e9,
@@ -236,7 +241,7 @@ state = {
             },
         },
         {
-            "resonator_name": "rr1",
+            "name": "rr1",
             "LO_index": 0,
             "f_res": 7.31e9,
             "f_opt": 7.31e9,
@@ -253,7 +258,7 @@ state = {
             },
         },
         {
-            "resonator_name": "rr2",
+            "name": "rr2",
             "LO_index": 0,
             "f_res": 7.47e9,
             "f_opt": 7.47e9,
@@ -270,7 +275,7 @@ state = {
             },
         },
         {
-            "resonator_name": "rr3",
+            "name": "rr3",
             "LO_index": 0,
             "f_res": 7.525e9,
             "f_opt": 7.525e9,
@@ -287,7 +292,7 @@ state = {
             },
         },
         {
-            "resonator_name": "rr4",
+            "name": "rr4",
             "LO_index": 0,
             "f_res": 7.59e9,
             "f_opt": 7.59e9,

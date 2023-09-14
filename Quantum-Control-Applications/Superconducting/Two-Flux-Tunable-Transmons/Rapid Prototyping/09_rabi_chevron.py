@@ -19,8 +19,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -56,13 +56,13 @@ with program() as rabi_chevron:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency(qb1.qubit_name + "_xy", df + qb_if_1)
-            update_frequency(qb2.qubit_name + "_xy", df + qb_if_2)
+            update_frequency(qb1.name + "_xy", df + qb_if_1)
+            update_frequency(qb2.name + "_xy", df + qb_if_2)
 
             with for_(*from_array(a, amps)):
                 # qubit 1 can replace cw by x180 to test the gate
-                play("x180" * amp(a), qb1.qubit_name + "_xy")
-                play("x180" * amp(a), qb2.qubit_name + "_xy")
+                play("x180" * amp(a), qb1.name + "_xy")
+                play("x180" * amp(a), qb2.name + "_xy")
                 align()
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits)
                 wait(cooldown_time * u.ns)
@@ -115,7 +115,7 @@ else:
         plt.plot(qb1.xy.pi_amp, 0, "r*")
         plt.xlabel("Qubit pulse amplitude [V]")
         plt.ylabel("Qubit detuning [MHz]")
-        plt.title(f"{qb1.qubit_name} (f_res1: {int((qb_if_1 + lo1) / u.MHz)} MHz)")
+        plt.title(f"{qb1.name} (f_res1: {int((qb_if_1 + lo1) / u.MHz)} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(amps * qb1.xy.pi_amp, dfs / u.MHz, Q1)
@@ -126,7 +126,7 @@ else:
         plt.cla()
         plt.pcolor(amps * qb2.xy.pi_amp, dfs / u.MHz, I2)
         plt.plot(qb2.xy.pi_amp, 0, "r*")
-        plt.title(f"{qb2.qubit_name} (f_res2: {int((qb_if_2 + lo2) / u.MHz)} MHz)")
+        plt.title(f"{qb2.name} (f_res2: {int((qb_if_2 + lo2) / u.MHz)} MHz)")
         plt.ylabel("Qubit detuning [MHz]")
         plt.xlabel("Qubit pulse amplitude [V]")
         plt.subplot(224)

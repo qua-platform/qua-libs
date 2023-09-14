@@ -32,8 +32,8 @@ dfs = np.arange(-50e6, 5e6, 0.1e6)
 
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 
 res_if_1 = rr1.f_res - machine.local_oscillators.readout[0].freq
 res_if_2 = rr2.f_res - machine.local_oscillators.readout[0].freq
@@ -53,8 +53,8 @@ with program() as multi_res_spec_vs_flux:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency(rr1.resonator_name, df + res_if_1)
-            update_frequency(rr2.resonator_name, df + res_if_2)
+            update_frequency(rr1.name, df + res_if_1)
+            update_frequency(rr2.name, df + res_if_2)
 
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping
@@ -64,7 +64,7 @@ with program() as multi_res_spec_vs_flux:
 
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, sequential=False)
 
-                wait(depletion_time * u.ns, rr1.resonator_name, rr2.resonator_name)  # wait for the resonators to relax
+                wait(depletion_time * u.ns, rr1.name, rr2.name)  # wait for the resonators to relax
 
     with stream_processing():
         n_st.save("n")
@@ -110,16 +110,16 @@ else:
         plt.suptitle("Resonator specrtoscopy vs flux")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"{rr1.resonator_name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.title(f"{rr1.name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
         plt.xlabel("flux [V]")
-        plt.ylabel(f"{rr1.resonator_name} IF [MHz]")
+        plt.ylabel(f"{rr1.name} IF [MHz]")
         plt.pcolor(dcs, res_if_1 / u.MHz + dfs / u.MHz, A1)
         plt.plot(machine.qubits[active_qubits[0]].z.max_frequency_point, res_if_1/ u.MHz, "r*" )
         plt.subplot(122)
         plt.cla()
-        plt.title(f"{rr2.resonator_name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.title(f"{rr2.name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
         plt.xlabel("flux [V]")
-        plt.ylabel(f"{rr2.resonator_name} IF [MHz]")
+        plt.ylabel(f"{rr2.name} IF [MHz]")
         plt.pcolor(dcs, res_if_2 / u.MHz + dfs / u.MHz, A2)
         plt.plot(machine.qubits[active_qubits[1]].z.max_frequency_point, res_if_2/ u.MHz, "r*" )
         plt.tight_layout()

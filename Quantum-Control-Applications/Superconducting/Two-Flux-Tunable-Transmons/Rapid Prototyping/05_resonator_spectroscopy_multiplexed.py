@@ -30,8 +30,8 @@ res_if_1 = rr1.f_res - res_lo
 res_if_2 = rr2.f_res - res_lo
 
 # Get the flux elements for setting the max frequency point of the active qubits
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 
 
 # res_if_1 = 244e6
@@ -59,13 +59,13 @@ with program() as multi_res_spec:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # wait for the resonators to relax
-            wait(depletion_time * u.ns, rr1.resonator_name, rr2.resonator_name)
+            wait(depletion_time * u.ns, rr1.name, rr2.name)
 
             # resonator 1
-            update_frequency(rr1.resonator_name, df + res_if_1)
+            update_frequency(rr1.name, df + res_if_1)
             measure(
                 "readout",
-                rr1.resonator_name,
+                rr1.name,
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I[0]),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
@@ -75,10 +75,10 @@ with program() as multi_res_spec:
 
             # align("rr1", "rr1")  # Uncomment to measure sequentially
             # resonator 2
-            update_frequency(rr2.resonator_name, df + res_if_2)
+            update_frequency(rr2.name, df + res_if_2)
             measure(
                 "readout",
-                rr2.resonator_name,
+                rr2.name,
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
@@ -134,12 +134,12 @@ else:
         plt.suptitle("Multiplexed resonator spectroscopy")
         plt.cla()
         plt.plot(res_if_1 / u.MHz + dfs / u.MHz, np.abs(s1), '.')
-        plt.title(f"{rr1.resonator_name}")
+        plt.title(f"{rr1.name}")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(222)
         plt.cla()
         plt.plot(res_if_2 / u.MHz + dfs / u.MHz, np.abs(s2), '.')
-        plt.title(f"{rr2.resonator_name}")
+        plt.title(f"{rr2.name}")
         plt.subplot(223)
         plt.cla()
         plt.plot(res_if_1 / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s1))), '.')
@@ -162,16 +162,16 @@ else:
         plt.subplot(121)
         res_1 = fit.reflection_resonator_spectroscopy((res_if_1 + dfs) / u.MHz, np.abs(s1), plot=True)
         plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr1.resonator_name} IF [MHz]")
+        plt.xlabel(f"{rr1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"{rr1.resonator_name}")
+        plt.title(f"{rr1.name}")
         rr1.f_res = res_1["f"][0] * u.MHz + res_lo
         rr1.f_opt = rr1.f_res
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy((res_if_2 + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr2.resonator_name} IF [MHz]")
-        plt.title(f"{rr2.resonator_name}")
+        plt.xlabel(f"{rr2.name} IF [MHz]")
+        plt.title(f"{rr2.name}")
         plt.tight_layout()
         rr2.f_res = res_2["f"][0] * u.MHz + res_lo
         rr2.f_opt = rr2.f_res

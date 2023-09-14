@@ -22,8 +22,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -79,23 +79,23 @@ def allXY(pulses, qubit, resonator):
     I_xy = declare(fixed)
     Q_xy = declare(fixed)
     if pulses[0] != "I":
-        play(pulses[0], qubit.qubit_name + "_xy")  # Either play the sequence
+        play(pulses[0], qubit.name + "_xy")  # Either play the sequence
     else:
-        wait(qubit.xy.pi_length // 4, qubit.qubit_name + "_xy")  # or wait if sequence is identity
+        wait(qubit.xy.pi_length // 4, qubit.name + "_xy")  # or wait if sequence is identity
     if pulses[1] != "I":
-        play(pulses[1], qubit.qubit_name + "_xy")  # Either play the sequence
+        play(pulses[1], qubit.name + "_xy")  # Either play the sequence
     else:
-        wait(qubit.xy.pi_length // 4, qubit.qubit_name + "_xy")  # or wait if sequence is identity
+        wait(qubit.xy.pi_length // 4, qubit.name + "_xy")  # or wait if sequence is identity
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
     if resonator == rr1:
-        measure("readout", rr2.resonator_name, None)
+        measure("readout", rr2.name, None)
     else:
-        measure("readout", rr1.resonator_name, None)
+        measure("readout", rr1.name, None)
     measure(
         "readout",
-        resonator.resonator_name,
+        resonator.name,
         None,
         dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_xy),
         dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_xy),
@@ -177,7 +177,7 @@ else:
         ax[1].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
         ax[1].set_ylabel("Q quadrature [a.u.]")
         ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
-        plt.suptitle(f"All XY {qb.qubit_name}")
+        plt.suptitle(f"All XY {qb.name}")
         plt.tight_layout()
         plt.pause(1.0)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

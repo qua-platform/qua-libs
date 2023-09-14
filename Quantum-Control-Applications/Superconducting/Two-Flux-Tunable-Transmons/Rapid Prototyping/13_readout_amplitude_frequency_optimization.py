@@ -24,8 +24,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -58,8 +58,8 @@ with program() as ro_freq_opt:
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
     with for_(*from_array(df, dfs)):
-        update_frequency(rr1.resonator_name, df + res_if_1)
-        update_frequency(rr2.resonator_name, df + res_if_2)
+        update_frequency(rr1.name, df + res_if_1)
+        update_frequency(rr2.name, df + res_if_2)
         with for_(*from_array(a, amplitudes)):
             with for_(n, 0, n < n_runs, n + 1):
                 # ground iq blobs for both qubits
@@ -71,8 +71,8 @@ with program() as ro_freq_opt:
                 align()
                 # Wait for thermalization again in case of measurement induced transitions
                 wait(cooldown_time * u.ns)
-                play("x180", qb1.qubit_name + "_xy")
-                play("x180", qb2.qubit_name + "_xy")
+                play("x180", qb1.name + "_xy")
+                play("x180", qb2.name + "_xy")
                 align()
                 multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
 
@@ -122,13 +122,13 @@ else:
     plt.suptitle("Readout amplitude optimization")
     plt.subplot(121)
     plt.pcolor((dfs + res_if_1) / u.MHz, amplitudes * rr1.readout_pulse_amp, fidelity_vec[0])
-    plt.title(f"{rr1.resonator_name}")
+    plt.title(f"{rr1.name}")
     plt.colorbar()
     plt.ylabel("Readout amplitude [V]")
     plt.xlabel("Readout IF [MHz]")
     plt.subplot(122)
     plt.pcolor((dfs + res_if_2) / u.MHz, amplitudes * rr2.readout_pulse_amp, fidelity_vec[1])
-    plt.title(f"{rr2.resonator_name}")
+    plt.title(f"{rr2.name}")
     plt.colorbar()
     plt.ylabel("Readout amplitude [V]")
     plt.xlabel("Readout IF [MHz]")

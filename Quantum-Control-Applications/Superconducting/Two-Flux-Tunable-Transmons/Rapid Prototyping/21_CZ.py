@@ -19,8 +19,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 
 
 ###################
@@ -44,8 +44,8 @@ with program() as cz:
         save(n, n_st)
         with for_(*from_array(t, ts)):
             with for_(*from_array(dc, dcs)):
-                play("x180", qb1.qubit_name + "_xy")
-                play("x180", qb2.qubit_name + "_xy")
+                play("x180", qb1.name + "_xy")
+                play("x180", qb2.name + "_xy")
                 align()
                 set_dc_offset(q2_z, "single", dc)
                 wait(t, q2_z)
@@ -89,22 +89,22 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, I1)
-        plt.title(f"{qb1.qubit_name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb1.name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, Q1)
-        plt.title(f"{qb1.qubit_name} - Q")
+        plt.title(f"{qb1.name} - Q")
         plt.xlabel("Flux amplitude [V]")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, I2)
-        plt.title(f"{qb2.qubit_name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb2.name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(dcs, 4 * ts, Q2)
-        plt.title(f"{qb2.qubit_name} - Q")
+        plt.title(f"{qb2.name} - Q")
         plt.xlabel("Flux amplitude [V]")
         plt.tight_layout()
         plt.pause(1)

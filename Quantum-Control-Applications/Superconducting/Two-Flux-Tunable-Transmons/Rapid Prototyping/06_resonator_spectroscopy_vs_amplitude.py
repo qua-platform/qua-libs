@@ -26,8 +26,8 @@ config = build_config(machine)
 
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 
 res_if_1 = rr1.f_res - machine.local_oscillators.readout[0].freq
 res_if_2 = rr2.f_res - machine.local_oscillators.readout[0].freq
@@ -53,15 +53,15 @@ with program() as multi_res_spec_vs_amp:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency(rr1.resonator_name, df + res_if_1)
-            update_frequency(rr2.resonator_name, df + res_if_2)
+            update_frequency(rr1.name, df + res_if_1)
+            update_frequency(rr2.name, df + res_if_2)
 
             with for_(*from_array(a, amps)):
                 # resonator 1
-                wait(depletion_time * u.ns, rr1.resonator_name)  # wait for the resonator to relax
+                wait(depletion_time * u.ns, rr1.name)  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    rr1.resonator_name,
+                    rr1.name,
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[0]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
@@ -69,13 +69,13 @@ with program() as multi_res_spec_vs_amp:
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
-                # align(rr1.resonator_name, rr2.resonator_name) # sequential to avoid overflow
+                # align(rr1.name, rr2.name) # sequential to avoid overflow
 
                 # resonator 2
-                wait(depletion_time * u.ns, rr2.resonator_name)  # wait for the resonator to relax
+                wait(depletion_time * u.ns, rr2.name)  # wait for the resonator to relax
                 measure(
                     "readout" * amp(a),
-                    rr2.resonator_name,
+                    rr2.name,
                     None,
                     dual_demod.full("cos", "out1", "sin", "out2", I[1]),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
@@ -140,7 +140,7 @@ else:
         plt.suptitle("Resonator spectroscopy vs amplitude")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"{rr1.resonator_name} - f_cent: {int(rr1.f_res / u.MHz)} MHz")
+        plt.title(f"{rr1.name} - f_cent: {int(rr1.f_res / u.MHz)} MHz")
         plt.xlabel("Readout amplitude [V]")
         plt.ylabel("Readout detuning [MHz]")
         plt.pcolor(amps * rr1.readout_pulse_amp, dfs / u.MHz, A1)
@@ -148,7 +148,7 @@ else:
         plt.axvline(prev_amp1, color="k", linestyle='--')
         plt.subplot(122)
         plt.cla()
-        plt.title(f"{rr2.resonator_name} - f_cent: {int(rr2.f_res / u.MHz)} MHz")
+        plt.title(f"{rr2.name} - f_cent: {int(rr2.f_res / u.MHz)} MHz")
         plt.xlabel("Readout amplitude [V]")
         plt.ylabel("Readout detuning [MHz]")
         plt.pcolor(amps * rr2.readout_pulse_amp, dfs / u.MHz, A2)

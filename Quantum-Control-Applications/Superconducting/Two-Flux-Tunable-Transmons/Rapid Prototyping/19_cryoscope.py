@@ -27,8 +27,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -68,8 +68,8 @@ def baked_waveform(waveform, pulse_duration):
             else:
                 wf = waveform[:i].tolist()
 
-            b.add_op("flux_pulse", qb.qubit_name+"_z", wf)
-            b.play("flux_pulse", qb.qubit_name+"_z")
+            b.add_op("flux_pulse", qb.name+"_z", wf)
+            b.play("flux_pulse", qb.name+"_z")
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -101,7 +101,7 @@ with program() as cryoscope:
         save(n, n_st)
         with for_(segment, 0, segment <= qb.z.flux_pulse_length + total_zeros, segment + 1):
             with for_each_(flag, [True, False]):
-                play("x90", qb.qubit_name + "_xy")
+                play("x90", qb.name + "_xy")
 
                 align()
                 wait(20 * u.ns)
@@ -111,12 +111,12 @@ with program() as cryoscope:
                         with case_(j):
                             square_pulse_segments[j].run()
 
-                wait((qb.z.flux_pulse_length + 100) * u.ns, qb.qubit_name + "_xy")
+                wait((qb.z.flux_pulse_length + 100) * u.ns, qb.name + "_xy")
 
                 with if_(flag):
-                    play("x90", qb.qubit_name + "_xy")
+                    play("x90", qb.name + "_xy")
                 with else_():
-                    play("y90", qb.qubit_name + "_xy")
+                    play("y90", qb.name + "_xy")
 
                 align()
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
@@ -177,13 +177,13 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, state1, ".-")
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.xlabel("Interaction time [ns]")
         plt.ylabel("State")
         plt.legend(("Sx", "Sy"))
         plt.subplot(222)
         plt.cla()
-        plt.title(f"{qb2.qubit_name}")
+        plt.title(f"{qb2.name}")
         plt.plot(xplot, state2, ".-")
         plt.xlabel("Interaction time [ns]")
         plt.legend(("Sx", "Sy"))
@@ -192,14 +192,14 @@ else:
         plt.plot(xplot, coarse_detuning / u.MHz, "-")
         plt.xlabel("Interaction time [ns]")
         plt.ylabel("Induced detuning [MHz]")
-        plt.title(f"{qb.qubit_name}")
+        plt.title(f"{qb.name}")
         plt.subplot(224)
         plt.cla()
         plt.plot(xplot, step_response_freq, label="Frequency")
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
-        plt.title(f"{qb.qubit_name}")
+        plt.title(f"{qb.name}")
         plt.legend()
         plt.tight_layout()
         plt.pause(5)

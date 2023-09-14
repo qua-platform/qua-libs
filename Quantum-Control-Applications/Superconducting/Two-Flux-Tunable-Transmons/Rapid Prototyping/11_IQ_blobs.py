@@ -17,8 +17,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -45,13 +45,13 @@ with program() as iq_blobs:
         # ground iq blobs for both qubits
         wait(cooldown_time * u.ns)
         align()
-        # play("x180", qb2.qubit_name + "_xy")
+        # play("x180", qb2.name + "_xy")
         multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
         align()
         wait(cooldown_time * u.ns)
         # excited iq blobs for both qubits
-        play("x180", qb1.qubit_name + "_xy")
-        play("x180", qb2.qubit_name + "_xy")
+        play("x180", qb1.name + "_xy")
+        play("x180", qb2.name + "_xy")
         align()
         multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
 
@@ -85,9 +85,9 @@ else:
     I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
 
     angle1, threshold1, fidelity1, _, _, _, _ = two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
-    plt.suptitle(f"{qb1.qubit_name}")
+    plt.suptitle(f"{qb1.name}")
     angle2, threshold2, fidelity2, _, _, _, _ = two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
-    plt.suptitle(f"{qb2.qubit_name}")
+    plt.suptitle(f"{qb2.name}")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
     rr1.rotation_angle = angle1

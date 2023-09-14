@@ -28,9 +28,9 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase(rr1.resonator_name)
-        measure("readout", rr1.resonator_name, adc_st)
-        wait(depletion_time, rr1.resonator_name)
+        reset_phase(rr1.name)
+        measure("readout", rr1.name, adc_st)
+        wait(depletion_time, rr1.name)
 
     with stream_processing():
         # Will save average:
@@ -75,7 +75,7 @@ else:
     dc_offset_q = -adc2_mean
     # Plot data
     fig = plt.figure()
-    plt.suptitle(f"Time of flight calibration {rr1.resonator_name}")
+    plt.suptitle(f"Time of flight calibration {rr1.name}")
     plt.subplot(121)
     plt.title("Single run")
     plt.plot(adc1_single_run, "b", label="Input 1")

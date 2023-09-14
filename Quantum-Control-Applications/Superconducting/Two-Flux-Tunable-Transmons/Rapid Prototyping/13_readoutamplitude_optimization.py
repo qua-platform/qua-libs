@@ -17,8 +17,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -59,8 +59,8 @@ with program() as ro_freq_opt:
             align()
             # Wait for thermalization again in case of measurement induced transitions
             wait(cooldown_time * u.ns)
-            play("x180", qb1.qubit_name + "_xy")
-            play("x180", qb2.qubit_name + "_xy")
+            play("x180", qb1.name + "_xy")
+            play("x180", qb2.name + "_xy")
             align()
             multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
 
@@ -109,11 +109,11 @@ else:
     plt.suptitle("Readout amplitude optimization")
     plt.subplot(121)
     plt.plot(amplitudes * rr1.readout_pulse_amp, fidelity_vec[0], ".-")
-    plt.title(f"{rr1.resonator_name}")
+    plt.title(f"{rr1.name}")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")
     plt.subplot(122)
-    plt.title(f"{rr2.resonator_name}")
+    plt.title(f"{rr2.name}")
     plt.plot(amplitudes * rr2.readout_pulse_amp, fidelity_vec[1], ".-")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")

@@ -11,9 +11,9 @@ from quam import QuAM
 machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
 # Configure the Octave parameters for each element
-resonator = ElementsSettings(machine.resonators[active_qubits[0]].resonator_name, gain=-15, rf_in_port=["octave1", 1], down_convert_LO_source="Internal")
-qubit_1 = ElementsSettings(machine.qubits[active_qubits[0]].qubit_name + "_xy", gain=2)
-qubit_2 = ElementsSettings(machine.qubits[active_qubits[1]].qubit_name + "_xy", gain=2)
+resonator = ElementsSettings(machine.resonators[active_qubits[0]].name, gain=-15, rf_in_port=["octave1", 1], down_convert_LO_source="Internal")
+qubit_1 = ElementsSettings(machine.qubits[active_qubits[0]].name + "_xy", gain=2)
+qubit_2 = ElementsSettings(machine.qubits[active_qubits[1]].name + "_xy", gain=2)
 # Regroup all the elements
 elements_settings = [resonator,  qubit_1, qubit_2]
 

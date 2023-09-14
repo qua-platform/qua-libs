@@ -19,8 +19,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -51,19 +51,19 @@ with program() as ramsey:
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
-            update_frequency(qb1.qubit_name + "_xy", df + qb_if_1)
-            update_frequency(qb2.qubit_name + "_xy", df + qb_if_2)
+            update_frequency(qb1.name + "_xy", df + qb_if_1)
+            update_frequency(qb2.name + "_xy", df + qb_if_2)
 
             with for_(*from_array(t, t_delay)):
                 # qubit 1
-                play("x90", qb1.qubit_name + "_xy")
-                wait(t, qb1.qubit_name + "_xy")
-                play("x90", qb1.qubit_name + "_xy")
+                play("x90", qb1.name + "_xy")
+                wait(t, qb1.name + "_xy")
+                play("x90", qb1.name + "_xy")
 
                 # qubit 2
-                play("x90", qb2.qubit_name + "_xy")
-                wait(t, qb2.qubit_name + "_xy")
-                play("x90", qb2.qubit_name + "_xy")
+                play("x90", qb2.name + "_xy")
+                wait(t, qb2.name + "_xy")
+                play("x90", qb2.name + "_xy")
 
                 align()
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
@@ -106,22 +106,22 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"{qb1.qubit_name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb1.name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
         plt.ylabel("detuning [MHz]")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q1)
-        plt.title(f"{qb1.qubit_name} - Q")
+        plt.title(f"{qb1.name} - Q")
         plt.xlabel("Idle time [ns]")
         plt.ylabel("detuning [MHz]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"{qb2.qubit_name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb2.name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
-        plt.title(f"{qb2.qubit_name} - Q")
+        plt.title(f"{qb2.name} - Q")
         plt.xlabel("Idle time [ns]")
         plt.tight_layout()
         plt.pause(1)

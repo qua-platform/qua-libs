@@ -23,8 +23,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -82,74 +82,74 @@ def play_sequence(sequence_list, depth, qubit):
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
-                wait(qubit.xy.pi_length // 4, qubit.qubit_name + "_xy")
+                wait(qubit.xy.pi_length // 4, qubit.name + "_xy")
             with case_(1):
-                play("x180", qubit.qubit_name + "_xy")
+                play("x180", qubit.name + "_xy")
             with case_(2):
-                play("y180", qubit.qubit_name + "_xy")
+                play("y180", qubit.name + "_xy")
             with case_(3):
-                play("y180", qubit.qubit_name + "_xy")
-                play("x180", qubit.qubit_name + "_xy")
+                play("y180", qubit.name + "_xy")
+                play("x180", qubit.name + "_xy")
             with case_(4):
-                play("x90", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
+                play("x90", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
             with case_(5):
-                play("x90", qubit.qubit_name + "_xy")
-                play("-y90", qubit.qubit_name + "_xy")
+                play("x90", qubit.name + "_xy")
+                play("-y90", qubit.name + "_xy")
             with case_(6):
-                play("-x90", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
             with case_(7):
-                play("-x90", qubit.qubit_name + "_xy")
-                play("-y90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
+                play("-y90", qubit.name + "_xy")
             with case_(8):
-                play("y90", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("y90", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(9):
-                play("y90", qubit.qubit_name + "_xy")
-                play("-x90", qubit.qubit_name + "_xy")
+                play("y90", qubit.name + "_xy")
+                play("-x90", qubit.name + "_xy")
             with case_(10):
-                play("-y90", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("-y90", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(11):
-                play("-y90", qubit.qubit_name + "_xy")
-                play("-x90", qubit.qubit_name + "_xy")
+                play("-y90", qubit.name + "_xy")
+                play("-x90", qubit.name + "_xy")
             with case_(12):
-                play("x90", qubit.qubit_name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(13):
-                play("-x90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
             with case_(14):
-                play("y90", qubit.qubit_name + "_xy")
+                play("y90", qubit.name + "_xy")
             with case_(15):
-                play("-y90", qubit.qubit_name + "_xy")
+                play("-y90", qubit.name + "_xy")
             with case_(16):
-                play("-x90", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(17):
-                play("-x90", qubit.qubit_name + "_xy")
-                play("-y90", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
+                play("-y90", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(18):
-                play("x180", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
+                play("x180", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
             with case_(19):
-                play("x180", qubit.qubit_name + "_xy")
-                play("-y90", qubit.qubit_name + "_xy")
+                play("x180", qubit.name + "_xy")
+                play("-y90", qubit.name + "_xy")
             with case_(20):
-                play("y180", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("y180", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(21):
-                play("y180", qubit.qubit_name + "_xy")
-                play("-x90", qubit.qubit_name + "_xy")
+                play("y180", qubit.name + "_xy")
+                play("-x90", qubit.name + "_xy")
             with case_(22):
-                play("x90", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
-                play("x90", qubit.qubit_name + "_xy")
+                play("x90", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
+                play("x90", qubit.name + "_xy")
             with case_(23):
-                play("-x90", qubit.qubit_name + "_xy")
-                play("y90", qubit.qubit_name + "_xy")
-                play("-x90", qubit.qubit_name + "_xy")
+                play("-x90", qubit.name + "_xy")
+                play("y90", qubit.name + "_xy")
+                play("-x90", qubit.name + "_xy")
 
 
 ###################
@@ -187,17 +187,17 @@ with program() as rb:
             with if_((depth == 1) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can replace by active reset
-                    wait(cooldown_time, res.resonator_name)
+                    wait(cooldown_time, res.name)
 
-                    align(res.resonator_name, qubit.qubit_name + "_xy")
+                    align(res.name, qubit.name + "_xy")
                     with strict_timing_():
                         play_sequence(sequence_list, depth, qubit)
-                    align(qubit.qubit_name + "_xy", res.resonator_name)
+                    align(qubit.name + "_xy", res.name)
                     # Make sure you updated the ge_threshold
                     # multiplexed_readout([I], [I_st], [Q], [Q_st], resonators=[1], weights="rotated_")
                     measure(
                         "readout",
-                        res.resonator_name,
+                        res.name,
                         None,
                         dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
                         dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),

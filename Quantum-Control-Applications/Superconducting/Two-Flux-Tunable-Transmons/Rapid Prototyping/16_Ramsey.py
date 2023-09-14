@@ -20,8 +20,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -37,7 +37,7 @@ idle_times = np.arange(4, 1000, 5)
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 n_avg = 1000
 detuning = 1e6
-qubit_element = qb1.qubit_name + "_xy"
+qubit_element = qb1.name + "_xy"
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -52,19 +52,19 @@ with program() as ramsey:
         save(n, n_st)
 
         with for_(*from_array(t, idle_times)):
-            # play("x180", qb2.qubit_name + "_xy")
+            # play("x180", qb2.name + "_xy")
             # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
             assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
             align()
-            play("x90", qb1.qubit_name + "_xy")
-            wait(t, qb1.qubit_name + "_xy")
-            frame_rotation_2pi(phi, qb1.qubit_name + "_xy")
-            play("x90", qb1.qubit_name + "_xy")
+            play("x90", qb1.name + "_xy")
+            wait(t, qb1.name + "_xy")
+            frame_rotation_2pi(phi, qb1.name + "_xy")
+            play("x90", qb1.name + "_xy")
 
-            play("x90", qb2.qubit_name + "_xy")
-            wait(t, qb2.qubit_name + "_xy")
-            frame_rotation_2pi(phi, qb2.qubit_name + "_xy")
-            play("x90", qb2.qubit_name + "_xy")
+            play("x90", qb2.name + "_xy")
+            wait(t, qb2.name + "_xy")
+            frame_rotation_2pi(phi, qb2.name + "_xy")
+            play("x90", qb2.name + "_xy")
 
             align()
             multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
@@ -111,21 +111,21 @@ else:
         plt.cla()
         plt.plot(4 * idle_times, I1)
         plt.ylabel("I [V]")
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.subplot(223)
         plt.cla()
         plt.plot(4 * idle_times, Q1)
-        plt.title(f"{qb1.qubit_name}")
+        plt.title(f"{qb1.name}")
         plt.xlabel("Idle time [ns]")
         plt.ylabel("Q [V]")
         plt.subplot(222)
         plt.cla()
         plt.plot(4 * idle_times, I2)
-        plt.title(f"{qb2.qubit_name}")
+        plt.title(f"{qb2.name}")
         plt.subplot(224)
         plt.cla()
         plt.plot(4 * idle_times, Q2)
-        plt.title(f"{qb2.qubit_name}")
+        plt.title(f"{qb2.name}")
         plt.xlabel("Idle time [ns]")
         plt.tight_layout()
         plt.pause(1)
@@ -139,19 +139,19 @@ try:
     fit_I1 = fit.ramsey(4 * idle_times, I1, plot=True)
     plt.xlabel("Idle time [ns]")
     plt.ylabel("I [V]")
-    plt.title(f"{qb1.qubit_name}")
+    plt.title(f"{qb1.name}")
     plt.legend((f"T2* = {int(fit_I1['T2'][0])} ns\n df = {int(fit_I1['f'][0] * u.GHz - detuning)/u.kHz} kHz", ))
     plt.subplot(122)
     fit_I2 = fit.ramsey(4 * idle_times, I2, plot=True)
     plt.xlabel("idle_times [ns]")
-    plt.title(f"{qb2.qubit_name}")
+    plt.title(f"{qb2.name}")
     plt.legend((f"T2* = {int(fit_I2['T2'][0])} ns\n df = {int(fit_I2['f'][0] * u.GHz - detuning)/u.kHz} kHz", ))
     plt.tight_layout()
 
     qubit_detuning_q1 = fit_I1["f"][0] * u.GHz - detuning
     qubit_detuning_q2 = fit_I2["f"][0] * u.GHz - detuning
-    print(f"Detuning to add to {qb1.qubit_name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
-    print(f"Detuning to add to {qb2.qubit_name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
+    print(f"Detuning to add to {qb1.name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
+    print(f"Detuning to add to {qb2.name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
     qb1.T2 = int(fit_I1["T2"][0])
     qb1.xy.f_01 -= qubit_detuning_q1
     qb2.T2 = int(fit_I2["T2"][0])

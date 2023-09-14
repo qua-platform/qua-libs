@@ -1,3 +1,7 @@
+"""
+A simple sandbox to showcase different QUA functionalities during the installation.
+"""
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -19,8 +23,8 @@ rr2 = machine.resonators[active_qubits[1]]
 # The QUA program #
 ###################
 with program() as hello_qua:
-    set_dc_offset(qb1.qubit_name + "_z", "single", 0.153)
-    play("cw", qb1.qubit_name + "_xy")
+    set_dc_offset(qb1.name + "_z", "single", 0.153)
+    play("cw", qb1.name + "_xy")
 
 
 #####################################

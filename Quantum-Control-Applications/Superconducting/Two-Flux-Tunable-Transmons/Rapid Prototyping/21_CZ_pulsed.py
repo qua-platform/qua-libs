@@ -25,8 +25,8 @@ config = build_config(machine)
 
 qb1 = machine.qubits[active_qubits[0]]
 qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].qubit_name + "_z"
-q2_z = machine.qubits[active_qubits[1]].qubit_name + "_z"
+q1_z = machine.qubits[active_qubits[0]].name + "_z"
+q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
 rr2 = machine.resonators[active_qubits[1]]
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
@@ -55,8 +55,8 @@ def baked_waveform(waveform, pulse_duration):
                 wf = [0.0] * 16
             else:
                 wf = waveform[:i].tolist()
-            b.add_op("flux_pulse", qb.qubit_name + "_z", wf)
-            b.play("flux_pulse", qb.qubit_name + "_z")
+            b.add_op("flux_pulse", qb.name + "_z", wf)
+            b.play("flux_pulse", qb.name + "_z")
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -87,14 +87,14 @@ with program() as cz:
         save(n, n_st)
         with for_(*from_array(a, amps)):
             with for_(segment, 0, segment <= qb.z.flux_pulse_length, segment + 1):
-                play("x180", qb1.qubit_name + "_xy")
-                play("x180", qb2.qubit_name + "_xy")
+                play("x180", qb1.name + "_xy")
+                play("x180", qb2.name + "_xy")
 
                 align()
                 with switch_(segment):
                     for j in range(0, qb.z.flux_pulse_length + 1):
                         with case_(j):
-                            square_pulse_segments[j].run(amp_array=[(qb.qubit_name+"_z", a)])
+                            square_pulse_segments[j].run(amp_array=[(qb.name+"_z", a)])
 
                 wait(10)
                 align()
@@ -136,25 +136,25 @@ else:
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I1.T)
         plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{qb1.qubit_name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb1.name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, Q1.T)
         # plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{qb1.qubit_name} - Q")
+        plt.title(f"{qb1.name} - Q")
         plt.xlabel("Flux amplitude [V]")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I2.T)
         plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{qb2.qubit_name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{qb2.name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, Q2.T)
         # plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{qb2.qubit_name} - Q")
+        plt.title(f"{qb2.name} - Q")
         plt.xlabel("Flux amplitude [V]")
         plt.tight_layout()
         plt.pause(5)

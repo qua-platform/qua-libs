@@ -2238,31 +2238,31 @@ class Qubit2(object):
         self._freeze_attributes = True
 
     @property
-    def qubit_name(self) -> str:
+    def name(self) -> str:
         """"""
         
-        value = self._quam._json[self._path + "qubit_name"]
+        value = self._quam._json[self._path + "name"]
         for i in range(len(self._index)):
             value = value[self._index[i]]
         return value
 
 
-    @qubit_name.setter
-    def qubit_name(self, value: str):
+    @name.setter
+    def name(self, value: str):
         """"""
         if not isinstance(value, str):
             raise TypeError(f"Expected str but received {type(value)}")
         if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "qubit_name")
+            self._quam._updates["keys"].append(self._path + "name")
             self._quam._updates["indexes"].append(self._index)
             self._quam._updates["values"].append(value)
         if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "qubit_name"]
+            value_ref = self._quam._json[self._path + "name"]
             for i in range(len(self._index)-1):
                 value_ref = value_ref[self._index[i]]
             value_ref[self._index[-1]] = value
         else:
-            self._quam._json[self._path + "qubit_name"] = value
+            self._quam._json[self._path + "name"] = value
 
     @property
     def ge_threshold(self) -> float:
@@ -2344,6 +2344,32 @@ class Qubit2(object):
             value_ref[self._index[-1]] = value
         else:
             self._quam._json[self._path + "T2"] = value
+
+    @property
+    def T2echo(self) -> int:
+        """"""
+
+        value = self._quam._json[self._path + "T2echo"]
+        for i in range(len(self._index)):
+            value = value[self._index[i]]
+        return value
+
+    @T2echo.setter
+    def T2echo(self, value: int):
+        """"""
+        if not isinstance(value, int):
+            raise TypeError(f"Expected int but received {type(value)}")
+        if self._quam._record_updates:
+            self._quam._updates["keys"].append(self._path + "T2echo")
+            self._quam._updates["indexes"].append(self._index)
+            self._quam._updates["values"].append(value)
+        if (len(self._index) > 0):
+            value_ref = self._quam._json[self._path + "T2echo"]
+            for i in range(len(self._index) - 1):
+                value_ref = value_ref[self._index[i]]
+            value_ref[self._index[-1]] = value
+        else:
+            self._quam._json[self._path + "T2echo"] = value
 
     @property
     def xy(self) -> Xy:
@@ -2470,7 +2496,7 @@ class QubitsList2(object):
     def append(self, json_item:dict):
         """Adds a new qubit by adding a JSON dictionary with following schema
 {
-  "qubit_name": {
+  "name": {
     "type": "string"
   },
   "xy": {
@@ -2730,6 +2756,9 @@ class QubitsList2(object):
     "type": "integer"
   },
   "T2": {
+    "type": "integer"
+  },
+  "T2echo": {
     "type": "integer"
   }
 }"""
@@ -3125,31 +3154,31 @@ class Resonator(object):
         self._freeze_attributes = True
 
     @property
-    def resonator_name(self) -> str:
+    def name(self) -> str:
         """"""
         
-        value = self._quam._json[self._path + "resonator_name"]
+        value = self._quam._json[self._path + "name"]
         for i in range(len(self._index)):
             value = value[self._index[i]]
         return value
 
 
-    @resonator_name.setter
-    def resonator_name(self, value: str):
+    @name.setter
+    def name(self, value: str):
         """"""
         if not isinstance(value, str):
             raise TypeError(f"Expected str but received {type(value)}")
         if self._quam._record_updates:
-            self._quam._updates["keys"].append(self._path + "resonator_name")
+            self._quam._updates["keys"].append(self._path + "name")
             self._quam._updates["indexes"].append(self._index)
             self._quam._updates["values"].append(value)
         if (len(self._index) > 0):
-            value_ref = self._quam._json[self._path + "resonator_name"]
+            value_ref = self._quam._json[self._path + "name"]
             for i in range(len(self._index)-1):
                 value_ref = value_ref[self._index[i]]
             value_ref[self._index[-1]] = value
         else:
-            self._quam._json[self._path + "resonator_name"] = value
+            self._quam._json[self._path + "name"] = value
 
     @property
     def LO_index(self) -> int:
@@ -3480,7 +3509,7 @@ class ResonatorsList(object):
     def append(self, json_item:dict):
         """Adds a new resonator by adding a JSON dictionary with following schema
 {
-  "resonator_name": {
+  "name": {
     "type": "string"
   },
   "LO_index": {
@@ -3921,8 +3950,8 @@ class QuAM(object):
         self._index = []
         self._record_updates = False
         self._updates = {"keys":[], "indexes":[], "values":[], "items":[]}
-        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'local_oscillators.qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'local_oscillators.readout[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'network.qop_ip': {'type': 'string'}, 'network.cluster_name': {'type': 'string'}, 'network.save_dir': {'type': 'string'}, 'local_oscillators.network.qop_ip': {'type': 'string'}, 'local_oscillators.network.qop_port': {'type': 'integer'}, 'local_oscillators.network.save_dir': {'type': 'string'}, 'local_oscillators.qubits[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.qubits[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'local_oscillators.readout[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.readout[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].qubit_name': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].xy.LO_index': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.f_01': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.anharmonicity': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.drag_coefficient': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.ac_stark_detuning': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.pi_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.pi_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].xy.wiring.I': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].xy.wiring.Q': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].xy.wiring.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].z.wiring.port': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.wiring.filter.iir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.wiring.filter.fir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.flux_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.flux_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.max_frequency_point': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.min_frequency_point': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.iswap.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.iswap.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.cz.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.cz.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].ge_threshold': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].T1': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].T2': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].resonator_name': {'type': 'array', 'items': {'type': 'string'}}, 'resonators[].LO_index': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].f_res': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].f_opt': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].depletion_time': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].rotation_angle': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].readout_fidelity': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'resonators[].wiring.I': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'resonators[].wiring.Q': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'resonators[].wiring.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'crosstalk.z': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.xy': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'global_parameters.time_of_flight': {'type': 'integer'}, 'global_parameters.downconversion_offset_I': {'type': 'number'}, 'global_parameters.downconversion_offset_Q': {'type': 'number'}}, 'additionalProperties': False}
-        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'cluster_name': {'type': 'string'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'cluster_name', 'save_dir']}, 'local_oscillators': {'type': 'object', 'title': 'local_oscillators', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'qop_port': {'type': 'integer'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'qop_port', 'save_dir']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}, 'readout': {'type': 'array', 'items': {'type': 'object', 'title': 'readout', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}}, 'required': ['network', 'qubits', 'readout']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'qubit_name': {'type': 'string'}, 'xy': {'type': 'object', 'title': 'xy', 'properties': {'LO_index': {'type': 'integer'}, 'f_01': {'type': 'number'}, 'anharmonicity': {'type': 'number'}, 'drag_coefficient': {'type': 'number'}, 'ac_stark_detuning': {'type': 'number'}, 'pi_length': {'type': 'integer'}, 'pi_amp': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['controller', 'I', 'Q', 'mixer_correction']}}, 'required': ['LO_index', 'f_01', 'anharmonicity', 'drag_coefficient', 'ac_stark_detuning', 'pi_length', 'pi_amp', 'wiring']}, 'z': {'type': 'object', 'title': 'z', 'properties': {'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'port': {'type': 'integer'}, 'filter': {'type': 'object', 'title': 'filter', 'properties': {'iir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['iir_taps', 'fir_taps']}}, 'required': ['controller', 'port', 'filter']}, 'flux_pulse_length': {'type': 'integer'}, 'flux_pulse_amp': {'type': 'number'}, 'max_frequency_point': {'type': 'number'}, 'min_frequency_point': {'type': 'number'}, 'iswap': {'type': 'object', 'title': 'iswap', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}, 'cz': {'type': 'object', 'title': 'cz', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}}, 'required': ['wiring', 'flux_pulse_length', 'flux_pulse_amp', 'max_frequency_point', 'min_frequency_point', 'iswap', 'cz']}, 'ge_threshold': {'type': 'number'}, 'T1': {'type': 'integer'}, 'T2': {'type': 'integer'}}, 'required': ['qubit_name', 'xy', 'z', 'ge_threshold', 'T1', 'T2']}}, 'resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'resonator', 'properties': {'resonator_name': {'type': 'string'}, 'LO_index': {'type': 'integer'}, 'f_res': {'type': 'number'}, 'f_opt': {'type': 'number'}, 'depletion_time': {'type': 'integer'}, 'readout_pulse_length': {'type': 'integer'}, 'readout_pulse_amp': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'readout_fidelity': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['controller', 'I', 'Q', 'mixer_correction']}}, 'required': ['resonator_name', 'LO_index', 'f_res', 'f_opt', 'depletion_time', 'readout_pulse_length', 'readout_pulse_amp', 'rotation_angle', 'readout_fidelity', 'wiring']}}, 'crosstalk': {'type': 'object', 'title': 'crosstalk', 'properties': {'z': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'xy': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['z', 'xy']}, 'global_parameters': {'type': 'object', 'title': 'global_parameters', 'properties': {'time_of_flight': {'type': 'integer'}, 'downconversion_offset_I': {'type': 'number'}, 'downconversion_offset_Q': {'type': 'number'}}, 'required': ['time_of_flight', 'downconversion_offset_I', 'downconversion_offset_Q']}}, 'required': ['network', 'local_oscillators', 'qubits', 'resonators', 'crosstalk', 'global_parameters']}
+        self._schema_flat = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'name': 'QuAM storage format', 'description': 'optimized data structure for communication and storage', 'type': 'object', 'properties': {'local_oscillators.qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'local_oscillators.readout[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'qubits[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'resonators[]_len': {'anyof': [{'type': 'array'}, {'type': 'integer'}]}, 'network.qop_ip': {'type': 'string'}, 'network.cluster_name': {'type': 'string'}, 'network.save_dir': {'type': 'string'}, 'local_oscillators.network.qop_ip': {'type': 'string'}, 'local_oscillators.network.qop_port': {'type': 'integer'}, 'local_oscillators.network.save_dir': {'type': 'string'}, 'local_oscillators.qubits[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.qubits[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'local_oscillators.readout[].freq': {'type': 'array', 'items': {'type': 'number'}}, 'local_oscillators.readout[].power': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].name': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].xy.LO_index': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.f_01': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.anharmonicity': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.drag_coefficient': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.ac_stark_detuning': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.pi_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].xy.pi_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].xy.wiring.I': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].xy.wiring.Q': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].xy.wiring.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].xy.wiring.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'qubits[].z.wiring.port': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.wiring.filter.iir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.wiring.filter.fir_taps': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'qubits[].z.flux_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.flux_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.max_frequency_point': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.min_frequency_point': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.iswap.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.iswap.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].z.cz.length': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].z.cz.level': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].ge_threshold': {'type': 'array', 'items': {'type': 'number'}}, 'qubits[].T1': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].T2': {'type': 'array', 'items': {'type': 'integer'}}, 'qubits[].T2echo': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].name': {'type': 'array', 'items': {'type': 'string'}}, 'resonators[].LO_index': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].f_res': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].f_opt': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].depletion_time': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_length': {'type': 'array', 'items': {'type': 'integer'}}, 'resonators[].readout_pulse_amp': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].rotation_angle': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].readout_fidelity': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.controller': {'type': 'array', 'items': {'type': 'string'}}, 'resonators[].wiring.I': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'resonators[].wiring.Q': {'type': 'array', 'items': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'resonators[].wiring.mixer_correction.offset_I': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.offset_Q': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.gain': {'type': 'array', 'items': {'type': 'number'}}, 'resonators[].wiring.mixer_correction.phase': {'type': 'array', 'items': {'type': 'number'}}, 'crosstalk.z': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'crosstalk.xy': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'global_parameters.time_of_flight': {'type': 'integer'}, 'global_parameters.downconversion_offset_I': {'type': 'number'}, 'global_parameters.downconversion_offset_Q': {'type': 'number'}}, 'additionalProperties': False}
+        self._schema = {'$schema': 'https://json-schema.org/draft/2020-12/schema', 'type': 'object', 'title': 'QuAM', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'cluster_name': {'type': 'string'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'cluster_name', 'save_dir']}, 'local_oscillators': {'type': 'object', 'title': 'local_oscillators', 'properties': {'network': {'type': 'object', 'title': 'network', 'properties': {'qop_ip': {'type': 'string'}, 'qop_port': {'type': 'integer'}, 'save_dir': {'type': 'string'}}, 'required': ['qop_ip', 'qop_port', 'save_dir']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}, 'readout': {'type': 'array', 'items': {'type': 'object', 'title': 'readout', 'properties': {'freq': {'type': 'number'}, 'power': {'type': 'integer'}}, 'required': ['freq', 'power']}}}, 'required': ['network', 'qubits', 'readout']}, 'qubits': {'type': 'array', 'items': {'type': 'object', 'title': 'qubit', 'properties': {'name': {'type': 'string'}, 'xy': {'type': 'object', 'title': 'xy', 'properties': {'LO_index': {'type': 'integer'}, 'f_01': {'type': 'number'}, 'anharmonicity': {'type': 'number'}, 'drag_coefficient': {'type': 'number'}, 'ac_stark_detuning': {'type': 'number'}, 'pi_length': {'type': 'integer'}, 'pi_amp': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['controller', 'I', 'Q', 'mixer_correction']}}, 'required': ['LO_index', 'f_01', 'anharmonicity', 'drag_coefficient', 'ac_stark_detuning', 'pi_length', 'pi_amp', 'wiring']}, 'z': {'type': 'object', 'title': 'z', 'properties': {'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'port': {'type': 'integer'}, 'filter': {'type': 'object', 'title': 'filter', 'properties': {'iir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'fir_taps': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['iir_taps', 'fir_taps']}}, 'required': ['controller', 'port', 'filter']}, 'flux_pulse_length': {'type': 'integer'}, 'flux_pulse_amp': {'type': 'number'}, 'max_frequency_point': {'type': 'number'}, 'min_frequency_point': {'type': 'number'}, 'iswap': {'type': 'object', 'title': 'iswap', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}, 'cz': {'type': 'object', 'title': 'cz', 'properties': {'length': {'type': 'integer'}, 'level': {'type': 'number'}}, 'required': ['length', 'level']}}, 'required': ['wiring', 'flux_pulse_length', 'flux_pulse_amp', 'max_frequency_point', 'min_frequency_point', 'iswap', 'cz']}, 'ge_threshold': {'type': 'number'}, 'T1': {'type': 'integer'}, 'T2': {'type': 'integer'}, 'T2echo': {'type': 'integer'}}, 'required': ['name', 'xy', 'z', 'ge_threshold', 'T1', 'T2','T2echo']}}, 'resonators': {'type': 'array', 'items': {'type': 'object', 'title': 'resonator', 'properties': {'name': {'type': 'string'}, 'LO_index': {'type': 'integer'}, 'f_res': {'type': 'number'}, 'f_opt': {'type': 'number'}, 'depletion_time': {'type': 'integer'}, 'readout_pulse_length': {'type': 'integer'}, 'readout_pulse_amp': {'type': 'number'}, 'rotation_angle': {'type': 'number'}, 'readout_fidelity': {'type': 'number'}, 'wiring': {'type': 'object', 'title': 'wiring', 'properties': {'controller': {'type': 'string'}, 'I': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'Q': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'mixer_correction': {'type': 'object', 'title': 'mixer_correction', 'properties': {'offset_I': {'type': 'number'}, 'offset_Q': {'type': 'number'}, 'gain': {'type': 'number'}, 'phase': {'type': 'number'}}, 'required': ['offset_I', 'offset_Q', 'gain', 'phase']}}, 'required': ['controller', 'I', 'Q', 'mixer_correction']}}, 'required': ['name', 'LO_index', 'f_res', 'f_opt', 'depletion_time', 'readout_pulse_length', 'readout_pulse_amp', 'rotation_angle', 'readout_fidelity', 'wiring']}}, 'crosstalk': {'type': 'object', 'title': 'crosstalk', 'properties': {'z': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}, 'xy': {'type': 'array', 'items': {'anyOf': [{'type': 'integer'}, {'type': 'number'}, {'type': 'string'}, {'type': 'boolean'}, {'type': 'array'}]}}}, 'required': ['z', 'xy']}, 'global_parameters': {'type': 'object', 'title': 'global_parameters', 'properties': {'time_of_flight': {'type': 'integer'}, 'downconversion_offset_I': {'type': 'number'}, 'downconversion_offset_Q': {'type': 'number'}}, 'required': ['time_of_flight', 'downconversion_offset_I', 'downconversion_offset_Q']}}, 'required': ['network', 'local_oscillators', 'qubits', 'resonators', 'crosstalk', 'global_parameters']}
         self._runtime_var = dict()  #: scratchpad dictionary of runtime variables for user's convenience. These are not saved when exporting data.
         if data is not None:
             if type(data) is str:
