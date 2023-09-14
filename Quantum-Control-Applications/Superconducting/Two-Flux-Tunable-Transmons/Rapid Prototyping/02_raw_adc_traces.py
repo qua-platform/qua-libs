@@ -1,21 +1,30 @@
-#%%
-from qm.QuantumMachinesManager import QuantumMachinesManager
+"""
+        RAW ADC TRACES
+This script aims to measure data captured within a specific window defined by the measure() function.
+We term the digitized, unprocessed data as "raw ADC traces" because they represent the acquired waveforms without any
+real-time processing by the pulse processor, such as demodulation, integration, or time-tagging.
+
+The script is useful for inspecting signals prior to demodulation, ensuring the ADCs are not saturated,
+correcting any non-zero DC offsets, and estimating the SNR.
+"""
+
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-import matplotlib.pyplot as plt
-from quam import QuAM
 from configuration import *
+import matplotlib.pyplot as plt
+
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+machine = QuAM("current_state.json", flat_data=False)
 config = build_config(machine)
 
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # Number of averaging loops
+n_avg = 100  # The number of averages
 depletion_time = 1000 // 4
 
 with program() as raw_trace_prog:
@@ -23,12 +32,12 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-        reset_phase("rr0")
-        reset_phase("rr1")
-        play("readout", "rr1")
-        measure("readout", "rr0", adc_st)
-
-        wait(depletion_time)
+        # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
+        reset_phase(rr1.name)
+        # Measure the resonator (send a readout pulse and record the raw ADC trace)
+        measure("readout", rr1.name, adc_st)
+        # Wait for the resonator to deplete
+        wait(rr1.depletion_time * u.ns, rr1.name)
 
     with stream_processing():
         # Will save average:
@@ -41,25 +50,37 @@ with program() as raw_trace_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
+
+###########################
+# Run or Simulate Program #
+###########################
 
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, raw_trace_prog, SimulationConfig(11000))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 
 else:
+    # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(raw_trace_prog)
+    # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
+    # Waits (blocks the Python console) until all results have been acquired
     res_handles.wait_for_all_values()
+    # Fetch the raw ADC traces and convert them into Volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
     adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
     adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
-
+    # Plot data
     plt.figure()
     plt.subplot(121)
     plt.title("Single run")
@@ -78,6 +99,3 @@ else:
     plt.tight_layout()
 
     print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
-    plt.show()
-
-# %%

@@ -2,7 +2,7 @@
 allxy.py: Performs an ALLXY experiment to correct for gates imperfections
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details)
 """
-#%%
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
 
 qb_if_1 = qb1.xy.f_01 - lo1
 qb_if_2 = qb2.xy.f_01 - lo2
-#%%
+
 ##############################
 # Program-specific variables #
 ##############################
@@ -142,7 +142,7 @@ def get_prog(qubit, resonator):
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 simulate = False
 
@@ -183,4 +183,4 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-# %%
+

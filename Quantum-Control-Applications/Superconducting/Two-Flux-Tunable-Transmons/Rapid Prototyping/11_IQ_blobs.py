@@ -1,4 +1,4 @@
-#%%
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -65,7 +65,7 @@ with program() as iq_blobs:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
@@ -98,4 +98,4 @@ else:
     qb2.ge_threshold = threshold2
     # machine._save("current_state.json")
 
-# %%
+

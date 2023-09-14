@@ -1,4 +1,4 @@
-#%%
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -83,7 +83,7 @@ with program() as ramsey:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 simulate = False
 if simulate:
@@ -161,4 +161,4 @@ except (Exception,):
 
 # machine._save("current_state.json")
 
-# %%
+

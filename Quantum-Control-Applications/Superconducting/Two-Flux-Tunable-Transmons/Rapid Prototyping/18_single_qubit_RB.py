@@ -1,7 +1,7 @@
 """
 Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity (works for gates longer than 40ns)
 """
-#%%
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -32,7 +32,7 @@ lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
 
 qb_if_1 = qb1.xy.f_01 - lo1
 qb_if_2 = qb2.xy.f_01 - lo2
-#%%
+
 ##############################
 # Program-specific variables #
 ##############################
@@ -52,7 +52,7 @@ cooldown_time = 5 * max(qb1.T1, qb2.T1)
 delta_clifford = 2  # Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
-#%%
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
 
@@ -231,7 +231,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 simulate = False
 
@@ -313,4 +313,4 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-# %%
+

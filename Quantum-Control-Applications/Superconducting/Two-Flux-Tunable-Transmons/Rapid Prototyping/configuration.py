@@ -14,6 +14,12 @@ u = unit(coerce_to_integer=True)
 # The machine is created from the current state
 machine = QuAM("current_state.json")
 
+# Get the QuAM components used in this experiment
+qb1 = machine.qubits[active_qubits[0]]
+qb2 = machine.qubits[active_qubits[1]]
+rr1 = machine.resonators[active_qubits[0]]
+rr2 = machine.resonators[active_qubits[1]]
+
 ############################
 # Set octave configuration #
 ############################
