@@ -54,7 +54,7 @@ flux = np.arange(flux_min, flux_max + step / 2, step)
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the readout frequency
-    dc = declare(fixed)  # QUA variable for the flux bias pre-factor
+    dc = declare(fixed)  # QUA variable for the flux bias
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature

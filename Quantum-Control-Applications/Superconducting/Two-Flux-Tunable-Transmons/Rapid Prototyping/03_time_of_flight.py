@@ -12,6 +12,8 @@ The data undergoes post-processing to calibrate three distinct parameters:
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
     the variable gain of the OPX analog input can be modified to fit the signal within the ADC range of +/-0.5V.
     This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
+
+Don't forget to save the current state by calling machine._save("current_state.json") at the end of the script.
 """
 
 from qm.qua import *
