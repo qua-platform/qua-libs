@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -93,5 +92,3 @@ else:
     plt.suptitle("qubit 2")
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-
-

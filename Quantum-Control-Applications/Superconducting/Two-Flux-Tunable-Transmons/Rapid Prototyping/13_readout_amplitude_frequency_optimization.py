@@ -76,7 +76,6 @@ with program() as ro_freq_opt:
                 align()
                 multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
 
-
     with stream_processing():
         # Save all streamed points for plotting the IQ blobs
         for i in range(2):
@@ -134,10 +133,10 @@ else:
     plt.xlabel("Readout IF [MHz]")
     plt.tight_layout()
 
-    rr1.f_opt += dfs[np.where(fidelity_vec[0]==np.amax(fidelity_vec[0]))[1][0]]
-    rr1.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[0]==np.amax(fidelity_vec[0]))[0][0]]
-    rr2.f_opt += dfs[np.where(fidelity_vec[1]==np.amax(fidelity_vec[1]))[1][0]]
-    rr2.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[1]==np.amax(fidelity_vec[1]))[0][0]]
+    rr1.f_opt += dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]]
+    rr1.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[0][0]]
+    rr2.f_opt += dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]]
+    rr2.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[0][0]]
     rr1.readout_fidelity = np.amax(fidelity_vec[0])
     rr2.readout_fidelity = np.amax(fidelity_vec[1])
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

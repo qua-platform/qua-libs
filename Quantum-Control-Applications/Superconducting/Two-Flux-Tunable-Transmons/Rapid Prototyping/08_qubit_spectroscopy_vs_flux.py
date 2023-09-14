@@ -171,5 +171,3 @@ else:
 # qb1.z.max_frequency_point =
 # qb1.z.min_frequency_point =
 # machine._save("quam_bootstrap_state.json")
-
-

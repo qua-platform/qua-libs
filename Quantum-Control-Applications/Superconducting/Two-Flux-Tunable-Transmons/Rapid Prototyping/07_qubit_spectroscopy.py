@@ -73,7 +73,7 @@ with program() as multi_qubit_spec:
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
-    
+
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(df, dfs)):

@@ -74,7 +74,7 @@ with program() as multi_res_spec:
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
-    
+
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # wait for the resonators to deplete
@@ -152,21 +152,21 @@ else:
         plt.subplot(221)
         plt.suptitle("Multiplexed resonator spectroscopy")
         plt.cla()
-        plt.plot(res_if_1 / u.MHz + dfs / u.MHz, np.abs(s1), '.')
+        plt.plot(res_if_1 / u.MHz + dfs / u.MHz, np.abs(s1), ".")
         plt.title(f"{rr1.name}")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(222)
         plt.cla()
-        plt.plot(res_if_2 / u.MHz + dfs / u.MHz, np.abs(s2), '.')
+        plt.plot(res_if_2 / u.MHz + dfs / u.MHz, np.abs(s2), ".")
         plt.title(f"{rr2.name}")
         plt.subplot(223)
         plt.cla()
-        plt.plot(res_if_1 / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s1))), '.')
+        plt.plot(res_if_1 / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s1))), ".")
         plt.ylabel("Phase [rad]")
         plt.xlabel("Readout frequency [MHz]")
         plt.subplot(224)
         plt.cla()
-        plt.plot(res_if_2 / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s2))), '.')
+        plt.plot(res_if_2 / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s2))), ".")
         plt.xlabel("Readout frequency [MHz]")
         plt.tight_layout()
         plt.pause(0.1)
@@ -199,5 +199,3 @@ else:
         pass
 
 # machine._save("current_state.json")
-
-

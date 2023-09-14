@@ -94,7 +94,7 @@ with program() as cz:
                 with switch_(segment):
                     for j in range(0, qb.z.flux_pulse_length + 1):
                         with case_(j):
-                            square_pulse_segments[j].run(amp_array=[(qb.name+"_z", a)])
+                            square_pulse_segments[j].run(amp_array=[(qb.name + "_z", a)])
 
                 wait(10)
                 align()

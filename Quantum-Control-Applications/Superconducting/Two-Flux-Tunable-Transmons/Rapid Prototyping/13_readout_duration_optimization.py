@@ -28,6 +28,7 @@ lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
 qb_if_1 = qb1.xy.f_01 - lo1
 qb_if_2 = qb2.xy.f_01 - lo2
 
+
 ####################
 # Helper functions #
 ####################
@@ -45,6 +46,7 @@ def update_readout_length(qubit, new_readout_length, rigndown_length):
         "cosine": [(0.0, new_readout_length + rigndown_length)],
         "sine": [(-1.0, new_readout_length + rigndown_length)],
     }
+
 
 ###################
 # The QUA program #
@@ -64,7 +66,7 @@ print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
 # Time axis for the plots at the end
-x_plot = np.arange(division_length * 4, readout_len+ringdown_len+1, division_length*4)
+x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 

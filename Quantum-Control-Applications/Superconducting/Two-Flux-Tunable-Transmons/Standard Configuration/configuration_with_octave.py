@@ -25,17 +25,17 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 ############################
 # Custom port mapping example
 port_mapping = {
-        ("con1", 1): ("octave1", "I1"),
-        ("con1", 2): ("octave1", "Q1"),
-        ("con1", 3): ("octave1", "I2"),
-        ("con1", 4): ("octave1", "Q2"),
-        ("con1", 5): ("octave1", "I3"),
-        ("con1", 6): ("octave1", "Q3"),
-        ("con1", 7): ("octave1", "I4"),
-        ("con1", 8): ("octave1", "Q4"),
-        ("con1", 9): ("octave1", "I5"),
-        ("con1", 10): ("octave1", "Q5"),
-    }
+    ("con1", 1): ("octave1", "I1"),
+    ("con1", 2): ("octave1", "Q1"),
+    ("con1", 3): ("octave1", "I2"),
+    ("con1", 4): ("octave1", "Q2"),
+    ("con1", 5): ("octave1", "I3"),
+    ("con1", 6): ("octave1", "Q3"),
+    ("con1", 7): ("octave1", "I4"),
+    ("con1", 8): ("octave1", "Q4"),
+    ("con1", 9): ("octave1", "I5"),
+    ("con1", 10): ("octave1", "Q5"),
+}
 
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.

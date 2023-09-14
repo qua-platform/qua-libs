@@ -143,8 +143,10 @@ else:
         # Data analysis
         S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
         S2 = u.demod2volts(I2 + 1j * Q2, readout_len)
-        R1 = np.abs(S1); phase1 = np.angle(S1)
-        R2 = np.abs(S2); phase2 = np.angle(S2)
+        R1 = np.abs(S1)
+        phase1 = np.angle(S1)
+        R2 = np.abs(S2)
+        phase2 = np.angle(S2)
         # Plots
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(231)

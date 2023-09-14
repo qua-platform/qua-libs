@@ -47,7 +47,6 @@ with program() as ro_freq_opt:
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
-    
     with for_(*from_array(a, amplitudes)):
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for both qubits
@@ -63,7 +62,6 @@ with program() as ro_freq_opt:
             play("x180", qb2.name + "_xy")
             align()
             multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
-
 
     with stream_processing():
         # Save all streamed points for plotting the IQ blobs

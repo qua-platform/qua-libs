@@ -278,8 +278,7 @@ def octave_settings(qmm, config, octaves, elements_settings=None, calibration=Tr
             )
             qm.octave.calibrate_element(elements_settings[i].name, [(LO, IF)])
             # Re-open a quantum machine to apply the calibration parameters
-            #qm = qmm.open_qm(config)
-
+            # qm = qmm.open_qm(config)
 
 
 def update_correction(qm, element: str, freq_pair: list):

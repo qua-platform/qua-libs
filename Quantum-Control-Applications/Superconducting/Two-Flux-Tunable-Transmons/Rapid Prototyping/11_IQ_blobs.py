@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -97,5 +96,3 @@ else:
     rr2.readout_fidelity = fidelity2
     qb2.ge_threshold = threshold2
     # machine._save("current_state.json")
-
-

@@ -143,7 +143,7 @@ else:
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         print(f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz")
         # Update the state
-        rr.f_res = res_spec_fit['f'][0] + machine.local_oscillators.readout[rr.LO_index].freq
+        rr.f_res = res_spec_fit["f"][0] + machine.local_oscillators.readout[rr.LO_index].freq
         rr.f_opt = rr.f_res
 
     except (Exception,):

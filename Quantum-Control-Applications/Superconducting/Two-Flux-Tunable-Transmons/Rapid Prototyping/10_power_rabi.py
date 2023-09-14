@@ -183,9 +183,7 @@ else:
         qb2.xy.pi_amp = amps[np.argmax(np.sum(I2, axis=0))] * qb2.xy.pi_amp
     except (Exception,):
         pass
-            
+
 # qb1.xy.pi_amp =
 # qb2.xy.pi_amp =
 # machine._save("current_state.json")
-
-

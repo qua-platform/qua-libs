@@ -155,8 +155,8 @@ else:
         plt.ylabel("I quadrature [V]")
         print(f"Optimal x180_len for {qb1.name} = {round(1 / rabi_fit1['f'][0] / 2 / 4) * 4} ns for {qb1.xy.pi_amp:} V")
         print(f"Optimal x180_len for {qb2.name} = {round(1 / rabi_fit2['f'][0] / 2 / 4) * 4} ns for {qb2.xy.pi_amp:} V")
-        qb1.xy.pi_length = round(1 / rabi_fit1['f'][0] / 2 / 4) * 4
-        qb2.xy.pi_length = round(1 / rabi_fit2['f'][0] / 2 / 4) * 4
+        qb1.xy.pi_length = round(1 / rabi_fit1["f"][0] / 2 / 4) * 4
+        qb2.xy.pi_length = round(1 / rabi_fit2["f"][0] / 2 / 4) * 4
     except (Exception,):
         pass
 

@@ -34,7 +34,7 @@ qb_if_2 = qb2.xy.f_01 - lo2
 # Linear sweep
 # t_delay = np.arange(4, 10000, 40)
 # Log sweep
-t_delay = np.logspace(np.log10(4), np.log10(12*u.us), 29)  
+t_delay = np.logspace(np.log10(4), np.log10(12 * u.us), 29)
 
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 n_avg = 1000
@@ -76,8 +76,6 @@ with program() as T1:
         n_st.save("n")
 
 
-
-
 #####################################
 #  Open Communication with the QOP  #
 #####################################
@@ -106,21 +104,21 @@ else:
         plt.suptitle("T1")
         plt.subplot(221)
         plt.cla()
-        plt.plot(t_delay * 4, I1, '.')
+        plt.plot(t_delay * 4, I1, ".")
         plt.title(f"{qb1.name}")
         plt.ylabel("I quadrature [V]")
         plt.subplot(223)
         plt.cla()
-        plt.plot(t_delay * 4, Q1, '.')
+        plt.plot(t_delay * 4, Q1, ".")
         plt.xlabel("Wait time [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.subplot(222)
         plt.cla()
-        plt.plot(t_delay * 4, I2, '.')
+        plt.plot(t_delay * 4, I2, ".")
         plt.title(f"{qb2.name}")
         plt.subplot(224)
         plt.cla()
-        plt.plot(t_delay * 4, Q2, '.')
+        plt.plot(t_delay * 4, Q2, ".")
         plt.xlabel("Wait time [ns]")
         plt.tight_layout()
         plt.pause(1.0)

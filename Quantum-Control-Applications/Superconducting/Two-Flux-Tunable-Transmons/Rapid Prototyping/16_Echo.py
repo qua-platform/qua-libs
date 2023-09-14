@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -137,12 +136,12 @@ try:
     plt.xlabel("Idle time [ns]")
     plt.ylabel("I [V]")
     plt.title(f"{qb1.name}")
-    plt.legend((f"T2 = {int(fit_I1['T1'][0])} ns", ))
+    plt.legend((f"T2 = {int(fit_I1['T1'][0])} ns",))
     plt.subplot(122)
     fit_I2 = fit.T1(8 * idle_times, I2, plot=True)
     plt.xlabel("idle_times [ns]")
     plt.title(f"{qb2.name}")
-    plt.legend((f"T2 = {int(fit_I2['T1'][0])} ns", ))
+    plt.legend((f"T2 = {int(fit_I2['T1'][0])} ns",))
     plt.tight_layout()
 
     qb1.T2echo = int(fit_I1["T2"][0])
@@ -151,5 +150,3 @@ except (Exception,):
     pass
 
 # machine._save("current_state.json")
-
-

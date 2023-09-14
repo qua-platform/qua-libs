@@ -1,4 +1,3 @@
-
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -140,12 +139,12 @@ try:
     plt.xlabel("Idle time [ns]")
     plt.ylabel("I [V]")
     plt.title(f"{qb1.name}")
-    plt.legend((f"T2* = {int(fit_I1['T2'][0])} ns\n df = {int(fit_I1['f'][0] * u.GHz - detuning)/u.kHz} kHz", ))
+    plt.legend((f"T2* = {int(fit_I1['T2'][0])} ns\n df = {int(fit_I1['f'][0] * u.GHz - detuning)/u.kHz} kHz",))
     plt.subplot(122)
     fit_I2 = fit.ramsey(4 * idle_times, I2, plot=True)
     plt.xlabel("idle_times [ns]")
     plt.title(f"{qb2.name}")
-    plt.legend((f"T2* = {int(fit_I2['T2'][0])} ns\n df = {int(fit_I2['f'][0] * u.GHz - detuning)/u.kHz} kHz", ))
+    plt.legend((f"T2* = {int(fit_I2['T2'][0])} ns\n df = {int(fit_I2['f'][0] * u.GHz - detuning)/u.kHz} kHz",))
     plt.tight_layout()
 
     qubit_detuning_q1 = fit_I1["f"][0] * u.GHz - detuning
@@ -155,10 +154,8 @@ try:
     qb1.T2 = int(fit_I1["T2"][0])
     qb1.xy.f_01 -= qubit_detuning_q1
     qb2.T2 = int(fit_I2["T2"][0])
-    qb2.xy.f_01 -= qubit_detuning_q2 
+    qb2.xy.f_01 -= qubit_detuning_q2
 except (Exception,):
     pass
 
 # machine._save("current_state.json")
-
-

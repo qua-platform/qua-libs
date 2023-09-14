@@ -139,6 +139,7 @@ def get_prog(qubit, resonator):
                 Q_st[i].average().save(f"Q{i}")
     return ALLXY
 
+
 #####################################
 #  Open Communication with the QOP  #
 #####################################
@@ -155,7 +156,7 @@ if simulate:
 else:
     qm = qmm.open_qm(config)
 
-    for qb, rr in [[qb1, rr1],[qb2, rr2]]:
+    for qb, rr in [[qb1, rr1], [qb2, rr2]]:
         job = qm.execute(get_prog(qb, rr))
 
         fig, ax = plt.subplots(2, 1)
@@ -182,5 +183,3 @@ else:
         plt.pause(1.0)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-
-

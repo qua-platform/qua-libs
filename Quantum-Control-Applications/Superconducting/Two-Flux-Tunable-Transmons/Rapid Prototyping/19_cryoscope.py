@@ -52,9 +52,7 @@ zeros_before_pulse = 0  # Beginning of the flux pulse (before we put zeros to se
 zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
 flux_waveform = np.array(
-    [0.0] * zeros_before_pulse
-    + [qb.z.flux_pulse_amp] * qb.z.flux_pulse_length
-    + [0.0] * zeros_after_pulse
+    [0.0] * zeros_before_pulse + [qb.z.flux_pulse_amp] * qb.z.flux_pulse_length + [0.0] * zeros_after_pulse
 )
 
 
@@ -68,8 +66,8 @@ def baked_waveform(waveform, pulse_duration):
             else:
                 wf = waveform[:i].tolist()
 
-            b.add_op("flux_pulse", qb.name+"_z", wf)
-            b.play("flux_pulse", qb.name+"_z")
+            b.add_op("flux_pulse", qb.name + "_z", wf)
+            b.play("flux_pulse", qb.name + "_z")
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -166,7 +164,7 @@ else:
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[-1]
         # Filtering and derivative of the phase to get the averaged frequency
-        coarse_detuning = np.gradient(qubit_phase / 2 / np.pi, (xplot[1]-xplot[0])/u.s)
+        coarse_detuning = np.gradient(qubit_phase / 2 / np.pi, (xplot[1] - xplot[0]) / u.s)
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(detuning[-int(qb.z.flux_pulse_length / 2) :])

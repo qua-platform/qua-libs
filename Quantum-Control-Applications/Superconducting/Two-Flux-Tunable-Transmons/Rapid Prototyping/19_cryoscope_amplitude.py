@@ -31,9 +31,6 @@ qb = qb1
 qb.z.flux_pulse_amp = 0.1
 
 
-
-
-
 q1_z = machine.qubits[active_qubits[0]].name + "_z"
 q2_z = machine.qubits[active_qubits[1]].name + "_z"
 rr1 = machine.resonators[active_qubits[0]]
@@ -45,7 +42,6 @@ qb_if_1 = qb1.xy.f_01 - lo1
 qb_if_2 = qb2.xy.f_01 - lo2
 
 config = build_config(machine)
-
 
 
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
@@ -79,8 +75,8 @@ with program() as cryoscope:
                 align()
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
-                play("const" * amp(flux_amp), qb.name+"_z")
-                align(qb.name+"_xy", qb.name+"_z")
+                play("const" * amp(flux_amp), qb.name + "_z")
+                align(qb.name + "_xy", qb.name + "_z")
                 # Wait some time to ensure that the 2nd x90 pulse will arrive after the flux pulse
                 wait(20 * u.ns)
                 align()
@@ -138,7 +134,7 @@ else:
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[0]
         # Filtering and derivative of the phase to get the averaged frequency
-        coarse_detuning = qubit_phase / (2 * np.pi * qb.z.flux_pulse_length /u.s)
+        coarse_detuning = qubit_phase / (2 * np.pi * qb.z.flux_pulse_length / u.s)
         # Quadratic fit of detuning versus flux pulse amplitude
         pol = np.polyfit(xplot, coarse_detuning, deg=2)
         plt.suptitle("Cryoscope")

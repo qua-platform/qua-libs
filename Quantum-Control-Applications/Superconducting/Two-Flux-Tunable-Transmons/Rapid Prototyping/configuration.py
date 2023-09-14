@@ -27,23 +27,31 @@ rr2 = machine.resonators[active_qubits[1]]
 ############################
 # Custom port mapping example
 port_mapping = {
-        ("con2", 1): ("octave1", machine.resonators[0].wiring.I[1]),
-        ("con2", 2): ("octave1", machine.resonators[0].wiring.Q[1]),
-        ("con1", machine.qubits[1].xy.wiring.I[0]): ("octave1", machine.qubits[1].xy.wiring.I[1]),
-        ("con1", machine.qubits[1].xy.wiring.Q[0]): ("octave1", machine.qubits[1].xy.wiring.Q[1]),
-        ("con1", machine.qubits[2].xy.wiring.I[0]): ("octave1", machine.qubits[2].xy.wiring.I[1]),
-        ("con1", machine.qubits[2].xy.wiring.Q[0]): ("octave1", machine.qubits[2].xy.wiring.Q[1]),
-        ("con1", machine.qubits[3].xy.wiring.I[0]): ("octave1", machine.qubits[3].xy.wiring.I[1]),
-        ("con1", machine.qubits[3].xy.wiring.Q[0]): ("octave1", machine.qubits[3].xy.wiring.Q[1]),
-        ("con1", machine.qubits[4].xy.wiring.I[0]): ("octave1", machine.qubits[4].xy.wiring.I[1]),
-        ("con1", machine.qubits[4].xy.wiring.Q[0]): ("octave1", machine.qubits[4].xy.wiring.Q[1]),
-    }
+    ("con2", 1): ("octave1", machine.resonators[0].wiring.I[1]),
+    ("con2", 2): ("octave1", machine.resonators[0].wiring.Q[1]),
+    ("con1", machine.qubits[1].xy.wiring.I[0]): ("octave1", machine.qubits[1].xy.wiring.I[1]),
+    ("con1", machine.qubits[1].xy.wiring.Q[0]): ("octave1", machine.qubits[1].xy.wiring.Q[1]),
+    ("con1", machine.qubits[2].xy.wiring.I[0]): ("octave1", machine.qubits[2].xy.wiring.I[1]),
+    ("con1", machine.qubits[2].xy.wiring.Q[0]): ("octave1", machine.qubits[2].xy.wiring.Q[1]),
+    ("con1", machine.qubits[3].xy.wiring.I[0]): ("octave1", machine.qubits[3].xy.wiring.I[1]),
+    ("con1", machine.qubits[3].xy.wiring.Q[0]): ("octave1", machine.qubits[3].xy.wiring.Q[1]),
+    ("con1", machine.qubits[4].xy.wiring.I[0]): ("octave1", machine.qubits[4].xy.wiring.I[1]),
+    ("con1", machine.qubits[4].xy.wiring.Q[0]): ("octave1", machine.qubits[4].xy.wiring.Q[1]),
+}
 
-octave_1 = OctaveUnit("octave1", machine.local_oscillators.network.qop_ip, port=machine.local_oscillators.network.qop_port, clock="Internal", port_mapping=port_mapping)
+octave_1 = OctaveUnit(
+    "octave1",
+    machine.local_oscillators.network.qop_ip,
+    port=machine.local_oscillators.network.qop_port,
+    clock="Internal",
+    port_mapping=port_mapping,
+)
 
 # Configure the Octaves
 octave_config = octave_declaration([octave_1])
 octave_config = None
+
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
@@ -60,6 +68,7 @@ def IQ_imbalance(g, phi):
     s = np.sin(phi)
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+
 
 # This is where the mapping between the state and the OPX configuration is realized.
 def build_config(quam: QuAM, qubits_list=active_qubits):
@@ -184,25 +193,29 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                 "analog_outputs": {
                     1: {"offset": quam.resonators[0].wiring.mixer_correction.offset_I},  # I readout line
                     2: {"offset": quam.resonators[0].wiring.mixer_correction.offset_Q},  # Q readout line
-                    quam.qubits[0].z.wiring.port: {"offset": quam.qubits[0].z.min_frequency_point,
+                    quam.qubits[0].z.wiring.port: {
+                        "offset": quam.qubits[0].z.min_frequency_point,
                         "filter": {
                             "feedforward": quam.qubits[0].z.wiring.filter.fir_taps,
                             "feedback": quam.qubits[0].z.wiring.filter.iir_taps,
                         },
                     },
-                    quam.qubits[1].z.wiring.port: {"offset": quam.qubits[1].z.min_frequency_point,
+                    quam.qubits[1].z.wiring.port: {
+                        "offset": quam.qubits[1].z.min_frequency_point,
                         "filter": {
                             "feedforward": quam.qubits[1].z.wiring.filter.fir_taps,
                             "feedback": quam.qubits[1].z.wiring.filter.iir_taps,
                         },
                     },
-                    quam.qubits[2].z.wiring.port: {"offset": quam.qubits[2].z.min_frequency_point,
+                    quam.qubits[2].z.wiring.port: {
+                        "offset": quam.qubits[2].z.min_frequency_point,
                         "filter": {
                             "feedforward": quam.qubits[2].z.wiring.filter.fir_taps,
                             "feedback": quam.qubits[2].z.wiring.filter.iir_taps,
                         },
                     },
-                    quam.qubits[3].z.wiring.port: {"offset": quam.qubits[3].z.min_frequency_point,
+                    quam.qubits[3].z.wiring.port: {
+                        "offset": quam.qubits[3].z.min_frequency_point,
                         "filter": {
                             "feedforward": quam.qubits[3].z.wiring.filter.fir_taps,
                             "feedback": quam.qubits[3].z.wiring.filter.iir_taps,
@@ -221,7 +234,7 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                 },
                 "analog_inputs": {
                     1: {"offset": quam.global_parameters.downconversion_offset_I, "gain_db": 0},
-                    2: {"offset": quam.global_parameters.downconversion_offset_Q, "gain_db": 0 },
+                    2: {"offset": quam.global_parameters.downconversion_offset_Q, "gain_db": 0},
                 },
             },
         },
@@ -235,7 +248,9 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                         "lo_frequency": quam.local_oscillators.readout[0].freq,
                         "mixer": f"mixer_rr{i}",
                     },
-                    "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[quam.resonators[i].LO_index].freq),
+                    "intermediate_frequency": (
+                        quam.resonators[i].f_opt - quam.local_oscillators.readout[quam.resonators[i].LO_index].freq
+                    ),
                     "operations": {
                         "cw": "const_pulse",
                         "readout": f"readout_pulse_q{i}",
@@ -258,7 +273,9 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                         "lo_frequency": quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq,
                         "mixer": f"mixer_q{i}_xy",
                     },
-                    "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq),
+                    "intermediate_frequency": (
+                        quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq
+                    ),
                     "operations": {
                         "cw": "const_pulse",
                         "x180": f"x180_pulse{i}",
@@ -489,7 +506,9 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
             **{
                 f"mixer_q{i}_xy": [
                     {
-                        "intermediate_frequency": (quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq),
+                        "intermediate_frequency": (
+                            quam.qubits[i].xy.f_01 - quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq
+                        ),
                         "lo_frequency": quam.local_oscillators.qubits[quam.qubits[i].xy.LO_index].freq,
                         "correction": IQ_imbalance(
                             quam.qubits[i].xy.wiring.mixer_correction.gain,
@@ -502,7 +521,9 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
             **{
                 f"mixer_rr{i}": [
                     {
-                        "intermediate_frequency": (quam.resonators[i].f_opt - quam.local_oscillators.readout[quam.resonators[i].LO_index].freq),
+                        "intermediate_frequency": (
+                            quam.resonators[i].f_opt - quam.local_oscillators.readout[quam.resonators[i].LO_index].freq
+                        ),
                         "lo_frequency": quam.local_oscillators.readout[quam.resonators[i].LO_index].freq,
                         "correction": IQ_imbalance(
                             quam.resonators[i].wiring.mixer_correction.gain,

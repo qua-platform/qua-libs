@@ -72,20 +72,20 @@ with program() as ro_freq_opt:
             Qe_st[i].buffer(len(dfs)).average().save(f"Qe{i}_avg")
             # variances to get the SNR
             (
-                    ((Ig_st[i].buffer(len(dfs)) * Ig_st[i].buffer(len(dfs))).average())
-                    - (Ig_st[i].buffer(len(dfs)).average() * Ig_st[i].buffer(len(dfs)).average())
+                ((Ig_st[i].buffer(len(dfs)) * Ig_st[i].buffer(len(dfs))).average())
+                - (Ig_st[i].buffer(len(dfs)).average() * Ig_st[i].buffer(len(dfs)).average())
             ).save(f"Ig{i}_var")
             (
-                    ((Qg_st[i].buffer(len(dfs)) * Qg_st[i].buffer(len(dfs))).average())
-                    - (Qg_st[i].buffer(len(dfs)).average() * Qg_st[i].buffer(len(dfs)).average())
+                ((Qg_st[i].buffer(len(dfs)) * Qg_st[i].buffer(len(dfs))).average())
+                - (Qg_st[i].buffer(len(dfs)).average() * Qg_st[i].buffer(len(dfs)).average())
             ).save(f"Qg{i}_var")
             (
-                    ((Ie_st[i].buffer(len(dfs)) * Ie_st[i].buffer(len(dfs))).average())
-                    - (Ie_st[i].buffer(len(dfs)).average() * Ie_st[i].buffer(len(dfs)).average())
+                ((Ie_st[i].buffer(len(dfs)) * Ie_st[i].buffer(len(dfs))).average())
+                - (Ie_st[i].buffer(len(dfs)).average() * Ie_st[i].buffer(len(dfs)).average())
             ).save(f"Ie{i}_var")
             (
-                    ((Qe_st[i].buffer(len(dfs)) * Qe_st[i].buffer(len(dfs))).average())
-                    - (Qe_st[i].buffer(len(dfs)).average() * Qe_st[i].buffer(len(dfs)).average())
+                ((Qe_st[i].buffer(len(dfs)) * Qe_st[i].buffer(len(dfs))).average())
+                - (Qe_st[i].buffer(len(dfs)).average() * Qe_st[i].buffer(len(dfs)).average())
             ).save(f"Qe{i}_var")
 
 #####################################
@@ -111,10 +111,45 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
     # Get results from QUA program
-    data_list = ["Ig1_avg", "Qg1_avg", "Ie1_avg", "Qe1_avg", "Ig1_var", "Qg1_var", "Ie1_var", "Qe1_var", "Ig2_avg",
-                 "Qg2_avg", "Ie2_avg", "Qe2_avg", "Ig2_var", "Qg2_var", "Ie2_var", "Qe2_var", "iteration"]
+    data_list = [
+        "Ig1_avg",
+        "Qg1_avg",
+        "Ie1_avg",
+        "Qe1_avg",
+        "Ig1_var",
+        "Qg1_var",
+        "Ie1_var",
+        "Qe1_var",
+        "Ig2_avg",
+        "Qg2_avg",
+        "Ie2_avg",
+        "Qe2_avg",
+        "Ig2_var",
+        "Qg2_var",
+        "Ie2_var",
+        "Qe2_var",
+        "iteration",
+    ]
     results = fetching_tool(job, data_list=data_list, mode="live")
-    Ig1_avg, Qg1_avg, Ie1_avg, Qe1_avg, Ig1_var, Qg1_var, Ie1_var, Qe1_var, Ig2_avg, Qg2_avg, Ie2_avg, Qe2_avg, Ig2_var, Qg2_var, Ie2_var, Qe2_var, iteration = results.fetch_all()
+    (
+        Ig1_avg,
+        Qg1_avg,
+        Ie1_avg,
+        Qe1_avg,
+        Ig1_var,
+        Qg1_var,
+        Ie1_var,
+        Qe1_var,
+        Ig2_avg,
+        Qg2_avg,
+        Ie2_avg,
+        Qe2_avg,
+        Ig2_var,
+        Qg2_var,
+        Ie2_var,
+        Qe2_var,
+        iteration,
+    ) = results.fetch_all()
     # Progress bar
     progress_counter(iteration, n_avg, start_time=results.get_start_time())
     # Derive the SNR

@@ -71,7 +71,7 @@ with program() as multi_res_spec_vs_amp:
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
-    
+
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         save(n, n_st)
 
@@ -167,16 +167,16 @@ else:
         plt.xlabel("Readout amplitude [V]")
         plt.ylabel("Readout detuning [MHz]")
         plt.pcolor(amps * rr1.readout_pulse_amp, dfs / u.MHz, A1)
-        plt.axhline(0, color="k", linestyle='--')
-        plt.axvline(prev_amp1, color="k", linestyle='--')
+        plt.axhline(0, color="k", linestyle="--")
+        plt.axvline(prev_amp1, color="k", linestyle="--")
         plt.subplot(122)
         plt.cla()
         plt.title(f"{rr2.name} - f_cent: {int(rr2.f_res / u.MHz)} MHz")
         plt.xlabel("Readout amplitude [V]")
         plt.ylabel("Readout detuning [MHz]")
         plt.pcolor(amps * rr2.readout_pulse_amp, dfs / u.MHz, A2)
-        plt.axhline(0, color="k", linestyle='--')
-        plt.axvline(prev_amp2, color="k", linestyle='--')
+        plt.axhline(0, color="k", linestyle="--")
+        plt.axvline(prev_amp2, color="k", linestyle="--")
         plt.tight_layout()
 
         plt.pause(0.1)
@@ -186,5 +186,3 @@ else:
     # rr1.readout_pulse_amp =
     # rr2.readout_pulse_amp =
     # machine._save("current_state.json")
-
-
