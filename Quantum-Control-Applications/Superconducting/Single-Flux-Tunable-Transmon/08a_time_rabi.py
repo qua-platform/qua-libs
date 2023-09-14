@@ -32,7 +32,8 @@ warnings.filterwarnings("ignore")
 ###################
 
 n_avg = 100  # The number of averages
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep (in clock cycles = 4ns)
+# must be larger than 4 clock cycles and larger than the pi_len defined in the config
 t_min = 16 // 4
 t_max = 2000 // 4
 dt = 4 // 4
