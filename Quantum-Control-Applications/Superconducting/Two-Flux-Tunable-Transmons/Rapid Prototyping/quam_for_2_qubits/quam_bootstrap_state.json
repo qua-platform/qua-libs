@@ -1,6 +1,6 @@
 {
-  "network.qop_ip": "192.168.0.129",
-  "network.cluster_name": "Cluster_1",
+  "network.qop_ip": "127.0.0.1",
+  "network.cluster_name": "my_cluster",
   "network.save_dir": "",
   "local_oscillators.qubits[].freq": [4500000000.0,6000000000.0],
   "local_oscillators.qubits[].power": [18,18],
