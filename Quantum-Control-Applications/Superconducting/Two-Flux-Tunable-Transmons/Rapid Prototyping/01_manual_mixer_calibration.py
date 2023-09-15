@@ -1,3 +1,17 @@
+"""
+        MIXER CALIBRATION
+The program is designed to play a continuous single tone to calibrate an IQ mixer. To do this, connect the mixer's
+output to a spectrum analyzer. Adjustments for the DC offsets, gain, and phase must be made manually.
+
+If you have access to the API for retrieving data from the spectrum analyzer, you can utilize the commented lines below
+to semi-automate the process.
+
+Before proceeding to the next node, take the following steps:
+    - Update the DC offsets in the configuration at: config/controllers/"con1"/analog_outputs.
+    - Modify the DC gain and phase for the IQ signals in the configuration, under either:
+      mixer_qubit_g & mixer_qubit_g or mixer_resonator_g & mixer_resonator_g.
+"""
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
@@ -6,20 +20,14 @@ from configuration import *
 # Set-up the machine and get the config #
 #########################################
 machine = QuAM("current_state.json")
+
+# Build the config
 config = build_config(machine)
-
-# Get the QuAM components used in this experiment
-qb1 = machine.qubits[active_qubits[0]]
-qb2 = machine.qubits[active_qubits[1]]
-rr1 = machine.resonators[active_qubits[0]]
-rr2 = machine.resonators[active_qubits[1]]
-
 
 ###################
 # The QUA program #
 ###################
 element = rr1
-
 
 if element.name[:2] == "rr":
     LO = machine.local_oscillators.readout[element.LO_index].freq
@@ -56,8 +64,8 @@ job = qm.execute(manual_mixer_calib)
 # be found using an optimization method such as Nelder-Mead:
 # https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html
 
-# qm.set_output_dc_offset_by_element(element_name, ('I', 'Q'), (-0.001, 0.003))
-# qm.set_mixer_correction(f"mixer_{element_name}", IF, LO, IQ_imbalance(0.015, 0.01))
+# qm.set_output_dc_offset_by_element(element.name, ('I', 'Q'), (-0.001, 0.003))
+# qm.set_mixer_correction(f"mixer_{element.name}", IF, LO, IQ_imbalance(0.015, 0.01))
 
 # Note that the LO leakage (DC Offset) depends on the 'I' & 'Q' powers, it is advised to run this step with no input power.
 # This will ensure that there is no LO leakage while the pulses are not played in the case where the is no switch.
@@ -94,11 +102,11 @@ job = qm.execute(manual_mixer_calib)
 #
 # print(f"For {element.name}, I offset is {centers[0]} and Q offset is {centers[1]}")
 # if element.name[:2] == "rr":
-#     machine.resonators[int(element.name[2])].wiring.mixer_correction.offset_I = centers[0]
-#     machine.resonators[int(element.name[2])].wiring.mixer_correction.offset_Q = centers[1]
+#     rr.wiring.mixer_correction.offset_I = centers[0]
+#     rr.wiring.mixer_correction.offset_Q = centers[1]
 # elif element.name[0] == "q":
-#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.offset_I = centers[0]
-#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.offset_Q = centers[1]
+#     qb.xy.wiring.mixer_correction.offset_I = centers[0]
+#     qb.xy.wiring.mixer_correction.offset_Q = centers[1]
 
 ##################################
 #  Automatic image cancellation  #
@@ -130,10 +138,10 @@ job = qm.execute(manual_mixer_calib)
 #
 # print(f"For {element.name}, gain is {centers[0]} and phase is {centers[1]}")
 # if element.name[:2] == "rr":
-#     machine.resonators[int(element.name[2])].wiring.mixer_correction.gain = centers[0]
-#     machine.resonators[int(element.name[2])].wiring.mixer_correction.phase = centers[1]
+#     rr.wiring.mixer_correction.gain = centers[0]
+#     rr.wiring.mixer_correction.phase = centers[1]
 # elif element.name[0] == "q":
-#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.gain = centers[0]
-#     machine.qubits[int(element.name[1])].xy.wiring.mixer_correction.phase = centers[1]
+#     qb.xy.wiring.mixer_correction.gain = centers[0]
+#     qb.xy.wiring.mixer_correction.phase = centers[1]
 
-# machine._save("quam_bootstrap_state.json", flat_data=False)
+# machine._save("current_state.json")
