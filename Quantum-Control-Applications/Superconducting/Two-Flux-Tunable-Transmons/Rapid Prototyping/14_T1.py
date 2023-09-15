@@ -157,7 +157,7 @@ try:
     plt.subplot(122)
     fit_2 = fit.T1(4 * t_delay, I2, plot=True)
     plt.xlabel("Wait time [ns]")
-    plt.ylabel("Q quadrature [V]")
+    plt.ylabel("I quadrature [V]")
     plt.title(f"{qb2.name}")
     plt.legend((f"T1 = {np.round(np.abs(fit_2['T1'][0]) / 4) * 4:.0f} ns",))
     plt.tight_layout()
