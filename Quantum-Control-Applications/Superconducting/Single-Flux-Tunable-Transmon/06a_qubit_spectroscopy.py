@@ -101,7 +101,6 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:

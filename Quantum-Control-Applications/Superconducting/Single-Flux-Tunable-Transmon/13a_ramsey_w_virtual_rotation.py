@@ -65,7 +65,6 @@ with program() as ramsey:
                 # Wait a varying idle time
                 wait(tau, "qubit")
                 # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
-                # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
                 frame_rotation_2pi(phase, "qubit")
                 # 2nd x90 gate
                 play("x90", "qubit")
@@ -107,7 +106,6 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:

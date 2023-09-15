@@ -46,7 +46,7 @@ if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
 
 with program() as ramsey_freq_duration:
     n = declare(int)  # QUA variable for the averaging loop
-    f = declare(int)  # QUA variable for the qubit frequency
+    df = declare(int)  # QUA variable for the qubit detuning
     delay = declare(int)  # QUA variable for the idle time
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
@@ -56,9 +56,9 @@ with program() as ramsey_freq_duration:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(delay, taus)):  # QUA for_ loop for sweeping the idle time
-            with for_(*from_array(f, dfs)):  # QUA for_ loop for sweeping the qubit frequency
+            with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the qubit frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f + qubit_IF)
+                update_frequency("qubit", df + qubit_IF)
                 # Adjust the idle time
                 with if_(delay >= 4):
                     play("x90", "qubit")
@@ -99,7 +99,6 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:

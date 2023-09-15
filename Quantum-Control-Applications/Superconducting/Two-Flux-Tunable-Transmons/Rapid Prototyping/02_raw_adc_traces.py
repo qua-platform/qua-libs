@@ -55,7 +55,6 @@ qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.networ
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:

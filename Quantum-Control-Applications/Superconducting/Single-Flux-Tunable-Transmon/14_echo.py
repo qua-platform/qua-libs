@@ -98,7 +98,6 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -106,7 +105,6 @@ if simulate:
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, echo, simulation_config)
     job.get_simulated_samples().con1.plot()
-
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
