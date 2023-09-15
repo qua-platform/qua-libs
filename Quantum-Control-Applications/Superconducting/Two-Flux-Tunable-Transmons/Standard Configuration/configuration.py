@@ -200,6 +200,30 @@ readout_amp_q2 = 0.125
 time_of_flight = 24  # must be a multiple of 4
 depletion_time = 2 * u.us
 
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
+    weights_q1 = np.load("optimal_weights_q1.npz")
+    opt_weights_real_q1 = convert_integration_weights(weights_q1["weights_real"])
+    opt_weights_minus_imag_q1 = convert_integration_weights(weights_q1["weights_minus_imag"])
+    opt_weights_imag_q1 = convert_integration_weights(weights_q1["weights_imag"])
+    opt_weights_minus_real_q1 = convert_integration_weights(weights_q1["weights_minus_real"])
+    weights_q2 = np.load("optimal_weights_q2.npz")
+    opt_weights_real_q2 = convert_integration_weights(weights_q2["weights_real"])
+    opt_weights_minus_imag_q2 = convert_integration_weights(weights_q2["weights_minus_imag"])
+    opt_weights_imag_q2 = convert_integration_weights(weights_q2["weights_imag"])
+    opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
+else:
+    opt_weights_real_q1 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q1 = [(1.0, readout_len)]
+    opt_weights_imag_q1 = [(1.0, readout_len)]
+    opt_weights_minus_real_q1 = [(1.0, readout_len)]
+    opt_weights_real_q2 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q2 = [(1.0, readout_len)]
+    opt_weights_imag_q2 = [(1.0, readout_len)]
+    opt_weights_minus_real_q2 = [(1.0, readout_len)]
+
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi
 rotation_angle_q2 = (0.0 / 180) * np.pi
@@ -412,6 +436,9 @@ config = {
                 "rotated_cos": "rotated_cosine_weights_q1",
                 "rotated_sin": "rotated_sine_weights_q1",
                 "rotated_minus_sin": "rotated_minus_sine_weights_q1",
+                "opt_cos": "opt_cosine_weights_q1",
+                "opt_sin": "opt_sine_weights_q1",
+                "opt_minus_sin": "opt_minus_sine_weights_q1",
             },
             "digital_marker": "ON",
         },
@@ -477,6 +504,9 @@ config = {
                 "rotated_cos": "rotated_cosine_weights_q2",
                 "rotated_sin": "rotated_sine_weights_q2",
                 "rotated_minus_sin": "rotated_minus_sine_weights_q2",
+                "opt_cos": "opt_cosine_weights_q2",
+                "opt_sin": "opt_sine_weights_q2",
+                "opt_minus_sin": "opt_minus_sine_weights_q2",
             },
             "digital_marker": "ON",
         },
@@ -552,6 +582,30 @@ config = {
         "rotated_minus_sine_weights_q2": {
             "cosine": [(np.sin(rotation_angle_q2), readout_len)],
             "sine": [(-np.cos(rotation_angle_q2), readout_len)],
+        },
+        "opt_cosine_weights_q1": {
+            "cosine": opt_weights_real_q1,
+            "sine": opt_weights_minus_imag_q1,
+        },
+        "opt_sine_weights_q1": {
+            "cosine": opt_weights_imag_q1,
+            "sine": opt_weights_real_q1,
+        },
+        "opt_minus_sine_weights_q1": {
+            "cosine": opt_weights_minus_imag_q1,
+            "sine": opt_weights_minus_real_q1,
+        },
+        "opt_cosine_weights_q2": {
+            "cosine": opt_weights_real_q2,
+            "sine": opt_weights_minus_imag_q2,
+        },
+        "opt_sine_weights_q2": {
+            "cosine": opt_weights_imag_q2,
+            "sine": opt_weights_real_q2,
+        },
+        "opt_minus_sine_weights_q2": {
+            "cosine": opt_weights_minus_imag_q2,
+            "sine": opt_weights_minus_real_q2,
         },
     },
     "mixers": {

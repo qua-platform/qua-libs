@@ -159,6 +159,21 @@ readout_amp = 0.2
 time_of_flight = 24
 depletion_time = 2 * u.us
 
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
+    weights = np.load("optimal_weights.npz")
+    opt_weights_real = convert_integration_weights(weights["weights_real"])
+    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+else:
+    opt_weights_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(1.0, readout_len)]
+    opt_weights_imag = [(1.0, readout_len)]
+    opt_weights_minus_real = [(1.0, readout_len)]
+
 ##########################################
 #               Flux line                #
 ##########################################
@@ -411,16 +426,16 @@ config = {
             "sine": [(-1.0, readout_len)],
         },
         "opt_cosine_weights": {
-            "cosine": [(1.0, readout_len)],
-            "sine": [(0.0, readout_len)],
+            "cosine": opt_weights_real,
+            "sine": opt_weights_minus_imag,
         },
         "opt_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(1.0, readout_len)],
+            "cosine": opt_weights_imag,
+            "sine": opt_weights_real,
         },
         "opt_minus_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(-1.0, readout_len)],
+            "cosine": opt_weights_minus_imag,
+            "sine": opt_weights_minus_real,
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],

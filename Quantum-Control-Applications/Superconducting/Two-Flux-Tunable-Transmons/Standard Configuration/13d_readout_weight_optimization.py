@@ -20,12 +20,7 @@ Prerequisites:
     - Set the desired flux bias.
 
 Next steps before going to the next node:
-    - Update the integration weights in the configuration by adding
-    config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}
-    config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
-    config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
+    - Update the integration weights in the state by following the steps at the end of the script.
 """
 
 from qm.qua import *
@@ -35,7 +30,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from qualang_tools.results import fetching_tool, progress_counter
-from qualang_tools.plot import interrupt_on_close
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -65,24 +59,24 @@ def normalize_complex_array(arr):
     return rescaled_arr
 
 
-def plot_three_complex_arrays(arr1, arr2, arr3):
+def plot_three_complex_arrays(x, arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real, label="real")
-    ax1.plot(arr1.imag, label="imag")
+    ax1.plot(x, arr1.real, label="real")
+    ax1.plot(x, arr1.imag, label="imag")
     ax1.set_title("ground state")
-    ax1.set_xlabel("Clock cycles")
+    ax1.set_xlabel("Readout time [ns]")
     ax1.set_ylabel("demod traces [a.u.]")
     ax1.legend()
-    ax2.plot(arr2.real, label="real")
-    ax2.plot(arr2.imag, label="imag")
+    ax2.plot(x, arr2.real, label="real")
+    ax2.plot(x, arr2.imag, label="imag")
     ax2.set_title("excited state")
-    ax2.set_xlabel("Clock cycles")
+    ax2.set_xlabel("Readout time [ns]")
     ax2.set_ylabel("demod traces [a.u.]")
     ax2.legend()
-    ax3.plot(arr3.real, label="real")
-    ax3.plot(arr3.imag, label="imag")
+    ax3.plot(x, arr3.real, label="real")
+    ax3.plot(x, arr3.imag, label="imag")
     ax3.set_title("SNR")
-    ax3.set_xlabel("Clock cycles")
+    ax3.set_xlabel("Readout time [ns]")
     ax3.set_ylabel("subtracted traces [a.u.]")
     ax3.legend()
     plt.tight_layout()
@@ -92,13 +86,18 @@ def plot_three_complex_arrays(arr1, arr2, arr3):
 ###################
 # The QUA program #
 ###################
-division_length = 1  # Size of each slice in clock cycles
-number_of_divisions = int(readout_len / (4 * division_length))  # Number of slices
+n_avg = 1e4  # number of averages
+# Set maximum readout duration for this scan and update the configuration accordingly
+readout_len = readout_len
+ringdown_len = 0 * u.us
+# Set the sliced demod parameters
+division_length = 10  # Size of each demodulation slice in clock cycles
+number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
-n_avg = 100  # number of averages
-
+# Time axis for the plots at the end
+x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
 with program() as opt_weights:
     n = declare(int)  # QUA variable for the averaging loop
@@ -230,7 +229,7 @@ else:
         subtracted_trace = excited_trace[i] - ground_trace[i]
         norm_subtracted_trace[i] = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
         # Plot the results
-        plot_three_complex_arrays(ground_trace[i], excited_trace[i], norm_subtracted_trace[i])
+        plot_three_complex_arrays(x_plot, ground_trace[i], excited_trace[i], norm_subtracted_trace[i])
         plt.suptitle(f"Integration weight optimization for qubit {i+1}")
         plt.tight_layout()
         # Reshape the optimal integration weights to match the configuration
