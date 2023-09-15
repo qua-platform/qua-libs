@@ -106,7 +106,7 @@ with program() as ALL_XY:
     with for_(n, 0, n < n_avg, n + 1):
         # Get a value from the pseudo-random number generator on the OPX FPGA
         assign(r_, r.rand_int(len(sequence)))
-        # # Wait for the qubit to decay to the ground state - Can be replaced by active reset
+        # Wait for the qubit to decay to the ground state - Can be replaced by active reset
         wait(thermalization_time * u.ns, "qubit")
         # Plays a random XY sequence
         # The switch/case method allows to map a python index (here "i") to a QUA number (here "r_") in order to switch
