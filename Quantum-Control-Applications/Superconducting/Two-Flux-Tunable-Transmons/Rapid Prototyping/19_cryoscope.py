@@ -96,7 +96,7 @@ flux_waveform = np.array(
     [0.0] * zeros_before_pulse + [qb.z.flux_pulse_amp] * qb.z.flux_pulse_length + [0.0] * zeros_after_pulse
 )
 # Baked flux pulse segments with 1ns resolution
-square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
+square_pulse_segments = baked_waveform(qb, flux_waveform, len(flux_waveform))
 step_response = [1.0] * qb.z.flux_pulse_length
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)
 
