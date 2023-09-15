@@ -40,6 +40,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 ##########
 # baking #
 ##########
@@ -57,6 +58,7 @@ def baked_waveform(waveform, pulse_duration, flux_qubit):
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
+
 
 #########################################
 # Set-up the machine and get the config #

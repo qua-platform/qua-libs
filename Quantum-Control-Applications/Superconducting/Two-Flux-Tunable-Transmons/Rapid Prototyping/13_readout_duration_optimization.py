@@ -39,6 +39,7 @@ machine = QuAM("current_state.json", flat_data=False)
 # Build the config
 config = build_config(machine)
 
+
 ####################
 # Helper functions #
 ####################
