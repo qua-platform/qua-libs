@@ -6,6 +6,7 @@ All the macros below have been written and tested with the basic configuration. 
 
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
+from configuration import u
 
 ##############
 # QUA macros #

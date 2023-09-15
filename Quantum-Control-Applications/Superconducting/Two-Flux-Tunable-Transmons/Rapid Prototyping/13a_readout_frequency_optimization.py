@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -142,6 +142,6 @@ else:
     qm.close()
 
     # Update the state
-    rr1.f_opt = dfs[np.argmax(D)] + res_if_1 + machine.local_oscillators.readout[rr1.LO_index].freq
-    rr2.f_opt = dfs[np.argmax(D)] + res_if_2 + machine.local_oscillators.readout[rr2.LO_index].freq
+    rr1.f_opt = dfs[np.argmax(D1)] + res_if_1 + machine.local_oscillators.readout[rr1.LO_index].freq
+    rr2.f_opt = dfs[np.argmax(D2)] + res_if_2 + machine.local_oscillators.readout[rr2.LO_index].freq
     # machine._save("quam_bootstrap_state.json")

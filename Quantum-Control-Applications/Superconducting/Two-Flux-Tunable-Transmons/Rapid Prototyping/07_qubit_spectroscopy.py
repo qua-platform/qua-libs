@@ -43,7 +43,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -158,7 +158,7 @@ else:
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s2))
         plt.grid("on")
-        plt.xlabel(f"{qb1.name} detuning [MHz]")
+        plt.xlabel(f"{qb2.name} detuning [MHz]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -175,13 +175,13 @@ else:
         plt.subplot(121)
         res_1 = fit.reflection_resonator_spectroscopy((qb_if_1 + dfs) / u.MHz, -np.angle(s1), plot=True)
         plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr1.name} IF [MHz]")
+        plt.xlabel(f"{qb1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{qb1.name}")
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy((qb_if_2 + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{rr2.name} IF [MHz]")
+        plt.xlabel(f"{qb2.name} IF [MHz]")
         plt.title(f"{qb2.name}")
         plt.tight_layout()
 

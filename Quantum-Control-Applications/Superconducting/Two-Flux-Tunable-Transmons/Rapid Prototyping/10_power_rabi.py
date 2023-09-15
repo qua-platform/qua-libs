@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -46,7 +46,7 @@ cooldown_time = 5 * max(qb1.T1, qb2.T1)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(0.6, 1.4, 0.01)
 # Number of applied Rabi pulses sweep
-N_pi = 1  # Maximum number of qubit pulses
+N_pi = 100  # Maximum number of qubit pulses
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
 with program() as rabi:
@@ -147,6 +147,7 @@ else:
             plt.xlabel("Rabi pulse amplitude [V]")
             plt.ylabel(r"$\Sigma$ of Rabi pulses")
             plt.subplot(326)
+            plt.cla()
             plt.plot(amps * qb2.xy.pi_amp, np.sum(I2, axis=0))
             plt.axvline(qb2.xy.pi_amp, color="k")
             plt.xlabel("Rabi pulse amplitude [V]")

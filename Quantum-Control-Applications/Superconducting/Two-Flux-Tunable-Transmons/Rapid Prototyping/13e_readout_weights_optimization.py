@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -68,24 +68,24 @@ def normalize_complex_array(arr):
     return rescaled_arr
 
 
-def plot_three_complex_arrays(arr1, arr2, arr3):
+def plot_three_complex_arrays(x, arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real, label="real")
-    ax1.plot(arr1.imag, label="imag")
+    ax1.plot(x, arr1.real, label="real")
+    ax1.plot(x, arr1.imag, label="imag")
     ax1.set_title("ground state")
-    ax1.set_xlabel("Clock cycles")
+    ax1.set_xlabel("Readout time [ns]")
     ax1.set_ylabel("demod traces [a.u.]")
     ax1.legend()
-    ax2.plot(arr2.real, label="real")
-    ax2.plot(arr2.imag, label="imag")
+    ax2.plot(x, arr2.real, label="real")
+    ax2.plot(x, arr2.imag, label="imag")
     ax2.set_title("excited state")
-    ax2.set_xlabel("Clock cycles")
+    ax2.set_xlabel("Readout time [ns]")
     ax2.set_ylabel("demod traces [a.u.]")
     ax2.legend()
-    ax3.plot(arr3.real, label="real")
-    ax3.plot(arr3.imag, label="imag")
+    ax3.plot(x, arr3.real, label="real")
+    ax3.plot(x, arr3.imag, label="imag")
     ax3.set_title("SNR")
-    ax3.set_xlabel("Clock cycles")
+    ax3.set_xlabel("Readout time [ns]")
     ax3.set_ylabel("subtracted traces [a.u.]")
     ax3.legend()
     plt.tight_layout()
@@ -260,7 +260,7 @@ else:
     subtracted_trace = excited_trace - ground_trace
     norm_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
     # Plot the results
-    plot_three_complex_arrays(ground_trace, excited_trace, norm_subtracted_trace)
+    plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
     weights_real = list(norm_subtracted_trace.real)
     weights_minus_imag = list((-1) * norm_subtracted_trace.imag)

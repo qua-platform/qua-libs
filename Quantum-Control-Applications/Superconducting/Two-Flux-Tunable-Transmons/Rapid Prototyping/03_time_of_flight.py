@@ -26,7 +26,7 @@ from scipy.signal import savgol_filter
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 config = build_config(machine)
 
 ###################

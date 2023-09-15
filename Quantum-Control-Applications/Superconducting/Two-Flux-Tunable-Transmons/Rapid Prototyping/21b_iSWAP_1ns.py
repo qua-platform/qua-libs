@@ -63,7 +63,7 @@ def baked_waveform(waveform, pulse_duration, flux_qubit):
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Adjust the flux pulse amplitude and duration
 machine.qubits[active_qubits[1]].z.flux_pulse_amp = -0.104

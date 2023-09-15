@@ -34,7 +34,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -86,7 +86,7 @@ with program() as echo:
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         # If log sweep, then the swept values will be slightly different from np.logspace because of integer rounding in QUA.
         # get_equivalent_log_array() is used to get the exact values used in the QUA program.
-        if np.isclose(np.std(t[1:] / t[:-1]), 0, atol=1e-3):
+        if np.isclose(np.std(idle_times[1:] / idle_times[:-1]), 0, atol=1e-3):
             idle_times = get_equivalent_log_array(idle_times)
         for i in range(len(active_qubits)):
             I_st[i].buffer(len(idle_times)).average().save(f"I{i+1}")

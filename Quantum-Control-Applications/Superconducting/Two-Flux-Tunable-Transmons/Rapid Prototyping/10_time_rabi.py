@@ -153,6 +153,7 @@ else:
         plt.title(f"{qb2.name}")
         plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
+        plt.tight_layout()
         print(f"Optimal x180_len for {qb1.name} = {round(1 / rabi_fit1['f'][0] / 2 / 4) * 4} ns for {qb1.xy.pi_amp:} V")
         print(f"Optimal x180_len for {qb2.name} = {round(1 / rabi_fit2['f'][0] / 2 / 4) * 4} ns for {qb2.xy.pi_amp:} V")
         qb1.xy.pi_length = round(1 / rabi_fit1["f"][0] / 2 / 4) * 4

@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore")
 #########################################
 # Set-up the machine and get the config #
 #########################################
-machine = QuAM("current_state.json", flat_data=False)
+machine = QuAM("current_state.json")
 
 # Build the config
 config = build_config(machine)
@@ -49,9 +49,9 @@ res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
 n_runs = 100  # The number of averages
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-amplitudes = np.arange(0.5, 1.5, 0.1)
+amplitudes = np.arange(0.5, 1.5, 0.05)
 # The frequency sweep parameters with respect to the resonators resonance frequencies
-dfs = np.arange(-1e6, 1e6, 0.1e6)
+dfs = np.arange(-5e6, 5e6, 0.1e6)
 
 
 with program() as ro_amp_freq_opt:
@@ -66,6 +66,7 @@ with program() as ro_amp_freq_opt:
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
     with for_(*from_array(df, dfs)):
+        save(counter, n_st)
         # Update the resonators frequency
         update_frequency(rr1.name, df + res_if_1)
         update_frequency(rr2.name, df + res_if_2)
