@@ -1,63 +1,72 @@
-from qm.QuantumMachinesManager import QuantumMachinesManager
+"""
+        READOUT OPTIMISATION: AMPLITUDE VS FREQUENCY
+The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
+playing a pi pulse to the qubit (qubit in |e>) successively while sweeping the readout amplitude and frequency.
+The 'I' & 'Q' quadratures when the qubit is in |g> and |e> are extracted to derive the readout fidelity.
+The optimal readout amplitude is chosen as to maximize the readout fidelity.
+
+This version can be particularly useful when the resonator is driven in a regime where its frequency depends on the readout amplitude.
+
+Prerequisites:
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+
+Next steps before going to the next node:
+    - Update the readout amplitude and frequency in the state.
+    - Update the readout fidelity in the state.
+    - Save the current state by calling machine._save("current_state.json")
+"""
+
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
-from macros import qua_declaration, multiplexed_readout
-from qualang_tools.analysis import two_state_discriminator
-from quam import QuAM
 from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.analysis import two_state_discriminator
+from qualang_tools.loops import from_array
+from macros import qua_declaration, multiplexed_readout
+import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings("ignore")
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
 machine = QuAM("current_state.json", flat_data=False)
 
-machine.resonators[active_qubits[0]].readout_pulse_amp *= 1.5
-machine.resonators[active_qubits[1]].readout_pulse_amp *= 1.5
-
-machine.resonators[active_qubits[0]].readout_pulse_length = 2000
-machine.resonators[active_qubits[1]].readout_pulse_length = 2000
-
+# Build the config
 config = build_config(machine)
 
-qb1 = machine.qubits[active_qubits[0]]
-qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].name + "_z"
-q2_z = machine.qubits[active_qubits[1]].name + "_z"
-rr1 = machine.resonators[active_qubits[0]]
-rr2 = machine.resonators[active_qubits[1]]
-lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
-lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
-
-res_if_1 = rr1.f_opt - machine.local_oscillators.readout[0].freq
-res_if_2 = rr2.f_opt - machine.local_oscillators.readout[0].freq
+# The resonator frequencies
+res_if_1 = rr1.f_opt - machine.local_oscillators.readout[rr1.LO_index].freq
+res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
 
 
 ###################
 # The QUA program #
 ###################
-n_runs = 4000
-amplitudes = np.arange(0.5, 1.5, 0.1)
-dfs = np.arange(-1e6, 1e6, 0.1e6)
+n_runs = 100  # The number of averages
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
+# The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
+amplitudes = np.arange(0.5, 1.5, 0.1)
+# The frequency sweep parameters with respect to the resonators resonance frequencies
+dfs = np.arange(-1e6, 1e6, 0.1e6)
 
-res_if_1 = rr1.f_opt - machine.local_oscillators.readout[0].freq
-res_if_2 = rr2.f_opt - machine.local_oscillators.readout[0].freq
 
-with program() as ro_freq_opt:
-    n = declare(int)
-    I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
+with program() as ro_amp_freq_opt:
+    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
-    a = declare(fixed)
-    df = declare(int)
+    a = declare(fixed)  # QUA variable for the readout amplitude
+    df = declare(int)# QUA variable for the readout frequency detuning
+    counter = declare(int, value=0)  # Counter for the progress bar
 
     # Bring the active qubits to the maximum frequency point
     set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
     with for_(*from_array(df, dfs)):
+        # Update the resonators frequency
         update_frequency(rr1.name, df + res_if_1)
         update_frequency(rr2.name, df + res_if_2)
         with for_(*from_array(a, amplitudes)):
@@ -75,6 +84,8 @@ with program() as ro_freq_opt:
                 play("x180", qb2.name + "_xy")
                 align()
                 multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+        # Save the counter to get the progress bar
+        assign(counter, counter + 1)
 
     with stream_processing():
         # Save all streamed points for plotting the IQ blobs
@@ -83,23 +94,38 @@ with program() as ro_freq_opt:
             Q_g_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"Q_g_q{i}")
             I_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"I_e_q{i}")
             Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"Q_e_q{i}")
+        n_st.save("n")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
+###########################
+# Run or Simulate Program #
+###########################
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, ro_freq_opt, SimulationConfig(11000))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, ro_amp_freq_opt, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
-    # open quantum machine
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-    # run job
-    job = qm.execute(ro_freq_opt)
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(ro_amp_freq_opt)
+    # Get results from QUA program
+    results = fetching_tool(job, data_list=["n"], mode="live")
+    # Get progress counter to monitor runtime of the program
+    while results.is_processing():
+        # Fetch results
+        iteration = results.fetch_all()
+        # Progress bar
+        progress_counter(iteration[0], len(dfs), start_time=results.get_start_time())
+
     # fetch data
     results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
     I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
@@ -133,6 +159,7 @@ else:
     plt.xlabel("Readout IF [MHz]")
     plt.tight_layout()
 
+    # Update the state
     rr1.f_opt += dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]]
     rr1.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[0][0]]
     rr2.f_opt += dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]]
