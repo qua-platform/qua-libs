@@ -143,12 +143,24 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
         "controllers": {
             "con1": {
                 "analog_outputs": {
-                    quam.resonators[0].wiring.I: {"offset": quam.resonators[0].wiring.mixer_correction.offset_I},  # I readout
-                    quam.resonators[0].wiring.Q: {"offset": quam.resonators[0].wiring.mixer_correction.offset_Q},  # Q readout
-                    quam.qubits[0].xy.wiring.I: {"offset": quam.qubits[0].xy.wiring.mixer_correction.offset_I},  # I qubit0 XY
-                    quam.qubits[0].xy.wiring.Q: {"offset": quam.qubits[0].xy.wiring.mixer_correction.offset_Q},  # Q qubit0 XY
-                    quam.qubits[1].xy.wiring.I: {"offset": quam.qubits[1].xy.wiring.mixer_correction.offset_I},  # I qubit1 XY
-                    quam.qubits[1].xy.wiring.Q: {"offset": quam.qubits[1].xy.wiring.mixer_correction.offset_Q},  # Q qubit1 XY
+                    quam.resonators[0].wiring.I: {
+                        "offset": quam.resonators[0].wiring.mixer_correction.offset_I
+                    },  # I readout
+                    quam.resonators[0].wiring.Q: {
+                        "offset": quam.resonators[0].wiring.mixer_correction.offset_Q
+                    },  # Q readout
+                    quam.qubits[0].xy.wiring.I: {
+                        "offset": quam.qubits[0].xy.wiring.mixer_correction.offset_I
+                    },  # I qubit0 XY
+                    quam.qubits[0].xy.wiring.Q: {
+                        "offset": quam.qubits[0].xy.wiring.mixer_correction.offset_Q
+                    },  # Q qubit0 XY
+                    quam.qubits[1].xy.wiring.I: {
+                        "offset": quam.qubits[1].xy.wiring.mixer_correction.offset_I
+                    },  # I qubit1 XY
+                    quam.qubits[1].xy.wiring.Q: {
+                        "offset": quam.qubits[1].xy.wiring.mixer_correction.offset_Q
+                    },  # Q qubit1 XY
                     quam.qubits[0].z.wiring.port: {
                         "offset": quam.qubits[0].z.min_frequency_point,
                         "filter": {
