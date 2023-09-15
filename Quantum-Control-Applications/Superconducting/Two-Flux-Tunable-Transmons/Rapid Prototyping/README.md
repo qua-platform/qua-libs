@@ -29,6 +29,8 @@ A step-by-step [tutorial with best practices](https://github.com/qua-platform/qu
 * 1 OPX+ connected to two flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 2 qubits](./quam_for_2_qubits).
 * A cluster of 2 OPX+ and 1 Octave connected to five flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 5 qubits and octave](./quam_for_5_qubits_and_octave).
 
+You can just copy and paste the relevant files that correspond to your set-up to the main folder with the calibration scripts.
+
 ## Basic Files
 0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA.
 1. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
