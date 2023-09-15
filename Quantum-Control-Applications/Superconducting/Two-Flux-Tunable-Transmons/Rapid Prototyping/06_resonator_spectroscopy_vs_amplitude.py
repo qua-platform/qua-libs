@@ -33,10 +33,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # Update the readout amplitude for the sweep since we can only multiply it by a factor <2 in QUA.
 prev_amp1 = machine.resonators[active_qubits[0]].readout_pulse_amp

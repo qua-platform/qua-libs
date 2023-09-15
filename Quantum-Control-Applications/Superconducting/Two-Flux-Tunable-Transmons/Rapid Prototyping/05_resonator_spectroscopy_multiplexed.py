@@ -29,16 +29,14 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # You can change the readout pulse amplitudes directly here, but it won't be saved in the state unless you
 # explicitly call machine._save("current_state.json")
-# machine.resonators[active_qubits[0]].readout_pulse_amp = 0.005
-# machine.resonators[active_qubits[1]].readout_pulse_amp = 0.005
+# rr1.readout_pulse_amp = 0.005
+# rr2.readout_pulse_amp = 0.005
 
 # Build the config
 config = build_config(machine)

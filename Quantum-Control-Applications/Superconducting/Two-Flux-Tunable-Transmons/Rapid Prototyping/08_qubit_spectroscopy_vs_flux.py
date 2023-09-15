@@ -27,10 +27,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # Get the qubit frequencies (IFs and LOs)
 lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq

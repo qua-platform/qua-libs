@@ -29,10 +29,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("quam_bootstrap_state.json", flat_data=False)
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # Build the config
 config = build_config(machine)

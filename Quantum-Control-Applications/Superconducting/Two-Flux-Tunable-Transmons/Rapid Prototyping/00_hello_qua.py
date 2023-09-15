@@ -7,9 +7,9 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 machine = QuAM("quam_bootstrap_state.json")
 config = build_config(machine)
 

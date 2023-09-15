@@ -37,10 +37,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # Build the config
 config = build_config(machine)

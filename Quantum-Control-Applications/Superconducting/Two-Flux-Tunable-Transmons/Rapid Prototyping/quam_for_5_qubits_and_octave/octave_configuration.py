@@ -8,7 +8,7 @@ from configuration import *
 from quam import QuAM
 
 
-machine = QuAM("current_state.json")
+
 config = build_config(machine)
 # Configure the Octave parameters for each element
 resonator = ElementsSettings(

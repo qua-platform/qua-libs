@@ -28,10 +28,9 @@ from qualang_tools.analysis.discriminator import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 
 # Build the config
 config = build_config(machine)

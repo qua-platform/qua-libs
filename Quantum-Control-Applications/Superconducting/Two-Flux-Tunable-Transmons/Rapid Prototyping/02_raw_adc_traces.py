@@ -15,10 +15,9 @@ from configuration import *
 import matplotlib.pyplot as plt
 
 
-#########################################
-# Set-up the machine and get the config #
-#########################################
-machine = QuAM("current_state.json")
+#######################################################
+# Get the config from the machine in configuration.py #
+#######################################################
 config = build_config(machine)
 
 ###################
