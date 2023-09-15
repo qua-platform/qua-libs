@@ -56,8 +56,8 @@ mixer_qubit_phi_q1 = 0.0
 mixer_qubit_phi_q2 = 0.0
 
 # Relaxation time
-qubit1_T1 = int(3 * u.us)
-qubit2_T1 = int(3 * u.us)
+qubit1_T1 = 3 * u.us
+qubit2_T1 = 3 * u.us
 thermalization_time = 5 * max(qubit1_T1, qubit2_T1)
 
 # CW pulse parameter

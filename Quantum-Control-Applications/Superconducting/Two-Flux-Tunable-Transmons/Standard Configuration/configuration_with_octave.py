@@ -54,7 +54,8 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 3.95 * u.GHz
+qubit_LO_q1 = 3.95 * u.GHz
+qubit_LO_q2 = 3.95 * u.GHz
 # Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
@@ -307,7 +308,7 @@ config = {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "mixer": "octave_octave1_2",
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
@@ -325,7 +326,7 @@ config = {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q2,
                 "mixer": "octave_octave1_3",
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
@@ -609,14 +610,14 @@ config = {
         "octave_octave1_2": [
             {
                 "intermediate_frequency": qubit_IF_q1,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q1,
                 "correction": (1, 0, 0, 1),
             },
         ],
         "octave_octave1_3": [
             {
                 "intermediate_frequency": qubit_IF_q2,
-                "lo_frequency": qubit_LO,
+                "lo_frequency": qubit_LO_q2,
                 "correction": (1, 0, 0, 1),
             }
         ],
