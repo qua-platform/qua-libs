@@ -1,6 +1,5 @@
 # Two flux tunable transmons with the rapid prototyping
 
-<img align="right" src="Two Flux Tunable Transmon Setup.PNG" alt="drawing" width="400"/>
 
 ## Experimental setup and context
 
@@ -9,7 +8,7 @@ and a single readout transmission line.
 The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer. 
 Qubit addressing is being done with IQ mixers.
 
-These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
+These files were tested in a real setup, but are given as-is with no guarantee.
 
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
 Use with care.
@@ -26,6 +25,9 @@ the values from the user-defined structure as shown below.
 
 A step-by-step [tutorial with best practices](https://github.com/qua-platform/qua-libs/tree/main/Tutorials/intro-to-quam-rapid-prototyping/README.md) details the basics of this framework and shows how to create your own QuAM (Quantum Abstract Machine).
 
+**Note that two quam examples are given for two different set-ups**:
+* 1 OPX+ connected to two flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 2 qubits](./quam_for_2_qubits).
+* A cluster of 2 OPX+ and 1 Octave connected to five flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 5 qubits and octave](./quam_for_5_qubits_and_octave).
 
 ## Basic Files
 0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA.
