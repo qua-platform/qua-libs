@@ -3,6 +3,7 @@ import numpy as np
 from set_octave import *
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
 
 # The subsequent scripts are made for 2 qubits and 2 resonators. Below one can choose the index of the active qubits.
@@ -335,6 +336,9 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                         "rotated_cos": f"rotated_cosine_weights_q{i}",
                         "rotated_sin": f"rotated_sine_weights_q{i}",
                         "rotated_minus_sin": f"rotated_minus_sine_weights_q{i}",
+                        "opt_cos": f"opt_cosine_weights_q{i}",
+                        "opt_sin": f"opt_sine_weights_q{i}",
+                        "opt_minus_sin": f"opt_minus_sine_weights_q{i}",
                     },
                     "digital_marker": "ON",
                 }
@@ -498,6 +502,27 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
                 f"rotated_minus_sine_weights_q{i}": {
                     "cosine": [(np.sin(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
                     "sine": [(-np.cos(quam.resonators[i].rotation_angle), quam.resonators[i].readout_pulse_length)],
+                }
+                for i in range(len(quam.resonators))
+            },
+            **{
+                f"opt_cosine_weights_q{i}": {
+                    "cosine": convert_integration_weights(quam.resonators[i].opt_weights.weights_real),
+                    "sine": convert_integration_weights(quam.resonators[i].opt_weights.weights_minus_imag),
+                }
+                for i in range(len(quam.resonators))
+            },
+            **{
+                f"opt_sine_weights_q{i}": {
+                    "cosine": convert_integration_weights(quam.resonators[i].opt_weights.weights_imagl),
+                    "sine": convert_integration_weights(quam.resonators[i].opt_weights.weights_real),
+                }
+                for i in range(len(quam.resonators))
+            },
+            **{
+                f"opt_minus_sine_weights_q{i}": {
+                    "cosine": convert_integration_weights(quam.resonators[i].opt_weights.weights_minus_imag),
+                    "sine": convert_integration_weights(quam.resonators[i].opt_weights.weights_minus_real),
                 }
                 for i in range(len(quam.resonators))
             },

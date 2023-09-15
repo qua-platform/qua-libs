@@ -239,6 +239,12 @@ state = {
                 "Q": [2, "Q1"],
                 "mixer_correction": {"offset_I": 0.0, "offset_Q": -0.0, "gain": 0.0, "phase": -0.0},
             },
+            "opt_weights": {
+                "weights_real": [1.0] * 4_000,
+                "weights_minus_imag": [0.0] * 4_000,
+                "weights_imag": [0.0] * 4_000,
+                "weights_minus_real": [-1.0] * 4_000,
+            },
         },
         {
             "name": "rr1",
@@ -255,6 +261,12 @@ state = {
                 "I": [1, "I1"],
                 "Q": [2, "Q1"],
                 "mixer_correction": {"offset_I": 0.0, "offset_Q": -0.0, "gain": 0.0, "phase": -0.0},
+            },
+            "opt_weights": {
+                "weights_real": [1.0] * 4_000,
+                "weights_minus_imag": [0.0] * 4_000,
+                "weights_imag": [0.0] * 4_000,
+                "weights_minus_real": [-1.0] * 4_000,
             },
         },
         {
@@ -273,6 +285,12 @@ state = {
                 "Q": [2, "Q1"],
                 "mixer_correction": {"offset_I": 0.0, "offset_Q": -0.0, "gain": 0.0, "phase": -0.0},
             },
+            "opt_weights": {
+                "weights_real": [1.0] * 4_000,
+                "weights_minus_imag": [0.0] * 4_000,
+                "weights_imag": [0.0] * 4_000,
+                "weights_minus_real": [-1.0] * 4_000,
+            },
         },
         {
             "name": "rr3",
@@ -290,6 +308,12 @@ state = {
                 "Q": [2, "Q1"],
                 "mixer_correction": {"offset_I": 0.0, "offset_Q": -0.0, "gain": 0.0, "phase": -0.0},
             },
+            "opt_weights": {
+                "weights_real": [1.0] * 4_000,
+                "weights_minus_imag": [0.0] * 4_000,
+                "weights_imag": [0.0] * 4_000,
+                "weights_minus_real": [-1.0] * 4_000,
+            },
         },
         {
             "name": "rr4",
@@ -306,6 +330,12 @@ state = {
                 "I": [1, "I1"],
                 "Q": [2, "Q1"],
                 "mixer_correction": {"offset_I": 0.0, "offset_Q": -0.0, "gain": 0.0, "phase": -0.0},
+            },
+            "opt_weights": {
+                "weights_real": [1.0] * 4_000,
+                "weights_minus_imag": [0.0] * 4_000,
+                "weights_imag": [0.0] * 4_000,
+                "weights_minus_real": [-1.0] * 4_000,
             },
         },
     ],

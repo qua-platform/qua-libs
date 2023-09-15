@@ -234,21 +234,55 @@ else:
         plt.suptitle(f"Integration weight optimization for qubit {i+1}")
         plt.tight_layout()
         # Reshape the optimal integration weights to match the configuration
-        from qualang_tools.config.integration_weights_tools import convert_integration_weights
+        weights_real = list(norm_subtracted_trace[i].real)
+        weights_minus_imag = list((-1) * norm_subtracted_trace[i].imag)
+        weights_imag = list(norm_subtracted_trace[i].imag)
+        weights_minus_real = list((-1) * norm_subtracted_trace[i].real)
+        # Save the weights for later use in the config
+        np.savez(
+            "optimal_weights",
+            weights_real=weights_real,
+            weights_minus_imag=weights_minus_imag,
+            weights_imag=weights_imag,
+            weights_minus_real=weights_minus_real,
+        )
+    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
+    # For this, you can just copy and paste the following lines into the "integration_weights" section:
+    # "opt_cosine_weights": {
+    #     "cosine": opt_weights_real,
+    #     "sine": opt_weights_minus_imag,
+    # },
+    # "opt_sine_weights": {
+    #     "cosine": opt_weights_imag,
+    #     "sine": opt_weights_real,
+    # },
+    # "opt_minus_sine_weights": {
+    #     "cosine": opt_weights_minus_imag,
+    #     "sine": opt_weights_minus_real,
+    # },
 
-        # TODO: understand the weights!!
-        weights_cos[i] = convert_integration_weights(list(norm_subtracted_trace[i].real))
-        weights_minus_sin[i] = convert_integration_weights(list((-1) * norm_subtracted_trace[i].imag))
-        weights_sin[i] = convert_integration_weights(list(norm_subtracted_trace[i].imag))
-        weights_minus_cos[i] = convert_integration_weights(list((-1) * norm_subtracted_trace[i].real))
-    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config
-    # config["integration_weights"]["opt_cosine_weights_q1"] = {"cosine": weights_cos[0], "sine": weights_minus_sin}
-    # config["integration_weights"]["opt_sine_weights_q1"] = {"cosine": weights_sin[0], "sine": weights_cos}
-    # config["integration_weights"]["opt_minus_sine_weights_q1"] = {"cosine": weights_minus_sin[0], "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_cosine_weights_q1"
-    # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_sine_weights_q1"
-    # config['pulses']['readout_pulse_q1']['integration_weights']["opt_cos"] = "opt_minus_sine_weights_q1"
+    # also need to add the new weights to readout_pulse under the "integration_weights" section:
+    # "opt_cos": "opt_cosine_weights",
+    # "opt_sin": "opt_sine_weights",
+    # "opt_minus_sin": "opt_minus_sine_weights",
+
+    # And finally extract the weights from the saved file and reformat them using the integration_weights_tools.
+    # For this you just need to copy and paste the following lines at the beginning of the config, where the readout
+    # parameters are defined as Python variables:
+    # opt_weights = True
+    # if opt_weights:
+    #     from qualang_tools.config.integration_weights_tools import convert_integration_weights
+    #
+    #     weights = np.load("opt_weights.npz")
+    #     opt_weights_real = convert_integration_weights(weights["weights_real"])
+    #     opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    #     opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    #     opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    # else:
+    #     opt_weights_real = [(1.0, readout_len)]
+    #     opt_weights_minus_imag = [(1.0, readout_len)]
+    #     opt_weights_imag = [(1.0, readout_len)]
+    #     opt_weights_minus_real = [(1.0, readout_len)]
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
