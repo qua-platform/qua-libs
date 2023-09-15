@@ -3,7 +3,7 @@ import quam_sdk.constructor
 # The system state is a high level abstraction of the experiment written in the language of physicists
 # The structure is almost completely free
 state = {
-    "network": {"qop_ip": "192.168.0.129", "cluster_name": "Cluster_1", "save_dir": ""},
+    "network": {"qop_ip": "192.168.88.10", "cluster_name": "any", "save_dir": ""},
     "local_oscillators": {
         "qubits": [
             {"freq": 4.5e9, "power": 18},
@@ -74,7 +74,7 @@ state = {
             },
             "z": {
                 "wiring": {
-                    "controller": "con2",
+                    "controller": "con1",
                     "port": 8,
                     "filter": {"iir_taps": [], "fir_taps": []},
                 },

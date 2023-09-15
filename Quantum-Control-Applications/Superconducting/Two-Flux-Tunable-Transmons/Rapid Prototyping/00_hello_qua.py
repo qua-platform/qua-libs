@@ -25,6 +25,7 @@ rr2 = machine.resonators[active_qubits[1]]
 with program() as hello_qua:
     set_dc_offset(qb1.name + "_z", "single", 0.153)
     play("cw", qb1.name + "_xy")
+    play("cw", qb2.name + "_xy")
 
 
 #####################################
