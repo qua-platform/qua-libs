@@ -30,7 +30,7 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
+n_runs = 1000
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
 a_max = 1.5
@@ -53,7 +53,7 @@ with program() as ro_amp_opt:
 
     with for_(*from_array(a, amplitudes)):
         save(counter, n_st)
-        with for_(n, 0, n < n_avg, n + 1):
+        with for_(n, 0, n < n_runs, n + 1):
             measure(
                 "readout" * amp(a),
                 "resonator",
@@ -90,10 +90,10 @@ with program() as ro_amp_opt:
 
     with stream_processing():
         # mean values
-        I_g_st.buffer(n_avg).buffer(len(amplitudes)).save("I_g")
-        Q_g_st.buffer(n_avg).buffer(len(amplitudes)).save("Q_g")
-        I_e_st.buffer(n_avg).buffer(len(amplitudes)).save("I_e")
-        Q_e_st.buffer(n_avg).buffer(len(amplitudes)).save("Q_e")
+        I_g_st.buffer(n_runs).buffer(len(amplitudes)).save("I_g")
+        Q_g_st.buffer(n_runs).buffer(len(amplitudes)).save("Q_g")
+        I_e_st.buffer(n_runs).buffer(len(amplitudes)).save("I_e")
+        Q_e_st.buffer(n_runs).buffer(len(amplitudes)).save("Q_e")
         n_st.save("iteration")
 
 #####################################
@@ -114,10 +114,10 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_amp_opt)  # execute QUA program
-
     # Get results from QUA program
     results = fetching_tool(job, data_list=["iteration"], mode="live")
     # Get progress counter to monitor runtime of the program

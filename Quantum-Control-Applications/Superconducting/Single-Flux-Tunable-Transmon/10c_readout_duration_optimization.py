@@ -68,7 +68,7 @@ print("The readout has been sliced in the following number of divisions", number
 x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
 
-with program() as ro_weights_opt:
+with program() as ro_duration_opt:
     n = declare(int)
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
@@ -171,13 +171,13 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, ro_weights_opt, simulation_config)
+    job = qmm.simulate(config, ro_duration_opt, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ro_weights_opt)
+    job = qm.execute(ro_duration_opt)
     # Get results from QUA program
     results = fetching_tool(
         job,

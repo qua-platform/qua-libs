@@ -51,7 +51,7 @@ with program() as ro_freq_opt:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
-            # Update the frequency of the digital oscillator linked to the qubit element
+            # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency("resonator", df + resonator_IF)
             # Measure the state of the resonator
             measure(

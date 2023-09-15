@@ -1,40 +1,52 @@
-from qm.QuantumMachinesManager import QuantumMachinesManager
+"""
+        READOUT OPTIMISATION: FREQUENCY
+This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
+(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
+|e> state). This is done while varying the readout frequency.
+The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to
+determine the Signal-to-Noise Ratio (SNR). The readout frequency that yields the highest SNR is selected as the
+optimal choice.
+
+Prerequisites:
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - Set the desired flux bias
+
+Next steps before going to the next node:
+    - Update the readout frequency (f_opt) in the state.
+    - Save the current state by calling machine._save("current_state.json")
+"""
+
 from qm.qua import *
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
-from macros import multiplexed_readout
-from quam import QuAM
 from configuration import *
+from qualang_tools.results import fetching_tool
+from qualang_tools.loops import from_array
+from macros import multiplexed_readout
+import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings("ignore")
 
 #########################################
 # Set-up the machine and get the config #
 #########################################
 machine = QuAM("current_state.json", flat_data=False)
+
+# Build the config
 config = build_config(machine)
-
-qb1 = machine.qubits[active_qubits[0]]
-qb2 = machine.qubits[active_qubits[1]]
-q1_z = machine.qubits[active_qubits[0]].name + "_z"
-q2_z = machine.qubits[active_qubits[1]].name + "_z"
-rr1 = machine.resonators[active_qubits[0]]
-rr2 = machine.resonators[active_qubits[1]]
-lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
-lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
-
-qb_if_1 = qb1.xy.f_01 - lo1
-qb_if_2 = qb2.xy.f_01 - lo2
+# The resonator frequencies
+res_if_1 = rr1.f_opt - machine.local_oscillators.readout[rr1.LO_index].freq
+res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
 
 ###################
 # The QUA program #
 ###################
-n_avg = 4000
-dfs = np.arange(-2e6, 2e6, 0.02e6)
+n_avg = 100  # The number of averages
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
-
-res_if_1 = rr1.f_opt - machine.local_oscillators.readout[0].freq
-res_if_2 = rr2.f_opt - machine.local_oscillators.readout[0].freq
+# The frequency sweep parameters with respect to the resonators resonance frequencies
+dfs = np.arange(-2e6, 2e6, 0.02e6)
 
 with program() as ro_freq_opt:
     n = declare(int)
@@ -54,22 +66,28 @@ with program() as ro_freq_opt:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
+            # Update the resonator frequencies
             update_frequency(rr1.name, df + res_if_1)
             update_frequency(rr2.name, df + res_if_2)
 
-            # ground iq blobs for both qubits
+            # Wait for the qubit to decay to the ground state
             wait(cooldown_time * u.ns)
             align()
+            # Measure the state of the resonators
             multiplexed_readout(I_g, None, Q_g, None, resonators=active_qubits, weights="rotated_")
 
-            # excited iq blobs for both qubits
             align()
             # Wait for thermalization again in case of measurement induced transitions
             wait(cooldown_time * u.ns)
+            # Play the x180 gate to put the qubits in the excited state
             play("x180", qb1.name + "_xy")
             play("x180", qb2.name + "_xy")
+            # Align the elements to measure after playing the qubit pulses.
             align()
+            # Measure the state of the resonator
             multiplexed_readout(I_e, None, Q_e, None, resonators=active_qubits, weights="rotated_")
+
+            # Derive the distance between the blobs for |g> and |e>
             for i in range(len(active_qubits)):
                 assign(DI, (I_e[i] - I_g[i]) * 100)
                 assign(DQ, (Q_e[i] - Q_g[i]) * 100)
@@ -85,21 +103,27 @@ with program() as ro_freq_opt:
 #####################################
 qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
+###########################
+# Run or Simulate Program #
+###########################
 simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, ro_freq_opt, SimulationConfig(11000))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, ro_freq_opt, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
-    # open quantum machine
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-    # run job
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
-    # fetch data
+    # Get results from QUA program
     results = fetching_tool(job, ["D1", "D2"])
+    # fetch data
     D1, D2 = results.fetch_all()
-
+    # Plot the results
     plt.subplot(211)
     plt.plot(dfs, D1)
     plt.xlabel("Readout detuning [MHz]")
@@ -113,8 +137,11 @@ else:
     plt.tight_layout()
     print(f"{rr1.name}: Shift readout frequency by {dfs[np.argmax(D1)]} Hz")
     print(f"{rr2.name}: Shift readout frequency by {dfs[np.argmax(D2)]} Hz")
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-    # machine.resonators[0].f_opt += dfs[np.argmax(D)]
-    # machine.resonators[1].f_opt += dfs[np.argmax(D)]
+
+    # Update the state
+    rr1.f_opt = dfs[np.argmax(D)] + res_if_1 + machine.local_oscillators.readout[rr1.LO_index].freq
+    rr2.f_opt = dfs[np.argmax(D)] + res_if_2 + machine.local_oscillators.readout[rr2.LO_index].freq
     # machine._save("quam_bootstrap_state.json")
