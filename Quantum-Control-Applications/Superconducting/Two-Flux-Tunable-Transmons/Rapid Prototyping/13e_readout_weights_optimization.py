@@ -116,7 +116,7 @@ qb = qb2
 n_avg = 1e4  # number of averages
 cooldown_time = 5 * max(qb1.T1, qb2.T1)
 # Set maximum readout duration for this scan and update the configuration accordingly
-readout_len = 7 * u.us
+readout_len = rr.readout_pulse_length
 ringdown_len = 0 * u.us
 update_readout_length(qb1.name, readout_len, ringdown_len)
 update_readout_length(qb2.name, readout_len, ringdown_len)

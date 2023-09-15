@@ -448,7 +448,7 @@ def build_config(quam: QuAM, qubits_list=active_qubits):
             },
             **{
                 f"opt_sine_weights_q{i}": {
-                    "cosine": convert_integration_weights(quam.resonators[i].opt_weights.weights_imagl),
+                    "cosine": convert_integration_weights(quam.resonators[i].opt_weights.weights_imag),
                     "sine": convert_integration_weights(quam.resonators[i].opt_weights.weights_real),
                 }
                 for i in range(len(quam.resonators))
