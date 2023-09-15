@@ -316,9 +316,9 @@ def play_sequence(sequence_list, number_of_gates):
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
 
 
-# ###################
-# # The QUA program #
-# ###################
+###################
+# The QUA program #
+###################
 with program() as rb:
     depth = declare(int)  # Current depth
     depth_target = declare(int)  # Play the sequence every depth target

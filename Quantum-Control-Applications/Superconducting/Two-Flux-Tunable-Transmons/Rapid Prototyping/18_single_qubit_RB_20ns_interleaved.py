@@ -20,7 +20,7 @@ The data is then post-processed to extract the single-qubit gate fidelity and er
 .
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
     - Set the desired flux bias.
@@ -33,16 +33,27 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
+#########################################
+# Set-up the machine and get the config #
+#########################################
+machine = QuAM("current_state.json", flat_data=False)
+
+# Build the config
+config = build_config(machine)
+
 ##############################
 # Program-specific variables #
 ##############################
+qubit = qb2  # The qubit under study
+res = rr2  # The associated resonator
+
+cooldown_time = 5 * max(qb1.T1, qb2.T1)
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth < 1000
@@ -334,7 +345,7 @@ def generate_sequence(interleaved_gate_index):
     return sequence, sequence_pairs_lengths, recovery_pairs
 
 
-def play_sequence(sequence_list, number_of_gates):
+def play_sequence(sequence_list, number_of_gates, qubit):
     i = declare(int)
     with for_(i, 0, i < number_of_gates, i + 1):
         with switch_(sequence_list[i], unsafe=True):
@@ -342,9 +353,9 @@ def play_sequence(sequence_list, number_of_gates):
                 with case_(ii):
                     for iii in range(len(single_qubit_gate_pairs[ii])):
                         if single_qubit_gate_pairs[ii][iii] == "I":
-                            wait(x180_len // 4, "qubit")
+                            wait(qubit.xy.pi_length // 4, qubit.name + "_xy")
                         else:
-                            play(single_qubit_gate_pairs[ii][iii], "qubit")
+                            play(single_qubit_gate_pairs[ii][iii], qubit.name + "_xy")
 
 
 ###################
@@ -368,6 +379,10 @@ with program() as rb:
         I_st = declare_stream()
         Q_st = declare_stream()
 
+    # Bring the active qubits to the maximum frequency point
+    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+
     # Loop over the different random sequences
     with for_(random_sequence_index, 0, random_sequence_index < num_of_sequences, random_sequence_index + 1):
         save(random_sequence_index, rnd_seq_ind_st)
@@ -389,21 +404,33 @@ with program() as rb:
                 assign(sequence_pairs[sequence_pairs_lengths[depth - 1] + 1], recovery_pairs[2 * depth - 1])
                 assign(seq_length, sequence_pairs_lengths[depth - 1] + 2)
 
-                # Averaging loop
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can be replaced by active reset
-                    wait(thermalization_time * u.ns, "resonator")
-                    # Align the two elements to play the sequence after qubit initialization
-                    align("resonator", "qubit")
+                    wait(cooldown_time, res.name)
+                    # Align the elements to play the sequence after qubit initialization
+                    align()
                     # The strict_timing ensures that the sequence will be played without gaps
                     with strict_timing_():
-                        play_sequence(sequence_pairs, seq_length)
-                    # Align the two elements to measure after playing the circuit.
-                    align("qubit", "resonator")
+                        # Play the random sequence of desired depth
+                        play_sequence(sequence_pairs, seq_length, qubit)
+                    # Align the elements to measure after playing the circuit.
+                    align()
+                    # Play through the 2nd resonator to be in the same condition as when the readout was optimized
+                    if res == rr1:
+                        measure("readout", rr2.name, None)
+                    else:
+                        measure("readout", rr1.name, None)
                     # Make sure you updated the ge_threshold and angle if you want to use state discrimination
-                    state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
-                    # Save the results to their respective streams
+                    measure(
+                        "readout",
+                        res.name,
+                        None,
+                        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    )
+                    # Make sure you updated the ge_threshold
                     if state_discrimination:
+                        assign(state, I > qubit.ge_threshold)
                         save(state, state_st)
                     else:
                         save(I, I_st)
@@ -440,20 +467,15 @@ with program() as rb:
                 "Q_avg"
             )
 
-
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
-###########################
-# Run or Simulate Program #
-###########################
 simulate = False
 
 if simulate:
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
     job = qmm.simulate(config, rb, simulation_config)
     job.get_simulated_samples().con1.plot()
 
@@ -535,14 +557,13 @@ else:
         f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
         f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
     )
-
     # Plots
     plt.figure()
     plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
     plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
     plt.xlabel("Number of Clifford gates")
     plt.ylabel("Sequence Fidelity")
-    plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
+    plt.title(f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})")
 
     # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

@@ -1,9 +1,11 @@
 """
-        SINGLE QUBIT RANDOMIZED BENCHMARKING (for gates >= 40ns)
+        SINGLE QUBIT INTERLEAVED RANDOMIZED BENCHMARKING (for gates >= 40ns)
 The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterwards.
 Each random sequence is derived on the FPGA for the maximum depth (specified as an input) and played for each depth
 asked by the user (the sequence is truncated to the desired depth). Each truncated sequence ends with the recovery gate,
 found at each step thanks to a preloaded lookup table (Cayley table), that will bring the qubit back to its ground state.
+In this version, a Clifford gate chosen by the user is interleaved between each random gate in the sequence. This allows
+to characterize the fidelity of a specific gate.
 
 If the readout has been calibrated and is good enough, then state discrimination can be applied to only return the state
 of the qubit. Otherwise, the 'I' and 'Q' quadratures are returned.
@@ -13,7 +15,7 @@ The data is then post-processed to extract the single-qubit gate fidelity and er
 .
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
     - Set the desired flux bias.
@@ -57,31 +59,58 @@ seed = 345324  # Pseudo-random number generator seed
 state_discrimination = False
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
+# index of the gate to interleave from the play_sequence() function defined below
+# Correspondence table:
+#  0: identity |  1: x180 |  2: y180
+# 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
+interleaved_gate_index = 2
 
 
 ###################################
 # Helper functions and QUA macros #
 ###################################
+def get_interleaved_gate(gate_index):
+    if gate_index == 0:
+        return "I"
+    elif gate_index == 1:
+        return "x180"
+    elif gate_index == 2:
+        return "y180"
+    elif gate_index == 12:
+        return "x90"
+    elif gate_index == 13:
+        return "-x90"
+    elif gate_index == 14:
+        return "y90"
+    elif gate_index == 15:
+        return "-y90"
+
+
 def power_law(power, a, b, p):
     return a * (p**power) + b
 
 
-def generate_sequence():
+def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
     current_state = declare(int)
     step = declare(int)
-    sequence = declare(int, size=max_circuit_depth + 1)
-    inv_gate = declare(int, size=max_circuit_depth + 1)
+    sequence = declare(int, size=2 * max_circuit_depth + 1)
+    inv_gate = declare(int, size=2 * max_circuit_depth + 1)
     i = declare(int)
     rand = Random(seed=seed)
 
     assign(current_state, 0)
-    with for_(i, 0, i < max_circuit_depth, i + 1):
+    with for_(i, 0, i < 2 * max_circuit_depth, i + 2):
         assign(step, rand.rand_int(24))
         assign(current_state, cayley[current_state * 24 + step])
         assign(sequence[i], step)
         assign(inv_gate[i], inv_list[current_state])
+        # interleaved gate
+        assign(step, interleaved_gate_index)
+        assign(current_state, cayley[current_state * 24 + step])
+        assign(sequence[i + 1], step)
+        assign(inv_gate[i + 1], inv_list[current_state])
 
     return sequence, inv_gate
 
@@ -186,28 +215,29 @@ with program() as rb:
     set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
 
     with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
-        sequence_list, inv_gate_list = generate_sequence()  # Generate the random sequence of length max_circuit_depth
-
+        # Generates the RB sequence with a gate interleaved after each Clifford
+        sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
+        # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
         assign(depth_target, 0)  # Initialize the current depth to 0
 
-        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+        with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
             # Only played the depth corresponding to target_depth
-            with if_((depth == 1) | (depth == depth_target)):
+            with if_((depth == 2) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can replace by active reset
                     wait(cooldown_time, res.name)
-                    # Align the two elements to play the sequence after qubit initialization
-                    align(res.name, qubit.name + "_xy")
+                    # Align the  elements to play the sequence after qubit initialization
+                    align()
                     # The strict_timing ensures that the sequence will be played without gaps
                     with strict_timing_():
                         # Play the random sequence of desired depth
                         play_sequence(sequence_list, depth, qubit)
-                    # Align the two elements to measure after playing the circuit.
-                    align(qubit.name + "_xy", res.name)
+                    # Align the elements to measure after playing the circuit.
+                    align()
                     # Play through the 2nd resonator to be in the same condition as when the readout was optimized
                     if res == rr1:
                         measure("readout", rr2.name, None)
@@ -227,9 +257,9 @@ with program() as rb:
                     if state_discrimination:
                         assign(state, I > qubit.ge_threshold)
                         save(state, state_st)
-
-                # Go to the next depth
-                assign(depth_target, depth_target + delta_clifford)
+                # always play the random gate followed by the interleaved gate. The factor of 2 is there to always
+                # play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
+                assign(depth_target, depth_target + 2 * delta_clifford)
             # Reset the last gate of the sequence back to the original Clifford gate
             # (that was replaced by the recovery gate at the beginning)
             assign(sequence_list[depth], saved_gate)
@@ -305,7 +335,7 @@ else:
         plt.plot(x, value_avg, marker=".")
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
-        plt.title("Single qubit RB")
+        plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
         plt.pause(0.1)
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
@@ -357,7 +387,7 @@ else:
     plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
     plt.xlabel("Number of Clifford gates")
     plt.ylabel("Sequence Fidelity")
-    plt.title(f"Single qubit RB for {qubit.name}")
+    plt.title(f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})")
 
     # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
