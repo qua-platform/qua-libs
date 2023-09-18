@@ -1,6 +1,5 @@
 # Two flux tunable transmons with the rapid prototyping
 
-<img align="right" src="Two Flux Tunable Transmon Setup.PNG" alt="drawing" width="400"/>
 
 ## Experimental setup and context
 
@@ -9,7 +8,7 @@ and a single readout transmission line.
 The readout pulses are sent through an IQ mixer and down-converted through an IQ mixer. 
 Qubit addressing is being done with IQ mixers.
 
-These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
+These files were tested in a real setup, but are given as-is with no guarantee.
 
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
 Use with care.
@@ -26,6 +25,11 @@ the values from the user-defined structure as shown below.
 
 A step-by-step [tutorial with best practices](https://github.com/qua-platform/qua-libs/tree/main/Tutorials/intro-to-quam-rapid-prototyping/README.md) details the basics of this framework and shows how to create your own QuAM (Quantum Abstract Machine).
 
+**Note that two quam examples are given for two different set-ups**:
+* 1 OPX+ connected to two flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 2 qubits](./quam_for_2_qubits).
+* A cluster of 2 OPX+ and 1 Octave connected to five flux tunable transmons with individuals qubit addressing and a common readout line: [QuAM for 5 qubits and octave](./quam_for_5_qubits_and_octave).
+
+You can just copy and paste the relevant files that correspond to your set-up to the main folder with the calibration scripts.
 
 ## Basic Files
 0. [Hello QUA](00_hello_qua.py) - A script used for playing with QUA.
@@ -39,10 +43,10 @@ is not saturated, correct for DC offsets and check the multiplexed readout level
     * [Resonator Spectroscopy vs readout power](06_resonator_spectroscopy_vs_amplitude.py) - Performs the resonator spectroscopy versus readout power to find the maximum desired readout amplitude.
     * [Resonator Spectroscopy vs flux](06_resonator_spectroscopy_vs_flux.py) - Performs the resonator spectroscopy versus flux to find the desired flux points.
 7. [Qubit Spectroscopy](07_qubit_spectroscopy.py) - Performs a 1D frequency sweep on the qubits, measuring the resonator.
-8. **Qubit spectroscopy versus flux:**
-    * [Qubit Spectroscopy vs flux](08_qubit_spectroscopy_vs_flux.py) - Performs the qubit spectroscopy versus individual flux, measuring the resonator.
-    * [Qubit Spectroscopy vs flux simultaneous](08_qubit_spectroscopy_vs_flux_simultaneous.py) - Performs the qubit spectroscopy while sweeping the two flux levels, measuring the resonator.
-9. [Rabi Chevron](09_rabi_chevron.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
+8.  * [Qubit Spectroscopy vs flux](08_qubit_spectroscopy_vs_flux.py) - Performs the qubit spectroscopy versus flux, measuring the resonators.
+9. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
+    * [duration vs frequency](09_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
+    * [amplitude vs frequency](09_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
 10. **1D Rabi** - Calibrate a $\pi$ pulse:
     * [Power Rabi](10_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse. Can also apply multiple pi pulses to better estimate the pi amplitude.
     * [Time Rabi](10_time_rabi.py) - A Rabi experiment sweeping the duration of the MW pulse.
@@ -50,23 +54,28 @@ is not saturated, correct for DC offsets and check the multiplexed readout level
 and the fidelity are good enough, gives the parameters needed for active reset.
 12. [Active Reset](12_IQ_blobs_active_reset.py) - Script for performing a single shot discrimination and active reset. ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
 13. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
-    * [Frequency optimization](13_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Frequency optimization](13a_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Amplitude optimization](13b_readout_amplitude_optimization.py) - The script measures the readout fidelity for different readout powers.
+    * [Duration optimization](13d_readout_duration_optimization.py) - The script performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as a function of readout time.
+    * [Integration Weights optimization](13e_readout_weights_optimization.py) - Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and calculates the normalized optimal readout weights.
 14. [T1](14_T1.py) - Measures T1.
 15. [Ramsey Chevron](15_ramsey_chevron.py) - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
-16. [Ramsey with virtual Z rotations](16_Ramsey.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
-17. [ALLXY](17_allxy.py) - Performs an ALLXY experiment to estimate gates imperfection
+16. [Ramsey with virtual Z rotations](16_ramsey.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
+17. [Echo](17_echo.py) - Measures T2 by apply an echo pulse.
+18. [ALLXY](18_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
-18. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
+19. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
-    * [Single Qubit Randomized Benchmarking](18_single_qubit_RB.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
-19. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
-    * [Cryoscope](19_cryoscope.py) - Performs the cryoscope measurement.
-20. ** SWAP spectroscopy ** by driving the energy exchange |10> <--> |01>:
-    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
-    * [iSWAP pulsed](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
-
-
-
-21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
-    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
-    * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 40ns](19c_single_qubit_RB_interleaved.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity  for gates longer than 40ns.
+    * [Single Qubit Randomized Benchmarking for gates > 40ns](19a_single_qubit_RB.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates longer than 40ns.
+    * [Interleaved Single Qubit Randomized Benchmarking for gates > 20ns](19d_single_qubit_RB_interleaved_20ns.py) - Performs a single qubit interleaved randomized benchmarking to measure a specific single qubit gate fidelity for gates as short as 20ns (currently limited to a depth of 1000 Clifford gates).
+    * [Single Qubit Randomized Benchmarking for gates > 20ns](19b_single_qubit_RB_20ns.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout for gates as short as 20ns (currently limited to a depth of 2600 Clifford gates).
+20. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
+    * [Cryoscope_amplitude_calibration](20_cryoscope_amplitude_calibration.py) - Performs the detuning vs flux pulse amplitude calibration prior to the cryoscope measurement. This gives the relation between the qubit detuning and flux pulse amplitude which should be quadratic.
+    * [Cryoscope](20_cryoscope.py) - Performs the cryoscope measurement.
+21. **SWAP spectroscopy** by driving the energy exchange |10> <--> |01>:
+    * [iSWAP](21a_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
+    * [iSWAP pulsed](21b_iSWAP_1ns.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+22. **CZ spectroscopy** by driving the energy exchange |11> <--> |02>:
+    * [CZ](22a_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
+    * [CZ pulsed](22b_CZ_1ns.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.

@@ -1,10 +1,8 @@
+from pathlib import Path
 import numpy as np
-from scipy.signal.windows import gaussian
 from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -14,30 +12,33 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"
-cluster_name = "my_cluster"
-qop_port = 80
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
+
+# Path to save data
+save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
 # Custom port mapping example
-port_mapping = [
-    {
-        ("con1", 1): ("octave1", "I1"),
-        ("con1", 2): ("octave1", "Q1"),
-        ("con1", 3): ("octave1", "I2"),
-        ("con1", 4): ("octave1", "Q2"),
-        ("con1", 5): ("octave1", "I3"),
-        ("con1", 6): ("octave1", "Q3"),
-        ("con1", 7): ("octave1", "I4"),
-        ("con1", 8): ("octave1", "Q4"),
-        ("con1", 9): ("octave1", "I5"),
-        ("con1", 10): ("octave1", "Q5"),
-    }
-]
+port_mapping = {
+    ("con1", 1): ("octave1", "I1"),
+    ("con1", 2): ("octave1", "Q1"),
+    ("con1", 3): ("octave1", "I2"),
+    ("con1", 4): ("octave1", "Q2"),
+    ("con1", 5): ("octave1", "I3"),
+    ("con1", 6): ("octave1", "Q3"),
+    ("con1", 7): ("octave1", "I4"),
+    ("con1", 8): ("octave1", "Q4"),
+    ("con1", 9): ("octave1", "I5"),
+    ("con1", 10): ("octave1", "Q5"),
+}
+# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
+# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1", clock="Internal", port_mapping="default")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1", clock="Internal", port_mapping=port_mapping)
 
 # Add the octaves
 octaves = [octave_1]
@@ -47,22 +48,26 @@ octave_config = octave_declaration(octaves)
 #####################
 # OPX configuration #
 #####################
-# Qubits
-qubit_IF = 50 * u.MHz
+
+#############################################
+#                  Qubits                   #
+#############################################
 qubit_LO = 7 * u.GHz
-mixer_qubit_g = 0.0
-mixer_qubit_phi = 0.0
+qubit_IF = 50 * u.MHz
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
 
-saturation_len = 1000
-saturation_amp = 0.1
+# Continuous wave
 const_len = 100
 const_amp = 0.1
+# Saturation_pulse
+saturation_len = 10 * u.us
+saturation_amp = 0.1
+# Square pi pulse
 square_pi_len = 100
 square_pi_amp = 0.1
-
+# Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
@@ -141,23 +146,40 @@ minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Resonator
-resonator_IF = 60 * u.MHz
+#############################################
+#                Resonators                 #
+#############################################
 resonator_LO = 5.5 * u.GHz
-mixer_resonator_g = 0.0
-mixer_resonator_phi = 0.0
+resonator_IF = 60 * u.MHz
+
+readout_len = 5000
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
 
-readout_len = 5000
-readout_amp = 0.2
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
+    weights = np.load("optimal_weights.npz")
+    opt_weights_real = convert_integration_weights(weights["weights_real"])
+    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+else:
+    opt_weights_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(1.0, readout_len)]
+    opt_weights_imag = [(1.0, readout_len)]
+    opt_weights_minus_real = [(1.0, readout_len)]
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
 
-
+#############################################
+#                  Config                   #
+#############################################
 config = {
     "version": 1,
     "controllers": {
@@ -353,27 +375,27 @@ config = {
             "sine": [(-1.0, readout_len)],
         },
         "opt_cosine_weights": {
-            "cosine": [(1.0, readout_len)],
-            "sine": [(0.0, readout_len)],
+            "cosine": opt_weights_real,
+            "sine": opt_weights_minus_imag,
         },
         "opt_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(1.0, readout_len)],
+            "cosine": opt_weights_imag,
+            "sine": opt_weights_real,
         },
         "opt_minus_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(-1.0, readout_len)],
+            "cosine": opt_weights_minus_imag,
+            "sine": opt_weights_minus_real,
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
-            "sine": [(-np.sin(rotation_angle), readout_len)],
+            "sine": [(np.sin(rotation_angle), readout_len)],
         },
         "rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), readout_len)],
+            "cosine": [(-np.sin(rotation_angle), readout_len)],
             "sine": [(np.cos(rotation_angle), readout_len)],
         },
         "rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), readout_len)],
+            "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
     },

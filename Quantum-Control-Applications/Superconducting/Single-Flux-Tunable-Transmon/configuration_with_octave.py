@@ -1,10 +1,8 @@
+from pathlib import Path
 import numpy as np
-from scipy.signal.windows import gaussian
 from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
 
 
 #######################
@@ -15,30 +13,33 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"
-cluster_name = "my_cluster"
-qop_port = 80
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
+
+# Path to save data
+save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
 # Custom port mapping example
-port_mapping = [
-    {
-        ("con1", 1): ("octave1", "I1"),
-        ("con1", 2): ("octave1", "Q1"),
-        ("con1", 3): ("octave1", "I2"),
-        ("con1", 4): ("octave1", "Q2"),
-        ("con1", 5): ("octave1", "I3"),
-        ("con1", 6): ("octave1", "Q3"),
-        ("con1", 7): ("octave1", "I4"),
-        ("con1", 8): ("octave1", "Q4"),
-        ("con1", 9): ("octave1", "I5"),
-        ("con1", 10): ("octave1", "Q5"),
-    }
-]
+port_mapping = {
+    ("con1", 1): ("octave1", "I1"),
+    ("con1", 2): ("octave1", "Q1"),
+    ("con1", 3): ("octave1", "I2"),
+    ("con1", 4): ("octave1", "Q2"),
+    ("con1", 5): ("octave1", "I3"),
+    ("con1", 6): ("octave1", "Q3"),
+    ("con1", 7): ("octave1", "I4"),
+    ("con1", 8): ("octave1", "Q4"),
+    ("con1", 9): ("octave1", "I5"),
+    ("con1", 10): ("octave1", "Q5"),
+}
+# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
+# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1", clock="Internal", port_mapping="default")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1", clock="Internal", port_mapping=port_mapping)
 
 # Add the octaves
 octaves = [octave_1]
@@ -48,11 +49,12 @@ octave_config = octave_declaration(octaves)
 #####################
 # OPX configuration #
 #####################
-# Qubits
-qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+
+#############################################
+#                  Qubits                   #
+#############################################
+qubit_LO = 7.4 * u.GHz
 qubit_IF = 110 * u.MHz
-mixer_qubit_g = 0.0
-mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -61,7 +63,7 @@ thermalization_time = 5 * qubit_T1
 const_len = 100
 const_amp = 0.1
 # Saturation_pulse
-saturation_len = 1000
+saturation_len = 10 * u.us
 saturation_amp = 0.1
 # Square pi pulse
 square_pi_len = 100
@@ -145,19 +147,44 @@ minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Resonator
-resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+#############################################
+#                Resonators                 #
+#############################################
+resonator_LO = 4.8 * u.GHz
 resonator_IF = 60 * u.MHz
-mixer_resonator_g = 0.0
-mixer_resonator_phi = 0.0
 
-readout_len = 20
-readout_amp = 0.25
+readout_len = 5000
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
 
-# Flux line
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
+    weights = np.load("optimal_weights.npz")
+    opt_weights_real = convert_integration_weights(weights["weights_real"])
+    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+else:
+    opt_weights_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(1.0, readout_len)]
+    opt_weights_imag = [(1.0, readout_len)]
+    opt_weights_minus_real = [(1.0, readout_len)]
+
+##########################################
+#               Flux line                #
+##########################################
+max_frequency_point = 0.0
+flux_settle_time = 100 * u.ns
+
+# Resonator frequency versus flux fit parameters according to resonator_spec_vs_flux
+# amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+
+# FLux pulse parameters
 const_flux_len = 200
 const_flux_amp = 0.45
 
@@ -166,16 +193,19 @@ rotation_angle = (0 / 180) * np.pi
 # Threshold for single shot g-e discrimination
 ge_threshold = 0.0
 
+#############################################
+#                  Config                   #
+#############################################
 config = {
     "version": 1,
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit
-                2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
-                5: {"offset": 0.0},  # flux line
+                1: {"offset": 0.0},  # I resonator
+                2: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
+                5: {"offset": max_frequency_point},  # flux line
             },
             "digital_outputs": {
                 1: {},
@@ -237,9 +267,9 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
-            "hold_offset": {"duration": 1},  # in clock cycles (4ns)
+            "sticky": {"analog": True, "duration": 50},
             "operations": {
                 "const": "const_flux_pulse",
             },
@@ -396,27 +426,27 @@ config = {
             "sine": [(-1.0, readout_len)],
         },
         "opt_cosine_weights": {
-            "cosine": [(1.0, readout_len)],
-            "sine": [(0.0, readout_len)],
+            "cosine": opt_weights_real,
+            "sine": opt_weights_minus_imag,
         },
         "opt_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(1.0, readout_len)],
+            "cosine": opt_weights_imag,
+            "sine": opt_weights_real,
         },
         "opt_minus_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(-1.0, readout_len)],
+            "cosine": opt_weights_minus_imag,
+            "sine": opt_weights_minus_real,
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
-            "sine": [(-np.sin(rotation_angle), readout_len)],
+            "sine": [(np.sin(rotation_angle), readout_len)],
         },
         "rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), readout_len)],
+            "cosine": [(-np.sin(rotation_angle), readout_len)],
             "sine": [(np.cos(rotation_angle), readout_len)],
         },
         "rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), readout_len)],
+            "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
     },

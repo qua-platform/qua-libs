@@ -32,17 +32,19 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+    - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from macros import ge_averaged_measurement
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery import baking
+from macros import ge_averaged_measurement
 from scipy import signal, optimize
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -63,9 +65,9 @@ def exponential_decay(x, a, t):
 
 
 def exponential_correction(A, tau, Ts=1e-9):
-    """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+    """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
-    :param A: amplitude of the exponential decay
+    :param A: amplitude of the exponential decay.
     :param tau: decay time of the exponential decay
     :param Ts: sampling period. Default is 1e-9
     :return: FIR and IIR taps
@@ -139,7 +141,7 @@ square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
 step_response_th = (
     [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting
+xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
@@ -191,8 +193,8 @@ with program() as cryoscope:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:
@@ -225,7 +227,7 @@ with program() as cryoscope:
 #  Open Communication with the QOP  #
 #####################################
 
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -287,6 +289,7 @@ else:
         qubit_coherence = np.abs(qubit_state)
 
         # Plots
+        plt.suptitle("Cryoscope with 1ns resolution")
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, I)
@@ -314,6 +317,7 @@ else:
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
+        plt.legend()
         plt.tight_layout()
         plt.pause(0.1)
 

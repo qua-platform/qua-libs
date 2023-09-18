@@ -20,27 +20,54 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
 
+####################
+# Helper functions #
+####################
+def update_readout_length(new_readout_length, ringdown_length):
+    config["pulses"]["readout_pulse"]["length"] = new_readout_length
+    config["integration_weights"]["cosine_weights"] = {
+        "cosine": [(1.0, new_readout_length + ringdown_length)],
+        "sine": [(0.0, new_readout_length + ringdown_length)],
+    }
+    config["integration_weights"]["sine_weights"] = {
+        "cosine": [(0.0, new_readout_length + ringdown_length)],
+        "sine": [(1.0, new_readout_length + ringdown_length)],
+    }
+    config["integration_weights"]["minus_sine_weights"] = {
+        "cosine": [(0.0, new_readout_length + ringdown_length)],
+        "sine": [(-1.0, new_readout_length + ringdown_length)],
+    }
+
+
 ###################
 # The QUA program #
 ###################
-
-division_length = 10  # in clock cycles
-number_of_divisions = int(readout_len / (4 * division_length))
+n_avg = 1e4  # number of averages
+# Set maximum readout duration for this scan and update the configuration accordingly
+readout_len = 5 * u.us  # Readout pulse duration
+ringdown_len = 0 * u.us  # integration time after readout pulse to observe the ringdown of the resonator
+update_readout_length(readout_len, ringdown_len)
+# Set the accumulated demod parameters
+division_length = 10  # Size of each demodulation slice in clock cycles
+number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
-n_avg = 1e4  # number of averages
+# Time axis for the plots at the end
+x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
-with program() as ro_weights_opt:
+
+with program() as ro_duration_opt:
     n = declare(int)
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
@@ -132,24 +159,23 @@ with program() as ro_weights_opt:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, ro_weights_opt, simulation_config)
+    job = qmm.simulate(config, ro_duration_opt, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ro_weights_opt)
+    job = qm.execute(ro_duration_opt)
     # Get results from QUA program
     results = fetching_tool(
         job,
@@ -172,29 +198,29 @@ else:
         # Plot results
         plt.subplot(221)
         plt.cla()
-        plt.plot(ground_trace.real, label="ground")
-        plt.plot(excited_trace.real, label="excited")
-        plt.xlabel("Clock cycles [4ns]")
-        plt.ylabel("demodulated traces [V]")
+        plt.plot(x_plot, ground_trace.real, label="ground")
+        plt.plot(x_plot, excited_trace.real, label="excited")
+        plt.xlabel("Readout duration [ns]")
+        plt.ylabel("demodulated traces [a.u.]")
         plt.title("Real part")
         plt.legend()
 
         plt.subplot(222)
         plt.cla()
-        plt.plot(ground_trace.imag, label="ground")
-        plt.plot(excited_trace.imag, label="excited")
-        plt.xlabel("Clock cycles [4ns]")
+        plt.plot(x_plot, ground_trace.imag, label="ground")
+        plt.plot(x_plot, excited_trace.imag, label="excited")
+        plt.xlabel("Readout duration [ns]")
         plt.title("Imaginary part")
         plt.legend()
 
         plt.subplot(212)
         plt.cla()
-        plt.plot(SNR, ".-")
-        plt.xlabel("Clock cycles [4ns]")
+        plt.plot(x_plot, SNR, ".-")
+        plt.xlabel("Readout duration [ns]")
         plt.ylabel("SNR")
         plt.title("SNR")
         plt.pause(0.1)
         plt.tight_layout()
-        # Get the optimal readout length in ns
-        opt_readout_length = int(np.round(np.argmax(SNR) * division_length / 4) * 4 * 4)
+    # Get the optimal readout length in ns
+    opt_readout_length = int(np.round(np.argmax(SNR) * division_length / 4) * 4 * 4)
     print(f"The optimal readout length is {opt_readout_length} ns (SNR={max(SNR)})")

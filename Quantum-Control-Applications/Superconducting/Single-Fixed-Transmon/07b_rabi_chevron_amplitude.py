@@ -16,34 +16,30 @@ Before proceeding to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-
-n_avg = 1000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
-# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude)
-a_min = 0
-a_max = 1.0
-n_a = 101
-amplitudes = np.linspace(a_min, a_max, n_a)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 100  # The number of averages
+# The frequency sweep parameters
+span = 5 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-span, +span + 0.1, df)  # The frequency vector
+# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+a_min = 0
+a_max = 1.0
+n_a = 51
+amplitudes = np.linspace(a_min, a_max, n_a)
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
@@ -57,9 +53,9 @@ with program() as rabi_amp_freq:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the pulse amplitude pre-factor
-            with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
+            with for_(*from_array(f, dfs)):  # QUA for_ loop for sweeping the frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f)
+                update_frequency("qubit", f + qubit_IF)
                 # Adjust the qubit pulse amplitude
                 play("x180" * amp(a), "qubit")
                 # Align the two elements to measure after playing the qubit pulse.
@@ -83,20 +79,19 @@ with program() as rabi_amp_freq:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).buffer(n_a).average().save("I")
-        Q_st.buffer(len(frequencies)).buffer(n_a).average().save("Q")
+        I_st.buffer(len(dfs)).buffer(n_a).average().save("I")
+        Q_st.buffer(len(dfs)).buffer(n_a).average().save("Q")
         n_st.save("iteration")
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -125,15 +120,16 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
+        plt.suptitle(f"Rabi chevron with LO={qubit_LO / u.GHz}GHz and IF={qubit_IF / u.MHz}MHz")
         plt.cla()
-        plt.title(r"Rabi chevron $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, amplitudes * x180_amp, R)
+        plt.title(r"$R=\sqrt{I^2 + Q^2}$")
+        plt.pcolor(dfs / u.MHz, amplitudes * x180_amp, R)
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Rabi chevron phase")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, amplitudes * x180_amp, np.unwrap(phase))
+        plt.title("Phase")
+        plt.pcolor(dfs / u.MHz, amplitudes * x180_amp, np.unwrap(phase))
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse amplitude [V]")
         plt.tight_layout()

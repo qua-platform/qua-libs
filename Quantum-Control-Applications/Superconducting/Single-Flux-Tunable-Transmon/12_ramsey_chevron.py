@@ -19,37 +19,34 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-n_avg = 1000  # Number of averaging loops
-
-cooldown_time = 5 * qubit_T1
-
-# Frequency sweep in Hz
-freq_span = 10 * u.MHz
-n_freq = 41
-freq_array = np.linspace(-freq_span / 2, freq_span / 2, n_freq) + qubit_IF
-
-# Idle time sweep (Needs to be a list of integers)
-tau_max = 4 * u.us
-d_tau = 101
-taus = np.arange(0, tau_max, d_tau)
-if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
-    raise Exception("Delay must be either 0 or an integer larger than 4.")
 ###################
 # The QUA program #
 ###################
+n_avg = 100  # Number of averaging loops
+
+# Frequency sweep in Hz
+freq_span = 10 * u.MHz
+df = 100 * u.kHz
+dfs = np.arange(-freq_span, freq_span, df)
+
+# Idle time sweep (Needs to be a list of integers) - in clock cycles (4ns)
+tau_max = 2000 // 4
+d_tau = 40 // 4
+taus = np.arange(0, tau_max, d_tau)
+if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
+    raise Exception("Delay must be either 0 or an integer larger than 4.")
+
 with program() as ramsey_freq_duration:
     n = declare(int)  # QUA variable for the averaging loop
-    f = declare(int)  # QUA variable for the qubit frequency
+    df = declare(int)  # QUA variable for the qubit detuning
     delay = declare(int)  # QUA variable for the idle time
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
@@ -59,9 +56,9 @@ with program() as ramsey_freq_duration:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(delay, taus)):  # QUA for_ loop for sweeping the idle time
-            with for_(*from_array(f, freq_array)):  # QUA for_ loop for sweeping the qubit frequency
+            with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the qubit frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f)
+                update_frequency("qubit", df + qubit_IF)
                 # Adjust the idle time
                 with if_(delay >= 4):
                     play("x90", "qubit")
@@ -89,20 +86,19 @@ with program() as ramsey_freq_duration:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(n_freq).buffer(len(taus)).average().save("I")
-        Q_st.buffer(n_freq).buffer(len(taus)).average().save("Q")
+        I_st.buffer(len(dfs)).buffer(len(taus)).average().save("I")
+        Q_st.buffer(len(dfs)).buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -123,24 +119,25 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
-        # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, readout_len)
-        R = np.abs(S)  # Amplitude
-        phase = np.angle(S)  # Phase
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
+        plt.suptitle("Ramsey chevron")
         plt.subplot(211)
         plt.cla()
-        plt.title(r"Ramsey chevron $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, taus * 4, R)
+        plt.title("I quadrature [V]")
+        plt.pcolor(dfs / u.MHz, taus * 4, I)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Ramsey chevron phase")
-        plt.pcolor((freq_array - qubit_IF) / u.MHz, taus * 4, np.unwrap(phase))
+        plt.title("Q quadrature [V]")
+        plt.pcolor(dfs / u.MHz, taus * 4, Q)
         plt.xlabel("Qubit detuning [MHz]")
         plt.ylabel("Idle time [ns]")
         plt.tight_layout()
         plt.pause(0.01)
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

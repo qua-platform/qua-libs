@@ -86,7 +86,6 @@ qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_co
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:

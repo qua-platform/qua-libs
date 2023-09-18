@@ -16,11 +16,12 @@ Prerequisites:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array, get_equivalent_log_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -28,12 +29,13 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
 n_avg = 1e4
-tau_min = 4  # in clock cycles
-tau_max = 2500  # in clock cycles
-d_tau = 10  # in clock cycles
-taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
+# Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+tau_min = 4
+tau_max = 20_000 // 4
+d_tau = 40 // 4
+taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
+# taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 21)  # Log sweep
 
 with program() as echo:
     n = declare(int)
@@ -76,19 +78,25 @@ with program() as echo:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        I_st.buffer(len(taus)).average().save("I")
-        Q_st.buffer(len(taus)).average().save("Q")
+        # If log sweep, then the swept values will be slightly different from np.logspace because of integer rounding in QUA.
+        # get_equivalent_log_array() is used to get the exact values used in the QUA program.
+        if np.isclose(np.std(taus[1:] / taus[:-1]), 0, atol=1e-3):
+            taus = get_equivalent_log_array(taus)
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
+        else:
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -110,6 +118,8 @@ else:
     while results.is_processing():
         # Fetch results
         I, Q, iteration = results.fetch_all()
+        # Convert the results into Volts
+        I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
@@ -137,7 +147,7 @@ else:
         plt.xlabel("Delay [ns]")
         plt.ylabel("I quadrature [V]")
         print(f"Qubit coherence time T2 = {qubit_T2:.0f} ns")
-        plt.legend((f"Coherence time = {qubit_T2:.0f} ns",))
-        plt.title("T2 measurement")
+        plt.legend((f"Coherence time T2 = {qubit_T2:.0f} ns",))
+        plt.title("Echo measurement")
     except (Exception,):
         pass

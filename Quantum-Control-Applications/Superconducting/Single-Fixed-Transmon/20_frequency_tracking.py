@@ -5,12 +5,13 @@ from configuration import *
 import matplotlib.pyplot as plt
 import time
 from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.plot import interrupt_on_close
 
 
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 # Open quantum machine
 qm = qmm.open_qm(config)

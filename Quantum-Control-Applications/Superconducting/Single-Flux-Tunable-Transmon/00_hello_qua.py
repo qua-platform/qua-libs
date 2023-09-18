@@ -2,17 +2,16 @@
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
 
-import time
-from qm import SimulationConfig
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
 
 
 ###################
 # The QUA program #
 ###################
-with program() as hello_QUA:
+with program() as hello_qua:
     a = declare(fixed)
     with infinite_loop_():
         with for_(a, 0, a < 1.1, a + 0.05):
@@ -22,7 +21,7 @@ with program() as hello_QUA:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -34,13 +33,11 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, hello_QUA, simulation_config)
+    job = qmm.simulate(config, hello_qua, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 else:
+    # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
-    job = qm.execute(hello_QUA)
-    # Execute does not block python! As this is an infinite loop, the job would run forever. In this case, we've put a 10
-    # seconds sleep and then halted the job.
-    time.sleep(10)
-    job.halt()
+    # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
+    job = qm.execute(hello_qua)

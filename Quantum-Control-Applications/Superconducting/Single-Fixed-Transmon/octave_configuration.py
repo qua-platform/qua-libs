@@ -16,7 +16,9 @@ elements_settings = [resonator, qubit]
 # Octave settings #
 ###################
 # Configure the Octave according to the elements settings and calibrate
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config, log_level="ERROR")
+qmm = QuantumMachinesManager(
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config, log_level="ERROR"
+)
 octave_settings(
     qmm=qmm,
     config=config,

@@ -2,13 +2,13 @@
         RABI CHEVRON (DURATION VS FREQUENCY)
 This sequence involves executing the qubit pulse (be it x180, square_pi, or another type) and measuring the state of
 the resonator across various qubit intermediate frequencies and pulse durations.
-Analyzing the results allows for determining the qubit and estimating the x180 pulse duration for a specified amplitude.
+Analyzing the results allows for determining the qubit and estimating the x180 pulse duration for a specific amplitude.
 
 Prerequisites:
-    -Determination of the resonator's resonance frequency when coupled to the qubit of interest (referred to as "resonator_spectroscopy").
-    -Calibration of the IQ mixer connected to the qubit drive line (whether external mixer or an Octave port).
-    -Identification of the approximate qubit frequency ("qubit_spectroscopy").
-    -Configuration of the qubit frequency and the desired pi pulse amplitude (labeled as "x180_amp").
+    - Determination of the resonator's resonance frequency when coupled to the qubit of interest (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether external mixer or an Octave port).
+    - Identification of the approximate qubit frequency ("qubit_spectroscopy").
+    - Configuration of the qubit frequency and the desired pi pulse amplitude (labeled as "x180_amp").
 
 Before proceeding to the next node:
     - Adjust the qubit frequency setting, labeled as "qubit_IF", in the configuration.
@@ -19,32 +19,28 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
-##############################
-# Program-specific variables #
-##############################
-
-n_avg = 1000  # The number of averages
-# The frequency sweep parameters
-f_min = 30 * u.MHz
-f_max = 70 * u.MHz
-df = 500 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
-# Pulse duration sweep (in clock cycles = 4ns)
-t_min = 4
-t_max = 250
-dt = 4
-durations = np.arange(t_min, t_max, dt)
 
 ###################
 # The QUA program #
 ###################
+n_avg = 50  # The number of averages
+# The frequency sweep parameters
+span = 20 * u.MHz
+df = 200 * u.kHz
+dfs = np.arange(-span, span + 0.1, df)
+# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+t_min = 4
+t_max = 1000
+dt = 10
+durations = np.arange(t_min, t_max, dt)
 
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
@@ -58,9 +54,9 @@ with program() as rabi_amp_freq:
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(t, durations)):  # QUA for_ loop for sweeping the pulse duration
-            with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
+            with for_(*from_array(f, dfs)):  # QUA for_ loop for sweeping the frequency
                 # Update the frequency of the digital oscillator linked to the qubit element
-                update_frequency("qubit", f)
+                update_frequency("qubit", f + qubit_IF)
                 # Play the qubit pulse with a variable duration (in clock cycles = 4ns)
                 play("x180", "qubit", duration=t)
                 # Align the two elements to measure after playing the qubit pulse.
@@ -84,20 +80,19 @@ with program() as rabi_amp_freq:
 
     with stream_processing():
         # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).buffer(len(durations)).average().save("I")
-        Q_st.buffer(len(frequencies)).buffer(len(durations)).average().save("Q")
+        I_st.buffer(len(dfs)).buffer(len(durations)).average().save("I")
+        Q_st.buffer(len(dfs)).buffer(len(durations)).average().save("Q")
         n_st.save("iteration")
 
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -126,15 +121,15 @@ else:
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.subplot(211)
+        plt.suptitle(f"Rabi chevron with LO={qubit_LO / u.GHz}GHz and IF={qubit_IF / u.MHz}MHz")
         plt.cla()
-        plt.title(r"Rabi chevron $R=\sqrt{I^2 + Q^2}$")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, durations * 4, R)
-        plt.xlabel("Frequency detuning [MHz]")
+        plt.title(r"$R=\sqrt{I^2 + Q^2}$")
+        plt.pcolor(dfs / u.MHz, durations * 4, R)
         plt.ylabel("Pulse duration [ns]")
         plt.subplot(212)
         plt.cla()
-        plt.title("Rabi chevron phase")
-        plt.pcolor((frequencies - qubit_IF) / u.MHz, durations * 4, np.unwrap(phase))
+        plt.title("Phase")
+        plt.pcolor(dfs / u.MHz, durations * 4, np.unwrap(phase))
         plt.xlabel("Frequency detuning [MHz]")
         plt.ylabel("Pulse duration [ns]")
         plt.tight_layout()

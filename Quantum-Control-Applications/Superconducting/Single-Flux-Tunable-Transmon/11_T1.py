@@ -15,11 +15,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array, get_equivalent_log_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -27,13 +28,13 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-
-n_avg = 1e4
-tau_min = 4  # in clock cycles
-tau_max = 10_000  # in clock cycles
-d_tau = 20  # in clock cycles
+n_avg = 1000
+# The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+tau_min = 16 // 4
+tau_max = 40_000 // 4
+d_tau = 100 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
-taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
+# taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
 with program() as T1:
     n = declare(int)  # QUA variable for the averaging loop
@@ -70,19 +71,25 @@ with program() as T1:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        I_st.buffer(len(taus)).average().save("I")
-        Q_st.buffer(len(taus)).average().save("Q")
+        # If log sweep, then the swept values will be slightly different from np.logspace because of integer rounding in QUA.
+        # get_equivalent_log_array() is used to get the exact values used in the QUA program.
+        if np.isclose(np.std(taus[1:] / taus[:-1]), 0, atol=1e-3):
+            taus = get_equivalent_log_array(taus)
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
+        else:
+            I_st.buffer(len(taus)).average().save("I")
+            Q_st.buffer(len(taus)).average().save("Q")
         n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -92,8 +99,9 @@ if simulate:
     job.get_simulated_samples().con1.plot()
 
 else:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
-
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
@@ -121,6 +129,9 @@ else:
         plt.pause(0.1)
         plt.tight_layout()
 
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
+
     # Fit the results to extract the qubit decay time T1
     try:
         from qualang_tools.plot.fitting import Fit
@@ -132,7 +143,7 @@ else:
         plt.xlabel("Delay [ns]")
         plt.ylabel("I quadrature [V]")
         print(f"Qubit decay time to update in the config: qubit_T1 = {qubit_T1:.0f} ns")
-        plt.legend((f"depletion time = {qubit_T1:.0f} ns",))
+        plt.legend((f"Relaxation time T1 = {qubit_T1:.0f} ns",))
         plt.title("T1 measurement")
     except (Exception,):
         pass

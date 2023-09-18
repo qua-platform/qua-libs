@@ -129,7 +129,7 @@ with program() as cryoscope:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host="192.168.88.10", port="80")
+qmm = QuantumMachinesManager()
 # Open quantum machine
 qm = qmm.open_qm(config)
 # Execute QUA program
@@ -156,7 +156,8 @@ while results.is_processing():
         phase[zeros_before_pulse : const_flux_len + zeros_before_pulse] / 2 / np.pi, 21, 2, deriv=1, delta=0.001
     )
     # Step response
-    step_response = detuning / np.average(detuning[-int(const_flux_len / 4)])
+    step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 4)])
+    step_response_volt = np.sqrt(detuning / np.average(detuning[-int(const_flux_len / 4)]))
     # plot results
     plt.subplot(121)
     plt.cla()
@@ -177,7 +178,7 @@ while results.is_processing():
 
 ## Fit step response with exponential
 [A, tau], _ = scipy.optimize.curve_fit(
-    expdecay, xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse], step_response
+    expdecay, xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse], step_response_volt
 )
 print(f"A: {A}\ntau: {tau}")
 
@@ -198,7 +199,7 @@ plt.rcParams.update({"font.size": 13})
 plt.figure()
 plt.suptitle("Cryoscope with filter implementation")
 plt.subplot(121)
-plt.plot(xplot, step_response, "o-", label="Data")
+plt.plot(xplot, step_response_volt, "o-", label="Data")
 plt.plot(xplot, expdecay(xplot, A, tau), label="Fit")
 plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
 plt.axhline(y=1.01)
@@ -212,7 +213,7 @@ plt.plot()
 plt.plot(no_filter, label="After Bias-T without filter")
 plt.plot(with_filter, label="After Bias-T with filter")
 plt.plot(pulse, label="Ideal WF")  # pulse
-plt.plot(list(step_response), label="Experimental data")
+plt.plot(list(step_response_volt), label="Experimental data")
 plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
 plt.xlabel("Flux pulse duration [ns]")
 plt.ylabel("Step response")

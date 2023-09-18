@@ -1,5 +1,5 @@
 """
-        CRYOSCOPE
+        CRYOSCOPE with 4ns granularity
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
 (implemented on the OPX) to pre-distort the flux pulses and improve the two-qubit gates fidelity.
 Since the flux line ends on the qubit chip, it is not possible to measure the flux pulse after propagation through the
@@ -23,7 +23,7 @@ The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains 
 the post-processing of the data.
 
 This version sweeps the flux pulse duration using real-time QUA, which means that the flux pulse can be arbitrarily long
-but the step must be larger than 1 clock cycle (4ns).
+but the step must be larger than 1 clock cycle (4ns) and the minimum pulse duration must be 4 clock cycles (16ns).
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -32,17 +32,19 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
+    - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from macros import ge_averaged_measurement
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal, optimize
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from macros import ge_averaged_measurement
+from scipy import signal, optimize
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -63,12 +65,12 @@ def exponential_decay(x, a, t):
 
 
 def exponential_correction(A, tau, Ts=1e-9):
-    """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+    """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
-    :param A: amplitude of the exponential decay
-    :param tau: decay time of the exponential decay
-    :param Ts: sampling period. Default is 1e-9
-    :return: FIR and IIR taps
+    :param A: amplitude of the exponential decay.
+    :param tau: decay time of the exponential decay.
+    :param Ts: sampling period. Default is 1e-9.
+    :return: FIR and IIR taps.
     """
     tau = tau * Ts
     k1 = Ts + 2 * tau * (A + 1)
@@ -110,8 +112,8 @@ n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = True
-# FLux pulse waveform generation
-durations = np.arange(4, const_flux_len // 4, 1)  # Flux pulse durations in clock cycles (4ns) - must be > 4.
+# Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
+durations = np.arange(3, const_flux_len // 4, 1)  # Starts at 3 clock-cycles to have the first point without pulse.
 flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
@@ -148,10 +150,12 @@ with program() as cryoscope:
                 align("qubit", "flux_line")
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
-                play("const", "flux_line", duration=t)
+                # Play the flux pulse only if t is larger than the minimum of 4 clock cycles (16ns)
+                with if_(t > 3):
+                    play("const", "flux_line", duration=t)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
-                wait((int(max(durations)) + 20) * u.ns, "qubit")
+                wait((int(max(durations)) * 4 + 20) * u.ns, "qubit")
                 # Play second X/2 or Y/2
                 with if_(flag):
                     play("x90", "qubit")
@@ -163,8 +167,8 @@ with program() as cryoscope:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:
@@ -197,7 +201,7 @@ with program() as cryoscope:
 #  Open Communication with the QOP  #
 #####################################
 
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -258,6 +262,7 @@ else:
         qubit_coherence = np.abs(qubit_state)
 
         # Plots
+        plt.suptitle("Cryoscope with 4ns resolution")
         plt.subplot(221)
         plt.cla()
         plt.plot(xplot, I)

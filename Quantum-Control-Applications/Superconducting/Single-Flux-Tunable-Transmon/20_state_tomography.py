@@ -11,13 +11,17 @@ Prerequisites:
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization) for better SNR.
     - Set the desired flux bias.
 """
-import matplotlib.pyplot as plt
-from qm import SimulationConfig
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
-import numpy as np
+from qualang_tools.results import progress_counter, fetching_tool
 from macros import readout_macro
+import matplotlib.pyplot as plt
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 ######################################
@@ -153,7 +157,7 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 # The QUA program #
 ###################
 
-n_avg = 100000
+n_avg = 10000
 
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop
@@ -203,7 +207,7 @@ with program() as state_tomography:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -242,3 +246,6 @@ else:
     # Zero order approximation
     rho = 0.5 * (I + state[0] * sigma_x + state[1] * sigma_y + state[2] * sigma_z)
     print(f"The density matrix is:\n{rho}")
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

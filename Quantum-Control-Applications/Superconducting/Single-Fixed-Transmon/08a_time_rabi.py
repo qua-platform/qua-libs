@@ -16,11 +16,12 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -29,11 +30,11 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-n_avg = 1000  # The number of averages
-# Pulse duration sweep (in clock cycles = 4ns)
-t_min = 4
-t_max = 250
-dt = 4
+n_avg = 100  # The number of averages
+# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+t_min = 16 // 4
+t_max = 2000 // 4
+dt = 4 // 4
 durations = np.arange(t_min, t_max, dt)
 
 with program() as time_rabi:
@@ -77,7 +78,7 @@ with program() as time_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -120,3 +121,16 @@ else:
         plt.ylabel("Q quadrature [V]")
         plt.pause(0.1)
         plt.tight_layout()
+    # Fit the results to extract the x180 length
+    try:
+        from qualang_tools.plot.fitting import Fit
+
+        fit = Fit()
+        plt.figure()
+        rabi_fit = fit.rabi(4 * durations, I, plot=True)
+        plt.title(f"Time Rabi")
+        plt.xlabel("Rabi pulse duration [ns]")
+        plt.ylabel("I quadrature [V]")
+        print(f"Optimal x180_len = {round(1 / rabi_fit['f'][0] / 2 / 4) * 4} ns for {x180_amp:} V")
+    except (Exception,):
+        pass

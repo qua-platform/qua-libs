@@ -19,28 +19,23 @@ Prerequisites:
     - Having calibrated the readout frequency, amplitude and duration and updated the configuration.
 
 Next steps before going to the next node:
-    - Update the integration weights in the configuration by adding
-    config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}
-    config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
-    config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
+    - Update the integration weights in the configuration by following the steps at the end of the script.
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
 
 
-###########
-# Helpers #
-###########
+####################
+# Helper functions #
+####################
 def divide_array_in_half(arr):
     split_index = len(arr) // 2
     arr1 = arr[:split_index]
@@ -62,40 +57,62 @@ def normalize_complex_array(arr):
     return rescaled_arr
 
 
-def plot_three_complex_arrays(arr1, arr2, arr3):
+def plot_three_complex_arrays(x, arr1, arr2, arr3):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-    ax1.plot(arr1.real, label="real")
-    ax1.plot(arr1.imag, label="imag")
+    ax1.plot(x, arr1.real, label="real")
+    ax1.plot(x, arr1.imag, label="imag")
     ax1.set_title("ground state")
-    ax1.set_xlabel("Clock cycles")
+    ax1.set_xlabel("Readout time [ns]")
     ax1.set_ylabel("demod traces [a.u.]")
     ax1.legend()
-    ax2.plot(arr2.real, label="real")
-    ax2.plot(arr2.imag, label="imag")
+    ax2.plot(x, arr2.real, label="real")
+    ax2.plot(x, arr2.imag, label="imag")
     ax2.set_title("excited state")
-    ax2.set_xlabel("Clock cycles")
+    ax2.set_xlabel("Readout time [ns]")
     ax2.set_ylabel("demod traces [a.u.]")
     ax2.legend()
-    ax3.plot(arr3.real, label="real")
-    ax3.plot(arr3.imag, label="imag")
+    ax3.plot(x, arr3.real, label="real")
+    ax3.plot(x, arr3.imag, label="imag")
     ax3.set_title("SNR")
-    ax3.set_xlabel("Clock cycles")
+    ax3.set_xlabel("Readout time [ns]")
     ax3.set_ylabel("subtracted traces [a.u.]")
     ax3.legend()
     plt.tight_layout()
     plt.show()
 
 
+def update_readout_length(new_readout_length, ringdown_length):
+    config["pulses"]["readout_pulse"]["length"] = new_readout_length
+    config["integration_weights"]["cosine_weights"] = {
+        "cosine": [(1.0, new_readout_length + ringdown_length)],
+        "sine": [(0.0, new_readout_length + ringdown_length)],
+    }
+    config["integration_weights"]["sine_weights"] = {
+        "cosine": [(0.0, new_readout_length + ringdown_length)],
+        "sine": [(1.0, new_readout_length + ringdown_length)],
+    }
+    config["integration_weights"]["minus_sine_weights"] = {
+        "cosine": [(0.0, new_readout_length + ringdown_length)],
+        "sine": [(-1.0, new_readout_length + ringdown_length)],
+    }
+
+
 ###################
 # The QUA program #
 ###################
-division_length = 1  # Size of each slice in clock cycles
-number_of_divisions = int(readout_len / (4 * division_length))  # Number of slices
+n_avg = 100  # number of averages
+# Set maximum readout duration for this scan and update the configuration accordingly
+readout_len = 5 * u.us  # Readout pulse duration
+ringdown_len = 0 * u.us  # integration time after readout pulse to observe the ringdown of the resonator
+update_readout_length(readout_len, ringdown_len)
+# Set the sliced demod parameters
+division_length = 10  # Size of each demodulation slice in clock cycles
+number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))  # Number of slices
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
-n_avg = 100  # number of averages
-
+# Time axis for the plots at the end
+x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
 with program() as opt_weights:
     n = declare(int)
@@ -129,7 +146,6 @@ with program() as opt_weights:
             save(IQ[ind], IQ_st)
             save(QI[ind], QI_st)
             save(QQ[ind], QQ_st)
-        wait(thermalization_time * u.ns, "resonator")
 
         align()  # Global align to play the pi pulse after thermalization
 
@@ -164,12 +180,11 @@ with program() as opt_weights:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -208,17 +223,55 @@ else:
     subtracted_trace = excited_trace - ground_trace
     norm_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
     # Plot the results
-    plot_three_complex_arrays(ground_trace, excited_trace, norm_subtracted_trace)
+    plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+    weights_real = list(norm_subtracted_trace.real)
+    weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
+    weights_imag = list(norm_subtracted_trace.imag)
+    weights_minus_real = list((-1) * norm_subtracted_trace.real)
+    # Save the weights for later use in the config
+    np.savez(
+        "optimal_weights",
+        weights_real=weights_real,
+        weights_minus_imag=weights_minus_imag,
+        weights_imag=weights_imag,
+        weights_minus_real=weights_minus_real,
+    )
 
-    weights_cos = convert_integration_weights(list(norm_subtracted_trace.real))
-    weights_minus_sin = convert_integration_weights(list((-1) * norm_subtracted_trace.imag))
-    weights_sin = convert_integration_weights(list(norm_subtracted_trace.imag))
-    weights_minus_cos = convert_integration_weights(list((-1) * norm_subtracted_trace.real))
-    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config
-    # config["integration_weights"]["opt_cos_weights"] = {"cosine": weights_cos, "sine": weights_minus_sin}
-    # config["integration_weights"]["opt_sin_weights"] = {"cosine": weights_sin, "sine": weights_cos}
-    # config["integration_weights"]["opt_minus_sin_weights"] = {"cosine": weights_minus_sin, "sine": weights_minus_cos}
-    # also need to add the new weights to readout_pulse
-    # config['pulses']['readout_pulse']['integration_weights'] = ['opt_cos', 'opt_sin', 'opt_minus_sin']
+    # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
+    # For this, you can just copy and paste the following lines into the "integration_weights" section:
+    # "opt_cosine_weights": {
+    #     "cosine": opt_weights_real,
+    #     "sine": opt_weights_minus_imag,
+    # },
+    # "opt_sine_weights": {
+    #     "cosine": opt_weights_imag,
+    #     "sine": opt_weights_real,
+    # },
+    # "opt_minus_sine_weights": {
+    #     "cosine": opt_weights_minus_imag,
+    #     "sine": opt_weights_minus_real,
+    # },
+
+    # also need to add the new weights to readout_pulse under the "integration_weights" section:
+    # "opt_cos": "opt_cosine_weights",
+    # "opt_sin": "opt_sine_weights",
+    # "opt_minus_sin": "opt_minus_sine_weights",
+
+    # And finally extract the weights from the saved file and reformat them using the integration_weights_tools.
+    # For this you just need to copy and paste the following lines at the beginning of the config, where the readout
+    # parameters are defined as Python variables:
+    # opt_weights = True
+    # if opt_weights:
+    #     from qualang_tools.config.integration_weights_tools import convert_integration_weights
+    #
+    #     weights = np.load("opt_weights.npz")
+    #     opt_weights_real = convert_integration_weights(weights["weights_real"])
+    #     opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    #     opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    #     opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    # else:
+    #     opt_weights_real = [(1.0, readout_len)]
+    #     opt_weights_minus_imag = [(1.0, readout_len)]
+    #     opt_weights_imag = [(1.0, readout_len)]
+    #     opt_weights_minus_real = [(1.0, readout_len)]

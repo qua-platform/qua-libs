@@ -1,14 +1,13 @@
+from pathlib import Path
 import numpy as np
-from scipy.signal.windows import gaussian
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter, fetching_tool
 
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -26,19 +25,25 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
-u = unit(coerce_to_integer=True)
+######################
+# Network parameters #
+######################
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
 
-qop_ip = "127.0.0.1"
-cluster_name = "my_cluster"
-qop_port = 80
+# Path to save data
+save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
+#####################
+# OPX configuration #
+#####################
 # Set octave_config to None if no octave are present
 octave_config = None
 
-# Qubits
+#############################################
+#                  Qubits                   #
+#############################################
 qubit_LO = 7.4 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_IF = 110 * u.MHz
 mixer_qubit_g = 0.0
@@ -51,7 +56,7 @@ thermalization_time = 5 * qubit_T1
 const_len = 100
 const_amp = 0.1
 # Saturation_pulse
-saturation_len = 1000
+saturation_len = 10 * u.us
 saturation_amp = 0.1
 # Square pi pulse
 square_pi_len = 100
@@ -135,20 +140,38 @@ minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-# Resonator
+#############################################
+#                Resonators                 #
+#############################################
 resonator_LO = 4.8 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
 
 readout_len = 5000
-readout_amp = 0.25
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
 
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
-# Flux line
+    weights = np.load("optimal_weights.npz")
+    opt_weights_real = convert_integration_weights(weights["weights_real"])
+    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
+    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
+    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+else:
+    opt_weights_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(1.0, readout_len)]
+    opt_weights_imag = [(1.0, readout_len)]
+    opt_weights_minus_real = [(1.0, readout_len)]
+
+##########################################
+#               Flux line                #
+##########################################
 max_frequency_point = 0.0
 flux_settle_time = 100 * u.ns
 
@@ -156,6 +179,7 @@ flux_settle_time = 100 * u.ns
 # amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
 
+# FLux pulse parameters
 const_flux_len = 200
 const_flux_amp = 0.45
 
@@ -164,6 +188,9 @@ rotation_angle = (0 / 180) * np.pi
 # Threshold for single shot g-e discrimination
 ge_threshold = 0.0
 
+#############################################
+#                  Config                   #
+#############################################
 config = {
     "version": 1,
     "controllers": {
@@ -171,9 +198,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
-                3: {"offset": max_frequency_point},  # flux line
-                9: {"offset": 0.0},  # I resonator
-                10: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
+                5: {"offset": max_frequency_point},  # flux line
             },
             "digital_outputs": {
                 1: {},
@@ -208,8 +235,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 9),
-                "Q": ("con1", 10),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -227,7 +254,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -235,9 +262,9 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
-            "hold_offset": {"duration": 1},  # in clock cycles (4ns)
+            "sticky": {"analog": True, "duration": 50},
             "operations": {
                 "const": "const_flux_pulse",
             },
@@ -394,27 +421,27 @@ config = {
             "sine": [(-1.0, readout_len)],
         },
         "opt_cosine_weights": {
-            "cosine": [(1.0, readout_len)],
-            "sine": [(0.0, readout_len)],
+            "cosine": opt_weights_real,
+            "sine": opt_weights_minus_imag,
         },
         "opt_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(1.0, readout_len)],
+            "cosine": opt_weights_imag,
+            "sine": opt_weights_real,
         },
         "opt_minus_sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(-1.0, readout_len)],
+            "cosine": opt_weights_minus_imag,
+            "sine": opt_weights_minus_real,
         },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
-            "sine": [(-np.sin(rotation_angle), readout_len)],
+            "sine": [(np.sin(rotation_angle), readout_len)],
         },
         "rotated_sine_weights": {
-            "cosine": [(np.sin(rotation_angle), readout_len)],
+            "cosine": [(-np.sin(rotation_angle), readout_len)],
             "sine": [(np.cos(rotation_angle), readout_len)],
         },
         "rotated_minus_sine_weights": {
-            "cosine": [(-np.sin(rotation_angle), readout_len)],
+            "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
     },

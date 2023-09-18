@@ -19,12 +19,13 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
-from macros import readout_macro
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from macros import readout_macro
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -33,13 +34,16 @@ warnings.filterwarnings("ignore")
 # The QUA program #
 ###################
 
-n_avg = 1000
+n_avg = 100
 
 # Scan the DRAG coefficient pre-factor
-a_min = 0.0
+a_min = -1.0
 a_max = 1.0
 da = 0.1
 amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
+
+# Check that the DRAG coefficient is not 0
+assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
 
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
@@ -101,7 +105,7 @@ with program() as drag:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -128,6 +132,9 @@ else:
     while results.is_processing():
         # Fetch results
         I1, I2, Q1, Q2, state1, state2, iteration = results.fetch_all()
+        # Convert the results into Volts
+        I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+        I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
@@ -136,13 +143,13 @@ else:
         plt.cla()
         plt.plot(amps * drag_coef, I1, label="x180y90")
         plt.plot(amps * drag_coef, I2, label="y180x90")
-        plt.ylabel("I [a.u.]")
+        plt.ylabel("I [V]")
         plt.legend()
         plt.subplot(312)
         plt.cla()
         plt.plot(amps * drag_coef, Q1, label="x180y90")
         plt.plot(amps * drag_coef, Q2, label="y180x90")
-        plt.ylabel("Q [a.u.]")
+        plt.ylabel("Q [V]")
         plt.legend()
         plt.subplot(313)
         plt.cla()

@@ -14,14 +14,16 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the readout frequency, labeled as "resonator_IF", in the configuration.
 """
+
 from qm.qua import *
-from qm import SimulationConfig
 from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import SimulationConfig
 from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import signal
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
+from scipy import signal
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -34,7 +36,7 @@ n_avg = 1000  # The number of averages
 # The frequency sweep parameters
 f_min = 30 * u.MHz
 f_max = 70 * u.MHz
-df = 50 * u.kHz
+df = 100 * u.kHz
 frequencies = np.arange(f_min, f_max + 0.1, df)  # The frequency vector (+ 0.1 to add f_max to frequencies)
 
 with program() as resonator_spec:
@@ -75,7 +77,7 @@ with program() as resonator_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #
@@ -85,8 +87,9 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, resonator_spec, simulation_config)
-    plt.figure()
+    # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -109,7 +112,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle("Resonator spectroscopy")
+        plt.suptitle(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
         ax1 = plt.subplot(211)
         plt.cla()
         plt.plot(frequencies / u.MHz, R, ".")
@@ -127,11 +130,10 @@ else:
 
         fit = Fit()
         plt.figure()
-        res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies, R, plot=True)
+        res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies / u.MHz, R, plot=True)
+        plt.title(f"Resonator spectroscopy - LO = {resonator_LO / u.GHz} GHz")
         plt.xlabel("Intermediate frequency [MHz]")
-        plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [V]")
-        print(
-            f"Bare resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0] / u.MHz:.6f} MHz"
-        )
+        plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
+        print(f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz")
     except (Exception,):
         pass

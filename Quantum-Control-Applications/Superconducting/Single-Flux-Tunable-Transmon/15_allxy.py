@@ -17,10 +17,11 @@ Prerequisites:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
-import matplotlib.pyplot as plt
-import numpy as np
 from qm import SimulationConfig
+from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+import matplotlib.pyplot as plt
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -106,7 +107,7 @@ with program() as ALL_XY:
     with for_(n, 0, n < n_avg, n + 1):
         # Get a value from the pseudo-random number generator on the OPX FPGA
         assign(r_, r.rand_int(len(sequence)))
-        # # Wait for the qubit to decay to the ground state - Can be replaced by active reset
+        # Wait for the qubit to decay to the ground state - Can be replaced by active reset
         wait(thermalization_time * u.ns, "qubit")
         # Plays a random XY sequence
         # The switch/case method allows to map a python index (here "i") to a QUA number (here "r_") in order to switch
@@ -131,12 +132,11 @@ with program() as ALL_XY:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -182,3 +182,6 @@ else:
         plt.legend()
         plt.tight_layout()
         plt.pause(0.1)
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()

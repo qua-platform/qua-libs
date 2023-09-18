@@ -37,26 +37,30 @@ is not saturated, correct for DC offsets and check the multiplexed readout level
 and the fidelity are good enough, gives the parameters needed for active reset.
 12. [Active Reset](12_IQ_blobs_active_reset.py) - Script for performing a single shot discrimination and active reset. ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
 13. **Readout optimization** - The optimal separation between the |g> and |e> blobs lies in a phase spaced of amplitude, duration, and frequency of the readout pulse:
-    * [Frequency optimization](13_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Frequency optimization](13a_readout_frequency_optimization.py) - The script performs frequency scanning and from the results calculates the SNR between |g> and |e> blobs. As a result you can find the optimal frequency for discrimination.
+    * [Amplitude optimization](13b_readout_amp_optimization.py) - The script measures the readout fidelity for different readout powers.
+    * [Duration optimization](13c_readout_duration_optimization.py) - The script performs accumulated demodulation for a given frequency, amplitude, and total duration of readout pulse, and plots the SNR as a function of readout time.
+    * [Integration Weights optimization](13d_readout_weight_optimization.py) -Performs sliced.demodulation to obtain the trajectories of the |e> and |g> states, and calculates the normalized optimal readout weights.
 14. [T1](14_T1.py) - Measures T1.
 15. [Ramsey Chevron](15_ramsey_chevron.py) - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
 16. [Ramsey with virtual Z rotations](16_Ramsey.py) - Perform a Ramsey measurement by scanning the idle time and dephasing the second pi/2 pulse to apply a virtual Z rotation.
-17. [ALLXY](17_allxy.py) - Performs an ALLXY experiment to estimate gates imperfection
+17. [ALL XY](17_allxy.py) - Performs an ALL XY experiment to estimate gates imperfection
 (see [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details).
 18. **Single Qubit Randomized Benchmarking** - Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate
 fidelity.
     * [Single Qubit Randomized Benchmarking](18_single_qubit_RB.py) - Performs a single qubit randomized benchmarking to measure the single qubit gate fidelity with or without single shot readout.
 19. **Cryoscope**: Cryoscope measurement to estimate the distortion on the flux lines based on [Appl. Phys. Lett. 116, 054001 (2020)](https://pubs.aip.org/aip/apl/article/116/5/054001/38884/Time-domain-characterization-and-correction-of-on)
-    * [Cryoscope](19_cryoscope.py) - Performs the cryoscope measurement.
+    * [Cryoscope with 1ns resolution](19_cryoscope_1ns.py) - Performs the cryoscope measurement with 1ns resolution using the baking tool, but limited to 260ns flux pulses.
+    * [Cryoscope with 4ns resolution](19_cryoscope_4ns.py) - Performs the cryoscope measurement with 4ns granularity but no limitation of the flux pulse duration. ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
 20. ** SWAP spectroscopy ** by driving the energy exchange |10> <--> |01>:
-    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the OPX dc offset.
-    * [iSWAP pulsed](20_iSWAP_pulsed.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+    * [iSWAP](20_iSWAP.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with a 4ns granularity.
+    * [iSWAP pulsed](20_iSWAP_1ns.py) - Performs the iSWAP spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
 
 
 
-21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |02>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
-    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the OPX dc offset.
-    * [CZ pulsed](21_CZ_pulsed.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
+21. ** CZ spectroscopy ** by driving the energy exchange |11> <--> |20>: ![care](https://img.shields.io/badge/to_be_tested_on_a_real_device-use_with_care-red)
+    * [CZ](21_CZ.py) - Performs the CZ spectroscopy by scanning the flux pulse with a 4ns granularity.
+    * [CZ pulsed](21_CZ_1ns.py) - Performs the CZ spectroscopy by scanning the flux pulse with 1ns resolution using the baking tool.
     
 
 ## Use Cases
@@ -64,7 +68,7 @@ fidelity.
 These folders contain various examples of protocols made with the OPX, including the results. The scripts are tailored to
 a specific setup and would require changes to run on different setups. Current use-cases:
 
-* [Two qubit gate optimization with cryoscope](./Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
+* [Two qubit gate optimization with cryoscope](../Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
 The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse 
 distortion using Cryoscope and the OPX IIR and FIR filters..
 

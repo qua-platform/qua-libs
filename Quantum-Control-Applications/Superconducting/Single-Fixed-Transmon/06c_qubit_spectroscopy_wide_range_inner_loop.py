@@ -13,14 +13,15 @@ Prerequisites:
 Before proceeding to the next node:
     - Modify the qubit frequency settings, labeled as "qubit_IF" and "qubit_LO", in the configuration.
 """
-from time import sleep
+
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
-from scipy import signal
-import matplotlib.pyplot as plt
-import numpy as np
+from qualang_tools.results import progress_counter
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
+from time import sleep
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -89,7 +90,7 @@ with program() as qubit_spec:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 
 def wait_until_job_is_paused(current_job):
@@ -152,7 +153,7 @@ for i in range(n_avg):
     plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
     plt.subplot(212, share=ax1)
     plt.cla()
-    plt.plot(frequency / u.MHz, signal.detrend(np.unwrap(phase)), ".")
+    plt.plot(frequency / u.MHz, phase, ".")
     plt.ylabel("Phase [rad]")
     plt.pause(0.1)
     plt.tight_layout()

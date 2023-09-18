@@ -1,44 +1,33 @@
 """
         CRYOSCOPE
-The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
-(implemented on the OPX) to pre-distort the flux pulses and improve the two-qubit gates fidelity.
+The goal of this protocol is to measure the frequency shift induced by a flux pulse of a given duration.
+
 Since the flux line ends on the qubit chip, it is not possible to measure the flux pulse after propagation through the
-fridge. The idea is to exploit the flux dependency of the qubit frequency, measured with a modified Ramsey sequence, to
-estimate the flux amplitude received by the qubit as a function of time.
+fridge.
 
 The sequence consists of a Ramsey sequence ("x90" - idle time - "x90" or "y90") with a fixed dephasing time.
 A flux pulse with varying duration is played during the idle time. The Sx and Sy components of the Bloch vector are
 measured by alternatively closing the Ramsey sequence with a "x90" or "y90" gate in order to extract the qubit dephasing
  as a function of the flux pulse duration.
 
-The results are then post-processed to retrieve the step function of the flux line which is fitted with an exponential
-function. The corresponding exponential parameters are then used to derive the FIR and IIR filter taps that will
-compensate for the distortions introduced by the flux line (wiring, bias-tee...).
-Such digital filters are then implemented on the OPX.
-
 The protocol is inspired from https://doi.org/10.1063/1.5133894, which contains more details about the sequence and
 the post-processing of the data.
 
-This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
-a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
-resolution (do 2ns steps instead of 1ns) or use the 4ns version (cryoscope_4ns.py).
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
-
-Next steps before going to the next node:
-    - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
 """
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from qm import SimulationConfig, LoopbackInterface
+from qm import SimulationConfig
 from configuration import *
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
-import numpy as np
-from qualang_tools.loops import from_array
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -50,7 +39,7 @@ n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
-# Flux amplitude sweep (as a pre-factor of the flux amplitude)
+# Flux amplitude sweep (as a pre-factor of the flux amplitude) - must be within [-2; 2)
 flux_amp_array = np.linspace(0, -0.2, 101)
 
 with program() as cryoscope_amp:
@@ -130,7 +119,7 @@ with program() as cryoscope_amp:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -162,6 +151,8 @@ else:
             I, Q, state, iteration = results.fetch_all()
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
         else:
@@ -175,32 +166,34 @@ else:
             state = (phase - phase_g) / (phase_e - phase_g)
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
+            # Convert the results into Volts
+            I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
             qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
 
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
         # qubit_phase = qubit_phase - qubit_phase[-1]
-        detuning = qubit_phase / (2 * np.pi * const_flux_len) * 1000
+        detuning = qubit_phase / (2 * np.pi * const_flux_len / u.s)
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
         # Quadratic fit of detuning versus flux pulse amplitude
-        pol = np.polyfit(xplot, qubit_phase, deg=2)
+        pol = np.polyfit(xplot, detuning, deg=2)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plots
         plt.subplot(221)
         plt.cla()
-        plt.plot(xplot, np.sqrt(I**2 + Q**2))
+        plt.plot(xplot, I)
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Readout amplitude [a.u.]")
+        plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
         plt.subplot(222)
         plt.cla()
-        plt.plot(xplot, phase)
+        plt.plot(xplot, Q)
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Readout phase [rad]")
+        plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
         plt.subplot(223)
@@ -212,10 +205,10 @@ else:
 
         plt.subplot(224)
         plt.cla()
-        plt.plot(xplot, detuning, "bo")
-        plt.plot(xplot, np.polyval(pol, xplot), "r-")
+        plt.plot(xplot, detuning / u.MHz, "bo")
+        plt.plot(xplot, np.polyval(pol, xplot) / u.MHz, "r-")
         plt.xlabel("Flux pulse amplitude [V]")
-        plt.ylabel("Averaged detuning [Hz]")
+        plt.ylabel("Averaged detuning [MHz]")
         plt.legend(("data", "Fit"), loc="upper right")
         plt.tight_layout()
         plt.pause(0.1)
