@@ -269,7 +269,7 @@ config = {
             "singleInput": {
                 "port": ("con1", 5),
             },
-            "sticky": {"analog": True, "duration": 50},
+            "sticky": {"analog": True, "duration": 20},
             "operations": {
                 "const": "const_flux_pulse",
             },
