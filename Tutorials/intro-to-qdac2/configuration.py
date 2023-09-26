@@ -1,4 +1,4 @@
-readout_len = 1000  # Readout length in ns
+readout_len = 10_000  # Readout length in ns
 config = {
     "version": 1,
     "controllers": {
@@ -8,7 +8,8 @@ config = {
                 2: {"offset": +0.0},  # in V
             },
             "digital_outputs": {
-                1: {}
+                1: {},
+                2: {}
             },
             "analog_inputs": {
                 1: {"offset": +0.0},  # in V
@@ -16,15 +17,8 @@ config = {
         },
     },
     "elements": {
-        "gate": {
-            "singleInput": {"port": ("con1", 1)},
-            "sticky": {"analog": True, "duration": 100},
-            "operations": {
-                "step": "constPulse",
-            },
-        },
         "qdac_trigger1": {
-            "singleInput": {"port": ("con1", 2)},
+            "singleInput": {"port": ("con1", 2)},  # Not used
             'digitalInputs': {
                 'ext1': {
                     'port': ('con1', 1),
@@ -33,7 +27,20 @@ config = {
                 },
             },
             "operations": {
-                "trig": "constPulse",
+                "trig": "const_pulse",
+            },
+        },
+        "qdac_trigger2": {
+            "singleInput": {"port": ("con1", 2)},  # Not used
+            'digitalInputs': {
+                'ext2': {
+                    'port': ('con1', 2),
+                    'delay': 0,
+                    'buffer': 0,
+                },
+            },
+            "operations": {
+                "trig": "const_pulse",
             },
         },
         "readout_element": {
@@ -50,7 +57,7 @@ config = {
         },
     },
     "pulses": {
-        "constPulse": {
+        "const_pulse": {
             "operation": "control",
             "length": 1000,  # in ns
             "waveforms": {"single": "const_wf"},
@@ -69,7 +76,7 @@ config = {
         },
     },
     "waveforms": {
-        "const_wf": {"type": "constant", "sample": 0.2},  # in V
+        "const_wf": {"type": "constant", "sample": 0.0},  # in V
         "zero_wf": {"type": "constant", "sample": 0.0},  # in V
     },
     "digital_waveforms": {
