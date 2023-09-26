@@ -6,12 +6,20 @@ from configuration import *
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 ######################################
 #          HELPER FUNCTIONS          #
 ######################################
 # QDAC2 instrument class
-class QDACII():
-    def __init__(self, communication_type:str, IP_address:str = None, port:int = 5025, USB_device:int = None, lib:str = '@py'):
+class QDACII:
+    def __init__(
+        self,
+        communication_type: str,
+        IP_address: str = None,
+        port: int = 5025,
+        USB_device: int = None,
+        lib: str = "@py",
+    ):
         """
         Open the communication to a QDAC2 instrument with python. The communication can be enabled via either Ethernet or USB.
 
@@ -29,8 +37,8 @@ class QDACII():
         elif communication_type == "USB":
             self._visa = rm.open_resource(f"ASRL{USB_device}::INSTR")
 
-        self._visa.write_termination = '\n'
-        self._visa.read_termination = '\n'
+        self._visa.write_termination = "\n"
+        self._visa.read_termination = "\n"
         print(self._visa.query("*IDN?"))
         print(self._visa.query("syst:err:all?"))
 
@@ -46,8 +54,11 @@ class QDACII():
     def __exit__(self):
         self.close()
 
+
 # load list of voltages to the relevant QDAC2 channel
-def load_voltage_list(qdac, channel:int, dwell:float, trigger_port:str, output_range:str, output_filter:str, voltage_list:list):
+def load_voltage_list(
+    qdac, channel: int, dwell: float, trigger_port: str, output_range: str, output_filter: str, voltage_list: list
+):
     """
     Configure a QDAC2 channel to play a set of voltages from a given list and step through it according to an external trigger given by an OPX digital marker, using pyvisa commands.
 
@@ -78,7 +89,10 @@ def load_voltage_list(qdac, channel:int, dwell:float, trigger_port:str, output_r
     qdac.write(f"sour{channel}:rang {output_range}")
     # Set the channel output filter
     qdac.write(f"sour{channel}:filt {output_filter}")
-    print(f"Set-up QDAC2 channel {channel} to step voltages from a list of {len(voltage_list)} items on trigger events from the {trigger_port} port with a {qdac.query(f'sour{channel}:dc:list:dwell?')} s dwell time.")
+    print(
+        f"Set-up QDAC2 channel {channel} to step voltages from a list of {len(voltage_list)} items on trigger events from the {trigger_port} port with a {qdac.query(f'sour{channel}:dc:list:dwell?')} s dwell time."
+    )
+
 
 ######################################
 #        SET UP THE EXPERIMENT       #
@@ -119,7 +133,15 @@ with program() as qdac_1d_sweep:
         data_st.buffer(len(voltage_values)).average().save("data")
 
 # Set up the qdac and load the voltage list
-load_voltage_list(qdac, channel=1, dwell=2e-6, trigger_port="ext1", output_range="low", output_filter="med", voltage_list=voltage_values)
+load_voltage_list(
+    qdac,
+    channel=1,
+    dwell=2e-6,
+    trigger_port="ext1",
+    output_range="low",
+    output_filter="med",
+    voltage_list=voltage_values,
+)
 
 ######################################
 #         RUN THE EXPERIMENT         #

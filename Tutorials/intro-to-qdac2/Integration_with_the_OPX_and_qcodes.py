@@ -30,7 +30,7 @@ opx_instrument = OPX(config, name="OPX_demo", host="172.16.33.100", cluster_name
 station.add_component(opx_instrument)
 
 # Create the QDAC2 instrument class
-qdac2 = QDAC2.QDac2('QDAC', visalib='@py', address=f'TCPIP::172.16.33.100::5025::SOCKET')
+qdac2 = QDAC2.QDac2("QDAC", visalib="@py", address=f"TCPIP::172.16.33.100::5025::SOCKET")
 # Add the QDAC2 instrument to the qcodes station
 station.add_component(qdac2)
 
@@ -47,6 +47,7 @@ qdac_offset = 3.752
 """
 Define a QUA program that will trigger the QDAC and measure the output voltage with some averaging
 """
+
 
 ### OPX section
 def qdac_1d_sweep_fast(simulate=False):
@@ -74,6 +75,7 @@ def qdac_1d_sweep_fast(simulate=False):
             # Average all the data and save the values into "data".
             data_st.buffer(len(voltage_values1)).buffer(n_avg).map(FUNCTIONS.average()).save_all("data")
     return prog
+
 
 # Pass the readout length (in ns) to the class to convert the demodulated/integrated data into Volts
 opx_instrument.readout_pulse_length(readout_len)
@@ -113,6 +115,7 @@ print(f"Elapsed time: {time() - start_time:.2f} s")
 Define a QUA program that will measure the output voltage with single point averaging while qcodes will step the QDAC2 voltage
 """
 
+
 ### OPX section
 def qdac_1d_sweep_slow(simulate=False):
     with program() as prog:
@@ -137,6 +140,7 @@ def qdac_1d_sweep_slow(simulate=False):
             data_st.buffer(n_avg).map(FUNCTIONS.average()).save_all("data")
     return prog
 
+
 # Pass the readout length (in ns) to the class to convert the demodulated/integrated data into Volts
 opx_instrument.readout_pulse_length(readout_len)
 # Add the custom sequence to the OPX
@@ -154,7 +158,11 @@ experiment2 = load_or_create_experiment("Slow_1D_sweep_do1d", sample_name)
 
 start_time = time()
 do1d(
-    Vg1, voltage_values1[0], voltage_values1[-1], len(voltage_values1), 0.001,
+    Vg1,
+    voltage_values1[0],
+    voltage_values1[-1],
+    len(voltage_values1),
+    0.001,
     opx_instrument.resume,
     opx_instrument.get_measurement_parameter(),
     enter_actions=[opx_instrument.run_exp],
@@ -187,6 +195,7 @@ ch2 = qdac2.channel(2)
 ch2.output_mode(range="low", filter="med")
 Vg2 = ch2.dc_constant_V  # Define the voltage parameter for this channel
 
+
 ### OPX section
 def qdac_opx_combined(simulate=False):
     with program() as prog:
@@ -216,6 +225,7 @@ def qdac_opx_combined(simulate=False):
             data_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(voltage_values1)).save_all("data")
     return prog
 
+
 # Pass the readout length (in ns) to the class to convert the demodulated/integrated data into Volts
 opx_instrument.readout_pulse_length(readout_len)
 # Add the custom sequence to the OPX
@@ -228,7 +238,11 @@ experiment2 = load_or_create_experiment("Combined_2D_sweep_do1d", sample_name)
 
 start_time = time()
 do1d(
-    Vg2, voltage_values2[0], voltage_values2[-1], len(voltage_values2), 0.001,
+    Vg2,
+    voltage_values2[0],
+    voltage_values2[-1],
+    len(voltage_values2),
+    0.001,
     opx_instrument.resume,
     opx_instrument.get_measurement_parameter(),
     enter_actions=[opx_instrument.run_exp],
