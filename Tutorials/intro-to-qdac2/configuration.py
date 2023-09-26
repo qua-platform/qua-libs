@@ -7,10 +7,7 @@ config = {
                 1: {"offset": +0.0},  # in V
                 2: {"offset": +0.0},  # in V
             },
-            "digital_outputs": {
-                1: {},
-                2: {}
-            },
+            "digital_outputs": {1: {}, 2: {}},
             "analog_inputs": {
                 1: {"offset": +0.0},  # in V
             },
@@ -19,11 +16,11 @@ config = {
     "elements": {
         "qdac_trigger1": {
             "singleInput": {"port": ("con1", 2)},  # Not used
-            'digitalInputs': {
-                'ext1': {
-                    'port': ('con1', 1),
-                    'delay': 0,
-                    'buffer': 0,
+            "digitalInputs": {
+                "ext1": {
+                    "port": ("con1", 1),
+                    "delay": 0,
+                    "buffer": 0,
                 },
             },
             "operations": {
@@ -32,11 +29,11 @@ config = {
         },
         "qdac_trigger2": {
             "singleInput": {"port": ("con1", 2)},  # Not used
-            'digitalInputs': {
-                'ext2': {
-                    'port': ('con1', 2),
-                    'delay': 0,
-                    'buffer': 0,
+            "digitalInputs": {
+                "ext2": {
+                    "port": ("con1", 2),
+                    "delay": 0,
+                    "buffer": 0,
                 },
             },
             "operations": {
