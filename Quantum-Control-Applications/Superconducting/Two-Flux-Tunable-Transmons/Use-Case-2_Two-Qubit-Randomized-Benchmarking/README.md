@@ -64,10 +64,10 @@ def prep():
 ```
 
 ## Measurement
-Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send two readout pulses simultaneously to both resonators that are coupled to the individual qubits and demodulate the signal. We assume that we optimized the readout such that all information is contained in the *I0* and *I1*. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state ∣0⟩ and True for state ∣1⟩. This measurement function returns four possible outcomes: ∣00⟩, ∣01⟩, ∣10⟩ & ∣11⟩.
+Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send two readout pulses simultaneously to both resonators that are coupled to the individual qubits and demodulate the signal. We assume that we optimized the readout such that all information is contained in the *I0* and *I1* quadratures. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state ∣0⟩ and True for state ∣1⟩. This measurement function returns four possible outcomes: ∣00⟩, ∣01⟩, ∣10⟩ & ∣11⟩.
 
 ```python
-ef meas():
+def meas():
     threshold0 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
     threshold1 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
     I0 = declare(fixed)
