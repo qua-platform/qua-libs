@@ -30,6 +30,7 @@ u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
 qop_port = 8080
+cluster_name = "my_cluster_1"
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -202,7 +203,7 @@ config = {
         },
     },
     "elements": {
-        "rr0": {
+        "rr1": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
@@ -221,7 +222,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "rr1": {
+        "rr2": {
             "mixInputs": {
                 "I": ("con1", 5),
                 "Q": ("con1", 6),
@@ -240,7 +241,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "q0_xy": {
+        "q1_xy": {
             "mixInputs": {
                 "I": ("con1", 1),
                 "Q": ("con1", 2),
@@ -258,7 +259,7 @@ config = {
                 "-y90": "-y90_pulse_q1",
             },
         },
-        "q1_xy": {
+        "q2_xy": {
             "mixInputs": {
                 "I": ("con1", 3),
                 "Q": ("con1", 4),
@@ -276,7 +277,7 @@ config = {
                 "-y90": "-y90_pulse_q2",
             },
         },
-        "q0_z": {
+        "q1_z": {
             "singleInput": {
                 "port": ("con1", 7),
             },
@@ -285,7 +286,7 @@ config = {
                 "cz": "cz_flux_pulse",
             },
         },
-        "q1_z": {
+        "q2_z": {
             "singleInput": {
                 "port": ("con1", 8),
             },
@@ -497,28 +498,28 @@ config = {
             "sine": [(-1.0, readout_len)],
         },
         "rotated_cosine_weights_q1": {
-            "cosine": [(np.cos(rotation_angle_q1), readout_len)],
-            "sine": [(-np.sin(rotation_angle_q1), readout_len)],
+        "cosine": [(np.cos(rotation_angle_q1), readout_len)],
+        "sine": [(np.sin(rotation_angle_q1), readout_len)],
         },
         "rotated_sine_weights_q1": {
-            "cosine": [(np.sin(rotation_angle_q1), readout_len)],
-            "sine": [(np.cos(rotation_angle_q1), readout_len)],
+        "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
+        "sine": [(np.cos(rotation_angle_q1), readout_len)],
         },
         "rotated_minus_sine_weights_q1": {
-            "cosine": [(-np.sin(rotation_angle_q1), readout_len)],
-            "sine": [(-np.cos(rotation_angle_q1), readout_len)],
+        "cosine": [(np.sin(rotation_angle_q1), readout_len)],
+        "sine": [(-np.cos(rotation_angle_q1), readout_len)],
         },
         "rotated_cosine_weights_q2": {
-            "cosine": [(np.cos(rotation_angle_q2), readout_len)],
-            "sine": [(-np.sin(rotation_angle_q2), readout_len)],
+        "cosine": [(np.cos(rotation_angle_q2), readout_len)],
+        "sine": [(np.sin(rotation_angle_q2), readout_len)],
         },
         "rotated_sine_weights_q2": {
-            "cosine": [(np.sin(rotation_angle_q2), readout_len)],
-            "sine": [(np.cos(rotation_angle_q2), readout_len)],
+        "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
+        "sine": [(np.cos(rotation_angle_q2), readout_len)],
         },
         "rotated_minus_sine_weights_q2": {
-            "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
-            "sine": [(-np.cos(rotation_angle_q2), readout_len)],
+        "cosine": [(np.sin(rotation_angle_q2), readout_len)],
+        "sine": [(-np.cos(rotation_angle_q2), readout_len)],
         },
     },
     "mixers": {
