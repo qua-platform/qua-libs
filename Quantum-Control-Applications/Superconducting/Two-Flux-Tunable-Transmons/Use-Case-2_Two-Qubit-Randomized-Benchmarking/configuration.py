@@ -29,7 +29,7 @@ def IQ_imbalance(g, phi):
 u = unit(coerce_to_integer=True)
 
 qop_ip = "127.0.0.1"
-qop_port = 8080
+qop_port = None
 cluster_name = "my_cluster_1"
 
 # Path to save data
