@@ -1,13 +1,10 @@
-#%%
 import matplotlib.pylab as plt
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from two_qubit_rb import TwoQubitRb
-import cirq
 from macros import multiplexed_readout
-# %matplotlib qt
 
 # assign a string to a variable to be able to call them in the functions
 q1 = '1'
@@ -63,17 +60,3 @@ plt.show()
 
 res.plot_fidelity()
 plt.show()
-
-
-# %%
-#############################################
-############ Interleaved Example ############
-#############################################
-# q2, q3 = cirq.LineQubit.range(2)
-
-# rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=False,interleaving_gate= [cirq.CZ(q2,q3)])
-
-# qmm = QuantumMachinesManager('127.0.0.1',8080)
-# res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_shots_per_circuit=100)
-
-# %%
