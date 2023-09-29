@@ -40,17 +40,17 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
 For calibrated single qubit pulses that are stored in the configuration (e.g. "x180", "x90", "y90", etc.) this python function can be rewritten to play the corresponding pulses dependent on the input parameters x,z & a.
 
 ## Two-Qubit Gate (CZ)
-The use-case is designed for flux-tunable transmon qubits where the qubit-qubit interaction is realized with a direct capacitive coupling. Utilizing this architecture it is possible to realize a flux-tuned ∣11⟩-∣02⟩. phase gate. An applied flux pulse that tunes the qubits in and out of the ∣11⟩-∣02⟩ avoided-crossing leads to a conditional phase accumulation. Leaving the system at the avoided-crossing for a specific time maps the state ∣11⟩ back into itself but acquires a minus sign in the process. As the computational states are far from being resonant with other transitions their phases evolve trivially and can be corrected using single qubit phase corrections and thus realize the CZ gate. The *baker.play* statement therefore contains a flux pulse that frequency-tunes transmon *q0* in and out of the avoided crossing ∣11⟩-∣02⟩ , while the *baker.frame_rotation_2pi* statements correct the single qubit phases.
+The use-case is designed for flux-tunable transmon qubits where the qubit-qubit interaction is realized with a direct capacitive coupling. Utilizing this architecture it is possible to realize a flux-tuned ∣11⟩-∣02⟩. phase gate. An applied flux pulse that tunes the qubits in and out of the ∣11⟩-∣02⟩ avoided-crossing leads to a conditional phase accumulation. Leaving the system at the avoided-crossing for a specific time maps the state ∣11⟩ back into itself but acquires a minus sign in the process. As the computational states are far from being resonant with other transitions their phases evolve trivially and can be corrected using single qubit phase corrections and thus realize the CZ gate. The *baker.play* statement therefore contains a flux pulse that frequency-tunes transmon *q1* in and out of the avoided crossing ∣11⟩-∣02⟩ , while the *baker.frame_rotation_2pi* statements correct the single qubit phases.
 
 ```python
-def bake_cz(baker: Baking, q0, q1):
-    q0_xy_element = f"q{q0}_xy" #
-    q1_xy_element = f"q{q1}_xy"
-    q0_z_element = f"q{q0}_z"
-    baker.play("cz", q0_z_element)
+def bake_cz(baker: Baking, q1, q2):
+    q1_xy_element = f"q{q1}_xy" #
+    q2_xy_element = f"q{q2}_xy"
+    q1_z_element = f"q{q1}_z"
+    baker.play("cz", q1_z_element)
     baker.align()
-    baker.frame_rotation_2pi(qubit0_frame_update, q0_xy_element)
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
+    baker.frame_rotation_2pi(qubit2_frame_update, q2_xy_element)
     baker.align()
 ```
 
@@ -64,22 +64,22 @@ def prep():
 ```
 
 ## Measurement
-Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send two readout pulses simultaneously to both resonators that are coupled to the individual qubits and demodulate the signal. We assume that we optimized the readout such that all information is contained in the *I0* and *I1* quadratures. We then assign a True or False value to boolean QUA variables *state0* and *state1* and return the result, where False should be returned for state ∣0⟩ and True for state ∣1⟩. This measurement function returns four possible outcomes: ∣00⟩, ∣01⟩, ∣10⟩ & ∣11⟩.
+Finally, the user has to implement a measurement that is performed at the end of the random gate circuits. In this example we send two readout pulses simultaneously to both resonators that are coupled to the individual qubits and demodulate the signal. We assume that we optimized the readout such that all information is contained in the *I1* and *I2* quadratures. We then assign a True or False value to boolean QUA variables *state1* and *state2* and return the result, where False should be returned for state ∣0⟩ and True for state ∣1⟩. This measurement function returns four possible outcomes: ∣00⟩, ∣01⟩, ∣10⟩ & ∣11⟩.
 
 ```python
 def meas():
-    threshold0 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
     threshold1 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
-    I0 = declare(fixed)
+    threshold2 = 0.3 #threshold for state discrimination 0 <-> 1 using the I quadrature
     I1 = declare(fixed)
-    Q0 = declare(fixed)
+    I2 = declare(fixed)
     Q1 = declare(fixed)
-    state0 = declare(bool)
+    Q2 = declare(fixed)
     state1 = declare(bool)
-    multiplexed_readout([I0,I1], None, [Q0, Q1], None, resonators=[0, 1], weights="rotated_") #readout macro for multiplexed readout
-    assign(state0, I0 > threshold0) #assume that all information is in I
+    state2 = declare(bool)
+    multiplexed_readout([I1,I2], None, [Q1, Q2], None, resonators=[1, 2], weights="rotated_") #readout macro for multiplexed readout
     assign(state1, I1 > threshold1) #assume that all information is in I
-    return state0, state1
+    assign(state2, I2 > threshold2) #assume that all information is in I
+    return state1, state2
 ```
 
 ## Execution and Results
@@ -92,7 +92,7 @@ Before running the experiment, we have to specify the utilized OPX-cluster by cr
 
 
 ```python
-qmm = QuantumMachinesManager('127.0.0.1',8080) #initialize qmm
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name) #initialize qmm
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=50, num_shots_per_circuit=1000)
 ```
 
