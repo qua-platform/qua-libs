@@ -1,7 +1,7 @@
 """
 hello_octave.py: template for basic usage of the Octave
 """
-#%%
+
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm.octave import *
@@ -38,6 +38,3 @@ else:
     # In this case, we've put a 10 seconds sleep and then halted the job.
     time.sleep(10)
     job.halt()
-
-# %%
-qmm.
