@@ -33,10 +33,13 @@ with program() as raw_trace_prog:
     with for_(n, 0, n < n_avg, n + 1):
         # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
         reset_phase(rr1.name)
+        reset_phase(rr2.name)
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
         measure("readout", rr1.name, adc_st)
+        measure("readout", rr2.name, None)
         # Wait for the resonator to deplete
         wait(rr1.depletion_time * u.ns, rr1.name)
+        wait(rr2.depletion_time * u.ns, rr2.name)
 
     with stream_processing():
         # Will save average:
