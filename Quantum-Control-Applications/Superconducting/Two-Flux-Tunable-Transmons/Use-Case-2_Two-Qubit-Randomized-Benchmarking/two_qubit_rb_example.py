@@ -4,10 +4,37 @@ from qm import QuantumMachinesManager
 from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from two_qubit_rb import TwoQubitRb
-from macros import multiplexed_readout
 
-# %matplotlib qt
 
+##############################
+## General helper functions ##
+##############################
+def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):
+    """Perform multiplexed readout on two resonators"""
+    if type(resonators) is not list:
+        resonators = [resonators]
+
+    for ind, res in enumerate(resonators):
+        measure(
+            "readout" * amp(amplitude),
+            f"rr{res}",
+            None,
+            dual_demod.full(weights + "cos", "out1", weights + "sin", "out2", I[ind]),
+            dual_demod.full(weights + "minus_sin", "out1", weights + "cos", "out2", Q[ind]),
+        )
+
+        if I_st is not None:
+            save(I[ind], I_st[ind])
+        if Q_st is not None:
+            save(Q[ind], Q_st[ind])
+
+        if sequential and ind < len(resonators) - 1:
+            align(f"rr{res}", f"rr{res+1}")
+
+
+##############################
+##  Two-qubit RB functions  ##
+##############################
 # assign a string to a variable to be able to call them in the functions
 q1 = "1"
 q2 = "2"
@@ -60,14 +87,18 @@ def meas():
     return state1, state2
 
 
+##############################
+##  Two-qubit RB execution  ##
+##############################
+
 rb = TwoQubitRb(
     config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=False, interleaving_gate=None
-)  # create RB experiment from configuration and defined funtions
+)  # create RB experiment from configuration and defined functions
 
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_shots_per_circuit=100)
 # circuit_depths ~ how many consecutive Clifford gates within one executed circuit https://qiskit.org/documentation/apidoc/circuit.html
-# num_circuits_per_depth ~ how many different randmon circuits within one depth
+# num_circuits_per_depth ~ how many random circuits within one depth
 # num_shots_per_circuit ~ repetitions of the same circuit (averaging)
 
 res.plot_hist()
