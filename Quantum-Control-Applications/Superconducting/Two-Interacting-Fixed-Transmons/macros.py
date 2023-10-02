@@ -6,20 +6,129 @@ All the macros below have been written and tested with the basic configuration. 
 
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
+import matplotlib.pyplot as plt
+from configuration import u
 
 ##############
 # QUA macros #
 ##############
 
 
-def cz_gate(dc0):
-    set_dc_offset("q1_z", "single", -0.10557)
-    wait(189 // 4, "q1_z")
-    # set_dc_offset("q1_z", "single", -0.10342)
-    # wait(161//4, "q1_z")
-    align()
-    set_dc_offset("q1_z", "single", dc0)
-    wait(10)  # for flux pulse to relax back completely
+def one_qb_QST(qb: str, len: float, projection_index):
+    """
+    QUA macro to do single qubit quantum state tomography
+    """
+    with switch_(projection_index):
+        with case_(0):  # projection along X
+            play("-y90", qb)
+        with case_(1):  # projection along Y
+            play("x90", qb)
+        with case_(2):  # projection along Z
+            wait(len * u.ns, qb)
+
+
+def plot_1qb_tomography_results(array, xaxis, fig=None, axs=None):
+    """
+    Helper function to display quantum state tomography data
+    """
+    if fig is None and axs is None:
+        fig, axs = plt.subplots(3, 1, figsize=(12, 8))
+    axs = axs.ravel()
+    for i in range(3):
+        axs[i].cla()
+        axs[i].plot(xaxis, array[:, i, 0], label="control |0>")
+        axs[i].plot(xaxis, array[:, i, 1], label="control |0>")
+        axs[i].set_title(f"<{chr(88 + i)}>")
+        axs[i].set_xlabel("CR length [ns]")
+        axs[i].set_ylabel("State probability")
+    # axs[3].cla()
+    # axs[3].plot(xaxis, get_r_vector(array), label='Data dimension 0')
+    # axs[3].set_xlabel("CR length [ns]")
+    # axs[3].set_ylabel("R-vector")
+    plt.tight_layout()
+    plt.pause(0.1)
+    plt.show()
+
+
+def two_qb_QST(qb1: str, qb2: str, len1: float, len2: float, projection_index):
+    """
+    QUA macro to do two-qubit quantum state tomography
+    """
+    with switch_(projection_index):
+        with case_(0):
+            play("-y90", qb1)
+            play("-y90", qb2)
+        with case_(1):
+            play("y-90", qb1)
+            play("-x90", qb2)
+        with case_(2):
+            play("-x90", qb1)
+            play("-y90", qb2)
+        with case_(3):
+            play("-x90", qb1)
+            play("-x90", qb2)
+        with case_(4):
+            play("-y90", qb1)
+            wait(int(len2 * 1e9 // 4), qb2)
+        with case_(5):
+            wait(int(len1 * 1e9 // 4), qb1)
+            play("-y90", qb2)
+        with case_(6):
+            play("-x90", qb1)
+            wait(int(len2 * 1e9 // 4), qb2)
+        with case_(7):
+            wait(int(len1 * 1e9 // 4), qb1)
+            play("-x90", qb2)
+        with case_(8):
+            wait(int(len1 * 1e9 // 4), qb1)
+            wait(int(len2 * 1e9 // 4), qb2)
+
+
+def plot_2qb_tomography_results(data_q1, data_q2, xaxis, fig=None, axs=None):
+    """
+    Helper function to display quantum state tomography data
+    """
+    # Define the column titles
+    col_titles = [
+        "<-Y/2-Y/2>",
+        "<-Y/2-X/2>",
+        "<-X/2-Y/2>",
+        "<-X/2-X/2>",
+        "<-Y/2,I>",
+        "<I,-Y/2>",
+        "<-X/2,I>",
+        "<I,-X/2>",
+        "<I,I>",
+    ]
+
+    # Set up the figure and axes if not provided
+    if fig is None and axs is None:
+        fig, axs = plt.subplots(3, 3, figsize=(12, 12))
+
+    # Loop through the columns in the data array
+    for i in range(9):
+        # Clear the current axis
+        axs[i // 3, i % 3].cla()
+
+        # Get the current column data
+        col_data = data_q1[:, i]
+        col_data1 = data_q2[:, i]
+
+        # Plot the data on the current axis
+        axs[i // 3, i % 3].plot(xaxis, col_data)
+        axs[i // 3, i % 3].plot(xaxis, col_data1)
+
+        # Set the x-axis label
+        axs[i // 3, i % 3].set_xlabel("CR time [ns]")
+
+        # Set the y-axis label
+        axs[i // 3, i % 3].set_ylabel(col_titles[i])
+
+    # Pause for 0.1 seconds
+    fig.suptitle("CR power rabi two qubit QST")
+    plt.tight_layout()
+    plt.show()
+    plt.pause(0.1)
 
 
 def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitude=1.0, weights=""):

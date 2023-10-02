@@ -10,88 +10,12 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
-from macros import qua_declaration, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout, plot_2qb_tomography_results, two_qb_QST
 
 
-def two_qb_QST(qb1: str, qb2: str, len1: float, len2: float):
-    """
-    QUA macro to do two-qubit quantum state tomography
-    """
-    with switch_(c):
-        with case_(0):
-            play("-y90", qb1)
-            play("-y90", qb2)
-        with case_(1):
-            play("y-90", qb1)
-            play("-x90", qb2)
-        with case_(2):
-            play("-x90", qb1)
-            play("-y90", qb2)
-        with case_(3):
-            play("-x90", qb1)
-            play("-x90", qb2)
-        with case_(4):
-            play("-y90", qb1)
-            wait(int(len2 * 1e9 // 4), qb2)
-        with case_(5):
-            wait(int(len1 * 1e9 // 4), qb1)
-            play("-y90", qb2)
-        with case_(6):
-            play("-x90", qb1)
-            wait(int(len2 * 1e9 // 4), qb2)
-        with case_(7):
-            wait(int(len1 * 1e9 // 4), qb1)
-            play("-x90", qb2)
-        with case_(8):
-            wait(int(len1 * 1e9 // 4), qb1)
-            wait(int(len2 * 1e9 // 4), qb2)
-
-
-def plot_tomography_results(data_q1, data_q2, xaxis, fig=None, axs=None):
-    """
-    Helper function to display quantum state tomography data
-    """
-    # Define the column titles
-    col_titles = [
-        "<-Y/2-Y/2>",
-        "<-Y/2-X/2>",
-        "<-X/2-Y/2>",
-        "<-X/2-X/2>",
-        "<-Y/2,I>",
-        "<I,-Y/2>",
-        "<-X/2,I>",
-        "<I,-X/2>",
-        "<I,I>",
-    ]
-
-    # Set up the figure and axes if not provided
-    if fig is None and axs is None:
-        fig, axs = plt.subplots(3, 3, figsize=(12, 12))
-
-    # Loop through the columns in the data array
-    for i in range(9):
-        # Clear the current axis
-        axs[i // 3, i % 3].cla()
-
-        # Get the current column data
-        col_data = data_q1[:, i]
-        col_data1 = data_q2[:, i]
-
-        # Plot the data on the current axis
-        axs[i // 3, i % 3].plot(xaxis, col_data)
-        axs[i // 3, i % 3].plot(xaxis, col_data1)
-
-        # Set the x-axis label
-        axs[i // 3, i % 3].set_xlabel("CR time [ns]")
-
-        # Set the y-axis label
-        axs[i // 3, i % 3].set_ylabel(col_titles[i])
-
-    # Pause for 0.1 seconds
-    fig.suptitle("CR power rabi two qubit QST")
-    plt.tight_layout()
-    plt.show()
-    plt.pause(0.1)
+####################
+# Helper functions #
+####################
 
 
 def play_flattop(cr: str, duration: int, sign: str):
@@ -118,14 +42,12 @@ def play_flattop(cr: str, duration: int, sign: str):
 # The QUA program #
 ###################
 times = np.arange(4, 200, 2)  # In clock cycles = 4ns
-cooldown_time = 1 * u.us
 n_avg = 1000
 
 with program() as CR_time_rabi_one_qst:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    f = declare(int)
-    t = declare(int)
-    c = declare(int)
+    t = declare(int)  # QUA variable for the qubit pulse duration
+    c = declare(int)  # QUA variable for the projection index in QST
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -142,11 +64,12 @@ with program() as CR_time_rabi_one_qst:
                 align()
                 play("x180", "q1_xy")
                 align()
-                two_qb_QST("q1_xy", "q2_xy", pi_len, pi_len)
+                two_qb_QST("q1_xy", "q2_xy", pi_len, pi_len, c)
                 align()
-                # Start using Rotated-Readout:
+                # Measure the state of the resonators
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
-                wait(cooldown_time * u.ns)
+                # Wait for the qubit to decay to the ground state
+                wait(thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
@@ -160,27 +83,37 @@ with program() as CR_time_rabi_one_qst:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-simulate = True
+###########################
+# Run or Simulate Program #
+###########################
+
+simulate = False
+
 if simulate:
-    # simulate the test_config QUA program
-    job = qmm.simulate(config, CR_time_rabi_one_qst, SimulationConfig(11000))
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, CR_time_rabi_one_qst, simulation_config)
     job.get_simulated_samples().con1.plot()
-    plt.show()
 
 else:
-    # execute QUA:
+    # Open the quantum machine
     qm = qmm.open_qm(config)
+    # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(CR_time_rabi_one_qst)
-
-    fig, ax = plt.subplots(2, 2)
+    # Prepare the figure for live plotting
+    fig = plt.figure()
     interrupt_on_close(fig, job)
+    # Tool to easily fetch results from the OPX (results_handle used in it)
     results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    # Live plotting
     while results.is_processing():
+        # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
+        # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
-
-        plot_tomography_results(I1, I2, times * 4)
+        # Plot tomography
+        plot_2qb_tomography_results(I1, I2, times * 4)
     # Close the quantum machines at the end
     qm.close()
