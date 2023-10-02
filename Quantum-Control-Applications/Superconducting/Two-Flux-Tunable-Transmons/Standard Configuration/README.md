@@ -71,6 +71,8 @@ a specific setup and would require changes to run on different setups. Current u
 * [Two qubit gate optimization with cryoscope](../Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope)
 The goal of this use-case is to perform SWAP spectroscopy and improve the SWAP fidelity by correcting for the flux pulse 
 distortion using Cryoscope and the OPX IIR and FIR filters..
+* [Two-qubit randomized benchmarking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%202%20-%20Two-Qubit-Randomized-Benchmarking#two-qubit-randomized-benchmarking).
+This use-case showcases an implementation of two-qubit randomized benchmarking with the OPX.
 
 ## Set-ups with Octave
 
