@@ -70,6 +70,8 @@ with program() as ramsey:
             # Reset the frame of the qubit in order not to accumulate rotations
             reset_frame("q1_xy")
             reset_frame("q2_xy")
+            # Wait for the qubit to decay to the ground state
+            wait(thermalization_time * u.ns)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
