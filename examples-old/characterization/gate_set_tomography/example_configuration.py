@@ -34,7 +34,6 @@ config = {
                 "readoutOp": "readoutPulse",
                 "x_pi/2": "gaussPulse",
             },
-            
         },
         "y_control": {
             "singleInput": {"port": ("con1", 2)},
@@ -43,7 +42,6 @@ config = {
                 "readoutOp": "readoutPulse",
                 "y_pi/2": "gaussPulse",
             },
-       
         },
         "readout": {
             "singleInput": {"port": ("con1", 3)},

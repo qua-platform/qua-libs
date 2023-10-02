@@ -1,12 +1,11 @@
-#%%
 from QuaGST import QuaGST
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager, SimulationConfig
 from pygsti.modelpacks import smq1Q_XYI
 from example_configuration import *
-%matplotlib qt
 
-qmm = QuantumMachinesManager('127.0.0.1','8080')
+qmm = QuantumMachinesManager()
+
 
 # different controls just for coloring of the generated samples
 def x_pi2():
@@ -30,11 +29,10 @@ def post_circuit(out_st):
     measure("readoutOp", "readout", None, I)
     save(I, out_st)
 
-#%%
+
 GST_sequence_file = "examples-old/characterization/gate_set_tomography/Circuits_before_results.txt"
 # gate keys should match the model gates without the 'G' at the beginning.
 gate_macros = {"xpi2:0": x_pi2, "ypi2:0": y_pi2, "[]": id_gate}
-#%%
 gst = QuaGST(
     GST_sequence_file,
     model=smq1Q_XYI,
@@ -45,15 +43,11 @@ gst = QuaGST(
     quantum_machines_manager=qmm,
     simulate=SimulationConfig(int(1e5)),
 )
-#%%
 gst.run(300, plot_simulated_samples_con="con1")
 gst.last_job.get_simulated_samples().con1.plot()
 # gst.run_IO()
-#%%
 gst_script = open("gst_qua.txt", "w")
 print(*gst.qua_script, file=gst_script)
 gst_script.close()
 
 results = gst.results
-
-# %%
