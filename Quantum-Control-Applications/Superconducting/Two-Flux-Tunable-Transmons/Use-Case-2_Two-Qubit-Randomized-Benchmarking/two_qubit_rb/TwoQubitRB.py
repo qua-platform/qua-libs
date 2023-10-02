@@ -26,7 +26,7 @@ class TwoQubitRb:
         verify_generation: bool = False,
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
     ):
-        """ 
+        """
         A class for running two qubit randomized benchmarking experiments.
 
         This class is used to generate the experiment configuration and run the experiment.
@@ -41,7 +41,7 @@ class TwoQubitRb:
             single_qubit_gate_generator: A callable used to generate a single qubit gate using a signature similar to `phasedXZ`[https://quantumai.google/reference/python/cirq/PhasedXZGate].
                 This is done using the baking object (see above).
                 Note that this allows us to execute every type of single qubit gate.
-                Callable arguments: 
+                Callable arguments:
                     baking: The baking object.
                     qubit: The qubit number.
                     x: The x rotation exponent.
@@ -54,7 +54,7 @@ class TwoQubitRb:
                     baking: The baking object.
                     qubit1: The first qubit number.
                     qubit2: The second qubit number.
-                This callable should generate a two qubit gate. 
+                This callable should generate a two qubit gate.
 
 
             prep_func: A callable used to reset the qubits to the |00> state. This function does not use the baking object, and is a proper QUA code macro.
@@ -73,13 +73,11 @@ class TwoQubitRb:
         for i, qe in config["elements"].items():
             if "operations" not in qe:
                 qe["operations"] = {}
-        self._rb_baker = RBBaker(
-            config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate)
+        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate)
         self._interleaving_gate = interleaving_gate
         self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
         self._config = self._rb_baker.bake()
-        self._symplectic_generator = GateGenerator(
-            set(two_qubit_gate_generators.keys()))
+        self._symplectic_generator = GateGenerator(set(two_qubit_gate_generators.keys()))
         self._prep_func = prep_func
         self._measure_func = measure_func
         self._verify_generation = verify_generation
@@ -114,8 +112,7 @@ class TwoQubitRb:
             gate_ids.append(symplectic)
             gate_ids.append(pauli)
 
-            tableau = tableau.then(gate_db.get_tableau(
-                symplectic)).then(gate_db.get_tableau(pauli))
+            tableau = tableau.then(gate_db.get_tableau(symplectic)).then(gate_db.get_tableau(pauli))
 
             if self._interleaving_tableau is not None:
                 gate_ids.append(gate_db.get_interleaving_gate())
@@ -142,7 +139,6 @@ class TwoQubitRb:
         num_repeats: int,
         num_averages: int,
     ):
-
         with program() as prog:
             sequence_depth = declare(int)
             repeat = declare(int)
@@ -175,8 +171,7 @@ class TwoQubitRb:
                         save(state, state_os)
 
             with stream_processing():
-                state_os.buffer(len(sequence_depths),
-                                num_repeats, num_averages).save("state")
+                state_os.buffer(len(sequence_depths), num_repeats, num_averages).save("state")
                 progress_os.save("progress")
         return prog
 
@@ -187,8 +182,13 @@ class TwoQubitRb:
         return seq + [0] * (self._buffer_length - len(seq))
 
     @run_in_thread
-    def _insert_all_input_stream(self, job: RunningQmJob, sequence_depths: List[int], num_repeats: int,
-                                 callback: Optional[Callable[[List[int]], None]] = None):
+    def _insert_all_input_stream(
+        self,
+        job: RunningQmJob,
+        sequence_depths: List[int],
+        num_repeats: int,
+        callback: Optional[Callable[[List[int]], None]] = None,
+    ):
         for sequence_depth in sequence_depths:
             for repeat in range(num_repeats):
                 sequence = self._gen_rb_sequence(sequence_depth)
@@ -203,15 +203,15 @@ class TwoQubitRb:
         self,
         qmm: QuantumMachinesManager,
         circuit_depths: List[int],
-        num_circuits_per_depth: int, 
+        num_circuits_per_depth: int,
         num_shots_per_circuit: int,
-        **kwargs
+        **kwargs,
     ):
         """
         Runs the randomized benchmarking experiment. The experiment is sweep over Clifford circuits with varying depths.
         For every depth, we generate a number of random circuits and run them. The number of different circuits is determined by
         the num_circuits_per_depth parameter. The number of shots per individual circuit is determined by the num_averages parameter.
-        
+
         Args:
             qmm (QuantumMachinesManager): The Quantum Machines Manager object which is used to run the experiment.
             circuit_depths (List[int]): A list of the number of Cliffords per circuit (not including inverse).
@@ -220,21 +220,19 @@ class TwoQubitRb:
 
         Example:
             >>> from qm.QuantumMachinesManager import QuantumMachinesManager
-            >>> from qm.qua import *  
+            >>> from qm.qua import *
             >>> from qua_config import config  # generation not in scope of this example
             >>> from TwoQubitRB import TwoQubitRB
             >>> qmm = QuantumMachinesManager(config)
-            
+
         """
 
-        prog = self._gen_qua_program(
-            circuit_depths, num_circuits_per_depth, num_shots_per_circuit
-        )
+        prog = self._gen_qua_program(circuit_depths, num_circuits_per_depth, num_shots_per_circuit)
 
         qm = qmm.open_qm(self._config)
         job = qm.execute(prog)
 
-        gen_sequence_callback = kwargs['gen_sequence_callback'] if 'gen_sequence_callback' in kwargs else None
+        gen_sequence_callback = kwargs["gen_sequence_callback"] if "gen_sequence_callback" in kwargs else None
         self._insert_all_input_stream(job, circuit_depths, num_circuits_per_depth, gen_sequence_callback)
 
         full_progress = len(circuit_depths) * num_circuits_per_depth

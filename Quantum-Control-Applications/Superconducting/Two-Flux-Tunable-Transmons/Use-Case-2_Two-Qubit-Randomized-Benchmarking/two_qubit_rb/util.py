@@ -8,6 +8,7 @@ def run_in_thread(fn):
     def run(*k, **kw):
         t = threading.Thread(target=fn, args=k, kwargs=kw)
         t.start()
+
     return run
 
 
@@ -17,7 +18,7 @@ def pbar(res_handles, n_avg, n_label, timeout=10, return_times=False):
     m = 0
     while n is None:
         if m * 0.1 > timeout:
-            print('reached timeout')
+            print("reached timeout")
             break
         sleep(0.1)
         n = res_handles.get(n_label).fetch_all()

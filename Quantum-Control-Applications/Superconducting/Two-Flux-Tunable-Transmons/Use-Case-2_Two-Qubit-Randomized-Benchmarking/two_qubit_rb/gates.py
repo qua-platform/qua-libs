@@ -10,7 +10,7 @@ import numpy as np
 
 from .simple_tableau import SimpleTableau
 
-q1, q2 = cirq.LineQubit.range(1,3)
+q1, q2 = cirq.LineQubit.range(1, 3)
 
 C1_reduced = [
     cirq.PhasedXZGate(axis_phase_exponent=0, x_exponent=0, z_exponent=0),
@@ -85,31 +85,37 @@ native_2_qubit_gates = {
         "SWAP": [cirq.CNOT(q2, q1), cirq.CNOT(q1, q2), cirq.CNOT(q2, q1)],
     },
     "CZ": {
-        "CNOT": [cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
-                 cirq.CZ(q1, q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1)],
-        "iSWAP": [cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),
-                  cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q2),
-                  cirq.CZ(q1, q2),
-                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
-                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                  cirq.CZ(q1, q2),
-                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
-                  cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2)],
-        "SWAP": [cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
-                 cirq.CZ(q1, q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.CZ(q1, q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.CZ(q1, q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
-                 cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1)]
-    }
+        "CNOT": [
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+        ],
+        "iSWAP": [
+            cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-1.0, x_exponent=0.5, z_exponent=-0.5)(q2),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+        ],
+        "SWAP": [
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q1),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.CZ(q1, q2),
+            cirq.PhasedXZGate(axis_phase_exponent=-0.5, x_exponent=0.5, z_exponent=-1.0)(q2),
+            cirq.PhasedXZGate(axis_phase_exponent=0.0, x_exponent=0.0, z_exponent=0.0)(q1),
+        ],
+    },
 }
 
 
@@ -123,22 +129,24 @@ Z = np.matrix([[1, 0], [0, -1]])  # pi z
 paulis = [I, X, Y, Z]
 twoQBPaulis = [np.kron(i, j) for i in paulis for j in paulis]
 
-symplecticTable = [[0, 0, 0, 0],  # II
-                   [0, 0, 1, 0],  # IX
-                   [0, 0, 1, 1],  # IY
-                   [0, 0, 0, 1],  # IZ
-                   [1, 0, 0, 0],  # XI
-                   [1, 0, 1, 0],  # XX
-                   [1, 0, 1, 1],  # XY
-                   [1, 0, 0, 1],  # XZ
-                   [1, 1, 0, 0],  # YI
-                   [1, 1, 1, 0],  # YX
-                   [1, 1, 1, 1],  # YY
-                   [1, 1, 0, 1],  # YZ
-                   [0, 1, 0, 0],  # ZI
-                   [0, 1, 1, 0],  # ZX
-                   [0, 1, 1, 1],  # ZY
-                   [0, 1, 0, 1]]  # ZZ
+symplecticTable = [
+    [0, 0, 0, 0],  # II
+    [0, 0, 1, 0],  # IX
+    [0, 0, 1, 1],  # IY
+    [0, 0, 0, 1],  # IZ
+    [1, 0, 0, 0],  # XI
+    [1, 0, 1, 0],  # XX
+    [1, 0, 1, 1],  # XY
+    [1, 0, 0, 1],  # XZ
+    [1, 1, 0, 0],  # YI
+    [1, 1, 1, 0],  # YX
+    [1, 1, 1, 1],  # YY
+    [1, 1, 0, 1],  # YZ
+    [0, 1, 0, 0],  # ZI
+    [0, 1, 1, 0],  # ZX
+    [0, 1, 1, 1],  # ZY
+    [0, 1, 0, 1],
+]  # ZZ
 
 
 def get_pauli_prod(m):
@@ -171,12 +179,13 @@ def tableau_from_unitary(m):
 def tableau_from_cirq(gates: List[cirq.GateOperation]) -> SimpleTableau:
     return tableau_from_unitary(np.matrix(cirq.Circuit(gates).unitary()))
 
+
 #########################################################
 
 
 def combine_to_phased_x_z(first_gate: cirq.GateOperation, second_gate: cirq.GateOperation) -> cirq.GateOperation:
     unitary = cirq.Circuit([first_gate, second_gate]).unitary()
-    if unitary.shape != (2,2):
+    if unitary.shape != (2, 2):
         raise RuntimeError("Cannot combine multi qubit gate to PhasedXZ")
     return cirq.PhasedXZGate.from_matrix(unitary)(first_gate.qubits[0])
 

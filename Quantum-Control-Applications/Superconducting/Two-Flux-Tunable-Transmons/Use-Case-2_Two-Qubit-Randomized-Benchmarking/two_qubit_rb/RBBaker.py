@@ -11,10 +11,13 @@ from .gates import GateGenerator, gate_db
 
 
 class RBBaker:
-    def __init__(self, config,
-                 single_qubit_gate_generator: Callable,
-                 two_qubit_gate_generators: Dict[str, Callable],
-                 interleaving_gate: Optional[List[cirq.GateOperation]] = None):
+    def __init__(
+        self,
+        config,
+        single_qubit_gate_generator: Callable,
+        two_qubit_gate_generators: Dict[str, Callable],
+        interleaving_gate: Optional[List[cirq.GateOperation]] = None,
+    ):
         self._config = copy.deepcopy(config)
         self._single_qubit_gate_generator = single_qubit_gate_generator
         self._two_qubit_gate_generators = two_qubit_gate_generators
@@ -84,7 +87,7 @@ class RBBaker:
     def gates_from_cmd_id(self, cmd_id):
         if 0 <= cmd_id < len(gate_db.commands):
             gate_ops = self._symplectic_generator.generate(cmd_id)
-        elif self._interleaving_gate is not None and cmd_id == len(gate_db.commands):   # Interleaving gate
+        elif self._interleaving_gate is not None and cmd_id == len(gate_db.commands):  # Interleaving gate
             gate_ops = self._interleaving_gate
         else:
             raise RuntimeError("command out of range")
@@ -96,10 +99,7 @@ class RBBaker:
 
     @staticmethod
     def _unique_baker_identifier_for_qe(b: Baking, qe: str):
-        identifier = {
-            "samples": b._samples_dict[qe],
-            "info": b._qe_dict[qe]
-        }
+        identifier = {"samples": b._samples_dict[qe], "info": b._qe_dict[qe]}
         return json.dumps(identifier)
 
     def _bake_all_ops(self, config: dict):

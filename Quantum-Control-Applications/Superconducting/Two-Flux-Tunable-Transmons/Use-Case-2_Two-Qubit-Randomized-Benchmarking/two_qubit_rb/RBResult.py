@@ -15,15 +15,17 @@ class RBResult:
     def __post_init__(self):
         self.data = xr.Dataset(
             data_vars={"state": (["circuit_depth", "repeat", "average"], self.state)},
-            coords={"circuit_depth": self.circuit_depths,
-                    "repeat": range(self.num_repeats),
-                    "average": range(self.num_averages)}
+            coords={
+                "circuit_depth": self.circuit_depths,
+                "repeat": range(self.num_repeats),
+                "average": range(self.num_averages),
+            },
         )
 
     def plot_hist(self, n_cols=3):
-        if len(self.circuit_depths)< n_cols:
+        if len(self.circuit_depths) < n_cols:
             n_cols = len(self.circuit_depths)
-        n_rows = max(int(np.ceil(len(self.circuit_depths)/n_cols)), 1)
+        n_rows = max(int(np.ceil(len(self.circuit_depths) / n_cols)), 1)
         plt.figure()
         for i, circuit_depth in enumerate(self.circuit_depths, start=1):
             ax = plt.subplot(n_rows, n_cols, i)
@@ -31,5 +33,5 @@ class RBResult:
         plt.tight_layout()
 
     def plot_fidelity(self):
-        fidelity = (self.data.state == 0).sum(("repeat", "average"))/(self.num_repeats*self.num_averages)
+        fidelity = (self.data.state == 0).sum(("repeat", "average")) / (self.num_repeats * self.num_averages)
         fidelity.rename("fidelity").plot.line()
