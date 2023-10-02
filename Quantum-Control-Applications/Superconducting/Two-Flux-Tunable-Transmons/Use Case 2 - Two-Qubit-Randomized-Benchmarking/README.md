@@ -13,7 +13,7 @@ Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows
 [^4]: A. D. Córcoles et al Phys. Rev. A 87, 030301(R)
 
 ## Experimental Setup
-<img align="right" width="400" src="https://github.com/maximilianqm/max-dev/blob/main/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/setup.png">
+<img align="right" width="400" src="setup.png">
 
 The use-case in this example is tailored for a superconducting quantum processor using flux-tunable transmon qubits, where we focus on a subset of two qubits that are capacitively coupled to each other. Single qubit operations are controlled by sending microwave pulses through a xy-line that is capacitively coupled to the individual qubits. The two-qubit gate is implemented by a controlled-Z (CZ) gate utilizing fast-flux pulses to rapidly change the qubit frequencies. One important experiment on the way of tuning up a CZ gate is the flux-pulse calibration that yield qubit state oscillations depending on the pulse parameters. This experiment was performed and presented in the use-case [Two-Qubit Gate Optimization](https://github.com/qua-platform/qua-libs/tree/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 
@@ -115,4 +115,4 @@ The runtime depends on the input-arguments *num_circuits_per_depth*, *num_shots_
 - 35 seconds / 1000 num_shots_per_circuit
 - The runtime depends not only on the value of the individual elements but also on the length of the depth vector (number of different depths). The figure below shows both dependencies for selected values.
   
-<img width="1000" src="https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use-Case-2_Two-Qubit-Randomized-Benchmarking/runtime.png">
+<img width="1000" src="runtime.png">
