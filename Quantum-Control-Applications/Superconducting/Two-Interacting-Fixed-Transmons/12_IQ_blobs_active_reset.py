@@ -75,5 +75,5 @@ else:
     plt.suptitle("qubit 1")
     two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
     plt.suptitle("qubit 2")
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    # Close the quantum machines at the end
     qm.close()

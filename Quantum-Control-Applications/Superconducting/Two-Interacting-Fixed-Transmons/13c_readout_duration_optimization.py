@@ -273,5 +273,5 @@ else:
     print(f"The optimal readout length for qubit 1 is {opt_readout_length_q1} ns (SNR={max(SNR_q1)})")
     print(f"The optimal readout length for qubit 2 is {opt_readout_length_q2} ns (SNR={max(SNR_q2)})")
 
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    # Close the quantum machines at the end
     qm.close()

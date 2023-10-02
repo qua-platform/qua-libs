@@ -182,5 +182,5 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
 
         plot_tomography_results(I1, I2, times * 4)
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    # Close the quantum machines at the end
     qm.close()
