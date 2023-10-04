@@ -79,7 +79,7 @@ This use-case showcases an implementation of two-qubit randomized benchmarking w
 The configuration included in this folder correspond to a set-up without Octave. 
 However, a few files are there to facilitate the integration of the Octave:
 1. [configuration_with_octave.py](configuration_with_octave.py): An example of a configuration including the octave. You can replace the content of the file called `configuration.py` by this one so that it will be imported in all the scripts above.
-2. [octave_configuration.py](octave_configuration.py): A file __to execute__ in order to configure and/or calibrate the Octave.
+2. [octave_configuration.py](octave_clock_and_calibration.py): A file __to execute__ in order to configure and/or calibrate the Octave.
 3. [set_octave.py](set_octave.py): A set of helper function to ease the octave parametrization.
 
 If you are a new Octave user, then it is recommended to start with the [Octave tutorial](https://github.com/qua-platform/qua-libs/blob/main/Tutorials/intro-to-octave/README.md).
