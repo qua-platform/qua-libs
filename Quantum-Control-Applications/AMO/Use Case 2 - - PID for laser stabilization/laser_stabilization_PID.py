@@ -15,15 +15,15 @@ warnings.filterwarnings("ignore")
 ###################
 # The QUA program #
 ###################
-target = 0.008
-gain_P = 2.55
-gain_I = -0.1
-gain_D = 0.6 * 0
+target = -0.001
+gain_P = -2.0*1.85 /2/2
+gain_I = -7
+gain_D = -0.2
 # gain_I_bitshift=0
 # integral_size=10
 
 alpha = 0.1
-N_shots = 12000
+N_shots = 1000
 
 with program() as PID_prog:
     # adc_st = declare_stream(adc_trace=True)
@@ -56,21 +56,21 @@ with program() as PID_prog:
         measure("readout", "photo-diode", None, integration.full("constant", integ, "out1"))
 
         # calculate the error
-        assign(error, (target - integ) << 11)
+        assign(error, (target - integ) << 9)
         # calculate the integrator error with exponentially decreasing weights with coefficient alpha
         assign(integrator_error, (1 - alpha) * integrator_error + alpha * error)
         # calculate the derivative error
         assign(derivative_error, old_error - error)
         # start the lock at first then stop to show the noise without lock, then lock on the noise. then keep lock and remove noise to compare the noise suppression to the no noise case and see if we are detection limited
 
-        # apply correction during the first 1/4 of shots just to show that it locks to a different sepoint quickly
+        # apply correction during the first 1/4 of shots just to show that it locks to a different setpoint quickly
         # lower the gain_P to see that the lock becomes softer
-        with if_(n < int(N_shots / 4)):
+        with if_((n < int(N_shots / 2)) | (n > int(0.75*N_shots))):
             assign(amplitude, amplitude + (gain_P * error + gain_I * integrator_error + gain_D * derivative_error))
         # stop the lock while the noise is introduced for another 1/4 of shots to show the noise without lock
         # start the lock again after 1/2 the shots and see the performance
-        with if_(n > int(N_shots / 2)):
-            assign(amplitude, amplitude + (gain_P * error + gain_I * integrator_error + gain_D * derivative_error))
+        # with if_(n > int(N_shots / 2)):
+        #     assign(amplitude, amplitude + (gain_P * error + gain_I * integrator_error + gain_D * derivative_error))
 
         # save old error to be error
         assign(old_error, error)
@@ -97,7 +97,7 @@ qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -129,23 +129,26 @@ else:
 
     # plotting stuff
 
-    plt.figure(figsize=(20, 16))
-    plt.plot(Time, error, ".-", linewidth=5, markersize=10)
-    plt.title("Intensity lock error", fontsize=40)
-    plt.xlabel("Time [μs]", fontsize=40)
-    plt.ylabel("Amplitude Error [arb. units]", fontsize=40)
-    plt.xticks(fontsize=30)
-    plt.yticks(fontsize=30)
+    plt.figure()
+    plt.subplot(221)
+    plt.plot(Time, error, ".-")
+    plt.title("Intensity lock error")
+    plt.xlabel("Time [μs]")
+    plt.ylabel("Amplitude Error [arb. units]")
 
-    # plt.figure(figsize=(20,16))
-    # plt.plot(Time, integral)
-    # plt.title('Intensity')
-    plt.figure(figsize=(20, 16))
+    plt.subplot(222)
+    plt.plot(Time, integral)
+    plt.axhline(target, color="k")
+    plt.title('Intensity')
+
+    plt.subplot(223)
     plt.plot(Time, amplitude)
     plt.title("Applied amplitude")
+    plt.tight_layout()
     # plt.figure(figsize=(20,16))
-    # plt.plot(Time, integrator_error)
-    # plt.title('integrator error')
+    plt.subplot(224)
+    plt.plot(Time, integrator_error)
+    plt.title('integrator error')
     # plt.figure(figsize=(20,16))
     # plt.plot(Time, total_error)
     # plt.title('total error')

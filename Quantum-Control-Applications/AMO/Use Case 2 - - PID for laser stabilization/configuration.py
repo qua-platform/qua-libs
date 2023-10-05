@@ -24,13 +24,13 @@ qop_port = None  # Write the QOP port if version < QOP220
 ################
 
 # AOM
-AOM_IF = 63e6
+AOM_IF = 0
 const_amplitude = 0.1
 const_len = 100
 
 # Noise
-noise_IF = 200e3
-noise_amplitude = 0.01
+noise_IF = 20e3
+noise_amplitude = 0.04
 noise_len = 100
 
 # Photo-diode
@@ -43,7 +43,7 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},
+                9: {"offset": 0.0},
                 2: {"offset": 0.0},
             },
             "digital_outputs": {
@@ -57,7 +57,7 @@ config = {
     "elements": {
         "AOM": {
             "singleInput": {
-                "port": ("con1", 1),
+                "port": ("con1", 9),
             },
             "intermediate_frequency": AOM_IF,
             "operations": {
@@ -66,7 +66,7 @@ config = {
         },
         "noise": {
             "singleInput": {
-                "port": ("con1", 1),
+                "port": ("con1", 9),
             },
             "intermediate_frequency": noise_IF,
             "operations": {
