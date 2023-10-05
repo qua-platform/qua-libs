@@ -44,8 +44,6 @@ octave_1 = OctaveUnit(
     "octave1",
     machine.local_oscillators.network.qop_ip,
     port=machine.local_oscillators.network.qop_port,
-    clock="Internal",
-    port_mapping=port_mapping,
 )
 
 # Configure the Octaves
