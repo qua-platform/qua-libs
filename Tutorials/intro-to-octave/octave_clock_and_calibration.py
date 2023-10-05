@@ -4,7 +4,6 @@ This file is used to configure the Octave's clock and do the automatic calibrati
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.octave import ClockMode
 from configuration import *
-calibration = True
 
 
 # Configure the Octave according to the elements settings and calibrate
@@ -23,6 +22,8 @@ qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
 ##################
 # Calibration #
 ##################
+calibration = True
+
 if calibration:
     elements = ["qe1", "qe2", "qe3", "qe4", "qe5"]
     for element in elements:

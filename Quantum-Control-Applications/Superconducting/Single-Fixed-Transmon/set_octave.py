@@ -1,23 +1,19 @@
 """
-set_octave.py: script for setting all the octave parameters
+set_octave.py: script for initiating the octave
 """
-from qm.octave import *
 import os
 from qm.octave import QmOctaveConfig
-from qm.octave.octave_manager import ClockMode
-from dataclasses import dataclass
-from typing import Union
 
 
 class OctaveUnit:
     """Class for keeping track of OctavesSettings in inventory."""
 
     def __init__(
-        self,
-        name: str,
-        ip: str,
-        port: int = 50,
-        con: str = "con1",
+            self,
+            name: str,
+            ip: str,
+            port: int = 50,
+            con: str = "con1",
     ):
         """Class for keeping track of OctavesSettings in inventory.
 
@@ -31,11 +27,12 @@ class OctaveUnit:
         self.port = port
         self.con = con
 
+
 def octave_declaration(octaves: list = ()):
     """
     Initiate octave_config class, set the calibration file and add octaves info.
 
-    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip octave's port and octave's clock settings
+    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip ansd octave's port.
     """
     octave_config = QmOctaveConfig()
     octave_config.set_calibration_db(os.getcwd())
@@ -51,5 +48,3 @@ def octave_declaration(octaves: list = ()):
         octave_config.add_device_info(octaves[i].name, octaves[i].ip, octaves[i].port)
 
     return octave_config
-
-

@@ -197,7 +197,6 @@ config = {
                     "LO_source": "external", # external is the default
                     "IF_mode_I": "direct",
                     "IF_mode_Q": "direct",
-
                 }
             },
             "connectivity": con
@@ -325,7 +324,7 @@ if check_triggers:
                 play("cw", el, duration=1e9)
                 play("cw_wo_trig", el, duration=1e9)
     job = qm.execute(hello_octave_trigger)
-    time.sleep(60)  #  The program will run for 1 minute
+    time.sleep(60)  # The program will run for 1 minute
     job.halt()
 
 #########################################
