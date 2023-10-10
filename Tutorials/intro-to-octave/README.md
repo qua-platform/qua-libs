@@ -6,7 +6,7 @@ This folder contains scripts for checking the octave and integrating it into you
 2. `hello_octave.py` shows an example of running a program with the octave.
 3. `configuration.py` is the configuration file for `hello_octave.py`.
 4. `octave_clock_and_calibration.py` is the octave configuration file for setting the clock and calibration.
-5. `set_octave.py` contains helper functions to initiate the octave. 
+5. `set_octave.py` contains helper functions to initialize the octave. 
 
 ## [octave_introduction.py](octave_introduction.py)
 In this file you can find the basic octave commands.
@@ -44,11 +44,11 @@ __This file must be run once prior to executing any QUA program in order to conf
 This file shows an example of how to run a program with a setup containing a set of OPX + Octave. 
 The Octave config defined in ``configuration.py`` is passed to the Quantum Machine Manager to enable the communication with the previously declared Octave unit.
 
-The one can run the QUA program as usual assuming that the Octave's clock has been set and the Octave has been calibrated by running `octave_clock_and_calibration.py`.
+Then one can run the QUA program as usual assuming that the Octave's clock has been set and the Octave has been calibrated by running `octave_clock_and_calibration.py`.
 
 
 ## [set_octave.py](set_octave.py)
-This file contains the relevant octave commands for initiating the Octave.
+This file contains the relevant octave commands for initializing the Octave.
 
 Let's talk about each function separately:
 

@@ -8,7 +8,7 @@ qop_port = 80
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
+octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1")
 
 # Add the octaves
 octaves = [octave_1]
@@ -63,8 +63,8 @@ config = {
             "digitalInputs": {
                 "switch": {
                     "port": (con, 1),
-                    "delay": 136,
-                    "buffer": 0,
+                    "delay": 87,
+                    "buffer": 15,
                 },
             },
             "time_of_flight": 24,
@@ -81,8 +81,8 @@ config = {
             "digitalInputs": {
                 "switch": {
                     "port": (con, 3),
-                    "delay": 136,
-                    "buffer": 0,
+                    "delay": 87,
+                    "buffer": 15,
                 },
             },
             "time_of_flight": 24,
@@ -113,8 +113,8 @@ config = {
             "digitalInputs": {
                 "switch": {
                     "port": (con, 7),
-                    "delay": 136,
-                    "buffer": 0,
+                    "delay": 87,
+                    "buffer": 15,
                 },
             },
         },
@@ -128,8 +128,8 @@ config = {
             "digitalInputs": {
                 "switch": {
                     "port": (con, 9),
-                    "delay": 136,
-                    "buffer": 0,
+                    "delay": 87,
+                    "buffer": 15,
                 },
             },
         },

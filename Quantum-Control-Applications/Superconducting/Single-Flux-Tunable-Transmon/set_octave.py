@@ -1,5 +1,5 @@
 """
-set_octave.py: script for initiating the octave
+set_octave.py: script for initializing the octave
 """
 import os
 from qm.octave import QmOctaveConfig
@@ -32,7 +32,7 @@ def octave_declaration(octaves: list = ()):
     """
     Initiate octave_config class, set the calibration file and add octaves info.
 
-    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip ansd octave's port.
+    :param octaves: objects that holds the information about octave's name, the controller that is connected to this octave, octave's ip and octave's port.
     """
     octave_config = QmOctaveConfig()
     octave_config.set_calibration_db(os.getcwd())
