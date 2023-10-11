@@ -3,12 +3,15 @@ from set_octave import OctaveUnit, octave_declaration
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"
-qop_port = 80
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
+
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1")
+octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
+octave_1 = OctaveUnit("octave1", qop_ip, port=octave_port, con="con1")
 
 # Add the octaves
 octaves = [octave_1]

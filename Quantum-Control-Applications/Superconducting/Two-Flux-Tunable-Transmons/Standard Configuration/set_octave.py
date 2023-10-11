@@ -12,14 +12,14 @@ class OctaveUnit:
             self,
             name: str,
             ip: str,
-            port: int = 50,
+            port: int,
             con: str = "con1",
     ):
         """Class for keeping track of OctavesSettings in inventory.
 
         :param name: Name of the Octave.
         :param ip: IP address of the router to which the Octave is connected.
-        :param port: Port of the Octave.
+        :param port: Port of the Octave - Must be 11xxx, where xxx are the last three digits of the Octave IP address
         :param con: Controller to which the Octave is connected. Only used when port mapping set to default.
         """
         self.name = name

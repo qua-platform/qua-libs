@@ -21,10 +21,11 @@ calibration = False
 #################################
 # Step 0 : Octave configuration #
 #################################
-opx_ip = "172.0.0.1"
-opx_port = 80
-octave_ip = "172.0.0.1"
-octave_port = 50
+qop_ip = "172.0.0.1"
+cluster_name = "Cluster_1"
+opx_port = None
+
+octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
 con = "con1"
 octave = "octave1"
 # The elements used to test the ports of the Octave
@@ -274,9 +275,9 @@ octave_config = QmOctaveConfig()
 # Specify where to store the outcome of the calibration (correction matrix, offsets...)
 octave_config.set_calibration_db(os.getcwd())
 # Add an Octave called 'octave1' with the specified IP and port
-octave_config.add_device_info(octave, octave_ip, octave_port)
+octave_config.add_device_info(octave, qop_ip, octave_port)
 
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, cluster_name=cluster_name, octave=octave_config)
 
 qm = qmm.open_qm(config)
 
