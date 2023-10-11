@@ -9,11 +9,11 @@ class OctaveUnit:
     """Class for keeping track of OctavesSettings in inventory."""
 
     def __init__(
-            self,
-            name: str,
-            ip: str,
-            port: int,
-            con: str = "con1",
+        self,
+        name: str,
+        ip: str,
+        port: int,
+        con: str = "con1",
     ):
         """Class for keeping track of OctavesSettings in inventory.
 

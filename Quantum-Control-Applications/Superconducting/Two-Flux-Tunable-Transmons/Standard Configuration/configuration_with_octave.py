@@ -255,7 +255,7 @@ config = {
     "elements": {
         "rr1": {
             "RF_inputs": {"port": ("octave1", 1)},
-            'RF_outputs': {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
                 "cw": "const_pulse",
@@ -266,7 +266,7 @@ config = {
         },
         "rr2": {
             "RF_inputs": {"port": ("octave1", 1)},
-            'RF_outputs': {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
                 "cw": "const_pulse",
@@ -346,7 +346,7 @@ config = {
                     "LO_source": "internal",
                 },
             },
-            "connectivity": "con1"
+            "connectivity": "con1",
         }
     },
     "pulses": {
