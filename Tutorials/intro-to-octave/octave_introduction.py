@@ -65,7 +65,7 @@ config = {
     "elements": {
         "qe1": {
             "RF_inputs": {"port": (octave, 1)},
-            'RF_outputs': {"port": (octave, 1)},
+            "RF_outputs": {"port": (octave, 1)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -81,11 +81,10 @@ config = {
             },
             "time_of_flight": 24,
             "smearing": 0,
-
         },
         "qe2": {
             "RF_inputs": {"port": (octave, 2)},
-            'RF_outputs': {"port": (octave, 2)},
+            "RF_outputs": {"port": (octave, 2)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -103,7 +102,7 @@ config = {
             "smearing": 0,
         },
         "qe3": {
-            'RF_inputs': {"port": (octave, 3)},
+            "RF_inputs": {"port": (octave, 3)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -119,7 +118,7 @@ config = {
             },
         },
         "qe4": {
-            'RF_inputs': {"port": (octave, 4)},
+            "RF_inputs": {"port": (octave, 4)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -135,7 +134,7 @@ config = {
             },
         },
         "qe5": {
-            'RF_inputs': {"port": (octave, 5)},
+            "RF_inputs": {"port": (octave, 5)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -150,7 +149,6 @@ config = {
                 },
             },
         },
-
     },
     "octaves": {
         octave: {
@@ -158,8 +156,8 @@ config = {
                 1: {
                     "LO_frequency": LO,
                     "LO_source": "internal",  # can be external or internal. internal is the default
-                    "output_mode": "always_on", # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
-                    "gain": 0, # can be in the range [-20 : 0.5 : 20]dB
+                    "output_mode": "always_on",  # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
                 },
                 2: {
                     "LO_frequency": LO,
@@ -189,18 +187,18 @@ config = {
             "RF_inputs": {
                 1: {
                     "LO_frequency": LO,
-                    "LO_source": "internal", # internal is the default
+                    "LO_source": "internal",  # internal is the default
                     "IF_mode_I": "direct",  # can be: "direct" / "mixer" / "envelope" / "off". direct is default
                     "IF_mode_Q": "direct",
                 },
                 2: {
                     "LO_frequency": LO,
-                    "LO_source": "external", # external is the default
+                    "LO_source": "external",  # external is the default
                     "IF_mode_I": "direct",
                     "IF_mode_Q": "direct",
-                }
+                },
             },
-            "connectivity": con
+            "connectivity": con,
         }
     },
     "pulses": {
