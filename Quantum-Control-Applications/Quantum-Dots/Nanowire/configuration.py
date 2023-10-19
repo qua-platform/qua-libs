@@ -53,7 +53,8 @@ octave_config = octave_declaration(octaves)
 ######################
 # DC readout parameters
 readout_len = 10 * u.us
-readout_amp = 0
+readout_amp = 0.1
+IV_scale_factor = 0.5e-9  # in A/V
 
 # Reflectometry
 resonator_IF = 151 * u.MHz
@@ -70,7 +71,7 @@ P1_amp = 0.1
 P2_amp = 0.5
 
 block_length = 100
-bias_length = 200
+bias_length = 500
 
 hold_offset_duration = 200
 
