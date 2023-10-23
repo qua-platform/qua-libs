@@ -71,7 +71,7 @@ P1_amp = 0.1
 P2_amp = 0.5
 
 block_length = 100
-bias_length = 500
+bias_length = 200
 
 hold_offset_duration = 200
 
