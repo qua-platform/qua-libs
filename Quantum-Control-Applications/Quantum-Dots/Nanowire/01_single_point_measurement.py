@@ -9,17 +9,19 @@ from time import sleep
 
 # qcodes imports
 import qcodes as qc
-from qcodes import (Measurement,
-                    experiments,
-                    initialise_database,
-                    initialise_or_create_database_at,
-                    load_by_guid,
-                    load_by_run_spec,
-                    load_experiment,
-                    load_last_experiment,
-                    load_or_create_experiment,
-                    new_experiment,
-                    ManualParameter)
+from qcodes import (
+    Measurement,
+    experiments,
+    initialise_database,
+    initialise_or_create_database_at,
+    load_by_guid,
+    load_by_run_spec,
+    load_experiment,
+    load_last_experiment,
+    load_or_create_experiment,
+    new_experiment,
+    ManualParameter,
+)
 from qcodes.utils.dataset.doNd import do1d, do2d, do0d
 from qcodes.dataset.plotting import plot_dataset
 from qcodes.logger.logger import start_all_logging
@@ -36,6 +38,7 @@ from qm.qua import *
 from qualang_tools.external_frameworks.qcodes.opx_driver import OPX
 from importlib import reload
 import configuration
+
 reload(configuration)
 from configuration import *
 from qualang_tools.loops import from_array
@@ -48,7 +51,7 @@ from helpers import qcodes_setup, DummyParameter, OPX_measurement
 #######################################
 station, experiment, opx_instrument = qcodes_setup()
 
-#Dummy parameters
+# Dummy parameters
 V1 = DummyParameter("Plunger1", "Vp1")
 V2 = DummyParameter("Plunger2", "Vp2")
 
@@ -60,6 +63,8 @@ n_avg = 1_000  # Number of averages
 # Measurement type to select the correct measure statement - can be either "reflectometry" or "dc_current"
 measurement_type = "reflectometry"
 simulate = False
+
+
 #     We are now defining a QUA program  which applies N pulse cycles, averages them n_avg times, for IF frequencies in f_vec
 def single_point_readout(simulate=False):
     with program() as prog:

@@ -1,24 +1,26 @@
 import os
+
 # qcodes imports
 import qcodes as qc
 from qcodes import initialise_or_create_database_at, load_or_create_experiment
 
 from qcodes.instrument.parameter import Parameter
+
 # QUA imports
 from qualang_tools.external_frameworks.qcodes.opx_driver import OPX
 from configuration import *
 from qm.qua import *
 
+
 #######################################
 #          Setting-up QCoDeS          #
 #######################################
-def qcodes_setup(db_name: str="database.db", sample_name:str = "sample", exp_name:str = "experiment"):
+def qcodes_setup(db_name: str = "database.db", sample_name: str = "sample", exp_name: str = "experiment"):
     db_file_path = os.path.join(os.getcwd(), db_name)
     qc.config.core.db_location = db_file_path
     initialise_or_create_database_at(db_file_path)
 
-    experiment = load_or_create_experiment(experiment_name = exp_name,
-                                           sample_name = sample_name)
+    experiment = load_or_create_experiment(experiment_name=exp_name, sample_name=sample_name)
 
     station = qc.Station()
 
@@ -28,7 +30,8 @@ def qcodes_setup(db_name: str="database.db", sample_name:str = "sample", exp_nam
     station.add_component(opx_instrument)
     return station, experiment
 
-def OPX_measurement(readout_type:str = "reflectometry", I=None, I_st=None, Q=None, Q_st=None):
+
+def OPX_measurement(readout_type: str = "reflectometry", I=None, I_st=None, Q=None, Q_st=None):
     if I is None:
         I = declare(fixed)
     if I_st is None:
@@ -44,6 +47,7 @@ def OPX_measurement(readout_type:str = "reflectometry", I=None, I_st=None, Q=Non
     elif readout_type == "dc_current":
         measure("readout", "TIA", None, integration.full("cos", I, "out1"))
         save(I, I_st)
+
 
 # Define dummy parameters for demonstration purposes - ti be replaced by real parameters from other instruments
 class DummyParameter(Parameter):
