@@ -1,3 +1,7 @@
+"""
+Octave configuration working for <=QOP220 and qm-qua<=1.1.4.
+"""
+
 from quam import QuAM
 import numpy as np
 from set_octave import *
@@ -44,8 +48,6 @@ octave_1 = OctaveUnit(
     "octave1",
     machine.local_oscillators.network.qop_ip,
     port=machine.local_oscillators.network.qop_port,
-    clock="Internal",
-    port_mapping=port_mapping,
 )
 
 # Configure the Octaves

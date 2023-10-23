@@ -21,10 +21,11 @@ calibration = False
 #################################
 # Step 0 : Octave configuration #
 #################################
-opx_ip = "172.0.0.1"
-opx_port = 80
-octave_ip = "172.0.0.1"
-octave_port = 50
+qop_ip = "172.0.0.1"
+cluster_name = "Cluster_1"
+opx_port = None
+
+octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
 con = "con1"
 octave = "octave1"
 # The elements used to test the ports of the Octave
@@ -50,25 +51,21 @@ config = {
             },
             "digital_outputs": {
                 1: {},
-                2: {},
                 3: {},
-                4: {},
                 5: {},
+                7: {},
+                9: {},
             },
             "analog_inputs": {
-                1: {"offset": +0.0},
-                2: {"offset": +0.0},
+                1: {"offset": 0.0},
+                2: {"offset": 0.0},
             },
         }
     },
     "elements": {
         "qe1": {
-            "mixInputs": {
-                "I": (con, 1),
-                "Q": (con, 2),
-                "lo_frequency": LO,
-                "mixer": f"octave_{octave}_1",  # a fixed name, do not change.
-            },
+            "RF_inputs": {"port": (octave, 1)},
+            "RF_outputs": {"port": (octave, 1)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -82,20 +79,12 @@ config = {
                     "buffer": 0,
                 },
             },
-            "outputs": {
-                "out1": (con, 1),
-                "out2": (con, 2),
-            },
             "time_of_flight": 24,
             "smearing": 0,
         },
         "qe2": {
-            "mixInputs": {
-                "I": (con, 3),
-                "Q": (con, 4),
-                "lo_frequency": LO,
-                "mixer": f"octave_{octave}_2",  # a fixed name, do not change.
-            },
+            "RF_inputs": {"port": (octave, 2)},
+            "RF_outputs": {"port": (octave, 2)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
@@ -104,69 +93,21 @@ config = {
             },
             "digitalInputs": {
                 "switch": {
-                    "port": (con, 2),
-                    "delay": 136,
-                    "buffer": 0,
-                },
-            },
-            "outputs": {
-                "out1": (con, 1),
-                "out2": (con, 2),
-            },
-            "time_of_flight": 24,
-            "smearing": 0,
-        },
-        "qe3": {
-            "mixInputs": {
-                "I": (con, 5),
-                "Q": (con, 6),
-                "lo_frequency": LO,
-                "mixer": f"octave_{octave}_3",  # a fixed name, do not change.
-            },
-            "intermediate_frequency": IF,
-            "operations": {
-                "cw": "const",
-                "cw_wo_trig": "const_wo_trig",
-            },
-            "digitalInputs": {
-                "switch": {
                     "port": (con, 3),
                     "delay": 136,
                     "buffer": 0,
                 },
             },
+            "time_of_flight": 24,
+            "smearing": 0,
         },
-        "qe4": {
-            "mixInputs": {
-                "I": (con, 7),
-                "Q": (con, 8),
-                "lo_frequency": LO,
-                "mixer": f"octave_{octave}_4",  # a fixed name, do not change.
-            },
+        "qe3": {
+            "RF_inputs": {"port": (octave, 3)},
             "intermediate_frequency": IF,
             "operations": {
                 "cw": "const",
                 "cw_wo_trig": "const_wo_trig",
-            },
-            "digitalInputs": {
-                "switch": {
-                    "port": (con, 4),
-                    "delay": 136,
-                    "buffer": 0,
-                },
-            },
-        },
-        "qe5": {
-            "mixInputs": {
-                "I": (con, 9),
-                "Q": (con, 10),
-                "lo_frequency": LO,
-                "mixer": f"octave_{octave}_5",  # a fixed name, do not change.
-            },
-            "intermediate_frequency": IF,
-            "operations": {
-                "cw": "const",
-                "cw_wo_trig": "const_wo_trig",
+                "readout": "readout_pulse",
             },
             "digitalInputs": {
                 "switch": {
@@ -176,6 +117,89 @@ config = {
                 },
             },
         },
+        "qe4": {
+            "RF_inputs": {"port": (octave, 4)},
+            "intermediate_frequency": IF,
+            "operations": {
+                "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
+                "readout": "readout_pulse",
+            },
+            "digitalInputs": {
+                "switch": {
+                    "port": (con, 7),
+                    "delay": 136,
+                    "buffer": 0,
+                },
+            },
+        },
+        "qe5": {
+            "RF_inputs": {"port": (octave, 5)},
+            "intermediate_frequency": IF,
+            "operations": {
+                "cw": "const",
+                "cw_wo_trig": "const_wo_trig",
+                "readout": "readout_pulse",
+            },
+            "digitalInputs": {
+                "switch": {
+                    "port": (con, 9),
+                    "delay": 136,
+                    "buffer": 0,
+                },
+            },
+        },
+    },
+    "octaves": {
+        octave: {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",  # can be external or internal. internal is the default
+                    "output_mode": "always_on",  # can be: "always_on" / "always_off"/ "triggered" / "triggered_reversed". "always_off" is the default
+                    "gain": 0,  # can be in the range [-20 : 0.5 : 20]dB
+                },
+                2: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+                3: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+                4: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+                5: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+            },
+            "RF_inputs": {
+                1: {
+                    "LO_frequency": LO,
+                    "LO_source": "internal",  # internal is the default
+                    "IF_mode_I": "direct",  # can be: "direct" / "mixer" / "envelope" / "off". direct is default
+                    "IF_mode_Q": "direct",
+                },
+                2: {
+                    "LO_frequency": LO,
+                    "LO_source": "external",  # external is the default
+                    "IF_mode_I": "direct",
+                    "IF_mode_Q": "direct",
+                },
+            },
+            "connectivity": con,
+        }
     },
     "pulses": {
         "const": {
@@ -242,43 +266,6 @@ config = {
             "sine": [(-1.0, 1000)],
         },
     },
-    "mixers": {
-        f"octave_{octave}_1": [
-            {
-                "intermediate_frequency": IF,
-                "lo_frequency": LO,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-        f"octave_{octave}_2": [
-            {
-                "intermediate_frequency": IF,
-                "lo_frequency": LO,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-        f"octave_{octave}_3": [
-            {
-                "intermediate_frequency": IF,
-                "lo_frequency": LO,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-        f"octave_{octave}_4": [
-            {
-                "intermediate_frequency": IF,
-                "lo_frequency": LO,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-        f"octave_{octave}_5": [
-            {
-                "intermediate_frequency": IF,
-                "lo_frequency": LO,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-    },
 }
 
 # Create the octave config object
@@ -286,43 +273,10 @@ octave_config = QmOctaveConfig()
 # Specify where to store the outcome of the calibration (correction matrix, offsets...)
 octave_config.set_calibration_db(os.getcwd())
 # Add an Octave called 'octave1' with the specified IP and port
-octave_config.add_device_info(octave, octave_ip, octave_port)
-# Define the connectivity between our Octave to the OPX(s) ports. The 'default'
-# connectivity is as follows:
-#    +- OCTAVE (octave1) --------------------------------------------------------+
-#    |                                      I1    I2    I3    I4    I5           |
-#    |             o    o    o    o    o     o<+   o<+   o<+   o<+   o<+     o   |
-#    |   o    o                           QM   |     |     |     |     |         |
-#    |             o    o    o    o    o   +>o | +>o | +>o | +>o | +>o |     o   |
-#    |                                     |Q1 | |Q2 | |Q3 | |Q4 | |Q5 |         |
-#    +-------------------------------------|---|-|---|-|---|-|---|-|---|---------+
-#                                          |   | |   | |   | |   | |   |
-#                                          |   | |   | |   | |   | |   |
-#    +- OPX (con1) ------------------------|---|-|---|-|---|-|---|-|---|---------+
-#    |                                     | 1 | | 3 | | 5 | | 7 | | 9 |         |
-#    |     o     o     o     o     o    |  | o<+ | o<+ | o<+ | o<+ | o<+ |   o   |
-#    |                                     |     |     |     |     |             |
-#    |     o     o     o     o     o    |  +>o   +>o   +>o   +>o   +>o   |   o   |
-#    |                                       2     4     6     8    10           |
-#    +---------------------------------------------------------------------------+
-octave_config.set_opx_octave_mapping([(con, octave)])
-# The last command is equivalent to
-# octave_config.add_opx_octave_port_mapping({
-#     ('con1',  1) : ('octave1', 'I1'),
-#     ('con1',  2) : ('octave1', 'Q1'),
-#     ('con1',  3) : ('octave1', 'I2'),
-#     ('con1',  4) : ('octave1', 'Q2'),
-#     ('con1',  5) : ('octave1', 'I3'),
-#     ('con1',  6) : ('octave1', 'Q3'),
-#     ('con1',  7) : ('octave1', 'I4'),
-#     ('con1',  8) : ('octave1', 'Q4'),
-#     ('con1',  9) : ('octave1', 'I5'),
-#     ('con1', 10) : ('octave1', 'Q5'),
-# })
+octave_config.add_device_info(octave, qop_ip, octave_port)
 
-# Open the QuantumMachineManager for the OPX and Octave
-qmm = QuantumMachinesManager(host=opx_ip, port=opx_port, octave=octave_config)
-# Open a quantum machine to calibrate the ports or play signals
+qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, cluster_name=cluster_name, octave=octave_config)
+
 qm = qmm.open_qm(config)
 
 # Simple test program that plays a continuous wave through all ports
@@ -342,28 +296,8 @@ else:
     qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
 # You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
 
-#########################################
-# Step 2 : set LO, RF gain, and RF mode #
-#########################################
-external_LO = False
-# For external LO only:
-if external_LO:
-    # OctaveLOSource.LO1,2,3,4,5 to use an external LO source connected to the corresponding ports in the rear panel.
-    qm.octave.set_lo_source(elements[1], OctaveLOSource.LO2)
-    qm.octave.set_rf_output_gain(elements[1], 0)  # can set the gain from -10dB to 20dB
-    qm.octave.set_rf_output_mode(elements[1], RFOutputMode.on)  # set the behaviour of the RF switch to be 'on'.
-# For internal LO only:
-else:
-    for el in elements:
-        qm.octave.set_lo_source(el, OctaveLOSource.Internal)  # Use the internal synthetizer to generate the LO.
-        qm.octave.set_lo_frequency(el, LO)  # assign the LO inside the octave to element
-        qm.octave.set_rf_output_gain(el, 0)  # can set the gain from -10dB to 20dB
-        qm.octave.set_rf_output_mode(el, RFOutputMode.on)  # set the behaviour of the RF switch to be 'on'.
-        # 'RFOutputMode' can be : on, off, trig_normal or trig_inverse
-        # You can check the internal LOs by connecting the ports synth1, 2 and 3 to a spectrum analyzer.
-
 #######################################
-# Step 3 : checking the up-converters #
+# Step 2 : checking the up-converters #
 #######################################
 if check_up_converters:
     print("-" * 37 + " Checking up-converters")
@@ -374,7 +308,7 @@ if check_up_converters:
     # 1. LO-IF, 2. LO, 3. LO+IF
 
 ##################################
-# Step 4 : checking the triggers #
+# Step 3 : checking the triggers #
 ##################################
 if check_triggers:
     print("-" * 37 + " Checking triggers")
@@ -389,11 +323,11 @@ if check_triggers:
                 play("cw", el, duration=1e9)
                 play("cw_wo_trig", el, duration=1e9)
     job = qm.execute(hello_octave_trigger)
-    time.sleep(60)  #  The program will run for 1 minute
+    time.sleep(60)  # The program will run for 1 minute
     job.halt()
 
 #########################################
-# Step 5 : checking the down-converters #
+# Step 4 : checking the down-converters #
 #########################################
 if check_down_converters:
     print("-" * 37 + " Checking down-converters")
@@ -403,14 +337,8 @@ if check_down_converters:
     check_down_converter_2 = False
     u = unit()
     if check_down_converter_1:
-        # Reduce the Octave gain to avoid saturating the OPX ADC
+        # Reduce the Octave gain to avoid saturating the OPX ADC or add a 20dB attenuator
         qm.octave.set_rf_output_gain(elements[0], -10)
-        # Set the Octave down-conversion port to be RF1In1 for the first element "qe1"
-        qm.octave.set_qua_element_octave_rf_in_port(elements[0], octave, 1)
-        # Set the source of the down-conversion LO to be internal (only for RF1In1)
-        qm.octave.set_downconversion(
-            elements[0], lo_source=RFInputLOSource.Internal, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
-        )
         with program() as hello_octave_readout_1:
             raw_ADC_1 = declare_stream(adc_trace=True)
             measure("readout", elements[0], raw_ADC_1)
@@ -438,14 +366,9 @@ if check_down_converters:
         plt.tight_layout()
 
     if check_down_converter_2:
-        # Reduce the Octave gain to avoid saturating the OPX ADC
+        # Reduce the Octave gain to avoid saturating the OPX ADC or add a 20dB attenuator
         qm.octave.set_rf_output_gain(elements[1], -10)
-        # Set the Octave down-conversion port to be RF1In2 for the second element "qe2"
-        qm.octave.set_qua_element_octave_rf_in_port(elements[1], octave, 2)
-        # Set the source of the down-conversion LO to be external from the port Dmd2LO in the rear panel
-        qm.octave.set_downconversion(
-            elements[1], lo_source=RFInputLOSource.Dmd2LO, if_mode_i=IFMode.direct, if_mode_q=IFMode.direct
-        )
+
         with program() as hello_octave_readout_2:
             raw_ADC_2 = declare_stream(adc_trace=True)
             measure("readout", elements[1], raw_ADC_2)
@@ -473,7 +396,7 @@ if check_down_converters:
         plt.tight_layout()
 
 #################################
-# Step 6 : checking calibration #
+# Step 5 : checking calibration #
 #################################
 if calibration:
     print("-" * 37 + " Play before calibration")
@@ -482,10 +405,9 @@ if calibration:
     time.sleep(10)  # The program will run for 10 seconds
     job.halt()
     # Step 5.2: Run this in order to calibrate
-    for i in range(len(elements)):
-        print("-" * 37 + f" Calibrates {elements[i]}")
-        qm.octave.calibrate_element(elements[i], [(LO, IF)])  # can provide many pairs of LO & IFs.
-        qm = qmm.open_qm(config)
+    for element in elements:
+        print("-" * 37 + f" Calibrates {element}")
+        qm.calibrate_element(element, {LO: (IF,)})  # can provide many IFs for specific LO
     # Step 5.3: Run these and look at the spectrum analyzer and check if you get 1 peak at LO+IF (i.e. 6.05GHz)
     print("-" * 37 + " Play after calibration")
     job = qm.execute(hello_octave)
