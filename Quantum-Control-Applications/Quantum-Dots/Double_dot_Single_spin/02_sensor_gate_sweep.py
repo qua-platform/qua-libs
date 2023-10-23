@@ -9,6 +9,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.plot import interrupt_on_close
 
 ###################
 # The QUA program #
@@ -36,7 +37,7 @@ with program() as chargesensor_sweep:
         assign(counter, counter+1)
 
     with stream_processing():
-        I.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets)).save('I')
+        I.buffer(n_avg).map(FUNCTIONS.average()).save_all('I')
         counter.save('counter')
 
 #####################################
@@ -47,7 +48,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 #######################
 # Simulate or execute #
 #######################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -63,11 +64,17 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(chargesensor_sweep)
     # Get results from QUA program
-    my_results = fetching_tool(job, data_list=['counter'], mode="live")
-    fit = plt.figure()
+    my_results = fetching_tool(job, data_list=['counter', 'I'], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while my_results.is_processing():
-        counter = my_results.fetch_all()[0]
+        counter, I = my_results.fetch_all()
+        I_volts = u.demod2volts(I['value'], readout_len)
         progress_counter(counter, len(offsets), start_time=my_results.get_start_time())
-    my_results = fetching_tool(job, data_list=['counter', 'I'])
-    counter, I = my_results.fetch_all()
-    plt.plot(offsets, I)
+        plt.cla()
+        plt.plot(offsets, I_volts)
+        plt.xlabel('Sensor gate [V]')
+        plt.ylabel('Voltage')
+        plt.pause(0.1)
+    plt.show()

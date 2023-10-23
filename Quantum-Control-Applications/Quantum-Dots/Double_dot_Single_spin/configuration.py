@@ -26,7 +26,7 @@ octave_config = None
 #       READOUT      #
 ######################
 # DC readout parameters
-readout_len = 10000
+readout_len = 10_000
 readout_amp = 0.4
 IV_scale_factor = 0.5e-9  # in A/V
 
