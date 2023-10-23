@@ -1,6 +1,8 @@
 # Intro to octave
 This folder contains scripts for checking the octave and integrating it into your running experiments. 
 
+**Please note that the following files are compatible with QOP222 and qm-qua==1.1.5 and newer.** 
+
 ### You can find here five python files 
 1. `octave_introduction.py` contains the basic octave commands. This file shows the configuration the octave, sets the octave's clock, test the RF outputs and calibrate the mixers. 
 2. `hello_octave.py` shows an example of running a program with the octave.

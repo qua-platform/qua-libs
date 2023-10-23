@@ -1,3 +1,7 @@
+"""
+Octave configuration working for <=QOP220 and qm-qua<=1.1.4.
+"""
+
 from quam import QuAM
 import numpy as np
 from set_octave import *
