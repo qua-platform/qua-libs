@@ -19,12 +19,11 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-element = "resonator"
 
 with program() as cw_output:
     with infinite_loop_():
         # It is best to calibrate LO leakage first and without any power played (cf. note below)
-        play("cw" * amp(0), element)
+        play("cw" * amp(0), 'qubit_left')
 
 #####################################
 #  Open Communication with the QOP  #

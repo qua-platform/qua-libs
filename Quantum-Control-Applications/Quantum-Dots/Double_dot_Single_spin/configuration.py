@@ -41,8 +41,8 @@ time_of_flight = 300
 ######################
 #      DC GATES      #
 ######################
-P1_amp = 0.1
-P2_amp = 0.4
+P1_amp = 0.2
+P2_amp = 0.2
 B_center_amp = 0.2
 charge_sensor_amp = 0.2
 
