@@ -27,7 +27,7 @@ offset_max_P2 = 0.2
 d_offset_P2 = 0.01
 offsets_P2 = np.arange(offset_min_P2, offset_max_P2, d_offset_P2)
 
-with program() as chargesensor_sweep:
+with program() as charge_stability:
     
     dc_p1 = declare(fixed)
     dc_p2 = declare(fixed)
@@ -74,7 +74,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, chargesensor_sweep, simulation_config)
+    job = qmm.simulate(config, charge_stability, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 
@@ -82,7 +82,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(chargesensor_sweep)
+    job = qm.execute(charge_stability)
     # Get results from QUA program
     my_results = fetching_tool(job, data_list=['counter', 'I'], mode="live")
     # Live plotting
