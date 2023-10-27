@@ -22,7 +22,7 @@ N = 100
 bit_shit_cte = 7
 n_avg_ro = 2 ** bit_shit_cte
 Coulomb_pk_to_pk = 0.2
-qubit_IFs = np.arange(-50 * u.MHz, 50 * u.MHz, 0.1 * u.MHz)
+qubit_IFs = np.array(-50 * u.MHz, 50 * u.MHz, 0.1 * u.MHz)
 
 with program() as readout_search:
     n = declare(int)  # QUA integer used as an index for the outer averaging loop

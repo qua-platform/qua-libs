@@ -81,7 +81,7 @@ with program() as readout_search:
         I_on_st.average().save("I_on")
         I_off_st.average().save("I_off")
         (I_on_st - I_off_st).average().save("I_diff")
-        (I_on_st + I_off_st).average().save_all("I_sum")
+        (I_on_st + I_off_st).average().save("I_sum")
 
 
 #####################################

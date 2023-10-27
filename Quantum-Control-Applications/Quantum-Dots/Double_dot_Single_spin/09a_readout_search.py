@@ -39,6 +39,8 @@ with program() as readout_search:
     update_frequency("qubit", int(drive_frequency - qubit_LO_left))
 
     with for_(n, 0, n < n_avg, n + 1):  # The outer averaging loop
+        assign(I_on_avg, 0)
+        assign(I_off_avg, 0)
         # Play the Coulomb and qubit pulse continuously for a time given by coulomb_drive_length
         #      ____      ____      ____      ____
         #     |    |    |    |    |    |    |    |  --> I_on
@@ -81,7 +83,7 @@ with program() as readout_search:
         I_on_st.average().save("I_on")
         I_off_st.average().save("I_off")
         (I_on_st - I_off_st).average().save("I_diff")
-        (I_on_st + I_off_st).average().save_all("I_sum")
+        (I_on_st + I_off_st).average().save("I_sum")
 
 
 #####################################
