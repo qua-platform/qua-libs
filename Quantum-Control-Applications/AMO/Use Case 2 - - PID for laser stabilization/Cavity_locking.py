@@ -1,7 +1,8 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
+from configuration_cavity_locking import *
+from qualang_tools.addons.variables import assign_variables_to_element
 import matplotlib.pyplot as plt
 import warnings
 
@@ -13,19 +14,34 @@ warnings.filterwarnings("ignore")
 ###################
 target = -0.001
 bitshift_scale_factor = 9  ## scale_factor = 2**bitshift_scale_factor
-gain_P = -2.0*1.85 /2/2
-gain_I = -7
-gain_D = -0.2
-
+gain_P = 2.0*1.85 /2/2
+gain_I = 0.0
+gain_D = 0.0
 alpha = 0.1
+angle = 0.0
 N_shots = 1000
+
+def PID_derivation(input_signal, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha, target=0):
+    # calculate the error
+    assign(error, (target - input_signal) << bitshift_scale_factor)
+    # calculate the integrator error with exponentially decreasing weights with coefficient alpha
+    assign(integrator_error, (1 - alpha) * integrator_error + alpha * error)
+    # calculate the derivative error
+    assign(derivative_error, old_error - error)
+    return gain_P * error + gain_I * integrator_error + gain_D * derivative_error
+
 
 with program() as PID_prog:
     # adc_st = declare_stream(adc_trace=True)
     n = declare(int)
-    single_shot = declare(fixed)
+    single_shot_DC = declare(fixed)
+    I = declare(fixed)
+    Q = declare(fixed)
+    single_shot_AC = declare(fixed)
     single_shot_st = declare_stream()
     amplitude = declare(fixed, value=1.0)
+    correction = declare(fixed)
+    dc_offset_1 = declare(fixed)
     error = declare(fixed, value=0)
     error_st = declare_stream()
     amp_st = declare_stream()
@@ -36,40 +52,54 @@ with program() as PID_prog:
     total_error = declare(fixed)
     derivative_error_st = declare_stream()
 
+    a = declare(fixed)
+
+    assign_variables_to_element("detector_DC", single_shot_DC)
+    assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
+    # Phase modulator
+    assign(a, 1)
+    set_dc_offset("filter_cavity_1", "single", 0.0)
+    # with infinite_loop_():
+    #     play("cw"*amp(a), "phase_modulator")
     with for_(n, 0, n < N_shots, n + 1):
-        # start noise only after 1/4 of the shots
-        # The noise is a different element outputting to the same ports and adding a 100kHz or so noise signal
-        with if_(n > N_shots / 4):
-            play("cw", "noise")
-
-        # play the AOM pulse with a controlled amplitude
-        play("cw" * amp(amplitude), "AOM")
-        # Measure and integrate the signal received by the photo-diode
-        measure("readout", "photo-diode", None, integration.full("constant", single_shot, "out1"))
-
-        # calculate the error
-        assign(error, (target - single_shot) << bitshift_scale_factor)
-        # calculate the integrator error with exponentially decreasing weights with coefficient alpha
-        assign(integrator_error, (1 - alpha) * integrator_error + alpha * error)
-        # calculate the derivative error
-        assign(derivative_error, old_error - error)
-        # stop the correction during 1/4 of shots just to show that it locks to a different setpoint quickly
-        with if_((n < int(N_shots / 2)) | (n > int(0.75*N_shots))):
-            assign(amplitude, amplitude + (gain_P * error + gain_I * integrator_error + gain_D * derivative_error))
+        # Ensure that the two digital oscillators will have the same phase
+        reset_phase("phase_modulator")
+        reset_phase("detector_AC")
+        # Adjust the phase delay between the two
+        frame_rotation_2pi(angle, "detector_AC")
+        # Sync all the elements
+        align()
+        # Play the PDH sideband
+        play("cw", "phase_modulator")
+        # Measure and integrate the signal received by the detector --> DC measurement
+        measure("readout", "detector_DC", None, integration.full("constant", single_shot_DC, "out1"))
+        # Measure and demodulate the signal received by the detector --> AC measurement I**2 + Q**2
+        measure("readout", "detector_AC", None, demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
+        assign(single_shot_AC, I*I + Q*Q*0)
+        # PID correction signal
+        assign(correction, PID_derivation(single_shot_AC, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha))
+        # Apply the correction by updating the DC offset
+        assign(dc_offset_1, dc_offset_1 + correction)
+        # Handle saturation
+        with if_(dc_offset_1 > 0.5 - phase_mod_amplitude):
+            assign(dc_offset_1, 0.5 - phase_mod_amplitude)
+        with if_(dc_offset_1 < -0.5 + phase_mod_amplitude):
+            assign(dc_offset_1, -0.5 + phase_mod_amplitude)
+        set_dc_offset("filter_cavity_1", "single", dc_offset_1)
 
         # save old error to be error
         assign(old_error, error)
 
-        save(single_shot, single_shot_st)
+        save(single_shot_AC, single_shot_st)
         save(error, error_st)
-        save(amplitude, amp_st)
+        save(dc_offset_1, amp_st)
         save(derivative_error, derivative_error_st)
         save(integrator_error, integrator_error_st)
 
     with stream_processing():
         single_shot_st.save_all("single_shot")
-        error_st.save_all("error")
         amp_st.save_all("amplitude")
+        error_st.save_all("error")
         integrator_error_st.save_all("integrator_error")
         derivative_error_st.save_all("derivative_error")
 

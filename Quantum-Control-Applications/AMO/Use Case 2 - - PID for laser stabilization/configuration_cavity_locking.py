@@ -1,4 +1,7 @@
 import numpy as np
+from qualang_tools.units import unit
+
+u = unit()
 
 ######################
 # AUXILIARY FUNCTIONS:
@@ -22,6 +25,10 @@ qop_port = None  # Write the QOP port if version < QOP220
 ################
 # CONFIGURATION:
 ################
+# Phase modulation
+phase_modulation_IF = 5 * u.MHz
+phase_mod_amplitude = 0.02
+phase_mod_len = 10 * u.us
 
 # AOM
 AOM_IF = 0
@@ -34,7 +41,7 @@ noise_amplitude = 0.04
 noise_len = 100
 
 # Photo-diode
-readout_len = 100
+readout_len = phase_mod_len
 time_of_flight = 192
 
 
@@ -43,58 +50,79 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                9: {"offset": 0.0},
-                2: {"offset": 0.0},
+                6: {"offset": 0.0},
+                7: {"offset": 0.0},
+                8: {"offset": 0.0},
             },
             "digital_outputs": {
-                1: {},
+                10: {},
             },
             "analog_inputs": {
-                1: {"offset": 0.0},
+                2: {"offset": 0.0},
             },
         }
     },
     "elements": {
-        "AOM": {
+        "phase_modulator": {
             "singleInput": {
-                "port": ("con1", 9),
+                "port": ("con1", 6),
             },
-            "intermediate_frequency": AOM_IF,
+            "intermediate_frequency": phase_modulation_IF,
             "operations": {
-                "cw": "cw_pulse",
+                "cw": "phase_mod_pulse",
             },
         },
-        "noise": {
+        "filter_cavity_1": {
             "singleInput": {
-                "port": ("con1", 9),
-            },
-            "intermediate_frequency": noise_IF,
-            "operations": {
-                "cw": "noise_pulse",
+                "port": ("con1", 6),
             },
         },
-        "photo-diode": {
+        "filter_cavity_2": {
             "singleInput": {
-                "port": ("con1", 2),
+                "port": ("con1", 7),
+            },
+        },
+        "filter_cavity_3": {
+            "singleInput": {
+                "port": ("con1", 8),
+            },
+        },
+        "detector_DC": {
+            "singleInput": {
+                "port": ("con1", 6),
             },
             "operations": {
-                "readout": "readout_pulse",
-            },
-            "digitalInputs": {
-                "trigger": {
-                    "port": ("con1", 1),
-                    "delay": 136,
-                    "buffer": 0,
-                }
+                "readout": "DC_readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
+                "out1": ("con1", 2),
+            },
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
+        },
+        "detector_AC": {
+            "singleInput": {
+                "port": ("con1", 6),
+            },
+            "intermediate_frequency": phase_modulation_IF,
+            "operations": {
+                "readout": "AC_readout_pulse",
+            },
+            "outputs": {
+                "out1": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
     },
     "pulses": {
+        "phase_mod_pulse": {
+            "operation": "control",
+            "length": phase_mod_len,
+            "waveforms": {
+                "single": "phase_mod_wf",
+            },
+        },
         "cw_pulse": {
             "operation": "control",
             "length": const_len,
@@ -109,7 +137,18 @@ config = {
                 "single": "noise_wf",
             },
         },
-        "readout_pulse": {
+        "DC_readout_pulse": {
+            "operation": "measurement",
+            "length": readout_len,
+            "waveforms": {
+                "single": "zero_wf",
+            },
+            "integration_weights": {
+                "constant": "constant_weights",
+            },
+            "digital_marker": "ON",
+        },
+        "AC_readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
             "waveforms": {
@@ -122,6 +161,7 @@ config = {
         },
     },
     "waveforms": {
+        "phase_mod_wf": {"type": "constant", "sample": phase_mod_amplitude},
         "const_wf": {"type": "constant", "sample": const_amplitude},
         "noise_wf": {"type": "constant", "sample": noise_amplitude},
         "zero_wf": {"type": "constant", "sample": 0.0},
