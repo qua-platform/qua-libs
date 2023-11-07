@@ -27,18 +27,13 @@ qop_port = None  # Write the QOP port if version < QOP220
 ################
 # Phase modulation
 phase_modulation_IF = 5 * u.MHz
-phase_mod_amplitude = 0.02
+phase_mod_amplitude = 0.1
 phase_mod_len = 10 * u.us
 
 # AOM
 AOM_IF = 0
 const_amplitude = 0.1
 const_len = 100
-
-# Noise
-noise_IF = 20e3
-noise_amplitude = 0.04
-noise_len = 100
 
 # Photo-diode
 readout_len = phase_mod_len
@@ -58,7 +53,7 @@ config = {
                 10: {"shareable": True},
             },
             "analog_inputs": {
-                2: {"offset": 0.0, "shareable": True},
+                2: {"offset": 0, "shareable": True},
             },
         }
     },
@@ -130,13 +125,6 @@ config = {
                 "single": "const_wf",
             },
         },
-        "noise_pulse": {
-            "operation": "control",
-            "length": noise_len,
-            "waveforms": {
-                "single": "noise_wf",
-            },
-        },
         "DC_readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
@@ -163,7 +151,6 @@ config = {
     "waveforms": {
         "phase_mod_wf": {"type": "constant", "sample": phase_mod_amplitude},
         "const_wf": {"type": "constant", "sample": const_amplitude},
-        "noise_wf": {"type": "constant", "sample": noise_amplitude},
         "zero_wf": {"type": "constant", "sample": 0.0},
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},

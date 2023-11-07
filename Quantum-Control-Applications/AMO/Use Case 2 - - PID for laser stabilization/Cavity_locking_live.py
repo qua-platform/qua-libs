@@ -24,7 +24,7 @@ N_shots = 1000
 variance_window = 100
 variance_threshold = 0.0001
 
-def PID_derivation(input_signal, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha, target=0):
+def PID_derivation(input_signal, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha, target=0.0):
     # calculate the error
     assign(error, (target - input_signal) << bitshift_scale_factor)
     # calculate the integrator error with exponentially decreasing weights with coefficient alpha
