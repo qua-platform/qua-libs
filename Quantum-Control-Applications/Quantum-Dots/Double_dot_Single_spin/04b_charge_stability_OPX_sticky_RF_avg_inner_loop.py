@@ -47,17 +47,17 @@ with program() as charge_stability:
         play('bias'*amp(offset_min_P2/P2_amp), 'P2_sticky')
         # -> add wait(5*tau * u.ns, 'P1_sticky')
 
-        align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
+        align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
         with for_(*from_array(dc_p2, offsets_P2)):
             play('bias'*amp(d_offset_P2/P2_amp), 'P2_sticky')
             # -> add wait(5*tau * u.ns, 'P1_sticky')
 
-            align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
+            align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
             with for_(n, 0, n < n_avg, n+1):
-                measure('readout', 'charge_sensor_DC', None, demod.full('cos', I, 'out2'), demod.full('sin', Q, 'out2'))
+                measure('readout', 'charge_sensor_RF', None, demod.full('cos', I, 'out2'), demod.full('sin', Q, 'out2'))
                 save(I, I_st)
                 save(Q, Q_st)
-        align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
+        align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
         ramp_to_zero('P2_sticky')
         play('bias'*amp(d_offset_P1/P1_amp), 'P1_sticky')
         assign(counter, counter+1)
@@ -65,9 +65,9 @@ with program() as charge_stability:
     ramp_to_zero('P1_sticky')
 
     with stream_processing():
-        I.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_P2)).save_all('I')
+        I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_P2)).save_all('I')
         Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_P2)).save_all('Q')
-        counter.save('counter')
+        counter_st.save('counter')
 
 #####################################
 #  Open Communication with the QOP  #
@@ -98,13 +98,21 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while my_results.is_processing():
-        counter, I = my_results.fetch_all()
+        counter, I, Q = my_results.fetch_all()
         I_volts = u.demod2volts(I, reflectometry_readout_length)
         Q_volts = u.demod2volts(Q, reflectometry_readout_length)
         progress_counter(counter, len(offsets_P1), start_time=my_results.get_start_time())
+        plt.subplot(121)
         plt.cla()
         plt.pcolor(offsets_P2, offsets_P1[:len(I_volts)], I_volts)
         plt.xlabel('Sensor gate [V]')
         plt.ylabel('Voltage')
         plt.pause(0.1)
+        plt.subplot(122)
+        plt.cla()
+        plt.pcolor(offsets_P2, offsets_P1[:len(I_volts)], Q_volts)
+        plt.xlabel('Sensor gate [V]')
+        plt.ylabel('Voltage')
+        plt.pause(0.1)
+    plt.colorbar()
     plt.show()

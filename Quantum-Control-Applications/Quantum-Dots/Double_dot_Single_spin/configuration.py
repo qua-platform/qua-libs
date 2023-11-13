@@ -235,7 +235,7 @@ config = {
                 "readout": "reflectometry_readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 2),
+                "out2": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
