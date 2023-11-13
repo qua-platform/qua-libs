@@ -65,8 +65,8 @@ with program() as charge_stability:
         ramp_to_zero('P1_sticky')
 
     with stream_processing():
-        I_st.buffer(len(offsets_P2)).buffer(len(offsets_P1)).save('I')
-        Q_st.buffer(len(offsets_P2)).buffer(len(offsets_P1)).save('Q')
+        I_st.buffer(len(offsets_P2)).buffer(len(offsets_P1)).average().save('I')
+        Q_st.buffer(len(offsets_P2)).buffer(len(offsets_P1)).average().save('Q')
         counter_st.save('counter')
 
 #####################################
