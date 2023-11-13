@@ -41,10 +41,10 @@ with program() as charge_stability:
 
     with for_(n, 0, n < n_avg, n+1):
         play('bias'*amp(offset_min_P1/P1_amp), 'P1_sticky')
+        save(counter, counter_st)
         # -> add wait(5*tau * u.ns, 'P1_sticky')
 
         with for_(*from_array(dc_p1, offsets_P1)):
-            save(counter, counter_st)
             play('bias'*amp(offset_min_P2/P2_amp), 'P2_sticky')
             # -> add wait(5*tau * u.ns, 'P1_sticky')
 
@@ -101,7 +101,7 @@ else:
         counter, I, Q = my_results.fetch_all()
         I_volts = u.demod2volts(I, reflectometry_readout_length)
         Q_volts = u.demod2volts(Q, reflectometry_readout_length)
-        progress_counter(counter, len(offsets_P1), start_time=my_results.get_start_time())
+        progress_counter(counter, n_avg, start_time=my_results.get_start_time())
         plt.subplot(121)
         plt.cla()
         plt.pcolor(offsets_P2, offsets_P1, I_volts)
