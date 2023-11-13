@@ -37,30 +37,32 @@ with program() as charge_stability:
     counter = declare(int, value=0)
     counter_st = declare_stream()
 
-    with infinite_loop_():
+    play('bias'*amp(offset_min_P1/P1_amp), 'P1_sticky')
+    # -> add wait(5*tau * u.ns, 'P1_sticky')
 
-        assign(counter, 0)
-        play('bias'*amp(offset_min_P1/P1_amp), 'P1_sticky')
+    with for_(*from_array(dc_p1, offsets_P1)):
+        save(counter, counter_st)
+        play('bias'*amp(offset_min_P2/P2_amp), 'P2_sticky')
+        # -> add wait(5*tau * u.ns, 'P1_sticky')
+        align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
 
-        with for_(*from_array(dc_p1, offsets_P1)):
-            save(counter, counter_st)
-            play('bias'*amp(offset_min_P2/P2_amp), 'P2_sticky')
+        with for_(*from_array(dc_p2, offsets_P2)):
+            play('bias'*amp(d_offset_P2/P2_amp), 'P2_sticky')
+            # -> add wait(5*tau * u.ns, 'P1_sticky')
+
             align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
-            with for_(*from_array(dc_p2, offsets_P2)):
-                play('bias'*amp(d_offset_P2/P2_amp), 'P2_sticky')
-                align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
-                with for_(n, 0, n < n_avg, n+1):
-                    measure('readout', 'charge_sensor_DC', None, integration.full('cos', I, 'out1'))
-                    save(I, I_st)
-            align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
-            ramp_to_zero('P2_sticky')
-            play('bias'*amp(d_offset_P1/P1_amp), 'P1_sticky')
-            assign(counter, counter+1)
+            with for_(n, 0, n < n_avg, n+1):
+                measure('readout', 'charge_sensor_DC', None, integration.full('cos', I, 'out1'))
+                save(I, I_st)
+        align('P1_sticky', 'P2_sticky', 'charge_sensor_DC')
+        ramp_to_zero('P2_sticky')
+        play('bias'*amp(d_offset_P1/P1_amp), 'P1_sticky')
+        assign(counter, counter+1)
 
-        ramp_to_zero('P1_sticky')
+    ramp_to_zero('P1_sticky')
 
     with stream_processing():
-        I.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_P2)).buffer(len(offsets_P1)).save('I')
+        I.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_P2)).save_all('I')
         counter.save('counter')
 
 #####################################
@@ -93,10 +95,10 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while my_results.is_processing():
         counter, I = my_results.fetch_all()
-        I_volts = u.demod2volts(I['value'], readout_len)
+        I_volts = u.demod2volts(I, readout_len)
         progress_counter(counter, len(offsets_P1), start_time=my_results.get_start_time())
         plt.cla()
-        plt.pcolor(offsets_P1, offsets_P2, I_volts)
+        plt.pcolor(offsets_P2, offsets_P1[:len(I_volts)], I_volts)
         plt.xlabel('Sensor gate [V]')
         plt.ylabel('Voltage')
         plt.pause(0.1)

@@ -25,21 +25,16 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-        reset_phase("resonator")
-        # Measure the resonator (send a readout pulse and record the raw ADC trace)
-        # measure("readout", "charge_sensor_DC", adc_st)
-        measure("readout", "charge_sensor_RF", adc_st)
+        # Measure the charge sensor (send a readout pulse and record the raw ADC trace)
+        measure("readout", "charge_sensor_DC", adc_st)
         # Wait for the resonator to deplete
-        wait(1_000 * u.ns, "resonator")
+        wait(1_000 * u.ns, "charge_sensor_DC")
 
     with stream_processing():
         # Will save average:
         adc_st.input1().average().save("adc1")
-        adc_st.input2().average().save("adc2")
         # Will save only last run:
         adc_st.input1().save("adc1_single_run")
-        adc_st.input2().save("adc2_single_run")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -70,15 +65,12 @@ else:
     res_handles.wait_for_all_values()
     # Fetch the raw ADC traces and convert them into Volts
     adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-    adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-    adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
     # Plot data
     plt.figure()
     plt.subplot(121)
     plt.title("Single run")
     plt.plot(adc1_single_run, label="Input 1")
-    plt.plot(adc2_single_run, label="Input 2")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
@@ -86,9 +78,8 @@ else:
     plt.subplot(122)
     plt.title("Averaged run")
     plt.plot(adc1, label="Input 1")
-    plt.plot(adc2, label="Input 2")
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.tight_layout()
 
-    print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+    print(f"\nInput1 mean: {np.mean(adc1)} V\n")

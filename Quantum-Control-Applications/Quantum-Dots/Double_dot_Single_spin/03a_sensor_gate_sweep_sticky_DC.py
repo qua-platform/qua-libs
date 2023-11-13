@@ -16,7 +16,10 @@ from qualang_tools.plot import interrupt_on_close
 ###################
 n_avg = 100  # Number of averaging loops
 
-offsets = np.arange(-0.2, 0.2, 0.01)
+offset_min = -0.2
+offset_max = 0.2
+d_offset = 0.01
+offsets = np.arange(offset_min, offset_max, d_offset)
 
 with program() as chargesensor_sweep:
     
@@ -27,14 +30,20 @@ with program() as chargesensor_sweep:
     counter = declare(int, value=0)
     counter_st = declare_stream()
 
+    play('bias'*amp(offset_min/charge_sensor_amp), 'charge_senstor_gate_sticky')
+    # -> add wait(5*tau * u.ns, 'charge_senstor_gate_sticky')
     with for_(*from_array(dc, offsets)):
         save(counter, counter_st)
-        set_dc_offset('charge_sensor_gate', 'single', dc)
-        align('charge_sensor_gate', 'charge_sensor_DC')
+        play('bias'*amp(d_offset/charge_sensor_amp), 'charge_senstor_gate_sticky')
+        # -> add wait(5*tau * u.ns, 'charge_senstor_gate_sticky')
+        align('charge_sensor_sticky', 'charge_sensor_DC')
         with for_(n, 0, n < n_avg, n+1):
             measure('readout', 'charge_sensor_DC', None, integration.full('cos', I, 'out1'))
+            wait(1 * u.us, 'charge_sensor_DC')  # ensures rep rate per sample is 1 * u.us
             save(I, I_st)
         assign(counter, counter+1)
+
+    ramp_to_zero('charge_sensor_gate_sticky')
 
     with stream_processing():
         I.buffer(n_avg).map(FUNCTIONS.average()).save_all('I')
@@ -48,7 +57,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -70,10 +79,10 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while my_results.is_processing():
         counter, I = my_results.fetch_all()
-        I_volts = u.demod2volts(I['value'], readout_len)
+        I_volts = u.demod2volts(I, readout_len)
         progress_counter(counter, len(offsets), start_time=my_results.get_start_time())
         plt.cla()
-        plt.plot(offsets, I_volts)
+        plt.plot(offsets[:len(I_volts)], I_volts)
         plt.xlabel('Sensor gate [V]')
         plt.ylabel('Voltage')
         plt.pause(0.1)
