@@ -40,17 +40,16 @@ with program() as charge_stability:
     counter_st = declare_stream()
 
     play('bias'*amp(offset_min_P1/P1_amp), 'P1_sticky')
-    # -> add wait(5*tau * u.ns, 'P1_sticky')
+    # -> add wait(5*tau * u.ns, 'P1_sticky') // to avoid transients due to the large change of voltage
 
     with for_(*from_array(dc_p1, offsets_P1)):
         save(counter, counter_st)
         play('bias'*amp(offset_min_P2/P2_amp), 'P2_sticky')
-        # -> add wait(5*tau * u.ns, 'P1_sticky')
+        # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
 
         align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
         with for_(*from_array(dc_p2, offsets_P2)):
             play('bias'*amp(d_offset_P2/P2_amp), 'P2_sticky')
-            # -> add wait(5*tau * u.ns, 'P1_sticky')
 
             align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
             with for_(n, 0, n < n_avg, n+1):
@@ -59,6 +58,7 @@ with program() as charge_stability:
                 save(Q, Q_st)
         align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
         ramp_to_zero('P2_sticky')
+        # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
         play('bias'*amp(d_offset_P1/P1_amp), 'P1_sticky')
         assign(counter, counter+1)
 
