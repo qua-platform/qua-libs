@@ -11,7 +11,7 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.100"  # Write the QM router IP address
+qop_ip = "172.16.33.101"  # Write the QM router IP address
 cluster_name = "Cluster_81"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
@@ -26,7 +26,7 @@ octave_config = None
 #       READOUT      #
 ######################
 # DC readout parameters
-readout_len = 10_000
+readout_len = 1 * u.us
 readout_amp = 0.4
 IV_scale_factor = 0.5e-9  # in A/V
 
