@@ -60,7 +60,7 @@ with program() as charge_stability:
             align('P1_sticky', 'P2_sticky', 'charge_sensor_RF')
             ramp_to_zero('P2_sticky')
             play('bias'*amp(d_offset_P1/P1_amp), 'P1_sticky')
-            assign(counter, counter+1)
+        assign(counter, counter+1)
 
         ramp_to_zero('P1_sticky')
 
