@@ -11,6 +11,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from time import sleep
+from qdac2_driver import *
 
 ###################
 # The QUA program #
@@ -85,6 +86,8 @@ def wait_until_job_is_paused(current_job):
 
 # Open the quantum machine
 qm = qmm.open_qm(config)
+# Create the qdac instrument
+qdac = QDACII("Ethernet", IP_address="127.0.0.1", port=5025)  # Using Ethernet protocol
 ### QDAC2 section
 # TODO: ask what channels to use
 qdac_channel_fast = 
