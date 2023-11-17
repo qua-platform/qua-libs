@@ -90,8 +90,8 @@ qm = qmm.open_qm(config)
 qdac = QDACII("Ethernet", IP_address="127.0.0.1", port=5025)  # Using Ethernet protocol
 ### QDAC2 section
 # TODO: ask what channels to use
-qdac_channel_fast = 
-qdac_channel_slow = 
+qdac_channel_fast = 0
+qdac_channel_slow = 0
 # Set the channel output range
 qdac.write(f"sour{qdac_channel_fast}:rang low")
 # Set the channel output filter
