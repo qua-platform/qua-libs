@@ -50,7 +50,7 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                6: {"offset": setpoint_filter_cavity_1},
+                9: {"offset": setpoint_filter_cavity_1},
                 7: {"offset": 0.0},
                 8: {"offset": 0.0},
             },
@@ -58,7 +58,7 @@ config = {
                 10: {},
             },
             "analog_inputs": {
-                2: {"offset": 0},
+                1: {"offset": 0},
             },
         }
     },
@@ -74,7 +74,7 @@ config = {
         },
         "filter_cavity_1": {
             "singleInput": {
-                "port": ("con1", 6),
+                "port": ("con1", 9),
             },
             "operations": {
                 "offset": "offset_pulse",
@@ -101,27 +101,27 @@ config = {
         # },
         "detector_DC": {
             "singleInput": {
-                "port": ("con1", 6),
+                "port": ("con1", 9),
             },
             "operations": {
                 "readout": "DC_readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 2),
+                "out1": ("con1", 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "detector_AC": {
             "singleInput": {
-                "port": ("con1", 6),
+                "port": ("con1", 9),
             },
             "intermediate_frequency": phase_modulation_IF,
             "operations": {
                 "readout": "AC_readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 2),
+                "out1": ("con1", 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
