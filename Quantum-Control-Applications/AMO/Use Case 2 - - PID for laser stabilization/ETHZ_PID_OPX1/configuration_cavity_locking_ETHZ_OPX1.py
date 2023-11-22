@@ -35,6 +35,11 @@ AOM_IF = 0
 const_amplitude = 0.1
 const_len = 100
 
+# Filter cavity
+offset_amplitude = 0.25  # Fixed do not change
+offset_len = 16  # Fixed do not change
+setpoint_filter_cavity_1 = 0.0
+
 # Photo-diode
 readout_len = phase_mod_len
 time_of_flight = 192
@@ -45,16 +50,15 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                6: {"offset": 0.0, "shareable": True},
-                7: {"offset": 0.0, "shareable": True},
-                8: {"offset": 0.0, "shareable": True},
-                10: {"offset": 0.0, "shareable": True},
+                6: {"offset": setpoint_filter_cavity_1},
+                7: {"offset": 0.0},
+                8: {"offset": 0.0},
             },
             "digital_outputs": {
-                10: {"shareable": True},
+                10: {},
             },
             "analog_inputs": {
-                2: {"offset": 0, "shareable": True},
+                2: {"offset": 0},
             },
         }
     },
@@ -72,20 +76,32 @@ config = {
             "singleInput": {
                 "port": ("con1", 6),
             },
+            "operations": {
+                "offset": "offset_pulse",
+            },
+            'sticky': {'analog': True, 'duration': 60}
         },
         # "filter_cavity_2": {
         #     "singleInput": {
         #         "port": ("con1", 7),
         #     },
+        # "operations": {
+        #     "offset": "offset_pulse",
+        # },
+        # 'sticky': {'analog': True, 'duration': 60}
         # },
         # "filter_cavity_3": {
         #     "singleInput": {
         #         "port": ("con1", 8),
         #     },
+        # "operations": {
+        #     "offset": "offset_pulse",
+        # },
+        # 'sticky': {'analog': True, 'duration': 60}
         # },
         "detector_DC": {
             "singleInput": {
-                "port": ("con1", 10),
+                "port": ("con1", 6),
             },
             "operations": {
                 "readout": "DC_readout_pulse",
@@ -98,7 +114,7 @@ config = {
         },
         "detector_AC": {
             "singleInput": {
-                "port": ("con1", 10),
+                "port": ("con1", 6),
             },
             "intermediate_frequency": phase_modulation_IF,
             "operations": {
@@ -112,6 +128,13 @@ config = {
         },
     },
     "pulses": {
+        "offset_pulse": {
+            "operation": "control",
+            "length": offset_len,
+            "waveforms": {
+                "single": "offset_wf",
+            },
+        },
         "phase_mod_pulse": {
             "operation": "control",
             "length": phase_mod_len,
@@ -152,6 +175,7 @@ config = {
     "waveforms": {
         "phase_mod_wf": {"type": "constant", "sample": phase_mod_amplitude},
         "const_wf": {"type": "constant", "sample": const_amplitude},
+        "offset_wf": {"type": "constant", "sample": offset_amplitude},
         "zero_wf": {"type": "constant", "sample": 0.0},
     },
     "digital_waveforms": {"ON": {"samples": [(1, 0)]}},

@@ -1,7 +1,7 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_cavity_locking_ETHZ import *
+from configuration_cavity_locking_ETHZ_OPX1 import *
 from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
@@ -16,7 +16,8 @@ warnings.filterwarnings("ignore")
 ###################
 angle = 0.0  # Phase angle between the sideband and demodulation in units of 2pi
 # Scanned offset values in Volt
-offsets = np.linspace(-0.3, 0.3, 101)
+offsets = np.linspace(-0.3, 0.3, 101) - setpoint_filter_cavity_1
+step = np.mean(np.diff(offsets))
 n_avg = 100
 
 with program() as prog:
@@ -35,9 +36,9 @@ with program() as prog:
     assign_variables_to_element("detector_DC", single_shot_DC)
     assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
 
+    play("offset" * amp(offsets[0] * 4), "filter_cavity_1")
     with for_(*from_array(offset, offsets)):
         with for_(n, 0, n<n_avg, n+1):
-            set_dc_offset("filter_cavity_1", "single", offset)
             # Ensure that the two digital oscillators will start with the same phase
             reset_phase("phase_modulator")
             reset_phase("detector_AC")
@@ -60,6 +61,9 @@ with program() as prog:
 
             # Wait between each iteration
             wait(100)
+        # Update the filter cavity offset
+        with if_(offset < offsets[-1]):
+            play("offset" * amp(step * 4), "filter_cavity_1")
 
     with stream_processing():
         single_shot_DC_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets)).save("single_shot_DC")
@@ -69,6 +73,7 @@ with program() as prog:
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=9510)
+# qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 ###########################
 # Run or Simulate Program #

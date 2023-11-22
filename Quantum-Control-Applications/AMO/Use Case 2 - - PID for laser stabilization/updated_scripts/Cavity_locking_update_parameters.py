@@ -1,10 +1,9 @@
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration_cavity_locking_ETHZ_OPX1 import *
+from configuration_cavity_locking_ETHZ import *
 
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-# qmm = QuantumMachinesManager(host=qop_ip, port=9510)
 qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 def lookup_table(variables, indices):

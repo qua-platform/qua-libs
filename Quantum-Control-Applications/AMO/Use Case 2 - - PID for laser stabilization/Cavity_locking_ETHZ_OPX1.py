@@ -1,7 +1,7 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_cavity_locking_ETHZ import *
+from configuration_cavity_locking_ETHZ_OPX1 import *
 from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.results import fetching_tool
 import matplotlib.pyplot as plt
@@ -103,7 +103,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
             measure("readout", "detector_AC", None, demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
             assign(single_shot_AC, I)
             # PID correction signal
-            correction, error, integrator_error, derivative_error = PID_derivation(single_shot_AC, bitshift_scale_factor_qua, gain_P_qua, gain_I_qua, gain_D_qua, alpha_qua, target_qua)
+            correction, error, integrator_error, derivative_error = PID_derivation(single_shot_DC, bitshift_scale_factor_qua, gain_P_qua, gain_I_qua, gain_D_qua, alpha_qua, target_qua)
             # Update the DC offset
             assign(dc_offset_1, dc_offset_1 + correction)
             # Handle saturation - Make sure that channel 6 won't be asked to output more than 0.5V
@@ -112,7 +112,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
             with if_(dc_offset_1 < -0.5 + phase_mod_amplitude):
                 assign(dc_offset_1, -0.5 + phase_mod_amplitude)
             # Apply the correction
-            set_dc_offset("filter_cavity_1", "single", dc_offset_1)
+            play("offset" * amp(correction * 4), "filter_cavity_1")
 
             # Estimate variance (actually simply max distance from target)
             with if_(variance_index==variance_window):
@@ -144,6 +144,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=9510)
+# qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
 
 ###########################
 # Run or Simulate Program #

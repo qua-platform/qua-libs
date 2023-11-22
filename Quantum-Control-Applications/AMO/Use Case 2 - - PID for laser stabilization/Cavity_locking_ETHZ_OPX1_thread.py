@@ -1,9 +1,10 @@
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration_cavity_locking_ETHZ import *
+from configuration_cavity_locking_ETHZ_OPX1 import *
 from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.results import fetching_tool
+from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 import warnings
 
@@ -73,6 +74,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
         # with for_(n, 0, n < N_shots, n + 1):
             # Update the PID parameters based on the user input.
             # IO1 specifies the parameter to be updated and IO2 the corresponding value
+
             assign(param, IO1)
             with if_(param==1):
                 assign(bitshift_scale_factor_qua, IO2)
@@ -103,7 +105,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
             measure("readout", "detector_AC", None, demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
             assign(single_shot_AC, I)
             # PID correction signal
-            correction, error, integrator_error, derivative_error = PID_derivation(single_shot_AC, bitshift_scale_factor_qua, gain_P_qua, gain_I_qua, gain_D_qua, alpha_qua, target_qua)
+            correction, error, integrator_error, derivative_error = PID_derivation(single_shot_DC, bitshift_scale_factor_qua, gain_P_qua, gain_I_qua, gain_D_qua, alpha_qua, target_qua)
             # Update the DC offset
             assign(dc_offset_1, dc_offset_1 + correction)
             # Handle saturation - Make sure that channel 6 won't be asked to output more than 0.5V
@@ -112,7 +114,7 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
             with if_(dc_offset_1 < -0.5 + phase_mod_amplitude):
                 assign(dc_offset_1, -0.5 + phase_mod_amplitude)
             # Apply the correction
-            set_dc_offset("filter_cavity_1", "single", dc_offset_1)
+            play("offset" * amp(correction * 4), "filter_cavity_1")
 
             # Estimate variance (actually simply max distance from target)
             with if_(variance_index==variance_window):
@@ -143,7 +145,53 @@ def PID_prog(bitshift_scale_factor=9, gain_P=-1e-4, gain_I=0.0, gain_D=0.0, alph
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=9510)
+# qmm = QuantumMachinesManager(host=qop_ip, port=9510)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
+
+import threading
+
+from qm.qua import *
+from qm import QuantumMachinesManager, QuantumMachine, QmJob
+import time
+
+
+def update_info(params, timeout=10):
+    global qm, job
+
+    def lookup_table(variables, indices):
+        table = {}
+        for key, value in zip(variables, indices):
+            table[key] = value
+        return table
+
+    def update_variable(table, variable, value):
+        qm.set_io1_value(table[variable])
+        qm.set_io2_value(value)
+        print(f"{variable} updated to {value}")
+
+    # Set the correspondence table between IO value 1 and the parameters
+    correspondence_table = lookup_table(["bitshift_scale_factor", "gain_P", "gain_I", "gain_D", "alpha", "target"],
+                                        [1, 2, 3, 4, 5, 6])
+
+    start_time = time.time()
+
+    def handle_timeout():
+        time.sleep(timeout)
+        print("Timeout reached. Continuing with the script...")
+
+    timeout_thread = threading.Thread(target=handle_timeout)
+    timeout_thread.start()
+
+    while True:
+        user_input = input(params)
+        if user_input:
+            update_variable(correspondence_table, user_input.split(",")[0], int(user_input.split(",")[1]))
+            # qm.set_io1_value(user_input)
+            # qm.set_io2_value(user_input)
+
+        elif time.time() - start_time > timeout:
+            timeout_thread.cancel()
+            break
 
 ###########################
 # Run or Simulate Program #
@@ -166,11 +214,13 @@ else:
     qm = qmm.open_qm(config)
     qm.set_io1_value(0)
     qm.set_io2_value(0.0)
+    # update_info("variable, value", timeout=10)
     time.sleep(1)
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
     job = qm.execute(prog)
     results = fetching_tool(job, ["error", "integration_error", "derivative_error", "single_shot", "offset", "variance"], mode="live")
     fig = plt.figure()
+    interrupt_on_close(fig, job)
     while results.is_processing():
         error, integration_error, derivative_error, single_shot, offset, variance = results.fetch_all()
 
