@@ -9,7 +9,6 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux bias.
 
 Next steps before going to the next node:
     - Update the qubit frequency (qubit_IF_q) in the configuration.
@@ -117,7 +116,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"qubit 1 I, fcent={(qubit_LO + qubit_IF_q1) / u.MHz} MHz")
+        plt.title(f"qubit 1 I, fcent={(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz")
         plt.ylabel("Frequency detuning [MHz]")
         plt.subplot(223)
         plt.cla()
@@ -128,7 +127,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"qubit 2 I, fcent={(qubit_LO + qubit_IF_q2) / u.MHz} MHz")
+        plt.title(f"qubit 2 I, fcent={(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)

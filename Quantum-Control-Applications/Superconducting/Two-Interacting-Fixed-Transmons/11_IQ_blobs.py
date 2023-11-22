@@ -11,7 +11,6 @@ The resulting IQ blobs are displayed, and the data is processed to determine:
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the rotation angle (rotation_angle) in the configuration.

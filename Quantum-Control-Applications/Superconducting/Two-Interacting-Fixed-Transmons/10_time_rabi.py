@@ -9,7 +9,6 @@ Prerequisites:
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
     - Having found the rough qubit frequency and pi pulse amplitude (rabi_chevron_amplitude or power_rabi).
     - Set the qubit frequency and desired pi pulse amplitude (pi_amp_q) in the configuration.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the qubit pulse duration (pi_len_q) in the configuration.

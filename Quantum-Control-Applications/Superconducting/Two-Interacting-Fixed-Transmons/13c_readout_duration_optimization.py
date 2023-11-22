@@ -13,7 +13,6 @@ Prerequisites:
     - Calibration of the qubit pi pulse (x180) using methods like qubit spectroscopy, rabi_chevron, and power_rabi,
       followed by an update to the configuration.
     - Calibration of both the readout frequency and amplitude, with subsequent configuration updates.
-    - Set the desired flux bias
 
 Before proceeding to the next node:
     - Adjust the readout duration setting, labeled as "readout_len_q", in the configuration.

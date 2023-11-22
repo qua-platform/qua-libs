@@ -17,7 +17,6 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Having calibrated the readout frequency, amplitude and duration and updated the configuration.
-    - Set the desired flux bias.
 
 Next steps before going to the next node:
     - Update the integration weights in the state by following the steps at the end of the script.

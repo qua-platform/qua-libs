@@ -11,7 +11,6 @@ Prerequisites:
     - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
     - Having found the pi pulse amplitude (power_rabi).
     - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the configuration.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the qubit pulse amplitude (pi_amp_q) in the configuration.

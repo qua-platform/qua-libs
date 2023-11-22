@@ -9,7 +9,6 @@ Prerequisites:
     - Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
     - Identification of the approximate qubit frequency (referred to as "qubit_spectroscopy").
     - Configuration of the qubit frequency and the desired pi pulse duration (labeled as "pi_len_q").
-    - Set the desired flux bias
 
 Before proceeding to the next node:
     - Adjust the qubit frequency setting, labeled as "qubit_IF_q", in the configuration.

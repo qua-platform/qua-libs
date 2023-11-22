@@ -10,7 +10,6 @@ optimal choice.
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the readout frequency (resonator_IF_q) in the configuration.
