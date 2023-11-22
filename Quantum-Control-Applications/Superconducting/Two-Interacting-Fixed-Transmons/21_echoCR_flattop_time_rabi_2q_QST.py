@@ -1,5 +1,22 @@
 """
-Reference: J. M. Chow et al., Phys. Rev. Letters 107, 080502 (2011)
+        echo-Cross-Resonance Time Rabi with two-qubit Quantum State Tomography
+        
+    The sequence consists two consecutive pulse sequences with the qubit's thermal decay in between.
+In the first sequence, we set the control qubit in |g> and play a flattop with gaussian rise echo-cross-resonance pulse to
+the target qubit; the echo-cross-resonance pulse has a variable duration. In the second sequence, we initialize the control
+qubit in |e> and play the variable duration echo-cross-resonance pulse to the target qubit. At the end of both
+sequences we perform two-qubit Quantum State Tomography on the target qubit and control qubit.
+
+To recreate the echo-cross-resonance pulse we play (CR--x180_c--CR)--x180_c if the control was initialized in |g>, or
+(CR--x180_c--CR) if the control was initialized in |e>. The second x180_c in the first sequence guarantees that the
+target qubit is at |g> in the limit of CR length -> zero.
+
+Prerequisites:
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+
+Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
 """
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
