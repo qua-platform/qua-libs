@@ -12,7 +12,7 @@ u = unit(coerce_to_integer=True)
 # Network parameters #
 ######################
 qop_ip = "172.16.33.101"  # Write the QM router IP address
-cluster_name = "Cluster_81"  # Write your cluster_name if version >= QOP220
+cluster_name = "Cluster_83"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
@@ -36,7 +36,7 @@ reflectometry_readout_length = 1 * u.us
 reflect_amp = 30 * u.mV
 
 # Time of flight
-time_of_flight = 300
+time_of_flight = 24
 
 ######################
 #      DC GATES      #
