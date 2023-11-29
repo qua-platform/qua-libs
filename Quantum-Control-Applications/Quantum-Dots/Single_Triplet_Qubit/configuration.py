@@ -41,7 +41,7 @@ time_of_flight = 24
 ######################
 #      DC GATES      #
 ######################
-P1_amp = 0.2
+P1_amp = 0.25
 P2_amp = 0.2
 B_center_amp = 0.2
 charge_sensor_amp = 0.2
@@ -343,8 +343,8 @@ config = {
                 "single": "reflect_wf",
             },
             "integration_weights": {
-                "cos": "cw_cosine_weights",
-                "sin": "cw_sine_weights",
+                "cos": "cosine_weights",
+                "sin": "sine_weights",
             },
             "digital_marker": "ON",
         },
@@ -355,8 +355,7 @@ config = {
                 "single": "readout_pulse_wf",
             },
             "integration_weights": {
-                "cos": "cosine_weights",
-                "sin": "sine_weights",
+                "constant": "constant_weights",
             },
             "digital_marker": "ON",
         },
@@ -389,19 +388,15 @@ config = {
         "ON": {"samples": [(1, 0)]},
     },
     "integration_weights": {
-        "cosine_weights": {
+        "constant_weights": {
             "cosine": [(1, readout_len)],
             "sine": [(0.0, readout_len)],
         },
-        "sine_weights": {
-            "cosine": [(0.0, readout_len)],
-            "sine": [(1.0, readout_len)],
-        },
-        "cw_cosine_weights": {
+        "cosine_weights": {
             "cosine": [(1.0, reflectometry_readout_length)],
             "sine": [(0.0, reflectometry_readout_length)],
         },
-        "cw_sine_weights": {
+        "sine_weights": {
             "cosine": [(0.0, reflectometry_readout_length)],
             "sine": [(1.0, reflectometry_readout_length)],
         },
