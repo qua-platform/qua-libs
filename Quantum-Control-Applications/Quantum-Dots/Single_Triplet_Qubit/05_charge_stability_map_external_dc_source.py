@@ -1,5 +1,5 @@
 """
-        CHARGE STABILITY MAP with an external DC source
+        CHARGE STABILITY MAP - fast and slow axes: external source (DC)
 Here the charge stability diagram is acquired by sweeping the voltages using an external DC source (QDAC or else).
 This is done by pausing the QUA program, updating the voltages in Python using the instrument API and resuming the QUA program.
 The OPX is simply measuring, either via dc current sensing or RF reflectometry, the charge occupation of the dot.
@@ -9,6 +9,7 @@ A single-point averaging is performed and the data is extracted while the progra
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Setting the parameters of the external DC source using its driver.
+    - Connect the two plunger gates (DC line of the bias-tee) to the external dc source.
 
 Before proceeding to the next node:
     - Identify the different charge occupation regions
@@ -45,7 +46,7 @@ with program() as charge_stability_prog:
             # Pause the OPX to update the external DC voltages in Python
             pause()
             # Wait for the voltages to settle (depends on the voltage source bandwidth)
-            wait(1 * u.ms, 'charge_sensor_RF')
+            wait(1 * u.ms)
 
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
@@ -109,9 +110,9 @@ else:
             job.resume()
             # Wait until the program reaches the 'pause' statement again, indicating that the QUA program is done
             wait_until_job_is_paused(job)
-
-        # Get results from QUA program and initialize live plotting
-        results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+        if i == 0:
+            # Get results from QUA program and initialize live plotting
+            results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
 
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()

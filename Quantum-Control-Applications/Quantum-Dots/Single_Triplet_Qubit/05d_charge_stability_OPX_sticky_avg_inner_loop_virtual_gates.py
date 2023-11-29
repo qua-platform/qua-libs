@@ -42,8 +42,8 @@ def play_energy(U):
     play('bias'*amp(U/P2_amp), 'P2_sticky')
 
 def measure_RF_DC():
-    measure('readout', 'charge_sensor_RF', None, demod.full('cos', I, 'out2'), demod.full('sin', Q, 'out2'))
-    measure('readout', 'charge_sensor_DC', None, integration.full('cos', IDC, 'out1'))
+    measure('readout', 'tank_circuit', None, demod.full('cos', I, 'out2'), demod.full('sin', Q, 'out2'))
+    measure('readout', 'TIA', None, integration.full('cos', IDC, 'out1'))
     save(I, I_st)
     save(IDC, IDC_st)
     save(Q, Q_st)
@@ -70,15 +70,15 @@ with program() as charge_stability:
         play_energy(offset_min_U)
         # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
 
-        align('P1_sticky', 'P2_sticky', 'charge_sensor_RF', 'charge_sensor_DC')
+        align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
         with for_(*from_array(dc_E, offsets_E)):
             play_energy(d_offset_U)
 
-            align('P1_sticky', 'P2_sticky', 'charge_sensor_RF', 'charge_sensor_DC')
+            align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
             with for_(n, 0, n < n_avg, n+1):
                 measure_RF_DC()
 
-        align('P1_sticky', 'P2_sticky', 'charge_sensor_RF', 'charge_sensor_DC')
+        align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
         ramp_to_zero('P2_sticky')
         # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
         play_detuning(d_offset_E)
@@ -116,16 +116,16 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(charge_stability)
     # Get results from QUA program
-    my_results = fetching_tool(job, data_list=['counter', 'I', 'Q', 'IDC'], mode="live")
+    results = fetching_tool(job, data_list=['counter', 'I', 'Q', 'IDC'], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while my_results.is_processing():
-        counter, I, Q, IDC = my_results.fetch_all()
+    while results.is_processing():
+        counter, I, Q, IDC = results.fetch_all()
         I_volts = u.demod2volts(I, reflectometry_readout_length)
         IDC_volts = u.demod2volts(IDC, readout_len)
         Q_volts = u.demod2volts(Q, reflectometry_readout_length)
-        progress_counter(counter, len(offsets_U), start_time=my_results.get_start_time())
+        progress_counter(counter, len(offsets_U), start_time=results.get_start_time())
         plt.subplot(131)
         plt.cla()
         plt.pcolor(offsets_U, offsets_E[:len(I_volts)], I_volts)

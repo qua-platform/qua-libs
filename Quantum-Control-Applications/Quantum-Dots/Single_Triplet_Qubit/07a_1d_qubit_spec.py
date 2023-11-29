@@ -36,7 +36,7 @@ with program() as readout_search:
     I_on_st = declare_stream()  # Stream for I_on
     I_off_st = declare_stream()  # Stream for I_off
     # Ensure that the result variables are assign to the pulse processor used for readout
-    assign_variables_to_element("charge_sensor_DC", I_on, I_off)
+    assign_variables_to_element("TIA", I_on, I_off)
     # Set the qubit drive frequency
 
     with for_(n, 0, n < n_avg, n + 1):  # The outer averaging loop
@@ -57,9 +57,9 @@ with program() as readout_search:
                 play("cw", "qubit")  # Qubit drive
 
             # # Wait for the IV converter to reach its steady state and measure for a duration given by total_integration_time
-            # wait(IV_buffer_len * u.ns, "charge_sensor_DC")
+            # wait(IV_buffer_len * u.ns, "TIA")
             with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_on
-                measure('readout', 'charge_sensor_DC', None, integration.full('cos', I_on, 'out1'))
+                measure('readout', 'TIA', None, integration.full('cos', I_on, 'out1'))
                 assign(I_on_avg, (I_on >> bit_shit_cte) + I_on_avg)
             save(I_on_avg, I_on_st)
 
@@ -77,7 +77,7 @@ with program() as readout_search:
             # # Wait for the IV converter to reach its steady state and measure for a duration given by total_integration_time
             # wait(IV_buffer_len * u.ns, "TIA")
             with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_off
-                measure('readout', 'charge_sensor_DC', None, integration.full('cos', I_off, 'out1'))
+                measure('readout', 'TIA', None, integration.full('cos', I_off, 'out1'))
                 assign(I_off_avg, (I_off >> bit_shit_cte) + I_off_avg)
             save(I_off_avg, I_off_st)
 

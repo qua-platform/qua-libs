@@ -1,5 +1,5 @@
 """
-        CHARGE STABILITY MAP with the QDAC2 in trigger mode
+        CHARGE STABILITY MAP - fast and slow axes: QDAC2 set to trigger mode
 Here two channels of the QDAC2 are parametrized to step though two preloaded voltage lists on the event of two digital
 markers provided by the OPX (connected to ext1 and ext2). This method allows the fast acquisition of a 2D voltage map
 and the data can be fetched from the OPX in real time to enable live plotting.
@@ -14,6 +14,7 @@ to display the full charge stability map with increasing SNR.
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Setting the parameters of the QDAC2 and preloading the two voltages lists for the slow and fast axes.
+    - Connect the two plunger gates (DC line of the bias-tee) to the QDAC2 and two digital markers from the OPX to the QDAC external trigger ports.
 
 Before proceeding to the next node:
     - Identify the different charge occupation regions
@@ -23,7 +24,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qdac2_driver import QDACII, load_voltage_list
@@ -53,7 +54,7 @@ with program() as charge_stability_prog:
                 # Trigger the QDAC2 channel to output the next voltage level from the list
                 play("trigger", "qdac_trigger1")
                 # Wait for the voltages to settle (depends on the channel bandwidth)
-                wait(300 * u.us, 'charge_sensor_RF')
+                wait(300 * u.us, 'tank_circuit', "TIA")
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
                 # frequency and the integrated quadratures are stored in "I" and "Q"
                 I, Q, I_st, Q_st = RF_reflectometry_macro()

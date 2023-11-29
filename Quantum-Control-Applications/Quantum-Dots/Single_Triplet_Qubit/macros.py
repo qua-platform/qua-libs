@@ -8,7 +8,7 @@ from scipy.signal import butter, lfilter
 from typing import Union
 from numpy.typing import NDArray
 
-def RF_reflectometry_macro(operation:str = "readout", element:str = "charge_sensor_RF", element_output:str = "out2"):
+def RF_reflectometry_macro(operation:str = "readout", element:str = "tank_circuit", element_output:str = "out2"):
     I = declare(fixed)
     Q = declare(fixed)
     I_st = declare_stream()
@@ -18,7 +18,7 @@ def RF_reflectometry_macro(operation:str = "readout", element:str = "charge_sens
     save(Q, Q_st)
     return I, Q, I_st, Q_st
 
-def DC_current_sensing_macro(operation:str = "readout", element:str = "charge_sensor_DC", element_output:str = "out1"):
+def DC_current_sensing_macro(operation:str = "readout", element:str = "TIA", element_output:str = "out1"):
     I = declare(fixed)
     I_st = declare_stream()
     measure(operation, element, None, integration.full('constant', I, element_output))

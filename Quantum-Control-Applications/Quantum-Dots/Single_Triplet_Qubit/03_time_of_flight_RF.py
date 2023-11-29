@@ -33,12 +33,12 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-        reset_phase("charge_sensor_RF")
+        reset_phase("tank_circuit")
         # Sends the readout pulse and stores the raw ADC traces in the stream called "adc_st"
-        # measure("readout", "charge_sensor_DC", adc_st)
-        measure("readout", "charge_sensor_RF", adc_st)
+        # measure("readout", "TIA", adc_st)
+        measure("readout", "tank_circuit", adc_st)
         # Wait for the resonator to deplete
-        wait(1_000 * u.ns, "charge_sensor_RF")
+        wait(1_000 * u.ns, "tank_circuit")
 
     with stream_processing():
         # Will save average:

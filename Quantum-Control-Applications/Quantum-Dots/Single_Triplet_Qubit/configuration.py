@@ -209,7 +209,7 @@ config = {
                 "pi_half": "pi_half_right_pulse",
             },
         },
-        "charge_sensor_gate": {
+        "sensor_gate": {
             "singleInput": {
                 "port": ("con1", 8),
             },
@@ -217,7 +217,7 @@ config = {
                 "bias": "bias_charge_pulse",
             },
         },
-        "charge_sensor_gate_sticky": {
+        "sensor_gate_sticky": {
             "singleInput": {
                 "port": ("con1", 8),
             },
@@ -226,7 +226,7 @@ config = {
                 "bias": "bias_charge_pulse",
             },
         },
-        "charge_sensor_RF": {
+        "tank_circuit": {
             "singleInput": {
                 "port": ("con1", 10),
             },
@@ -240,7 +240,7 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "charge_sensor_DC": {
+        "TIA": {
             "singleInput": {
                 "port": ("con1", 9),
             },

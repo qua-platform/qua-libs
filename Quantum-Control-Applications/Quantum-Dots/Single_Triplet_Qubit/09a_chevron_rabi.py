@@ -68,7 +68,7 @@ with program() as prog:
                 # wait(IV_buffer_len * u.ns, "TIA")
 
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_on
-                    measure('readout', 'charge_sensor_DC', None, integration.full('cos', I_on, 'out1'))
+                    measure('readout', 'TIA', None, integration.full('cos', I_on, 'out1'))
                     assign(I_on_avg, (I_on >> bit_shit_cte) + I_on_avg)
                 save(I_on_avg, I_on_st)
 
@@ -82,7 +82,7 @@ with program() as prog:
                 # # Wait for the IV converter to reach its steady state and measure for a duration given by total_integration_time
                 # wait(IV_buffer_len * u.ns, "TIA")
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_off
-                    measure('readout', 'charge_sensor_DC', None, integration.full('cos', I_off, 'out1'))
+                    measure('readout', 'TIA', None, integration.full('cos', I_off, 'out1'))
                     assign(I_off_avg, (I_off >> bit_shit_cte) + I_off_avg)
                 save(I_off_avg, I_off_st)
 

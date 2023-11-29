@@ -12,11 +12,11 @@ from configuration import *
 # The QUA program #
 ###################
 with program() as hello_qua:
-    a = declare(fixed)
-    with infinite_loop_():
-        with for_(a, 0, a < 1.1, a + 0.05):
-            play("bias" * amp(a), "P1")
-        wait(25, "P1")
+    play(ramp(1e-4), "P1", duration=1*u.us)
+    play("bias"*amp(0.1*4), "P1")
+    play(ramp(-1e-4), "P1", duration=1*u.us)
+
+
 
 #####################################
 #  Open Communication with the QOP  #

@@ -1,6 +1,5 @@
 """
         CHARGE STABILITY MAP - fast axis: OPX (AC) & slow axis: external source (DC)
-where the fast axis is handled by one OPX channel and the slow axis is handled by an external source.
 Here the charge stability diagram is acquired by sweeping the fast axis with the OPX connected to the AC part of the
 bias-tee, while the slow axis is handled by an external source connected to the DC part of the bias-tee.
 
@@ -12,6 +11,7 @@ A single-point averaging is performed and the data is extracted while the progra
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Setting the parameters of the external DC source using its driver.
+    - Connect one plunger gate (DC line of the bias-tee) to the external dc source and the other plunger gate (AC line of the bias-tee) to tne OPX.
 
 Before proceeding to the next node:
     - Identify the different charge occupation regions
@@ -53,7 +53,7 @@ with program() as charge_stability_prog:
         # Pause the OPX to update the external DC voltages in Python
         pause()
         # Wait for the voltages to settle (depends on the voltage source bandwidth)
-        wait(1 * u.ms, 'charge_sensor_RF')
+        wait(1 * u.ms)
         with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
             with for_(*from_array(Vfast, voltage_values_fast)):
                 # Update the dc offset of the specified element
