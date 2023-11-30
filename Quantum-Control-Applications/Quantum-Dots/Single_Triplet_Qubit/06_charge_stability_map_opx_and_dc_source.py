@@ -1,5 +1,6 @@
 """
         CHARGE STABILITY MAP - fast axis: OPX (AC) & slow axis: external source (DC)
+The goal of the script is to acquire the charge stability map.
 Here the charge stability diagram is acquired by sweeping the fast axis with the OPX connected to the AC part of the
 bias-tee, while the slow axis is handled by an external source connected to the DC part of the bias-tee.
 

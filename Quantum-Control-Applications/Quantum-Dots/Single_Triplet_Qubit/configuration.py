@@ -26,13 +26,13 @@ octave_config = None
 #       READOUT      #
 ######################
 # DC readout parameters
-readout_len = 1 * u.us
+readout_len = 10 * u.us
 readout_amp = 0.4
 IV_scale_factor = 0.5e-9  # in A/V
 
 # Reflectometry
 resonator_IF = 151 * u.MHz
-reflectometry_readout_length = 1 * u.us
+reflectometry_readout_length = 10 * u.us
 reflect_amp = 30 * u.mV
 
 # Time of flight

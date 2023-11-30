@@ -8,9 +8,11 @@ from scipy.signal import butter, lfilter
 from typing import Union
 from numpy.typing import NDArray
 
-def RF_reflectometry_macro(operation:str = "readout", element:str = "tank_circuit", element_output:str = "out2"):
-    I = declare(fixed)
-    Q = declare(fixed)
+def RF_reflectometry_macro(operation:str = "readout", element:str = "tank_circuit", element_output:str = "out2", I=None, Q=None):
+    if I is None:
+        I = declare(fixed)
+    if Q is None:
+        Q = declare(fixed)
     I_st = declare_stream()
     Q_st = declare_stream()
     measure(operation, element, None, demod.full('cos', I, element_output), demod.full('sin', Q, element_output))
@@ -18,12 +20,13 @@ def RF_reflectometry_macro(operation:str = "readout", element:str = "tank_circui
     save(Q, Q_st)
     return I, Q, I_st, Q_st
 
-def DC_current_sensing_macro(operation:str = "readout", element:str = "TIA", element_output:str = "out1"):
-    I = declare(fixed)
-    I_st = declare_stream()
-    measure(operation, element, None, integration.full('constant', I, element_output))
-    save(I, I_st)
-    return I, I_st
+def DC_current_sensing_macro(operation:str = "readout", element:str = "TIA", element_output:str = "out1", dc_signal=None):
+    if dc_signal is None:
+        dc_signal = declare(fixed)
+    dc_signal_st = declare_stream()
+    measure(operation, element, None, integration.full('constant', dc_signal, element_output))
+    save(dc_signal, dc_signal_st)
+    return dc_signal, dc_signal_st
 
 def get_filtered_voltage(voltage_list:Union[NDArray, list], step_duration:float, bias_tee_cut_off_frequency:float, plot:bool = False):
     """Get the voltage after filtering through the bias-tee
