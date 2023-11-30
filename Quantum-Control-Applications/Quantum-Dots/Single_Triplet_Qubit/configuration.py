@@ -67,7 +67,7 @@ pi_amp_right = 0.1
 pi_half_amp_right = 0.1
 pi_length_right = 40
 # Square pulse
-cw_amp = 0.3
+cw_amp = 0.1
 cw_len = 100
 # Gaussian pulse
 gaussian_length = 20
