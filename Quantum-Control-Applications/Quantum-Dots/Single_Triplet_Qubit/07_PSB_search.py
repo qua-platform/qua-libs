@@ -27,7 +27,7 @@ Before proceeding to the next node:
     - Identify the different charge occupation regions.
     - Update the config with the lever-arms.
 """
-
+import numpy as np
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -59,33 +59,41 @@ duration_empty = 50000 // 4
 duration_init = 5000 // 4
 duration_readout = int(1.1 * readout_len // 4)
 
-for j in range(2):
-    S =  lambda x: np.abs(np.array(level_empty[j] + x)*duration_empty * 4 + np.array(level_init[j] + x)*duration_init * 4 + np.array(level_readout[j] + x)*duration_readout * 4)
+def balance_fast_pulse_sequence(voltage_levels, durations):
+    balanced_sequence = []
+    dc_offset = []
+    for i in range(len(np.array(voltage_levels)[0,:])):
+        S = lambda x: np.abs(np.sum(np.array(voltage_levels)[:,i] * np.array(durations)) + x * np.sum(np.array(durations)))
+        opt = minimize(S, x0=np.array(0), method="Nelder-Mead", options={"fatol":1e-8, "xatol":1e-8})
+        dc_offset.append(-opt.x[0])
+        balanced_sequence.append(np.array(voltage_levels)[:,i] + opt.x)
+        print(opt)
+    return np.array(balanced_sequence), dc_offset
 
-    opt = minimize(S, x0=0, method="Nelder-Mead", options={"fatol":1e-8})
+corr, off = balance_fast_pulse_sequence([level_empty, level_init, level_readout], [duration_empty, duration_init, duration_readout])
+
+level_empty = [corr[0,0], corr[1,0]]
+level_init = [corr[0,1], corr[1,1]]
+level_readout = [corr[0,2], corr[1,2]]
+
+
+for j in range(2):
     wf=[]; wf_opt = []
     for i in range(5):
         wf += [level_empty[j]] * duration_empty * 4 + [level_init[j]] * duration_init * 4 + [level_readout[j]] * duration_readout * 4
-        wf_opt += [level_empty[j] + opt.x] * duration_empty * 4 + [level_init[j] + opt.x] * duration_init * 4 + [level_readout[j] + opt.x] * duration_readout * 4
+        wf_opt += [corr[j,0]] * duration_empty * 4 + [corr[j,1]] * duration_init * 4 + [corr[j,2]] * duration_readout * 4
 
-    y, y_filt = get_filtered_voltage(wf, 1e-9, 1e4)
-    y_opt, y_filt_opt = get_filtered_voltage(wf_opt, 1e-9, 1e4)
+    y, y_filt = get_filtered_voltage(wf, 1e-9, 1e3)
+    y_opt, y_filt_opt = get_filtered_voltage(wf_opt, 1e-9, 1e3)
     plt.figure()
     plt.subplot(211)
     plt.plot(y)
     plt.plot(y_filt)
     plt.subplot(212)
-    plt.title(f"Optimum offset: {opt.x[0]:.6f} V")
+    plt.title(f"Optimum offset: {off[j]:.6f} V")
     plt.plot(y_opt)
     plt.plot(y_filt_opt)
     plt.tight_layout()
-
-    level_empty[j] += opt.x
-    level_init[j] += opt.x
-    level_readout[j] += opt.x
-    level_empty[j] = level_empty[j][0]
-    level_init[j] = level_init[j][0]
-    level_readout[j] = level_readout[j][0]
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -122,20 +130,18 @@ with program() as charge_stability_prog:
                 play("trigger", "qdac_trigger1")
                 # Wait for the voltages to settle (depends on the channel bandwidth)
                 # wait(300 * u.us, 'tank_circuit', "TIA")
-
-                play("bias" * amp(level_empty[0] / P1_amp), "P1_sticky")
-                wait(duration_empty, "P1_sticky")
-                play("bias" * amp((level_init[0]-level_empty[0]) / P1_amp), "P1_sticky")
-                wait(duration_init, "P1_sticky")
-                play("bias" * amp((level_readout[0]-level_init[0]) / P1_amp), "P1_sticky")
-                align("P1_sticky", "tank_circuit", "TIA")
-                wait(duration_readout, "P1_sticky")
-                play("bias" * amp(level_empty[1] / P1_amp), "P2_sticky")
-                wait(duration_empty, "P2_sticky")
-                play("bias" * amp((level_init[1] - level_empty[1]) / P1_amp), "P2_sticky")
-                wait(duration_init, "P2_sticky")
-                play("bias" * amp((level_readout[1] - level_init[1]) / P1_amp), "P2_sticky")
-                wait(duration_readout, "P2_sticky")
+                for k in range(2):
+                    # Empty
+                    play("bias" * amp(level_empty[k] / P1_amp), f"P{k+1}_sticky")
+                    wait(duration_empty, f"P{k+1}_sticky")
+                    # Init
+                    play("bias" * amp((level_init[k]-level_empty[k]) / P1_amp), f"P{k+1}_sticky")
+                    wait(duration_init, f"P{k+1}_sticky")
+                    # Readout
+                    play("bias" * amp((level_readout[k]-level_init[k]) / P1_amp), f"P{k+1}_sticky")
+                    if k == 0:
+                        align("P1_sticky", "tank_circuit", "TIA")
+                    wait(duration_readout, f"P{k+1}_sticky")
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
                 # frequency and the integrated quadratures are stored in "I" and "Q"
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
