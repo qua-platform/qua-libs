@@ -1,3 +1,4 @@
+# %%
 """
         POWER RABI WITH ERROR AMPLIFICATION
 This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
@@ -19,7 +20,8 @@ Next steps before going to the next node:
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
+# from configuration import *
+from configuration_with_octave import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
@@ -157,3 +159,5 @@ else:
         plt.pause(1.0)
     # Close the quantum machines at the end
     qm.close()
+
+# %%

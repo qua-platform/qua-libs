@@ -294,12 +294,12 @@ config = {
     "elements": {
         "rr1": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
-            "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
+            "intermediate_frequency": resonator_IF_q1,  
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q1",
@@ -313,12 +313,12 @@ config = {
         },
         "rr2": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
-            "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
+            "intermediate_frequency": resonator_IF_q2,  
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q2",
@@ -332,12 +332,12 @@ config = {
         },
         "q1_xy": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
-            "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
+            "intermediate_frequency": qubit_IF_q1,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -351,12 +351,12 @@ config = {
         },
         "q2_xy": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO_q1,
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
+                "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -370,12 +370,12 @@ config = {
         },
         "cr_c1t2": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "intermediate_frequency": qubit_IF_q2, 
             "operations": {
                 "square_positive": "cr_c1t2_square_positive_pulse",
                 "square_negative": "cr_c1t2_square_negative_pulse",
@@ -384,12 +384,12 @@ config = {
         },
         "cr_c1t2_twin": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "intermediate_frequency": qubit_IF_q2,  
             "operations": {
                 "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
@@ -397,12 +397,12 @@ config = {
         },
         "cr_c2t1": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "intermediate_frequency": qubit_IF_q2,  
             "operations": {
                 "square_positive": "cr_c2t1_square_positive_pulse",
                 "square_negative": "cr_c2t1_square_negative_pulse",
@@ -411,12 +411,12 @@ config = {
         },
         "cr_c2t1_twin": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": ("con1", 5),
+                "Q": ("con1", 6),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "intermediate_frequency": qubit_IF_q2, 
             "operations": {
                 "guassian_rise": "cr_c2t1_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c2t1_gaussian_fall_pulse",

@@ -21,7 +21,8 @@ Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
+# from configuration import *
+from configuration_with_octave import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter

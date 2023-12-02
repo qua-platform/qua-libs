@@ -14,7 +14,8 @@ Before proceeding to the next node, take the following steps:
 
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm.qua import *
-from configuration import *
+# from configuration import *
+from configuration_with_octave import *
 
 ###################
 # The QUA program #

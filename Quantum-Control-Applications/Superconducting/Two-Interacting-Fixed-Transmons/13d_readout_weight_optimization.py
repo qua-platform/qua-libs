@@ -24,7 +24,8 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
-from configuration import *
+from configuration_with_octave import *
+# from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig

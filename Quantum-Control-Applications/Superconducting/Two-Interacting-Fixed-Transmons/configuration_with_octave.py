@@ -5,33 +5,14 @@ from qualang_tools.units import unit
 from qualang_tools.config.waveform_tools import flattop_gaussian_waveform
 from set_octave import OctaveUnit, octave_declaration
 
-#######################
-# AUXILIARY FUNCTIONS #
-#######################
-
-
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
 #############
 # VARIABLES #
 #############
 u = unit(coerce_to_integer=True)
 
-qop_ip = "172.16.33.100"
+qop_ip = "172.16.33.101"
 cluster_name = "Cluster_81"
+qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -39,23 +20,11 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 ############################
 # Set octave configuration #
 ############################
-octave_1 = OctaveUnit("octave1", qop_ip, port=50, con="con1", clock="Internal")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=51, con="con1", clock="Internal")
-# Custom port mapping example
-port_mapping = [
-    {
-        ("con1", 1): ("octave1", "I1"),
-        ("con1", 2): ("octave1", "Q1"),
-        ("con1", 3): ("octave1", "I2"),
-        ("con1", 4): ("octave1", "Q2"),
-        ("con1", 5): ("octave1", "I3"),
-        ("con1", 6): ("octave1", "Q3"),
-        ("con1", 7): ("octave1", "I4"),
-        ("con1", 8): ("octave1", "Q4"),
-        ("con1", 9): ("octave1", "I5"),
-        ("con1", 10): ("octave1", "Q5"),
-    }
-]
+
+# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
+# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
 # Add the octaves
 octaves = [octave_1]
@@ -67,23 +36,33 @@ octave_config = octave_declaration(octaves)
 #############################################
 qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-
+# Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
+# Mixer parameters
 mixer_qubit_g_q1 = 0.00
 mixer_qubit_g_q2 = 0.00
 mixer_qubit_phi_q1 = 0.0
 mixer_qubit_phi_q2 = 0.0
 
-qubit_T1 = int(3 * u.us)
+# Relaxation time
+qubit1_T1 = 3 * u.us
+qubit2_T1 = 3 * u.us
+thermalization_time = 5 * max(qubit1_T1, qubit2_T1)
 
+# CW pulse parameter
 const_len = 1000
-const_amp = 270 * u.mV
-
+const_amp = 125 * u.mV
+# Saturation_pulse
+saturation_len = 10 * u.us
+saturation_amp = 0.125
+# Pi pulse parameters
 pi_len = 40
 pi_sigma = pi_len / 5
-pi_amp_q1 = 0.22
-pi_amp_q2 = 0.22
+pi_amp_q1 = 0.125
+pi_amp_q2 = 0.125
+
+# DRAG coefficients
 drag_coef_q1 = 0
 drag_coef_q2 = 0
 anharmonicity_q1 = -200 * u.MHz
@@ -91,6 +70,7 @@ anharmonicity_q2 = -180 * u.MHz
 AC_stark_detuning_q1 = 0 * u.MHz
 AC_stark_detuning_q2 = 0 * u.MHz
 
+# DRAG waveforms
 x180_wf_q1, x180_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
 )
@@ -175,19 +155,47 @@ minus_y90_Q_wf_q2 = minus_y90_wf_q2
 #                Resonators                 #
 #############################################
 resonator_LO = 6.35 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-
+# Resonators IF
 resonator_IF_q1 = int(75 * u.MHz)
 resonator_IF_q2 = int(133 * u.MHz)
+# Mixer parameters
 mixer_resonator_g_q1 = 0.0
 mixer_resonator_g_q2 = 0.0
 mixer_resonator_phi_q1 = -0.00
 mixer_resonator_phi_q2 = -0.00
 
+# Readout pulse parameters
 readout_len = 4000
-readout_amp_q1 = 0.07
-readout_amp_q2 = 0.07
+readout_amp_q1 = 0.01
+readout_amp_q2 = 0.01
 
+# TOF and depletion time
 time_of_flight = 24  # must be a multiple of 4
+depletion_time = 2 * u.us
+
+opt_weights = False
+if opt_weights:
+    from qualang_tools.config.integration_weights_tools import convert_integration_weights
+
+    weights_q1 = np.load("optimal_weights_q1.npz")
+    opt_weights_real_q1 = convert_integration_weights(weights_q1["weights_real"])
+    opt_weights_minus_imag_q1 = convert_integration_weights(weights_q1["weights_minus_imag"])
+    opt_weights_imag_q1 = convert_integration_weights(weights_q1["weights_imag"])
+    opt_weights_minus_real_q1 = convert_integration_weights(weights_q1["weights_minus_real"])
+    weights_q2 = np.load("optimal_weights_q2.npz")
+    opt_weights_real_q2 = convert_integration_weights(weights_q2["weights_real"])
+    opt_weights_minus_imag_q2 = convert_integration_weights(weights_q2["weights_minus_imag"])
+    opt_weights_imag_q2 = convert_integration_weights(weights_q2["weights_imag"])
+    opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
+else:
+    opt_weights_real_q1 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q1 = [(1.0, readout_len)]
+    opt_weights_imag_q1 = [(1.0, readout_len)]
+    opt_weights_minus_real_q1 = [(1.0, readout_len)]
+    opt_weights_real_q2 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q2 = [(1.0, readout_len)]
+    opt_weights_imag_q2 = [(1.0, readout_len)]
+    opt_weights_minus_real_q2 = [(1.0, readout_len)]
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi
@@ -200,14 +208,17 @@ ge_threshold_q2 = 0.0
 #############################################
 cr_IF_c1t2 = (qubit_IF_q2 + qubit_LO_q2) - (qubit_IF_q1 + qubit_LO_q1)
 cr_IF_c2t1 = (qubit_IF_q1 + qubit_LO_q1) - (qubit_IF_q2 + qubit_LO_q2)
+# Mixer parameters
 mixer_qubit_g_c1t2 = 0.0
 mixer_qubit_phi_c1t2 = 0.0
 mixer_qubit_g_c2t1 = 0.0
 mixer_qubit_phi_c2t1 = 0.0
+# Pulse durations
 c1t2_square_positive_len = 100
 c1t2_square_negative_len = 100
 c2t1_square_positive_len = 100
 c2t1_square_negative_len = 100
+# Pulse amplitudes
 c1t2_square_positive_amp = 0.1
 c1t2_square_negative_amp = -0.1
 c2t1_square_positive_amp = 0.1
@@ -245,7 +256,6 @@ fall = np.array(
 ).tolist()
 flat = np.array([flat_top_amp] * round(flat_top_length)).tolist()
 
-
 #############################################
 #                  Config                   #
 #############################################
@@ -254,12 +264,12 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit1 XY
-                2: {"offset": 0.0},  # Q qubit1 XY
-                3: {"offset": 0.0},  # I qubit2 XY
-                4: {"offset": 0.0},  # Q qubit2 XY
-                5: {"offset": 0.0},  # I readout line
-                6: {"offset": 0.0},  # Q readout line
+                1: {"offset": 0.0},  # I readout line
+                2: {"offset": 0.0},  # Q readout line
+                3: {"offset": 0.0},  # I qubit1 XY
+                4: {"offset": 0.0},  # Q qubit1 XY
+                5: {"offset": 0.0},  # I qubit2 XY
+                6: {"offset": 0.0},  # Q qubit2 XY
             },
             "digital_outputs": {
                 1: {},
@@ -272,53 +282,33 @@ config = {
     },
     "elements": {
         "rr1": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": resonator_LO,
-                "mixer": "octave_octave1_1",
-            },
-            "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
+            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
+            "intermediate_frequency": resonator_IF_q1,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q1",
-            },
-            "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "rr2": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": resonator_LO,
-                "mixer": "mixer_resonator",
-            },
-            "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
+            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
+            "intermediate_frequency": resonator_IF_q2,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q2",
-            },
-            "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "q1_xy": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO_q1,
-                "mixer": "octave_octave1_2",
-            },
-            "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
+            "RF_inputs": {"port": ("octave1", 2)},
+            "intermediate_frequency": qubit_IF_q1,
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q1",
                 "x90": "x90_pulse_q1",
                 "-x90": "-x90_pulse_q1",
@@ -328,15 +318,11 @@ config = {
             },
         },
         "q2_xy": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
-                "lo_frequency": qubit_LO_q1,
-                "mixer": "octave_octave1_3",
-            },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "RF_inputs": {"port": ("octave1", 3)},
+            "intermediate_frequency": qubit_IF_q2, 
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q2",
                 "x90": "x90_pulse_q2",
                 "-x90": "-x90_pulse_q2",
@@ -346,13 +332,8 @@ config = {
             },
         },
         "cr_c1t2": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO_q1,
-                "mixer": "octave_octave1_2",
-            },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "RF_inputs": {"port": ("octave1", 2)},
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "square_positive": "cr_c1t2_square_positive_pulse",
                 "square_negative": "cr_c1t2_square_negative_pulse",
@@ -360,26 +341,16 @@ config = {
             },
         },
         "cr_c1t2_twin": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO_q1,
-                "mixer": "octave_octave1_2",
-            },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "RF_inputs": {"port": ("octave1", 2)},
+            "intermediate_frequency": qubit_IF_q2, 
             "operations": {
                 "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
             },
         },
         "cr_c2t1": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
-                "lo_frequency": qubit_LO_q2,
-                "mixer": "octave_octave1_3",
-            },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "RF_inputs": {"port": ("octave1", 3)},
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "square_positive": "cr_c2t1_square_positive_pulse",
                 "square_negative": "cr_c2t1_square_negative_pulse",
@@ -387,18 +358,44 @@ config = {
             },
         },
         "cr_c2t1_twin": {
-            "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
-                "lo_frequency": qubit_LO_q2,
-                "mixer": "octave_octave1_3",
-            },
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "RF_inputs": {"port": ("octave1", 3)},
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "guassian_rise": "cr_c2t1_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c2t1_gaussian_fall_pulse",
             },
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                1: {
+                    "LO_frequency": resonator_LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+                2: {
+                    "LO_frequency": qubit_LO_q1,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+                3: {
+                    "LO_frequency": qubit_LO_q2,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": 0,
+                },
+            },
+            "RF_inputs": {
+                1: {
+                    "LO_frequency": resonator_LO,
+                    "LO_source": "internal",
+                },
+            },
+            "connectivity": "con1",
+        }
     },
     "pulses": {
         "const_pulse": {
@@ -406,6 +403,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {
+                "I": "saturation_wf",
                 "Q": "zero_wf",
             },
         },
@@ -622,6 +627,7 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "saturation_wf": {"type": "constant", "sample": saturation_amp},
         "c1t2_square_positive_wf": {"type": "constant", "sample": c1t2_square_positive_amp},
         "c1t2_square_negative_wf": {"type": "constant", "sample": c1t2_square_negative_amp},
         "c2t1_square_positive_wf": {"type": "constant", "sample": c2t1_square_positive_amp},
@@ -700,43 +706,5 @@ config = {
             "cosine": [(-np.sin(rotation_angle_q2), readout_len)],
             "sine": [(-np.cos(rotation_angle_q2), readout_len)],
         },
-    },
-    "mixers": {
-        "octave_octave1_2": [
-            {
-                "intermediate_frequency": qubit_IF_q1,
-                "lo_frequency": qubit_LO_q1,
-                "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
-            },
-            {
-                "intermediate_frequency": cr_IF_c1t2,
-                "lo_frequency": qubit_LO_q1,
-                "correction": IQ_imbalance(mixer_qubit_g_c1t2, mixer_qubit_phi_c1t2),
-            },
-        ],
-        "octave_octave1_3": [
-            {
-                "intermediate_frequency": qubit_IF_q2,
-                "lo_frequency": qubit_LO_q2,
-                "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
-            },
-            {
-                "intermediate_frequency": cr_IF_c2t1,
-                "lo_frequency": qubit_LO_q2,
-                "correction": IQ_imbalance(mixer_qubit_g_c2t1, mixer_qubit_phi_c2t1),
-            },
-        ],
-        "octave_octave1_1": [
-            {
-                "intermediate_frequency": resonator_IF_q1,
-                "lo_frequency": resonator_LO,
-                "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1),
-            },
-            {
-                "intermediate_frequency": resonator_IF_q2,
-                "lo_frequency": resonator_LO,
-                "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2),
-            },
-        ],
     },
 }
