@@ -299,7 +299,7 @@ config = {
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
-            "intermediate_frequency": resonator_IF_q1,  
+            "intermediate_frequency": resonator_IF_q1,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q1",
@@ -318,7 +318,7 @@ config = {
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
-            "intermediate_frequency": resonator_IF_q2,  
+            "intermediate_frequency": resonator_IF_q2,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q2",
@@ -375,7 +375,7 @@ config = {
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2, 
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "square_positive": "cr_c1t2_square_positive_pulse",
                 "square_negative": "cr_c1t2_square_negative_pulse",
@@ -389,7 +389,7 @@ config = {
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
@@ -402,7 +402,7 @@ config = {
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2,  
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "square_positive": "cr_c2t1_square_positive_pulse",
                 "square_negative": "cr_c2t1_square_negative_pulse",
@@ -416,7 +416,7 @@ config = {
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": qubit_IF_q2, 
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "guassian_rise": "cr_c2t1_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c2t1_gaussian_fall_pulse",

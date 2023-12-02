@@ -5,6 +5,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
+
 # from configuration import *
 from configuration_with_octave import *
 

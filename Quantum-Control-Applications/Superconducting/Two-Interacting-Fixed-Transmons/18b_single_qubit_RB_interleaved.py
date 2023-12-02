@@ -24,6 +24,7 @@ from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from scipy.optimize import curve_fit
+
 # from configuration import *
 from configuration_with_octave import *
 import matplotlib.pyplot as plt

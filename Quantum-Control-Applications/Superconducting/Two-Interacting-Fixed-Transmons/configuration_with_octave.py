@@ -319,7 +319,7 @@ config = {
         },
         "q2_xy": {
             "RF_inputs": {"port": ("octave1", 3)},
-            "intermediate_frequency": qubit_IF_q2, 
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
@@ -342,7 +342,7 @@ config = {
         },
         "cr_c1t2_twin": {
             "RF_inputs": {"port": ("octave1", 2)},
-            "intermediate_frequency": qubit_IF_q2, 
+            "intermediate_frequency": qubit_IF_q2,
             "operations": {
                 "guassian_rise": "cr_c1t2_gaussian_rise_pulse",
                 "gaussian_fall": "cr_c1t2_gaussian_fall_pulse",
