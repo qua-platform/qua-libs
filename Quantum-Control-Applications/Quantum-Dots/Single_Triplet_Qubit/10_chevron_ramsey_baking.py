@@ -1,4 +1,3 @@
-
 """
         READOUT SEARCH
 """
@@ -44,9 +43,7 @@ for t in idle_times:  # Create the different baked sequences
         )  # Dephase the 2nd pi half for virtual Z-rotation
         b.play("pi_half_baked", "qubit")  # Play the pi half pulse
         b.reset_frame("qubit")  # Reset the frame to avoid floating point error accumulation
-        b.wait(
-            wait_time + remainder, "qubit"
-        )  # Wait after the pulse in order to remain sync with the Coulomb pulse
+        b.wait(wait_time + remainder, "qubit")  # Wait after the pulse in order to remain sync with the Coulomb pulse
     # Bake the reference sequence
     with baking(
         opx_instrument.config, padding_method="none"

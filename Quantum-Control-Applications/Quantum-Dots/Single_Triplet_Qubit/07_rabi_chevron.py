@@ -40,7 +40,7 @@ with program() as hello_qua:
     set_dc_offset("P2_sticky", "single", level_empty[1])
     align()
     # Empty-Initialization-Idle-Readout
-    with for_(i, 0, i<1, i+1):
+    with for_(i, 0, i < 1, i + 1):
         with for_(*from_array(t, durations)):
             with for_(*from_array(a, amplitudes)):
                 # with strict_timing_():
@@ -48,7 +48,11 @@ with program() as hello_qua:
                     # Empty point
                     wait(duration_empty, el)
                     # Ramp to init
-                    play(ramp((level_init[i]-level_empty[i])/(duration_init_ramp * 4)), el, duration=duration_init_ramp)
+                    play(
+                        ramp((level_init[i] - level_empty[i]) / (duration_init_ramp * 4)),
+                        el,
+                        duration=duration_init_ramp,
+                    )
                     # Init point
                     wait(duration_init, el)
                     # Manipulation point
@@ -56,11 +60,11 @@ with program() as hello_qua:
                     play("bias" * amp((level_manip[i] - level_init[i]) / P1_amp), el)
                     wait(duration_manip - bias_length // 4, el)
                     # Rabi
-                    wait(duration_manip-bias_length//4 - max(durations) - 4, f"P{i+1}")
-                    play("bias" * amp((-1)**i*a), f"P{i+1}", duration=t)
+                    wait(duration_manip - bias_length // 4 - max(durations) - 4, f"P{i+1}")
+                    play("bias" * amp((-1) ** i * a), f"P{i+1}", duration=t)
                     # Readout point
-                    play("bias"*amp((level_readout[i]-level_manip[i]) / P1_amp), el)
-                    wait(duration_readout-bias_length//4, el)
+                    play("bias" * amp((level_readout[i] - level_manip[i]) / P1_amp), el)
+                    wait(duration_readout - bias_length // 4, el)
                 # Go to empty
                 ramp_to_zero("P1_sticky")
                 ramp_to_zero("P2_sticky")

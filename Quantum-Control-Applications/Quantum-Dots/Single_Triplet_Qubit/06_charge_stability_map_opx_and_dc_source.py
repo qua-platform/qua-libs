@@ -122,22 +122,24 @@ else:
 
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()
-        I = u.demod2volts(I, reflectometry_readout_length)
-        Q = u.demod2volts(Q, reflectometry_readout_length)
+        # Convert results into Volts
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        R = np.abs(S)  # Amplitude
+        phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len)
         # Progress bar
-        progress_counter(iteration, n_points_slow)
-        # Line-by-line live plotting
+        progress_counter(iteration, n_points_slow, start_time=results.start_time)
+        # Plot data
         plt.subplot(121)
         plt.cla()
-        plt.title("I quadrature [V]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[:iteration+1], I)
+        plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
+        plt.pcolor(voltage_values_fast, voltage_values_slow, R)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.subplot(122)
         plt.cla()
-        plt.title("Q quadrature [V]")
-        plt.pcolor(voltage_values_fast, voltage_values_slow[:iteration+1], Q)
+        plt.title("Phase [rad]")
+        plt.pcolor(voltage_values_fast, voltage_values_slow, phase)
         plt.xlabel("Fast voltage axis [V]")
         plt.ylabel("Slow voltage axis [V]")
         plt.tight_layout()

@@ -20,7 +20,7 @@ n_avg = 100  # Number of averaging loops
 drive_frequency = 10 * u.GHz
 N = 100
 bit_shit_cte = 7
-n_avg_ro = 2 ** bit_shit_cte
+n_avg_ro = 2**bit_shit_cte
 Coulomb_pk_to_pk = 0.2
 qubit_IFs = np.arange(-50 * u.MHz, 50 * u.MHz, 0.1 * u.MHz)
 burst_durations = np.arange(16, 100, 4)
@@ -42,9 +42,7 @@ with program() as prog:
     assign_variables_to_element("TIA", I_on, I_off)
 
     with for_(n, 0, n < n_avg, n + 1):  # The outer averaging loop
-
         with for_(*from_array(f, qubit_IFs)):  # The outer averaging loop
-
             # Set the qubit drive frequency
             update_frequency("qubit", f)
 
@@ -68,7 +66,7 @@ with program() as prog:
                 # wait(IV_buffer_len * u.ns, "TIA")
 
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_on
-                    measure('readout', 'TIA', None, integration.full('cos', I_on, 'out1'))
+                    measure("readout", "TIA", None, integration.full("cos", I_on, "out1"))
                     assign(I_on_avg, (I_on >> bit_shit_cte) + I_on_avg)
                 save(I_on_avg, I_on_st)
 
@@ -82,7 +80,7 @@ with program() as prog:
                 # # Wait for the IV converter to reach its steady state and measure for a duration given by total_integration_time
                 # wait(IV_buffer_len * u.ns, "TIA")
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_off
-                    measure('readout', 'TIA', None, integration.full('cos', I_off, 'out1'))
+                    measure("readout", "TIA", None, integration.full("cos", I_off, "out1"))
                     assign(I_off_avg, (I_off >> bit_shit_cte) + I_off_avg)
                 save(I_off_avg, I_off_st)
 

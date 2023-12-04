@@ -21,7 +21,7 @@ n_avg = 100  # Number of averaging loops
 drive_frequency = 10 * u.GHz
 N = 100
 bit_shit_cte = 7
-n_avg_ro = 2 ** bit_shit_cte
+n_avg_ro = 2**bit_shit_cte
 Coulomb_pk_to_pk = 0.2
 qubit_IFs = np.arange(-50 * u.MHz, 50 * u.MHz, 0.1 * u.MHz)
 burst_durations = np.arange(16, 100, 4)
@@ -30,9 +30,7 @@ burst_durations = np.arange(16, 100, 4)
 pi_list = []
 for t in burst_durations:  # Create the different baked sequences
     t = int(t)
-    with baking(
-        config, padding_method="none"
-    ) as b:  # don't use padding to assure error if timing is incorrect
+    with baking(config, padding_method="none") as b:  # don't use padding to assure error if timing is incorrect
         if t == 0:
             wf_I = [0.0] * 16
             wf_Q = [0.0] * 16  # Otherwise the baked pulse will be empty
@@ -52,9 +50,7 @@ for t in burst_durations:  # Create the different baked sequences
         # Baked sequence
         b.wait(16, "qubit")  # Wait before playing the qubit pulse (can be removed or adjusted)
         b.play("pi_baked", "qubit")  # Play the qubit pulse
-        b.wait(
-            wait_time + remainder, "qubit"
-        )  # Wait after the pulse in order to remain sync with the Coulomb pulse
+        b.wait(wait_time + remainder, "qubit")  # Wait after the pulse in order to remain sync with the Coulomb pulse
 
     # Append the baking object in the list to call it from the QUA program
     pi_list.append(b)
@@ -99,7 +95,7 @@ with program() as prog:
                                 pi_list[ii].run()
 
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_on
-                    measure('readout', 'TIA', None, integration.full('cos', I_on, 'out1'))
+                    measure("readout", "TIA", None, integration.full("cos", I_on, "out1"))
                     assign(I_on_avg, (I_on >> bit_shit_cte) + I_on_avg)
                 save(I_on_avg, I_on_st)
 
@@ -111,7 +107,7 @@ with program() as prog:
                     play("bias" * amp(-Coulomb_pk_to_pk), "gate_1")
 
                 with for_(n_ro, 0, n_ro < n_avg_ro, n_ro + 1):  # The inner averaging loop for I_off
-                    measure('readout', 'TIA', None, integration.full('cos', I_off, 'out1'))
+                    measure("readout", "TIA", None, integration.full("cos", I_off, "out1"))
                     assign(I_off_avg, (I_off >> bit_shit_cte) + I_off_avg)
                 save(I_off_avg, I_off_st)
 

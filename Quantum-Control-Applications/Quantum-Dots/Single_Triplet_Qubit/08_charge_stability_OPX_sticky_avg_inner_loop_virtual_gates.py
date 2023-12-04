@@ -19,7 +19,7 @@ from qualang_tools.plot import interrupt_on_close
 n_avg = 100  # Number of averaging loops
 
 origin_P2 = 0.0
-origin_P1 = 0.0 
+origin_P1 = 0.0
 intercept_U = 0.0
 intercept_E = 0.0
 
@@ -33,23 +33,26 @@ offset_max_U = 0.02
 d_offset_U = 0.001
 offsets_U = np.arange(offset_min_U, offset_max_U, d_offset_U) + origin_P2
 
+
 def play_detuning(E):
-    play('bias'*amp((- E - intercept_E)/P1_amp), 'P1_sticky')
-    play('bias'*amp(E/P2_amp), 'P2_sticky')
+    play("bias" * amp((-E - intercept_E) / P1_amp), "P1_sticky")
+    play("bias" * amp(E / P2_amp), "P2_sticky")
+
 
 def play_energy(U):
-    play('bias'*amp((- U - intercept_U)/P1_amp), 'P1_sticky')
-    play('bias'*amp(U/P2_amp), 'P2_sticky')
+    play("bias" * amp((-U - intercept_U) / P1_amp), "P1_sticky")
+    play("bias" * amp(U / P2_amp), "P2_sticky")
+
 
 def measure_RF_DC():
-    measure('readout', 'tank_circuit', None, demod.full('cos', I, 'out2'), demod.full('sin', Q, 'out2'))
-    measure('readout', 'TIA', None, integration.full('cos', IDC, 'out1'))
+    measure("readout", "tank_circuit", None, demod.full("cos", I, "out2"), demod.full("sin", Q, "out2"))
+    measure("readout", "TIA", None, integration.full("cos", IDC, "out1"))
     save(I, I_st)
     save(IDC, IDC_st)
     save(Q, Q_st)
 
+
 with program() as charge_stability:
-    
     dc_E = declare(fixed)
     dc_U = declare(fixed)
     n = declare(int)
@@ -70,27 +73,27 @@ with program() as charge_stability:
         play_energy(offset_min_U)
         # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
 
-        align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
+        align("P1_sticky", "P2_sticky", "tank_circuit", "TIA")
         with for_(*from_array(dc_E, offsets_E)):
             play_energy(d_offset_U)
 
-            align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
-            with for_(n, 0, n < n_avg, n+1):
+            align("P1_sticky", "P2_sticky", "tank_circuit", "TIA")
+            with for_(n, 0, n < n_avg, n + 1):
                 measure_RF_DC()
 
-        align('P1_sticky', 'P2_sticky', 'tank_circuit', 'TIA')
-        ramp_to_zero('P2_sticky')
+        align("P1_sticky", "P2_sticky", "tank_circuit", "TIA")
+        ramp_to_zero("P2_sticky")
         # -> add wait(5*tau * u.ns, 'P2_sticky') // to avoid transients due to the large change of voltage
         play_detuning(d_offset_E)
-        assign(counter, counter+1)
+        assign(counter, counter + 1)
 
-    ramp_to_zero('P1_sticky')
+    ramp_to_zero("P1_sticky")
 
     with stream_processing():
-        I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all('I')
-        IDC_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all('IDC')
-        Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all('Q')
-        counter_st.save('counter')
+        I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all("I")
+        IDC_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all("IDC")
+        Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(len(offsets_E)).save_all("Q")
+        counter_st.save("counter")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -116,7 +119,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(charge_stability)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=['counter', 'I', 'Q', 'IDC'], mode="live")
+    results = fetching_tool(job, data_list=["counter", "I", "Q", "IDC"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -128,19 +131,19 @@ else:
         progress_counter(counter, len(offsets_U), start_time=results.get_start_time())
         plt.subplot(131)
         plt.cla()
-        plt.pcolor(offsets_U, offsets_E[:len(I_volts)], I_volts)
-        plt.xlabel('P2 [V]')
-        plt.ylabel('P1 [V]')
+        plt.pcolor(offsets_U, offsets_E[: len(I_volts)], I_volts)
+        plt.xlabel("P2 [V]")
+        plt.ylabel("P1 [V]")
         plt.subplot(132)
         plt.cla()
-        plt.pcolor(offsets_U, offsets_E[:len(Q_volts)], Q_volts)
-        plt.xlabel('P2 [V]')
-        plt.ylabel('P1 [V]')
+        plt.pcolor(offsets_U, offsets_E[: len(Q_volts)], Q_volts)
+        plt.xlabel("P2 [V]")
+        plt.ylabel("P1 [V]")
         plt.subplot(133)
         plt.cla()
-        plt.pcolor(offsets_U, offsets_E[:len(IDC_volts)], IDC_volts)
-        plt.xlabel('P2 [V]')
-        plt.ylabel('P1 [V]')
+        plt.pcolor(offsets_U, offsets_E[: len(IDC_volts)], IDC_volts)
+        plt.xlabel("P2 [V]")
+        plt.ylabel("P1 [V]")
         plt.tight_layout()
         plt.pause(0.1)
     plt.colorbar()

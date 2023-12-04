@@ -3,6 +3,7 @@ import pyvisa as visa
 from typing import Union
 from numpy.typing import NDArray
 
+
 # QDAC2 instrument class
 class QDACII:
     def __init__(
@@ -50,7 +51,14 @@ class QDACII:
 
 # load list of voltages to the relevant QDAC2 channel
 def load_voltage_list(
-    qdac, channel: int, dwell: float, slew_rate: float, trigger_port: str, output_range: str, output_filter: str, voltage_list: Union[NDArray, list]
+    qdac,
+    channel: int,
+    dwell: float,
+    slew_rate: float,
+    trigger_port: str,
+    output_range: str,
+    output_filter: str,
+    voltage_list: Union[NDArray, list],
 ):
     """
     Configure a QDAC2 channel to play a set of voltages from a given list and step through it according to an external trigger given by an OPX digital marker, using pyvisa commands.

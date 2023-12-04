@@ -98,8 +98,8 @@ config = {
                 2: {},  # TTL for QDAC
             },
             "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},   # DC input
-                2: {"offset": 0.0, "gain_db": 0},   # RF input
+                1: {"offset": 0.0, "gain_db": 0},  # DC input
+                2: {"offset": 0.0, "gain_db": 0},  # RF input
             },
         },
     },
@@ -373,12 +373,18 @@ config = {
             "type": "arbitrary",
             "samples": [float(arg) for arg in gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)],
         },
-        "pi_left_wf": {"type": "arbitrary", "samples": [float(arg) for arg in pi_amp_left * gaussian(pi_length_left, pi_length_left / 5)]},
+        "pi_left_wf": {
+            "type": "arbitrary",
+            "samples": [float(arg) for arg in pi_amp_left * gaussian(pi_length_left, pi_length_left / 5)],
+        },
         "pi_half_left_wf": {
             "type": "arbitrary",
             "samples": [float(arg) for arg in pi_half_amp_left * gaussian(pi_length_left, pi_length_left / 5)],
         },
-        "pi_right_wf": {"type": "arbitrary", "samples": [float(arg) for arg in pi_amp_right * gaussian(pi_length_right, pi_length_right / 5)]},
+        "pi_right_wf": {
+            "type": "arbitrary",
+            "samples": [float(arg) for arg in pi_amp_right * gaussian(pi_length_right, pi_length_right / 5)],
+        },
         "pi_half_right_wf": {
             "type": "arbitrary",
             "samples": [float(arg) for arg in pi_half_amp_right * gaussian(pi_length_right, pi_length_right / 5)],

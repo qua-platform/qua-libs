@@ -1,28 +1,27 @@
 """
-        CHARGE STABILITY MAP - fast and slow axes: external source (DC)
-The goal of the script is to acquire the charge stability map.
-Here the charge stability diagram is acquired by sweeping the voltages using an external DC source (QDAC or else).
-This is done by pausing the QUA program, updating the voltages in Python using the instrument API and resuming the QUA program.
+        Pauli Spin Blockade search
+The goal of the script is to find the PSB region according to the protocol described in Nano Letters 2020 20 (2), 947-952.
+To do so, the charge stability map is acquired by scanning the voltages provided by an external DC source,
+to the DC part of the bias-tees connected to the plunger gates, while 2 OPX channels are stepping the voltages on the fast
+lines of the bias-tees to navigate through the triangle in voltage space (empty - random initialization - measurement).
 
-The OPX is simply measuring, either via dc current sensing or RF reflectometry, the charge occupation of the dot.
-On top of the DC voltage sweeps, the OPX can output a continuous square wave (Coulomb pulse) through the AC line of the
-bias-tee. This allows to check the coupling of the fast line to the sample and measure the lever arms between the DC and
-AC lines.
+Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
+triangle so that the fast line of the bias-tees sees zero voltage in average. Otherwise, the high-pass filtering effect
+of the bias-tee will distort the fast pulses over time. A function has been written for this.
 
+In the current implementation, the OPX is also measuring (either with DC current sensing or RF-reflectometry) during the
+readout window (last segment of the triangle).
 A single-point averaging is performed and the data is extracted while the program is running to display the results line-by-line.
 
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
     - Setting the parameters of the external DC source using its driver.
     - Connect the two plunger gates (DC line of the bias-tee) to the external dc source.
-    - (optional) Connect the OPX to the fast line of the plunger gates for playing the Coulomb pulse and calibrate the
-      lever arm.
+    - Connect the OPX to the fast line of the plunger gates for playing the triangle pulse sequence.
 
 Before proceeding to the next node:
-    - Identify the different charge occupation regions.
-    - Update the config with the lever-arms.
+    - Identify the PSB region and update the config.
 """
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -32,16 +31,78 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
+from macros import get_filtered_voltage, round_to_fixed
+from scipy.optimize import minimize
 
 ###################
 # The QUA program #
 ###################
-n_avg = 100
-n_points_slow = 10
-n_points_fast = 11
-Coulomb_amp = 0.1  # amplitude of the Coulomb pulse
+n_avg = 100  # Number of averages
+n_points_slow = 101  # Number of points for the slow axis
+n_points_fast = 100  # Number of points for the fast axis
+Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
-N = (int((readout_len + 1_000 + 0 * 1 * u.ms) / (2 * bias_length)) + 1) * n_avg
+N = (int((readout_len + 1_000) / (2 * bias_length)) + 1) * n_points_fast * n_points_slow * n_avg
+
+# Points in the charge stability map [V1, V2]
+level_empty = [-0.2, -0.2]
+level_init = [0.03, 0.2]
+level_readout = [0.15, 0.05]
+
+duration_empty = 50000 // 4
+duration_init = 5000 // 4
+duration_readout = int(1.1 * readout_len // 4)
+
+
+def balance_fast_pulse_sequence(voltage_levels, durations):
+    """Finds the barycenter of the triangle so that the fast line of the bias-tee sees V in average at the end of the triangle."""
+    balanced_sequence = []
+    dc_offset = []
+    for i in range(len(np.array(voltage_levels)[0, :])):
+        S = lambda x: np.abs(
+            np.sum(np.array(voltage_levels)[:, i] * np.array(durations)) + x * np.sum(np.array(durations))
+        )
+        opt = minimize(S, x0=np.array(0), method="Nelder-Mead", options={"fatol": 1e-8})
+        dc_offset.append(-opt.x[0])
+        balanced_sequence.append(np.array(voltage_levels)[:, i] + opt.x)
+        print(opt)
+    return np.array(balanced_sequence), dc_offset
+
+
+corr, off = balance_fast_pulse_sequence(
+    [level_empty, level_init, level_readout], [duration_empty, duration_init, duration_readout]
+)
+
+# Visualize the pulse sequence before and after balancing
+for j in range(2):
+    wf = []
+    wf_opt = []
+    for i in range(5):
+        wf += (
+            [level_empty[j]] * duration_empty * 4
+            + [level_init[j]] * duration_init * 4
+            + [level_readout[j]] * duration_readout * 4
+        )
+        wf_opt += (
+            [corr[j, 0]] * duration_empty * 4 + [corr[j, 1]] * duration_init * 4 + [corr[j, 2]] * duration_readout * 4
+        )
+
+    y, y_filt = get_filtered_voltage(wf, 1e-9, 1e3)
+    y_opt, y_filt_opt = get_filtered_voltage(wf_opt, 1e-9, 1e3)
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(y)
+    plt.plot(y_filt)
+    plt.subplot(212)
+    plt.title(f"Optimum offset: {off[j]:.6f} V")
+    plt.plot(y_opt)
+    plt.plot(y_filt_opt)
+    plt.tight_layout()
+
+# Update the triangle levels and convert them to "fixed" to reduce the accumulation of fixed point arithmetic errors
+level_empty = [round_to_fixed(corr[0, 0]), round_to_fixed(corr[1, 0])]
+level_init = [round_to_fixed(corr[0, 1]), round_to_fixed(corr[1, 1])]
+level_readout = [round_to_fixed(corr[0, 2]), round_to_fixed(corr[1, 2])]
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -68,17 +129,31 @@ with program() as charge_stability_prog:
 
             # Wait for the voltages to settle (depends on the voltage source bandwidth)
             wait(1 * u.ms)
-
-            # Play the Coulomb pulse continuously for the whole sequence
-            #      ____      ____      ____      ____
-            #     |    |    |    |    |    |    |    |
-            # ____|    |____|    |____|    |____|    |...
-            with for_(counter, 0, counter < N, counter + 1):
-                # The Coulomb pulse
-                play("bias" * amp(Coulomb_amp / P1_amp), "P1")
-                play("bias" * amp(-Coulomb_amp / P1_amp), "P1")
+            # Play the triangle once starting from 0V (then it will start from level_readout)
+            for k in range(2):
+                # Empty
+                play("bias" * amp((level_empty[k] - 0) / P1_amp), f"P{k + 1}_sticky")
+                wait(duration_empty, f"P{k + 1}_sticky")
+                # Init
+                play("bias" * amp((level_init[k] - level_empty[k]) / P1_amp), f"P{k + 1}_sticky")
+                wait(duration_init, f"P{k + 1}_sticky")
+                # Readout
+                play("bias" * amp((level_readout[k] - level_init[k]) / P1_amp), f"P{k + 1}_sticky")
+                wait(duration_readout, f"P{k + 1}_sticky")
 
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
+                for k in range(2):
+                    # Empty
+                    play("bias" * amp((level_empty[k] - level_readout[k]) / P1_amp), f"P{k+1}_sticky")
+                    wait(duration_empty, f"P{k+1}_sticky")
+                    # Init
+                    play("bias" * amp((level_init[k] - level_empty[k]) / P1_amp), f"P{k+1}_sticky")
+                    wait(duration_init, f"P{k+1}_sticky")
+                    # Readout
+                    play("bias" * amp((level_readout[k] - level_init[k]) / P1_amp), f"P{k+1}_sticky")
+                    if k == 0:
+                        align("P1_sticky", "tank_circuit", "TIA")
+                    wait(duration_readout, f"P{k+1}_sticky")
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
                 # frequency and the integrated quadratures are stored in "I" and "Q"
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
@@ -89,6 +164,9 @@ with program() as charge_stability_prog:
                 # per µs to the stream processing. Otherwise, the processor will receive the samples faster than it can
                 # process them which can cause the OPX to crash.
                 wait(1_000 * u.ns)  # in ns
+            # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
+            ramp_to_zero("P1_sticky")
+            ramp_to_zero("P2_sticky")
         # Save the LO iteration to get the progress bar
         save(i, n_st)
 
@@ -103,7 +181,6 @@ with program() as charge_stability_prog:
         # DC current sensing
         dc_signal_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(n_points_fast).save_all("dc_signal")
 
-
 #####################################
 #  Open Communication with the QOP  #
 #####################################
@@ -116,8 +193,9 @@ simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=50_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, charge_stability_prog, simulation_config)
+    plt.figure()
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -147,7 +225,7 @@ else:
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        S = u.demod2volts(I[: iteration + 1] + 1j * Q[: iteration + 1], reflectometry_readout_length)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         DC_signal = u.demod2volts(DC_signal, readout_len)

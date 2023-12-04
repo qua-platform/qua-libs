@@ -29,7 +29,7 @@ with program() as raw_trace_prog:
         # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
         reset_phase("tank_circuit")
         # Measure the charge sensor (send a readout pulse and record the raw ADC trace)
-        measure("readout"*amp(0), "TIA", adc_dc_st)
+        measure("readout" * amp(0), "TIA", adc_dc_st)
         measure("readout", "tank_circuit", adc_rf_st)
         # Wait for the resonator to deplete
         wait(1_000 * u.ns, "TIA", "tank_circuit")

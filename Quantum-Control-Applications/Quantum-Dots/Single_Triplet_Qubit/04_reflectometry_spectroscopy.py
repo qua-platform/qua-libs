@@ -45,8 +45,7 @@ with program() as reflectometry_spectro:
             update_frequency("tank_circuit", f)
             # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
             # frequency and the integrated quadratures are stored in "I" and "Q"
-            measure("readout", "tank_circuit", None, demod.full('cos', I, "out2"),
-                    demod.full('sin', Q, "out2"))
+            measure("readout", "tank_circuit", None, demod.full("cos", I, "out2"), demod.full("sin", Q, "out2"))
             save(I, I_st)
             save(Q, Q_st)
             # Wait at each iteration in order to ensure that the data will not be transferred faster than 1 sample
@@ -56,9 +55,9 @@ with program() as reflectometry_spectro:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(frequencies)).average().save('I')
-        Q_st.buffer(len(frequencies)).average().save('Q')
-        n_st.save('iteration')
+        I_st.buffer(len(frequencies)).average().save("I")
+        Q_st.buffer(len(frequencies)).average().save("Q")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -84,7 +83,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(reflectometry_spectro)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=['I', 'Q','iteration'], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure

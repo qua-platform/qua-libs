@@ -41,15 +41,15 @@ with program() as charge_sensor_sweep:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Set the voltage to the 1st point of the sweep
-        play('bias' * amp(offsets[0] / charge_sensor_amp), 'sensor_gate_sticky')
+        play("bias" * amp(offsets[0] / charge_sensor_amp), "sensor_gate_sticky")
         # Wait for the voltage to settle (depends on the bias-tee cut-off frequency)
-        wait(1 * u.ms, 'sensor_gate_sticky')
+        wait(1 * u.ms, "sensor_gate_sticky")
         with for_(*from_array(dc, offsets)):
             # Play only from the second iteration
-            with if_(~(dc==offsets[0])):
-                play('bias' * amp(d_offset / charge_sensor_amp), 'sensor_gate_sticky')
+            with if_(~(dc == offsets[0])):
+                play("bias" * amp(d_offset / charge_sensor_amp), "sensor_gate_sticky")
                 # Wait for the voltage to settle (depends on the bias-tee cut-off frequency)
-                wait(1 * u.ms, 'sensor_gate_sticky')
+                wait(1 * u.ms, "sensor_gate_sticky")
             align()
             # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
             # frequency and the integrated quadratures are stored in "I" and "Q"
@@ -65,10 +65,10 @@ with program() as charge_sensor_sweep:
         save(n, n_st)
 
     with stream_processing():
-        I_st.buffer(len(offsets)).average().save('I')
-        Q_st.buffer(len(offsets)).average().save('Q')
-        dc_signal_st.buffer(len(offsets)).average().save('Q')
-        n_st.save('iteration')
+        I_st.buffer(len(offsets)).average().save("I")
+        Q_st.buffer(len(offsets)).average().save("Q")
+        dc_signal_st.buffer(len(offsets)).average().save("Q")
+        n_st.save("iteration")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -94,7 +94,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(charge_sensor_sweep)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=['I', 'Q','iteration'], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
