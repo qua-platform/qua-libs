@@ -147,15 +147,17 @@ with program() as hello_qua:
     with for_(*from_array(a, pi_levels)):
         with for_(*from_array(t, durations)):
             with strict_timing_():
-                seq.add_step(voltage_point_name="initialization", ramp_duration=200)
+                seq.add_step(voltage_point_name="initialization", ramp_duration=None)
                 seq.add_step(voltage_point_name="manipulation")
                 seq.add_step(voltage_point_name="readout")
 
             wait((duration_init + duration_manip) * u.ns - (t>>2) - 4, "P1", "P2") # Need -4 because of a gap
             play("step" * amp((a-level_manip[0]) * 4), "P1", duration=t>>2)
             play("step" * amp((-a-level_manip[1]) * 4), "P2", duration=t>>2)
-                # qubit_seq.wait(duration_init)
-                # qubit_seq.add_step(voltage_point_name="pi", level=[a, -a], duration=t, current_offset=level_manip)
+
+            wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")
+            I, Q, I_st, Q_st = RF_reflectometry_macro()
+            dc_signal, dc_signal_st = DC_current_sensing_macro()
 
 # Program where the manipulation point is swept together with the qubit pulse
 # with program() as hello_qua:

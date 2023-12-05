@@ -191,6 +191,10 @@ with program() as hello_qua:
                     with case_(ii):
                         pi_list[ii].run(amp_array=[("P1", (a-level_manip[0]) * 4), ("P2", (-a-level_manip[1]) * 4)])
 
+            wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")
+            I, Q, I_st, Q_st = RF_reflectometry_macro()
+            dc_signal, dc_signal_st = DC_current_sensing_macro()
+
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
