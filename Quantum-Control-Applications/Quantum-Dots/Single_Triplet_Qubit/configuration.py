@@ -182,7 +182,7 @@ B_center_amp = 0.2
 charge_sensor_amp = 0.2
 
 block_length = 16
-bias_length = 200
+bias_length = 16
 
 hold_offset_duration = 4
 
@@ -195,6 +195,13 @@ qubit_LO_right = 4 * u.GHz
 qubit_IF_right = 100 * u.MHz
 
 # Pi pulse
+pi_length = 32
+pi_half_length = 16
+
+pi_amps = [0.25, -0.25]
+pi_half_amps = [0.25, -0.25]
+
+
 pi_amp_left = 0.1
 pi_half_amp_left = 0.1
 pi_length_left = 40
@@ -262,6 +269,8 @@ config = {
             },
             "operations": {
                 "step": "bias_P1_pulse",
+                "pi": "P1_pi_pulse",
+                "pi_half": "P1_pi_half_pulse",
             },
         },
         "P1_sticky": {
@@ -279,6 +288,8 @@ config = {
             },
             "operations": {
                 "step": "bias_P2_pulse",
+                "pi": "P2_pi_pulse",
+                "pi_half": "P2_pi_half_pulse",
             },
         },
         "P2_sticky": {
@@ -390,6 +401,34 @@ config = {
         },
     },
     "pulses": {
+        "P1_pi_pulse": {
+            "operation": "control",
+            "length": pi_length,
+            "waveforms": {
+                "single": "P1_pi_wf",
+            },
+        },
+        "P1_pi_half_pulse": {
+            "operation": "control",
+            "length": pi_half_length,
+            "waveforms": {
+                "single": "P1_pi_half_wf",
+            },
+        },
+        "P2_pi_pulse": {
+            "operation": "control",
+            "length": pi_length,
+            "waveforms": {
+                "single": "P2_pi_wf",
+            },
+        },
+        "P2_pi_half_pulse": {
+            "operation": "control",
+            "length": pi_half_length,
+            "waveforms": {
+                "single": "P2_pi_half_wf",
+            },
+        },
         "bias_P1_pulse": {
             "operation": "control",
             "length": bias_length,
@@ -496,6 +535,10 @@ config = {
         },
     },
     "waveforms": {
+        "P1_pi_wf": {"type": "constant", "sample": pi_amps[0]},
+        "P1_pi_half_wf": {"type": "constant", "sample": pi_half_amps[0]},
+        "P2_pi_wf": {"type": "constant", "sample": pi_amps[1]},
+        "P2_pi_half_wf": {"type": "constant", "sample": pi_half_amps[1]},
         "bias_P1_pulse_wf": {"type": "constant", "sample": P1_amp},
         "bias_P2_pulse_wf": {"type": "constant", "sample": P2_amp},
         "bias_B_center_pulse_wf": {"type": "constant", "sample": B_center_amp},

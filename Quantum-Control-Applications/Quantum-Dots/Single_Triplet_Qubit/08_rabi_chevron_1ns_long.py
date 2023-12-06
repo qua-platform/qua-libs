@@ -71,7 +71,7 @@ for t in range(16):  # Create the different baked sequences
         pi_list_4ns.append(b4ns)
 
 
-with program() as hello_qua:
+with program() as Rabi_chevron:
     t = declare(int)
     t_cycles = declare(int)
     t_left_ns = declare(int)
@@ -95,7 +95,7 @@ with program() as hello_qua:
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
                             wait((duration_init + duration_manip) * u.ns - 4 - 9, "P1", "P2")
                             pi_list[ii].run(amp_array=[("P1", (a-level_manip[0]) * 4), ("P2", (-a-level_manip[1]) * 4)])
-                            
+
             # Long qubit pulse: baking and play combined
             with else_():
                 assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
@@ -132,7 +132,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, hello_qua, simulation_config)
+    job = qmm.simulate(config, Rabi_chevron, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
     plt.axhline(0.1, color="k", linestyle="--")
@@ -150,4 +150,4 @@ else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
-    job = qm.execute(hello_qua)
+    job = qm.execute(Rabi_chevron)
