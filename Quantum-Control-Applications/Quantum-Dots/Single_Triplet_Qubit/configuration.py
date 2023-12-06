@@ -1,7 +1,9 @@
 from pathlib import Path
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
-
+from typing import List, Any, Dict
+from qm.qua._dsl import _ResultSource, _Variable, _Expression
+from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -21,6 +23,127 @@ octave_config = None
 #############################################
 #              OPX PARAMETERS               #
 #############################################
+class OPX_background_sequence:
+    def __init__(self, configuration: dict, elements: list):
+        self._elements = elements
+        self._config = configuration
+        self.current_level = [0.0 for _ in self._elements]
+        self._realtime = False
+        self._voltage_points = {}
+        self.average_power = [0 for _ in self._elements]
+        for el in self._elements:
+            self._config["elements"][el]["operations"]["step"] = "step_pulse"
+        self._config["pulses"]["step_pulse"] = {
+            "operation": "control",
+            "length": 16,
+            "waveforms": {"single": "step_wf"}
+        }
+        self._config["waveforms"]["step_wf"] = {"type": "constant", "sample": 0.25}
+
+    def _check_name(self, name, key):
+        if name in key:
+            return self._check_name(name + "%", key)
+        else:
+            return name
+
+    def _add_op_to_config(self, el, name, amplitude, length):
+        op_name = self._check_name(name, self._config["elements"][el]["operations"])
+        pulse_name = self._check_name(f"{el}_{op_name}_pulse", self._config["pulses"])
+        wf_name = self._check_name(f"{el}_{op_name}_wf", self._config["waveforms"])
+        self._config["elements"][el]["operations"][op_name] = pulse_name
+        self._config["pulses"][pulse_name] = {
+            "operation": "control",
+            "length": length,
+            "waveforms": {"single": wf_name}
+        }
+        self._config["waveforms"][wf_name] = {"type": "constant", "sample": amplitude}
+        return op_name
+
+    def add_step(self, level: list=None, duration: int=None, voltage_point_name:str = None, ramp_duration:int = None, current_offset:list = None):
+        """
+        If duration is QUA, then >= 32
+        """
+        if current_offset is None:
+            current_offset = [0.0 for _ in self._elements]
+        if voltage_point_name is not None:
+            if duration is None:
+                _duration = self._voltage_points[voltage_point_name]["duration"]
+            else:
+                _duration = duration
+
+            for i, gate in enumerate(self._elements):
+                if level is None:
+                    voltage_level = self._voltage_points[voltage_point_name]["coordinates"][i]
+                else:
+                    voltage_level = level[i]
+
+
+
+                if ramp_duration is None:
+                    # If real-time amplitude and duration, then split into play and wait otherwise gap, but then duration > 32ns
+                    # if (isinstance(voltage_level, (_Variable, _Expression)) and isinstance(_duration, (_Variable, _Expression))) or isinstance(self.current_level[i], (_Variable, _Expression)):
+                    if isinstance(voltage_level, (_Variable, _Expression)) or isinstance(self.current_level[i], (_Variable, _Expression)):
+                    #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
+                    #     wait((_duration - 16) >> 2, gate)
+                    # if isinstance(_duration, (_Variable, _Expression)):
+
+                        if isinstance(voltage_level, (_Variable, _Expression)):
+                            expression = declare(fixed)
+                            assign(expression, voltage_level)
+                            self.average_power[i] += Cast.mul_int_by_fixed(_duration, expression)
+                        else:
+                            self.average_power[i] += int(voltage_level * _duration)
+                        play("step" * amp((voltage_level - self.current_level[i] - current_offset[i]) * 4), gate)
+                        wait((_duration - 16) >> 2, gate)
+                    # elif isinstance(_duration, (_Variable, _Expression)):
+                    elif duration is not None:
+                        self.average_power[i] += int(voltage_level * _duration)
+                        operation = self._add_op_to_config(gate, voltage_point_name,
+                                                           amplitude=self._voltage_points[voltage_point_name][
+                                                                         "coordinates"][i] - self.current_level[i],
+                                                           length=self._voltage_points[voltage_point_name]["duration"])
+
+                        play(operation, gate, duration=_duration >> 2)
+                    else:
+                        self.average_power[i] += int(voltage_level * _duration)
+                        operation = self._add_op_to_config(gate, voltage_point_name,
+                                                           amplitude=self._voltage_points[voltage_point_name][
+                                                                         "coordinates"][i] - self.current_level[i],
+                                                           length=self._voltage_points[voltage_point_name]["duration"])
+                        play(operation, gate)
+
+                else:
+                    play(ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2)
+                    wait(_duration >> 2, gate)
+                self.current_level[i] = voltage_level
+    def add_compensation_pulse(self, duration:int):
+        for i, gate in enumerate(self._elements):
+            if not isinstance(self.average_power[i], (_Variable, _Expression)):
+                compensation_amp = -self.average_power[i] / duration
+                operation = self._add_op_to_config(gate, "compensation",
+                                                   amplitude=compensation_amp - self.current_level[i],
+                                                   length=duration)
+                play(operation, gate)
+            else:
+                operation = self._add_op_to_config(gate, "compensation",
+                                                   amplitude=0.25,
+                                                   length=duration)
+                compensation_amp = declare(fixed)
+                test = declare(int)
+                assign(test, self.average_power[i])
+                assign(compensation_amp, -Cast.mul_fixed_by_int(1/duration, test))
+                play(operation * amp((compensation_amp - self.current_level[i]) * 4), gate)
+            self.current_level[i] = compensation_amp
+
+    def wait(self, duration):
+        for i, gate in enumerate(self._elements):
+            wait(duration >> 2, gate)
+            self.current_level[i] = 0
+
+    def add_points(self, name: str, coordinates: list, duration: int):
+        self._voltage_points[name] = {}
+        self._voltage_points[name]["coordinates"] = coordinates
+        self._voltage_points[name]["duration"] = duration
 
 ######################
 #       READOUT      #
@@ -41,15 +164,27 @@ time_of_flight = 24
 ######################
 #      DC GATES      #
 ######################
+
+## Section defining the points from the charge stability map - can be done in the config
+# Relevant points in the charge stability map as ["P1", "P2"] in V
+level_init = [0.1, -0.1]
+level_manip = [0.3, -0.3]
+level_readout = [0.2, -0.2]
+# Duration of each step
+duration_init = 2500
+duration_manip = 1000
+duration_readout = readout_len + 100
+duration_compensation_pulse = 4 * u.us
+
 P1_amp = 0.25
-P2_amp = 0.2
+P2_amp = 0.25
 B_center_amp = 0.2
 charge_sensor_amp = 0.2
 
-block_length = 100
+block_length = 16
 bias_length = 200
 
-hold_offset_duration = 200
+hold_offset_duration = 4
 
 ######################
 #      RF GATES      #
@@ -126,7 +261,7 @@ config = {
                 "port": ("con1", 5),
             },
             "operations": {
-                "bias": "bias_P1_pulse",
+                "step": "bias_P1_pulse",
             },
         },
         "P1_sticky": {
@@ -143,7 +278,7 @@ config = {
                 "port": ("con1", 6),
             },
             "operations": {
-                "bias": "bias_P2_pulse",
+                "step": "bias_P2_pulse",
             },
         },
         "P2_sticky": {
