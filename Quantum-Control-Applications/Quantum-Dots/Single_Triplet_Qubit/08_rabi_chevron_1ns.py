@@ -43,7 +43,7 @@ n_avg = 100
 pi_levels = np.arange(0.21, 0.3, 0.01)
 # Pulse duration sweep in ns - the last point must a multiple of 4ns
 durations = np.arange(0, 153, 1)
-assert max(durations)%4==0
+assert max(durations) % 4 == 0
 
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
@@ -78,7 +78,6 @@ for t in durations:  # Create the different baked sequences
         b.play("pi_baked", "P1")  # Play the qubit pulse
         b.play("pi_baked", "P2")  # Play the qubit pulse
 
-
     # Append the baking object in the list to call it from the QUA program
     pi_list.append(b)
 
@@ -91,7 +90,7 @@ with program() as Rabi_chevron:
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
         with for_(*from_array(Vpi, pi_levels)):  # Loop over the qubit pulse amplitude
-            with for_(t, 0, t<len(durations), t+1):  # Loop over the qubit pulse duration
+            with for_(t, 0, t < len(durations), t + 1):  # Loop over the qubit pulse duration
                 with strict_timing_():  # Ensure that the sequence will be played without gap
                     # Navigate through the charge stability map
                     seq.add_step(voltage_point_name="initialization")
@@ -106,7 +105,9 @@ with program() as Rabi_chevron:
                                 # Need -4 cycles to compensate the gap
                                 wait(int(duration_init - max(durations)) * u.ns - 4, "P1", "P2")
                                 wait(4, "P1", "P2")  # Need 4 additional cycles because of a gap
-                                pi_list[ii].run(amp_array=[("P1", (Vpi-level_init[0]) * 4), ("P2", (-Vpi-level_init[1]) * 4)])
+                                pi_list[ii].run(
+                                    amp_array=[("P1", (Vpi - level_init[0]) * 4), ("P2", (-Vpi - level_init[1]) * 4)]
+                                )
 
                     # Measure the dot right after the qubit manipulation
                     wait(duration_init * u.ns, "tank_circuit", "TIA")
@@ -147,12 +148,16 @@ if simulate:
     plt.axhline(level_init[1], color="k", linestyle="--")
     plt.axhline(level_manip[1], color="k", linestyle="--")
     plt.axhline(level_readout[1], color="k", linestyle="--")
-    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]], ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks(
+        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
+        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+    )
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
+
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
 
@@ -191,4 +196,3 @@ else:
         plt.ylabel("Vpi [V]")
         plt.tight_layout()
         plt.pause(0.1)
-

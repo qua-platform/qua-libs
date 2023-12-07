@@ -67,8 +67,8 @@ for t in range(16):  # Create the different baked sequences
             wf1 = [0.0] * 16
             wf2 = [0.0] * 16
         else:
-            wf1 = [pi_amps[0]-level_manip[0]] * t
-            wf2 = [pi_amps[1]-level_manip[1]] * t
+            wf1 = [pi_amps[0] - level_manip[0]] * t
+            wf2 = [pi_amps[1] - level_manip[1]] * t
 
         # Add the baked operation to the config
         b.add_op("pi_baked", "P1", wf1)
@@ -81,8 +81,8 @@ for t in range(16):  # Create the different baked sequences
         b.play("pi_baked", "P2")  # Play the qubit pulse
     if t < 4:
         with baking(config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
-            wf1 = [pi_amps[0]-level_manip[0]] * t
-            wf2 = [pi_amps[1]-level_manip[1]] * t
+            wf1 = [pi_amps[0] - level_manip[0]] * t
+            wf2 = [pi_amps[1] - level_manip[1]] * t
 
             # Add the baked operation to the config
             b4ns.add_op("pi_baked2", "P1", wf1)
@@ -118,7 +118,7 @@ with program() as Rabi_chevron:
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                 # Short qubit pulse: baking only
-                with if_(t<=16):
+                with if_(t <= 16):
                     # switch case to select the baked waveform corresponding to the burst duration
                     with switch_(t, unsafe=True):
                         for ii in range(16):
@@ -182,12 +182,16 @@ if simulate:
     plt.axhline(level_readout[1], color="k", linestyle="--")
     plt.axhline(pi_amps[0], color="k", linestyle="--")
     plt.axhline(pi_amps[1], color="k", linestyle="--")
-    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]], ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks(
+        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
+        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+    )
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
+
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
 

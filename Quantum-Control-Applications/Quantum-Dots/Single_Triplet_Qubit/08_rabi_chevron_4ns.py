@@ -66,10 +66,10 @@ with program() as Rabi_chevron:
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                     # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                    wait(duration_init * u.ns - (t>>2) - 4, "P1", "P2") # Need -4 cycles to compensate the gap
-                    wait(4, "P1", "P2") # Need 4 additional cycles because of a gap
-                    play("step" * amp((Vpi-level_init[0]) * 4), "P1", duration=t>>2)
-                    play("step" * amp((-Vpi-level_init[1]) * 4), "P2", duration=t>>2)
+                    wait(duration_init * u.ns - (t >> 2) - 4, "P1", "P2")  # Need -4 cycles to compensate the gap
+                    wait(4, "P1", "P2")  # Need 4 additional cycles because of a gap
+                    play("step" * amp((Vpi - level_init[0]) * 4), "P1", duration=t >> 2)
+                    play("step" * amp((-Vpi - level_init[1]) * 4), "P2", duration=t >> 2)
 
                     # Measure the dot right after the qubit manipulation
                     wait(duration_init * u.ns, "tank_circuit", "TIA")
@@ -108,12 +108,16 @@ if simulate:
     plt.axhline(level_init[1], color="k", linestyle="--")
     plt.axhline(level_manip[1], color="k", linestyle="--")
     plt.axhline(level_readout[1], color="k", linestyle="--")
-    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]], ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks(
+        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
+        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+    )
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
+
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
 
@@ -152,4 +156,3 @@ else:
         plt.ylabel("Vpi [V]")
         plt.tight_layout()
         plt.pause(0.1)
-

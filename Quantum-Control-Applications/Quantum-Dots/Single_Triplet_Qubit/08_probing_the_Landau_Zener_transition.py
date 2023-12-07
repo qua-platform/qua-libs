@@ -50,7 +50,7 @@ durations = np.arange(16, 40, 20)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 ramp_durations = np.arange(16, 200, 4)
 eps = [0.25, -0.25]
-rates = 1/ramp_durations
+rates = 1 / ramp_durations
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
@@ -78,8 +78,8 @@ with program() as Rabi_chevron:
                     seq.add_step(voltage_point_name="readout", ramp_duration=16)
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
                     # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                    wait((duration_init + duration_manip) * u.ns - (t>>2) - 4, "P1", "P2") # Need -4 because of a gap
-                    wait( 4, "P1", "P2") # Need -4 because of a gap
+                    wait((duration_init + duration_manip) * u.ns - (t >> 2) - 4, "P1", "P2")  # Need -4 because of a gap
+                    wait(4, "P1", "P2")  # Need -4 because of a gap
                     # play(ramp(eps[0]*rate), "P1", duration=t_R>>2)
                     # play(ramp(eps[1]*rate), "P2", duration=t_R>>2)
                     # play("step" * amp((eps[0]-level_manip[0]) * 4), "P1", duration=t>>2)
@@ -123,14 +123,17 @@ if simulate:
     plt.axhline(level_readout[1], color="k", linestyle="--")
     plt.axhline(pi_half_amps[0], color="k", linestyle="--")
     plt.axhline(pi_half_amps[1], color="k", linestyle="--")
-    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
-               ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks(
+        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
+        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+    )
 
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
+
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
 

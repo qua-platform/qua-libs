@@ -29,7 +29,7 @@ class OPX_background_sequence:
         self._config["pulses"]["step_pulse"] = {
             "operation": "control",
             "length": 16,
-            "waveforms": {"single": "step_wf"}
+            "waveforms": {"single": "step_wf"},
         }
         self._config["waveforms"]["step_wf"] = {"type": "constant", "sample": 0.25}
 
@@ -47,12 +47,19 @@ class OPX_background_sequence:
         self._config["pulses"][pulse_name] = {
             "operation": "control",
             "length": length,
-            "waveforms": {"single": wf_name}
+            "waveforms": {"single": wf_name},
         }
         self._config["waveforms"][wf_name] = {"type": "constant", "sample": amplitude}
         return op_name
 
-    def add_step(self, level: list=None, duration: int=None, voltage_point_name:str = None, ramp_duration:int = None, current_offset:list = None):
+    def add_step(
+        self,
+        level: list = None,
+        duration: int = None,
+        voltage_point_name: str = None,
+        ramp_duration: int = None,
+        current_offset: list = None,
+    ):
         """
         If duration is QUA, then >= 32
         """
@@ -71,29 +78,39 @@ class OPX_background_sequence:
                     voltage_level = level[i]
                 if ramp_duration is None:
                     # If real-time amplitude and duration, then split into play and wait otherwise gap, but then duration > 32ns
-                    if isinstance(voltage_level, (_Variable, _Expression)) and isinstance(_duration, (_Variable, _Expression)):
-                    #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
-                    #     wait((_duration - 16) >> 2, gate)
-                    # if isinstance(_duration, (_Variable, _Expression)):
+                    if isinstance(voltage_level, (_Variable, _Expression)) and isinstance(
+                        _duration, (_Variable, _Expression)
+                    ):
+                        #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
+                        #     wait((_duration - 16) >> 2, gate)
+                        # if isinstance(_duration, (_Variable, _Expression)):
                         play("step" * amp((voltage_level - self.current_level[i] - current_offset[i]) * 4), gate)
                         wait((_duration - 16) >> 2, gate)
                     # elif isinstance(_duration, (_Variable, _Expression)):
                     elif duration is not None:
-                        operation = self._add_op_to_config(gate, voltage_point_name,
-                                                           amplitude=self._voltage_points[voltage_point_name][
-                                                                         "coordinates"][i] - self.current_level[i],
-                                                           length=self._voltage_points[voltage_point_name]["duration"])
+                        operation = self._add_op_to_config(
+                            gate,
+                            voltage_point_name,
+                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
+                            - self.current_level[i],
+                            length=self._voltage_points[voltage_point_name]["duration"],
+                        )
 
                         play(operation, gate, duration=_duration >> 2)
                     else:
-                        operation = self._add_op_to_config(gate, voltage_point_name,
-                                                           amplitude=self._voltage_points[voltage_point_name][
-                                                                         "coordinates"][i] - self.current_level[i],
-                                                           length=self._voltage_points[voltage_point_name]["duration"])
+                        operation = self._add_op_to_config(
+                            gate,
+                            voltage_point_name,
+                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
+                            - self.current_level[i],
+                            length=self._voltage_points[voltage_point_name]["duration"],
+                        )
                         play(operation, gate)
 
                 else:
-                    play(ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2)
+                    play(
+                        ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2
+                    )
                     wait(_duration >> 2, gate)
                 self.current_level[i] = voltage_level
 
@@ -124,7 +141,7 @@ duration_readout = readout_len + 100
 pi_len = 44
 
 integration_time = 50 * u.us
-n_ro = np.ceil(integration_time / readout_len)*0+5
+n_ro = np.ceil(integration_time / readout_len) * 0 + 5
 n_avg = 100
 # Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 durations = np.arange(16, 40, 10)
@@ -134,7 +151,7 @@ pi_levels = np.arange(0.21, 0.3, 0.01)
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
-seq.add_points("manipulation", level_manip, duration_manip)
+seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
 with program() as Rabi_chevron:
@@ -157,13 +174,15 @@ with program() as Rabi_chevron:
                         with strict_timing_():  # Ensure that the sequence will be played without gap
                             # Navigate through the charge stability map
                             seq.add_step(voltage_point_name="initialization", ramp_duration=None)
-                            seq.add_step(voltage_point_name="manipulation")
+                            seq.add_step(voltage_point_name="idle")
                             seq.add_step(voltage_point_name="readout")
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                            wait((duration_init + duration_manip) * u.ns - (t>>2) - 4, "P1", "P2") # Need -4 because of a gap
-                            wait( 4, "P1", "P2") # Need -4 because of a gap
-                            play("step" * amp((a-level_manip[0]) * 4), "P1", duration=t>>2, condition=on_off)
-                            play("step" * amp((-a-level_manip[1]) * 4), "P2", duration=t>>2, condition=on_off)
+                            wait(
+                                (duration_init + duration_manip) * u.ns - (t >> 2) - 4, "P1", "P2"
+                            )  # Need -4 because of a gap
+                            wait(4, "P1", "P2")  # Need -4 because of a gap
+                            play("step" * amp((a - level_manip[0]) * 4), "P1", duration=t >> 2, condition=on_off)
+                            play("step" * amp((-a - level_manip[1]) * 4), "P2", duration=t >> 2, condition=on_off)
                             # Measure the dot right after the qubit manipulation
                             wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")
                             dc_signal, dc_signal_st = DC_current_sensing_macro(dc_signal=signal_on)
@@ -189,7 +208,7 @@ with program() as Rabi_chevron:
 #                 with strict_timing_():  # Ensure that the sequence will be played without gap
 #                     # Navigate through the charge stability map
 #                     seq.add_step(voltage_point_name="initialization", ramp_duration=None)
-#                     seq.add_step(voltage_point_name="manipulation")
+#                     seq.add_step(voltage_point_name="idle")
 #                     seq.add_step(voltage_point_name="readout")
 #                     # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
 #                     wait((duration_init + duration_manip) * u.ns - (t>>2) - 4, "P1", "P2") # Need -4 because of a gap

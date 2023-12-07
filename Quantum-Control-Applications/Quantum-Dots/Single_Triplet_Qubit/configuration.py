@@ -20,6 +20,7 @@ qop_port = None  # Write the QOP port if version < QOP220
 # Path to save data
 octave_config = None
 
+
 #############################################
 #              OPX PARAMETERS               #
 #############################################
@@ -36,7 +37,7 @@ class OPX_background_sequence:
         self._config["pulses"]["step_pulse"] = {
             "operation": "control",
             "length": 16,
-            "waveforms": {"single": "step_wf"}
+            "waveforms": {"single": "step_wf"},
         }
         self._config["waveforms"]["step_wf"] = {"type": "constant", "sample": 0.25}
 
@@ -54,12 +55,19 @@ class OPX_background_sequence:
         self._config["pulses"][pulse_name] = {
             "operation": "control",
             "length": length,
-            "waveforms": {"single": wf_name}
+            "waveforms": {"single": wf_name},
         }
         self._config["waveforms"][wf_name] = {"type": "constant", "sample": amplitude}
         return op_name
 
-    def add_step(self, level: list=None, duration: int=None, voltage_point_name:str = None, ramp_duration:int = None, current_offset:list = None):
+    def add_step(
+        self,
+        level: list = None,
+        duration: int = None,
+        voltage_point_name: str = None,
+        ramp_duration: int = None,
+        current_offset: list = None,
+    ):
         """
         If duration is QUA, then >= 32
         """
@@ -77,15 +85,15 @@ class OPX_background_sequence:
                 else:
                     voltage_level = level[i]
 
-
-
                 if ramp_duration is None:
                     # If real-time amplitude and duration, then split into play and wait otherwise gap, but then duration > 32ns
                     # if (isinstance(voltage_level, (_Variable, _Expression)) and isinstance(_duration, (_Variable, _Expression))) or isinstance(self.current_level[i], (_Variable, _Expression)):
-                    if isinstance(voltage_level, (_Variable, _Expression)) or isinstance(self.current_level[i], (_Variable, _Expression)):
-                    #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
-                    #     wait((_duration - 16) >> 2, gate)
-                    # if isinstance(_duration, (_Variable, _Expression)):
+                    if isinstance(voltage_level, (_Variable, _Expression)) or isinstance(
+                        self.current_level[i], (_Variable, _Expression)
+                    ):
+                        #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
+                        #     wait((_duration - 16) >> 2, gate)
+                        # if isinstance(_duration, (_Variable, _Expression)):
 
                         if isinstance(voltage_level, (_Variable, _Expression)):
                             expression = declare(fixed)
@@ -98,40 +106,47 @@ class OPX_background_sequence:
                     # elif isinstance(_duration, (_Variable, _Expression)):
                     elif duration is not None:
                         self.average_power[i] += int(voltage_level * _duration)
-                        operation = self._add_op_to_config(gate, voltage_point_name,
-                                                           amplitude=self._voltage_points[voltage_point_name][
-                                                                         "coordinates"][i] - self.current_level[i],
-                                                           length=self._voltage_points[voltage_point_name]["duration"])
+                        operation = self._add_op_to_config(
+                            gate,
+                            voltage_point_name,
+                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
+                            - self.current_level[i],
+                            length=self._voltage_points[voltage_point_name]["duration"],
+                        )
 
                         play(operation, gate, duration=_duration >> 2)
                     else:
                         self.average_power[i] += int(voltage_level * _duration)
-                        operation = self._add_op_to_config(gate, voltage_point_name,
-                                                           amplitude=self._voltage_points[voltage_point_name][
-                                                                         "coordinates"][i] - self.current_level[i],
-                                                           length=self._voltage_points[voltage_point_name]["duration"])
+                        operation = self._add_op_to_config(
+                            gate,
+                            voltage_point_name,
+                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
+                            - self.current_level[i],
+                            length=self._voltage_points[voltage_point_name]["duration"],
+                        )
                         play(operation, gate)
 
                 else:
-                    play(ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2)
+                    play(
+                        ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2
+                    )
                     wait(_duration >> 2, gate)
                 self.current_level[i] = voltage_level
-    def add_compensation_pulse(self, duration:int):
+
+    def add_compensation_pulse(self, duration: int):
         for i, gate in enumerate(self._elements):
             if not isinstance(self.average_power[i], (_Variable, _Expression)):
                 compensation_amp = -self.average_power[i] / duration
-                operation = self._add_op_to_config(gate, "compensation",
-                                                   amplitude=compensation_amp - self.current_level[i],
-                                                   length=duration)
+                operation = self._add_op_to_config(
+                    gate, "compensation", amplitude=compensation_amp - self.current_level[i], length=duration
+                )
                 play(operation, gate)
             else:
-                operation = self._add_op_to_config(gate, "compensation",
-                                                   amplitude=0.25,
-                                                   length=duration)
+                operation = self._add_op_to_config(gate, "compensation", amplitude=0.25, length=duration)
                 compensation_amp = declare(fixed)
                 test = declare(int)
                 assign(test, self.average_power[i])
-                assign(compensation_amp, -Cast.mul_fixed_by_int(1/duration, test))
+                assign(compensation_amp, -Cast.mul_fixed_by_int(1 / duration, test))
                 play(operation * amp((compensation_amp - self.current_level[i]) * 4), gate)
             self.current_level[i] = compensation_amp
 
@@ -144,6 +159,7 @@ class OPX_background_sequence:
         self._voltage_points[name] = {}
         self._voltage_points[name]["coordinates"] = coordinates
         self._voltage_points[name]["duration"] = duration
+
 
 ######################
 #       READOUT      #
@@ -184,8 +200,6 @@ pi_amps = [0.27, -0.27]
 pi_half_amps = [0.27, -0.27]
 
 
-
-
 P1_amp = 0.27
 P2_amp = 0.27
 B_center_amp = 0.2
@@ -205,7 +219,6 @@ qubit_LO_right = 4 * u.GHz
 qubit_IF_right = 100 * u.MHz
 
 # Pi pulse
-
 
 
 pi_amp_left = 0.1

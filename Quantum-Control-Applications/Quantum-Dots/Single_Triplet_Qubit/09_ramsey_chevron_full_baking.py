@@ -46,7 +46,7 @@ from qualang_tools.addons.variables import assign_variables_to_element
 n_avg = 100
 # Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 durations = np.arange(4, 5, 1)
-assert max(durations)%4==0
+assert max(durations) % 4 == 0
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 idle_levels = np.arange(0.21, 0.3, 0.01)
 pi_half_length = 5
@@ -88,15 +88,15 @@ with program() as Ramsey_chevron:
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     dc_signal = declare(fixed)  # QUA variable for the measured dc signal
-    
+
     # Ensure that the result variables are assigned to the measurement elements
     assign_variables_to_element("tank_circuit", I, Q)
     assign_variables_to_element("TIA", dc_signal)
-    
+
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
         with for_(*from_array(V_idle, idle_levels)):  # Loop over the qubit pulse amplitude
-            with for_(t, 0, t<len(durations), t+1):  # Loop over the qubit pulse duration
+            with for_(t, 0, t < len(durations), t + 1):  # Loop over the qubit pulse duration
                 with strict_timing_():  # Ensure that the sequence will be played without gap
                     # Navigate through the charge stability map
                     seq.add_step(voltage_point_name="initialization")
@@ -110,10 +110,20 @@ with program() as Ramsey_chevron:
                         for ii in range(len(durations)):
                             with case_(ii):
                                 # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                                wait((duration_init + duration_manip - 2*pi_half_length) * u.ns - max(durations) // 4 - 4 , "P1", "P2")
+                                wait(
+                                    (duration_init + duration_manip - 2 * pi_half_length) * u.ns
+                                    - max(durations) // 4
+                                    - 4,
+                                    "P1",
+                                    "P2",
+                                )
                                 wait(4, "P1", "P2")  # Need 4 because of a gap
                                 pi_list[ii].run(
-                                    amp_array=[("P1", (pi_half_amps[0] - V_idle) * 4), ("P2", (pi_half_amps[1] + V_idle) * 4)])
+                                    amp_array=[
+                                        ("P1", (pi_half_amps[0] - V_idle) * 4),
+                                        ("P2", (pi_half_amps[1] + V_idle) * 4),
+                                    ]
+                                )
 
                     # Measure the dot right after the qubit manipulation
                     wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")
@@ -157,12 +167,16 @@ if simulate:
     plt.axhline(level_readout[1], color="k", linestyle="--")
     plt.axhline(pi_half_amps[0], color="k", linestyle="--")
     plt.axhline(pi_half_amps[1], color="k", linestyle="--")
-    plt.yticks([-0.2, -0.3, -0.1, 0.0, 0.1, 0.3, 0.2], ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks(
+        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
+        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+    )
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
+
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
 
