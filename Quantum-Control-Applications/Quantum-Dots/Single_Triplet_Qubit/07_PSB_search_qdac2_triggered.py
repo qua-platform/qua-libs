@@ -47,64 +47,13 @@ Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 N = (int((readout_len + 1_000) / (2 * bias_length)) + 1) * n_points_fast * n_points_slow * n_avg
 
 # Points in the charge stability map [V1, V2]
-level_empty = [-0.2, -0.2]
-level_init = [0.03, 0.2]
-level_readout = [0.15, 0.05]
+level_empty = [-0.2, 0.0]
+duration_empty = 5000
 
-duration_empty = 5000 // 4
-duration_init = 1000 // 4
-duration_readout = int(1.1 * readout_len // 4)
-
-
-def balance_fast_pulse_sequence(voltage_levels, durations):
-    """Finds the barycenter of the triangle so that the fast line of the bias-tee sees V in average at the end of the triangle."""
-    balanced_sequence = []
-    dc_offset = []
-    for i in range(len(np.array(voltage_levels)[0, :])):
-        S = lambda x: np.abs(
-            np.sum(np.array(voltage_levels)[:, i] * np.array(durations)) + x * np.sum(np.array(durations))
-        )
-        opt = minimize(S, x0=np.array(0), method="Nelder-Mead", options={"fatol": 1e-8})
-        dc_offset.append(-opt.x[0])
-        balanced_sequence.append(np.array(voltage_levels)[:, i] + opt.x)
-        print(opt)
-    return np.array(balanced_sequence), dc_offset
-
-
-corr, off = balance_fast_pulse_sequence(
-    [level_empty, level_init, level_readout], [duration_empty, duration_init, duration_readout]
-)
-
-# Visualize the pulse sequence before and after balancing
-for j in range(2):
-    wf = []
-    wf_opt = []
-    for i in range(5):
-        wf += (
-            [level_empty[j]] * duration_empty * 4
-            + [level_init[j]] * duration_init * 4
-            + [level_readout[j]] * duration_readout * 4
-        )
-        wf_opt += (
-            [corr[j, 0]] * duration_empty * 4 + [corr[j, 1]] * duration_init * 4 + [corr[j, 2]] * duration_readout * 4
-        )
-
-    y, y_filt = get_filtered_voltage(wf, 1e-9, 5e3)
-    y_opt, y_filt_opt = get_filtered_voltage(wf_opt, 1e-9, 5e3)
-    plt.figure()
-    plt.subplot(211)
-    plt.plot(y)
-    plt.plot(y_filt)
-    plt.subplot(212)
-    plt.title(f"Optimum offset: {off[j]:.6f} V")
-    plt.plot(y_opt)
-    plt.plot(y_filt_opt)
-    plt.tight_layout()
-
-# Update the triangle levels and convert them to "fixed" to reduce the accumulation of fixed point arithmetic errors
-level_empty = [round_to_fixed(corr[0, 0]), round_to_fixed(corr[1, 0])]
-level_init = [round_to_fixed(corr[0, 1]), round_to_fixed(corr[1, 1])]
-level_readout = [round_to_fixed(corr[0, 2]), round_to_fixed(corr[1, 2])]
+seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
+seq.add_points("empty", level_empty, duration_empty)
+seq.add_points("initialization", level_init, duration_init)
+seq.add_points("readout", level_readout, duration_readout)
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -132,31 +81,15 @@ with program() as charge_stability_prog:
             play("trigger", "qdac_trigger1")
             # Wait for the voltages to settle (depends on the channel bandwidth)
             wait(300 * u.us, "tank_circuit", "TIA", "P1_sticky", "P2_sticky")
-            # Play the triangle once starting from 0V (then it will start from level_readout)
-            for k in range(2):
-                # Empty
-                play("bias" * amp((level_empty[k] - 0) / P1_amp), f"P{k + 1}_sticky")
-                wait(duration_empty, f"P{k + 1}_sticky")
-                # Init
-                play("bias" * amp((level_init[k] - level_empty[k]) / P1_amp), f"P{k + 1}_sticky")
-                wait(duration_init, f"P{k + 1}_sticky")
-                # Readout
-                play("bias" * amp((level_readout[k] - level_init[k]) / P1_amp), f"P{k + 1}_sticky")
-                wait(duration_readout, f"P{k + 1}_sticky")
 
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
-                for k in range(2):
-                    # Empty
-                    play("bias" * amp((level_empty[k] - level_readout[k]) / P1_amp), f"P{k+1}_sticky")
-                    wait(duration_empty, f"P{k+1}_sticky")
-                    # Init
-                    play("bias" * amp((level_init[k] - level_empty[k]) / P1_amp), f"P{k+1}_sticky")
-                    wait(duration_init, f"P{k+1}_sticky")
-                    # Readout
-                    play("bias" * amp((level_readout[k] - level_init[k]) / P1_amp), f"P{k+1}_sticky")
-                    if k == 0:
-                        align("P1_sticky", "tank_circuit", "TIA")
-                    wait(duration_readout, f"P{k+1}_sticky")
+                # Play the triangle
+                seq.add_step(voltage_point_name="empty")
+                seq.add_step(voltage_point_name="initialization")
+                seq.add_step(voltage_point_name="readout")
+                seq.add_compensation_pulse(duration=duration_compensation_pulse)
+                # Measure the dot right after the qubit manipulation
+                wait((duration_init +duration_empty) * u.ns, "tank_circuit", "TIA")
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
                 # frequency and the integrated quadratures are stored in "I" and "Q"
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
@@ -167,9 +100,9 @@ with program() as charge_stability_prog:
                 # per µs to the stream processing. Otherwise, the processor will receive the samples faster than it can
                 # process them which can cause the OPX to crash.
                 wait(1_000 * u.ns)  # in ns
-            # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
-            ramp_to_zero("P1_sticky")
-            ramp_to_zero("P2_sticky")
+                # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
+                ramp_to_zero("P1_sticky")
+                ramp_to_zero("P2_sticky")
         # Save the LO iteration to get the progress bar
         save(i, n_st)
 
@@ -218,11 +151,11 @@ load_voltage_list(
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, charge_stability_prog, simulation_config)
     plt.figure()
     job.get_simulated_samples().con1.plot()
