@@ -169,7 +169,8 @@ time_of_flight = 24
 # Relevant points in the charge stability map as ["P1", "P2"] in V
 level_init = [0.1, -0.1]
 level_manip = [0.3, -0.3]
-level_readout = [0.2, -0.2]
+level_readout = [0.12, -0.12]
+
 # Duration of each step
 duration_init = 2500
 duration_manip = 1000
