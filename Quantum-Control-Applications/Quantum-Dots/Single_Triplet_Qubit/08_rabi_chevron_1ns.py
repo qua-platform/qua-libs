@@ -147,7 +147,7 @@ if simulate:
     plt.axhline(level_init[1], color="k", linestyle="--")
     plt.axhline(level_manip[1], color="k", linestyle="--")
     plt.axhline(level_readout[1], color="k", linestyle="--")
-    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[1], level_readout[0]], ["readout", "manip", "init", "0", "init", "manip", "readout"])
+    plt.yticks([level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]], ["readout", "manip", "init", "0", "init", "manip", "readout"])
     plt.legend("")
     samples = job.get_simulated_samples()
     report = job.get_simulated_waveform_report()
