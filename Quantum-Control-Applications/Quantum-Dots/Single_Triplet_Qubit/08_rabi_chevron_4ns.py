@@ -1,5 +1,5 @@
 """
-        RABI CHEVRON - using standard QUA (pulse > 16ns and 4ns granularity)
+        RABI-LIKE CHEVRON - using standard QUA (pulse > 16ns and 4ns granularity)
 The goal of the script is to acquire delta-g driven coherent oscillations by sweeping the interaction time and detuning.
 The QUA program is divided into three sections:
     1) step between the initialization point and the measurement point using sticky elements (long timescale).
@@ -9,7 +9,8 @@ A compensation pulse can be added to the long timescale sequence in order to ens
 the bias-tee. Alternatively one can obtain the same result by changing the offset of the slow line of the bias-tee.
 
 In the current implementation, the qubit pulse is played using the real-time pulse manipulation of the OPX, which is fast
-can be arbitrarily long. However, the minimum pulse length is 16ns and the sweep step must be larger than 4ns.
+and can be arbitrarily long. However, the minimum pulse length is 16ns and the sweep step must be larger than 4ns.
+Also note that the qubit pulses are played at the end of the "idle" level whose duration is fixed.
 
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
@@ -18,7 +19,7 @@ Prerequisites:
     - Having calibrated the initialization and readout point from the charge stability map and updated the configuration.
 
 Before proceeding to the next node:
-    - Identify the PSB region and update the config.
+    - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
 import matplotlib.pyplot as plt
 from qm.qua import *
@@ -44,7 +45,7 @@ pi_levels = np.arange(0.21, 0.3, 0.01)
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
-seq.add_points("manipulation", level_manip, duration_manip)
+seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
 with program() as Rabi_chevron:

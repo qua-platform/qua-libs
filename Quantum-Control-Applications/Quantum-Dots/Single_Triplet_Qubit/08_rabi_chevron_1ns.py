@@ -1,5 +1,5 @@
 """
-        RABI CHEVRON - using the baking tool (1ns granularity)
+        RABI-LIKE CHEVRON - using the baking tool (1ns granularity)
 The goal of the script is to acquire delta-g driven coherent oscillations by sweeping the interaction time and detuning.
 The QUA program is divided into three sections:
     1) step between the initialization point and the measurement point using sticky elements (long timescale).
@@ -11,6 +11,7 @@ the bias-tee. Alternatively one can obtain the same result by changing the offse
 In the current implementation, the qubit pulse is played using the baking tool that allows for playing arbitrarily short
 pulses with 1ns resolution. The drawback is that the pulses must be loaded to the OPX before the program starts (kind of
 like an AWG), which quickly hit the waveform memory limit of the OPX (~65k samples per pulse processor).
+Also note that the qubit pulses are played at the end of the "idle" level whose duration is fixed.
 
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
@@ -19,7 +20,7 @@ Prerequisites:
     - Having calibrated the initialization and readout point from the charge stability map and updated the configuration.
 
 Before proceeding to the next node:
-    - Identify the PSB region and update the config.
+    - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
 import matplotlib.pyplot as plt
 from qm.qua import *
@@ -46,7 +47,7 @@ assert max(durations)%4==0
 
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
-seq.add_points("manipulation", level_manip, duration_manip)
+seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
 
 # Bake the Rabi pulses
