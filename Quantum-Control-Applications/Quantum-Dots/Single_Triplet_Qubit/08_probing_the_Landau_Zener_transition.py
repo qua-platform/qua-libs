@@ -45,7 +45,7 @@ from qm import generate_qua_script
 ###################
 
 n_avg = 100
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 40, 20)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 ramp_durations = np.arange(16, 200, 4)
@@ -100,6 +100,9 @@ with program() as Rabi_chevron:
         # DC current sensing
         dc_signal_st.buffer(len(durations)).buffer(len(ramp_durations)).average().save("dc_signal")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################

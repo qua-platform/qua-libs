@@ -43,7 +43,7 @@ from qualang_tools.addons.variables import assign_variables_to_element
 ###################
 
 n_avg = 100
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 200, 4)
 # Idle voltage level in Volt
 idle_levels = np.arange(0.2, 0.3, 0.01)
@@ -108,6 +108,9 @@ with program() as Ramsey_chevron:
         # DC current sensing
         dc_signal_st.buffer(len(durations)).buffer(len(idle_levels)).average().save("dc_signal")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################

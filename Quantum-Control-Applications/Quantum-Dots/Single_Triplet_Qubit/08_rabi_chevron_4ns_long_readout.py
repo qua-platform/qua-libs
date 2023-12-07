@@ -143,7 +143,7 @@ pi_len = 44
 integration_time = 50 * u.us
 n_ro = np.ceil(integration_time / readout_len) * 0 + 5
 n_avg = 100
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 40, 10)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 pi_levels = np.arange(0.21, 0.3, 0.01)

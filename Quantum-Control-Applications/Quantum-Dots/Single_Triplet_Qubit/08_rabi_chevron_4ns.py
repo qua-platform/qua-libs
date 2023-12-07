@@ -37,7 +37,7 @@ from qualang_tools.plot import interrupt_on_close
 ###################
 
 n_avg = 100
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 200, 4)
 # Pulse amplitude sweep as the absolute voltage level in V
 pi_levels = np.arange(0.21, 0.3, 0.01)

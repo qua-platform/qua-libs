@@ -89,7 +89,7 @@ with program() as charge_stability_prog:
                 seq.add_step(voltage_point_name="readout")
                 seq.add_compensation_pulse(duration=duration_compensation_pulse)
                 # Measure the dot right after the qubit manipulation
-                wait((duration_init +duration_empty) * u.ns, "tank_circuit", "TIA")
+                wait((duration_init + duration_empty) * u.ns, "tank_circuit", "TIA")
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout
                 # frequency and the integrated quadratures are stored in "I" and "Q"
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)

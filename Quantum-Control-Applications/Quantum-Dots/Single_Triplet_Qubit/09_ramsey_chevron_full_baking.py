@@ -44,7 +44,7 @@ from qualang_tools.addons.variables import assign_variables_to_element
 ###################
 
 n_avg = 100
-# Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
+# Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(4, 5, 1)
 assert max(durations) % 4 == 0
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)

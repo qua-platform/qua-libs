@@ -160,6 +160,9 @@ with program() as Rabi_chevron:
         # DC current sensing
         dc_signal_st.buffer(len(durations)).buffer(n_avg).map(FUNCTIONS.average()).save_all("dc_signal")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################

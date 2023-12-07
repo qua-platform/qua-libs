@@ -105,7 +105,10 @@ class OPX_background_sequence:
                         wait((_duration - 16) >> 2, gate)
                     # elif isinstance(_duration, (_Variable, _Expression)):
                     elif duration is not None:
-                        self.average_power[i] += int(voltage_level * _duration)
+                        if isinstance(duration, (_Variable, _Expression)):
+                            self.average_power[i] += Cast.mul_int_by_fixed(_duration, voltage_level)
+                        else:
+                            self.average_power[i] += int(voltage_level * _duration)
                         operation = self._add_op_to_config(
                             gate,
                             voltage_point_name,
