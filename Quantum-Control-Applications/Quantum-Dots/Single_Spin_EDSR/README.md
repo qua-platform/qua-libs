@@ -2,7 +2,7 @@
 
 ## Experimental setup and context
 
-<img align="right" src="schematic.PNG" alt="drawing" width="400"/>
+<img align="right" src="schematic.PNG" alt="drawing" width="800"/>
 
 These files showcase various experiments that can be done on a singlet-triplet qubit.
 Plunger gates are connected to bias-tees where the DC line goes to the QDAC2 or another DC voltage source and the AC 
