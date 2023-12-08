@@ -41,13 +41,13 @@ with program() as charge_sensor_sweep:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Set the voltage to the 1st point of the sweep
-        play("bias" * amp(offsets[0] / charge_sensor_amp), "sensor_gate_sticky")
+        play("step" * amp(offsets[0] / charge_sensor_amp), "sensor_gate_sticky")
         # Wait for the voltage to settle (depends on the bias-tee cut-off frequency)
         wait(1 * u.ms, "sensor_gate_sticky")
         with for_(*from_array(dc, offsets)):
             # Play only from the second iteration
             with if_(~(dc == offsets[0])):
-                play("bias" * amp(d_offset / charge_sensor_amp), "sensor_gate_sticky")
+                play("step" * amp(d_offset / charge_sensor_amp), "sensor_gate_sticky")
                 # Wait for the voltage to settle (depends on the bias-tee cut-off frequency)
                 wait(1 * u.ms, "sensor_gate_sticky")
             align()

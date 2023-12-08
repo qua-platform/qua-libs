@@ -47,7 +47,7 @@ n_points_slow = 101  # Number of points for the slow axis
 n_points_fast = 100  # Number of points for the fast axis
 Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
-N = (int((readout_len + 1_000) / (2 * bias_length)) + 1) * n_points_fast * n_points_slow * n_avg
+N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_points_slow * n_avg
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -72,8 +72,8 @@ with program() as charge_stability_prog:
     # ____|    |____|    |____|    |____|    |...
     with for_(counter, 0, counter < N, counter + 1):
         # The Coulomb pulse
-        play("bias" * amp(Coulomb_amp / P1_amp), "P1")
-        play("bias" * amp(-Coulomb_amp / P1_amp), "P1")
+        play("step" * amp(Coulomb_amp / P1_amp), "P1")
+        play("step" * amp(-Coulomb_amp / P1_amp), "P1")
 
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         with for_(i, 0, i < n_points_slow, i + 1):

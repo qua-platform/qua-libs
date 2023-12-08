@@ -41,7 +41,7 @@ n_points_slow = 10
 n_points_fast = 11
 Coulomb_amp = 0.1  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
-N = (int((readout_len + 1_000 + 0 * 1 * u.ms) / (2 * bias_length)) + 1) * n_avg
+N = (int((readout_len + 1_000 + 0 * 1 * u.ms) / (2 * step_length)) + 1) * n_avg
 
 # Voltages in Volt
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
@@ -75,8 +75,8 @@ with program() as charge_stability_prog:
             # ____|    |____|    |____|    |____|    |...
             with for_(counter, 0, counter < N, counter + 1):
                 # The Coulomb pulse
-                play("bias" * amp(Coulomb_amp / P1_amp), "P1")
-                play("bias" * amp(-Coulomb_amp / P1_amp), "P1")
+                play("step" * amp(Coulomb_amp / P1_amp), "P1")
+                play("step" * amp(-Coulomb_amp / P1_amp), "P1")
 
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
                 # RF reflectometry: the voltage measured by the analog input 2 is recorded, demodulated at the readout

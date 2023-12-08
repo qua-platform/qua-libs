@@ -68,7 +68,7 @@ for t in durations:  # Create the different baked sequences
 
         gap_to_adjust = 20  # gap to remove due to realtime calculations
         # Time to wait after playing the pulse in order to remain sync with the Coulomb pulse
-        wait_time = (2 * bias_length) - (t + gap_to_adjust)
+        wait_time = (2 * step_length) - (t + gap_to_adjust)
         # zero-pad the baked waveform to match the multiple-of-4ns requirement
         remainder = 4 - (t + wait_time) % 4
 
@@ -160,8 +160,8 @@ if simulate:
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
 
-    # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
+    # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["1"][8912:17639]) * 10, 1e-9, 1e3, True)
+    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e3, True)
 
 else:
     # Open the quantum machine

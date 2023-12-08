@@ -42,7 +42,7 @@ n_points_slow = 101  # Number of points for the slow axis
 n_points_fast = 100  # Number of points for the fast axis
 Coulomb_amp = 0.0  # amplitude of the Coulomb pulse
 # How many Coulomb pulse periods to last the whole program
-N = (int((readout_len + 1_000) / (2 * bias_length)) + 1) * n_points_fast * n_points_slow * n_avg
+N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_points_slow * n_avg
 
 # Points in the charge stability map [V1, V2]
 level_empty = [-0.2, 0.0]

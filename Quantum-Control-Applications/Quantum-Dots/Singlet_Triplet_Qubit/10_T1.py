@@ -127,8 +127,8 @@ if simulate:
     report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
 
-    # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["5"][8912:17639]) * 10, 1e-9, 1e3, True)
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["5"], 1e-9, 1e3, True)
+    # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["1"][8912:17639]) * 10, 1e-9, 1e3, True)
+    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e3, True)
 
 else:
     # Open the quantum machine

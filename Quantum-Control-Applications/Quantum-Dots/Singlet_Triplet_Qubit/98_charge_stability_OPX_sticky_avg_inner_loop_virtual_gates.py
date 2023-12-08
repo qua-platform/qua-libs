@@ -35,13 +35,13 @@ offsets_U = np.arange(offset_min_U, offset_max_U, d_offset_U) + origin_P2
 
 
 def play_detuning(E):
-    play("bias" * amp((-E - intercept_E) / P1_amp), "P1_sticky")
-    play("bias" * amp(E / P2_amp), "P2_sticky")
+    play("step" * amp((-E - intercept_E) / P1_amp), "P1_sticky")
+    play("step" * amp(E / P2_amp), "P2_sticky")
 
 
 def play_energy(U):
-    play("bias" * amp((-U - intercept_U) / P1_amp), "P1_sticky")
-    play("bias" * amp(U / P2_amp), "P2_sticky")
+    play("step" * amp((-U - intercept_U) / P1_amp), "P1_sticky")
+    play("step" * amp(U / P2_amp), "P2_sticky")
 
 
 def measure_RF_DC():

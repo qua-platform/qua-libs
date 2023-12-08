@@ -1,9 +1,7 @@
-from pathlib import Path
-from scipy.signal.windows import gaussian
+import numpy as np
 from qualang_tools.units import unit
-from typing import List, Any, Dict
-from qm.qua._dsl import _ResultSource, _Variable, _Expression
-from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp
+from qm.qua._dsl import _Variable, _Expression
+from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_zero
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -26,12 +24,17 @@ octave_config = None
 #############################################
 class OPX_background_sequence:
     def __init__(self, configuration: dict, elements: list):
+        # List of the elements involved in the virtual gates
         self._elements = elements
+        # The OPX configuration
         self._config = configuration
+        # Initialize the current voltage level for sticky elements
         self.current_level = [0.0 for _ in self._elements]
-        self._realtime = False
+        # Relevant voltage points in the charge stability diagram
         self._voltage_points = {}
+        # Keep track of the averaged voltage played for defining the compensation pulse at the end of the sequence
         self.average_power = [0 for _ in self._elements]
+        # Add to the config the step operation (length=16ns & amp=0.25V)
         for el in self._elements:
             self._config["elements"][el]["operations"]["step"] = "step_pulse"
         self._config["pulses"]["step_pulse"] = {
@@ -47,7 +50,16 @@ class OPX_background_sequence:
         else:
             return name
 
-    def _add_op_to_config(self, el, name, amplitude, length):
+    def _add_op_to_config(self, el:str, name:str, amplitude:float, length:int) -> str:
+        """Add an operation to an element when the amplitude is fixed to release the number of real-time operations on
+        the OPX.
+
+        :param el: the element to which we want to add the operation.
+        :param name: name of the operation.
+        :param amplitude: Amplitude of the pulse in V.
+        :param length: Duration of the pulse in ns.
+        :return : The name of the created operation.
+        """
         op_name = self._check_name(name, self._config["elements"][el]["operations"])
         pulse_name = self._check_name(f"{el}_{op_name}_pulse", self._config["pulses"])
         wf_name = self._check_name(f"{el}_{op_name}_wf", self._config["waveforms"])
@@ -59,6 +71,44 @@ class OPX_background_sequence:
         }
         self._config["waveforms"][wf_name] = {"type": "constant", "sample": amplitude}
         return op_name
+    @staticmethod
+    def _check_duration(duration):
+        if duration is not None and not isinstance(duration, (_Variable, _Expression)):
+            assert duration%4 == 0, "The duration must be a multiple of 4 ns."
+            assert duration>=16, "The duration must be a larger than 16 ns."
+
+    def _update_averaged_power(self, level, duration, ramp_duration=None, current_level=None):
+        if self.is_QUA(level):
+            expression = declare(fixed)
+            assign(expression, level)
+            new_average = Cast.mul_int_by_fixed(duration, expression)
+        elif self.is_QUA(duration):
+            new_average = Cast.mul_int_by_fixed(duration, level)
+        else:
+            new_average = int(np.round(level * duration))
+
+        if ramp_duration is not None:
+            if not self.is_QUA(ramp_duration) :
+                if self.is_QUA(level):
+                    expression2 = declare(fixed)
+                    assign(expression2, (expression + current_level) >> 1)
+                    new_average += Cast.mul_int_by_fixed(ramp_duration, expression2)
+                elif self.is_QUA(current_level):
+                    expression2 = declare(fixed)
+                    assign(expression2, (level + current_level) >> 1)
+                    new_average += Cast.mul_int_by_fixed(ramp_duration, expression2)
+                elif self.is_QUA(duration):
+                    new_average += Cast.mul_int_by_fixed(ramp_duration, (level + current_level)/2)
+                else:
+                    new_average += int(np.round((level + current_level) * ramp_duration/2))
+
+            else:
+                pass
+        return new_average
+
+    @staticmethod
+    def is_QUA(var):
+        return  isinstance(var, (_Variable, _Expression))
 
     def add_step(
         self,
@@ -66,79 +116,98 @@ class OPX_background_sequence:
         duration: int = None,
         voltage_point_name: str = None,
         ramp_duration: int = None,
-        current_offset: list = None,
-    ):
+    ) -> None:
+        """Add a voltage level to the pulse sequence.
+        The voltage level is either identified by its voltage_point_name if added to the voltage_point dict beforehand, or by its level and duration.
+        A ramp_duration can be used to ramp to the desired level instead of stepping to it.
+
+        :param level: Desired voltage level of the different gates composing the virtual gate in Volt.
+        :param duration: How long the voltage level should be maintained in ns. Must be a multiple of 4ns and larger than 16ns.
+        :param voltage_point_name: Name of the voltage level if added to the list of relevant points in the charge stability map.
+        :param ramp_duration: Duration in ns of the ramp if the voltage should be ramped to the desired level instead of stepped. Must be a multiple of 4ns and larger than 16ns.
         """
-        If duration is QUA, then >= 32
-        """
-        if current_offset is None:
-            current_offset = [0.0 for _ in self._elements]
-        if voltage_point_name is not None:
-            if duration is None:
-                _duration = self._voltage_points[voltage_point_name]["duration"]
+        self._check_duration(duration)
+        self._check_duration(ramp_duration)
+
+        if voltage_point_name is not None and duration is None:
+            _duration = self._voltage_points[voltage_point_name]["duration"]
+        elif duration is not None:
+            _duration = duration
+        else:
+            raise RuntimeError("Either the voltage_point_name or the duration and desired voltage level must be provided.")
+
+        for i, gate in enumerate(self._elements):
+            if voltage_point_name is not None and level is None:
+                voltage_level = self._voltage_points[voltage_point_name]["coordinates"][i]
+            elif level is not None:
+                voltage_point_name = "unregistered_value"
+                voltage_level = level[i]
             else:
-                _duration = duration
+                raise RuntimeError(
+                    "Either the voltage_point_name or the duration and desired voltage level must be provided.")
+            # Play a step
+            if ramp_duration is None:
+                self.average_power[i] += self._update_averaged_power(voltage_level, _duration)
 
-            for i, gate in enumerate(self._elements):
-                if level is None:
-                    voltage_level = self._voltage_points[voltage_point_name]["coordinates"][i]
-                else:
-                    voltage_level = level[i]
-
-                if ramp_duration is None:
-                    # If real-time amplitude and duration, then split into play and wait otherwise gap, but then duration > 32ns
-                    # if (isinstance(voltage_level, (_Variable, _Expression)) and isinstance(_duration, (_Variable, _Expression))) or isinstance(self.current_level[i], (_Variable, _Expression)):
-                    if isinstance(voltage_level, (_Variable, _Expression)) or isinstance(
-                        self.current_level[i], (_Variable, _Expression)
-                    ):
-                        #     play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
-                        #     wait((_duration - 16) >> 2, gate)
-                        # if isinstance(_duration, (_Variable, _Expression)):
-
-                        if isinstance(voltage_level, (_Variable, _Expression)):
-                            expression = declare(fixed)
-                            assign(expression, voltage_level)
-                            self.average_power[i] += Cast.mul_int_by_fixed(_duration, expression)
-                        else:
-                            self.average_power[i] += int(voltage_level * _duration)
-                        play("step" * amp((voltage_level - self.current_level[i] - current_offset[i]) * 4), gate)
+                # Dynamic amplitude change...
+                if self.is_QUA(voltage_level) or self.is_QUA(self.current_level[i]):
+                    # if dynamic duration --> play step and wait
+                    if self.is_QUA(_duration):
+                        play("step" * amp((voltage_level - self.current_level[i]) * 4), gate)
                         wait((_duration - 16) >> 2, gate)
-                    # elif isinstance(_duration, (_Variable, _Expression)):
-                    elif duration is not None:
-                        if isinstance(duration, (_Variable, _Expression)):
-                            self.average_power[i] += Cast.mul_int_by_fixed(_duration, voltage_level)
-                        else:
-                            self.average_power[i] += int(voltage_level * _duration)
-                        operation = self._add_op_to_config(
-                            gate,
-                            voltage_point_name,
-                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
-                            - self.current_level[i],
-                            length=self._voltage_points[voltage_point_name]["duration"],
-                        )
-
-                        play(operation, gate, duration=_duration >> 2)
+                    # if constant duration --> new operation and play(*amp(..))
                     else:
-                        self.average_power[i] += int(voltage_level * _duration)
                         operation = self._add_op_to_config(
                             gate,
-                            voltage_point_name,
-                            amplitude=self._voltage_points[voltage_point_name]["coordinates"][i]
-                            - self.current_level[i],
-                            length=self._voltage_points[voltage_point_name]["duration"],
+                            "step",
+                            amplitude=0.25,
+                            length=_duration,
                         )
-                        play(operation, gate)
+                        play(operation * amp((voltage_level - self.current_level[i]) * 4), gate)
 
+                # Fixed amplitude but dynamic duration --> new operation and play(duration=..)
+                elif isinstance(_duration, (_Variable, _Expression)):
+                    operation = self._add_op_to_config(
+                        gate,
+                        voltage_point_name,
+                        amplitude=voltage_level - self.current_level[i],
+                        length=16,
+                    )
+                    play(operation, gate, duration=_duration >> 2)
+
+                # Fixed amplitude and duration --> new operation and play()
                 else:
+                    operation = self._add_op_to_config(
+                        gate,
+                        voltage_point_name,
+                        amplitude=voltage_level - self.current_level[i],
+                        length=_duration,
+                    )
+                    play(operation, gate)
+
+            # Play a ramp
+            else:
+                self.average_power[i] += self._update_averaged_power(voltage_level, _duration, ramp_duration, self.current_level[i])
+
+                if not self.is_QUA(ramp_duration):
+                    ramp_rate = 1/ramp_duration
                     play(
-                        ramp((voltage_level - self.current_level[i]) / ramp_duration), gate, duration=ramp_duration >> 2
+                        ramp((voltage_level - self.current_level[i]) * ramp_rate), gate,
+                        duration=ramp_duration >> 2
                     )
                     wait(_duration >> 2, gate)
-                self.current_level[i] = voltage_level
 
-    def add_compensation_pulse(self, duration: int):
+
+            self.current_level[i] = voltage_level
+
+    def add_compensation_pulse(self, duration: int) -> None:
+        """Add a compensation pulse of the specified duration whose amplitude is derived from the previous operations.
+
+        :param duration: Duration of the compensation pulse in ns. Must be larger than 16ns and a multiple of 4ns.
+        """
+        self._check_duration(duration)
         for i, gate in enumerate(self._elements):
-            if not isinstance(self.average_power[i], (_Variable, _Expression)):
+            if not self.is_QUA(self.average_power[i]):
                 compensation_amp = -self.average_power[i] / duration
                 operation = self._add_op_to_config(
                     gate, "compensation", amplitude=compensation_amp - self.current_level[i], length=duration
@@ -147,18 +216,26 @@ class OPX_background_sequence:
             else:
                 operation = self._add_op_to_config(gate, "compensation", amplitude=0.25, length=duration)
                 compensation_amp = declare(fixed)
-                test = declare(int)
-                assign(test, self.average_power[i])
-                assign(compensation_amp, -Cast.mul_fixed_by_int(1 / duration, test))
+                eval_average_power = declare(int)
+                assign(eval_average_power, self.average_power[i])
+                assign(compensation_amp, -Cast.mul_fixed_by_int(1 / duration, eval_average_power))
                 play(operation * amp((compensation_amp - self.current_level[i]) * 4), gate)
             self.current_level[i] = compensation_amp
 
-    def wait(self, duration):
+    def ramp_to_zero(self, duration:int=None):
+        if duration is not None:
+            self._check_duration(duration)
         for i, gate in enumerate(self._elements):
-            wait(duration >> 2, gate)
+            ramp_to_zero(gate, duration)
             self.current_level[i] = 0
+            self.average_power[i] = 0
+    def add_points(self, name: str, coordinates: list, duration: int) -> None:
+        """Register a relevant voltage point.
 
-    def add_points(self, name: str, coordinates: list, duration: int):
+        :param name: Name of the voltage point.
+        :param coordinates: Voltage value of each gate involved in the virtual gate in V.
+        :param duration: How long should the voltages be maintained at this level in ns. Must be larger than 16ns and a multiple of 4ns.
+        """
         self._voltage_points[name] = {}
         self._voltage_points[name]["coordinates"] = coordinates
         self._voltage_points[name]["duration"] = duration
@@ -169,13 +246,13 @@ class OPX_background_sequence:
 ######################
 # DC readout parameters
 readout_len = 1 * u.us
-readout_amp = 0.4
+readout_amp = 0.0
 IV_scale_factor = 0.5e-9  # in A/V
 
 # Reflectometry
 resonator_IF = 151 * u.MHz
 reflectometry_readout_length = 1 * u.us
-reflect_amp = 30 * u.mV
+reflectometry_readout_amp = 30 * u.mV
 
 # Time of flight
 time_of_flight = 24
@@ -190,52 +267,30 @@ level_init = [0.1, -0.1]
 level_manip = [0.2, -0.2]
 level_readout = [0.12, -0.12]
 
-# Duration of each step
+# Duration of each step in ns
 duration_init = 2500
 duration_manip = 1000
 duration_readout = readout_len + 100
 duration_compensation_pulse = 4 * u.us
 
-pi_length = 32
-pi_half_length = 16
+# Step parameters
+step_length = 16
+P1_step_amp = 0.25
+P2_step_amp = 0.25
+charge_sensor_amp = 0.25
 
-pi_amps = [0.27, -0.27]
-pi_half_amps = [0.27, -0.27]
-
-
-P1_amp = 0.27
-P2_amp = 0.27
-B_center_amp = 0.2
-charge_sensor_amp = 0.2
-
-block_length = 16
-bias_length = 16
-
+# Time to ramp down to zero for sticky elements in ns
 hold_offset_duration = 4
 
 ######################
-#      RF GATES      #
+#    QUBIT PULSES    #
 ######################
-qubit_LO_left = 4 * u.GHz
-qubit_IF_left = 100 * u.MHz
-qubit_LO_right = 4 * u.GHz
-qubit_IF_right = 100 * u.MHz
-
-# Pi pulse
-
-
-pi_amp_left = 0.1
-pi_half_amp_left = 0.1
-pi_length_left = 40
-pi_amp_right = 0.1
-pi_half_amp_right = 0.1
-pi_length_right = 40
-# Square pulse
-cw_amp = 0.1
-cw_len = 100
-# Gaussian pulse
-gaussian_length = 20
-gaussian_amp = 0.1
+# Durations in ns
+pi_length = 32
+pi_half_length = 16
+# Amplitudes in V
+pi_amps = [0.27, -0.27]
+pi_half_amps = [0.27, -0.27]
 
 
 #############################################
@@ -246,81 +301,76 @@ config = {
     "controllers": {
         "con1": {
             "analog_outputs": {
-                1: {"offset": 0.0},  # qubit_left I
-                2: {"offset": 0.0},  # qubit_left Q
-                3: {"offset": 0.0},  # qubit_right I
-                4: {"offset": 0.0},  # qubit_right Q
-                5: {"offset": 0.0},  # P1 qubit_left
-                6: {"offset": 0.0},  # P2 qubit_right
-                7: {"offset": 0.0},  # Barrier center
-                8: {"offset": 0.0},  # charge sensor gate
-                9: {"offset": 0.0},  # charge sensor DC
-                10: {"offset": 0.0},  # charge sensor RF
+                1: {"offset": 0.0},  # P1
+                2: {"offset": 0.0},  # P2
+                3: {"offset": 0.0},  # Sensor gate
+                9: {"offset": 0.0},  # RF reflectometry
+                10: {"offset": 0.0},  # DC readout
             },
             "digital_outputs": {
                 1: {},  # TTL for QDAC
                 2: {},  # TTL for QDAC
             },
             "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},  # DC input
-                2: {"offset": 0.0, "gain_db": 0},  # RF input
+                1: {"offset": 0.0, "gain_db": 0},  # RF reflectometry input
+                2: {"offset": 0.0, "gain_db": 0},  # DC readout input
             },
         },
     },
     "elements": {
-        "B_center": {
-            "singleInput": {
-                "port": ("con1", 7),
-            },
-            "operations": {
-                "bias": "bias_B_center_pulse",
-            },
-        },
-        "B_center_sticky": {
-            "singleInput": {
-                "port": ("con1", 7),
-            },
-            "sticky": {"analog": True, "duration": hold_offset_duration},
-            "operations": {
-                "bias": "bias_B_center_pulse",
-            },
-        },
         "P1": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 1),
             },
             "operations": {
-                "step": "bias_P1_pulse",
+                "step": "P1_step_pulse",
                 "pi": "P1_pi_pulse",
                 "pi_half": "P1_pi_half_pulse",
             },
         },
         "P1_sticky": {
             "singleInput": {
-                "port": ("con1", 5),
+                "port": ("con1", 1),
             },
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
-                "bias": "bias_P1_pulse",
+                "step": "P1_step_pulse",
             },
         },
         "P2": {
             "singleInput": {
-                "port": ("con1", 6),
+                "port": ("con1", 2),
             },
             "operations": {
-                "step": "bias_P2_pulse",
+                "step": "P2_step_pulse",
                 "pi": "P2_pi_pulse",
                 "pi_half": "P2_pi_half_pulse",
             },
         },
         "P2_sticky": {
             "singleInput": {
-                "port": ("con1", 6),
+                "port": ("con1", 2),
             },
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
-                "bias": "bias_P2_pulse",
+                "step": "P2_step_pulse",
+            },
+        },
+        "sensor_gate": {
+            "singleInput": {
+                "port": ("con1", 3),
+            },
+            "operations": {
+                "step": "bias_charge_pulse",
+            },
+        },
+        "sensor_gate_sticky": {
+            "singleInput": {
+                "port": ("con1", 3),
+            },
+            "sticky": {"analog": True, "duration": hold_offset_duration},
+            "operations": {
+                "step": "bias_charge_pulse",
             },
         },
         "qdac_trigger1": {
@@ -347,76 +397,29 @@ config = {
                 "trigger": "trigger_pulse",
             },
         },
-        "qubit_left": {
-            "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
-                "lo_frequency": qubit_LO_left,
-                "mixer": "mixer_qubit_left",  # a fixed name, do not change.
-            },
-            "intermediate_frequency": qubit_IF_left,
-            "operations": {
-                "cw": "cw_pulse",
-                "pi": "pi_left_pulse",
-                "gauss": "gaussian_pulse",
-                "pi_half": "pi_half_left_pulse",
-            },
-        },
-        "qubit_right": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO_right,
-                "mixer": "mixer_qubit_right",  # a fixed name, do not change.
-            },
-            "intermediate_frequency": qubit_IF_right,
-            "operations": {
-                "cw": "cw_pulse",
-                "pi": "pi_right_pulse",
-                "gauss": "gaussian_pulse",
-                "pi_half": "pi_half_right_pulse",
-            },
-        },
-        "sensor_gate": {
-            "singleInput": {
-                "port": ("con1", 8),
-            },
-            "operations": {
-                "bias": "bias_charge_pulse",
-            },
-        },
-        "sensor_gate_sticky": {
-            "singleInput": {
-                "port": ("con1", 8),
-            },
-            "sticky": {"analog": True, "duration": hold_offset_duration},
-            "operations": {
-                "bias": "bias_charge_pulse",
-            },
-        },
         "tank_circuit": {
             "singleInput": {
-                "port": ("con1", 10),
+                "port": ("con1", 9),
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "readout": "reflectometry_readout_pulse",
             },
             "outputs": {
-                "out2": ("con1", 2),
+                "out2": ("con1", 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "TIA": {
             "singleInput": {
-                "port": ("con1", 9),
+                "port": ("con1", 10),
             },
             "operations": {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
+                "out1": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -451,80 +454,25 @@ config = {
                 "single": "P2_pi_half_wf",
             },
         },
-        "bias_P1_pulse": {
+        "P1_step_pulse": {
             "operation": "control",
-            "length": bias_length,
+            "length": step_length,
             "waveforms": {
-                "single": "bias_P1_pulse_wf",
+                "single": "P1_step_wf",
             },
         },
-        "bias_P2_pulse": {
+        "P2_step_pulse": {
             "operation": "control",
-            "length": bias_length,
+            "length": step_length,
             "waveforms": {
-                "single": "bias_P2_pulse_wf",
-            },
-        },
-        "bias_B_center_pulse": {
-            "operation": "control",
-            "length": bias_length,
-            "waveforms": {
-                "single": "bias_B_center_pulse_wf",
+                "single": "P2_step_wf",
             },
         },
         "bias_charge_pulse": {
             "operation": "control",
-            "length": bias_length,
+            "length": step_length,
             "waveforms": {
-                "single": "bias_charge_pulse_wf",
-            },
-        },
-        "cw_pulse": {
-            "operation": "control",
-            "length": cw_len,
-            "waveforms": {
-                "I": "const_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "gaussian_pulse": {
-            "operation": "control",
-            "length": gaussian_length,
-            "waveforms": {
-                "I": "gaussian_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "pi_left_pulse": {
-            "operation": "control",
-            "length": pi_length_left,
-            "waveforms": {
-                "I": "pi_left_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "pi_half_left_pulse": {
-            "operation": "control",
-            "length": pi_length_left,
-            "waveforms": {
-                "I": "pi_half_left_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "pi_right_pulse": {
-            "operation": "control",
-            "length": pi_length_right,
-            "waveforms": {
-                "I": "pi_right_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "pi_half_right_pulse": {
-            "operation": "control",
-            "length": pi_length_right,
-            "waveforms": {
-                "I": "pi_half_right_wf",
-                "Q": "zero_wf",
+                "single": "charge_sensor_step_wf",
             },
         },
         "trigger_pulse": {
@@ -561,34 +509,12 @@ config = {
         "P1_pi_half_wf": {"type": "constant", "sample": pi_half_amps[0] - level_manip[0]},
         "P2_pi_wf": {"type": "constant", "sample": pi_amps[1] - level_manip[1]},
         "P2_pi_half_wf": {"type": "constant", "sample": pi_half_amps[1] - level_manip[1]},
-        "bias_P1_pulse_wf": {"type": "constant", "sample": P1_amp},
-        "bias_P2_pulse_wf": {"type": "constant", "sample": P2_amp},
-        "bias_B_center_pulse_wf": {"type": "constant", "sample": B_center_amp},
-        "bias_charge_pulse_wf": {"type": "constant", "sample": charge_sensor_amp},
+        "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
+        "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
+        "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
         "readout_pulse_wf": {"type": "constant", "sample": readout_amp},
+        "reflect_wf": {"type": "constant", "sample": reflectometry_readout_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-        "const_wf": {"type": "constant", "sample": cw_amp},
-        "reflect_wf": {"type": "constant", "sample": reflect_amp},
-        "gaussian_wf": {
-            "type": "arbitrary",
-            "samples": [float(arg) for arg in gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)],
-        },
-        "pi_left_wf": {
-            "type": "arbitrary",
-            "samples": [float(arg) for arg in pi_amp_left * gaussian(pi_length_left, pi_length_left / 5)],
-        },
-        "pi_half_left_wf": {
-            "type": "arbitrary",
-            "samples": [float(arg) for arg in pi_half_amp_left * gaussian(pi_length_left, pi_length_left / 5)],
-        },
-        "pi_right_wf": {
-            "type": "arbitrary",
-            "samples": [float(arg) for arg in pi_amp_right * gaussian(pi_length_right, pi_length_right / 5)],
-        },
-        "pi_half_right_wf": {
-            "type": "arbitrary",
-            "samples": [float(arg) for arg in pi_half_amp_right * gaussian(pi_length_right, pi_length_right / 5)],
-        },
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
@@ -606,21 +532,5 @@ config = {
             "cosine": [(0.0, reflectometry_readout_length)],
             "sine": [(1.0, reflectometry_readout_length)],
         },
-    },
-    "mixers": {
-        "mixer_qubit_left": [
-            {
-                "intermediate_frequency": qubit_IF_left,
-                "lo_frequency": qubit_LO_left,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
-        "mixer_qubit_right": [
-            {
-                "intermediate_frequency": qubit_IF_right,
-                "lo_frequency": qubit_LO_right,
-                "correction": (1, 0, 0, 1),
-            },
-        ],
     },
 }
