@@ -54,7 +54,6 @@ with program() as Rabi_prog:
     Vpi = declare(fixed)  # QUA variable for the qubit drive amplitude
     n_st = declare_stream()  # Stream for the iteration number (progress bar)
 
-    # seq.add_step(voltage_point_name="readout", duration=16)
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
         with for_(*from_array(Vpi, pi_levels)):  # Loop over the qubit pulse amplitude

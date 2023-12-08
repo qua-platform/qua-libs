@@ -41,12 +41,11 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 ###################
 
 n_avg = 100
-# Pulse duration sweep in ns - must be larger than 4 clock cycles
-durations = np.arange(4, 5, 1)
+# Pulse duration sweep in ns
+durations = np.arange(0, 101, 1)
 assert max(durations) % 4 == 0
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 idle_levels = np.arange(0.21, 0.3, 0.01)
-pi_half_length = 5
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
@@ -140,6 +139,9 @@ with program() as Ramsey_chevron:
         # DC current sensing
         dc_signal_st.buffer(len(durations)).buffer(len(idle_levels)).average().save("dc_signal")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################

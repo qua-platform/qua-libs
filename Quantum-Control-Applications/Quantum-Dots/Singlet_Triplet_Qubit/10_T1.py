@@ -17,9 +17,10 @@ Prerequisites:
     - Setting the DC offsets of the external DC voltage source.
     - Connecting the OPX to the fast line of the plunger gates.
     - Having calibrated the initialization and readout point from the charge stability map and updated the configuration.
+    - Having calibrated the qubit pi-pulse parameters.
 
 Before proceeding to the next node:
-    - Identify the pi and pi/2 pulse parameters, Rabi frequency...
+    - Measure T1.
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -71,8 +72,7 @@ with program() as T1_prog:
                 seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                 # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                wait(duration_init * u.ns - 4, "P1", "P2")  # Need -4 cycles to compensate the gap
-                wait(4, "P1", "P2")  # Need 4 additional cycles because of a gap
+                wait(duration_init * u.ns, "P1", "P2")
                 play("pi", "P1")
                 play("pi", "P2")
 
@@ -80,8 +80,9 @@ with program() as T1_prog:
                 wait((duration_init + pi_length) * u.ns + (t >> 2), "tank_circuit", "TIA")
                 I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
                 dc_signal, dc_signal_st = DC_current_sensing_macro(dc_signal=dc_signal)
-            ramp_to_zero("P1_sticky")
-            ramp_to_zero("P2_sticky")
+            # Ramp the background voltage to zero to avoid propagating floating point errors
+            seq.ramp_to_zero()
+
     # Stream processing section used to process the data before saving it.
     with stream_processing():
         n_st.save("iteration")

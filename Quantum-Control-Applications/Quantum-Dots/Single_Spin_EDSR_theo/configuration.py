@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
 from qm.qua._dsl import _Variable, _Expression
 from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_zero
@@ -7,6 +8,20 @@ from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
+
+# IQ imbalance matrix
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 ######################
 # Network parameters #
@@ -291,25 +306,35 @@ duration_readout = readout_len + 100
 duration_compensation_pulse = 4 * u.us
 
 # Step parameters
-step_length = 16
-P1_step_amp = 0.25
-P2_step_amp = 0.25
-charge_sensor_amp = 0.25
+step_length = 16  # in ns
+P1_step_amp = 0.25  # in V
+P2_step_amp = 0.25  # in V
+charge_sensor_amp = 0.25  # in V
 
 # Time to ramp down to zero for sticky elements in ns
-hold_offset_duration = 4
+hold_offset_duration = 4  # in ns
 bias_tee_cut_off_frequency = 10 * u.kHz
 
 ######################
 #    QUBIT PULSES    #
 ######################
-# Durations in ns
-pi_length = 32
-pi_half_length = 16
-# Amplitudes in V
-pi_amps = [0.27, -0.27]
-pi_half_amps = [0.27, -0.27]
+qubit_LO = 4 * u.GHz
+qubit_IF = 100 * u.MHz
+qubit_g = 0.0
+qubit_phi = 0.0
 
+# Pi pulse
+pi_amp = 0.25  # in V
+pi_length = 32  # in ns
+# Pi half
+pi_half_amp = 0.25  # in V
+pi_half_length = 16  # in ns
+# Gaussian pulse
+gaussian_amp = 0.1  # in V
+gaussian_length = 20  # in ns
+# CW pulse
+cw_amp = 0.3  # in V
+cw_len = 100  # in ns
 
 #############################################
 #                  Config                   #
@@ -321,7 +346,9 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # P1
                 2: {"offset": 0.0},  # P2
-                3: {"offset": 0.0},  # Sensor gate
+                3: {"offset": 0.0},  # EDSR I quadrature
+                4: {"offset": 0.0},  # EDSR Q quadrature
+                5: {"offset": 0.0},  # Sensor gate
                 9: {"offset": 0.0},  # RF reflectometry
                 10: {"offset": 0.0},  # DC readout
             },
@@ -342,8 +369,6 @@ config = {
             },
             "operations": {
                 "step": "P1_step_pulse",
-                "pi": "P1_pi_pulse",
-                "pi_half": "P1_pi_half_pulse",
             },
         },
         "P1_sticky": {
@@ -361,8 +386,6 @@ config = {
             },
             "operations": {
                 "step": "P2_step_pulse",
-                "pi": "P2_pi_pulse",
-                "pi_half": "P2_pi_half_pulse",
             },
         },
         "P2_sticky": {
@@ -376,7 +399,7 @@ config = {
         },
         "sensor_gate": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
             "operations": {
                 "step": "bias_charge_pulse",
@@ -384,7 +407,7 @@ config = {
         },
         "sensor_gate_sticky": {
             "singleInput": {
-                "port": ("con1", 3),
+                "port": ("con1", 5),
             },
             "sticky": {"analog": True, "duration": hold_offset_duration},
             "operations": {
@@ -413,6 +436,21 @@ config = {
             },
             "operations": {
                 "trigger": "trigger_pulse",
+            },
+        },
+        "qubit": {
+            "mixInputs": {
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
+                "lo_frequency": qubit_LO,
+                "mixer": "mixer_qubit_left",  # a fixed name, do not change.
+            },
+            "intermediate_frequency": qubit_IF,
+            "operations": {
+                "cw": "cw_pulse",
+                "pi": "pi_pulse",
+                "pi_half": "pi_half_pulse",
+                "gauss": "gaussian_pulse",
             },
         },
         "tank_circuit": {
@@ -446,34 +484,6 @@ config = {
         },
     },
     "pulses": {
-        "P1_pi_pulse": {
-            "operation": "control",
-            "length": pi_length,
-            "waveforms": {
-                "single": "P1_pi_wf",
-            },
-        },
-        "P1_pi_half_pulse": {
-            "operation": "control",
-            "length": pi_half_length,
-            "waveforms": {
-                "single": "P1_pi_half_wf",
-            },
-        },
-        "P2_pi_pulse": {
-            "operation": "control",
-            "length": pi_length,
-            "waveforms": {
-                "single": "P2_pi_wf",
-            },
-        },
-        "P2_pi_half_pulse": {
-            "operation": "control",
-            "length": pi_half_length,
-            "waveforms": {
-                "single": "P2_pi_half_wf",
-            },
-        },
         "P1_step_pulse": {
             "operation": "control",
             "length": step_length,
@@ -500,6 +510,38 @@ config = {
             "length": 1000,
             "digital_marker": "ON",
         },
+        "cw_pulse": {
+            "operation": "control",
+            "length": cw_len,
+            "waveforms": {
+                "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "gaussian_pulse": {
+            "operation": "control",
+            "length": gaussian_length,
+            "waveforms": {
+                "I": "gaussian_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "pi_pulse": {
+            "operation": "control",
+            "length": pi_length,
+            "waveforms": {
+                "I": "pi_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "pi_half_pulse": {
+            "operation": "control",
+            "length": pi_half_length,
+            "waveforms": {
+                "I": "pi_half_wf",
+                "Q": "zero_wf",
+            },
+        },
         "reflectometry_readout_pulse": {
             "operation": "measurement",
             "length": reflectometry_readout_length,
@@ -525,15 +567,18 @@ config = {
         },
     },
     "waveforms": {
-        "P1_pi_wf": {"type": "constant", "sample": pi_amps[0] - level_manip[0]},
-        "P1_pi_half_wf": {"type": "constant", "sample": pi_half_amps[0] - level_manip[0]},
-        "P2_pi_wf": {"type": "constant", "sample": pi_amps[1] - level_manip[1]},
-        "P2_pi_half_wf": {"type": "constant", "sample": pi_half_amps[1] - level_manip[1]},
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
         "P2_step_wf": {"type": "constant", "sample": P2_step_amp},
         "charge_sensor_step_wf": {"type": "constant", "sample": charge_sensor_amp},
+        "pi_wf": {"type": "constant", "sample": pi_amp},
+        "pi_half_wf": {"type": "constant", "sample": pi_half_amp},
+        "gaussian_wf": {
+            "type": "arbitrary",
+            "samples": list(gaussian_amp * gaussian(gaussian_length, gaussian_length / 5)),
+        },
         "readout_pulse_wf": {"type": "constant", "sample": readout_amp},
         "reflect_wf": {"type": "constant", "sample": reflectometry_readout_amp},
+        "const_wf": {"type": "constant", "sample": cw_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
     },
     "digital_waveforms": {
@@ -552,5 +597,14 @@ config = {
             "cosine": [(0.0, reflectometry_readout_length)],
             "sine": [(1.0, reflectometry_readout_length)],
         },
+    },
+    "mixers": {
+        "mixer_qubit": [
+            {
+                "intermediate_frequency": qubit_IF,
+                "lo_frequency": qubit_LO,
+                "correction": IQ_imbalance(qubit_g, qubit_phi),
+            },
+        ],
     },
 }

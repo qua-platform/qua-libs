@@ -35,16 +35,15 @@ is not saturated, correct for DC offsets.
 7. **Pauli Spin Blockade search** - Apply a triangle scan through the fast line of the bias-tess and on top of the charge stability map acquisition for finding the PSB readout point.
     * [Using the QDAC2 triggered by the OPX](07_PSB_search_qdac2_triggered.py)
     * [Using another external DC source](07_PSB_search_external_dc_source.py)
-8. **$\Delta g$ driven oscillations** - Measure the $\Delta g$-driven coherent oscillations by sweeping the detuning and pulse duration. 
-    * [Using real-time QUA](08a_rabi_chevron_qua.py) - Allows to sweep the pulse duration from 16ns and in steps of at least 4ns. There is no limit in the maximum pulse length or the number of points in the sweep.
-    * [Using the baking tool](08b_rabi_chevron_baking.py) - Allows to sweep the pulse duration from 0ns and in steps of at least 1ns. Since the pulses must be loaded beforehand (like for an AWG), there is a limit in the number of samples that the OPX can memorize (65k per pulse processor).
-    * [Using a combination of real-time QUA and baking](08c_rabi_chevron_baking+qua.py) - Combine the previous two methods in order to perform long scans with 1ns resolution.
-9. [$\Delta g$ driven oscillations vs B field](09_rabi_chevron_1ns_long_vs_Bfield.py) - Acquire the $\Delta g$-driven oscillation as function of the pulse duration and magnetic field. Providing a single B-field will perform a 1D sweep and plot the oscillations.
+8. [Qubit spectroscopy](08_qubit_spectroscopy.py) - Apply a strong and long qubit pulse and sweep its frequency over a wide range to identify the resonance. The magnetic field can also be swept to acquire the EDSR line and measure the g-factor.
+9. **Rabi chevron** - Measure the Rabi chevron by sweeping the qubit pulse frequency and duration. 
+    * [Using real-time QUA](09a_rabi_chevron_qua.py) - Allows to sweep the pulse duration from 16ns and in steps of at least 4ns. There is no limit in the maximum pulse length or the number of points in the sweep.
+    * [Using the baking tool](09b_rabi_chevron_baking.py) - Allows to sweep the pulse duration from 0ns and in steps of at least 1ns. Since the pulses must be loaded beforehand (like for an AWG), there is a limit in the number of samples that the OPX can memorize (65k per pulse processor).
+    * [Using a combination of real-time QUA and baking](09c_rabi_chevron_baking+qua.py) - Combine the previous two methods in order to perform long scans with 1ns resolution.
 11. [T1](10_T1.py) - Measures T1.
-12. **Exchange-driven oscillations** - Measure the exchange-driven oscillation by playing two $\Delta-g$ driven pi-half pulses separated by a low detuning pulse to increase J.
+12. **Ramsey chevron** - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
     * [Using real-time QUA](11a_ramsey_chevron_4ns.py) - Allows to sweep the pulse duration from 16ns and in steps of at least 4ns. There is no limit in the maximum pulse length or the number of points in the sweep.
-    * [Using the baking tool](11b_ramsey_chevron_full_baking.py) - Bake the full sequence (pi/2 - J - pi/2) to allow 1ns resolution for the pi/2 pulses and exchange interaction time.
-13. [Landau-Zener transition](12_probing_the_Landau_Zener_transition.py) - Investigate the dispersion relation by ramping (instead of stepping) across the inter-dot transition.
+    * [Using the baking tool](11b_ramsey_chevron_full_baking.py) - Bake the full sequence (pi/2 - idle - pi/2) to allow 1ns resolution for the pi/2 pulses and exchange interaction time.
 
 ## Use Cases
 
