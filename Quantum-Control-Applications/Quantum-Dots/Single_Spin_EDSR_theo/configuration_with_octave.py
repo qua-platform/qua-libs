@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
+from set_octave import OctaveUnit, octave_declaration
 from qm.qua._dsl import _Variable, _Expression
 from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_zero
 
@@ -10,21 +11,6 @@ from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_
 u = unit(coerce_to_integer=True)
 
 
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
-
-
 ######################
 # Network parameters #
 ######################
@@ -32,8 +18,19 @@ qop_ip = "172.16.33.101"  # Write the QM router IP address
 cluster_name = "Cluster_83"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-# Path to save data
-octave_config = None
+############################
+# Set octave configuration #
+############################
+
+# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
+# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
+
+# Add the octaves
+octaves = [octave_1]
+# Configure the Octaves
+octave_config = octave_declaration(octaves)
 
 
 #############################################
@@ -322,8 +319,8 @@ bias_tee_cut_off_frequency = 10 * u.kHz
 ######################
 qubit_LO = 4 * u.GHz
 qubit_IF = 100 * u.MHz
-qubit_g = 0.0
-qubit_phi = 0.0
+# Octave gain in dB
+octave_gain = 0
 
 # Pi pulse
 pi_amp = 0.25  # in V
@@ -348,8 +345,8 @@ config = {
             "analog_outputs": {
                 1: {"offset": 0.0},  # P1
                 2: {"offset": 0.0},  # P2
-                3: {"offset": 0.0},  # EDSR I quadrature (Octave I2)
-                4: {"offset": 0.0},  # EDSR Q quadrature (Octave Q2)
+                3: {"offset": 0.0},  # EDSR I quadrature
+                4: {"offset": 0.0},  # EDSR Q quadrature
                 5: {"offset": 0.0},  # Sensor gate
                 9: {"offset": 0.0},  # RF reflectometry
                 10: {"offset": 0.0},  # DC readout
@@ -441,12 +438,7 @@ config = {
             },
         },
         "qubit": {
-            "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
-                "lo_frequency": qubit_LO,
-                "mixer": "mixer_qubit_left",  # a fixed name, do not change.
-            },
+            "RF_inputs": {"port": ("octave1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
@@ -484,6 +476,19 @@ config = {
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
+    },
+    "octaves": {
+        "octave1": {
+            "RF_outputs": {
+                2: {
+                    "LO_frequency": qubit_LO,
+                    "LO_source": "internal",
+                    "output_mode": "always_on",
+                    "gain": octave_gain,
+                },
+            },
+            "connectivity": "con1",
+        }
     },
     "pulses": {
         "P1_step_pulse": {
@@ -599,14 +604,5 @@ config = {
             "cosine": [(0.0, reflectometry_readout_length)],
             "sine": [(1.0, reflectometry_readout_length)],
         },
-    },
-    "mixers": {
-        "mixer_qubit": [
-            {
-                "intermediate_frequency": qubit_IF,
-                "lo_frequency": qubit_LO,
-                "correction": IQ_imbalance(qubit_g, qubit_phi),
-            },
-        ],
     },
 }
