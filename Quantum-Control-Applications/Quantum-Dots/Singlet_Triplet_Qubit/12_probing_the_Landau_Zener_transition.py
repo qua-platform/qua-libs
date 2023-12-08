@@ -1,56 +1,53 @@
 """
-        RABI CHEVRON - using standard QUA (pulse > 16ns and 4ns granularity)
-The goal of the script is to acquire
-To do so, the charge stability map is acquired by scanning the voltages provided by the QDAC2,
-to the DC part of the bias-tees connected to the plunger gates, while 2 OPX channels are stepping the voltages on the fast
-lines of the bias-tees to navigate through the triangle in voltage space (empty - random initialization - measurement).
+        LANDAU-ZENER TRANSITIONS INVESTIGATION
+The goal of the script is to investigate the dispersion relation by ramping (instead of stepping) across the inter-dot
+transition with varying ramp durations and interaction times in steps of 4ns.
 
-Depending on the cut-off frequency of the bias-tee, it may be necessary to adjust the barycenter (voltage offset) of each
-triangle so that the fast line of the bias-tees sees zero voltage in average. Otherwise, the high-pass filtering effect
-of the bias-tee will distort the fast pulses over time. A function has been written for this.
+While the interaction time can be swept in QUA, the ramp duration needs to be scanned within a Python for loop.
+The reason is that the OPX cannot update the ramp rate, the ramp duration and the length of the next pulse in real-time
+using QUA variables without gaps. Such a sequence could be implemented in QUA, but only if the duration of the plateau
+between the two ramps is larger than 64 ns.
 
-In the current implementation, the OPX is also measuring (either with DC current sensing or RF-reflectometry) during the
-readout window (last segment of the triangle).
-A single-point averaging is performed and the data is extracted while the program is running to display the results line-by-line.
+To circumvent this limitation, the ramp duration (and ramp rate) is being swept in python by duplicating the while
+sequence with the desired parameters set as python variables. The drawback of this method is that it significantly
+increases the number of QUA commands sent to the OPX, such that the program memory limit can be reached for a large
+number of ramp durations.
+
+A compensation pulse can be added to the long timescale sequence in order to ensure 0 DC voltage on the fast line of
+the bias-tee. Alternatively one can obtain the same result by changing the offset of the slow line of the bias-tee.
+
+The state of the dot is measure using either RF reflectometry or dc current sensing.
 
 Prerequisites:
     - Readout calibration (resonance frequency for RF reflectometry and sensor operating point for DC current sensing).
-    - Setting the parameters of the QDAC2 and preloading the two voltages lists for the slow and fast axes.
-    - Connect the two plunger gates (DC line of the bias-tee) to the QDAC2 and two digital markers from the OPX to the
-      QDAC2 external trigger ports.
-    - Connect the OPX to the fast line of the plunger gates for playing the triangle pulse sequence.
+    - Setting the DC offsets of the external DC voltage source.
+    - Connecting the OPX to the fast line of the plunger gates.
+    - Having calibrated the initialization and readout point from the charge stability map and updated the configuration.
 
 Before proceeding to the next node:
-    - Identify the PSB region and update the config.
+    - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
-import matplotlib.pyplot as plt
-import numpy as np
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
 from configuration import *
-from scipy.optimize import minimize
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.bakery import baking
+from qualang_tools.loops import from_array
+from qualang_tools.addons.variables import assign_variables_to_element
+import matplotlib.pyplot as plt
+from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
-from qm import generate_qua_script
-
-# TODO: tricky to sweep the ramp rate without gap...
 
 ###################
 # The QUA program #
 ###################
 
-n_avg = 100
+n_avg = 1000
 # Pulse duration sweep in ns - must be larger than 4 clock cycles
-durations = np.arange(16, 40, 20)
+durations = np.arange(16, 200, 4)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 ramp_durations = np.arange(16, 200, 4)
-eps = [0.25, -0.25]
-rates = 1 / ramp_durations
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
@@ -65,40 +62,46 @@ with program() as Rabi_chevron:
     rate = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     n_st = declare_stream()  # Stream for the iteration number (progress bar)
 
-    # seq.add_step(voltage_point_name="readout", duration=16)
+    I = declare(fixed)  # QUA variable for the measured 'I' quadrature
+    Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
+    dc_signal = declare(fixed)  # QUA variable for the measured dc signal
+    I_st = declare_stream()  # Stream for the iteration number (progress bar)
+    Q_st = declare_stream()  # Stream for the iteration number (progress bar)
+    dc_signal_st = declare_stream()  # Stream for the iteration number (progress bar)
+
+    # Ensure that the result variables are assigned to the measurement elements
+    assign_variables_to_element("tank_circuit", I, Q)
+    assign_variables_to_element("TIA", dc_signal)
+
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
-        with for_(*from_array(t_R, ramp_durations)):  # Loop over the qubit pulse amplitude
-            assign(rate, Math.div(1, t_R))
-            with for_(*from_array(t, durations)):  # Loop over the qubit pulse duration
-                with strict_timing_():  # Ensure that the sequence will be played without gap
-                    # Navigate through the charge stability map
-                    seq.add_step(voltage_point_name="initialization")
-                    seq.add_step(voltage_point_name="idle", ramp_duration=16, duration=t)
-                    seq.add_step(voltage_point_name="readout", ramp_duration=16)
-                    seq.add_compensation_pulse(duration=duration_compensation_pulse)
-                    # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                    wait((duration_init + duration_manip) * u.ns - (t >> 2) - 4, "P1", "P2")  # Need -4 because of a gap
-                    wait(4, "P1", "P2")  # Need -4 because of a gap
-                    # play(ramp(eps[0]*rate), "P1", duration=t_R>>2)
-                    # play(ramp(eps[1]*rate), "P2", duration=t_R>>2)
-                    # play("step" * amp((eps[0]-level_manip[0]) * 4), "P1", duration=t>>2)
-                    # play("step" * amp((eps[1]-level_manip[1]) * 4), "P2", duration=t>>2)
-                    # Measure the dot right after the qubit manipulation
-                    wait((duration_init + duration_manip) * u.ns, "tank_circuit", "TIA")
-                    I, Q, I_st, Q_st = RF_reflectometry_macro()
-                    dc_signal, dc_signal_st = DC_current_sensing_macro()
-                ramp_to_zero("P1_sticky")
-                ramp_to_zero("P2_sticky")
+        with for_(*from_array(t, durations)):  # Loop over the interaction duration
+            # Here a python for loop is used to prevent gaps coming from dynamically changing the ramp rate, the ramp
+            # duration and the duration of the next pulse in QUA.
+            for t_R in ramp_durations:  # Loop over the ramp duration
+                align()
+                # Navigate through the charge stability map
+                seq.add_step(voltage_point_name="initialization")
+                seq.add_step(voltage_point_name="idle", ramp_duration=t_R, duration=t)
+                seq.add_step(voltage_point_name="readout", ramp_duration=t_R)
+                seq.add_compensation_pulse(duration=duration_compensation_pulse)
+
+                # Measure the dot right after the qubit manipulation
+                wait((duration_init + 2 * t_R) * u.ns + (t >> 2), "tank_circuit", "TIA")
+                I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q, I_st=I_st, Q_st=Q_st)
+                dc_signal, dc_signal_st = DC_current_sensing_macro(dc_signal=dc_signal, dc_signal_st=dc_signal_st)
+
+                # with for_(*from_array(t_R, ramp_durations)):  # Loop over the qubit pulse amplitude
+                seq.ramp_to_zero()
     # Stream processing section used to process the data before saving it.
     with stream_processing():
         n_st.save("iteration")
         # Cast the data into a 2D matrix and performs a global averaging of the received 2D matrices together.
         # RF reflectometry
-        I_st.buffer(len(durations)).buffer(len(ramp_durations)).average().save("I")
-        Q_st.buffer(len(durations)).buffer(len(ramp_durations)).average().save("Q")
+        I_st.buffer(len(ramp_durations)).buffer(len(durations)).average().save("I")
+        Q_st.buffer(len(ramp_durations)).buffer(len(durations)).average().save("Q")
         # DC current sensing
-        dc_signal_st.buffer(len(durations)).buffer(len(ramp_durations)).average().save("dc_signal")
+        dc_signal_st.buffer(len(ramp_durations)).buffer(len(durations)).average().save("dc_signal")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -109,11 +112,11 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=100_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, Rabi_chevron, simulation_config)
     # Plot the simulated samples
@@ -138,10 +141,40 @@ if simulate:
     from macros import get_filtered_voltage
 
     # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["1"][8912:17639]) * 10, 1e-9, 1e3, True)
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e3, True)
+    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e4, True)
 
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
     job = qm.execute(Rabi_chevron)
+    # Get results from QUA program and initialize live plotting
+    results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+    # Live plotting
+    fig = plt.figure()
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    while results.is_processing():
+        # Fetch the data from the last OPX run corresponding to the current slow axis iteration
+        I, Q, DC_signal, iteration = results.fetch_all()
+        # Convert results into Volts
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        R = np.abs(S)  # Amplitude
+        phase = np.angle(S)  # Phase
+        DC_signal = u.demod2volts(DC_signal, readout_len)
+        # Progress bar
+        progress_counter(iteration, n_avg)
+        # Plot data
+        plt.subplot(121)
+        plt.cla()
+        plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
+        plt.pcolor(ramp_durations, durations, R)
+        plt.xlabel("Ramp duration [ns]")
+        plt.ylabel("Interaction pulse duration [ns]")
+        plt.subplot(122)
+        plt.cla()
+        plt.title("Phase [rad]")
+        plt.pcolor(ramp_durations, durations, phase)
+        plt.xlabel("Ramp duration [ns]")
+        plt.ylabel("Interaction duration [ns]")
+        plt.tight_layout()
+        plt.pause(0.1)

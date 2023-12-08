@@ -17,7 +17,6 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the different charge occupation regions
 """
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -25,8 +24,8 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
-from macros import RF_reflectometry_macro, DC_current_sensing_macro, get_filtered_voltage
 import matplotlib.pyplot as plt
+from macros import RF_reflectometry_macro, DC_current_sensing_macro, get_filtered_voltage
 
 ###################
 # The QUA program #

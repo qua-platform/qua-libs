@@ -21,15 +21,15 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
-import matplotlib.pyplot as plt
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
-from qualang_tools.loops import from_array
 from configuration import *
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
+import matplotlib.pyplot as plt
+from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 
 ###################
@@ -75,8 +75,7 @@ with program() as Rabi_chevron:
                     wait(duration_init * u.ns, "tank_circuit", "TIA")
                     I, Q, I_st, Q_st = RF_reflectometry_macro()
                     dc_signal, dc_signal_st = DC_current_sensing_macro()
-                ramp_to_zero("P1_sticky")
-                ramp_to_zero("P2_sticky")
+                seq.ramp_to_zero()
     # Stream processing section used to process the data before saving it.
     with stream_processing():
         n_st.save("iteration")

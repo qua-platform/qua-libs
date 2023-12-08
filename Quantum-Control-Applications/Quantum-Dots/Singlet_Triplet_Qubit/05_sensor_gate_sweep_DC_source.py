@@ -14,15 +14,14 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the config with the optimal sensing point.
 """
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
+from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 ###################
 # The QUA program #

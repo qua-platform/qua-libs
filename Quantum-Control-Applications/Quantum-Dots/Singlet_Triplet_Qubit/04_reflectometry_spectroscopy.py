@@ -13,7 +13,6 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the config with the resonance frequency for reflectometry readout.
 """
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -22,6 +21,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from scipy import signal
 
 ###################
 # The QUA program #
@@ -105,7 +105,7 @@ else:
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212)
         plt.cla()
-        plt.plot(frequencies / u.MHz, phase)
+        plt.plot(frequencies / u.MHz, signal.detrend(np.unwrap(phase)))
         plt.xlabel("Readout frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.tight_layout()

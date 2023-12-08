@@ -30,11 +30,9 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from qdac2_driver import QDACII, load_voltage_list
 import matplotlib.pyplot as plt
-from macros import get_filtered_voltage, round_to_fixed
-from scipy.optimize import minimize
+from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 ###################
 # The QUA program #
@@ -101,8 +99,7 @@ with program() as charge_stability_prog:
                 # process them which can cause the OPX to crash.
                 wait(1_000 * u.ns)  # in ns
                 # Ramp the voltage down to zero at the end of the triangle (needed with sticky elements)
-                ramp_to_zero("P1_sticky")
-                ramp_to_zero("P2_sticky")
+                seq.ramp_to_zero()
         # Save the LO iteration to get the progress bar
         save(i, n_st)
 

@@ -35,6 +35,8 @@ class OPX_background_sequence:
         # Keep track of the averaged voltage played for defining the compensation pulse at the end of the sequence
         self.average_power = [0 for _ in self._elements]
         # Add to the config the step operation (length=16ns & amp=0.25V)
+        self._expression = None
+        self._expression2 = None
         for el in self._elements:
             self._config["elements"][el]["operations"]["step"] = "step_pulse"
         self._config["pulses"]["step_pulse"] = {
@@ -50,7 +52,7 @@ class OPX_background_sequence:
         else:
             return name
 
-    def _add_op_to_config(self, el:str, name:str, amplitude:float, length:int) -> str:
+    def _add_op_to_config(self, el: str, name: str, amplitude: float, length: int) -> str:
         """Add an operation to an element when the amplitude is fixed to release the number of real-time operations on
         the OPX.
 
@@ -71,36 +73,36 @@ class OPX_background_sequence:
         }
         self._config["waveforms"][wf_name] = {"type": "constant", "sample": amplitude}
         return op_name
+
     @staticmethod
-    def _check_duration(duration):
+    def _check_duration(duration: int):
         if duration is not None and not isinstance(duration, (_Variable, _Expression)):
-            assert duration%4 == 0, "The duration must be a multiple of 4 ns."
-            assert duration>=16, "The duration must be a larger than 16 ns."
+            assert duration >= 4, "The duration must be a larger than 16 ns."
 
     def _update_averaged_power(self, level, duration, ramp_duration=None, current_level=None):
         if self.is_QUA(level):
-            expression = declare(fixed)
-            assign(expression, level)
-            new_average = Cast.mul_int_by_fixed(duration, expression)
+            self._expression = declare(fixed)
+            assign(self._expression, level)
+            new_average = Cast.mul_int_by_fixed(duration, self._expression)
         elif self.is_QUA(duration):
             new_average = Cast.mul_int_by_fixed(duration, level)
         else:
             new_average = int(np.round(level * duration))
 
         if ramp_duration is not None:
-            if not self.is_QUA(ramp_duration) :
+            if not self.is_QUA(ramp_duration):
                 if self.is_QUA(level):
-                    expression2 = declare(fixed)
-                    assign(expression2, (expression + current_level) >> 1)
-                    new_average += Cast.mul_int_by_fixed(ramp_duration, expression2)
+                    self._expression2 = declare(fixed)
+                    assign(self._expression2, (self._expression + current_level) >> 1)
+                    new_average += Cast.mul_int_by_fixed(ramp_duration, self._expression2)
                 elif self.is_QUA(current_level):
                     expression2 = declare(fixed)
                     assign(expression2, (level + current_level) >> 1)
                     new_average += Cast.mul_int_by_fixed(ramp_duration, expression2)
                 elif self.is_QUA(duration):
-                    new_average += Cast.mul_int_by_fixed(ramp_duration, (level + current_level)/2)
+                    new_average += Cast.mul_int_by_fixed(ramp_duration, (level + current_level) / 2)
                 else:
-                    new_average += int(np.round((level + current_level) * ramp_duration/2))
+                    new_average += int(np.round((level + current_level) * ramp_duration / 2))
 
             else:
                 pass
@@ -108,7 +110,7 @@ class OPX_background_sequence:
 
     @staticmethod
     def is_QUA(var):
-        return  isinstance(var, (_Variable, _Expression))
+        return isinstance(var, (_Variable, _Expression))
 
     def add_step(
         self,
@@ -122,9 +124,9 @@ class OPX_background_sequence:
         A ramp_duration can be used to ramp to the desired level instead of stepping to it.
 
         :param level: Desired voltage level of the different gates composing the virtual gate in Volt.
-        :param duration: How long the voltage level should be maintained in ns. Must be a multiple of 4ns and larger than 16ns.
+        :param duration: How long the voltage level should be maintained in clock cycles (4ns). Must be larger than 4 clock cycles.
         :param voltage_point_name: Name of the voltage level if added to the list of relevant points in the charge stability map.
-        :param ramp_duration: Duration in ns of the ramp if the voltage should be ramped to the desired level instead of stepped. Must be a multiple of 4ns and larger than 16ns.
+        :param ramp_duration: Duration in clock cycles (4ns) of the ramp if the voltage should be ramped to the desired level instead of stepped. Must be larger than 4 clock cycles.
         """
         self._check_duration(duration)
         self._check_duration(ramp_duration)
@@ -134,7 +136,9 @@ class OPX_background_sequence:
         elif duration is not None:
             _duration = duration
         else:
-            raise RuntimeError("Either the voltage_point_name or the duration and desired voltage level must be provided.")
+            raise RuntimeError(
+                "Either the voltage_point_name or the duration and desired voltage level must be provided."
+            )
 
         for i, gate in enumerate(self._elements):
             if voltage_point_name is not None and level is None:
@@ -144,7 +148,8 @@ class OPX_background_sequence:
                 voltage_level = level[i]
             else:
                 raise RuntimeError(
-                    "Either the voltage_point_name or the duration and desired voltage level must be provided.")
+                    "Either the voltage_point_name or the duration and desired voltage level must be provided."
+                )
             # Play a step
             if ramp_duration is None:
                 self.average_power[i] += self._update_averaged_power(voltage_level, _duration)
@@ -187,23 +192,21 @@ class OPX_background_sequence:
 
             # Play a ramp
             else:
-                self.average_power[i] += self._update_averaged_power(voltage_level, _duration, ramp_duration, self.current_level[i])
+                self.average_power[i] += self._update_averaged_power(
+                    voltage_level, _duration, ramp_duration, self.current_level[i]
+                )
 
                 if not self.is_QUA(ramp_duration):
-                    ramp_rate = 1/ramp_duration
-                    play(
-                        ramp((voltage_level - self.current_level[i]) * ramp_rate), gate,
-                        duration=ramp_duration >> 2
-                    )
+                    ramp_rate = 1 / ramp_duration
+                    play(ramp((voltage_level - self.current_level[i]) * ramp_rate), gate, duration=ramp_duration >> 2)
                     wait(_duration >> 2, gate)
-
 
             self.current_level[i] = voltage_level
 
     def add_compensation_pulse(self, duration: int) -> None:
         """Add a compensation pulse of the specified duration whose amplitude is derived from the previous operations.
 
-        :param duration: Duration of the compensation pulse in ns. Must be larger than 16ns and a multiple of 4ns.
+        :param duration: Duration of the compensation pulse in clock cycles (4ns). Must be larger than 4 clock cycles.
         """
         self._check_duration(duration)
         for i, gate in enumerate(self._elements):
@@ -222,13 +225,21 @@ class OPX_background_sequence:
                 play(operation * amp((compensation_amp - self.current_level[i]) * 4), gate)
             self.current_level[i] = compensation_amp
 
-    def ramp_to_zero(self, duration:int=None):
-        if duration is not None:
-            self._check_duration(duration)
+    def ramp_to_zero(self, duration: int = None):
+        """Ramp all the gate voltages down to zero Volt and reset the averaged voltage derived for defining the compensation pulse.
+
+        :param duration: How long will it take for the voltage to ramp down to 0V in clock cycles (4ns). If not
+            provided, the default pulse duration defined in the configuration will be used.
+        """
         for i, gate in enumerate(self._elements):
             ramp_to_zero(gate, duration)
             self.current_level[i] = 0
             self.average_power[i] = 0
+        if self._expression is not None:
+            assign(self._expression, 0)
+        if self._expression2 is not None:
+            assign(self._expression2, 0)
+
     def add_points(self, name: str, coordinates: list, duration: int) -> None:
         """Register a relevant voltage point.
 

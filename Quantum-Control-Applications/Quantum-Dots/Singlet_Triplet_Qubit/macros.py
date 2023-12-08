@@ -17,14 +17,22 @@ def round_to_fixed(x, number_of_bits=12):
 
 
 def RF_reflectometry_macro(
-    operation: str = "readout", element: str = "tank_circuit", element_output: str = "out2", I=None, Q=None
+    operation: str = "readout",
+    element: str = "tank_circuit",
+    element_output: str = "out2",
+    I=None,
+    Q=None,
+    I_st=None,
+    Q_st=None,
 ):
     if I is None:
         I = declare(fixed)
     if Q is None:
         Q = declare(fixed)
-    I_st = declare_stream()
-    Q_st = declare_stream()
+    if I_st is None:
+        I_st = declare_stream()
+    if Q_st is None:
+        Q_st = declare_stream()
     measure(operation, element, None, demod.full("cos", I, element_output), demod.full("sin", Q, element_output))
     save(I, I_st)
     save(Q, Q_st)
@@ -32,11 +40,12 @@ def RF_reflectometry_macro(
 
 
 def DC_current_sensing_macro(
-    operation: str = "readout", element: str = "TIA", element_output: str = "out1", dc_signal=None
+    operation: str = "readout", element: str = "TIA", element_output: str = "out1", dc_signal=None, dc_signal_st=None
 ):
     if dc_signal is None:
         dc_signal = declare(fixed)
-    dc_signal_st = declare_stream()
+    if dc_signal_st is None:
+        dc_signal_st = declare_stream()
     measure(operation, element, None, integration.full("constant", dc_signal, element_output))
     save(dc_signal, dc_signal_st)
     return dc_signal, dc_signal_st

@@ -31,8 +31,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
-from macros import get_filtered_voltage, round_to_fixed
-from scipy.optimize import minimize
 
 ###################
 # The QUA program #

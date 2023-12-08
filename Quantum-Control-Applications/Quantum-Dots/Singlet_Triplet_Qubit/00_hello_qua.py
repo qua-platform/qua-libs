@@ -1,7 +1,6 @@
 """
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
-
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
@@ -29,12 +28,10 @@ with program() as hello_qua:
     t = declare(int, value=16)
     a = declare(fixed, value=0.2)
     i = declare(int)
-    k = 16
-    with for_(i, 0, i<200, i+1):
-        assign(t, t+100)
-        with strict_timing_():
-        # for k in np.arange(16,240,4):
-
+    with for_(i, 0, i < 200, i + 1):
+        assign(t, t + 100)
+        # with strict_timing_():
+        for k in np.arange(16, 240, 4):
             seq.add_step(voltage_point_name="initialization")
             seq.add_step(voltage_point_name="idle", ramp_duration=k, duration=t)
             seq.add_step(voltage_point_name="readout", ramp_duration=k)
@@ -75,6 +72,7 @@ if simulate:
     )
     plt.legend("")
     from macros import get_filtered_voltage
+
     get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e4, True)
 else:
     # Open a quantum machine to execute the QUA program
