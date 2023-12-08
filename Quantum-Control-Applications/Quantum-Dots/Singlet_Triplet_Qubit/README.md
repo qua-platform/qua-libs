@@ -2,8 +2,6 @@
 
 ## Experimental setup and context
 
-<img align="right" src="schematic.PNG" alt="drawing" width="800"/>
-
 These files showcase various experiments that can be done on a singlet-triplet qubit.
 Plunger gates are connected to bias-tees where the DC line goes to the QDAC2 or another DC voltage source and the AC 
 lines go to the OPX analog outputs.
@@ -12,6 +10,8 @@ The qubit is driven via $\Delta g$ and exchange interactions and the detuning pu
 
 Readout can be performed using either RF-reflectometry if a tank circuit is wired to the sensor gate or DC current 
 sensing (transport measurement) via a trans-impedance amplifier (IV converter).
+
+<img align="center" src="schematic.PNG" alt="drawing" width="800"/>
 
 These files were tested in a real setup shown on the right, but are given as-is with no guarantee.
 
