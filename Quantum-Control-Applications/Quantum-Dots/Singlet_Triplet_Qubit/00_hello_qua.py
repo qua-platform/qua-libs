@@ -19,7 +19,7 @@ duration_manip = 800
 duration_readout = 500
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
-seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)

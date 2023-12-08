@@ -23,7 +23,7 @@ made. Use with care.
 1. [Mixer Calibration](01_manual_mixer_calibration.py) - A script used to calibrate the corrections for mixer imbalances.
 2. [Raw ADC Traces](02_raw_adc_traces.py) - A script used to look at the raw ADC data, this allows checking that the ADC 
 is not saturated, correct for DC offsets.
-3. [time_of_flight](03_time_of_flight.py) - A script to measure the ADC offsets and calibrate the time of flight.
+3. [time_of_flight](03_time_of_flight_RF.py) - A script to measure the ADC offsets and calibrate the time of flight.
 4. [Reflectometry Spectroscopy](04_reflectometry_spectroscopy.py) - Performs a 1D frequency sweep on the tank circuit.
 5. **Sensor gate sweep:**
     * [Using the OPX](05_sensor_gate_sweep_OPX.py) - Sweep the sensor gate bias using an OPX channel in order to find the optimum readout point.

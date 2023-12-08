@@ -22,8 +22,14 @@ octave_config = None
 #############################################
 #              OPX PARAMETERS               #
 #############################################
-class OPX_background_sequence:
+class OPX_virtual_gate_sequence:
     def __init__(self, configuration: dict, elements: list):
+        """Framework allowing to design an arbitrary pulse sequence using virtual gates and pre-defined point from the
+        charge stability map. TODO better docstring explaining how it works
+
+        :param configuration: The OPX configuration.
+        :param elements: List containing the elements taking part in the virtual gate.
+        """
         # List of the elements involved in the virtual gates
         self._elements = elements
         # The OPX configuration
@@ -34,9 +40,9 @@ class OPX_background_sequence:
         self._voltage_points = {}
         # Keep track of the averaged voltage played for defining the compensation pulse at the end of the sequence
         self.average_power = [0 for _ in self._elements]
-        # Add to the config the step operation (length=16ns & amp=0.25V)
         self._expression = None
         self._expression2 = None
+        # Add to the config the step operation (length=16ns & amp=0.25V)
         for el in self._elements:
             self._config["elements"][el]["operations"]["step"] = "step_pulse"
         self._config["pulses"]["step_pulse"] = {

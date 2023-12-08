@@ -52,7 +52,7 @@ durations = np.arange(0, 500, 1)
 B_fields = np.arange(-5, 5, 0.1)
 B_fields = [0]
 
-seq = OPX_background_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)
