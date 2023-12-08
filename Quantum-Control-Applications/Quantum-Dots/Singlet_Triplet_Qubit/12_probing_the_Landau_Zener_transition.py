@@ -25,7 +25,7 @@ Prerequisites:
     - Having calibrated the initialization and readout point from the charge stability map and updated the configuration.
 
 Before proceeding to the next node:
-    - Identify the pi and pi/2 pulse parameters, Rabi frequency...
+    - Identify the different adiabatic and diabatic regimes...
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
