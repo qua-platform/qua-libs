@@ -28,15 +28,12 @@ with program() as hello_qua:
     t = declare(int, value=16)
     a = declare(fixed, value=0.2)
     i = declare(int)
-    with for_(i, 0, i < 200, i + 1):
-        assign(t, t + 100)
-        # with strict_timing_():
-        for k in np.arange(16, 240, 4):
-            seq.add_step(voltage_point_name="initialization")
-            seq.add_step(voltage_point_name="idle", ramp_duration=k, duration=t)
-            seq.add_step(voltage_point_name="readout", ramp_duration=k)
-            seq.add_compensation_pulse(duration=2_000)
-            seq.ramp_to_zero()
+    with strict_timing_():
+        seq.add_step(voltage_point_name="initialization")
+        seq.add_step(voltage_point_name="idle", duration=t)
+        seq.add_step(voltage_point_name="readout")
+        seq.add_compensation_pulse(duration=2_000)
+    seq.ramp_to_zero()
 
 
 #####################################
@@ -57,23 +54,6 @@ if simulate:
     job = qmm.simulate(config, hello_qua, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
-    job.get_simulated_samples().con1.plot()
-    plt.axhline(level_init[0], color="k", linestyle="--")
-    plt.axhline(level_manip[0], color="k", linestyle="--")
-    plt.axhline(level_readout[0], color="k", linestyle="--")
-    plt.axhline(level_init[1], color="k", linestyle="--")
-    plt.axhline(level_manip[1], color="k", linestyle="--")
-    plt.axhline(level_readout[1], color="k", linestyle="--")
-    plt.axhline(pi_half_amps[0], color="k", linestyle="--")
-    plt.axhline(pi_half_amps[1], color="k", linestyle="--")
-    plt.yticks(
-        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
-        ["readout", "manip", "init", "0", "init", "manip", "readout"],
-    )
-    plt.legend("")
-    from macros import get_filtered_voltage
-
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e4, True)
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

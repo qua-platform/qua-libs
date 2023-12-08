@@ -54,21 +54,6 @@ if simulate:
     job = qmm.simulate(config, hello_qua, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
-    job.get_simulated_samples().con1.plot()
-    plt.axhline(level_init[0], color="k", linestyle="--")
-    plt.axhline(level_manip[0], color="k", linestyle="--")
-    plt.axhline(level_readout[0], color="k", linestyle="--")
-    plt.axhline(level_init[1], color="k", linestyle="--")
-    plt.axhline(level_manip[1], color="k", linestyle="--")
-    plt.axhline(level_readout[1], color="k", linestyle="--")
-    plt.yticks(
-        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
-        ["readout", "manip", "init", "0", "init", "manip", "readout"],
-    )
-    plt.legend("")
-    from macros import get_filtered_voltage
-
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e4, True)
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)

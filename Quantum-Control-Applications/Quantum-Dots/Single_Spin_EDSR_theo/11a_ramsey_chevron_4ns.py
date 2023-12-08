@@ -20,7 +20,7 @@ Prerequisites:
     - Having calibrated the delta-g driven pi-half parameters (detuning level and duration).
 
 Before proceeding to the next node:
-    - Extract J, T2*...
+    - Extract the qubit frequency and T2*...
 """
 from qm.qua import *
 from qm.QuantumMachinesManager import QuantumMachinesManager
