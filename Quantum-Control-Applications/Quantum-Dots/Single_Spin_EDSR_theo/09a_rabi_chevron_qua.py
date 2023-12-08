@@ -40,7 +40,7 @@ n_avg = 100
 # Pulse duration sweep in ns - must be larger than 4 clock cycles
 durations = np.arange(16, 200, 4)
 # Pulse frequency sweep in Hz
-frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100*u.kHz)
+frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100 * u.kHz)
 # Delay in ns before stepping to the readout point after playing the qubit pulse - must be a multiple of 4ns and >= 16ns
 delay_before_readout = 16
 
@@ -68,7 +68,9 @@ with program() as Rabi_prog:
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                     # Drive the qubit by playing the MW pulse at the end of the manipulation step
-                    wait((duration_init - delay_before_readout) * u.ns - (t >> 2) - 4, "qubit")  # Need -4 cycles to compensate the gap
+                    wait(
+                        (duration_init - delay_before_readout) * u.ns - (t >> 2) - 4, "qubit"
+                    )  # Need -4 cycles to compensate the gap
                     wait(4, "qubit")  # Need 4 additional cycles because of a gap
                     play("pi", "qubit", duration=t >> 2)
 

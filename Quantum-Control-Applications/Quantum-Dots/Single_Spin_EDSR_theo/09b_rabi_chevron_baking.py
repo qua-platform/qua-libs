@@ -36,7 +36,7 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 n_avg = 100
 # Pulse frequency sweep in Hz
-frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100*u.kHz)
+frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100 * u.kHz)
 # Pulse duration sweep in ns - the last point must a multiple of 4ns
 durations = np.arange(0, 153, 1)
 assert max(durations) % 4 == 0

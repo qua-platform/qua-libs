@@ -42,7 +42,7 @@ n_avg = 100
 # Pulse duration sweep in ns
 durations = np.arange(0, 500, 1)
 # Pulse frequency sweep in Hz
-frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100*u.kHz)
+frequencies = np.arange(-100 * u.MHz, 100 * u.MHz, 100 * u.kHz)
 # Delay in ns before stepping to the readout point after playing the qubit pulse - must be a multiple of 4ns and >= 16ns
 delay_before_readout = 16
 

@@ -45,7 +45,7 @@ n_avg = 100
 durations = np.arange(0, 101, 1)
 assert max(durations) % 4 == 0
 # Qubit detuning with respect to qubit_IF in Hz
-detunings = np.arange(-10*u.MHz, 10*u.MHz, 100 * u.kHz)
+detunings = np.arange(-10 * u.MHz, 10 * u.MHz, 100 * u.kHz)
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])

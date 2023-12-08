@@ -104,7 +104,9 @@ with program() as qubit_spectroscopy_prog:
         I_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all("I")
         Q_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all("Q")
         # DC current sensing
-        dc_signal_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all("dc_signal")
+        dc_signal_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all(
+            "dc_signal"
+        )
 
 #####################################
 #  Open Communication with the QOP  #
@@ -182,13 +184,15 @@ else:
             plt.subplot(121)
             plt.cla()
             plt.title(r"$R=\sqrt{I^2 + Q^2}$ [V]")
-            plt.pcolor(frequencies / u.MHz, B_fields[: iteration + 1], np.reshape(R, (iteration+1, len(frequencies))))
+            plt.pcolor(frequencies / u.MHz, B_fields[: iteration + 1], np.reshape(R, (iteration + 1, len(frequencies))))
             plt.xlabel("Qubit pulse frequency [MHz]")
             plt.ylabel("B [mT]")
             plt.subplot(122)
             plt.cla()
             plt.title("Phase [rad]")
-            plt.pcolor(frequencies / u.MHz, B_fields[: iteration + 1], np.reshape(phase, (iteration+1, len(frequencies))))
+            plt.pcolor(
+                frequencies / u.MHz, B_fields[: iteration + 1], np.reshape(phase, (iteration + 1, len(frequencies)))
+            )
             plt.xlabel("Qubit pulse frequency [MHz]")
             plt.ylabel("B [mT]")
             plt.tight_layout()

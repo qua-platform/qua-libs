@@ -40,9 +40,9 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 n_avg = 100
 # Pulse duration sweep in clock cycles - must be larger than 4 clock cycles
-durations = np.arange(16//4, 200//4, 1)
+durations = np.arange(16 // 4, 200 // 4, 1)
 # Qubit detuning with respect to qubit_IF in Hz
-detunings = np.arange(-10*u.MHz, 10*u.MHz, 100 * u.kHz)
+detunings = np.arange(-10 * u.MHz, 10 * u.MHz, 100 * u.kHz)
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
 seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
