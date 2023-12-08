@@ -154,6 +154,8 @@ if simulate:
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, Ramsey_chevron, simulation_config)
     # Plot the simulated samples
+    plt.figure()
+    plt.subplot(211)
     job.get_simulated_samples().con1.plot()
     plt.axhline(level_init[0], color="k", linestyle="--")
     plt.axhline(level_manip[0], color="k", linestyle="--")
@@ -164,17 +166,24 @@ if simulate:
     plt.axhline(pi_half_amps[0], color="k", linestyle="--")
     plt.axhline(pi_half_amps[1], color="k", linestyle="--")
     plt.yticks(
-        [level_readout[1], level_manip[1], level_init[1], 0.0, level_init[0], level_manip[0], level_readout[0]],
-        ["readout", "manip", "init", "0", "init", "manip", "readout"],
+        [
+            pi_half_amps[1],
+            level_readout[1],
+            level_manip[1],
+            level_init[1],
+            0.0,
+            level_init[0],
+            level_manip[0],
+            level_readout[0],
+            pi_half_amps[0],
+        ],
+        ["pi_half", "readout", "manip", "init", "0", "init", "manip", "readout", "pi_half"],
     )
     plt.legend("")
-    samples = job.get_simulated_samples()
-    report = job.get_simulated_waveform_report()
-    report.create_plot(samples, plot=True)
     from macros import get_filtered_voltage
 
-    # get_filtered_voltage(list(job.get_simulated_samples().con1.analog["1"][8912:17639]) * 10, 1e-9, 1e3, True)
-    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, 1e3, True)
+    plt.subplot(212)
+    get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, bias_tee_cut_off_frequency, True)
 
 else:
     # Open the quantum machine

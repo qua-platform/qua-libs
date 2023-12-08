@@ -70,7 +70,7 @@ def get_filtered_voltage(
     y = [val for val in voltage_list for _ in range(int(step_duration * 1e9))]
     y_filtered = high_pass(y, bias_tee_cut_off_frequency * 1e-9)
     if plot:
-        plt.figure()
+        # plt.figure()
         plt.plot(y, label="before bias-tee")
         plt.plot(y_filtered, label="after bias-tee")
         plt.xlabel("Time [ns]")

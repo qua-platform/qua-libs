@@ -57,7 +57,7 @@ seq.add_points("readout", level_readout, duration_readout)
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
 voltage_values_fast = np.linspace(-1.5, 1.5, n_points_fast)
 
-with program() as charge_stability_prog:
+with program() as PSB_search_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     counter = declare(int)  # QUA integer used as an index for the Coulomb pulse
     i = declare(int)  # QUA integer used as an index to loop over the voltage points
@@ -153,7 +153,7 @@ simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, charge_stability_prog, simulation_config)
+    job = qmm.simulate(config, PSB_search_prog, simulation_config)
     plt.figure()
     job.get_simulated_samples().con1.plot()
 
@@ -161,7 +161,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(charge_stability_prog)
+    job = qm.execute(PSB_search_prog)
     # Get results from QUA program and initialize live plotting
     results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
     # Live plotting

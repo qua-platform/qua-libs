@@ -298,6 +298,7 @@ charge_sensor_amp = 0.25
 
 # Time to ramp down to zero for sticky elements in ns
 hold_offset_duration = 4
+bias_tee_cut_off_frequency = 10 * u.kHz
 
 ######################
 #    QUBIT PULSES    #

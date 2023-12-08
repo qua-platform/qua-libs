@@ -26,7 +26,7 @@ from scipy.signal import savgol_filter
 ###################
 n_avg = 100  # Number of averaging loops
 
-with program() as raw_trace_prog:
+with program() as tof_prog:
     n = declare(int)  # QUA variable for the averaging loop
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
@@ -59,7 +59,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, raw_trace_prog, simulation_config)
+    job = qmm.simulate(config, tof_prog, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
 
@@ -67,7 +67,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(raw_trace_prog)
+    job = qm.execute(tof_prog)
     # Creates a result handle to fetch data from the OPX
     res_handles = job.result_handles
     # Waits (blocks the Python console) until all results have been acquired
