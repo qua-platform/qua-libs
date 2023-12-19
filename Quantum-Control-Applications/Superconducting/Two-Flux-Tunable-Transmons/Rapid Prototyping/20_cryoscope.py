@@ -46,9 +46,7 @@ from qualang_tools.bakery import baking
 from macros import qua_declaration, multiplexed_readout, expdecay, filter_calc
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #######################################################
 # Get the config from the machine in configuration.py #

@@ -45,9 +45,6 @@ from qualang_tools.plot import interrupt_on_close
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ####################

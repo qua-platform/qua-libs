@@ -27,9 +27,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ###################

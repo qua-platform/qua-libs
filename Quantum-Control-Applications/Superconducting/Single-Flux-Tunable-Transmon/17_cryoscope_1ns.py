@@ -45,9 +45,6 @@ from qualang_tools.bakery import baking
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ####################

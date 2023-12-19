@@ -28,9 +28,6 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
 from macros import readout_macro
 import matplotlib.pyplot as plt
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ###################

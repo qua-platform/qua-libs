@@ -25,9 +25,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #######################################################
 # Get the config from the machine in configuration.py #

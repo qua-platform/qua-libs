@@ -25,9 +25,7 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.loops import from_array
 from macros import multiplexed_readout
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #######################################################
 # Get the config from the machine in configuration.py #

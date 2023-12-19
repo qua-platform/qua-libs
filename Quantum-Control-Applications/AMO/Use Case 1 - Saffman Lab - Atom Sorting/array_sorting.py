@@ -53,6 +53,7 @@ target_frequencies_1d = [j for sub in target_frequencies_full_python for j in su
 elements = list(config["elements"].keys())
 elements.remove("qubit")
 
+
 #############################################
 # Macros used to derive relevant parameters #
 #############################################
@@ -127,7 +128,6 @@ def get_current_row(this_row, nb_of_columns, current_location_full, target_locat
 
 
 def find_number_of_tweezers(atoms_in_current_row, atoms_in_target_row, max_nb_of_tweezers):
-
     """
     This macro finds the number of tweezer required for this arrangment sequence based of the number of atoms in the
     target row, the number of atoms in the current row and the number of available tweezers.

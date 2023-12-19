@@ -24,9 +24,7 @@ import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from macros import multiplexed_readout, qua_declaration
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #

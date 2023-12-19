@@ -35,9 +35,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #######################################################
 # Get the config from the machine in configuration.py #

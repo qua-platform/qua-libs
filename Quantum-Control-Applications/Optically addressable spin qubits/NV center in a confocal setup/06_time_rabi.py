@@ -20,9 +20,7 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #

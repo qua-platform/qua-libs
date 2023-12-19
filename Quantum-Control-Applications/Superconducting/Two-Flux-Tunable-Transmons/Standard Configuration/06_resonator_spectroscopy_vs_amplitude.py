@@ -29,9 +29,6 @@ from qualang_tools.loops import from_array
 from macros import qua_declaration
 import matplotlib.pyplot as plt
 from scipy import signal
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ###################
