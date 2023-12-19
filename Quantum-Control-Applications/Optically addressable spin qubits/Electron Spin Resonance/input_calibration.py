@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 n_avg = 5000
 
 with program() as input_cal:
-
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)
 

@@ -28,13 +28,11 @@ readout_delay = safe_delay - (pulse2_len + readout_len // 4) // 2
 n_avg = 100
 
 with program() as signal_test:
-
     n = declare(int)
     n_st = declare_stream()
     echo = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-
         # initialization
         play("initialization", "green_laser")
         align()

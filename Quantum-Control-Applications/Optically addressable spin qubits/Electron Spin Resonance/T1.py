@@ -31,7 +31,6 @@ pulse_delay = safe_delay - (pi_half_len + pi_len) // 2
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2
 
 with program() as T1:
-
     n = declare(int)
     t_wait = declare(int)
 

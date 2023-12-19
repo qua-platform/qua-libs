@@ -29,9 +29,7 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.optimize import curve_fit
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ##############################
 # Program-specific variables #

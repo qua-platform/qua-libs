@@ -24,9 +24,6 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 # Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on

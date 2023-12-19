@@ -29,9 +29,6 @@ from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 import matplotlib.pyplot as plt
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ####################

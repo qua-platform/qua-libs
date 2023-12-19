@@ -30,7 +30,6 @@ n_avg = 1000
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2 - 5
 
 with program() as time_rabi:
-
     n = declare(int)
     n_st = declare_stream()
     pulse1_len = declare(int)
@@ -43,7 +42,6 @@ with program() as time_rabi:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(pulse1_len, pulse1_vec)):
-
             # initialization
             play("initialization", "green_laser")
 

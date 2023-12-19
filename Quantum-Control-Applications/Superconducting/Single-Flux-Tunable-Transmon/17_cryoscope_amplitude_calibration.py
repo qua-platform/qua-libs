@@ -28,9 +28,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #

@@ -30,9 +30,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qm import SimulationConfig
 from qualang_tools.results import fetching_tool, progress_counter
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ###########

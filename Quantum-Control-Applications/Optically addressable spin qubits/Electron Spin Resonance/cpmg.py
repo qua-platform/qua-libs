@@ -33,7 +33,6 @@ total_num_echoes = np.sum(num_echo_array)  # total number of echoes played in th
 n_avg = 100
 
 with program() as cpmg:
-
     n = declare(int)
     n_st = declare_stream()
 
@@ -53,7 +52,6 @@ with program() as cpmg:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(i_tau, 0, i_tau < num_taus, i_tau + 1):
-
             # initialization
             play("initialization", "green_laser")
 
