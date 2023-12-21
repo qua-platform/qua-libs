@@ -1,9 +1,9 @@
-# Singlet-Triplet qubit with RF-reflectometry or DC current sensing.
+# Single spin qubit driven by EDSR and measured with RF-reflectometry or DC current sensing.
 
 ## Experimental setup and context
 
 
-These files showcase various experiments that can be done on a singlet-triplet qubit.
+These files showcase various experiments that can be done on a single spin driven by Electric Dipole Spin Resonance (EDSR).
 Plunger gates are connected to bias-tees where the DC line goes to the QDAC2 or another DC voltage source and the AC 
 lines go to the OPX analog outputs.
 
