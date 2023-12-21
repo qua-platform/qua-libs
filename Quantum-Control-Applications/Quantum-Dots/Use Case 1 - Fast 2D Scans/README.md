@@ -82,8 +82,8 @@ allowing us to perform our 100x100 scan with a time per pixel of 1us meaning tha
 The programability of the OPX made it possible to move away from Raster scans, thus greatly avoiding this issue. 
 Rather than Raster scans we used a spiral pattern to navigate to every pixel across the two-dimensional window. 
 
-|  ![Spiral_Scan](./_images/Spiral_Scan.png) | ![Spiral_Waveform](./_images/Spiral_Waveform.png)  |
-|-------------------------------------------:|:---------------------------------------------------|
+|  ![Spiral_Scan](_images/Spiral_Scan.png) | ![Spiral_Waveform](_images/Spiral_Waveform.png)  |
+|-----------------------------------------:|:-------------------------------------------------|
 
 For a scan of $N \times N$  pixels where time $\tau$ is spent at each pixel, the slowest frequency needed for the spiral 
 pattern is $f=1/(2N\tau)$ whereas for a Raster scan it was $f=1/(N^2\tau)$.
@@ -97,10 +97,12 @@ On the other hand, the fast voltage change rate and the interplay between positi
 scan (right figure) much more robust against the bias-tee high pass filtering. 
 The mean difference between the filtered (dashed lines) and non-filtered (plain lines) data is reduced to 0.2%.
 
-|                                        Raster scan                                         |                                        Spiral scan                                         |
-|:------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------:|
-| <img src="./_images/raster_wo_w_filter.png" alt="raster_wo_w_filter" style="zoom: 67%;" /> | <img src="./_images/spiral_wo_w_filter.png" alt="spiral_wo_w_filter" style="zoom: 67%;" /> |
-|                    $<\sqrt{(V_{perfect}-V_{filter})^2}> \approx 8.2$ %                     |                    $<\sqrt{(V_{perfect}-V_{filter})^2}> \approx 0.2$ %                     |
+|                      Raster scan                      |                      Spiral scan                      |
+|:-----------------------------------------------------:|:-----------------------------------------------------:|
+| ![raster_wo_w_filter](_images/raster_wo_w_filter.png) | ![spiral_wo_w_filter](_images/spiral_wo_w_filter.png) |
+
+| Error due to the bias tee (raster): $<\sqrt{(V_{perfect}-V_{filter})^2}>$ $\approx$ $8.2$ % | Error due to the bias tee (spiral): $<\sqrt{(V_{perfect}-V_{filter})^2}>$ $\approx$ $0.2$ % |
+|:-------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------|
 
 ### Experimental implementation with interleaved pulse sequence
 
