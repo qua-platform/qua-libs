@@ -54,11 +54,11 @@ These files showcase various experiments that can be done on an NV center in a c
 which is controlled via a digital channel.
 
 ## Quantum-dots
-### [Single Spin with EDSR](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Quantum-Dots/Single_Spin_EDSR#single-spin-qubit-driven-by-edsr-and-measured-with-rf-reflectometry-or-dc-current-sensing)
+### [Single Spin with EDSR](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Quantum-Dots/Single_Spin_EDSR/README.md)
 These files showcase various experiments that can be done on a single spin driven by Electric Dipole Spin Resonance (EDSR).
 Set-ups including the Octave and/or QDAC2 are also supported.
 
-### [Singlet-Triplet qubit](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Quantum-Dots/Singlet_Triplet_Qubit#singlet-triplet-qubit-with-rf-reflectometry-or-dc-current-sensing)
+### [Singlet-Triplet qubit](https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Quantum-Dots/Singlet_Triplet_Qubit/README.md)
 These files showcase various experiments that can be done on a singlet-triplet qubit.
 Set-ups including the QDAC2 are also supported.
 
