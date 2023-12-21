@@ -40,6 +40,7 @@ with program() as tof_prog:
         wait(1_000 * u.ns, "tank_circuit")
 
     with stream_processing():
+        # Please adjust the analog inputs according to the connectivity (input1/2 -> rf)
         # Will save average:
         adc_st.input1().average().save("adc1")
         # Will save only last run:

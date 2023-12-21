@@ -41,7 +41,7 @@ voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
 voltage_values_fast = np.linspace(-0.2, 0.2, n_points_fast)
 # TODO: set DC offset on the external source for the fast gate
 # One can check the expected voltage levels after the bias-tee using the following function:
-_, _ = get_filtered_voltage(voltage_values_fast, 1e-6, 1e3, True)
+_, _ = get_filtered_voltage(voltage_values_fast, step_duration=1e-6, bias_tee_cut_off_frequency=1e3, plot=True)
 
 with program() as charge_stability_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
