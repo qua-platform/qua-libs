@@ -97,3 +97,21 @@ def load_voltage_list(
     print(
         f"Set-up QDAC2 channel {channel} to step voltages from a list of {len(voltage_list)} items on trigger events from the {trigger_port} port with a {qdac.query(f'sour{channel}:dc:list:dwell?')} s dwell time."
     )
+
+
+# set the QDAC voltage to a specific value
+def set_QDAC_voltage(
+        qdac,
+        channel: int,
+        voltage: float,
+):
+    """
+    Configure a QDAC2 channel to play a specicif voltage, using pyvisa commands.
+
+    :param qdac: the QDAC2 object.
+    :param channel: the QDAC2 channel that will output the voltage from the voltage list.
+    :param voltage: the desired voltage to output from the QDAC channel.
+    :return:
+    """
+    qdac.write(f"sour{channel}:dc:mode FIX")
+    qdac.write(f"sour{channel}:volt {voltage}")
