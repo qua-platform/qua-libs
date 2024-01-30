@@ -40,7 +40,7 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 n_avg = 100
 # Pulse duration sweep in ns
-durations = np.arange(14, 500, 1)
+durations = np.arange(0, 500, 1)
 # Pulse amplitude sweep as the absolute voltage level in V
 pi_levels = np.arange(0.21, 0.3, 0.01)
 
