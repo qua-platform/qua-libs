@@ -130,9 +130,9 @@ class OPX_virtual_gate_sequence:
         A ramp_duration can be used to ramp to the desired level instead of stepping to it.
 
         :param level: Desired voltage level of the different gates composing the virtual gate in Volt.
-        :param duration: How long the voltage level should be maintained in clock cycles (4ns). Must be larger than 4 clock cycles.
+        :param duration: How long the voltage level should be maintained in ns. Must be a multiple of 4ns and larger than 16ns.
         :param voltage_point_name: Name of the voltage level if added to the list of relevant points in the charge stability map.
-        :param ramp_duration: Duration in clock cycles (4ns) of the ramp if the voltage should be ramped to the desired level instead of stepped. Must be larger than 4 clock cycles.
+        :param ramp_duration: Duration in ns of the ramp if the voltage should be ramped to the desired level instead of stepped. Must be a multiple of 4ns and larger than 16ns.
         """
         self._check_duration(duration)
         self._check_duration(ramp_duration)

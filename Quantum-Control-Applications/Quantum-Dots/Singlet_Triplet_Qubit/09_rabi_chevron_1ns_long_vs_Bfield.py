@@ -75,8 +75,8 @@ for t in range(16):  # Create the different baked sequences
         b.add_op("pi_baked", "P2", wf2)
 
         # Baked sequence
-        b.wait(16 - t, "P1")
-        b.wait(16 - t, "P2")
+        b.wait(16 - t, "P1")  # Wait time to take gaps into account and always play right before reading out
+        b.wait(16 - t, "P2")  # Wait time to take gaps into account and always play right before reading out
         b.play("pi_baked", "P1")  # Play the qubit pulse
         b.play("pi_baked", "P2")  # Play the qubit pulse
     if t < 4:
@@ -89,8 +89,8 @@ for t in range(16):  # Create the different baked sequences
             b4ns.add_op("pi_baked2", "P2", wf2)
 
             # Baked sequence
-            b4ns.wait(32 - t, "P1")
-            b4ns.wait(32 - t, "P2")
+            b4ns.wait(32 - t, "P1")  # Wait time to take gaps into account and always play right before reading out
+            b4ns.wait(32 - t, "P2")  # Wait time to take gaps into account and always play right before reading out
             b4ns.play("pi_baked2", "P1")  # Play the qubit pulse
             b4ns.play("pi_baked2", "P2")  # Play the qubit pulse
 
@@ -118,7 +118,7 @@ with program() as Rabi_prog:
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
                 # Short qubit pulse: baking only
-                with if_(t <= 16):
+                with if_(t < 16):
                     # switch case to select the baked waveform corresponding to the burst duration
                     with switch_(t, unsafe=True):
                         for ii in range(16):
