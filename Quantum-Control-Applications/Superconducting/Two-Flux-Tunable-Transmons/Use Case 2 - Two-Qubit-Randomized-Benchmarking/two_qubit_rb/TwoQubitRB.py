@@ -11,6 +11,8 @@ from .RBResult import RBResult
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .simple_tableau import SimpleTableau
 from .util import run_in_thread, pbar
+from .verification.command_registry import CommandRegistry
+from .verification.sequence_tracker import SequenceTracker
 
 
 class TwoQubitRb:
@@ -25,6 +27,9 @@ class TwoQubitRb:
         measure_func: Callable[[], Tuple[_Expression, _Expression]],
         verify_generation: bool = False,
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
+        command_registry: Optional[CommandRegistry] = None,
+        sequence_tracker: Optional[SequenceTracker] = None
+
     ):
         """
         A class for running two qubit randomized benchmarking experiments.
@@ -73,7 +78,8 @@ class TwoQubitRb:
         for i, qe in config["elements"].items():
             if "operations" not in qe:
                 qe["operations"] = {}
-        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate)
+        self._sequence_tracker = sequence_tracker
+        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, command_registry)
         self._interleaving_gate = interleaving_gate
         self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
         self._config = self._rb_baker.bake()
@@ -192,6 +198,8 @@ class TwoQubitRb:
         for sequence_depth in sequence_depths:
             for repeat in range(num_repeats):
                 sequence = self._gen_rb_sequence(sequence_depth)
+                if self._sequence_tracker is not None:
+                    self._sequence_tracker.make_sequence(sequence)
                 job.insert_input_stream("__gates_len_is__", len(sequence))
                 for qe in self._rb_baker.all_elements:
                     job.insert_input_stream(f"{qe}_is", self._decode_sequence_for_element(qe, sequence))
