@@ -1,10 +1,15 @@
-import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from two_qubit_rb import TwoQubitRb
 
+from two_qubit_rb.verification import CommandRegistry
+from two_qubit_rb.verification import SequenceTracker
+
+cr = CommandRegistry()
+st = SequenceTracker(command_registry=cr)
 
 ##############################
 ## General helper functions ##
@@ -36,16 +41,22 @@ def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitud
 ##  Two-qubit RB functions  ##
 ##############################
 # assign a string to a variable to be able to call them in the functions
-q1 = "1"
-q2 = "2"
+q1_idx_str = "1"
+q2_idx_str = "2"
 
 
-# single qubit generic gate constructor Z^{z}Z^{a}X^{x}Z^{-a} that can reach any point on the Bloch sphere (starting from arbitrary points)
+# single qubit generic gate constructor Z^{z}Z^{a}X^{x}Z^{-a}
+# that can reach any point on the Bloch sphere (starting from arbitrary points)
 def bake_phased_xz(baker: Baking, q, x, z, a):
-    element = f"q{q}_xy"
-    baker.frame_rotation_2pi(-a, element)
+    # register a call to this function for debugging purposes
+    cr.register_phase_xz(q, x, z, a)
+
+    q_idx_str = q1_idx_str if q == 1 else q2_idx_str
+    element = f"q{q_idx_str}_xy"
+
+    baker.frame_rotation_2pi(a/2, element)
     baker.play("x180", element, amp=x)
-    baker.frame_rotation_2pi(a + z, element)
+    baker.frame_rotation_2pi(-(a + z)/2, element)
 
 
 # single qubit phase corrections in units of 2pi applied after the CZ gate
@@ -55,9 +66,13 @@ qubit2_frame_update = 0.12  # example values, should be taken from QPU parameter
 
 # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
 def bake_cz(baker: Baking, q1, q2):
-    q1_xy_element = f"q{q1}_xy"  #
-    q2_xy_element = f"q{q2}_xy"
-    q1_z_element = f"q{q1}_z"
+    # register a call to this function for debugging purposes
+    cr.register_cz()  # for debugging
+
+    q1_xy_element = f"q{q1_idx_str}_xy"
+    q2_xy_element = f"q{q2_idx_str}_xy"
+    q1_z_element = f"q{q1_idx_str}_z"
+
     baker.play("cz", q1_z_element)
     baker.align()
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
@@ -90,14 +105,24 @@ def meas():
 ##############################
 ##  Two-qubit RB execution  ##
 ##############################
-
+# create RB experiment from configuration and defined functions
 rb = TwoQubitRb(
-    config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=False, interleaving_gate=None
-)  # create RB experiment from configuration and defined functions
+    config=config,
+    single_qubit_gate_generator=bake_phased_xz,
+    two_qubit_gate_generators={"CZ": bake_cz},  # can also provide e.g. "CNOT": bake_cnot
+    prep_func=prep,
+    measure_func=meas,
+    interleaving_gate=None,
+    verify_generation=False,
+    # track which random sequences are created for debugging purposes
+    command_registry=cr,
+    sequence_tracker=st,
+)
 
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_shots_per_circuit=100)
-# circuit_depths ~ how many consecutive Clifford gates within one executed circuit https://qiskit.org/documentation/apidoc/circuit.html
+# circuit_depths ~ how many consecutive Clifford gates within one executed circuit
+# (https://qiskit.org/documentation/apidoc/circuit.html)
 # num_circuits_per_depth ~ how many random circuits within one depth
 # num_shots_per_circuit ~ repetitions of the same circuit (averaging)
 
@@ -106,3 +131,8 @@ plt.show()
 
 res.plot_fidelity()
 plt.show()
+
+# verify/save the random sequences created during the experiment
+st.save_to_file('sequences.txt')  # saves the gates used in each random sequence
+cr.save_to_file('commands.txt')  # saves mapping from "command id" to sequence
+# st.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
