@@ -6,8 +6,10 @@ import cirq
 from cirq import GateOperation
 from qm.qua import switch_, case_, declare, align, for_
 from qualang_tools.bakery.bakery import Baking, baking
+from tqdm import tqdm
 
 from .gates import GateGenerator, gate_db
+from .verification.command_registry import CommandRegistry
 
 
 class RBBaker:
@@ -17,7 +19,9 @@ class RBBaker:
         single_qubit_gate_generator: Callable,
         two_qubit_gate_generators: Dict[str, Callable],
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
+        command_registry: Optional[CommandRegistry] = None
     ):
+        self._command_registry = command_registry
         self._config = copy.deepcopy(config)
         self._single_qubit_gate_generator = single_qubit_gate_generator
         self._two_qubit_gate_generators = two_qubit_gate_generators
@@ -62,6 +66,8 @@ class RBBaker:
         config = copy.deepcopy(self._config)
         qes = set()
         for cmd_id, command in enumerate(gate_db.commands):
+            if self._command_registry is not None:
+                self._command_registry.set_current_command_id(cmd_id)
             with baking(config) as b:
                 self._update_baking_from_cmd_id(b, cmd_id)
                 qes.update(b.get_qe_set())
@@ -71,6 +77,8 @@ class RBBaker:
                     self._update_baking_from_gates(b, self._interleaving_gate)
                     qes.update(b.get_qe_set())
                     b.update_config = False
+        if self._command_registry is not None:
+            self._command_registry.set_current_command_id(-1)
         return qes
 
     def _update_baking_from_gates(self, b: Baking, gate_ops, elements=None):
@@ -108,7 +116,7 @@ class RBBaker:
         cmd_to_op = {qe: {} for qe in self._all_elements}
         op_to_baking = {qe: [] for qe in self._all_elements}
         num_of_commands = len(gate_db.commands) + (0 if self._interleaving_gate is None else 1)
-        for cmd_id in range(num_of_commands):
+        for cmd_id in tqdm(range(num_of_commands), desc='Pre-baking pulses for combinations of gates', unit='command'):
             with baking(config) as b:
                 self._update_baking_from_cmd_id(b, cmd_id, self._all_elements)
                 any_qe_used = False
