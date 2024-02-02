@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, List, Literal
 import cirq
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -11,7 +12,7 @@ from .RBResult import RBResult
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .simple_tableau import SimpleTableau
 from .util import run_in_thread, pbar
-from .verification.command_registry import CommandRegistry
+from .verification.command_registry import CommandRegistry, decorate_single_qubit_generator_with_command_recording, decorate_two_qubit_gate_generator_with_command_recording
 from .verification.sequence_tracker import SequenceTracker
 
 
@@ -27,9 +28,6 @@ class TwoQubitRb:
         measure_func: Callable[[], Tuple[_Expression, _Expression]],
         verify_generation: bool = False,
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
-        command_registry: Optional[CommandRegistry] = None,
-        sequence_tracker: Optional[SequenceTracker] = None
-
     ):
         """
         A class for running two qubit randomized benchmarking experiments.
@@ -78,8 +76,14 @@ class TwoQubitRb:
         for i, qe in config["elements"].items():
             if "operations" not in qe:
                 qe["operations"] = {}
-        self._sequence_tracker = sequence_tracker
-        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, command_registry)
+
+        self._command_registry = CommandRegistry()
+        self._sequence_tracker = SequenceTracker(command_registry=self._command_registry)
+
+        single_qubit_gate_generator = decorate_single_qubit_generator_with_command_recording(single_qubit_gate_generator, self._command_registry)
+        two_qubit_gate_generators = decorate_two_qubit_gate_generator_with_command_recording(two_qubit_gate_generators, self._command_registry)
+        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, self._command_registry)
+
         self._interleaving_gate = interleaving_gate
         self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
         self._config = self._rb_baker.bake()
@@ -253,3 +257,40 @@ class TwoQubitRb:
             num_averages=num_shots_per_circuit,
             state=job.result_handles.get("state").fetch_all(),
         )
+
+    def print_command_mapping(self):
+        """
+        Prints the mapping of Command ID index, which is understood by the
+        input stream, into single-qubit and two-qubit gates.
+        """
+        self._command_registry.print_commands()
+
+    def print_sequences(self):
+        """
+        Prints a break-down of all gates/commands which were played in
+        each random sequence.
+        """
+        self._sequence_tracker.print_sequences()
+
+    def save_command_mapping_to_file(self, path: Union[str, Path]):
+        """
+        Saves a text file containing the mapping of Command ID index, which
+        is understood by the input stream, into single-qubit and two-qubit gates.
+        """
+        self._command_registry.save_to_file(path)
+
+    def save_sequences_to_file(self, path: Union[str, Path]):
+        """
+        Save a text file of the break-down of all gates/commands which
+        were played in each random sequence
+        """
+        self._sequence_tracker.save_to_file(path)
+
+    def verify_sequences(self):
+        """
+        Simulates the application of all random sequences on the |00> state
+        to ensure that they recover the qubit to |00> correctly.
+
+        Note: You should only call this function *after* self.run().
+        """
+        self._sequence_tracker.verify_sequences()

@@ -78,7 +78,7 @@ class RBBaker:
                     qes.update(b.get_qe_set())
                     b.update_config = False
         if self._command_registry is not None:
-            self._command_registry.set_current_command_id(-1)
+            self._command_registry.finish()
         return qes
 
     def _update_baking_from_gates(self, b: Baking, gate_ops, elements=None):

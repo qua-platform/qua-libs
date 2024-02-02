@@ -3,9 +3,6 @@ from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from .. import TwoQubitRb
 
-from ..verification import CommandRegistry
-from ..verification import SequenceTracker
-
 
 def test_all_verification():
     """
@@ -15,23 +12,11 @@ def test_all_verification():
     """
 
     for i in range(3):
-        cr = CommandRegistry()
-        st = SequenceTracker(command_registry=cr)
-
-        def bake_phased_xz(baker: Baking, q, x, z, a):
-            cr.register_phase_xz(q, x, z, a)
-
-        def bake_cz(baker: Baking, q1, q2):
-            cr.register_cz()
-
-        def bake_cnot(baker: Baking, q1, q2):
-            cr.register_cnot(q=q1)
-
-        def prep():
-            pass
-
-        def meas():
-            pass
+        def bake_phased_xz(baker: Baking, q, x, z, a): pass
+        def bake_cz(baker: Baking, q1, q2): pass
+        def bake_cnot(baker: Baking, q1, q2): pass
+        def prep(): pass
+        def meas(): pass
 
         cz_generator = {"CZ": bake_cz}
         cnot_generator = {"CNOT": bake_cnot}
@@ -40,19 +25,23 @@ def test_all_verification():
         bake_2q_gate_generator = [cz_generator, cnot_generator, cz_cnot_generator][i]
 
         rb = TwoQubitRb(config, bake_phased_xz, bake_2q_gate_generator, prep, meas,
-                        verify_generation=False, interleaving_gate=None,
-                        command_registry=cr, sequence_tracker=st)
+                        verify_generation=False, interleaving_gate=None)
         repeats = 10
         depth = 10
+        # can't run rb.run without an OPX connected, so manually create sequences.
         for _ in range(repeats):
             sequence = rb._gen_rb_sequence(depth)
-            st.make_sequence(sequence)
+            rb._sequence_tracker.make_sequence(sequence)
 
-        st.verify_sequences()
+        rb._sequence_tracker.verify_sequences()
 
         parent_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-        cr.save_to_file(parent_dir / 'commands.txt')
-        st.save_to_file(parent_dir / 'sequences.txt')
+
+        rb.save_command_mapping_to_file(parent_dir / 'commands.txt')
+        rb.save_sequences_to_file(parent_dir / 'sequences.txt')
+        rb.print_command_mapping()
+        rb.print_sequences()
+        rb.verify_sequences()
 
 
 if __name__ == '__main__':

@@ -5,12 +5,6 @@ from qualang_tools.bakery.bakery import Baking
 from configuration import *
 from two_qubit_rb import TwoQubitRb
 
-from two_qubit_rb.verification import CommandRegistry
-from two_qubit_rb.verification import SequenceTracker
-
-cr = CommandRegistry()
-st = SequenceTracker(command_registry=cr)
-
 ##############################
 ## General helper functions ##
 ##############################
@@ -48,9 +42,6 @@ q2_idx_str = "2"
 # single qubit generic gate constructor Z^{z}Z^{a}X^{x}Z^{-a}
 # that can reach any point on the Bloch sphere (starting from arbitrary points)
 def bake_phased_xz(baker: Baking, q, x, z, a):
-    # register a call to this function for debugging purposes
-    cr.register_phase_xz(q, x, z, a)
-
     q_idx_str = q1_idx_str if q == 1 else q2_idx_str
     element = f"q{q_idx_str}_xy"
 
@@ -66,9 +57,6 @@ qubit2_frame_update = 0.12  # example values, should be taken from QPU parameter
 
 # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
 def bake_cz(baker: Baking, q1, q2):
-    # register a call to this function for debugging purposes
-    cr.register_cz()  # for debugging
-
     q1_xy_element = f"q{q1_idx_str}_xy"
     q2_xy_element = f"q{q2_idx_str}_xy"
     q1_z_element = f"q{q1_idx_str}_z"
@@ -114,9 +102,6 @@ rb = TwoQubitRb(
     measure_func=meas,
     interleaving_gate=None,
     verify_generation=False,
-    # track which random sequences are created for debugging purposes
-    command_registry=cr,
-    sequence_tracker=st,
 )
 
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
@@ -133,6 +118,8 @@ res.plot_fidelity()
 plt.show()
 
 # verify/save the random sequences created during the experiment
-st.save_to_file('sequences.txt')  # saves the gates used in each random sequence
-cr.save_to_file('commands.txt')  # saves mapping from "command id" to sequence
-# st.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
+rb.save_sequences_to_file('sequences.txt')  # saves the gates used in each random sequence
+# rb.save_command_mapping_to_file('commands.txt')  # saves mapping from "command id" to sequence
+# rb.print_sequences()
+# rb.print_command_mapping()
+# rb.verify_random_sequences() # simulates random sequences to ensure they recover to ground state. takes a while...

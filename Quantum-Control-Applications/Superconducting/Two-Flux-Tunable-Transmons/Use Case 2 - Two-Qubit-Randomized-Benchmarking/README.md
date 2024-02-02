@@ -1,8 +1,8 @@
 # Two-Qubit Randomized Benchmarking
 
-Author: Maximilian Zanner
+Authors: Maximilian Zanner, Dean Poulos
 
-*Important note: The code in this folder has not been tested in an actual experiment. The code serves as an example and is written for a specifically tailored setup and software environment. When adapting the code to run on your device, make sure to adjust the relevant functions and parameters and do not hesitate to contact QM Customer Success!*
+Note: some code snippets might be outdated and therefore incorrect. See the code itself for the most recent implementation.
 
 ## Introduction
 Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. Two-Qubit RB can be challenging to implement with state-of-the-art control electronics because of the necessity to sample from a large Clifford gate set. The Clifford group consists of 11520 operations [^4] and contains the single qubit Clifford operations (576), the CNOT-like class (5184), the iSWAP-like class (5184) and the SWAP-like class (576). In this use-case example we introduce an implementation on the OPX+ {'client': '1.1.3', 'server': '2.60-5ba458f'} using the current version (2023, July) of the generic [TwoQubitRb](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/TwoQubitRB.py) class. The implementation exploits the [baking](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) tool to generate the individual Clifford operations. The class then uses the [Input Stream](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=declare_input_stream#input-streams) feature to send a string of Clifford indices to the OPX that represent the executed gate sequence which is terminated with the inverse operation. The execution is based on the [Switch Case](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=switch#switch-case) flow control of QUA, which sets the current minimal gate duration limit to 40 ns.  <!--The inverse is calculated in Python using Clifford tableaus. An updated version of the TwoQubitRb class can be found in the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) repository.-->
@@ -107,6 +107,14 @@ res.plot_hist()
 ```python
 res.plot_fidelity()
 ```
+
+### Under the Hood: Clifford Sequence Generation
+In order to both efficiently generate random two-qubit clifford sequences with recovery and use minimal OPX resources within the compiled program, each Clifford is decomposed into two of 736 possible **commands**. These are further decomposed into single-qubit PhasedXZ gates and two-qubit gates. Each command is pre-baked as a pulse, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is streamed as input into the OPX as *2 x (circuit_depth + 1)* command IDs.
+
+Since this method leaves the generation of the sequence rather opaque, we have added methods which expose the breakdown of the randomly generated sequences:
+1. `rb.save_sequences_to_file(...)`: Saves which commands (and thus, gates) were used to construct each random sequence.
+2. `rb.verify_sequences()`: Saves which commands (and thus, gates) were used to construct each random sequence.
+3. `rb.save_command_mapping_to_file(...)`: Records which gates were baked into a pulse to build each command.
 
 ### Comment on the Runtime
 
