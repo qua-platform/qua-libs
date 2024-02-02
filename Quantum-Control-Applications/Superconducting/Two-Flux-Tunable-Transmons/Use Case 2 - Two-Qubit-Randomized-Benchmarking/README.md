@@ -31,10 +31,14 @@ The function for the single qubit gates requires that the user expresses the cal
 
 ```python
 def bake_phased_xz(baker: Baking, q, x, z, a):
-    element = f"q{q}_xy"
-    baker.frame_rotation_2pi(-a, element)
+    if q == 1:
+        element = f"q{q1_idx_str}_xy"
+    else:
+        element = f"q{q2_idx_str}_xy"
+
+    baker.frame_rotation_2pi(a/2, element)
     baker.play("x180", element, amp=x)
-    baker.frame_rotation_2pi(a + z, element)
+    baker.frame_rotation_2pi(-(a + z)/2, element)
 ```
 
 For calibrated single qubit pulses that are stored in the configuration (e.g. "x180", "x90", "y90", etc.) this python function can be rewritten to play the corresponding pulses dependent on the input parameters x,z & a.
@@ -44,9 +48,10 @@ The use-case is designed for flux-tunable transmon qubits where the qubit-qubit 
 
 ```python
 def bake_cz(baker: Baking, q1, q2):
-    q1_xy_element = f"q{q1}_xy" #
-    q2_xy_element = f"q{q2}_xy"
-    q1_z_element = f"q{q1}_z"
+    q1_xy_element = f"q{q1_idx_str}_xy"
+    q2_xy_element = f"q{q2_idx_str}_xy"
+    q1_z_element = f"q{q1_idx_str}_z"
+
     baker.play("cz", q1_z_element)
     baker.align()
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
@@ -109,11 +114,11 @@ res.plot_fidelity()
 ```
 
 ### Under the Hood: Clifford Sequence Generation
-In order to both efficiently generate random two-qubit clifford sequences with recovery and use minimal OPX resources within the compiled program, each Clifford is decomposed into two of 736 possible **commands**. These are further decomposed into single-qubit PhasedXZ gates and two-qubit gates. Each command is pre-baked as a pulse, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is streamed as input into the OPX as *2 x (circuit_depth + 1)* command IDs.
+In order to both efficiently generate random two-qubit clifford sequences with recovery and use minimal OPX resources within the compiled program, each Clifford is decomposed into two of 736 possible "commands". A command is an abstraction of gates which serves as a middle-ground between two-qubit Cliffords (too many to pre-load onto the OPX) and singular gates. A command is composed of single-qubit PhasedXZ gates and two-qubit gates. Each command is pre-baked as a pulse, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is streamed as input into the OPX as *2 x (circuit_depth + 1)* command IDs. Once the program receives the input stream, it is fed into a loop of switch cases, which play the pulse corresponding to the command ID.
 
-Since this method leaves the generation of the sequence rather opaque, we have added methods which expose the breakdown of the randomly generated sequences:
+Since this method hides the details of how the sequences are generated, we have added methods which expose the breakdown of the randomly generated sequences:
 1. `rb.save_sequences_to_file(...)`: Saves which commands (and thus, gates) were used to construct each random sequence.
-2. `rb.verify_sequences()`: Saves which commands (and thus, gates) were used to construct each random sequence.
+2. `rb.verify_sequences()`: Simulates the application of each unitary in the random sequence on the |00> two-qubit state, and asserts that it recovers to |00> at the end.
 3. `rb.save_command_mapping_to_file(...)`: Records which gates were baked into a pulse to build each command.
 
 ### Comment on the Runtime

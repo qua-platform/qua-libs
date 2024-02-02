@@ -42,8 +42,10 @@ q2_idx_str = "2"
 # single qubit generic gate constructor Z^{z}Z^{a}X^{x}Z^{-a}
 # that can reach any point on the Bloch sphere (starting from arbitrary points)
 def bake_phased_xz(baker: Baking, q, x, z, a):
-    q_idx_str = q1_idx_str if q == 1 else q2_idx_str
-    element = f"q{q_idx_str}_xy"
+    if q == 1:
+        element = f"q{q1_idx_str}_xy"
+    else:
+        element = f"q{q2_idx_str}_xy"
 
     baker.frame_rotation_2pi(a/2, element)
     baker.play("x180", element, amp=x)
