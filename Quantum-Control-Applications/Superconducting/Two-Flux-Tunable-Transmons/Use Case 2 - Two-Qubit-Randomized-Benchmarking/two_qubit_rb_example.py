@@ -47,9 +47,9 @@ def bake_phased_xz(baker: Baking, q, x, z, a):
     else:
         element = f"q{q2_idx_str}_xy"
 
-    baker.frame_rotation_2pi(a/2, element)
+    baker.frame_rotation_2pi(a / 2, element)
     baker.play("x180", element, amp=x)
-    baker.frame_rotation_2pi(-(a + z)/2, element)
+    baker.frame_rotation_2pi(-(a + z) / 2, element)
 
 
 # single qubit phase corrections in units of 2pi applied after the CZ gate
@@ -120,7 +120,7 @@ res.plot_fidelity()
 plt.show()
 
 # verify/save the random sequences created during the experiment
-rb.save_sequences_to_file('sequences.txt')  # saves the gates used in each random sequence
+rb.save_sequences_to_file("sequences.txt")  # saves the gates used in each random sequence
 # rb.save_command_mapping_to_file('commands.txt')  # saves mapping from "command id" to sequence
 # rb.print_sequences()
 # rb.print_command_mapping()

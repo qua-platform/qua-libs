@@ -12,8 +12,8 @@ class Gate:
 
 @dataclass
 class PhasedXZ(Gate):
-    q: int      # control qubit index
-    x: float    # amplitude scaling float
+    q: int  # control qubit index
+    x: float  # amplitude scaling float
     z: float
     a: float
 
@@ -21,11 +21,7 @@ class PhasedXZ(Gate):
         return f"PXZ({self.q}, amp={self.x}, z={self.z}, a={self.a})"
 
     def matrix(self):
-        phased_xz = cirq.PhasedXZGate(
-            axis_phase_exponent=self.a,
-            x_exponent=self.x,
-            z_exponent=self.z
-        )
+        phased_xz = cirq.PhasedXZGate(axis_phase_exponent=self.a, x_exponent=self.x, z_exponent=self.z)
 
         phased_xz = cirq.unitary(phased_xz)
         I = cirq.unitary(cirq.I)
@@ -49,26 +45,16 @@ class CZ(Gate):
 
 @dataclass
 class CNOT(Gate):
-    q: int      # control qubit index
+    q: int  # control qubit index
 
     def __str__(self):
         return f"CNOT({self.q}, {2 if self.q == 1 else 1})"
 
     def matrix(self):
         if self.q == 1:
-            cnot = np.array([
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 0, 1],
-                [0, 0, 1, 0]
-            ])
+            cnot = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
         elif self.q == 2:
-            cnot = np.array([
-                [1, 0, 0, 0],
-                [0, 0, 0, 1],
-                [0, 0, 1, 0],
-                [0, 1, 0, 0]
-            ])
+            cnot = np.array([[1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0]])
         else:
             raise NotImplementedError()
 

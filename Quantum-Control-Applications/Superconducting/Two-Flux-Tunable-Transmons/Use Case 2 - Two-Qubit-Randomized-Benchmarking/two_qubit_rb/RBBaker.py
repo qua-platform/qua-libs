@@ -19,7 +19,7 @@ class RBBaker:
         single_qubit_gate_generator: Callable,
         two_qubit_gate_generators: Dict[str, Callable],
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
-        command_registry: Optional[CommandRegistry] = None
+        command_registry: Optional[CommandRegistry] = None,
     ):
         self._command_registry = command_registry
         self._config = copy.deepcopy(config)
@@ -116,7 +116,7 @@ class RBBaker:
         cmd_to_op = {qe: {} for qe in self._all_elements}
         op_to_baking = {qe: [] for qe in self._all_elements}
         num_of_commands = len(gate_db.commands) + (0 if self._interleaving_gate is None else 1)
-        for cmd_id in tqdm(range(num_of_commands), desc='Pre-baking pulses for combinations of gates', unit='command'):
+        for cmd_id in tqdm(range(num_of_commands), desc="Pre-baking pulses for combinations of gates", unit="command"):
             with baking(config) as b:
                 self._update_baking_from_cmd_id(b, cmd_id, self._all_elements)
                 any_qe_used = False

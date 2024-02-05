@@ -12,11 +12,21 @@ def test_all_verification():
     """
 
     for i in range(3):
-        def bake_phased_xz(baker: Baking, q, x, z, a): pass
-        def bake_cz(baker: Baking, q1, q2): pass
-        def bake_cnot(baker: Baking, q1, q2): pass
-        def prep(): pass
-        def meas(): pass
+
+        def bake_phased_xz(baker: Baking, q, x, z, a):
+            pass
+
+        def bake_cz(baker: Baking, q1, q2):
+            pass
+
+        def bake_cnot(baker: Baking, q1, q2):
+            pass
+
+        def prep():
+            pass
+
+        def meas():
+            pass
 
         cz_generator = {"CZ": bake_cz}
         cnot_generator = {"CNOT": bake_cnot}
@@ -24,8 +34,9 @@ def test_all_verification():
 
         bake_2q_gate_generator = [cz_generator, cnot_generator, cz_cnot_generator][i]
 
-        rb = TwoQubitRb(config, bake_phased_xz, bake_2q_gate_generator, prep, meas,
-                        verify_generation=False, interleaving_gate=None)
+        rb = TwoQubitRb(
+            config, bake_phased_xz, bake_2q_gate_generator, prep, meas, verify_generation=False, interleaving_gate=None
+        )
         repeats = 10
         depth = 10
         # can't run rb.run without an OPX connected, so manually create sequences.
@@ -37,12 +48,12 @@ def test_all_verification():
 
         parent_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-        rb.save_command_mapping_to_file(parent_dir / 'commands.txt')
-        rb.save_sequences_to_file(parent_dir / 'sequences.txt')
+        rb.save_command_mapping_to_file(parent_dir / "commands.txt")
+        rb.save_sequences_to_file(parent_dir / "sequences.txt")
         rb.print_command_mapping()
         rb.print_sequences()
         rb.verify_sequences()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_all_verification()

@@ -11,6 +11,7 @@ class SequenceTracker:
     corresponding to the sequence, and the raw command IDs which are used as
     input to the input stream to map into baked pulses.
     """
+
     def __init__(self, command_registry: CommandRegistry):
         self.command_registry: CommandRegistry = command_registry
         self._sequences_as_gates: list[Command] = []
@@ -67,5 +68,5 @@ class SequenceTracker:
         print(self._serialize_sequences())
 
     def save_to_file(self, path: Union[str, Path]):
-        with open(path, 'w+') as f:
+        with open(path, "w+") as f:
             f.write(self._serialize_sequences())

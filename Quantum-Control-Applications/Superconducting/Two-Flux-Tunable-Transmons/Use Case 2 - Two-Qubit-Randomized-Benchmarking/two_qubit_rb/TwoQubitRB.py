@@ -12,7 +12,11 @@ from .RBResult import RBResult
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .simple_tableau import SimpleTableau
 from .util import run_in_thread, pbar
-from .verification.command_registry import CommandRegistry, decorate_single_qubit_generator_with_command_recording, decorate_two_qubit_gate_generator_with_command_recording
+from .verification.command_registry import (
+    CommandRegistry,
+    decorate_single_qubit_generator_with_command_recording,
+    decorate_two_qubit_gate_generator_with_command_recording,
+)
 from .verification.sequence_tracker import SequenceTracker
 
 
@@ -80,9 +84,15 @@ class TwoQubitRb:
         self._command_registry = CommandRegistry()
         self._sequence_tracker = SequenceTracker(command_registry=self._command_registry)
 
-        single_qubit_gate_generator = decorate_single_qubit_generator_with_command_recording(single_qubit_gate_generator, self._command_registry)
-        two_qubit_gate_generators = decorate_two_qubit_gate_generator_with_command_recording(two_qubit_gate_generators, self._command_registry)
-        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, self._command_registry)
+        single_qubit_gate_generator = decorate_single_qubit_generator_with_command_recording(
+            single_qubit_gate_generator, self._command_registry
+        )
+        two_qubit_gate_generators = decorate_two_qubit_gate_generator_with_command_recording(
+            two_qubit_gate_generators, self._command_registry
+        )
+        self._rb_baker = RBBaker(
+            config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, self._command_registry
+        )
 
         self._interleaving_gate = interleaving_gate
         self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
