@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE with 4ns granularity
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -105,12 +106,12 @@ def filter_calc(exponential):
 ###################
 # The QUA program #
 ###################
-n_avg = 10_000  # Number of averages
+n_avg = 1_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = True
 # Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
-durations = np.arange(3, const_flux_len // 4, 1)  # Starts at 3 clock-cycles to have the first point without pulse.
+durations = np.arange(4, const_flux_len // 4, 1) 
 flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
@@ -148,8 +149,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 # Play the flux pulse only if t is larger than the minimum of 4 clock cycles (16ns)
-                with if_(t > 3):
-                    play("const", "flux_line", duration=t)
+                play("const", "flux_line", duration=t)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 wait((int(max(durations)) * 4 + 20) * u.ns, "qubit")
@@ -256,7 +256,7 @@ else:
         # Filtering and derivative of the phase to get the averaged frequency
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[len(flux_waveform)-110:len(flux_waveform)-10])
+        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
@@ -338,3 +338,5 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%
