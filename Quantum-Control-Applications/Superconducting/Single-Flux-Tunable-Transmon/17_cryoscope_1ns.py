@@ -257,8 +257,12 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
-            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Sx = (state[:, 0] * 2 - 1) - np.mean(
+                (state[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Sy = (state[:, 1] * 2 - 1) - np.mean(
+                (state[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
             qubit_state = Sx + 1j * Sy
         else:
             I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
@@ -272,8 +276,12 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
-            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Sx = (state[:, 0] * 2 - 1) - np.mean(
+                (state[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Sy = (state[:, 1] * 2 - 1) - np.mean(
+                (state[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
             qubit_state = Sx + 1j * Sy
 
         # Progress bar
@@ -283,7 +291,9 @@ else:
         # Filtering and derivative of the phase to get the averaged frequency
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[len(flux_waveform)-zeros_after_pulse-110:len(flux_waveform)-zeros_after_pulse-10])
+        step_response_freq = detuning / np.average(
+            detuning[len(flux_waveform) - zeros_after_pulse - 110 : len(flux_waveform) - zeros_after_pulse - 10]
+        )
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)

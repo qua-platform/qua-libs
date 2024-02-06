@@ -234,11 +234,19 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Bloch vector Sx + iSy
         if qubit == 1:
-            Sxx = (state1[:, 0] * 2 - 1) - np.mean((state1[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
-            Syy = (state1[:, 1] * 2 - 1) - np.mean((state1[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Sxx = (state1[:, 0] * 2 - 1) - np.mean(
+                (state1[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Syy = (state1[:, 1] * 2 - 1) - np.mean(
+                (state1[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
         elif qubit == 2:
-            Sxx = (state2[:, 0] * 2 - 1) - np.mean((state2[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
-            Syy = (state2[:, 1] * 2 - 1) - np.mean((state2[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Sxx = (state2[:, 0] * 2 - 1) - np.mean(
+                (state2[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Syy = (state2[:, 1] * 2 - 1) - np.mean(
+                (state2[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
         else:
             Sxx = 0
             Syy = 0
@@ -248,7 +256,9 @@ else:
         # Filtering and derivative of the phase to get the averaged frequency
         detuning = signal.savgol_filter(phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[len(flux_waveform)-zeros_after_pulse-110:len(flux_waveform)-zeros_after_pulse-10])
+        step_response_freq = detuning / np.average(
+            detuning[len(flux_waveform) - zeros_after_pulse - 110 : len(flux_waveform) - zeros_after_pulse - 10]
+        )
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Plots
         plt.suptitle(f"Cryoscope for qubit {qubit} (qubit 1 (2) displayed on top (bottom))")

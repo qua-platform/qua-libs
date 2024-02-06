@@ -111,7 +111,7 @@ n_avg = 1_000  # Number of averages
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = True
 # Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
-durations = np.arange(4, const_flux_len // 4, 1) 
+durations = np.arange(4, const_flux_len // 4, 1)
 flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
@@ -230,8 +230,8 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[10:len(flux_waveform)-10])
-            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[10:len(flux_waveform)-10])
+            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[10 : len(flux_waveform) - 10])
+            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[10 : len(flux_waveform) - 10])
             qubit_state = Sx + 1j * Sy
         else:
             I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
@@ -245,8 +245,8 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[10:len(flux_waveform)-10])
-            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[10:len(flux_waveform)-10])
+            Sx = (state[:, 0] * 2 - 1) - np.mean((state[:, 0] * 2 - 1)[10 : len(flux_waveform) - 10])
+            Sy = (state[:, 1] * 2 - 1) - np.mean((state[:, 1] * 2 - 1)[10 : len(flux_waveform) - 10])
             qubit_state = Sx + 1j * Sy
 
         # Progress bar
