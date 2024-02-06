@@ -110,7 +110,7 @@ qubit = 1
 
 n_avg = 10_000  # Number of averages
 # Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
-durations = np.arange(3, const_flux_len // 4, 1)  # Starts at 3 clock-cycles to have the first point without pulse.
+durations = np.arange(4, const_flux_len // 4, 1)
 flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
@@ -136,8 +136,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 # Play the flux pulse only if t is larger than the minimum of 4 clock cycles (16ns)
-                with if_(t > 3):
-                    play("const", f"q{qubit}_z", duration=t)
+                play("const", f"q{qubit}_z", duration=t)
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
                 wait((len(flux_waveform) + 20) * u.ns, f"q{qubit}_xy")
@@ -206,11 +205,11 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Bloch vector Sx + iSy
         if qubit == 1:
-            Sxx = state1[:, 0] * 2 - 1
-            Syy = state1[:, 1] * 2 - 1
+            Sxx = (state1[:, 0] * 2 - 1) - np.mean((state1[:, 0] * 2 - 1)[10:len(flux_waveform)-10])
+            Syy = (state1[:, 1] * 2 - 1) - np.mean((state1[:, 1] * 2 - 1)[10:len(flux_waveform)-10])
         elif qubit == 2:
-            Sxx = state2[:, 0] * 2 - 1
-            Syy = state2[:, 1] * 2 - 1
+            Sxx = (state2[:, 0] * 2 - 1) - np.mean((state2[:, 0] * 2 - 1)[10:len(flux_waveform)-10])
+            Syy = (state2[:, 1] * 2 - 1) - np.mean((state2[:, 1] * 2 - 1)[10:len(flux_waveform)-10])
         else:
             Sxx = 0
             Syy = 0
@@ -219,10 +218,10 @@ else:
         phase = np.unwrap(np.angle(S))
         phase = phase - phase[-1]
         # Filtering and derivative of the phase to get the averaged frequency
-        detuning = signal.savgol_filter(phase / 2 / np.pi, 21, 2, deriv=1, delta=0.001)
+        detuning = signal.savgol_filter(phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
-        step_response_volt = np.sqrt(step_response_freq)
+        step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))        
         # Plots
         plt.suptitle(f"Cryoscope for qubit {qubit} (qubit 1 (2) displayed on top (bottom))")
         plt.subplot(241)
@@ -324,3 +323,5 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%

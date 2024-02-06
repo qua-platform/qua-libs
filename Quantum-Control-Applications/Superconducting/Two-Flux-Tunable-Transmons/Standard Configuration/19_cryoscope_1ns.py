@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -125,8 +126,7 @@ def baked_waveform(waveform, pulse_duration, qubit_index):
 # Index of the qubit to measure
 qubit = 1
 
-
-n_avg = 10_000  # Number of averages
+n_avg = 1_000  # Number of averages
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
 # fitting the step response with an exponential.
@@ -138,9 +138,9 @@ flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_f
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform), qubit)
 step_response_th = (
-    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
+    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
+xplot = np.arange(0, len(flux_waveform), 1)  # x-axis for plotting - must be in ns
 
 
 with program() as cryoscope:
@@ -153,7 +153,7 @@ with program() as cryoscope:
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
         # Loop over the truncated flux pulse
-        with for_(segment, 0, segment <= const_flux_len + total_zeros, segment + 1):
+        with for_(segment, 1, segment <= const_flux_len + total_zeros, segment + 1):
             # Alternate between X/2 and Y/2 pulses
             with for_each_(flag, [True, False]):
                 # Play first X/2
@@ -163,7 +163,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 with switch_(segment):
-                    for j in range(0, len(flux_waveform) + 1):
+                    for j in range(1, len(flux_waveform) + 1):
                         with case_(j):
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
@@ -190,13 +190,13 @@ with program() as cryoscope:
         # for the progress counter
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I1")
-        Q_st[0].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q1")
-        state_st[0].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state1")
+        I_st[0].buffer(2).buffer(const_flux_len + total_zeros).average().save("I1")
+        Q_st[0].buffer(2).buffer(const_flux_len + total_zeros).average().save("Q1")
+        state_st[0].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros).average().save("state1")
         # resonator 2
-        I_st[1].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I2")
-        Q_st[1].buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q2")
-        state_st[1].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state2")
+        I_st[1].buffer(2).buffer(const_flux_len + total_zeros).average().save("I2")
+        Q_st[1].buffer(2).buffer(const_flux_len + total_zeros).average().save("Q2")
+        state_st[1].boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros).average().save("state2")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -234,23 +234,22 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Bloch vector Sx + iSy
         if qubit == 1:
-            Sxx = state1[:, 0] * 2 - 1
-            Syy = state1[:, 1] * 2 - 1
+            Sxx = (state1[:, 0] * 2 - 1) - np.mean((state1[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Syy = (state1[:, 1] * 2 - 1) - np.mean((state1[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
         elif qubit == 2:
-            Sxx = state2[:, 0] * 2 - 1
-            Syy = state2[:, 1] * 2 - 1
+            Sxx = (state2[:, 0] * 2 - 1) - np.mean((state2[:, 0] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
+            Syy = (state2[:, 1] * 2 - 1) - np.mean((state2[:, 1] * 2 - 1)[zeros_before_pulse+10:len(flux_waveform)-zeros_after_pulse-10])
         else:
             Sxx = 0
             Syy = 0
         S = Sxx + 1j * Syy
         # Accumulated phase: angle between Sx and Sy
         phase = np.unwrap(np.angle(S))
-        phase = phase - phase[-1]
         # Filtering and derivative of the phase to get the averaged frequency
-        detuning = signal.savgol_filter(phase / 2 / np.pi, 21, 2, deriv=1, delta=0.001)
+        detuning = signal.savgol_filter(phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
-        step_response_volt = np.sqrt(step_response_freq)
+        step_response_freq = detuning / np.average(detuning[len(flux_waveform)-zeros_after_pulse-110:len(flux_waveform)-zeros_after_pulse-10])
+        step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Plots
         plt.suptitle(f"Cryoscope for qubit {qubit} (qubit 1 (2) displayed on top (bottom))")
         plt.subplot(241)
@@ -352,3 +351,5 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%

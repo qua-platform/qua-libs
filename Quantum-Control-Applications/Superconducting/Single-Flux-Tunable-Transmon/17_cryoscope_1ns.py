@@ -128,8 +128,8 @@ state_discrimination = False
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
 # fitting the step response with an exponential.
-zeros_before_pulse = 0  # Beginning of the flux pulse (before we put zeros to see the rising time)
-zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the falling time)
+zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
+zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
 flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse)
 
