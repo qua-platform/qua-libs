@@ -108,7 +108,7 @@ def baked_waveform(waveform, pulse_duration):
     for i in range(0, pulse_duration + 1):
         with baking(config, padding_method="right") as b:
             if i == 0:  # Otherwise, the baking will be empty and will not be created
-                wf = [0.0] * 16
+                wf = [0.0] * 16  # So one needs to avoid playing the first data point
             else:
                 wf = waveform[:i].tolist()
             b.add_op("flux_pulse", "flux_line", wf)
@@ -121,24 +121,24 @@ def baked_waveform(waveform, pulse_duration):
 ###################
 # The QUA program #
 ###################
-n_avg = 10_000  # Number of averages
+n_avg = 1_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
 # fitting the step response with an exponential.
-zeros_before_pulse = 20  # Beginning of the flux pulse (before we put zeros to see the rising time)
-zeros_after_pulse = 20  # End of the flux pulse (after we put zeros to see the falling time)
+zeros_before_pulse = 0  # Beginning of the flux pulse (before we put zeros to see the rising time)
+zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
 flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_flux_len + [0.0] * zeros_after_pulse)
 
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
 step_response_th = (
-    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
+    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
+xplot = np.arange(0, len(flux_waveform), 1)  # x-axis for plotting - Must be in ns.
 
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
@@ -163,7 +163,7 @@ with program() as cryoscope:
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
         # Loop over the truncated flux pulse
-        with for_(segment, 0, segment <= const_flux_len + total_zeros, segment + 1):
+        with for_(segment, 1, segment <= const_flux_len + total_zeros, segment + 1):
             # Alternate between X/2 and Y/2 pulses
             with for_each_(flag, [True, False]):
                 # Play first X/2
@@ -173,7 +173,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 with switch_(segment):
-                    for j in range(0, len(flux_waveform) + 1):
+                    for j in range(1, len(flux_waveform) + 1):
                         with case_(j):
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
@@ -207,11 +207,11 @@ with program() as cryoscope:
     with stream_processing():
         # Cast the data into a 2D matrix (x90/y90, flux pulse length), average the 2D matrices together and store the
         # results on the OPX processor
-        I_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I")
-        Q_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q")
+        I_st.buffer(2).buffer(const_flux_len + total_zeros).average().save("I")
+        Q_st.buffer(2).buffer(const_flux_len + total_zeros).average().save("Q")
         if state_discrimination:
             # Also save the qubit state
-            state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state")
+            state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros).average().save("state")
         else:
             # Also save the averaged I/Q values for the qubit in |g> and |e>
             Ig_st.average().save("Ig")
