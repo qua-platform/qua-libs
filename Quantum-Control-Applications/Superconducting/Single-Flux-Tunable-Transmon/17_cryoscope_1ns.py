@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -25,6 +26,11 @@ the post-processing of the data.
 This version sweeps the flux pulse duration using the baking tool, which means that the flux pulse can be scanned with
 a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
 resolution (do 2ns steps instead of 1ns) or use the 4ns version (cryoscope_4ns.py).
+
+NOTE:
+    - A prerequisite to obtain a good trace out from the code written below is to have the X and Y vectors to oscillate at
+    around 200 MHz, and do the experiment for a pulse length of 200 ns. Other parameters will work but you may need to
+    pay a close look at the normalization for the step response, and the removal of offsets in the X and Y vector.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -105,12 +111,9 @@ def filter_calc(exponential):
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
-    for i in range(0, pulse_duration + 1):
+    for i in range(1, pulse_duration + 1):
         with baking(config, padding_method="right") as b:
-            if i == 0:  # Otherwise, the baking will be empty and will not be created
-                wf = [0.0] * 16  # So one needs to avoid playing the first data point
-            else:
-                wf = waveform[:i].tolist()
+            wf = waveform[:i].tolist()
             b.add_op("flux_pulse", "flux_line", wf)
             b.play("flux_pulse", "flux_line")
         # Append the baking object in the list to call it from the QUA program
@@ -138,8 +141,9 @@ square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
 step_response_th = (
     [0.0] * zeros_before_pulse + [1.0] * (const_flux_len) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform), 1)  # x-axis for plotting - Must be in ns.
+xplot = np.arange(1, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
+# %%
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index
@@ -163,7 +167,7 @@ with program() as cryoscope:
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
         # Loop over the truncated flux pulse
-        with for_(segment, 1, segment <= const_flux_len + total_zeros, segment + 1):
+        with for_(segment, 0, segment < const_flux_len + total_zeros, segment + 1):
             # Alternate between X/2 and Y/2 pulses
             with for_each_(flag, [True, False]):
                 # Play first X/2
@@ -173,7 +177,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 with switch_(segment):
-                    for j in range(1, len(flux_waveform) + 1):
+                    for j in range(0, len(flux_waveform)):
                         with case_(j):
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
@@ -292,7 +296,7 @@ else:
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(
-            detuning[len(flux_waveform) - zeros_after_pulse - 110 : len(flux_waveform) - zeros_after_pulse - 10]
+            detuning[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
         )
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
@@ -334,8 +338,8 @@ else:
     ## Fit step response with exponential
     [A, tau], _ = optimize.curve_fit(
         exponential_decay,
-        xplot,
-        step_response_volt,
+        xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
+        step_response_volt[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
     )
     print(f"A: {A}\ntau: {tau}")
 
@@ -345,17 +349,17 @@ else:
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot, A, tau)
+    no_filter = exponential_decay(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], A, tau)
     # Response with filters
-    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th)  # Output filter , DAC Output
+    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1])  # Output filter , DAC Output
 
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
-    plt.plot(xplot, no_filter, label="Fitted response without filter")
-    plt.plot(xplot, with_filter, label="Fitted response with filter")
+    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], no_filter, label="Fitted response without filter")
+    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], with_filter, label="Fitted response with filter")
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
     plt.text(
         max(xplot) // 2,
@@ -372,6 +376,8 @@ else:
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
     plt.legend(loc="upper right")
-    plt.tight_layout()
+    # plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%
