@@ -316,8 +316,8 @@ else:
     ## Fit step response with exponential
     [A, tau], _ = optimize.curve_fit(
         exponential_decay,
-        xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
-        step_response_volt[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        step_response_volt[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
     )
     print(f"A: {A}\ntau: {tau}")
 
@@ -327,17 +327,27 @@ else:
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], A, tau)
+    no_filter = exponential_decay(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1], A, tau)
     # Response with filters
-    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1])  # Output filter , DAC Output
+    with_filter = no_filter * signal.lfilter(
+        fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1]
+    )  # Output filter , DAC Output
 
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
-    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], no_filter, label="Fitted response without filter")
-    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], with_filter, label="Fitted response with filter")
+    plt.plot(
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        no_filter,
+        label="Fitted response without filter",
+    )
+    plt.plot(
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        with_filter,
+        label="Fitted response with filter",
+    )
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
     plt.text(
         max(xplot) // 2,
