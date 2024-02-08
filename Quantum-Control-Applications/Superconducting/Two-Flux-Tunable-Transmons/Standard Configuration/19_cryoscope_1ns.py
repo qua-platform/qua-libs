@@ -106,13 +106,9 @@ def filter_calc(exponential):
 def baked_waveform(waveform, pulse_duration, qubit_index):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
-    for i in range(0, pulse_duration + 1):
+    for i in range(1, pulse_duration + 1):
         with baking(config, padding_method="right") as b:
-            if i == 0:  # Otherwise, the baking will be empty and will not be created
-                wf = [0.0] * 16
-            else:
-                wf = waveform[:i].tolist()
-
+            wf = waveform[:i].tolist()
             b.add_op("flux_pulse", f"q{qubit_index}_z", wf)
             b.play("flux_pulse", f"q{qubit_index}_z")
         # Append the baking object in the list to call it from the QUA program
@@ -140,7 +136,7 @@ square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform), qubit)
 step_response_th = (
     [0.0] * zeros_before_pulse + [1.0] * (const_flux_len) + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform), 1)  # x-axis for plotting - must be in ns
+xplot = np.arange(1, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
 
 
 with program() as cryoscope:
@@ -163,7 +159,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 with switch_(segment):
-                    for j in range(1, len(flux_waveform) + 1):
+                    for j in range(0, len(flux_waveform)):
                         with case_(j):
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
@@ -257,7 +253,7 @@ else:
         detuning = signal.savgol_filter(phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(
-            detuning[len(flux_waveform) - zeros_after_pulse - 110 : len(flux_waveform) - zeros_after_pulse - 10]
+            detuning[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
         )
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Plots
@@ -320,8 +316,8 @@ else:
     ## Fit step response with exponential
     [A, tau], _ = optimize.curve_fit(
         exponential_decay,
-        xplot,
-        step_response_volt,
+        xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
+        step_response_volt[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1],
     )
     print(f"A: {A}\ntau: {tau}")
 
@@ -331,17 +327,17 @@ else:
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot, A, tau)
+    no_filter = exponential_decay(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], A, tau)
     # Response with filters
-    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th)  # Output filter , DAC Output
+    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1])  # Output filter , DAC Output
 
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
-    plt.plot(xplot, no_filter, label="Fitted response without filter")
-    plt.plot(xplot, with_filter, label="Fitted response with filter")
+    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], no_filter, label="Fitted response without filter")
+    plt.plot(xplot[zeros_before_pulse: zeros_before_pulse+const_flux_len - 1], with_filter, label="Fitted response with filter")
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
     plt.text(
         max(xplot) // 2,
