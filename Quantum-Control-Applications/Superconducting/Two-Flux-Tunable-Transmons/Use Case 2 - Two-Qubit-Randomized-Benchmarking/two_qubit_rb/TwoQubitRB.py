@@ -237,13 +237,6 @@ class TwoQubitRb:
             num_circuits_per_depth (int): The number of different circuit randomizations per depth.
             num_shots_per_circuit (int): The number of shots per particular circuit.
 
-        Example:
-            >>> from qm.QuantumMachinesManager import QuantumMachinesManager
-            >>> from qm.qua import *
-            >>> from qua_config import config  # generation not in scope of this example
-            >>> from TwoQubitRB import TwoQubitRB
-            >>> qmm = QuantumMachinesManager(config)
-
         """
 
         prog = self._gen_qua_program(circuit_depths, num_circuits_per_depth, num_shots_per_circuit)
