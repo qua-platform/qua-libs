@@ -63,15 +63,12 @@ class TwoQubitRb:
                     qubit2: The second qubit number.
                 This callable should generate a two qubit gate.
 
-
             prep_func: A callable used to reset the qubits to the |00> state. This function does not use the baking object, and is a proper QUA code macro.
                 Callable arguments: None
 
             measure_func: A callable used to measure the qubits. This function does not use the baking object, and is a proper QUA code macro.
-                Callable arguments: None
-                Returns:
-                    A tuple containing the measured values of the two qubits as Qua expressions.
-                    The expression must evaluate to a boolean value. False means |0>, True means |1>. The MSB is the first qubit.
+                Callable[[], Tuple[_Expression, _Expression]]: A tuple containing the measured values of the two qubits as Qua expressions.
+                The expression must evaluate to a boolean value. False means |0>, True means |1>. The MSB is the first qubit.
 
             verify_generation: A boolean indicating whether to verify the generated sequences. Not be used in production, as it is very slow.
 
