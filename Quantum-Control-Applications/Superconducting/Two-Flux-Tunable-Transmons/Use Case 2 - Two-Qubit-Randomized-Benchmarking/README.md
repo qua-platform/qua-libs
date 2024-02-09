@@ -113,7 +113,7 @@ In order to both efficiently generate random two-qubit clifford sequences with r
 
 Since this method hides the details of how the sequences are generated, we have added methods which expose the breakdown of the randomly generated sequences:
 1. `rb.save_sequences_to_file(...)`: Saves which commands (and thus, gates) were used to construct each random sequence.
-```Sequence 0:
+```
 'sequences.txt' file with a single, depth-1 circuit.
 
 Sequence 0:
@@ -137,7 +137,7 @@ Sequence 0:
 2. `rb.verify_sequences()`: Simulates the application of each unitary in the random sequence on the |00> two-qubit state, and asserts that it recovers to |00> at the end.
 3. `rb.save_command_mapping_to_file(...)`: Records which gates were baked into a pulse to build each command.
 ```
-'commands.txt' file, cropped to show Command 66
+'commands.txt' file, cropped to show only Command 66.
 ...
 Command 66:
 	0: PXZ(1, amp=0, z=0, a=0)
