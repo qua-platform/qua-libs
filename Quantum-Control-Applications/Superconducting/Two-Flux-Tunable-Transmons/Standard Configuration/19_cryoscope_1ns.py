@@ -1,4 +1,3 @@
-# %%
 """
         CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -134,7 +133,7 @@ flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_f
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform), qubit)
 step_response_th = (
-    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len) + [0.0] * zeros_after_pulse
+    [0.0] * zeros_before_pulse + [1.0] * const_flux_len + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
 xplot = np.arange(1, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
 
@@ -253,7 +252,7 @@ else:
         detuning = signal.savgol_filter(phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(
-            detuning[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            detuning[zeros_before_pulse + 20 : zeros_before_pulse + const_flux_len - 20]
         )
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Plots
@@ -316,8 +315,8 @@ else:
     ## Fit step response with exponential
     [A, tau], _ = optimize.curve_fit(
         exponential_decay,
-        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
-        step_response_volt[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+        step_response_volt[zeros_before_pulse : zeros_before_pulse + const_flux_len],
     )
     print(f"A: {A}\ntau: {tau}")
 
@@ -327,10 +326,10 @@ else:
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1], A, tau)
+    no_filter = exponential_decay(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len], A, tau)
     # Response with filters
     with_filter = no_filter * signal.lfilter(
-        fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1]
+        fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len]
     )  # Output filter , DAC Output
 
     # Plot all data
@@ -339,12 +338,12 @@ else:
     plt.suptitle("Cryoscope with filter implementation")
     plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
     plt.plot(
-        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
         no_filter,
         label="Fitted response without filter",
     )
     plt.plot(
-        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len - 1],
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
         with_filter,
         label="Fitted response with filter",
     )
@@ -368,4 +367,3 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-# %%
