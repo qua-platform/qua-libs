@@ -37,7 +37,6 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
-    - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
 from qm.qua import *
