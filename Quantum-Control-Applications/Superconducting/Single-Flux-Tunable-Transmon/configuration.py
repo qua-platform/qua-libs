@@ -28,8 +28,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.101"  # Write the QM router IP address
+cluster_name = "Cluster_83"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 # Path to save data
@@ -200,7 +200,7 @@ config = {
                 2: {"offset": 0.0},  # Q qubit
                 3: {"offset": 0.0},  # I resonator
                 4: {"offset": 0.0},  # Q resonator
-                5: {"offset": max_frequency_point},  # flux line
+                5: {"offset": max_frequency_point, "delay": 0},  # flux line
             },
             "digital_outputs": {
                 1: {},
