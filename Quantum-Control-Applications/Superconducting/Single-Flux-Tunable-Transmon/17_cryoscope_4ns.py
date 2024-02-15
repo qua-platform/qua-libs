@@ -47,6 +47,7 @@ from scipy import signal, optimize
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
 
+
 ####################
 # Helper functions #
 ####################

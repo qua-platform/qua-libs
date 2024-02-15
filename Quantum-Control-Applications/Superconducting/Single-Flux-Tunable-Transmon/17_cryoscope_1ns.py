@@ -52,6 +52,7 @@ from scipy import signal, optimize
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
 
+
 ####################
 # Helper functions #
 ####################
@@ -334,7 +335,11 @@ else:
 
         plt.subplot(235)
         plt.cla()
-        plt.plot(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len], signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len]), label="delta_phase")
+        plt.plot(
+            xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+            signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len]),
+            label="delta_phase",
+        )
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("delta_phase [rad]")
         plt.tight_layout()
@@ -360,7 +365,10 @@ else:
         fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len]
     )  # Output filter , DAC Output
 
-    print(f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns", simps(signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len])))
+    print(
+        f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns",
+        simps(signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len])),
+    )
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
