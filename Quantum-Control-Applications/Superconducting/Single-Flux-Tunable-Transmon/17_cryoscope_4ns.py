@@ -45,7 +45,7 @@ from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
-
+from scipy.integrate import simps
 
 ####################
 # Helper functions #
@@ -262,34 +262,40 @@ else:
 
         # Plots
         plt.suptitle("Cryoscope with 4ns resolution")
-        plt.subplot(221)
+        plt.subplot(231)
         plt.cla()
         plt.plot(xplot, I)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(222)
+        plt.subplot(232)
         plt.cla()
         plt.plot(xplot, Q)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(223)
+        plt.subplot(233)
         plt.cla()
         plt.plot(xplot, state)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(224)
+        plt.subplot(234)
         plt.cla()
         plt.plot(xplot, step_response_freq, label="Frequency")
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
         plt.legend()
+
+        plt.subplot(235)
+        plt.cla()
+        plt.plot(xplot, signal.detrend(qubit_phase), label="delta_phase")
+        plt.xlabel("Pulse duration [ns]")
+        plt.ylabel("delta_phase [rad]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -311,6 +317,7 @@ else:
     # Response with filters
     with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th)  # Output filter , DAC Output
 
+    print(f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns", simps(signal.detrend(qubit_phase)))
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()

@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -49,7 +50,7 @@ from qualang_tools.bakery import baking
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
-
+from scipy.integrate import simps
 
 ####################
 # Helper functions #
@@ -302,34 +303,40 @@ else:
 
         # Plots
         plt.suptitle("Cryoscope with 1ns resolution")
-        plt.subplot(221)
+        plt.subplot(231)
         plt.cla()
         plt.plot(xplot, I)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(222)
+        plt.subplot(232)
         plt.cla()
         plt.plot(xplot, Q)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(223)
+        plt.subplot(233)
         plt.cla()
         plt.plot(xplot, state)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(224)
+        plt.subplot(234)
         plt.cla()
         plt.plot(xplot, step_response_freq, label="Frequency")
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
         plt.legend()
+
+        plt.subplot(235)
+        plt.cla()
+        plt.plot(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len], signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len]), label="delta_phase")
+        plt.xlabel("Pulse duration [ns]")
+        plt.ylabel("delta_phase [rad]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -353,6 +360,7 @@ else:
         fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len]
     )  # Output filter , DAC Output
 
+    print(f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns", simps(signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len])))
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
@@ -387,3 +395,5 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%
