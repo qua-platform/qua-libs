@@ -56,7 +56,7 @@ from scipy.integrate import simps
 ####################
 # Helper functions #
 ####################
-def exponential_decay(x, a, t):
+def exponential_decay(x, a, t, s):
     """Exponential decay defined as 1 + a * np.exp(-x / t).
 
     :param x: numpy array for the time vector in ns
@@ -64,28 +64,64 @@ def exponential_decay(x, a, t):
     :param t: float for the exponential decay time in ns
     :return: numpy array for the exponential decay
     """
-    return 1 + a * np.exp(-x / t)
+    return s * (1 + a * np.exp(-x / t))
 
 
-def exponential_correction(A, tau, Ts=1e-9):
+def dual_exponential_decay(x, a1, t1, a2, t2, s):
+    """
+    Dual exponential decay defined as s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2)).
+    :param x: numpy array for the time vector in ns
+    :param a1: float for the first exponential amplitude
+    :param t1: float for the first exponential decay time in ns
+    :param a2: float for the second exponential amplitude
+    :param t2: float for the second exponential decay time in ns
+    :param s: scale factor, default is 1
+    :return: numpy array for the dual exponential decay
+    """
+    return s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2))
+
+
+def three_exponential_decay(x, a1, t1, a2, t2, a3, t3, s=1):
+    """
+    Three exponential decay defined as s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2) + a3 * np.exp(-x / t3)).
+    :param x: numpy array for the time vector in ns
+    :param a1: float for the first exponential amplitude
+    :param t1: float for the first exponential decay time in ns
+    :param a2: float for the second exponential amplitude
+    :param t2: float for the second exponential decay time in ns
+    :param a3: float for the third exponential amplitude
+    :param t3: float for the third exponential decay time in ns
+    :param s: scale factor, default is 1
+    :return: numpy array for the three exponential decay
+    """
+    return s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2) + a3 * np.exp(-x / t3))
+
+
+def exponential_correction(A, tau, method, Ts=1e-9, t_s=1):
     """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
     :param A: amplitude of the exponential decay.
-    :param tau: decay time of the exponential decay
-    :param Ts: sampling period. Default is 1e-9
-    :return: FIR and IIR taps
+    :param tau: decay time of the exponential decay.
+    :param Ts: sampling period. Default is 1e-9.
+    :return: FIR and IIR taps.
     """
-    tau = tau * Ts
-    k1 = Ts + 2 * tau * (A + 1)
-    k2 = Ts - 2 * tau * (A + 1)
-    c1 = Ts + 2 * tau
-    c2 = Ts - 2 * tau
-    feedback_tap = k2 / k1
-    feedforward_taps = np.array([c1, c2]) / k1
+    if method == "bilinear_transform":
+        tau = tau * Ts
+        k1 = Ts + 2 * tau * (A + 1)
+        k2 = Ts - 2 * tau * (A + 1)
+        c1 = Ts + 2 * tau
+        c2 = Ts - 2 * tau
+        feedback_tap = k2 / k1
+        feedforward_taps = np.array([c1, c2]) / k1
+    elif method == "z_transform":
+        alpha = np.exp(-t_s / tau)
+        feedback_tap = (A + alpha) / (1 + A)
+        feedforward_taps = np.array([1 / (1 + A), -alpha / (1 + A)])
+
     return feedforward_taps, feedback_tap
 
 
-def filter_calc(exponential):
+def filter_calc(exponential, method):
     """Derive FIR and IIR filter taps based on a list of exponential coefficients.
 
     :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
@@ -96,7 +132,7 @@ def filter_calc(exponential):
     feedback_taps = np.zeros(len(exponential))
     # Derive feedback tap for each set of exponential coefficients
     for i, (A, tau) in enumerate(exponential):
-        b[:, i], feedback_taps[i] = exponential_correction(A, tau)
+        b[:, i], feedback_taps[i] = exponential_correction(A, tau, method=method)
     # Derive feedback tap for each set of exponential coefficients
     feedforward_taps = b[:, 0]
     for i in range(len(exponential) - 1):
@@ -354,7 +390,7 @@ else:
     print(f"A: {A}\ntau: {tau}")
 
     ## Derive IIR and FIR corrections
-    fir, iir = filter_calc(exponential=[(A, tau)])
+    fir, iir = filter_calc(exponential=[(A, tau)], method="bilinear_transform")
     print(f"FIR: {fir}\nIIR: {iir}")
 
     ## Derive responses and plots
