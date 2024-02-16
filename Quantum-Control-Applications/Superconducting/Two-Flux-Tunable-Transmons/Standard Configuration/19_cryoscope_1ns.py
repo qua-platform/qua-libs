@@ -45,6 +45,7 @@ from qualang_tools.plot import interrupt_on_close
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
+from scipy.integrate import simps
 
 
 ####################
@@ -257,25 +258,25 @@ else:
         step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Plots
         plt.suptitle(f"Cryoscope for qubit {qubit} (qubit 1 (2) displayed on top (bottom))")
-        plt.subplot(241)
+        plt.subplot(251)
         plt.cla()
         plt.plot(xplot, I1)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(242)
+        plt.subplot(252)
         plt.cla()
         plt.plot(xplot, Q1)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(243)
+        plt.subplot(253)
         plt.cla()
         plt.plot(xplot, state1)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(244)
+        plt.subplot(254)
         plt.cla()
         plt.plot(xplot, step_response_freq, label="Frequency")
         plt.xlabel("Pulse duration [ns]")
@@ -283,29 +284,40 @@ else:
         plt.title(f"Qubit {qubit}")
         plt.legend()
 
-        plt.subplot(245)
+        plt.subplot(255)
         plt.cla()
         plt.plot(xplot, I2)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(246)
+        plt.subplot(256)
         plt.cla()
         plt.plot(xplot, Q2)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(247)
+        plt.subplot(257)
         plt.cla()
         plt.plot(xplot, state2)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
-        plt.subplot(248)
+        plt.subplot(258)
         plt.cla()
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
+        plt.legend()
+        plt.title(f"Qubit {qubit}")
+        plt.subplot(259)
+        plt.cla()
+        plt.plot(
+            xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+            signal.detrend(phase[zeros_before_pulse : zeros_before_pulse + const_flux_len]),
+            label="delta_phase",
+        )
+        plt.xlabel("Pulse duration [ns]")
+        plt.ylabel("delta_phase [rad]")
         plt.legend()
         plt.title(f"Qubit {qubit}")
 
@@ -332,6 +344,7 @@ else:
         fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len]
     )  # Output filter , DAC Output
 
+    print(f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns", simps(signal.detrend(phase)))
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
