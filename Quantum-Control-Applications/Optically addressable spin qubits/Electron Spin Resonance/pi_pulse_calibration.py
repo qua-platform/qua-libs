@@ -5,7 +5,7 @@ which pulse duration maximizes the echo amplitude
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array

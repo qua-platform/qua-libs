@@ -15,7 +15,7 @@ Next steps before going to the next node:
     - Update the NV frequency, labeled as "NV_IF_freq", in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt

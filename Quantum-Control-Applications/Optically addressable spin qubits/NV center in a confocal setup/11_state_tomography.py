@@ -10,7 +10,7 @@ Prerequisites:
     - Having updated the NV frequency, labeled as "NV_IF_freq", in the configuration.
     - Having set the pi pulse amplitude and duration in the configuration
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt

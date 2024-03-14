@@ -4,7 +4,7 @@ hello_qua.py: template for basic qua program demonstration
 import time
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 from qm.simulate.credentials import create_credentials
 

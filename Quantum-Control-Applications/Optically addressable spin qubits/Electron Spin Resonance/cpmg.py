@@ -4,7 +4,7 @@ A script that measures the echo amplitude for a wide range of delays between pi 
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time

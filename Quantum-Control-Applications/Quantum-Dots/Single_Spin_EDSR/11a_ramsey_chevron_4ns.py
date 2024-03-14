@@ -23,7 +23,7 @@ Before proceeding to the next node:
     - Extract the qubit frequency and T2*...
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool

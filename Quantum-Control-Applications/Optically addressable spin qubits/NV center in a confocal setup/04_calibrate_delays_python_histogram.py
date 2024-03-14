@@ -10,7 +10,7 @@ Next steps before going to the next node:
     - Update the measurement length (meas_len_1) in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *

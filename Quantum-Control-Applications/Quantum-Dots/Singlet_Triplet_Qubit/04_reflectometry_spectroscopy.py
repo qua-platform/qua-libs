@@ -14,7 +14,7 @@ Before proceeding to the next node:
     - Update the config with the resonance frequency for reflectometry readout.
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
