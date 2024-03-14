@@ -14,7 +14,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
     This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt

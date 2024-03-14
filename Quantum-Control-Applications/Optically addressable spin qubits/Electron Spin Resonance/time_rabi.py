@@ -6,7 +6,7 @@ This allows measuring all the delays in the system, as well as the NV initializa
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array

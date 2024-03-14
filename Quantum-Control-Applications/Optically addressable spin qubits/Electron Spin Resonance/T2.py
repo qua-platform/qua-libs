@@ -4,7 +4,7 @@ A script that measures T2 after initialization of the ensemble
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time

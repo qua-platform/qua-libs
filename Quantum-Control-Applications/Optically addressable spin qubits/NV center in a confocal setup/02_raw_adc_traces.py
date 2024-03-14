@@ -15,7 +15,7 @@ It also allows to calibrate several parameters:
       be an event that can be detected and time-tagged in the subsequent scripts.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *

@@ -15,7 +15,7 @@ Next steps before going to the next node:
     - Update the readout amplitude (readout_amp_q) in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *

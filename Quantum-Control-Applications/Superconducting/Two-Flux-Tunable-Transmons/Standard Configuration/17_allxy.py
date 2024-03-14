@@ -16,7 +16,7 @@ Prerequisites:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np

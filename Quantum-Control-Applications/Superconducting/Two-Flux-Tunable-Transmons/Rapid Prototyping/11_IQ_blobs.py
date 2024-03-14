@@ -21,7 +21,7 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm import SimulationConfig
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 from qualang_tools.results import fetching_tool
 from qualang_tools.analysis.discriminator import two_state_discriminator

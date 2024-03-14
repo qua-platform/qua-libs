@@ -22,7 +22,7 @@ Prerequisites:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from scipy.optimize import curve_fit
 from configuration import *

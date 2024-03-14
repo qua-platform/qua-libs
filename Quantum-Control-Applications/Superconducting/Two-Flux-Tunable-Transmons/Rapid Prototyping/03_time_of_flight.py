@@ -17,7 +17,7 @@ Don't forget to save the current state by calling machine._save("current_state.j
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt

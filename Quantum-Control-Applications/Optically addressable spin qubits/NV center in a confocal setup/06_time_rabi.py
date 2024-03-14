@@ -15,7 +15,7 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the pi pulse duration, labeled as "mw_len_NV", in the configuration.
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt

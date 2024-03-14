@@ -2,7 +2,7 @@
 hello_octave.py: template for basic usage of the Octave
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm.octave import *
 from configuration import *

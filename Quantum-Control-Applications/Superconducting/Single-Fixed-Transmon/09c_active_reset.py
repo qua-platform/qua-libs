@@ -19,7 +19,7 @@ Prerequisites:
 """
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator

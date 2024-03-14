@@ -5,7 +5,7 @@ This allows measuring the received photons as a function of time while adjusting
 to validate the experimental set-up.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
