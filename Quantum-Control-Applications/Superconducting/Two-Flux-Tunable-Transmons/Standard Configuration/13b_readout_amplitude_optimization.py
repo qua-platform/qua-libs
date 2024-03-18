@@ -110,29 +110,36 @@ else:
     I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
     # Process the data
     fidelity_vec = [[], []]
+    ground_fidelity_vec = [[], []]
     for i in range(len(amplitudes)):
-        _, _, fidelity_q1, _, _, _, _ = two_state_discriminator(
+        _, _, fidelity_q1, gg_q1, _, _, _ = two_state_discriminator(
             I_g_q1[i], Q_g_q1[i], I_e_q1[i], Q_e_q1[i], b_print=False, b_plot=False
         )
-        _, _, fidelity_q2, _, _, _, _ = two_state_discriminator(
+        _, _, fidelity_q2, gg_q2, _, _, _ = two_state_discriminator(
             I_g_q2[i], Q_g_q2[i], I_e_q2[i], Q_e_q2[i], b_print=False, b_plot=False
         )
         fidelity_vec[0].append(fidelity_q1)
         fidelity_vec[1].append(fidelity_q2)
+        ground_fidelity_vec[0].append(gg_q1)
+        ground_fidelity_vec[1].append(gg_q2)
 
     # Plot the data
     plt.figure()
     plt.suptitle("Readout amplitude optimization")
     plt.subplot(121)
-    plt.plot(amplitudes * readout_amp_q1, fidelity_vec[0], ".-")
+    plt.plot(amplitudes * readout_amp_q1, fidelity_vec[0], "b.-", label="averaged fidelity")
+    plt.plot(amplitudes * readout_amp_q1, ground_fidelity_vec[0], "r.-", label="ground fidelity")
     plt.title("Qubit 1")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")
+    plt.legend()
     plt.subplot(122)
     plt.title("Qubit 2")
-    plt.plot(amplitudes * readout_amp_q2, fidelity_vec[1], ".-")
+    plt.plot(amplitudes * readout_amp_q2, fidelity_vec[1], "b.-", label="averaged fidelity")
+    plt.plot(amplitudes * readout_amp_q2, ground_fidelity_vec[1], "r.-", label="ground fidelity")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")
+    plt.legend()
     plt.tight_layout()
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
