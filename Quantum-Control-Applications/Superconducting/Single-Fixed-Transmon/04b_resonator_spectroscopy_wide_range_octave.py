@@ -48,10 +48,10 @@ df_lo = f_max - f_min
 LOs = np.arange(f_min_lo, f_max_lo + 0.1, df_lo)
 frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 
-with program() as qubit_spec:
+with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep
-    f = declare(int)  # QUA variable for the qubit frequency
+    f = declare(int)  # QUA variable for the resonator IF
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     I_st = declare_stream()  # Stream for the 'I' quadrature
@@ -72,7 +72,7 @@ with program() as qubit_spec:
                     dual_demod.full("cos", "out1", "sin", "out2", I),
                     dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
-                # Wait for the qubit to decay to the ground state
+                # Wait for the resonator to deplete
                 wait(depletion_time * u.ns, "resonator")
                 # Save the 'I' & 'Q' quadratures to their respective streams
                 save(I, I_st)
@@ -107,7 +107,7 @@ if calibrate:
         qm.calibrate_element("resonator", {lo: (IFs[len(IFs) // 2],)})
 
 # Send the QUA program to the OPX, which compiles and executes it. It will stop at the 'pause' statement.
-job = qm.execute(qubit_spec)
+job = qm.execute(resonator_spec)
 # Creates results handles to fetch the data
 res_handles = job.result_handles
 # Initialize empty vectors to store the global 'I' & 'Q' results
