@@ -15,8 +15,8 @@ u = unit(coerce_to_integer=True)
 #############
 # VARIABLES #
 #############
-qop_ip = "172.16.33.101"  # Write the OPX IP address
-cluster_name = "Cluster_81"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the OPX IP address
+cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_ip = qop_ip  # Write the Octave IP address
 octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
