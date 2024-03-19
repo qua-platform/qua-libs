@@ -32,6 +32,10 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
+# If the instruments or QM router are connected directly to this machine, use the local octave IP and port 80.
+# octave_ip = "192.168.88.X"
+# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
+
 # Add the octaves
 octaves = [octave_1]
 # Configure the Octaves
