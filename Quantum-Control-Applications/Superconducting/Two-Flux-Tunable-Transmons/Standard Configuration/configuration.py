@@ -177,6 +177,12 @@ amplitude_fit2, frequency_fit2, phase_fit2, offset_fit2 = [0, 0, 0, 0]
 const_flux_len = 200
 const_flux_amp = 0.45
 
+fir1 = [1.0, 0.0]
+iir1 = [0.0]
+
+fir2 = [1.0, 0.0]
+iir2 = [0.0]
+
 #############################################
 #                Resonators                 #
 #############################################
@@ -244,8 +250,8 @@ config = {
                 4: {"offset": 0.0},  # Q qubit2 XY
                 5: {"offset": 0.0},  # I readout line
                 6: {"offset": 0.0},  # Q readout line
-                7: {"offset": max_frequency_point1},  # qubit1 Z
-                8: {"offset": max_frequency_point2},  # qubit2 Z
+                7: {"offset": max_frequency_point1, "filter": {"feedforward": fir1, "feedback": iir1}},  # qubit1 Z
+                8: {"offset": max_frequency_point2, "filter": {"feedforward": fir2, "feedback": iir2}},  # qubit2 Z
             },
             "digital_outputs": {
                 1: {},

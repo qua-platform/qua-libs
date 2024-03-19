@@ -180,6 +180,9 @@ amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
 const_flux_len = 200
 const_flux_amp = 0.45
 
+fir = [1.0, 0.0]
+iir = [0.0]
+
 # IQ Plane Angle
 rotation_angle = (0 / 180) * np.pi
 # Threshold for single shot g-e discrimination
@@ -197,7 +200,7 @@ config = {
                 2: {"offset": 0.0},  # Q resonator
                 3: {"offset": 0.0},  # I qubit
                 4: {"offset": 0.0},  # Q qubit
-                5: {"offset": max_frequency_point},  # flux line
+                5: {"offset": max_frequency_point, "filter": {"feedforward": fir, "feedback": iir}},  # flux line
             },
             "digital_outputs": {
                 1: {},
