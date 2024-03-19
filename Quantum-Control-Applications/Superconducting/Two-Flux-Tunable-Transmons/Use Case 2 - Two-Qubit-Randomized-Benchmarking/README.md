@@ -1,11 +1,6 @@
 # Two-Qubit Randomized Benchmarking
-
-Author: Maximilian Zanner
-
-*Important note: The code in this folder has not been tested in an actual experiment. The code serves as an example and is written for a specifically tailored setup and software environment. When adapting the code to run on your device, make sure to adjust the relevant functions and parameters and do not hesitate to contact QM Customer Success!*
-
 ## Introduction
-Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. Two-Qubit RB can be challenging to implement with state-of-the-art control electronics because of the necessity to sample from a large Clifford gate set. The Clifford group consists of 11520 operations [^4] and contains the single qubit Clifford operations (576), the CNOT-like class (5184), the iSWAP-like class (5184) and the SWAP-like class (576). In this use-case example we introduce an implementation on the OPX+ {'client': '1.1.3', 'server': '2.60-5ba458f'} using the current version (2023, July) of the generic [TwoQubitRb](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/TwoQubitRB.py) class. The implementation exploits the [baking](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) tool to generate the individual Clifford operations. The class then uses the [Input Stream](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=declare_input_stream#input-streams) feature to send a string of Clifford indices to the OPX that represent the executed gate sequence which is terminated with the inverse operation. The execution is based on the [Switch Case](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=switch#switch-case) flow control of QUA, which sets the current minimal gate duration limit to 40 ns.  <!--The inverse is calculated in Python using Clifford tableaus. An updated version of the TwoQubitRb class can be found in the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) repository.-->
+Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows to experimentally quantify the performance of a quantum processor by applying sequences of randomly sampled Clifford gates and measuring the average error rate. Due to its universality it has been implemented in various qubit platforms such as trapped-ions [^1], NMR [^2], spin [^3] and superconducting qubits [^4]. Two-Qubit RB can be challenging to implement with state-of-the-art control electronics because of the necessity to sample from a large Clifford gate set. The Clifford group consists of 11520 operations [^4] and contains the single qubit Clifford operations (576), the CNOT-like class (5184), the iSWAP-like class (5184) and the SWAP-like class (576). In this use-case example we introduce an implementation on the OPX+ {'client': '1.1.3', 'server': '2.60-5ba458f'} using the current version (2023, July) of the generic `TwoQubitRb` class. The implementation exploits the [baking](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) tool to generate the individual Clifford operations. The class then uses the [Input Stream](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=declare_input_stream#input-streams) feature to send a string of Clifford indices to the OPX that represent the executed gate sequence which is terminated with the inverse operation. The execution is based on the [Switch Case](https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=switch#switch-case) flow control of QUA, which sets the current minimal gate duration limit to 40 ns.  <!--The inverse is calculated in Python using Clifford tableaus. An updated version of the TwoQubitRb class can be found in the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) repository.-->
 
 [^1]: Knill et al (2008 Phys. Rev. A 77 012307)
 [^2]: C A Ryan et al 2009 New J. Phys. 11 013034
@@ -18,23 +13,27 @@ Two-Qubit Randomized Benchmarking (RB) has become a popular protocol that allows
 The use-case in this example is tailored for a superconducting quantum processor using flux-tunable transmon qubits, where we focus on a subset of two qubits that are capacitively coupled to each other. Single qubit operations are controlled by sending microwave pulses through a xy-line that is capacitively coupled to the individual qubits. The two-qubit gate is implemented by a controlled-Z (CZ) gate utilizing fast-flux pulses to rapidly change the qubit frequencies. One important experiment on the way of tuning up a CZ gate is the flux-pulse calibration that yield qubit state oscillations depending on the pulse parameters. This experiment was performed and presented in the use-case [Two-Qubit Gate Optimization](https://github.com/qua-platform/qua-libs/tree/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 
 ## Prerequisites
-Prior to running the two-qubit randomized benchmarking example file *two_qubit_rb_example.py*, the user has to run the calibrations that define the gate- and measurement-parameters:
+Prior to running the two-qubit randomized benchmarking example file `two_qubit_rb_example.py`, the user has to run the calibrations that define the gate- and measurement-parameters:
 - Single Qubit Gates: Implement the single qubit Cliffords and needed for the decomposition of the two-qubit Cliffords.
 - Flux-Pulsed CZ Gate: Implement the two-qubit Cliffords (together with the single qubit gates).
 - Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩.
 
 # Quick User Guide
-The code and configuration in this folder are an example on how to implement two-qubit randomized benchmarking for a specific set of parameters. For a quick implementation just clone the [qua-libs repository](https://github.com/qua-platform/qua-libs/) or download the [Use-Case-2_Two-Qubit-Randomized-Benchmarking](https://github.com/qua-platform/qua-libs/tree/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking) folder and edit the [two_qubit_rb_example.py](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb_example.py) python file according to your configuration parameters.
+The code and configuration in this folder are an example on how to implement two-qubit randomized benchmarking for a specific set of parameters. For a quick implementation just clone the [qua-libs repository](https://github.com/qua-platform/qua-libs/) or download the `Use-Case-2_Two-Qubit-Randomized-Benchmarking` folder and edit the `two_qubit_rb_example.py` python file according to your configuration parameters.
 
 ## Single Qubit Gates
 The function for the single qubit gates requires that the user expresses the calibrated qubit pulses with the input parameters x,z and a for qubits q. In this case the operation "x180" points to an operation in the configuration and corresponds to a pi-pulse on the target qubit. The *amp=x* condition inside the *baker.play* statement allows to scale the amplitude of the pulse. Together with the first *baker.frame_rotation_2pi* it allows the *baker.play* statement to act as X and Y gates by shifting the frame of the control signal, thus realizing rotations around the x- and y-axis. The second *baker.frame_rotation_2pi* resets the frame and additionally allows for rotations around the z-axis, thus realizing the operation $Z^{z}Z^{a}X^{x}Z^{-a}$ similar to the `phasedXZ` gate of Google's Cirq (see https://quantumai.google/reference/python/cirq/PhasedXZGate).
 
 ```python
 def bake_phased_xz(baker: Baking, q, x, z, a):
-    element = f"q{q}_xy"
-    baker.frame_rotation_2pi(-a, element)
+    if q == 1:
+        element = f"q{q1_idx_str}_xy"
+    else:
+        element = f"q{q2_idx_str}_xy"
+
+    baker.frame_rotation_2pi(a/2, element)
     baker.play("x180", element, amp=x)
-    baker.frame_rotation_2pi(a + z, element)
+    baker.frame_rotation_2pi(-(a + z)/2, element)
 ```
 
 For calibrated single qubit pulses that are stored in the configuration (e.g. "x180", "x90", "y90", etc.) this python function can be rewritten to play the corresponding pulses dependent on the input parameters x,z & a.
@@ -44,9 +43,10 @@ The use-case is designed for flux-tunable transmon qubits where the qubit-qubit 
 
 ```python
 def bake_cz(baker: Baking, q1, q2):
-    q1_xy_element = f"q{q1}_xy" #
-    q2_xy_element = f"q{q2}_xy"
-    q1_z_element = f"q{q1}_z"
+    q1_xy_element = f"q{q1_idx_str}_xy"
+    q2_xy_element = f"q{q2_idx_str}_xy"
+    q1_z_element = f"q{q1_idx_str}_z"
+
     baker.play("cz", q1_z_element)
     baker.align()
     baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
@@ -83,7 +83,7 @@ def meas():
 ```
 
 ## Execution and Results
-Using the [TwoQubitRb](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/TwoQubitRB.py) class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [Google Cirq](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that resets the qubits to the state |00>. When gate errors occur, the inverse gate cannot reset the unitary circuit to the ground state and we will see a fidelity decrease, typically for increasing circuit depth. Note, that it is possible to provide the √iSWAP or CNOT gate by adding them to the two-qubit dictionary to allow an optimized gate decomposition into Clifford gates. If other native gates are implemented, the decomposition has to be added to [gates.py](https://github.com/qua-platform/qua-libs/blob/2qb-RB-usecase/Quantum-Control-Applications/Superconducting/Multiple%20Flux%20Tunable%20Transmons/Use%20Case%202%20-%20Two%20Qubit%20Randomized%20Benchmarking/two_qubit_rb/gates.py#L43).
+Using the `TwoQubitRb` class we can construct the experiment by specifying the previously defined single- and two-qubit gate functions, as well as the preparation and measurement protocols. The class translates the native gate set to Clifford operations using [Google Cirq](https://quantumai.google/cirq), generates the gate sequences and finds the inverse that resets the qubits to the state |00>. When gate errors occur, the inverse gate cannot reset the unitary circuit to the ground state and we will see a fidelity decrease, typically for increasing circuit depth. Note, that it is possible to provide the √iSWAP or CNOT gate by adding them to the two-qubit dictionary to allow an optimized gate decomposition into Clifford gates. If other native gates are implemented, the decomposition has to be added to `gates.py`.
 
 ```python
 rb = TwoQubitRb(config, bake_phased_xz, {"CZ": bake_cz}, prep, meas, verify_generation=False, interleaving_gate=None)
@@ -108,6 +108,46 @@ res.plot_hist()
 res.plot_fidelity()
 ```
 
+### Under the Hood: Clifford Sequence Generation
+In order to both efficiently generate random two-qubit clifford sequences with recovery and use minimal OPX resources within the compiled program, each Clifford is decomposed into two of 736 possible "commands". A command is an abstraction of gates which serves as a middle-ground between two-qubit Cliffords (too many to pre-load onto the OPX) and singular gates. A command is composed of single-qubit PhasedXZ gates and two-qubit gates. Each command is pre-baked as a pulse, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is streamed as input into the OPX as *2 x (circuit_depth + 1)* command IDs. Once the program receives the input stream, it is fed into a loop of switch cases, which play the pulse corresponding to the command ID.
+
+Since this method hides the details of how the sequences are generated, we have added methods which expose the breakdown of the randomly generated sequences:
+1. `rb.save_sequences_to_file(...)`: Saves which commands (and thus, gates) were used to construct each random sequence.
+```
+'sequences.txt' file with a single, depth-1 circuit.
+
+Sequence 0:
+	Command IDs: [66, 722, 199, 735]
+	Gates:
+		0: PXZ(1, amp=0, z=0, a=0)
+		1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+		2: CNOT(1, 2)
+		3: PXZ(1, amp=0.5, z=0.5, a=0)
+		4: PXZ(2, amp=0, z=0, a=0)
+		5: PXZ(1, amp=0, z=0, a=0)
+		6: PXZ(2, amp=1.0, z=0, a=0.5)
+		7: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+		8: PXZ(2, amp=0, z=0, a=0)
+		9: CNOT(1, 2)
+		10: PXZ(1, amp=0, z=0, a=0)
+		11: PXZ(2, amp=0.5, z=0.5, a=0)
+		12: PXZ(1, amp=0, z=1.0, a=0)
+		13: PXZ(2, amp=0, z=1.0, a=0)
+```
+2. `rb.verify_sequences()`: Simulates the application of each unitary in the random sequence on the |00> two-qubit state, and asserts that it recovers to |00> at the end.
+3. `rb.save_command_mapping_to_file(...)`: Records which gates were baked into a pulse to build each command.
+```
+'commands.txt' file, cropped to show only Command 66.
+...
+Command 66:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+...
+```
+
 ### Comment on the Runtime
 
 The runtime depends on the input-arguments *num_circuits_per_depth*, *num_shots_per_circuit* and the *circuit_depths* vector. We tested the execution for a few sets of parameters and determined the runtime/argument relations (estimates):
@@ -116,3 +156,6 @@ The runtime depends on the input-arguments *num_circuits_per_depth*, *num_shots_
 - The runtime depends not only on the value of the individual elements but also on the length of the depth vector (number of different depths). The figure below shows both dependencies for selected values.
   
 <img width="1000" src="runtime.png">
+
+### Questions?
+For any questions about the implementation or assistance, don't hesistate to reach out to QM Customer Success!
