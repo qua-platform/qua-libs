@@ -1,0 +1,147 @@
+{
+    "modes": {
+        "1": {
+            "octave_name": "octave1",
+            "octave_channel": 1
+        },
+        "2": {
+            "octave_name": "octave1",
+            "octave_channel": 2
+        },
+        "3": {
+            "octave_name": "octave1",
+            "octave_channel": 4
+        }
+    },
+    "lo_modes": {
+        "1": {
+            "mode_id": 1,
+            "lo_freq": 4000000000.0,
+            "gain": 0.0,
+            "latest": 3
+        },
+        "2": {
+            "mode_id": 2,
+            "lo_freq": 7000000000.0,
+            "gain": 0.0,
+            "latest": 4
+        },
+        "3": {
+            "mode_id": 3,
+            "lo_freq": 7000000000.0,
+            "gain": 0.0,
+            "latest": 5
+        }
+    },
+    "lo_cal": {
+        "1": {
+            "i0": 0.010435131785169322,
+            "q0": 0.01599428686610305,
+            "lo_mode_id": 1,
+            "dc_gain": 0.0010690010028795438,
+            "dc_phase": 0.054968226148318276,
+            "temperature": 62.25,
+            "timestamp": 1711537677.8385117,
+            "method": "auto"
+        },
+        "2": {
+            "i0": 0.010430113626491518,
+            "q0": 0.016011676380859687,
+            "lo_mode_id": 1,
+            "dc_gain": 0.000989491305257939,
+            "dc_phase": 0.05495711897343959,
+            "temperature": 62.25,
+            "timestamp": 1711537702.3338425,
+            "method": "auto"
+        },
+        "3": {
+            "i0": 0.010434603078390557,
+            "q0": 0.01600773887419481,
+            "lo_mode_id": 1,
+            "dc_gain": 0.0009821218019563371,
+            "dc_phase": 0.05497447536959061,
+            "temperature": 62.25,
+            "timestamp": 1711537721.311152,
+            "method": "auto"
+        },
+        "4": {
+            "i0": -0.0010149982512996022,
+            "q0": 0.002533224820156434,
+            "lo_mode_id": 2,
+            "dc_gain": -0.003381577916608647,
+            "dc_phase": -0.07433372395287513,
+            "temperature": 63.0625,
+            "timestamp": 1711537739.7419374,
+            "method": "auto"
+        },
+        "5": {
+            "i0": -0.0927750790365597,
+            "q0": 0.008809516478945569,
+            "lo_mode_id": 3,
+            "dc_gain": NaN,
+            "dc_phase": NaN,
+            "temperature": 58.8125,
+            "timestamp": 1711537756.9416296,
+            "method": "auto"
+        }
+    },
+    "if_modes": {
+        "1": {
+            "lo_mode_id": 1,
+            "if_freq": 50000000.0,
+            "latest": 3
+        },
+        "2": {
+            "lo_mode_id": 2,
+            "if_freq": 100000000.0,
+            "latest": 4
+        },
+        "3": {
+            "lo_mode_id": 3,
+            "if_freq": 100000000.0,
+            "latest": 5
+        }
+    },
+    "if_cal": {
+        "1": {
+            "if_mode_id": 1,
+            "gain": -0.0019121090923707766,
+            "phase": 0.05833717058818739,
+            "temperature": 62.25,
+            "timestamp": 1711537677.8449695,
+            "method": "auto"
+        },
+        "2": {
+            "if_mode_id": 1,
+            "gain": -0.001843486978753494,
+            "phase": 0.05833827977224288,
+            "temperature": 62.25,
+            "timestamp": 1711537702.3390455,
+            "method": "auto"
+        },
+        "3": {
+            "if_mode_id": 1,
+            "gain": -0.0018460498936613706,
+            "phase": 0.05833026423758432,
+            "temperature": 62.25,
+            "timestamp": 1711537721.3181698,
+            "method": "auto"
+        },
+        "4": {
+            "if_mode_id": 2,
+            "gain": -0.003331767215994534,
+            "phase": -0.08151781075629001,
+            "temperature": 63.0625,
+            "timestamp": 1711537739.7479477,
+            "method": "auto"
+        },
+        "5": {
+            "if_mode_id": 3,
+            "gain": 0.24427480938259405,
+            "phase": 0.062362971999871855,
+            "temperature": 58.8125,
+            "timestamp": 1711537756.949643,
+            "method": "auto"
+        }
+    }
+}
