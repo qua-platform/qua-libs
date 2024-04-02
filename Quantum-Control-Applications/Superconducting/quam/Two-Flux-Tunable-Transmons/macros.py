@@ -18,17 +18,6 @@ def apply_all_flux_to_idle(quam: "QuAM"):
     align()
 
 
-def to_independent_idle(z: "FluxLine.FluxLine"):
-    set_dc_offset(z.name, "single", z.independent_offset)
-
-
-def to_joint_idle(z: "FluxLine.FluxLine"):
-    set_dc_offset(z.name, "single", z.joint_offset)
-
-
-def apply_z_to_min(z: "FluxLine.FluxLine"):
-    set_dc_offset(z.name, "single", z.min_offset)
-
 
 
 def qua_declaration(nb_of_qubits):
@@ -48,3 +37,17 @@ def qua_declaration(nb_of_qubits):
     # for i in range(nb_of_qubits):
     #     assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
+
+def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""):
+    """Perform multiplexed readout on two resonators"""
+
+    for ind, q in enumerate(quam.active_qubits):
+        q.resonator.measure("readout", I[ind], Q[ind])
+
+        if I_st is not None:
+            save(I[ind], I_st[ind])
+        if Q_st is not None:
+            save(Q[ind], Q_st[ind])
+
+        if sequential and ind < len(quam.active_qubits) - 1:
+            align(q.resonator.name, quam.active_qubits[ind+1].resonator.name)

@@ -6,12 +6,12 @@
         "RF_outputs": {
             "1": {
                 "id": 1,
-                "channel": "#/qubits/1/resonator",
+                "channel": "#/qubits/q1/resonator",
                 "LO_frequency": 4000000000
             },
             "2": {
                 "id": 2,
-                "channel": "#/qubits/0/xy",
+                "channel": "#/qubits/q0/xy",
                 "LO_frequency": 7000000000
             },
             "3": {
@@ -19,7 +19,7 @@
             },
             "4": {
                 "id": 4,
-                "channel": "#/qubits/1/xy",
+                "channel": "#/qubits/q1/xy",
                 "LO_frequency": 7000000000
             },
             "5": {
@@ -29,7 +29,7 @@
         "RF_inputs": {
             "1": {
                 "id": 1,
-                "channel": "#/qubits/1/resonator",
+                "channel": "#/qubits/q1/resonator",
                 "LO_frequency": 4000000000
             },
             "2": {
@@ -37,8 +37,8 @@
             }
         }
     },
-    "qubits": [
-        {
+    "qubits": {
+        "q0": {
             "id": 0,
             "xy": {
                 "operations": {
@@ -132,11 +132,10 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "frequency_converter_down": "#/octave/RF_inputs/1",
-                "__class__": "components.ReadoutResonator"
+                "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         },
-        {
+        "q1": {
             "id": 1,
             "xy": {
                 "operations": {
@@ -230,10 +229,13 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "frequency_converter_down": "#/octave/RF_inputs/1",
-                "__class__": "components.ReadoutResonator"
+                "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         }
+    },
+    "active_qubit_names": [
+        "q0",
+        "q1"
     ],
     "__class__": "components.QuAM"
 }

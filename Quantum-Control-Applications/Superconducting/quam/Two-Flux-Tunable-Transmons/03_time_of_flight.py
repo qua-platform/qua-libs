@@ -41,7 +41,7 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 ###################
 # The QUA program #
 ###################
-resonator = machine.qubits[1].resonator  # The resonator element
+resonator = machine.qubits["q1"].resonator  # The resonator element
 n_avg = 100  # Number of averaging loops
 
 with program() as raw_trace_prog:

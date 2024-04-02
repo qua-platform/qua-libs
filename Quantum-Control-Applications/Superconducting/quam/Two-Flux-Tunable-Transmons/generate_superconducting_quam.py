@@ -4,7 +4,7 @@ import json
 from quam.components import *
 from quam.components.channels import IQChannel, InOutIQChannel, SingleChannel
 from quam.components.pulses import ConstantReadoutPulse
-from components import Transmon, ReadoutResonator, QuAM
+from components import Transmon, ReadoutResonator, QuAM, FluxLine
 from qm.octave import QmOctaveConfig
 from quam.core import QuamRoot
 
@@ -62,7 +62,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 frequency_converter_up=octave.RF_outputs[2 * (idx+1)].get_reference(),
                 intermediate_frequency=100 * u.MHz,
             ),
-            z=SingleChannel(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
+            z=FluxLine(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
             resonator=ReadoutResonator(
                 opx_output_I="#/wiring/resonator/opx_output_I",
                 opx_output_Q="#/wiring/resonator/opx_output_Q",
@@ -97,7 +97,8 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
         transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0)
         transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
         transmon.resonator.operations["readout"] = ConstantReadoutPulse(length=1 * u.us, amplitude=0.00123)
-        quam.qubits.append(transmon)
+        quam.qubits[transmon.name] = transmon
+        quam.active_qubit_names.append(transmon.name)
         # Set the Octave frequency and channels TODO: be careful to set the right upconverters!!
         octave.RF_outputs[2 * (idx+1)].channel = transmon.xy.get_reference()
         octave.RF_outputs[2 * (idx+1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency

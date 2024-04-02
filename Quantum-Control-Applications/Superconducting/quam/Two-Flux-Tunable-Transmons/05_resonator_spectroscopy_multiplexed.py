@@ -49,8 +49,8 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 ###################
 # The QUA program #
 ###################
-rr1 = machine.qubits[0].resonator
-rr2 = machine.qubits[1].resonator
+rr1 = machine.qubits[machine.active_qubits[0]].resonator
+rr2 = machine.qubits[machine.active_qubits[1]].resonator
 
 n_avg = 100  # The number of averages
 depletion_time = max(rr1.depletion_time, rr2.depletion_time)
@@ -103,7 +103,7 @@ with program() as multi_res_spec:
 #######################
 # Simulate or execute #
 #######################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration

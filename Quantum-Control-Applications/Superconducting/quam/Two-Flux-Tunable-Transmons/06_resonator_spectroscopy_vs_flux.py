@@ -22,29 +22,40 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
-from macros import qua_declaration, multiplexed_readout
+import numpy as np
+
+from quam.examples.superconducting_qubits.components import QuAM
+from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
-# Build the config
-config = build_config(machine)
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class t handle unit and conversion functions
+u = unit(coerce_to_integer=True)
+# Instantiate the abstract machine
+machine = QuAM.load("quam")
+# Load the config
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open the Quantum Machine Manager
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Get the resonators frequencies
-res_if_1 = rr1.f_res - machine.local_oscillators.readout[rr1.LO_index].freq
-res_if_2 = rr2.f_res - machine.local_oscillators.readout[rr2.LO_index].freq
 
 ###################
 # The QUA program #
 ###################
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
+
 n_avg = 200  # Number of averaging loops
-depletion_time = 5 * max(rr1.depletion_time, rr2.depletion_time)
+depletion_time = 5 * max(q1.resonator.depletion_time, q2.resonator.depletion_time)
 # Flux bias sweep in V
 dcs = np.linspace(-0.49, 0.49, 50)
 # The frequency sweep around the resonator resonance frequency f_opt
@@ -60,24 +71,24 @@ with program() as multi_res_spec_vs_flux:
     df = declare(int)  # QUA variable for the readout frequency
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    apply_all_flux_to_min(machine)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(df, dfs)):
             # Update the resonator frequencies
-            update_frequency(rr1.name, df + res_if_1)
-            update_frequency(rr2.name, df + res_if_2)
+            update_frequency(q1.resonator.name, df + q1.resonator.intermediate_frequency)
+            update_frequency(q2.resonator.name, df + q2.resonator.intermediate_frequency)
+
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping by tuning the OPX dc offset associated to the flux_line element
-                set_dc_offset(q1_z, "single", dc)
-                set_dc_offset(q2_z, "single", dc)
+                set_dc_offset(q1.z.name, "single", dc)
+                set_dc_offset(q2.z.name, "single", dc)
                 wait(100)  # Wait for the flux to settle
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, sequential=False)
+                multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)
                 # wait for the resonators to relax
-                wait(depletion_time * u.ns, rr1.name, rr2.name)
+                wait(depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
 
     with stream_processing():
         n_st.save("n")
@@ -88,15 +99,11 @@ with program() as multi_res_spec_vs_flux:
         I_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("I2")
         Q_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("Q2")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #
 #######################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -119,8 +126,8 @@ else:
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Convert results into Volts and normalize
-        s1 = u.demod2volts(I1 + 1j * Q1, machine.resonators[0].readout_pulse_length)
-        s2 = u.demod2volts(I2 + 1j * Q2, machine.resonators[0].readout_pulse_length)
+        s1 = u.demod2volts(I1 + 1j * Q1, q1.resonator.operations["readout"].length)
+        s2 = u.demod2volts(I2 + 1j * Q2, q2.resonator.operations["readout"].length)
 
         A1 = np.abs(s1)
         A2 = np.abs(s2)
@@ -128,18 +135,18 @@ else:
         plt.suptitle("Resonator specrtoscopy vs flux")
         plt.subplot(121)
         plt.cla()
-        plt.title(f"{rr1.name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.title(f"{q1.resonator.name} (LO: {q1.resonator.frequency_converter_up.LO_frequency / u.MHz} MHz)")
         plt.xlabel("flux [V]")
-        plt.ylabel(f"{rr1.name} IF [MHz]")
-        plt.pcolor(dcs, res_if_1 / u.MHz + dfs / u.MHz, A1)
-        plt.plot(machine.qubits[active_qubits[0]].z.max_frequency_point, res_if_1 / u.MHz, "r*")
+        plt.ylabel(f"{q1.resonator.name} IF [MHz]")
+        plt.pcolor(dcs, q1.resonator.intermediate_frequency / u.MHz + dfs / u.MHz, A1)
+        plt.plot(q1.z.min_offset, q1.resonator.intermediate_frequency / u.MHz, "r*")
         plt.subplot(122)
         plt.cla()
-        plt.title(f"{rr2.name} (LO: {machine.local_oscillators.readout[0].freq / u.MHz} MHz)")
+        plt.title(f"{q2.resonator.name} (LO: {q2.resonator.frequency_converter_up.LO_frequency / u.MHz} MHz)")
         plt.xlabel("flux [V]")
-        plt.ylabel(f"{rr2.name} IF [MHz]")
-        plt.pcolor(dcs, res_if_2 / u.MHz + dfs / u.MHz, A2)
-        plt.plot(machine.qubits[active_qubits[1]].z.max_frequency_point, res_if_2 / u.MHz, "r*")
+        plt.ylabel(f"{q2.resonator.name} IF [MHz]")
+        plt.pcolor(dcs, q2.resonator.intermediate_frequency / u.MHz + dfs / u.MHz, A2)
+        plt.plot(q2.z.min_offset, q2.resonator.intermediate_frequency / u.MHz, "r*")
         plt.tight_layout()
         plt.pause(0.1)
 

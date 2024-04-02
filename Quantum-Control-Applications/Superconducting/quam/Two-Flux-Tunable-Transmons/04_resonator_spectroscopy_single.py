@@ -45,7 +45,7 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 ###################
 # The QUA program #
 ###################
-rr = machine.qubits[0].resonator  # The resonator to measure
+rr = machine.qubits["q0"].resonator  # The resonator to measure
 n_avg = 100  # The number of averages
 # The frequency sweep parameters
 ## rr1

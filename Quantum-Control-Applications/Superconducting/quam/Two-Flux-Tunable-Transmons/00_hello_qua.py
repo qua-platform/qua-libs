@@ -24,8 +24,8 @@ with program() as hello_qua:
     a = declare(fixed)
     with infinite_loop_():
         with for_(a, 0, a < 1.1, a + 0.05):
-            play("x180" * amp(a), quam.qubits[0].xy.name)
-        wait(25, quam.qubits[0].xy.name)
+            play("x180" * amp(a), machine.qubits["q0"].xy.name)
+        wait(25, machine.qubits["q0"].xy.name)
 
 
 ###########################

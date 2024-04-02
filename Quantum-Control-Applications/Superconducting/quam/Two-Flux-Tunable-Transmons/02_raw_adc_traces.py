@@ -32,9 +32,9 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 ###################
 n_avg = 100  # The number of averages
 
-rr1 = machine.qubits[0].resonator
-rr2 = machine.qubits[1].resonator
-rr = [machine.qubits[i].resonator for i in range(len(machine.qubits))]
+rr1 = machine.qubits["q0"].resonator
+rr2 = machine.qubits["q1"].resonator
+rr = [q.resonator for q in machine.active_qubits]
 
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
@@ -49,7 +49,7 @@ with program() as raw_trace_prog:
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
         rr2.measure("readout")
         # Wait for the resonator to deplete
-        wait(machine.qubits[0].depletion_time, rr1.name, rr2.name)
+        wait(machine.qubits["q0"].resonator.depletion_time, rr1.name, rr2.name)
 
     with stream_processing():
         # Will save average:

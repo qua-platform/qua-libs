@@ -52,8 +52,8 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 ###################
 # The QUA program #
 ###################
-rr1 = machine.qubits[0].resonator
-rr2 = machine.qubits[1].resonator
+rr1 = machine.qubits[machine.active_qubits[0]].resonator
+rr2 = machine.qubits[machine.active_qubits[1]].resonator
 prev_amp1 = rr1.operations["readout"].amplitude
 prev_amp2 = rr2.operations["readout"].amplitude
 rr1.operations["readout"].amplitude = 0.01
