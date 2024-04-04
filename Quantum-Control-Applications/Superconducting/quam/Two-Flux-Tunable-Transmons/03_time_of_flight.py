@@ -38,12 +38,11 @@ octave_config = machine.octave.get_octave_config()
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
-
+resonator = machine.active_qubits[0].resonator  # The resonator element
 
 ###################
 # The QUA program #
 ###################
-resonator = machine.active_qubits[0].resonator  # The resonator element
 n_avg = 100  # Number of averaging loops
 
 with program() as raw_trace_prog:
@@ -104,7 +103,7 @@ else:
     # Detect the arrival of the readout signal
     th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
     delay = np.where(signal > th)[0][0]
-    delay = np.round(delay / 4) * 4  # Find the closest multiple integer of 4ns
+    delay = int(np.round(delay / 4) * 4)  # Find the closest multiple integer of 4ns
 
     # Plot data
     fig = plt.figure()
@@ -137,10 +136,10 @@ else:
     plt.tight_layout()
     plt.show()
 
-    # Update the config
     print(f"DC offset to add to I in the config: {-adc1_mean:.6f} V")
     print(f"DC offset to add to Q in the config: {-adc2_mean:.6f} V")
     print(f"Time Of Flight to add in the config: {delay} ns")
+
     # Update QUAM
     for q in machine.active_qubits:
         q.resonator.opx_input_offset_I -= np.mean(adc1)

@@ -132,8 +132,9 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.012278859863281252,
-                "opx_input_offset_Q": 0.007608364257812501,
+                "time_of_flight": 32,
+                "opx_input_offset_I": 0.012443630371093752,
+                "opx_input_offset_Q": 0.00761560546875,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         },
@@ -231,8 +232,9 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.012278859863281252,
-                "opx_input_offset_Q": 0.007608364257812501,
+                "time_of_flight": 32,
+                "opx_input_offset_I": 0.012443630371093752,
+                "opx_input_offset_Q": 0.00761560546875,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         }

@@ -32,26 +32,22 @@ from scipy import signal
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
+rr = machine.active_qubits[0].resonator  # The resonator to measure
 
 ###################
 # The QUA program #
 ###################
-rr = machine.qubits["q0"].resonator  # The resonator to measure
 n_avg = 100  # The number of averages
 # The frequency sweep parameters
 ## rr1
