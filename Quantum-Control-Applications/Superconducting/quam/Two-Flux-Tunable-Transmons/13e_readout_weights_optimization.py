@@ -33,12 +33,22 @@ from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 
 ####################
@@ -112,7 +122,7 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 rr = rr2
 qb = q2
 n_avg = 1e4  # number of averages
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = rr.readout_pulse_length
 ringdown_len = 0 * u.us
@@ -143,8 +153,7 @@ with program() as opt_weights:
     QQ_st = declare_stream()
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         # Measure the ground state.
@@ -211,10 +220,6 @@ with program() as opt_weights:
         QI_st.buffer(2 * number_of_divisions).average().save("QI")
         QQ_st.buffer(2 * number_of_divisions).average().save("QQ")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #

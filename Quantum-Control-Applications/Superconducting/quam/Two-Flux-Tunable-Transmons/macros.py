@@ -4,6 +4,7 @@ from components import FluxLine, QuAM
 # def wait_depletion_time(quam: "QuAM"):
 #
 
+
 def apply_all_flux_to_min(quam: "QuAM"):
     align()
     for q in quam.active_qubits:
@@ -16,8 +17,6 @@ def apply_all_flux_to_idle(quam: "QuAM"):
     for q in quam.active_qubits:
         q.z.to_joint_idle()
     align()
-
-
 
 
 def qua_declaration(nb_of_qubits):
@@ -38,11 +37,13 @@ def qua_declaration(nb_of_qubits):
     #     assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
 
+
 def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""):
     """Perform multiplexed readout on two resonators"""
 
     for ind, q in enumerate(quam.active_qubits):
-        q.resonator.measure("readout", I[ind], Q[ind])
+        # TODO: demod.accumulated?
+        q.resonator.measure("readout", I[ind], Q[ind])  # TODO: implement amplitude sweep
 
         if I_st is not None:
             save(I[ind], I_st[ind])
@@ -50,4 +51,4 @@ def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential=False, amplit
             save(Q[ind], Q_st[ind])
 
         if sequential and ind < len(quam.active_qubits) - 1:
-            align(q.resonator.name, quam.active_qubits[ind+1].resonator.name)
+            align(q.resonator.name, quam.active_qubits[ind + 1].resonator.name)

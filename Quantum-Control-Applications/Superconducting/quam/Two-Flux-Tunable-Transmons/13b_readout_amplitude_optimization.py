@@ -15,30 +15,45 @@ Next steps before going to the next node:
     - Save the current state by calling machine.save("quam")
 """
 
-
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.units import unit
+from qualang_tools.analysis.discriminator import two_state_discriminator
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
+rr1 = machine.active_qubits[0].resonator
+rr2 = machine.active_qubits[1].resonator
 
 ###################
 # The QUA program #
 ###################
 n_runs = 4000
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amplitudes = np.arange(0.5, 1.99, 0.02)
 
@@ -49,27 +64,26 @@ with program() as ro_amp_opt:
     counter = declare(int, value=0)  # Counter for the progress bar
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(*from_array(a, amplitudes)):
         save(counter, n_st)
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for both qubits
-            wait(cooldown_time * u.ns)
+            wait(machine.get_thermalization_time * u.ns)
             align()
             # Measure the state of the resonator with varying readout pulse amplitudes
-            multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+            multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st, amplitude=a)
 
             # excited iq blobs for both qubits
             align()
             # Wait for thermalization again in case of measurement induced transitions
-            wait(cooldown_time * u.ns)
+            wait(machine.get_thermalization_time * u.ns)
             play("x180", q1.xy.name)
             play("x180", q2.xy.name)
             align()
             # Measure the state of the resonator with varying readout pulse amplitudes
-            multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+            multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st, amplitude=a)
         # Save the counter to get the progress bar
         assign(counter, counter + 1)
 
@@ -82,10 +96,6 @@ with program() as ro_amp_opt:
             Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).save(f"Q_e_q{i}")
         n_st.save("n")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -131,13 +141,13 @@ else:
     plt.figure()
     plt.suptitle("Readout amplitude optimization")
     plt.subplot(121)
-    plt.plot(amplitudes * rr1.readout_pulse_amp, fidelity_vec[0], ".-")
+    plt.plot(amplitudes * rr1.operations["readout"].amplitude, fidelity_vec[0], ".-")
     plt.title(f"{rr1.name}")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")
     plt.subplot(122)
     plt.title(f"{rr2.name}")
-    plt.plot(amplitudes * rr2.readout_pulse_amp, fidelity_vec[1], ".-")
+    plt.plot(amplitudes * rr2.operations["readout"].amplitude, fidelity_vec[1], ".-")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Fidelity [%]")
     plt.tight_layout()
@@ -146,7 +156,7 @@ else:
     qm.close()
 
     # Update the state
-    rr1.readout_pulse_amp = amplitudes[np.argmax(fidelity_vec[0])] * rr1.readout_pulse_amp
-    rr2.readout_pulse_amp = amplitudes[np.argmax(fidelity_vec[1])] * rr2.readout_pulse_amp
+    rr1.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[0])]
+    rr2.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[1])]
 
     # machine.save("quam")

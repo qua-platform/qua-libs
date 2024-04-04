@@ -28,12 +28,22 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 # The resonator frequencies
 res_if_1 = rr1.f_opt - machine.local_oscillators.readout[rr1.LO_index].freq
@@ -44,7 +54,7 @@ res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
 # The QUA program #
 ###################
 n_runs = 100  # The number of averages
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amplitudes = np.arange(0.5, 1.5, 0.05)
 # The frequency sweep parameters with respect to the resonators resonance frequencies
@@ -59,8 +69,7 @@ with program() as ro_amp_freq_opt:
     counter = declare(int, value=0)  # Counter for the progress bar
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(*from_array(df, dfs)):
         save(counter, n_st)
@@ -70,14 +79,14 @@ with program() as ro_amp_freq_opt:
         with for_(*from_array(a, amplitudes)):
             with for_(n, 0, n < n_runs, n + 1):
                 # ground iq blobs for both qubits
-                wait(cooldown_time * u.ns)
+                wait(machine.get_thermalization_time * u.ns)
                 align()
                 multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_", amplitude=a)
 
                 # excited iq blobs for both qubits
                 align()
                 # Wait for thermalization again in case of measurement induced transitions
-                wait(cooldown_time * u.ns)
+                wait(machine.get_thermalization_time * u.ns)
                 play("x180", q1.xy.name)
                 play("x180", q2.xy.name)
                 align()
@@ -94,10 +103,6 @@ with program() as ro_amp_freq_opt:
             Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"Q_e_q{i}")
         n_st.save("n")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #

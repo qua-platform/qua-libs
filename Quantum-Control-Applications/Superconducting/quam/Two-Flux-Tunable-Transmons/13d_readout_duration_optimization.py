@@ -23,18 +23,39 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
+from qualang_tools.units import unit
+from qualang_tools.analysis.discriminator import two_state_discriminator
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
+rr1 = q1.resonator
+rr2 = q2.resonator
+# Select the resonator and qubit to measure (no multiplexing here)
+rr = rr2
+qb = q2
 
 
 ####################
@@ -59,11 +80,9 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 ###################
 # The QUA program #
 ###################
-# Select the resonator and qubit to measure (no multiplexing here)
-rr = rr2
-qb = q2
+
 n_avg = 1e4  # number of averages
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 7 * u.us
 ringdown_len = 0 * u.us
@@ -96,8 +115,7 @@ with program() as ro_duration_opt:
     Qe_st = declare_stream()
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         # Measure the ground state.
@@ -123,7 +141,7 @@ with program() as ro_duration_opt:
             assign(Q[ind], QQ[ind] + QI[ind])
             save(Q[ind], Qg_st)
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.name)
+        wait(machine.get_thermalization_time * u.ns, rr.name)
 
         align()
 
@@ -153,7 +171,7 @@ with program() as ro_duration_opt:
             save(Q[ind], Qe_st)
 
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.name)
+        wait(machine.get_thermalization_time * u.ns, rr.name)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
@@ -182,10 +200,6 @@ with program() as ro_duration_opt:
             - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
         ).save("Qe_var")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #

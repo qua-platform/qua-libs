@@ -60,7 +60,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
             xy=IQChannel(
                 opx_output_I=f"#/wiring/qubits/{idx}/port_I",
                 opx_output_Q=f"#/wiring/qubits/{idx}/port_Q",
-                frequency_converter_up=octave.RF_outputs[2 * (idx+1)].get_reference(),
+                frequency_converter_up=octave.RF_outputs[2 * (idx + 1)].get_reference(),
                 intermediate_frequency=100 * u.MHz,
             ),
             z=FluxLine(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
@@ -69,21 +69,20 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 opx_output_Q="#/wiring/resonator/opx_output_Q",
                 opx_input_I="#/wiring/resonator/opx_input_I",
                 opx_input_Q="#/wiring/resonator/opx_input_Q",
-                opx_input_offset_I = 0.0,
-                opx_input_offset_Q = 0.0,
+                opx_input_offset_I=0.0,
+                opx_input_offset_Q=0.0,
                 frequency_converter_up=octave.RF_outputs[1].get_reference(),
                 frequency_converter_down=octave.RF_inputs[1].get_reference(),
                 intermediate_frequency=50 * u.MHz,
                 depletion_time=1 * u.us,
             ),
-
         )
         # Add the transmon pulses to the quam
         transmon.xy.operations["x180"] = pulses.DragPulse(
             amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=36, axis_angle=0
         )
         transmon.xy.operations["x90"] = pulses.DragPulse(
-            amplitude=0.1/2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=36, axis_angle=0
+            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=36, axis_angle=0
         )
         transmon.xy.operations["-x90"] = pulses.DragPulse(
             amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=36, axis_angle=0
@@ -103,8 +102,8 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
         quam.qubits[transmon.name] = transmon
         quam.active_qubit_names.append(transmon.name)
         # Set the Octave frequency and channels TODO: be careful to set the right upconverters!!
-        octave.RF_outputs[2 * (idx+1)].channel = transmon.xy.get_reference()
-        octave.RF_outputs[2 * (idx+1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency
+        octave.RF_outputs[2 * (idx + 1)].channel = transmon.xy.get_reference()
+        octave.RF_outputs[2 * (idx + 1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency
 
         octave.RF_outputs[1].channel = transmon.resonator.get_reference()
         octave.RF_inputs[1].channel = transmon.resonator.get_reference()

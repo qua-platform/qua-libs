@@ -25,18 +25,28 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
 n_avg = 1000
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 # Linear sweep
 t_delay = np.arange(4, 10000, 40)
@@ -48,8 +58,7 @@ with program() as T1:
     t = declare(int)  # QUA variable for the wait time
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -64,9 +73,9 @@ with program() as T1:
             wait(t, q2.xy.name)
 
             align()
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
+            multiplexed_readout(machine, I, I_st, Q, Q_st)
             # Wait for the qubits to decay to the ground state
-            wait(cooldown_time * u.ns)
+            wait(machine.get_thermalization_time * u.ns)
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
@@ -79,11 +88,6 @@ with program() as T1:
             Q_st[i].buffer(len(t_delay)).average().save(f"Q{i+1}")
         n_st.save("n")
 
-
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -109,8 +113,12 @@ else:
         # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Convert the results into Volts
-        I1, Q1 = u.demod2volts(I1, q1.resonator.operations["readout"].length), u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2, Q2 = u.demod2volts(I2, q2.resonator.operations["readout"].length), u.demod2volts(Q2, q2.resonator.operations["readout"].length)
+        I1, Q1 = u.demod2volts(I1, q1.resonator.operations["readout"].length), u.demod2volts(
+            Q1, q1.resonator.operations["readout"].length
+        )
+        I2, Q2 = u.demod2volts(I2, q2.resonator.operations["readout"].length), u.demod2volts(
+            Q2, q2.resonator.operations["readout"].length
+        )
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results

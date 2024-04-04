@@ -122,20 +122,19 @@
                 "operations": {
                     "readout": {
                         "length": 1000,
-                        "amplitude": 0.00123,
+                        "amplitude": 0.0018317160000000017,
                         "__class__": "quam.components.pulses.ConstantReadoutPulse"
                     }
                 },
                 "opx_output_I": "#/wiring/resonator/opx_output_I",
                 "opx_output_Q": "#/wiring/resonator/opx_output_Q",
                 "frequency_converter_up": "#/octave/RF_outputs/1",
-                "intermediate_frequency": -47265970.57917511,
+                "intermediate_frequency": 33420000.0,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.0123871142578125,
-                "opx_input_offset_Q": 0.00757394775390625,
-                "frequency_converter_down": "#/octave/RF_inputs/1",
-                "frequency_bare": 4000000179.3702035
+                "opx_input_offset_I": 0.0,
+                "opx_input_offset_Q": 0.0,
+                "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         },
         "q1": {
@@ -222,18 +221,18 @@
                 "operations": {
                     "readout": {
                         "length": 1000,
-                        "amplitude": 0.00123,
+                        "amplitude": 0.0022582800000000023,
                         "__class__": "quam.components.pulses.ConstantReadoutPulse"
                     }
                 },
                 "opx_output_I": "#/wiring/resonator/opx_output_I",
                 "opx_output_Q": "#/wiring/resonator/opx_output_Q",
                 "frequency_converter_up": "#/octave/RF_outputs/1",
-                "intermediate_frequency": 44358609.4155328,
+                "intermediate_frequency": -140540000.0,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.0123871142578125,
-                "opx_input_offset_Q": 0.00757394775390625,
+                "opx_input_offset_I": 0.0,
+                "opx_input_offset_Q": 0.0,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         }

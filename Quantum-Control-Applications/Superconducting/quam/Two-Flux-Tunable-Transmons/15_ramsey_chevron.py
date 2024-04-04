@@ -19,20 +19,34 @@ Next steps before going to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 # Get the qubit frequencies
 lo1 = machine.local_oscillators.qubits[q1.xy.LO_index].freq
@@ -44,7 +58,7 @@ q2.xy.intermediate_frequency = q2.xy.f_01 - lo2
 # The QUA program #
 ###################
 n_avg = 100  # Number of averaging loops
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 # Frequency detuning sweep in Hz
 dfs = np.arange(-10e6, 10e6, 0.1e6)
 # Idle time sweep (Must be a list of integers) - in clock cycles (4ns)
@@ -57,8 +71,7 @@ with program() as ramsey:
     df = declare(int)  # QUA variable for the qubit detuning
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -81,9 +94,10 @@ with program() as ramsey:
 
                 align()
                 # Measure the state of the resonator.
-                multiplexed_readout(I, I_st, Q, Q_st, resonators=active_qubits, weights="rotated_")
+# QUA macro the readout the state of the active resonators (defined in macros.py)
+multiplexed_readout(machine, I, I_st, Q, Q_st)
                 # Wait for the qubits to decay to the ground state
-                wait(cooldown_time * u.ns)
+                wait(machine.get_thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
@@ -94,10 +108,7 @@ with program() as ramsey:
         I_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("I2")
         Q_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q2")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
+
 
 ###########################
 # Run or Simulate Program #

@@ -20,49 +20,62 @@ Next steps before going to the next node:
 """
 
 from qm.qua import *
-from qm import SimulationConfig
 from qm import QuantumMachinesManager
-from configuration import *
+from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
+from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
-from macros import qua_declaration, multiplexed_readout
+
 import matplotlib.pyplot as plt
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
-# Build the config
-config = build_config(machine)
+
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
 n_runs = 10000  # Number of runs
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs for both qubits
-        wait(cooldown_time * u.ns)
+        wait(machine.get_thermalization_time * u.ns)
         align()
-        multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
+        multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st)
 
         align()
         # Wait for the qubit to decay to the ground state in the case of measurement induced transitions
-        wait(cooldown_time * u.ns)
+        wait(machine.get_thermalization_time * u.ns)
         # excited iq blobs for both qubits
         play("x180", q1.xy.name)
         play("x180", q2.xy.name)
         align()
-        multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
+        multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st)
 
     with stream_processing():
         for i in range(2):
@@ -71,10 +84,6 @@ with program() as iq_blobs:
             I_e_st[i].save_all(f"I_e_q{i}")
             Q_e_st[i].save_all(f"Q_e_q{i}")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -106,10 +115,10 @@ else:
     qm.close()
 
     # Update the state
-    rr1.rotation_angle = angle1
-    rr1.readout_fidelity = fidelity1
-    q1.ge_threshold = threshold1
-    rr2.rotation_angle = angle2
-    rr2.readout_fidelity = fidelity2
-    q2.ge_threshold = threshold2
+    q1.resonator.operations["readout"].integration_weights_angle = angle1
+    # rr1.readout_fidelity = fidelity1
+    q1.resonator.operations["readout"].threshold = threshold1
+    q2.resonator.operations["readout"].integration_weights_angle = angle2
+    # rr2.readout_fidelity = fidelity2
+    q2.resonator.operations["readout"].threshold = threshold2
     # machine.save("quam")

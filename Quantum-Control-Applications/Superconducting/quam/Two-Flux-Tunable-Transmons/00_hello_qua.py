@@ -2,7 +2,6 @@
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
 
-
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

@@ -105,7 +105,6 @@ with program() as multi_qubit_spec:
         Q_st[1].buffer(len(dfs)).average().save("Q2")
 
 
-
 ###########################
 # Run or Simulate Program #
 ###########################
@@ -172,13 +171,17 @@ else:
         plt.figure()
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(121)
-        res_1 = fit.reflection_resonator_spectroscopy((q1.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s1), plot=True)
+        res_1 = fit.reflection_resonator_spectroscopy(
+            (q1.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s1), plot=True
+        )
         plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
         plt.xlabel(f"{q1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{q1.name}")
         plt.subplot(122)
-        res_2 = fit.reflection_resonator_spectroscopy((q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True)
+        res_2 = fit.reflection_resonator_spectroscopy(
+            (q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True
+        )
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
         plt.xlabel(f"{q2.name} IF [MHz]")
         plt.title(f"{q2.name}")
@@ -190,4 +193,3 @@ else:
 
     except (Exception,):
         pass
-

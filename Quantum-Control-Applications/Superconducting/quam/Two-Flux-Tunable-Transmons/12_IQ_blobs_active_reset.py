@@ -4,47 +4,60 @@
 """
 
 from qm.qua import *
-from qm import SimulationConfig
 from qm import QuantumMachinesManager
-from configuration import *
+from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
+from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
-from macros import qua_declaration, multiplexed_readout, reset_qubit
+
 import matplotlib.pyplot as plt
+import numpy as np
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
-# Build the config
-config = build_config(machine)
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
 n_runs = 10000  # Number of runs
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
     # Bring the active qubits to the minimum frequency point
-    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs
         # reset_qubit("cooldown", q1.xy.name, rr1.name, cooldown_time=cooldown_time)
         reset_qubit("cooldown", q2.xy.name, rr2.name, cooldown_time=cooldown_time)
-        # wait(cooldown_time * u.ns)
+        # wait(machine.get_thermalization_time * u.ns)
         reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=1, Ig=I_g[0])
         align()
         multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
 
         # excited iq blobs
         align()
-        # wait(cooldown_time * u.ns)
+        # wait(machine.get_thermalization_time * u.ns)
         reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=10, Ig=I_g[0])
         play("x180", q1.xy.name)
         play("x180", q2.xy.name)
@@ -58,10 +71,6 @@ with program() as iq_blobs:
             I_e_st[i].save_all(f"I_e_q{i}")
             Q_e_st[i].save_all(f"Q_e_q{i}")
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #

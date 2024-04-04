@@ -29,19 +29,23 @@ class FluxLine(SingleChannel):
     def to_min(self):
         set_dc_offset(self.name, "single", self.min_offset)
 
+
 @quam_dataclass
 class ReadoutResonator(InOutIQChannel):
-    """ QuAM component for a readout resonator
+    """QuAM component for a readout resonator
 
     :params depletion_time: the resonator depletion time in ns.
     :params frequency_bare: the bare resonator frequency in Hz.
     """
+
     depletion_time: int = 1000
     frequency_bare: float = 0.0
 
+    @property
     def f_01(self):
         """The optimal frequency for discriminating the qubit between |0> and |1> in Hz"""
         return self.frequency_converter_up.LO_frequency + self.intermediate_frequency
+
 
 @quam_dataclass
 class Transmon(QuamComponent):
@@ -86,6 +90,7 @@ class Transmon(QuamComponent):
 @quam_dataclass
 class QuAM(QuamRoot):
     """Example QuAM root component."""
+
     @classmethod
     def load(self, *args, **kwargs) -> "QuAM":
         return super().load(*args, **kwargs)

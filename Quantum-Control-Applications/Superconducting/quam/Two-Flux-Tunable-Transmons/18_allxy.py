@@ -23,18 +23,28 @@ from qualang_tools.results import fetching_tool
 import matplotlib.pyplot as plt
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
-# Build the config
-config = build_config(machine)
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ##############################
 # Program-specific variables #
 ##############################
 n_points = 10_000
-cooldown_time = 5 * max(q1.T1, q2.T1)
+
 
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
@@ -78,11 +88,11 @@ def allXY(pulses, qubit, resonator):
     if pulses[0] != "I":
         play(pulses[0], qubit.name + "_xy")  # Either play the sequence
     else:
-        wait(qubit.xy.pi_length // 4, qubit.name + "_xy")  # or wait if sequence is identity
+        wait(qubit.xy.operations[operation].length // 4, qubit.name + "_xy")  # or wait if sequence is identity
     if pulses[1] != "I":
         play(pulses[1], qubit.name + "_xy")  # Either play the sequence
     else:
-        wait(qubit.xy.pi_length // 4, qubit.name + "_xy")  # or wait if sequence is identity
+        wait(qubit.xy.operations[operation].length // 4, qubit.name + "_xy")  # or wait if sequence is identity
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
@@ -123,7 +133,7 @@ def get_prog(qubit, resonator):
             # Get a value from the pseudo-random number generator on the OPX FPGA
             assign(r_, r.rand_int(21))
             # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-            wait(cooldown_time * u.ns)
+            wait(machine.get_thermalization_time * u.ns)
             # Plays a random XY sequence
             # The switch/case method allows to map a python index (here "i") to a QUA number (here "r_") in order to switch
             # between elements in a python list (here "sequence") that cannot be converted into a QUA array (here because it
@@ -144,11 +154,6 @@ def get_prog(qubit, resonator):
                 Q_st[i].average().save(f"Q{i}")
     return ALLXY
 
-
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(machine.network.qop_ip, cluster_name=machine.network.cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
