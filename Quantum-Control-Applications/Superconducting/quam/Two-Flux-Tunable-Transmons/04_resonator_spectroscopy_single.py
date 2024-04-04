@@ -13,7 +13,7 @@ Prerequisites:
 
 Before proceeding to the next node:
     - Update the readout frequency, labeled as f_res and f_opt, in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -51,9 +51,9 @@ rr = machine.active_qubits[0].resonator  # The resonator to measure
 n_avg = 100  # The number of averages
 # The frequency sweep parameters
 ## rr1
-# frequencies = np.arange(47e6, 51e6, 0.05e6)
+# frequencies = np.arange(10e6, 251e6, 1e6)
 # rr2
-frequencies = np.arange(-300.5e6, 300e6, 1e6)
+frequencies =  np.arange(10e6, 251e6, 1e6)
 
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -71,7 +71,7 @@ with program() as resonator_spec:
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
             rr.measure("readout", I_var=I, Q_var=Q)
             # Wait for the resonator to deplete
-            wait(rr.depletion_time * u.ns, rr.name)
+            wait(machine.get_depletion_time * u.ns, rr.name)
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
             save(Q, Q_st)
@@ -118,7 +118,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle(f"Resonator spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
+        plt.suptitle(f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
         ax1 = plt.subplot(211)
         plt.cla()
         plt.plot(frequencies / u.MHz, R, ".")
@@ -130,6 +130,10 @@ else:
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()
+
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    qm.close()
+
     # Fit the results to extract the resonance frequency
     try:
         from qualang_tools.plot.fitting import Fit
@@ -137,18 +141,17 @@ else:
         fit = Fit()
         plt.figure()
         res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies / u.MHz, R, plot=True)
-        plt.title(f"Resonator spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
+        plt.title(f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         print(f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz")
-        # Update the state
-        # rr.f_res = res_spec_fit["f"][0] + rr.frequency_converter_up.LO_frequency
-        # rr.f_opt = rr.f_res
+
+        # Update QUAM
+        rr.intermediate_frequency = res_spec_fit["f"][0]
+        rr.frequency_bare = rr.rf_frequency
+        machine.save("quam")
 
     except (Exception,):
         pass
 
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
-    qm.close()
 
-# machine._save("current_state.json")

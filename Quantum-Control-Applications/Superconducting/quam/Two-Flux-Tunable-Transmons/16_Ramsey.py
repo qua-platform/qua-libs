@@ -14,7 +14,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubits frequency (f_01) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -39,7 +39,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_avg = 1000
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 idle_times = np.arange(4, 1000, 5)
 
@@ -52,8 +52,8 @@ with program() as ramsey:
     phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -179,11 +179,11 @@ else:
         qubit_detuning_q2 = fit_I2["f"][0] * u.GHz - detuning
         print(f"Detuning to add to {q1.name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
         print(f"Detuning to add to {q2.name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
-        qb1.T2 = int(fit_I1["T2"][0])
-        qb1.xy.f_01 -= qubit_detuning_q1
-        qb2.T2 = int(fit_I2["T2"][0])
-        qb2.xy.f_01 -= qubit_detuning_q2
+        q1.T2 = int(fit_I1["T2"][0])
+        q1.xy.f_01 -= qubit_detuning_q1
+        q2.T2 = int(fit_I2["T2"][0])
+        q2.xy.f_01 -= qubit_detuning_q2
     except (Exception,):
         pass
 
-# machine._save("current_state.json")
+# machine.save("quam")

@@ -55,7 +55,7 @@ with program() as raw_trace_prog:
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
         resonator.measure("readout", stream=adc_st)
         # Wait for the resonator to deplete
-        wait(resonator.depletion_time, resonator.name)
+        wait(machine.get_depletion_time * u.ns, resonator.name)
 
     with stream_processing():
         # Will save average:

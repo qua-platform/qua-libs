@@ -13,7 +13,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubit pulse duration (pi_len) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -38,7 +38,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_avg = 100  # The number of averages
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # Pulse duration sweep (in clock cycles = 4ns)
 # must be larger than 4 clock cycles and larger than the pi_len defined in the state
 times = np.arange(4, 200, 2)
@@ -48,8 +48,8 @@ with program() as rabi:
     t = declare(int)  # QUA variable for the qubit pulse duration
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -151,11 +151,11 @@ else:
         plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.tight_layout()
-        print(f"Optimal x180_len for {q1.name} = {round(1 / rabi_fit1['f'][0] / 2 / 4) * 4} ns for {qb1.xy.pi_amp:} V")
-        print(f"Optimal x180_len for {q2.name} = {round(1 / rabi_fit2['f'][0] / 2 / 4) * 4} ns for {qb2.xy.pi_amp:} V")
-        qb1.xy.pi_length = round(1 / rabi_fit1["f"][0] / 2 / 4) * 4
-        qb2.xy.pi_length = round(1 / rabi_fit2["f"][0] / 2 / 4) * 4
+        print(f"Optimal x180_len for {q1.name} = {round(1 / rabi_fit1['f'][0] / 2 / 4) * 4} ns for {q1.xy.pi_amp:} V")
+        print(f"Optimal x180_len for {q2.name} = {round(1 / rabi_fit2['f'][0] / 2 / 4) * 4} ns for {q2.xy.pi_amp:} V")
+        q1.xy.pi_length = round(1 / rabi_fit1["f"][0] / 2 / 4) * 4
+        q2.xy.pi_length = round(1 / rabi_fit2["f"][0] / 2 / 4) * 4
     except (Exception,):
         pass
 
-# machine._save("current_state.json")
+# machine.save("quam")

@@ -11,7 +11,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the qubit frequency, labeled as "f_01", in the state.
     - Update the relevant flux points in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -67,8 +67,8 @@ dfs = np.arange(-50e6, 100e6, 0.1e6)
 dcs = np.linspace(-0.05, 0.05, 40)
 
 # Adjust the qubits IFs locally to help find the qubits
-# q1.xy.f_if_01 = 340e6
-# q2.xy.f_if_01 = 0
+# q1.xy.intermediate_frequency = 340e6
+# q2.xy.intermediate_frequency = 0
 
 with program() as multi_qubit_spec_vs_flux:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
@@ -81,8 +81,8 @@ with program() as multi_qubit_spec_vs_flux:
 
         with for_(*from_array(df, dfs)):
             # Update the qubit frequencies
-            update_frequency(q1.xy.name, df + q1.xy.f_if_01)
-            update_frequency(q2.xy.name, df + q2.xy.f_if_01)
+            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
+            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping
                 set_dc_offset(q1.z.name, "single", dc)
@@ -144,28 +144,28 @@ else:
         plt.suptitle("Qubit spectroscopy vs flux")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(dcs, (q1.xy.f_if_01 + dfs) / u.MHz, np.abs(s1))
-        plt.plot(qb1.z.max_frequency_point, q1.xy.f_if_01 / u.MHz, "r*")
+        plt.pcolor(dcs, (q1.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s1))
+        plt.plot(q1.z.max_frequency_point, q1.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q1.name} IF [MHz]")
-        plt.title(f"{q1.name} (f_01: {int(qb1.xy.f_01 / u.MHz)} MHz)")
+        plt.title(f"{q1.name} (f_01: {int(q1.xy.f_01 / u.MHz)} MHz)")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(dcs, (q1.xy.f_if_01 + dfs) / u.MHz, np.unwrap(np.angle(s1)))
-        plt.plot(qb1.z.max_frequency_point, q1.xy.f_if_01 / u.MHz, "r*")
+        plt.pcolor(dcs, (q1.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s1)))
+        plt.plot(q1.z.max_frequency_point, q1.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q1.name} IF [MHz]")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(dcs, (q2.xy.f_if_01 + dfs) / u.MHz, np.abs(s2))
-        plt.plot(qb2.z.max_frequency_point, q2.xy.f_if_01 / u.MHz, "r*")
-        plt.title(f"{q2.name} (f_01: {int(qb2.xy.f_01 / u.MHz)} MHz)")
+        plt.pcolor(dcs, (q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2))
+        plt.plot(q2.z.max_frequency_point, q2.xy.intermediate_frequency / u.MHz, "r*")
+        plt.title(f"{q2.name} (f_01: {int(q2.xy.f_01 / u.MHz)} MHz)")
         plt.ylabel(f"{q2.name} IF [MHz]")
         plt.xlabel("flux [V]")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(dcs, (q2.xy.f_if_01 + dfs) / u.MHz, np.unwrap(np.angle(s2)))
-        plt.plot(qb2.z.max_frequency_point, q2.xy.f_if_01 / u.MHz, "r*")
+        plt.pcolor(dcs, (q2.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s2)))
+        plt.plot(q2.z.max_frequency_point, q2.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q2.name} IF [MHz]")
         plt.tight_layout()
@@ -175,6 +175,6 @@ else:
     # qm.close()
 
 # Set the relevant flux points
-# qb1.z.max_frequency_point =
-# qb1.z.min_frequency_point =
+# q1.z.max_frequency_point =
+# q1.z.min_frequency_point =
 # machine._save("quam_bootstrap_state.json")

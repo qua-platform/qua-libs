@@ -12,7 +12,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the readout amplitude (readout_amp) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 
@@ -38,7 +38,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_runs = 4000
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amplitudes = np.arange(0.5, 1.99, 0.02)
 
@@ -49,8 +49,8 @@ with program() as ro_amp_opt:
     counter = declare(int, value=0)  # Counter for the progress bar
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(*from_array(a, amplitudes)):
         save(counter, n_st)

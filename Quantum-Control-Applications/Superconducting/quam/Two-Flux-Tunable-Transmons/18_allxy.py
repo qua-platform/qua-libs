@@ -34,7 +34,7 @@ config = build_config(machine)
 # Program-specific variables #
 ##############################
 n_points = 10_000
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
@@ -115,8 +115,8 @@ def get_prog(qubit, resonator):
         Q_st = [declare_stream() for _ in range(21)]
 
         # Bring the active qubits to the maximum frequency point
-        set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-        set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+        set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+        set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
         with for_(n, 0, n < n_points, n + 1):
             save(n, n_st)
@@ -158,14 +158,14 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, get_prog(qb1, rr1), simulation_config)
+    job = qmm.simulate(config, get_prog(q1, rr1), simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Loop over the two qubits
-    for qb, rr in [[qb1, rr1], [qb2, rr2]]:
+    for qb, rr in [[q1, rr1], [q2, rr2]]:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(get_prog(qb, rr))
         # Get results from QUA program

@@ -13,7 +13,7 @@ Prerequisites:
 
 Before proceeding to the next node:
     - Update the readout frequency, labeled as f_res and f_opt, in the state for both resonators.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -36,30 +36,25 @@ from macros import apply_all_flux_to_min
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
+rr1 = machine.active_qubits[0].resonator
+rr2 = machine.active_qubits[1].resonator
 
 ###################
 # The QUA program #
 ###################
-rr1 = machine.qubits[machine.active_qubits[0]].resonator
-rr2 = machine.qubits[machine.active_qubits[1]].resonator
 
 n_avg = 100  # The number of averages
-depletion_time = max(rr1.depletion_time, rr2.depletion_time)
 # The frequency sweep around the resonator resonance frequency f_opt
 dfs = np.arange(-4e6, +4e6, 0.1e6)
 # You can adjust the IF frequency here to manually adjust the resonator frequencies instead of updating the state
@@ -83,7 +78,7 @@ with program() as multi_res_spec:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # wait for the resonators to deplete
-            wait(depletion_time * u.ns, rr1.name, rr2.name)
+            wait(machine.get_depletion_time * u.ns, rr1.name, rr2.name)
 
             # resonator 1
             update_frequency(rr1.name, df + rr1.intermediate_frequency)
@@ -91,7 +86,7 @@ with program() as multi_res_spec:
             save(I[0], I_st[0])
             save(Q[0], Q_st[0])
 
-            # align("rr1", "rr1")  # Uncomment to measure sequentially
+            # rr2.align(rr1.name)  # Uncomment to measure sequentially
             # resonator 2
             update_frequency(rr2.name, df + rr2.intermediate_frequency)
             rr2.measure("readout", I_var=I[1], Q_var=Q[1])
@@ -161,6 +156,7 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
     try:
         from qualang_tools.plot.fitting import Fit
 
@@ -173,17 +169,15 @@ else:
         plt.xlabel(f"{rr1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{rr1.name}")
-        rr1.f_res = res_1["f"][0] * u.MHz + rr1.frequency_converter_up.LO_frequency
-        rr1.f_opt = rr1.f_res
+        rr1.intermediate_frequency = res_1["f"][0] * u.MHz
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy((rr2.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
         plt.xlabel(f"{rr2.name} IF [MHz]")
         plt.title(f"{rr2.name}")
         plt.tight_layout()
-        rr2.f_res = res_2["f"][0] * u.MHz + rr2.frequency_converter_up.LO_frequency
-        rr2.f_opt = rr2.f_res
+        rr2.intermediate_frequency = res_2["f"][0] * u.MHz
+        machine.save("quam")
+
     except (Exception,):
         pass
-
-# machine._save("current_state.json")

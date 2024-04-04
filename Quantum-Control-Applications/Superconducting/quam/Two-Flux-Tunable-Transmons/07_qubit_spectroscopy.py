@@ -23,7 +23,7 @@ Prerequisites:
 
 Before proceeding to the next node:
     - Update the qubit frequency, labeled as f_01, in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -86,8 +86,8 @@ with program() as multi_qubit_spec:
         save(n, n_st)
         with for_(*from_array(df, dfs)):
             # Update the qubit frequencies
-            update_frequency(q1.xy.name, df + q1.xy.f_if_01)
-            update_frequency(q2.xy.name, df + q2.xy.f_if_01)
+            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
+            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
 
             # qubit 1
             play("saturation" * amp(saturation_amp), q1.xy.name, duration=saturation_len * u.ns)
@@ -178,13 +178,13 @@ else:
         plt.figure()
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(121)
-        res_1 = fit.reflection_resonator_spectroscopy((q1.xy.f_if_01 + dfs) / u.MHz, -np.angle(s1), plot=True)
+        res_1 = fit.reflection_resonator_spectroscopy((q1.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s1), plot=True)
         plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
         plt.xlabel(f"{q1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{q1.name}")
         plt.subplot(122)
-        res_2 = fit.reflection_resonator_spectroscopy((q2.xy.f_if_01 + dfs) / u.MHz, np.abs(s2), plot=True)
+        res_2 = fit.reflection_resonator_spectroscopy((q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
         plt.xlabel(f"{q2.name} IF [MHz]")
         plt.title(f"{q2.name}")
@@ -195,4 +195,4 @@ else:
     except (Exception,):
         pass
 
-# machine._save("current_state.json")
+# machine.save("quam")

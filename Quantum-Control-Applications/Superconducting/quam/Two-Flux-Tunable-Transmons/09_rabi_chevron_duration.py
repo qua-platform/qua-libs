@@ -14,7 +14,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Adjust the qubit frequency setting, labeled as "f_01", in the state.
     - Modify the qubit pulse amplitude setting, labeled as "pi_len", in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -35,16 +35,16 @@ import matplotlib.pyplot as plt
 config = build_config(machine)
 
 # Get the qubit frequencies (IFs and LOs)
-lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
-lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
-q1.xy.f_if_01 = qb1.xy.f_01 - lo1
-q2.xy.f_if_01 = qb2.xy.f_01 - lo2
+lo1 = machine.local_oscillators.qubits[q1.xy.LO_index].freq
+lo2 = machine.local_oscillators.qubits[q2.xy.LO_index].freq
+q1.xy.intermediate_frequency = q1.xy.f_01 - lo1
+q2.xy.intermediate_frequency = q2.xy.f_01 - lo2
 
 ###################
 # The QUA program #
 ###################
 n_avg = 100  # The number of averages
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # The frequency sweep with respect to the qubits resonance frequencies
 dfs = np.arange(-100e6, +100e6, 1e6)
 # Pulse duration sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
@@ -57,16 +57,16 @@ with program() as rabi_chevron:
     t = declare(int)  # QUA variable for the qubit pulse duration
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
             # Update the qubit frequencies
-            update_frequency(q1.xy.name, df + q1.xy.f_if_01)
-            update_frequency(q2.xy.name, df + q2.xy.f_if_01)
+            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
+            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
 
             with for_(*from_array(t, durations)):
                 # Play the qubit drives
@@ -127,27 +127,27 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(durations * 4, dfs / u.MHz, I1)
-        plt.plot(qb1.xy.pi_length, 0, "r*")
+        plt.plot(q1.xy.pi_length, 0, "r*")
         plt.xlabel("Qubit pulse duration [ns]")
         plt.ylabel("Qubit detuning [MHz]")
-        plt.title(f"{q1.name} (f_res1: {int(qb1.xy.f_01 / u.MHz)} MHz)")
+        plt.title(f"{q1.name} (f_res1: {int(q1.xy.f_01 / u.MHz)} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(durations * 4, dfs / u.MHz, Q1)
-        plt.plot(qb1.xy.pi_length, 0, "r*")
+        plt.plot(q1.xy.pi_length, 0, "r*")
         plt.xlabel("Qubit pulse duration [ns]")
         plt.ylabel("Qubit detuning [MHz]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(durations * 4, dfs / u.MHz, I2)
-        plt.plot(qb2.xy.pi_length, 0, "r*")
-        plt.title(f"{q2.name} (f_res2: {int(qb2.xy.f_01 / u.MHz)} MHz)")
+        plt.plot(q2.xy.pi_length, 0, "r*")
+        plt.title(f"{q2.name} (f_res2: {int(q2.xy.f_01 / u.MHz)} MHz)")
         plt.ylabel("Qubit detuning [MHz]")
         plt.xlabel("Qubit pulse duration [ns]")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(durations * 4, dfs / u.MHz, Q2)
-        plt.plot(qb2.xy.pi_length, 0, "r*")
+        plt.plot(q2.xy.pi_length, 0, "r*")
         plt.xlabel("Qubit pulse duration [ns]")
         plt.ylabel("Qubit detuning [MHz]")
         plt.tight_layout()

@@ -16,7 +16,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Adjust the flux bias to the maximum frequency point, labeled as "max_frequency_point", in the state.
     - Adjust the flux bias to the minimum frequency point, labeled as "min_frequency_point", in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -61,7 +61,6 @@ q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
 
 n_avg = 200  # Number of averaging loops
-depletion_time = 5 * max(q1.resonator.depletion_time, q2.resonator.depletion_time)
 # Flux bias sweep in V
 dcs = np.linspace(-0.49, 0.49, 50)
 # The frequency sweep around the resonator resonance frequency f_opt
@@ -92,7 +91,7 @@ with program() as multi_res_spec_vs_flux:
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
                 multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)
                 # wait for the resonators to relax
-                wait(depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
+                wait(machine.get_depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
 
     with stream_processing():
         n_st.save("n")
@@ -106,7 +105,7 @@ with program() as multi_res_spec_vs_flux:
 #######################
 # Simulate or execute #
 #######################
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
@@ -135,7 +134,7 @@ else:
         A1 = np.abs(s1)
         A2 = np.abs(s2)
 
-        plt.suptitle("Resonator specrtoscopy vs flux")
+        plt.suptitle("Resonator spectroscopy vs flux")
         plt.subplot(121)
         plt.cla()
         plt.title(f"{q1.resonator.name} (LO: {q1.resonator.frequency_converter_up.LO_frequency / u.MHz} MHz)")
@@ -157,6 +156,6 @@ else:
     qm.close()
 
 # Update machine with max frequency point for both resonator and qubit
-# qb1.z.max_frequency_point =
-# qb2.z.max_frequency_point =
-# machine._save("current_state.json")
+# q1.z.min_offset =
+# q2.z.min_offset =
+# machine.save("quam")

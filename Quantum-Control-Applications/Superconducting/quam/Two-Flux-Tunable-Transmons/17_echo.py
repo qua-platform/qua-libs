@@ -15,7 +15,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubits T2 echo in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -40,7 +40,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_avg = 1000
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 idle_times = np.arange(4, 2000, 5)  # Linear sweep
 # taus = np.logspace(np.log10(4), np.log10(10_000), 21)  # Log sweep
@@ -51,8 +51,8 @@ with program() as echo:
     t = declare(int)
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -170,9 +170,9 @@ try:
     plt.tight_layout()
 
     # Update the state
-    qb1.T2echo = int(fit_I1["T2"][0])
-    qb2.T2echo = int(fit_I2["T2"][0])
+    q1.T2echo = int(fit_I1["T2"][0])
+    q2.T2echo = int(fit_I2["T2"][0])
 except (Exception,):
     pass
 
-# machine._save("current_state.json")
+# machine.save("quam")

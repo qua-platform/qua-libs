@@ -11,7 +11,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubit T1 in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -36,7 +36,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_avg = 1000
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 # Linear sweep
 t_delay = np.arange(4, 10000, 40)
@@ -48,8 +48,8 @@ with program() as T1:
     t = declare(int)  # QUA variable for the wait time
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -160,9 +160,9 @@ try:
     plt.tight_layout()
 
     # Update the state
-    qb1.T1 = int(np.round(np.abs(fit_1["T1"][0]) / 4) * 4)
-    qb2.T1 = int(np.round(np.abs(fit_2["T1"][0]) / 4) * 4)
+    q1.T1 = int(np.round(np.abs(fit_1["T1"][0]) / 4) * 4)
+    q2.T1 = int(np.round(np.abs(fit_2["T1"][0]) / 4) * 4)
 except (Exception,):
     pass
 
-# machine._save("current_state.json")
+# machine.save("quam")

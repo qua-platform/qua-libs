@@ -53,7 +53,7 @@ with program() as raw_trace_prog:
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
         rr2.measure("readout")
         # Wait for the resonator to deplete
-        wait(machine.get_depletion_time, rr1.name, rr2.name)
+        wait(machine.get_depletion_time * u.ns, rr1.name, rr2.name)
 
     with stream_processing():
         # Will save average:

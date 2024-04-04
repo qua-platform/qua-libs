@@ -23,29 +23,29 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_runs = 10000  # Number of runs
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs
         # reset_qubit("cooldown", q1.xy.name, rr1.name, cooldown_time=cooldown_time)
         reset_qubit("cooldown", q2.xy.name, rr2.name, cooldown_time=cooldown_time)
         # wait(cooldown_time * u.ns)
-        reset_qubit("active", q1.xy.name, rr1.name, threshold=qb1.ge_threshold, max_tries=1, Ig=I_g[0])
+        reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=1, Ig=I_g[0])
         align()
         multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
 
         # excited iq blobs
         align()
         # wait(cooldown_time * u.ns)
-        reset_qubit("active", q1.xy.name, rr1.name, threshold=qb1.ge_threshold, max_tries=10, Ig=I_g[0])
+        reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=10, Ig=I_g[0])
         play("x180", q1.xy.name)
         play("x180", q2.xy.name)
         align()

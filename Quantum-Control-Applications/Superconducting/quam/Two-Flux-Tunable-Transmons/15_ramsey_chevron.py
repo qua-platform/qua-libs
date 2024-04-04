@@ -13,7 +13,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubit frequency (f_01) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -35,16 +35,16 @@ import matplotlib.pyplot as plt
 config = build_config(machine)
 
 # Get the qubit frequencies
-lo1 = machine.local_oscillators.qubits[qb1.xy.LO_index].freq
-lo2 = machine.local_oscillators.qubits[qb2.xy.LO_index].freq
-q1.xy.f_if_01 = qb1.xy.f_01 - lo1
-q2.xy.f_if_01 = qb2.xy.f_01 - lo2
+lo1 = machine.local_oscillators.qubits[q1.xy.LO_index].freq
+lo2 = machine.local_oscillators.qubits[q2.xy.LO_index].freq
+q1.xy.intermediate_frequency = q1.xy.f_01 - lo1
+q2.xy.intermediate_frequency = q2.xy.f_01 - lo2
 
 ###################
 # The QUA program #
 ###################
 n_avg = 100  # Number of averaging loops
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # Frequency detuning sweep in Hz
 dfs = np.arange(-10e6, 10e6, 0.1e6)
 # Idle time sweep (Must be a list of integers) - in clock cycles (4ns)
@@ -57,16 +57,16 @@ with program() as ramsey:
     df = declare(int)  # QUA variable for the qubit detuning
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
 
         with for_(*from_array(df, dfs)):
             # Update the qubits frequency
-            update_frequency(q1.xy.name, df + q1.xy.f_if_01)
-            update_frequency(q2.xy.name, df + q2.xy.f_if_01)
+            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
+            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
 
             with for_(*from_array(t, t_delay)):
                 # qubit 1
@@ -132,7 +132,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"{q1.name} - I, f_01={int(qb1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q1.name} - I, f_01={int(q1.xy.f_01 / u.MHz)} MHz")
         plt.ylabel("detuning [MHz]")
         plt.subplot(223)
         plt.cla()
@@ -143,7 +143,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"{q2.name} - I, f_01={int(qb2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q2.name} - I, f_01={int(q2.xy.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)

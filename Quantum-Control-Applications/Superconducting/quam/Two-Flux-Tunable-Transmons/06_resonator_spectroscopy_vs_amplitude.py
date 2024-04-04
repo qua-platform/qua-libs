@@ -17,7 +17,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the readout frequency, labeled as "f_res" and "f_opt", in the state.
     - Adjust the readout amplitude, labeled as "readout_pulse_amp", in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -39,34 +39,31 @@ from macros import qua_declaration, apply_all_flux_to_min
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
+rr1 = machine.active_qubits[0].resonator
+rr2 = machine.active_qubits[1].resonator
+prev_amp1 = rr1.operations["readout"].amplitude
+prev_amp2 = rr2.operations["readout"].amplitude
 
 ###################
 # The QUA program #
 ###################
-rr1 = machine.qubits[machine.active_qubits[0]].resonator
-rr2 = machine.qubits[machine.active_qubits[1]].resonator
-prev_amp1 = rr1.operations["readout"].amplitude
-prev_amp2 = rr2.operations["readout"].amplitude
+
+n_avg = 100  # The number of averages
+
 rr1.operations["readout"].amplitude = 0.01
 rr2.operations["readout"].amplitude = 0.01
 
-n_avg = 100  # The number of averages
-depletion_time = max(rr1.depletion_time, rr2.depletion_time)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amps = np.arange(0.05, 1.99, 0.01)
 # The frequency sweep around the resonator resonance frequencies f_opt
@@ -92,16 +89,16 @@ with program() as multi_res_spec_vs_amp:
 
             with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
-                wait(depletion_time * u.ns, rr1.name)  # wait for the resonator to relax
-                rr1.measure("readout", I_var=I[0], Q_var=Q[0])
+                wait(machine.get_depletion_time * u.ns, rr1.name)  # wait for the resonator to relax
+                rr1.measure("readout", I_var=I[0], Q_var=Q[0])  # TODO: *amp(a)
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
-                # align(rr1.name, rr2.name) # sequential to avoid overflow
+                ## rr2.align(rr1.name)  # Uncomment to measure sequentially and avoid overflow
 
                 # resonator 2
-                wait(depletion_time * u.ns, rr2.name)  # wait for the resonator to relax
-                rr2.measure("readout", I_var=I[1], Q_var=Q[1])
+                wait(machine.get_depletion_time * u.ns, rr2.name)  # wait for the resonator to relax
+                rr2.measure("readout", I_var=I[1], Q_var=Q[1])  # TODO: *amp(a)
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])
 
@@ -176,6 +173,6 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    # rr1.readout_pulse_amp =
-    # rr2.readout_pulse_amp =
-    # machine._save("current_state.json")
+    # rr1.operations["readout"].amplitude =
+    # rr2.operations["readout"].amplitude =
+    # machine.save("quam")

@@ -14,7 +14,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the readout frequency (f_opt) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -41,7 +41,7 @@ res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
 # The QUA program #
 ###################
 n_avg = 100  # The number of averages
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # The frequency sweep parameters with respect to the resonators resonance frequencies
 dfs = np.arange(-2e6, 2e6, 0.02e6)
 
@@ -58,8 +58,8 @@ with program() as ro_freq_opt:
     D_st = [declare_stream() for _ in range(2)]
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):

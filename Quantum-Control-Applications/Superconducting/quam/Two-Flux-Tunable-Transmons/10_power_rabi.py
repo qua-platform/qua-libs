@@ -14,7 +14,7 @@ Prerequisites:
 
 Next steps before going to the next node:
     - Update the qubit pulse amplitude (pi_amp) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -39,7 +39,7 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_avg = 100  # The number of averages
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(0.6, 1.4, 0.01)
 # Number of applied Rabi pulses sweep
@@ -53,8 +53,8 @@ with program() as rabi:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -119,34 +119,34 @@ else:
             plt.suptitle("Power Rabi with error amplification")
             plt.subplot(321)
             plt.cla()
-            plt.pcolor(amps * qb1.xy.pi_amp, N_pi_vec, I1)
+            plt.pcolor(amps * q1.xy.pi_amp, N_pi_vec, I1)
             plt.title(f"{q1.name} - I")
             plt.subplot(323)
             plt.cla()
-            plt.pcolor(amps * qb1.xy.pi_amp, N_pi_vec, Q1)
+            plt.pcolor(amps * q1.xy.pi_amp, N_pi_vec, Q1)
             plt.title(f"{q1.name} - Q")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Number of Rabi pulses")
             plt.subplot(322)
             plt.cla()
-            plt.pcolor(amps * qb2.xy.pi_amp, N_pi_vec, I2)
+            plt.pcolor(amps * q2.xy.pi_amp, N_pi_vec, I2)
             plt.title(f"{q2.name} - I")
             plt.subplot(324)
             plt.cla()
-            plt.pcolor(amps * qb2.xy.pi_amp, N_pi_vec, Q2)
+            plt.pcolor(amps * q2.xy.pi_amp, N_pi_vec, Q2)
             plt.title(f"{q2.name} - Q")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Number of Rabi pulses")
             plt.subplot(325)
             plt.cla()
-            plt.plot(amps * qb1.xy.pi_amp, np.sum(I1, axis=0))
-            plt.axvline(qb1.xy.pi_amp, color="k")
+            plt.plot(amps * q1.xy.pi_amp, np.sum(I1, axis=0))
+            plt.axvline(q1.xy.pi_amp, color="k")
             plt.xlabel("Rabi pulse amplitude [V]")
             plt.ylabel(r"$\Sigma$ of Rabi pulses")
             plt.subplot(326)
             plt.cla()
-            plt.plot(amps * qb2.xy.pi_amp, np.sum(I2, axis=0))
-            plt.axvline(qb2.xy.pi_amp, color="k")
+            plt.plot(amps * q2.xy.pi_amp, np.sum(I2, axis=0))
+            plt.axvline(q2.xy.pi_amp, color="k")
             plt.xlabel("Rabi pulse amplitude [V]")
             plt.tight_layout()
 
@@ -154,21 +154,21 @@ else:
             plt.suptitle("Power Rabi")
             plt.subplot(221)
             plt.cla()
-            plt.plot(amps * qb1.xy.pi_amp, I1[0])
+            plt.plot(amps * q1.xy.pi_amp, I1[0])
             plt.title(f"{q1.name}")
             plt.ylabel("I quadrature [V]")
             plt.subplot(223)
             plt.cla()
-            plt.plot(amps * qb1.xy.pi_amp, Q1[0])
+            plt.plot(amps * q1.xy.pi_amp, Q1[0])
             plt.xlabel("qubit pulse amplitudre [V]")
             plt.ylabel("Q quadrature [V]")
             plt.subplot(222)
             plt.cla()
-            plt.plot(amps * qb2.xy.pi_amp, I2[0])
+            plt.plot(amps * q2.xy.pi_amp, I2[0])
             plt.title(f"{q2.name}")
             plt.subplot(224)
             plt.cla()
-            plt.plot(amps * qb2.xy.pi_amp, Q2[0])
+            plt.plot(amps * q2.xy.pi_amp, Q2[0])
             plt.xlabel("qubit pulse amplitude [V]")
         plt.tight_layout()
         plt.pause(0.1)
@@ -177,11 +177,11 @@ else:
     qm.close()
     # Get the optimal pi pulse amplitude when doing error amplification
     try:
-        qb1.xy.pi_amp = amps[np.argmax(np.sum(I1, axis=0))] * qb1.xy.pi_amp
-        qb2.xy.pi_amp = amps[np.argmax(np.sum(I2, axis=0))] * qb2.xy.pi_amp
+        q1.xy.pi_amp = amps[np.argmax(np.sum(I1, axis=0))] * q1.xy.pi_amp
+        q2.xy.pi_amp = amps[np.argmax(np.sum(I2, axis=0))] * q2.xy.pi_amp
     except (Exception,):
         pass
 
-# qb1.xy.pi_amp =
-# qb2.xy.pi_amp =
-# machine._save("current_state.json")
+# q1.xy.pi_amp =
+# q2.xy.pi_amp =
+# machine.save("quam")

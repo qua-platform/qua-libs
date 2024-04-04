@@ -16,7 +16,7 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the rotation angle (rotation_angle) in the state.
     - Update the g -> e threshold (ge_threshold) in the state.
-    - Save the current state by calling machine._save("current_state.json")
+    - Save the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
@@ -39,15 +39,15 @@ config = build_config(machine)
 # The QUA program #
 ###################
 n_runs = 10000  # Number of runs
-cooldown_time = 5 * max(qb1.T1, qb2.T1)
+cooldown_time = 5 * max(q1.T1, q2.T1)
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
     # Bring the active qubits to the maximum frequency point
-    set_dc_offset(q1_z, "single", qb1.z.max_frequency_point)
-    set_dc_offset(q2_z, "single", qb2.z.max_frequency_point)
+    set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
+    set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs for both qubits
@@ -108,8 +108,8 @@ else:
     # Update the state
     rr1.rotation_angle = angle1
     rr1.readout_fidelity = fidelity1
-    qb1.ge_threshold = threshold1
+    q1.ge_threshold = threshold1
     rr2.rotation_angle = angle2
     rr2.readout_fidelity = fidelity2
-    qb2.ge_threshold = threshold2
-    # machine._save("current_state.json")
+    q2.ge_threshold = threshold2
+    # machine.save("quam")

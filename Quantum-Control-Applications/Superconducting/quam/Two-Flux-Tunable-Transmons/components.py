@@ -5,7 +5,7 @@ from quam.components.channels import IQChannel, SingleChannel, InOutIQChannel
 from quam.components.octave import Octave
 from quam.core import QuamRoot, quam_dataclass
 
-from qm.qua import set_dc_offset
+from qm.qua import set_dc_offset, align
 
 # import macros
 
@@ -34,9 +34,14 @@ class ReadoutResonator(InOutIQChannel):
     """ QuAM component for a readout resonator
 
     :params depletion_time: the resonator depletion time in ns.
+    :params frequency_bare: the bare resonator frequency in Hz.
     """
     depletion_time: int = 1000
+    frequency_bare: float = 0.0
 
+    def f_01(self):
+        """The optimal frequency for discriminating the qubit between |0> and |1> in Hz"""
+        return self.frequency_converter_up.LO_frequency + self.intermediate_frequency
 
 @quam_dataclass
 class Transmon(QuamComponent):
@@ -65,10 +70,10 @@ class Transmon(QuamComponent):
 
     def f_01(self):
         """The 0-1 (g-e) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.f_if_01
+        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency
     def f_12(self):
         """The 0-2 (e-f) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.f_if_01 - self.anharmonicity
+        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency - self.anharmonicity
 
     @property
     def name(self):
@@ -104,3 +109,9 @@ class QuAM(QuamRoot):
         """Return the longest thermalization time amongst the active qubits"""
         return max([q.thermalization_time for q in self.active_qubits])
 
+    def apply_all_flux_to_min(self) -> None:
+        """Apply the offsets that bring all the active qubits to the minimum frequency point."""
+        align()
+        for q in self.active_qubits:
+            q.z.to_min()
+        align()
