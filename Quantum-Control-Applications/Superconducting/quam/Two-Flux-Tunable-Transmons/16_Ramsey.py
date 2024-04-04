@@ -131,12 +131,10 @@ else:
         # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Convert the results into Volts
-        I1, Q1 = u.demod2volts(I1, q1.resonator.operations["readout"].length), u.demod2volts(
-            Q1, q1.resonator.operations["readout"].length
-        )
-        I2, Q2 = u.demod2volts(I2, q2.resonator.operations["readout"].length), u.demod2volts(
-            Q2, q2.resonator.operations["readout"].length
-        )
+        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
+        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
+        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
+        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
