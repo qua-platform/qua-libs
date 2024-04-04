@@ -58,7 +58,7 @@ with program() as ro_amp_freq_opt:
     df = declare(int)  # QUA variable for the readout frequency detuning
     counter = declare(int, value=0)  # Counter for the progress bar
 
-    # Bring the active qubits to the maximum frequency point
+    # Bring the active qubits to the minimum frequency point
     set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 

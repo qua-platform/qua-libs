@@ -64,6 +64,9 @@ with program() as resonator_spec:
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
+
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element

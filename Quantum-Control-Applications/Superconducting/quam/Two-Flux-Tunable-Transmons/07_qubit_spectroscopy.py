@@ -17,7 +17,7 @@ duration, frequency) before performing the next calibration steps.
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
     - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Set the flux bias to the maximum frequency point, labeled as "max_frequency_point", in the state.
+    - Set the flux bias to the minimum frequency point, labeled as "max_frequency_point", in the state.
     - Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
     - Specification of the expected qubit T1 in the state.
 
@@ -38,39 +38,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
 
 n_avg = 100  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
 saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
-cooldown_time = max(q1.thermalization_time, q2.thermalization_time)
 # Qubit detuning sweep with respect to their resonance frequencies
 dfs = np.arange(-60e6, +80e6, 1e6)
 
@@ -79,8 +73,8 @@ with program() as multi_qubit_spec:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit frequency
 
-    # Bring the active qubits to the maximum frequency point
-    apply_all_flux_to_min(machine)
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -91,7 +85,7 @@ with program() as multi_qubit_spec:
 
             # qubit 1
             play("saturation" * amp(saturation_amp), q1.xy.name, duration=saturation_len * u.ns)
-            align(q1.xy.name, q1.resonator.name)
+            align(q1.xy.name, q1.resonator.name)  # TODO: use q1.align() instead?
             # qubit 2
             play("saturation" * amp(saturation_amp), q2.xy.name, duration=saturation_len * u.ns)
             align(q2.xy.name, q2.resonator.name)
@@ -99,7 +93,7 @@ with program() as multi_qubit_spec:
             # QUA macro the readout the state of the active resonators (defined in macros.py)
             multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)
             # Wait for the qubit to decay to the ground state
-            wait(cooldown_time * u.ns)
+            wait(machine.get_thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
@@ -145,24 +139,24 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.plot(dfs / u.MHz, np.abs(s1))
-        plt.grid("on")
+        plt.grid(True)
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{q1.name} (f_01: {q1.xy.rf_frequency / u.MHz} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s1))
-        plt.grid("on")
+        plt.grid(True)
         plt.ylabel("Phase [rad]")
         plt.xlabel(f"{q1.name} detuning [MHz]")
         plt.subplot(222)
         plt.cla()
         plt.plot(dfs / u.MHz, np.abs(s2))
-        plt.grid("on")
+        plt.grid(True)
         plt.title(f"{q2.name} (f_01: {q2.xy.rf_frequency / u.MHz} MHz)")
         plt.subplot(224)
         plt.cla()
         plt.plot(dfs / u.MHz, np.angle(s2))
-        plt.grid("on")
+        plt.grid(True)
         plt.xlabel(f"{q2.name} detuning [MHz]")
         plt.tight_layout()
         plt.pause(0.1)
@@ -190,9 +184,10 @@ else:
         plt.title(f"{q2.name}")
         plt.tight_layout()
 
-        # q1.xy.rf_frequency = res_1["f"][0] * u.MHz + lo1
-        # q2.xy.rf_frequency = res_2["f"][0] * u.MHz + lo2
+        q1.xy.intermediate_frequency = res_1["f"][0] * u.MHz
+        q2.xy.intermediate_frequency = res_2["f"][0] * u.MHz
+        # machine.save("quam")
+
     except (Exception,):
         pass
 
-# machine.save("quam")

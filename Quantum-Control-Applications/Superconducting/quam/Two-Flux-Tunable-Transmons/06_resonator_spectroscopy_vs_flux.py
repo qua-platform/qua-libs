@@ -14,7 +14,7 @@ Prerequisites:
     - Specification of the expected resonator depletion time in the state.
 
 Before proceeding to the next node:
-    - Adjust the flux bias to the maximum frequency point, labeled as "max_frequency_point", in the state.
+    - Adjust the flux bias to the minimum frequency point, labeled as "max_frequency_point", in the state.
     - Adjust the flux bias to the minimum frequency point, labeled as "min_frequency_point", in the state.
     - Save the current state by calling machine.save("quam")
 """
@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout
 
 
 ###################################################
@@ -52,13 +52,12 @@ octave_config = machine.octave.get_octave_config()
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
-
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
 
 n_avg = 200  # Number of averaging loops
 # Flux bias sweep in V
@@ -73,8 +72,8 @@ with program() as multi_res_spec_vs_flux:
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
-    # Bring the active qubits to the maximum frequency point
-    apply_all_flux_to_min(machine)
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)

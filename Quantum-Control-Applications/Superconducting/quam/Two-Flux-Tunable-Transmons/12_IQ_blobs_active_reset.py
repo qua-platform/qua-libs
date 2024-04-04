@@ -29,7 +29,7 @@ with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
 
-    # Bring the active qubits to the maximum frequency point
+    # Bring the active qubits to the minimum frequency point
     set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 

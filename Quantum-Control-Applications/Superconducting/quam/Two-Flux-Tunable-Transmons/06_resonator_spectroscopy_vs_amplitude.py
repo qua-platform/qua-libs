@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, apply_all_flux_to_min
+from macros import qua_declaration
 
 
 ###################################################
@@ -76,8 +76,8 @@ with program() as multi_res_spec_vs_amp:
     a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
     df = declare(int)  # QUA variable for the readout frequency
 
-    # Bring the active qubits to the maximum frequency point
-    apply_all_flux_to_min(machine)
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         save(n, n_st)

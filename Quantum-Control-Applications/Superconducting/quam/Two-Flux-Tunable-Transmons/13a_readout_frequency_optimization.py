@@ -57,7 +57,7 @@ with program() as ro_freq_opt:
     df = declare(int)
     D_st = [declare_stream() for _ in range(2)]
 
-    # Bring the active qubits to the maximum frequency point
+    # Bring the active qubits to the minimum frequency point
     set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 
@@ -141,4 +141,4 @@ else:
     # Update the state
     rr1.f_opt = dfs[np.argmax(D1)] + res_if_1 + machine.local_oscillators.readout[rr1.LO_index].freq
     rr2.f_opt = dfs[np.argmax(D2)] + res_if_2 + machine.local_oscillators.readout[rr2.LO_index].freq
-    # machine._save("quam_bootstrap_state.json")
+    # machine.save("quam")

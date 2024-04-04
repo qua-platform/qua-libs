@@ -68,9 +68,12 @@ class Transmon(QuamComponent):
     def thermalization_time(self):
         return self.thermalization_time_factor * self.T1
 
+    @property
     def f_01(self):
         """The 0-1 (g-e) transition frequency in Hz"""
         return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency
+
+    @property
     def f_12(self):
         """The 0-2 (e-f) transition frequency in Hz"""
         return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency - self.anharmonicity

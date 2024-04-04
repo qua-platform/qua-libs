@@ -51,7 +51,7 @@ with program() as ramsey:
     t = declare(int)  # QUA variable for the idle time
     phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
 
-    # Bring the active qubits to the maximum frequency point
+    # Bring the active qubits to the minimum frequency point
     set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 

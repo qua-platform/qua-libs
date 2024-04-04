@@ -30,7 +30,6 @@ import numpy as np
 from scipy import signal
 
 from components import QuAM
-from macros import apply_all_flux_to_min
 
 
 ###################################################
@@ -72,8 +71,8 @@ with program() as multi_res_spec:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency
 
-    # Bring the active qubits to the maximum frequency point
-    apply_all_flux_to_min(machine)
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):

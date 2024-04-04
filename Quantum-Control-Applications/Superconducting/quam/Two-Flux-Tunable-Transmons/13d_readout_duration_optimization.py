@@ -95,7 +95,7 @@ with program() as ro_duration_opt:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
 
-    # Bring the active qubits to the maximum frequency point
+    # Bring the active qubits to the minimum frequency point
     set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
     set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
 

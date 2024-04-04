@@ -26,33 +26,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
 # Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
 
 ###################
 # The QUA program #
 ###################
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+
 
 n_avg = 100  # Number of averaging loops
 cooldown_time = max(q1.thermalization_time, q2.thermalization_time)
@@ -75,6 +71,9 @@ with program() as multi_qubit_spec_vs_flux:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
+
+    # Bring the active qubits to the minimum frequency point
+    machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -109,7 +108,6 @@ with program() as multi_qubit_spec_vs_flux:
         # resonator 2
         I_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("I2")
         Q_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("Q2")
-
 
 
 #######################
@@ -172,9 +170,9 @@ else:
         plt.pause(0.1)
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
-    # qm.close()
+    qm.close()
 
 # Set the relevant flux points
-# q1.z.max_frequency_point =
-# q1.z.min_frequency_point =
-# machine._save("quam_bootstrap_state.json")
+# q1.z.min_offset =
+# q1.z.min_offset =
+# machine.save("quam")
