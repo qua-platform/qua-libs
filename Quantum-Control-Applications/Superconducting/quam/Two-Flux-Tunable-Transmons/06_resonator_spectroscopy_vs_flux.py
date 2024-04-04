@@ -30,7 +30,7 @@ from qualang_tools.units import unit
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quam.examples.superconducting_qubits.components import QuAM
+from components import QuAM
 from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
 
 
@@ -38,14 +38,20 @@ from macros import qua_declaration, apply_all_flux_to_min, multiplexed_readout
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Class t handle unit and conversion functions
+# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the abstract machine
+# Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
 # Load the config
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
 # Open the Quantum Machine Manager
+# Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
 
 
 ###################
@@ -60,9 +66,7 @@ depletion_time = 5 * max(q1.resonator.depletion_time, q2.resonator.depletion_tim
 dcs = np.linspace(-0.49, 0.49, 50)
 # The frequency sweep around the resonator resonance frequency f_opt
 dfs = np.arange(-50e6, 5e6, 0.1e6)
-# You can adjust the IF frequency here to manually adjust the resonator frequencies instead of updating the state
-# res_if_1 = 244e6
-# res_if_2 = 205e6
+
 
 with program() as multi_res_spec_vs_flux:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
@@ -98,7 +102,6 @@ with program() as multi_res_spec_vs_flux:
         # resonator 2
         I_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("I2")
         Q_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("Q2")
-
 
 #######################
 # Simulate or execute #

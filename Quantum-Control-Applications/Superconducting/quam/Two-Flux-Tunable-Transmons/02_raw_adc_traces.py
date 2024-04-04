@@ -14,27 +14,31 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.units import unit
-from quam.examples.superconducting_qubits.components import QuAM
+from components import QuAM
 
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
+# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
 
+# Get the relevant QuAM components
+rr1 = machine.active_qubits[0].resonator
+rr2 = machine.active_qubits[1].resonator
+rr = [q.resonator for q in machine.active_qubits]
 
 ###################
 # The QUA program #
 ###################
 n_avg = 100  # The number of averages
-
-rr1 = machine.qubits["q0"].resonator
-rr2 = machine.qubits["q1"].resonator
-rr = [q.resonator for q in machine.active_qubits]
 
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
@@ -49,7 +53,7 @@ with program() as raw_trace_prog:
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
         rr2.measure("readout")
         # Wait for the resonator to deplete
-        wait(machine.qubits["q0"].resonator.depletion_time, rr1.name, rr2.name)
+        wait(machine.get_depletion_time, rr1.name, rr2.name)
 
     with stream_processing():
         # Will save average:
@@ -107,3 +111,10 @@ else:
     plt.tight_layout()
 
     print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
+
+    # Update QUAM
+    rr1.opx_input_offset_I -= np.mean(adc1)
+    rr2.opx_input_offset_I -= np.mean(adc1)
+    rr1.opx_input_offset_Q -= np.mean(adc2)
+    rr2.opx_input_offset_Q -= np.mean(adc2)
+    machine.save("quam")

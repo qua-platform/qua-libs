@@ -18,7 +18,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from quam.examples.superconducting_qubits.components import QuAM
+from components import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
@@ -27,21 +27,23 @@ from scipy.signal import savgol_filter
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
+# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the abstract machine
+# Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
-# Load the config
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
-# Open the Quantum Machine Manager
+# Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
 
 
 ###################
 # The QUA program #
 ###################
-resonator = machine.qubits["q1"].resonator  # The resonator element
+resonator = machine.active_qubits[0].resonator  # The resonator element
 n_avg = 100  # Number of averaging loops
 
 with program() as raw_trace_prog:
@@ -139,3 +141,9 @@ else:
     print(f"DC offset to add to I in the config: {-adc1_mean:.6f} V")
     print(f"DC offset to add to Q in the config: {-adc2_mean:.6f} V")
     print(f"Time Of Flight to add in the config: {delay} ns")
+    # Update QUAM
+    for q in machine.active_qubits:
+        q.resonator.opx_input_offset_I -= np.mean(adc1)
+        q.resonator.opx_input_offset_Q -= np.mean(adc2)
+        q.resonator.time_of_flight += delay
+    machine.save("quam")

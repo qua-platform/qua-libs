@@ -132,6 +132,8 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
+                "opx_input_offset_I": 0.012278859863281252,
+                "opx_input_offset_Q": 0.007608364257812501,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         },
@@ -229,8 +231,60 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
+                "opx_input_offset_I": 0.012278859863281252,
+                "opx_input_offset_Q": 0.007608364257812501,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
+        }
+    },
+    "wiring": {
+        "qubits": [
+            {
+                "port_I": [
+                    "con1",
+                    3
+                ],
+                "port_Q": [
+                    "con1",
+                    4
+                ],
+                "port_Z": [
+                    "con1",
+                    5
+                ]
+            },
+            {
+                "port_I": [
+                    "con1",
+                    6
+                ],
+                "port_Q": [
+                    "con1",
+                    7
+                ],
+                "port_Z": [
+                    "con1",
+                    8
+                ]
+            }
+        ],
+        "resonator": {
+            "opx_output_I": [
+                "con1",
+                1
+            ],
+            "opx_output_Q": [
+                "con1",
+                2
+            ],
+            "opx_input_I": [
+                "con1",
+                1
+            ],
+            "opx_input_Q": [
+                "con1",
+                2
+            ]
         }
     },
     "active_qubit_names": [

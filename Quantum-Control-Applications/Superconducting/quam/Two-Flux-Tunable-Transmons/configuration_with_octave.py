@@ -13,6 +13,7 @@ from qualang_tools.units import unit
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 
 ######################

@@ -6,16 +6,21 @@ A simple sandbox to showcase different QUA functionalities during the installati
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from quam.examples.superconducting_qubits.components import QuAM
+from components import QuAM
 
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
+# Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
 
 ###################
 # The QUA program #

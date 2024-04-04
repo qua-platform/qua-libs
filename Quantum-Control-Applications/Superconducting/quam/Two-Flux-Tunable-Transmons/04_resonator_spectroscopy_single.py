@@ -23,7 +23,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from quam.examples.superconducting_qubits.components import QuAM
+from components import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
@@ -33,14 +33,20 @@ from scipy import signal
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Class t handle unit and conversion functions
+# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the abstract machine
+# Instantiate the QuAM class from the state file
 machine = QuAM.load("quam")
 # Load the config
+# Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
 # Open the Quantum Machine Manager
+# Open Communication with the QOP
 qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+
+# Get the relevant QuAM components
 
 ###################
 # The QUA program #

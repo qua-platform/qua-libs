@@ -1,6 +1,5 @@
 from dataclasses import field
 from typing import List, Union, Dict
-
 from quam import QuamComponent
 from quam.components.channels import IQChannel, SingleChannel, InOutIQChannel
 from quam.components.octave import Octave
@@ -30,13 +29,11 @@ class FluxLine(SingleChannel):
     def to_min(self):
         set_dc_offset(self.name, "single", self.min_offset)
 
-
 @quam_dataclass
 class ReadoutResonator(InOutIQChannel):
     """ QuAM component for a readout resonator
 
-    Args:
-        depletion_time(int): the resonator depletion time in ns.
+    :params depletion_time: the resonator depletion time in ns.
     """
     depletion_time: int = 1000
 
@@ -59,11 +56,19 @@ class Transmon(QuamComponent):
     resonator: ReadoutResonator = None
 
     T1: int = 10_000
-    thermalization_time: int = "#./T1"
+    thermalization_time_factor: int = 5
+    anharmonicity: int = 150e6
 
-    # @property
-    # def thermalization_time(self):
-    #     return
+    @property
+    def thermalization_time(self):
+        return self.thermalization_time_factor * self.T1
+
+    def f_01(self):
+        """The 0-1 (g-e) transition frequency in Hz"""
+        return self.xy.frequency_converter_up.LO_frequency + self.xy.f_if_01
+    def f_12(self):
+        """The 0-2 (e-f) transition frequency in Hz"""
+        return self.xy.frequency_converter_up.LO_frequency + self.xy.f_if_01 - self.anharmonicity
 
     @property
     def name(self):
@@ -73,12 +78,29 @@ class Transmon(QuamComponent):
 @quam_dataclass
 class QuAM(QuamRoot):
     """Example QuAM root component."""
+    @classmethod
+    def load(self, *args, **kwargs) -> "QuAM":
+        return super().load(*args, **kwargs)
+
     octave: Octave = None
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
 
     active_qubit_names: List[str] = field(default_factory=list)
+
     @property
     def active_qubits(self) -> List[Transmon]:
+        """Return the the list of active qubits"""
         return [self.qubits[q] for q in self.active_qubit_names]
+
+    @property
+    def get_depletion_time(self) -> int:
+        """Return the longest depletion time amongst the active qubits"""
+        return max([q.resonator.depletion_time for q in self.active_qubits])
+
+    @property
+    def get_thermalization_time(self) -> int:
+        """Return the longest thermalization time amongst the active qubits"""
+        return max([q.thermalization_time for q in self.active_qubits])
+

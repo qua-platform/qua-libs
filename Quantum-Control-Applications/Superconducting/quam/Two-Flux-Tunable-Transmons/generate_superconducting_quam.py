@@ -20,6 +20,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     Returns:
         QuamRoot: A QuAM with the specified number of qubits.
     """
+    # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)
     quam = QuAM()
 
@@ -68,6 +69,8 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 opx_output_Q="#/wiring/resonator/opx_output_Q",
                 opx_input_I="#/wiring/resonator/opx_input_I",
                 opx_input_Q="#/wiring/resonator/opx_input_Q",
+                opx_input_offset_I = 0.0,
+                opx_input_offset_Q = 0.0,
                 frequency_converter_up=octave.RF_outputs[1].get_reference(),
                 frequency_converter_down=octave.RF_inputs[1].get_reference(),
                 intermediate_frequency=50 * u.MHz,
