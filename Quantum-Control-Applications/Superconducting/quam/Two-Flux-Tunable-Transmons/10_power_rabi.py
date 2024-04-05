@@ -77,8 +77,8 @@ with program() as rabi:
             with for_(*from_array(a, amps)):
                 # Loop for error amplification (perform many qubit pulses)
                 with for_(count, 0, count < npi, count + 1):
-                    play("x180" * amp(a), q1.xy.name)
-                    play("x180" * amp(a), q2.xy.name)
+                    q1.xy.play("x180", amplitude_scale=a)
+                    q2.xy.play("x180", amplitude_scale=a)
                 # Align all elements to measure after playing the qubit pulse.
                 align()
                 # QUA macro the readout the state of the active resonators (defined in macros.py)

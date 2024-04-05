@@ -125,7 +125,7 @@ with program() as ro_duration_opt:
         else:
             measure("readout", rr1.name, None)
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
-        measure(
+        measure(  # TODO: with QuAM
             "readout",
             rr.name,
             None,

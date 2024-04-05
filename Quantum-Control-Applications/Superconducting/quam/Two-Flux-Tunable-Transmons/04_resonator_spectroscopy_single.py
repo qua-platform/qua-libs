@@ -74,7 +74,7 @@ with program() as resonator_spec:
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
             rr.measure("readout", I_var=I, Q_var=Q)
             # Wait for the resonator to deplete
-            wait(machine.get_depletion_time * u.ns, rr.name)
+            rr.wait(machine.get_depletion_time * u.ns)
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
             save(Q, Q_st)

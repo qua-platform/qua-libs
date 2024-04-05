@@ -87,8 +87,8 @@ with program() as ro_amp_freq_opt:
                 align()
                 # Wait for thermalization again in case of measurement induced transitions
                 wait(machine.get_thermalization_time * u.ns)
-                play("x180", q1.xy.name)
-                play("x180", q2.xy.name)
+                q1.xy.play("x180")
+                q2.xy.play("x180")
                 align()
                 multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
         # Save the counter to get the progress bar

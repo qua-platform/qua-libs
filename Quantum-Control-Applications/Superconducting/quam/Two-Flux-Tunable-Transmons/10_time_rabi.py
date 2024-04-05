@@ -70,8 +70,8 @@ with program() as rabi:
         save(n, n_st)
         with for_(*from_array(t, times)):
             # Play the qubit drives with varying durations
-            play(operation, q1.xy.name, duration=t)
-            play(operation, q2.xy.name, duration=t)
+            q1.xy.play(operation, duration=t)
+            q2.xy.play(operation, duration=t)
             # Align all elements to measure after playing the qubit pulse.
             align()
             # QUA macro the readout the state of the active resonators (defined in macros.py)

@@ -72,8 +72,8 @@ with program() as iq_blobs:
         # Wait for the qubit to decay to the ground state in the case of measurement induced transitions
         wait(machine.get_thermalization_time * u.ns)
         # excited iq blobs for both qubits
-        play("x180", q1.xy.name)
-        play("x180", q2.xy.name)
+        q1.xy.play("x180")
+        q2.xy.play("x180")
         align()
         multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st)
 
@@ -115,10 +115,10 @@ else:
     qm.close()
 
     # Update the state
-    q1.resonator.operations["readout"].integration_weights_angle = angle1
+    q1.resonator.operations["readout"].integration_weights_angle += angle1
     # rr1.readout_fidelity = fidelity1
     q1.resonator.operations["readout"].threshold = threshold1
-    q2.resonator.operations["readout"].integration_weights_angle = angle2
+    q2.resonator.operations["readout"].integration_weights_angle += angle2
     # rr2.readout_fidelity = fidelity2
     q2.resonator.operations["readout"].threshold = threshold2
     # machine.save("quam")

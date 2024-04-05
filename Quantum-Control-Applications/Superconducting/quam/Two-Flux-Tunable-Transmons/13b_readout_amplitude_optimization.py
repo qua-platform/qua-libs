@@ -79,8 +79,8 @@ with program() as ro_amp_opt:
             align()
             # Wait for thermalization again in case of measurement induced transitions
             wait(machine.get_thermalization_time * u.ns)
-            play("x180", q1.xy.name)
-            play("x180", q2.xy.name)
+            q1.xy.play("x180")
+            q2.xy.play("x180")
             align()
             # Measure the state of the resonator with varying readout pulse amplitudes
             multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st, amplitude=a)

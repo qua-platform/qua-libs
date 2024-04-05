@@ -89,8 +89,8 @@ with program() as ro_freq_opt:
             # Wait for thermalization again in case of measurement induced transitions
             wait(machine.get_thermalization_time * u.ns)
             # Play the x180 gate to put the qubits in the excited state
-            play("x180", q1.xy.name)
-            play("x180", q2.xy.name)
+            q1.xy.play("x180")
+            q2.xy.play("x180")
             # Align the elements to measure after playing the qubit pulses.
             align()
             # Measure the state of the resonator

@@ -78,15 +78,15 @@ with program() as ramsey:
             align()
             # Strict_timing ensures that the sequence will be played without gaps
             with strict_timing_():
-                play("x90", q1.xy.name)
-                wait(t, q1.xy.name)
-                frame_rotation_2pi(phi, q1.xy.name)
-                play("x90", q1.xy.name)
+                q1.xy.play("x90")
+                q1.xy.wait(t)
+                q1.xy.frame_rotation(phi)
+                q1.xy.play("x90")
 
-                play("x90", q2.xy.name)
-                wait(t, q2.xy.name)
-                frame_rotation_2pi(phi, q2.xy.name)
-                play("x90", q2.xy.name)
+                q2.xy.play("x90")
+                q2.xy.wait(t)
+                q2.xy.frame_rotation(phi)
+                q2.xy.play("x90")
 
             # Align the elements to measure after playing the qubit pulse.
             align()
@@ -190,10 +190,10 @@ else:
         qubit_detuning_q2 = fit_I2["f"][0] * u.GHz - detuning
         print(f"Detuning to add to {q1.name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
         print(f"Detuning to add to {q2.name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
-        q1.T2 = int(fit_I1["T2"][0])
-        q1.xy.f_01 -= qubit_detuning_q1
-        q2.T2 = int(fit_I2["T2"][0])
-        q2.xy.f_01 -= qubit_detuning_q2
+        q1.T2ramsey = int(fit_I1["T2"][0])
+        q1.xy.intermediate_frequency -= qubit_detuning_q1
+        q2.T2ramsey = int(fit_I2["T2"][0])
+        q2.xy.intermediate_frequency -= qubit_detuning_q2
     except (Exception,):
         pass
 

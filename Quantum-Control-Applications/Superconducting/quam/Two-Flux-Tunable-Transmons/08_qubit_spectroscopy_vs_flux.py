@@ -49,7 +49,7 @@ q2 = machine.active_qubits[1]
 # The QUA program #
 ###################
 
-
+operation = "saturation"  # The qubit operation to play, can be switched to "x180" when the qubits are found.
 n_avg = 100  # Number of averaging loops
 cooldown_time = max(q1.thermalization_time, q2.thermalization_time)
 
@@ -89,11 +89,8 @@ with program() as multi_qubit_spec_vs_flux:
                 wait(100)  # Wait for the flux to settle
 
                 # Saturate qubit
-                play("saturation" * amp(saturation_amp), q1.xy.name, duration=saturation_len * u.ns)
-                play("saturation" * amp(saturation_amp), q2.xy.name, duration=saturation_len * u.ns)
-                # Play x180 once the qubits are found
-                # play("x180", q1.xy.name)
-                # play("x180", q2.xy.name)
+                q1.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
+                q2.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
 
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
                 multiplexed_readout(machine, I, I_st, Q, Q_st)
@@ -143,27 +140,27 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(dcs, (q1.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s1))
-        plt.plot(q1.z.max_frequency_point, q1.xy.intermediate_frequency / u.MHz, "r*")
+        plt.plot(q1.z.min_offset, q1.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q1.name} IF [MHz]")
-        plt.title(f"{q1.name} (f_01: {int(q1.xy.f_01 / u.MHz)} MHz)")
+        plt.title(f"{q1.name} (f_01: {int(q1.f_01 / u.MHz)} MHz)")
         plt.subplot(223)
         plt.cla()
         plt.pcolor(dcs, (q1.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s1)))
-        plt.plot(q1.z.max_frequency_point, q1.xy.intermediate_frequency / u.MHz, "r*")
+        plt.plot(q1.z.min_offset, q1.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q1.name} IF [MHz]")
         plt.subplot(222)
         plt.cla()
         plt.pcolor(dcs, (q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2))
-        plt.plot(q2.z.max_frequency_point, q2.xy.intermediate_frequency / u.MHz, "r*")
-        plt.title(f"{q2.name} (f_01: {int(q2.xy.f_01 / u.MHz)} MHz)")
+        plt.plot(q2.z.min_offset, q2.xy.intermediate_frequency / u.MHz, "r*")
+        plt.title(f"{q2.name} (f_01: {int(q2.f_01 / u.MHz)} MHz)")
         plt.ylabel(f"{q2.name} IF [MHz]")
         plt.xlabel("flux [V]")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(dcs, (q2.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s2)))
-        plt.plot(q2.z.max_frequency_point, q2.xy.intermediate_frequency / u.MHz, "r*")
+        plt.plot(q2.z.min_offset, q2.xy.intermediate_frequency / u.MHz, "r*")
         plt.xlabel("Flux [V]")
         plt.ylabel(f"{q2.name} IF [MHz]")
         plt.tight_layout()

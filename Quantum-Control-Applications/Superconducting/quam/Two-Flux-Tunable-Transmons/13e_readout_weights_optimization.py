@@ -163,7 +163,7 @@ with program() as opt_weights:
         else:
             measure("readout", rr1.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        measure(
+        measure(  # TODO: with QuAM
             "readout",
             rr.name,
             None,

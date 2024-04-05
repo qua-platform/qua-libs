@@ -65,6 +65,8 @@ class Transmon(QuamComponent):
     resonator: ReadoutResonator = None
 
     T1: int = 10_000
+    T2ramsey: int = 10_000
+    T2echo: int = 10_000
     thermalization_time_factor: int = 5
     anharmonicity: int = 150e6
 

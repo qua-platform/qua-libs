@@ -125,8 +125,8 @@ def get_prog(qubit, resonator):
         Q_st = [declare_stream() for _ in range(21)]
 
         # Bring the active qubits to the minimum frequency point
-        set_dc_offset(q1_z, "single", q1.z.max_frequency_point)
-        set_dc_offset(q2_z, "single", q2.z.max_frequency_point)
+        set_dc_offset(q1_z, "single", q1.z.min_offset)
+        set_dc_offset(q2_z, "single", q2.z.min_offset)
 
         with for_(n, 0, n < n_points, n + 1):
             save(n, n_st)

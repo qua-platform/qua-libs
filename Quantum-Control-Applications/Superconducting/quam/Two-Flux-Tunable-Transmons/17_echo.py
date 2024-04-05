@@ -21,12 +21,16 @@ Next steps before going to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
 ###################################################
@@ -68,17 +72,17 @@ with program() as echo:
 
         with for_(*from_array(t, idle_times)):
             # Echo sequence
-            play("x90", q1.xy.name)
-            wait(t, q1.xy.name)
-            play("x180", q1.xy.name)
-            wait(t, q1.xy.name)
-            play("x90", q1.xy.name)
+            q1.xy.play("x90")
+            q1.xy.wait(t)
+            q1.xy.play("x180")
+            q1.xy.wait(t)
+            q1.xy.play("x90")
 
-            play("x90", q2.xy.name)
-            wait(t, q2.xy.name)
-            play("x180", q2.xy.name)
-            wait(t, q2.xy.name)
-            play("x90", q2.xy.name)
+            q2.xy.play("x90")
+            q2.xy.wait(t)
+            q2.xy.play("x180")
+            q2.xy.wait(t)
+            q2.xy.play("x90")
 
             # Align the elements to measure after playing the qubit pulse.
             align()
@@ -94,7 +98,7 @@ with program() as echo:
         # get_equivalent_log_array() is used to get the exact values used in the QUA program.
         if np.isclose(np.std(idle_times[1:] / idle_times[:-1]), 0, atol=1e-3):
             idle_times = get_equivalent_log_array(idle_times)
-        for i in range(len(active_qubits)):
+        for i in range(len(machine.active_qubits)):
             I_st[i].buffer(len(idle_times)).average().save(f"I{i+1}")
             Q_st[i].buffer(len(idle_times)).average().save(f"Q{i+1}")
 
@@ -177,8 +181,8 @@ try:
     plt.tight_layout()
 
     # Update the state
-    q1.T2echo = int(fit_I1["T2"][0])
-    q2.T2echo = int(fit_I2["T2"][0])
+    q1.T2echo = int(fit_I1["T1"][0])
+    q2.T2echo = int(fit_I2["T1"][0])
 except (Exception,):
     pass
 

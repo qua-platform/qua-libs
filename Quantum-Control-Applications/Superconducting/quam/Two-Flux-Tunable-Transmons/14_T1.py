@@ -17,12 +17,16 @@ Next steps before going to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
 ###################################################
@@ -65,12 +69,12 @@ with program() as T1:
 
         with for_(*from_array(t, t_delay)):
             # qubit 1
-            play("x180", q1.xy.name)
-            wait(t, q1.xy.name)
+            q1.xy.play("x180")
+            q1.xy.wait(t)
 
             # qubit 2
-            play("x180", q2.xy.name)
-            wait(t, q2.xy.name)
+            q2.xy.play("x180")
+            q2.xy.wait(t)
 
             align()
             multiplexed_readout(machine, I, I_st, Q, Q_st)
@@ -83,7 +87,8 @@ with program() as T1:
         # get_equivalent_log_array() is used to get the exact values used in the QUA program.
         if np.isclose(np.std(t_delay[1:] / t_delay[:-1]), 0, atol=1e-3):
             t_delay = get_equivalent_log_array(t_delay)
-        for i in range(len(active_qubits)):
+
+        for i in range(len(machine.active_qubits)):
             I_st[i].buffer(len(t_delay)).average().save(f"I{i+1}")
             Q_st[i].buffer(len(t_delay)).average().save(f"Q{i+1}")
         n_st.save("n")

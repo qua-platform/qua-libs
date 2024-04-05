@@ -80,8 +80,8 @@ with program() as rabi_chevron:
 
             with for_(*from_array(a, amps)):
                 # Play the qubit drives
-                play(operation * amp(a), q1.xy.name)
-                play(operation * amp(a), q2.xy.name)
+                q1.xy.play(operation, amplitude_scale=a)
+                q2.xy.play(operation, amplitude_scale=a)
                 # Align all elements to measure after playing the qubit pulse.
                 align()
                 # QUA macro the readout the state of the active resonators (defined in macros.py)

@@ -61,6 +61,7 @@ q2 = machine.active_qubits[1]
 # The QUA program #
 ###################
 
+operation = "saturation"  # The qubit operation to play, can be switched to "x180" when the qubits are found.
 n_avg = 100  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
@@ -84,10 +85,10 @@ with program() as multi_qubit_spec:
             update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
 
             # qubit 1
-            play("saturation" * amp(saturation_amp), q1.xy.name, duration=saturation_len * u.ns)
+            q1.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
             align(q1.xy.name, q1.resonator.name)  # TODO: use q1.align() instead?
             # qubit 2
-            play("saturation" * amp(saturation_amp), q2.xy.name, duration=saturation_len * u.ns)
+            q2.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
             align(q2.xy.name, q2.resonator.name)
 
             # QUA macro the readout the state of the active resonators (defined in macros.py)

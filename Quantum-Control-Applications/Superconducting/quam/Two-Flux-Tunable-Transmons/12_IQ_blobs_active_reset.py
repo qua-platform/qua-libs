@@ -59,8 +59,8 @@ with program() as iq_blobs:
         align()
         # wait(machine.get_thermalization_time * u.ns)
         reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=10, Ig=I_g[0])
-        play("x180", q1.xy.name)
-        play("x180", q2.xy.name)
+        q1.xy.play("x180")
+        q2.xy.play("x180")
         align()
         multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
 

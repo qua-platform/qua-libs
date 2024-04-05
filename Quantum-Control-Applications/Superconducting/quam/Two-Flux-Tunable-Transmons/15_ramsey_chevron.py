@@ -48,11 +48,6 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
 
-# Get the qubit frequencies
-lo1 = machine.local_oscillators.qubits[q1.xy.LO_index].freq
-lo2 = machine.local_oscillators.qubits[q2.xy.LO_index].freq
-q1.xy.intermediate_frequency = q1.xy.f_01 - lo1
-q2.xy.intermediate_frequency = q2.xy.f_01 - lo2
 
 ###################
 # The QUA program #
@@ -83,19 +78,18 @@ with program() as ramsey:
 
             with for_(*from_array(t, t_delay)):
                 # qubit 1
-                play("x90", q1.xy.name)
-                wait(t, q1.xy.name)
-                play("x90", q1.xy.name)
+                q1.xy.play("x90")
+                q1.xy.wait(t)
+                q1.xy.play("x90")
 
                 # qubit 2
-                play("x90", q2.xy.name)
-                wait(t, q2.xy.name)
-                play("x90", q2.xy.name)
+                q2.xy.play("x90")
+                q2.xy.wait(t)
+                q2.xy.play("x90")
 
                 align()
-                # Measure the state of the resonator.
-# QUA macro the readout the state of the active resonators (defined in macros.py)
-multiplexed_readout(machine, I, I_st, Q, Q_st)
+                # QUA macro the readout the state of the active resonators (defined in macros.py)
+                multiplexed_readout(machine, I, I_st, Q, Q_st)
                 # Wait for the qubits to decay to the ground state
                 wait(machine.get_thermalization_time * u.ns)
 
@@ -107,7 +101,6 @@ multiplexed_readout(machine, I, I_st, Q, Q_st)
         # resonator 2
         I_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("I2")
         Q_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q2")
-
 
 
 ###########################
@@ -134,8 +127,10 @@ else:
         # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Convert the results into Volts
-        I1, Q1 = u.demod2volts(I1, q1.resonator.operations["readout"].length), u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2, Q2 = u.demod2volts(I2, q2.resonator.operations["readout"].length), u.demod2volts(Q2, q2.resonator.operations["readout"].length)
+        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
+        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
+        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
+        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
@@ -143,7 +138,7 @@ else:
         plt.subplot(221)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"{q1.name} - I, f_01={int(q1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q1.name} - I, f_01={int(q1.f_01 / u.MHz)} MHz")
         plt.ylabel("detuning [MHz]")
         plt.subplot(223)
         plt.cla()
@@ -154,7 +149,7 @@ else:
         plt.subplot(222)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"{q2.name} - I, f_01={int(q2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q2.name} - I, f_01={int(q2.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
