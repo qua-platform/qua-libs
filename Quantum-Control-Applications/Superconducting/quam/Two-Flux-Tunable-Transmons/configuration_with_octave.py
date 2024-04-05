@@ -314,7 +314,7 @@ config = {
                 "const": "const_flux_pulse",
             },
         },
-        "q2_z": {
+        "q2.z.name": {
             "singleInput": {
                 "port": ("con1", 8),
             },

@@ -153,8 +153,10 @@ else:
         # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
         # Convert the results into Volts
-        I1, Q1 = u.demod2volts(I1, rr1.readout_pulse_length), u.demod2volts(Q1, rr1.readout_pulse_length)
-        I2, Q2 = u.demod2volts(I2, rr2.readout_pulse_length), u.demod2volts(Q2, rr2.readout_pulse_length)
+        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
+        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
+        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
+        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot the results
@@ -163,7 +165,7 @@ else:
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I1.T)
         # plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{q1.name} - I, f_01={int(q1.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q1.name} - I, f_01={int(q1.f_01 / u.MHz)} MHz")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(223)
         plt.cla()
@@ -176,7 +178,7 @@ else:
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I2.T)
         # plt.plot(qb.z.cz.level, qb.z.cz.length, "r*")
-        plt.title(f"{q2.name} - I, f_01={int(q2.xy.f_01 / u.MHz)} MHz")
+        plt.title(f"{q2.name} - I, f_01={int(q2.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
         plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, Q2.T)
