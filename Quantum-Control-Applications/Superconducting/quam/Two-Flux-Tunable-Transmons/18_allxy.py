@@ -18,9 +18,13 @@ Prerequisites:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM, Transmon, ReadoutResonator
 
 
 ###################################################
@@ -39,11 +43,13 @@ qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", oc
 # Get the relevant QuAM components
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
+rr1 = q1.resonator
+rr2 = q2.resonator
 
 ##############################
 # Program-specific variables #
 ##############################
-n_points = 10_000
+n_points = 1000_000
 
 
 # All XY sequences. The sequence names must match corresponding operation in the config
@@ -73,7 +79,7 @@ sequence = [
 
 
 # All XY macro generating the pulse sequences from a python list.
-def allXY(pulses, qubit, resonator):
+def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
     """
     Generate a QUA sequence based on the two operations written in pulses. Used to generate the all XY program.
     **Example:** I, Q = allXY(['I', 'y90'])
@@ -85,28 +91,19 @@ def allXY(pulses, qubit, resonator):
     """
     I_xy = declare(fixed)
     Q_xy = declare(fixed)
-    if pulses[0] != "I":
-        play(pulses[0], qubit.name + "_xy")  # Either play the sequence
-    else:
-        wait(qubit.xy.operations[operation].length // 4, qubit.name + "_xy")  # or wait if sequence is identity
-    if pulses[1] != "I":
-        play(pulses[1], qubit.name + "_xy")  # Either play the sequence
-    else:
-        wait(qubit.xy.operations[operation].length // 4, qubit.name + "_xy")  # or wait if sequence is identity
+    for pulse in pulses:
+        if pulse != "I":
+            qubit.xy.play(pulse)  # Either play the sequence
+        else:
+            qubit.xy.wait(qubit.xy.operations["x180"].length * u.ns)  # or wait if sequence is identity
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
     if resonator == rr1:
-        measure("readout", rr2.name, None)
+        rr2.play("readout")
     else:
-        measure("readout", rr1.name, None)
-    measure(
-        "readout",
-        resonator.name,
-        None,
-        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_xy),
-        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_xy),
-    )
+        rr1.play("readout")
+    resonator.measure("readout", I_var=I_xy, Q_var=Q_xy)
     return I_xy, Q_xy
 
 
@@ -125,8 +122,8 @@ def get_prog(qubit, resonator):
         Q_st = [declare_stream() for _ in range(21)]
 
         # Bring the active qubits to the minimum frequency point
-        set_dc_offset(q1_z, "single", q1.z.min_offset)
-        set_dc_offset(q2_z, "single", q2.z.min_offset)
+        set_dc_offset(q1.z.name, "single", q1.z.min_offset)
+        set_dc_offset(q2.z.name, "single", q2.z.min_offset)
 
         with for_(n, 0, n < n_points, n + 1):
             save(n, n_st)
@@ -148,7 +145,7 @@ def get_prog(qubit, resonator):
                         save(Q, Q_st[i])
 
         with stream_processing():
-            n_st.save("n")
+            n_st.save("iteration")
             for i in range(21):
                 I_st[i].average().save(f"I{i}")
                 Q_st[i].average().save(f"Q{i}")
@@ -173,28 +170,32 @@ else:
     for qb, rr in [[q1, rr1], [q2, rr2]]:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(get_prog(qb, rr))
-        # Get results from QUA program
-        data_list = ["n"] + np.concatenate([[f"I{i}", f"Q{i}"] for i in range(21)]).tolist()
-        results = fetching_tool(job, data_list, mode="wait_for_all")
-        # Fetch results
-        res = results.fetch_all()
-        I = np.array(res[1::2])
-        Q = np.array(res[2::2])
-        # Plot results
+        data_list = ["iteration"] + np.concatenate([[f"I{i}", f"Q{i}"] for i in range(21)]).tolist()
+        results = fetching_tool(job, data_list, mode="live")
         fig, ax = plt.subplots(2, 1)
-        ax[0].cla()
-        ax[0].plot(-I, "-*")
-        ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
-        ax[0].set_ylabel("I quadrature [a.u.]")
-        ax[0].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
-        ax[1].cla()
-        ax[1].plot(-Q, "-*")
-        ax[1].plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, "-")
-        ax[1].set_ylabel("Q quadrature [a.u.]")
-        ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
-        plt.suptitle(f"All XY {qb.name}")
-        plt.tight_layout()
-        plt.pause(0.1)
+
+        while results.is_processing():
+            # Fetch results
+            res = results.fetch_all()
+            n = res[0]
+            I = np.array(res[1::2])
+            Q = np.array(res[2::2])
+            # Progress bar
+            progress_counter(n, n_points, start_time=results.start_time)
+            # Plot results
+            ax[0].cla()
+            ax[0].plot(-I, "-*")
+            ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
+            ax[0].set_ylabel("I quadrature [a.u.]")
+            ax[0].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
+            ax[1].cla()
+            ax[1].plot(-Q, "-*")
+            ax[1].plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, "-")
+            ax[1].set_ylabel("Q quadrature [a.u.]")
+            ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
+            plt.suptitle(f"All XY {qb.name}")
+            plt.tight_layout()
+            plt.pause(0.1)
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
