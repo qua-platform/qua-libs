@@ -32,7 +32,6 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 from components import QuAM, Transmon
-from macros import qua_declaration, multiplexed_readout
 
 
 ###################################################
@@ -219,9 +218,9 @@ with program() as rb:
                     qubit.resonator.align(qubit.xy.name)
                     # Play through the 2nd resonator to be in the same condition as when the readout was optimized
                     if qubit.resonator == q1.resonator:
-                        measure("readout", q2.resonator.name, None)
+                        q2.resonator.play("readout")
                     else:
-                        measure("readout", q1.resonator.name, None)
+                        q1.resonator.play("readout")
                     # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                     qubit.resonator.measure("readout", I_var=I, Q_var=Q)
                     save(I, I_st)
