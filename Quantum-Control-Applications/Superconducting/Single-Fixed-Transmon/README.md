@@ -19,6 +19,8 @@ is not saturated, correct for DC offsets.
 6. [Qubit Spectroscopy](./Single-Fixed-Transmon/06a_qubit_spectroscopy.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator.
    * [Qubit Spectroscopy Wide Range](./Single-Fixed-Transmon/06b_qubit_spectroscopy_wide_range_outer_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the outer loop.
    * [Qubit Spectroscopy Wide Range Inner Loop](./Single-Fixed-Transmon/06c_qubit_spectroscopy_wide_range_inner_loop.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping an external LO source in the inner loop.
+   * [Qubit Spectroscopy Wide Range Octave](./06d_qubit_spectroscopy_wide_range_octave.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping the corresponding Octave LO frequency and updating the mixer correction parameters at each step in Python.
+   * [Qubit Spectroscopy Wide Range Octave](./06e_qubit_spectroscopy_wide_range_octave_update_IF.py) - Performs a 1D frequency sweep on the qubit, measuring the resonator while also sweeping the corresponding Octave LO frequency and updating the mixer correction parameters for each LO frequency and some IF in QUA.
 7. **Rabi chevrons** - Quickly find the qubit for a given pulse amplitude or duration:
     * [duration vs frequency](./Single-Fixed-Transmon/07a_rabi_chevron_duration.py) - Performs a 2D sweep (frequency vs qubit drive duration) to acquire the Rabi chevron.
     * [amplitude vs frequency](./Single-Fixed-Transmon/07b_rabi_chevron_amplitude.py) - Performs a 2D sweep (frequency vs qubit drive amplitude) to acquire the Rabi chevron.
