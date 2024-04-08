@@ -101,12 +101,13 @@ class QuAM(QuamRoot):
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
+    network: dict = field(default_factory=dict)
 
     active_qubit_names: List[str] = field(default_factory=list)
 
-    @property
-    def network(self) -> Dict[str, str]:
-        return {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
+    # @property
+    # def network(self) -> Dict[str, str]:
+    #     return {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
 
     @property
     def active_qubits(self) -> List[Transmon]:
@@ -129,3 +130,9 @@ class QuAM(QuamRoot):
         for q in self.active_qubits:
             q.z.to_min()
         align()
+
+    # def connect(self):
+    #     from qm import QuantumMachinesManager
+    #     return QuantumMachinesManager(
+    #         host=self.network["host"], cluster_name=self.network["cluster_name"], octave=octave_config
+    #     )

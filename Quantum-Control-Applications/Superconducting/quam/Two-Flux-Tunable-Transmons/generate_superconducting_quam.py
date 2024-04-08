@@ -52,6 +52,8 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
             "opx_input_Q": ("con1", 2),
         },
     }
+    quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
+    # quam_file = {"wiring": quam.wiring, "network": quam.network}
     # Add the transmon components (xy, z and resonator) to the quam
     for idx in range(num_qubits):
         # Create qubit components
@@ -119,7 +121,7 @@ if __name__ == "__main__":
     folder.mkdir(exist_ok=True)
 
     quam, octave_config = create_quam_superconducting_referenced(num_qubits=2)
-    quam.save(folder / "quam", content_mapping={"wiring.json": "wiring"})
+    quam.save(folder / "quam", content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
     qua_config = quam.generate_config()
