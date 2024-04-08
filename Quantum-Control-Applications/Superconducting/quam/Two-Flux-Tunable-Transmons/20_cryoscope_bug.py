@@ -49,6 +49,7 @@ machine = QuAM.load("quam")
 config_quam = machine.generate_config()
 # Generate the OPX and Octave configurations
 import json
+
 f = open("qua_config.json")
 config = json.load(f)
 deepcopy(config)

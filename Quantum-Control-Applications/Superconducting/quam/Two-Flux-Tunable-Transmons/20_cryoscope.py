@@ -64,7 +64,9 @@ machine = QuAM.load("quam")
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
 # Open Communication with the QOP
-qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_81", octave=octave_config)
+qmm = QuantumMachinesManager(
+    host=machine.network["host"], cluster_name=machine.network["cluster_name"], octave=octave_config
+)
 
 # Get the relevant QuAM components
 q1 = machine.active_qubits[0]
@@ -106,11 +108,9 @@ n_avg = 1000  # Number of averages
 zeros_before_pulse = 0  # Beginning of the flux pulse (before we put zeros to see the rising time)
 zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-flux_waveform = np.array(
-    [0.0] * zeros_before_pulse + [flux_pulse_amp] * flux_pulse_len + [0.0] * zeros_after_pulse
-)
+flux_waveform = np.array([0.0] * zeros_before_pulse + [flux_pulse_amp] * flux_pulse_len + [0.0] * zeros_after_pulse)
 # Baked flux pulse segments with 1ns resolution
-square_pulse_segments = baked_waveform("qb", [0.0, .1, .3], 3)
+square_pulse_segments = baked_waveform("qb", [0.0, 0.1, 0.3], 3)
 square_pulse_segments = []
 step_response = [1.0] * flux_pulse_len
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)

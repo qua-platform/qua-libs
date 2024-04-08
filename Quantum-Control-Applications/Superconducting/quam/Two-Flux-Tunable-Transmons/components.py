@@ -105,8 +105,12 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
 
     @property
+    def network(self) -> Dict[str, str]:
+        return {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
+
+    @property
     def active_qubits(self) -> List[Transmon]:
-        """Return the the list of active qubits"""
+        """Return the list of active qubits"""
         return [self.qubits[q] for q in self.active_qubit_names]
 
     @property
