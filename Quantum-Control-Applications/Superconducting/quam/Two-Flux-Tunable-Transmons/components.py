@@ -5,9 +5,8 @@ from quam.components.channels import IQChannel, SingleChannel, InOutIQChannel
 from quam.components.octave import Octave
 from quam.core import QuamRoot, quam_dataclass
 
-from qm.qua import set_dc_offset, align
+from qm.qua import align
 
-# import macros
 
 __all__ = ["Transmon", "FluxLine", "ReadoutResonator", "QuAM"]
 
@@ -104,10 +103,6 @@ class QuAM(QuamRoot):
     network: dict = field(default_factory=dict)
 
     active_qubit_names: List[str] = field(default_factory=list)
-
-    # @property
-    # def network(self) -> Dict[str, str]:
-    #     return {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
 
     @property
     def active_qubits(self) -> List[Transmon]:

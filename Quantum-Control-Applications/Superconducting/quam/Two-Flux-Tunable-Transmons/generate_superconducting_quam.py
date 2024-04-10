@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 
 from quam.components import *
-from quam.components.channels import IQChannel, InOutIQChannel, SingleChannel
+from quam.components.channels import IQChannel
 from quam.components.pulses import ConstantReadoutPulse
 from components import Transmon, ReadoutResonator, QuAM, FluxLine
 from qm.octave import QmOctaveConfig
@@ -22,6 +22,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     """
     # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)
+    # Initiate the QuAM class
     quam = QuAM()
 
     # Add the Octave to the quam
@@ -32,7 +33,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     )
     quam.octave = octave
     octave.initialize_frequency_converters()
-    octave.print_summary()
+    # octave.print_summary()
     octave_config = octave.get_octave_config()
 
     # Define the connectivity
@@ -53,7 +54,6 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
         },
     }
     quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
-    # quam_file = {"wiring": quam.wiring, "network": quam.network}
     # Add the transmon components (xy, z and resonator) to the quam
     for idx in range(num_qubits):
         # Create qubit components
@@ -130,4 +130,4 @@ if __name__ == "__main__":
     quam_loaded = QuAM.load(folder / "quam")
     qua_file_loaded = folder / "qua_config2.json"
     qua_config_loaded = quam_loaded.generate_config()
-    # json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
+    json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
