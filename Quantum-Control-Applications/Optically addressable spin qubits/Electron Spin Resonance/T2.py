@@ -27,7 +27,6 @@ cooldown_time = 10e6 // 4
 n_avg = 100
 
 with program() as T2:
-
     n = declare(int)
     t_delay = declare(int)
     pulse_delay = declare(int)
@@ -40,9 +39,7 @@ with program() as T2:
     Q_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
-
         with for_(*from_array(t_delay, delay_vec)):
-
             # initialization
             play("initialization", "green_laser")
 

@@ -24,9 +24,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ###################
 # The QUA program #

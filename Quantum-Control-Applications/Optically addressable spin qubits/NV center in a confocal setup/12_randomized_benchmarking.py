@@ -24,9 +24,6 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ##############################

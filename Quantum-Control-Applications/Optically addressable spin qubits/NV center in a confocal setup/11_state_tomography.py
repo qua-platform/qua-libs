@@ -16,9 +16,6 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ######################################

@@ -28,7 +28,6 @@ cooldown_time = 10 * u.ms // 4
 n_avg = 100
 
 with program() as pi_pulse_cal:
-
     n = declare(int)
     pulse1_len = declare(int)
     pulse2_len = declare(int)
@@ -43,9 +42,7 @@ with program() as pi_pulse_cal:
     echo = declare_stream(adc_trace=True)
 
     with for_(n, 0, n < n_avg, n + 1):
-
         with for_(*from_array(pulse1_len, pulse1_vec)):
-
             # initialization
             play("initialization", "green_laser")
 

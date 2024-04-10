@@ -13,7 +13,6 @@ from configuration import *
 ###################
 
 with program() as hello_qua:
-
     # a = declare(fixed, value=1)
     # b = declare(fixed, value=0.3)
     # c = declare(fixed)

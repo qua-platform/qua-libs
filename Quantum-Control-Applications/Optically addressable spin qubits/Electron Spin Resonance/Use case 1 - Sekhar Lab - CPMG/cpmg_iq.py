@@ -44,7 +44,6 @@ totalnumechoes = np.sum(numecho_array)
 N_shots = 10
 
 with program() as hello_qua:
-
     n = declare(int)
     n_st = declare_stream()
 
@@ -72,9 +71,7 @@ with program() as hello_qua:
     foo = declare(int)
 
     with for_(n, 0, n < N_shots, n + 1):
-
         with for_(i_tau, 0, i_tau < num_taus, i_tau + 1):
-
             reset_phase("ensemble")
             reset_phase("resonator")
             reset_frame("ensemble")

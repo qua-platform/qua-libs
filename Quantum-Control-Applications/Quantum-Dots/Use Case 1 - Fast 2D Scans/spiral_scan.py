@@ -70,7 +70,6 @@ with program() as spiral_scan:
     I_stream, Q_stream = declare_stream(), declare_stream()
 
     with for_(average, 0, average < n_avg, average + 1):
-
         # initialising variables
         assign(moves_per_edge, 1)
         assign(completed_moves, 0)

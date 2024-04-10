@@ -140,7 +140,7 @@ def active_reset_fast(threshold_g: float):
     # Wait for the resonator to deplete
     wait(depletion_time * u.ns, "qubit")
     # Play a conditional pi-pulse to actively reset the qubit
-    play("x180", "qubit", condition=(I > threshold_g))
+    play("x180", "qubit", condition=(I_reset > threshold_g))
     return 1
 
 

@@ -30,9 +30,6 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.optimize import curve_fit
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
 ###################

@@ -31,9 +31,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #############################################
 # Program dependent variables and functions #

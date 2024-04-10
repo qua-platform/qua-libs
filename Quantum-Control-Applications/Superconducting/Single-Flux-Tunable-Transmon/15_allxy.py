@@ -22,9 +22,7 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 ##############################
 # Program-specific variables #

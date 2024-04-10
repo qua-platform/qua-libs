@@ -21,9 +21,7 @@ from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import fetching_tool
 import matplotlib.pyplot as plt
-import warnings
 
-warnings.filterwarnings("ignore")
 
 #######################################################
 # Get the config from the machine in configuration.py #
