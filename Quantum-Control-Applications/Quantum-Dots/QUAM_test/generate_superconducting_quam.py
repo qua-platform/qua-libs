@@ -2,20 +2,20 @@ from pathlib import Path
 import json
 
 from quam.components import *
-from quam.components.channels import IQChannel, InOutIQChannel, SingleChannel
+from quam.components.channels import IQChannel, InOutSingleChannel, SingleChannel
 from quam.components.pulses import ConstantReadoutPulse
-from components import Transmon, ReadoutResonator, QuAM, FluxLine
+from components import StickyChannelAddon, ReadoutResonator, QuAM, VirtualGateSet
 from qm.octave import QmOctaveConfig
 from quam.core import QuamRoot
 
 from qualang_tools.units import unit
 
 
-def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOctaveConfig):
+def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, QmOctaveConfig):
     """Create a QuAM with a number of qubits.
 
     Args:
-        num_qubits (int): Number of qubits to create.
+        gates_list: List of the gates to implement
 
     Returns:
         QuamRoot: A QuAM with the specified number of qubits.
@@ -37,23 +37,45 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
 
     # Define the connectivity
     quam.wiring = {
-        "qubits": [
+        "gates": [
             {
-                "port_I": ("con1", 3 * k + 3),
-                "port_Q": ("con1", 3 * k + 4),
-                "port_Z": ("con1", 3 * k + 5),
-            }
-            for k in range(num_qubits)  # TODO: what if k>2?
+                gates_list[k]: ("con1", k+1),
+            } for k in len(gates_list)
         ],
         "resonator": {
-            "opx_output_I": ("con1", 1),
-            "opx_output_Q": ("con1", 2),
-            "opx_input_I": ("con1", 1),
-            "opx_input_Q": ("con1", 2),
+            "res1": ("con1", 4),
         },
     }
     quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
-    # quam_file = {"wiring": quam.wiring, "network": quam.network}
+
+    # Add gates
+    quam.gates = {
+        {
+        name: SingleChannel(
+            id=name,
+            opx_output=f"#/wiring/gates/{name}/port_I",
+            sticky=StickyChannelAddon(duration=200, digital=False),
+        ) for name in gates_list},
+    }
+
+    quam.resonator = InOutSingleChannel(
+        id="resonator",
+        opx_output=("con1", 1),
+        opx_input=("con1", 1),
+        intermediate_frequency=50e6,
+        time_of_flight=24
+    )
+
+    quam.virtual_gate_set = VirtualGateSet(
+        gates=["#/gates/P1", "#/gates/P2"],  # Be careful with ordering
+        virtual_gates={"eps": [-11.6, 6.51], "U": [11.6, 6.51]},
+        pulse_defaults=[
+            pulses.SquarePulse(amplitude=None, length=None),
+            pulses.SquarePulse(amplitude=None, length=None),
+            pulses.SquarePulse(amplitude=None, length=None),
+        ],
+    )
+
     # Add the transmon components (xy, z and resonator) to the quam
     for idx in range(num_qubits):
         # Create qubit components
