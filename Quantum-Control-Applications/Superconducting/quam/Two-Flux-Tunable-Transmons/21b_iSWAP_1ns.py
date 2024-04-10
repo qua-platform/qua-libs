@@ -24,23 +24,43 @@ Next steps before going to the next node:
     - Save the current state by calling machine.save("quam")
 """
 
-from qm import QuantumMachinesManager
 from qm.qua import *
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
-import matplotlib.pyplot as plt
-from qualang_tools.loops import from_array
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.results import progress_counter
-import numpy as np
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.loops import from_array
 from qualang_tools.bakery import baking
+from qualang_tools.units import unit
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout
 
 
-##########
-# baking #
-##########
+###################################################
+#  Load QuAM and open Communication with the QOP  #
+###################################################
+# Class containing tools to help handling units and conversions.
+u = unit(coerce_to_integer=True)
+# Instantiate the QuAM class from the state file
+machine = QuAM.load("quam")
+# Generate the OPX and Octave configurations
+config = machine.generate_config()
+octave_config = machine.octave.get_octave_config()
+# Open Communication with the QOP
+qmm = QuantumMachinesManager(host=machine.network.host, cluster_name=machine.network.cluster_name, octave=octave_config)
+
+# Get the relevant QuAM components
+q1 = machine.active_qubits[0]
+q2 = machine.active_qubits[1]
+
+
+####################
+# Helper functions #
+####################
 def baked_waveform(waveform, pulse_duration, flux_qubit):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
@@ -50,38 +70,33 @@ def baked_waveform(waveform, pulse_duration, flux_qubit):
                 wf = [0.0] * 16
             else:
                 wf = waveform[:i].tolist()
-            b.add_op("flux_pulse", flux_qubit.name + "_z", wf)
-            b.play("flux_pulse", flux_qubit.name + "_z")
+            b.add_op("flux_pulse", flux_qubit.z.name, wf)
+            b.play("flux_pulse", flux_qubit.z.name)
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
 
 
-#######################################################
-# Get the config from the machine in configuration.py #
-#######################################################
-
-# Adjust the flux pulse amplitude and duration
-machine.qubits[active_qubits[1]].z.flux_pulse_amp = -0.104
-machine.qubits[active_qubits[1]].z.flux_pulse_length = 52
-
-# Build the config
-config = build_config(machine)
-
 ###################
 # The QUA program #
 ###################
 qb = q2  # The qubit whose flux will be swept
+flux_operation = "const"
+
+flux_pulse_length = 52
+flux_pulse_amp = -0.104
+qb.z.operations[flux_operation].amplitude = flux_pulse_amp
+qb.z.operations[flux_operation].length = flux_pulse_length
+
 n_avg = 100  # The number of averages
 
 # The flux amplitude pre-factor
 amps = np.arange(0.85, 1, 0.001)
 
 # Flux pulse waveform generation
-# The variable qb.z.flux_pulse_length is defined in the state or set above
-flux_waveform = np.array([qb.z.flux_pulse_amp] * qb.z.flux_pulse_length)
+flux_waveform = np.array([flux_pulse_amp] * flux_pulse_length)
 # Baked flux pulse segments
-square_pulse_segments = baked_waveform(flux_waveform, qb.z.flux_pulse_length, qb)
+square_pulse_segments = baked_waveform(flux_waveform, flux_pulse_length, qb)
 
 
 with program() as iswap:
@@ -96,18 +111,18 @@ with program() as iswap:
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
         with for_(*from_array(a, amps)):
-            with for_(segment, 0, segment <= qb.z.flux_pulse_length, segment + 1):
+            with for_(segment, 0, segment <= flux_pulse_length, segment + 1):
                 # Put one qubit in the excited state
-                play("x180", q2.name + "_xy")
+                q2.xy.play("x180")
                 align()
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 # Play a flux pulse on the qubit with the highest frequency to bring it close to the excited qubit while
                 # varying its amplitude and duration in order to observe the SWAP chevron with 1ns resolution.
                 with switch_(segment):
-                    for j in range(0, qb.z.flux_pulse_length + 1):
+                    for j in range(0, qb.z.operations[flux_operation].length + 1):
                         with case_(j):
-                            square_pulse_segments[j].run(amp_array=[(qb.name + "_z", a)])
+                            square_pulse_segments[j].run(amp_array=[(qb.z, a)])
                 align()
                 # Wait some time to ensure that the flux pulse will end before the readout pulse
                 wait(20 * u.ns)
@@ -120,11 +135,11 @@ with program() as iswap:
         # for the progress counter
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(qb.z.flux_pulse_length + 1).buffer(len(amps)).average().save("I1")
-        Q_st[0].buffer(qb.z.flux_pulse_length + 1).buffer(len(amps)).average().save("Q1")
+        I_st[0].buffer(flux_pulse_length + 1).buffer(len(amps)).average().save("I1")
+        Q_st[0].buffer(flux_pulse_length + 1).buffer(len(amps)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(qb.z.flux_pulse_length + 1).buffer(len(amps)).average().save("I2")
-        Q_st[1].buffer(qb.z.flux_pulse_length + 1).buffer(len(amps)).average().save("Q2")
+        I_st[1].buffer(flux_pulse_length + 1).buffer(len(amps)).average().save("I2")
+        Q_st[1].buffer(flux_pulse_length + 1).buffer(len(amps)).average().save("Q2")
 
 
 ###########################
@@ -148,7 +163,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Time axis for plotting
-    xplot = np.arange(0, qb.z.flux_pulse_length + 0.1, 1)
+    xplot = np.arange(0, flux_pulse_length + 0.1, 1)
     while results.is_processing():
         # Fetch results
         n, I1, Q1, I2, Q2 = results.fetch_all()
@@ -163,28 +178,26 @@ else:
         plt.suptitle("iSWAP chevron")
         plt.subplot(221)
         plt.cla()
-        plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I1.T)
-        # plt.plot(qb.z.iswap.level, qb.z.iswap.length, "r*")
+        plt.pcolor(amps * flux_pulse_amp, xplot, I1.T)
         plt.title(f"{q1.name} - I, f_01={int(q1.f_01 / u.MHz)} MHz")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(223)
         plt.cla()
-        plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, Q1.T)
-        # plt.plot(qb.z.iswap.level, qb.z.iswap.length, "r*")
+        plt.pcolor(amps * flux_pulse_amp, xplot, Q1.T)
         plt.title(f"{q1.name} - Q")
-        plt.xlabel("Flux amplitude [V]")
+        plt.xlabel(f"{qb.name} flux amplitude [V]")
         plt.ylabel("Interaction time [ns]")
         plt.subplot(222)
         plt.cla()
-        plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, I2.T)
+        plt.pcolor(amps * flux_pulse_amp, xplot, I2.T)
         # plt.plot(qb.z.iswap.level, qb.z.iswap.length, "r*")
         plt.title(f"{q2.name} - I, f_01={int(q2.f_01 / u.MHz)} MHz")
         plt.subplot(224)
         plt.cla()
-        plt.pcolor(amps * qb.z.flux_pulse_amp, xplot, Q2.T)
+        plt.pcolor(amps * flux_pulse_amp, xplot, Q2.T)
         # plt.plot(qb.z.iswap.level, qb.z.iswap.length, "r*")
         plt.title(f"{q2.name} - Q")
-        plt.xlabel("Flux amplitude [V]")
+        plt.xlabel(f"{qb.name} flux amplitude [V]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -194,4 +207,3 @@ else:
     # qb.z.iswap.length =
     # qb.z.iswap.level =
     # machine.save("quam")
-# np.savez(save_dir / 'iswap', I1=I1, Q1=Q1, I2=I2, ts=ts, amps=amps)
