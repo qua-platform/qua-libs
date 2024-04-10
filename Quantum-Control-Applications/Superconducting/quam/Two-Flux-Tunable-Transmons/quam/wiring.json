@@ -1,8 +1,4 @@
 {
-    "network": {
-        "host": "172.16.33.101",
-        "cluster_name": "Cluster_81"
-    },
     "wiring": {
         "qubits": [
             {
@@ -52,5 +48,9 @@
                 2
             ]
         }
+    },
+    "network": {
+        "host": "172.16.33.101",
+        "cluster_name": "Cluster_81"
     }
 }

@@ -35,7 +35,7 @@ machine = QuAM.load("quam")
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
 # Open Communication with the QOP
-qmm = QuantumMachinesManager(host=machine.network.host, cluster_name=machine.network.cluster_name, octave=octave_config)
+qmm = machine.connect()
 
 # Get the relevant QuAM components
 resonator = machine.active_qubits[0].resonator  # The resonator element

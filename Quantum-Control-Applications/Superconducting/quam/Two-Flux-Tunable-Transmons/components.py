@@ -126,8 +126,9 @@ class QuAM(QuamRoot):
             q.z.to_min()
         align()
 
-    # def connect(self):
-    #     from qm import QuantumMachinesManager
-    #     return QuantumMachinesManager(
-    #         host=self.network["host"], cluster_name=self.network["cluster_name"], octave=octave_config
-    #     )
+    def connect(self):
+        from qm import QuantumMachinesManager
+
+        return QuantumMachinesManager(
+            host=self.network["host"], cluster_name=self.network["cluster_name"], octave=self.octave.get_octave_config()
+        )
