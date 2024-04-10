@@ -93,7 +93,7 @@ class QuAM(QuamRoot):
     """Example QuAM root component."""
 
     @classmethod
-    def load(self, *args, **kwargs) -> "QuAM":
+    def load(cls, *args, **kwargs) -> "QuAM":
         return super().load(*args, **kwargs)
 
     octave: Octave = None
