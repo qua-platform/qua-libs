@@ -84,8 +84,8 @@ def baked_waveform(qubit, waveform, pulse_duration):
             else:
                 wf = waveform[:i].tolist()
 
-            # b.add_op("flux_pulse", qubit.z.name, wf)
-            # b.play("flux_pulse", qubit.z.name)
+            b.add_op("flux_pulse", qubit.z.name, wf)
+            b.play("flux_pulse", qubit.z.name)
         # Append the baking object in the list to call it from the QUA program
         pulse_segments.append(b)
     return pulse_segments
@@ -108,8 +108,7 @@ zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the fa
 total_zeros = zeros_after_pulse + zeros_before_pulse
 flux_waveform = np.array([0.0] * zeros_before_pulse + [flux_pulse_amp] * flux_pulse_len + [0.0] * zeros_after_pulse)
 # Baked flux pulse segments with 1ns resolution
-square_pulse_segments = baked_waveform("qb", [0.0, 0.1, 0.3], 3)
-square_pulse_segments = []
+square_pulse_segments = baked_waveform(qb, flux_waveform, len(flux_waveform))
 step_response = [1.0] * flux_pulse_len
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)
 
@@ -142,7 +141,7 @@ with program() as cryoscope:
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
                 # pulse arrives after the longest flux pulse
-                wait((flux_pulse_len + 100) * u.ns, qb.name + "_xy")
+                qb.xy.wait((flux_pulse_len + 100) * u.ns)
                 # Play second X/2 or Y/2
                 with if_(flag):
                     qb.xy.play("x90")
@@ -152,8 +151,8 @@ with program() as cryoscope:
                 align()
                 multiplexed_readout(machine, I, I_st, Q, Q_st)
                 # State discrimination
-                assign(state[0], I[0] > q1.threshold)
-                assign(state[1], I[1] > q2.threshold)
+                assign(state[0], I[0] > q1.resonator.operations["readout"].threshold)
+                assign(state[1], I[1] > q2.resonator.operations["readout"].threshold)
                 # Wait cooldown time and save the results
                 wait(machine.get_thermalization_time * u.ns)
                 save(state[0], state_st[0])
@@ -288,16 +287,16 @@ else:
     plt.plot(with_filter, label="After Bias-T with filter")
     plt.plot(pulse, label="Ideal WF")  # pulse
     plt.plot(list(step_response_volt), label="Experimental data")
-    plt.text(40, 0.93, f"IIR = {-iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
-    plt.tight_layout()
     plt.legend(loc="upper right")
+    plt.tight_layout()
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
     # Update the state
-    qb.z.wiring.filter.fir_taps = list(fir)
-    qb.z.wiring.filter.iir_taps = list(-iir)
+    qb.z.filter_fir_taps = list(fir)
+    qb.z.filter_iir_taps = list(iir)
 # machine.save("quam")
