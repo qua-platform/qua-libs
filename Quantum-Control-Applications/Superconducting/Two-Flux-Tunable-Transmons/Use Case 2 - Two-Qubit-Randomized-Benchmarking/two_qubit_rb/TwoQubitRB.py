@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, List, Literal
 import cirq
 from qm.QuantumMachinesManager import QuantumMachinesManager
@@ -11,6 +12,12 @@ from .RBResult import RBResult
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .simple_tableau import SimpleTableau
 from .util import run_in_thread, pbar
+from .verification.command_registry import (
+    CommandRegistry,
+    decorate_single_qubit_generator_with_command_recording,
+    decorate_two_qubit_gate_generator_with_command_recording,
+)
+from .verification.sequence_tracker import SequenceTracker
 
 
 class TwoQubitRb:
@@ -56,15 +63,12 @@ class TwoQubitRb:
                     qubit2: The second qubit number.
                 This callable should generate a two qubit gate.
 
-
             prep_func: A callable used to reset the qubits to the |00> state. This function does not use the baking object, and is a proper QUA code macro.
                 Callable arguments: None
 
             measure_func: A callable used to measure the qubits. This function does not use the baking object, and is a proper QUA code macro.
-                Callable arguments: None
-                Returns:
-                    A tuple containing the measured values of the two qubits as Qua expressions.
-                    The expression must evaluate to a boolean value. False means |0>, True means |1>. The MSB is the first qubit.
+                Callable[[], Tuple[_Expression, _Expression]]: A tuple containing the measured values of the two qubits as Qua expressions.
+                The expression must evaluate to a boolean value. False means |0>, True means |1>. The MSB is the first qubit.
 
             verify_generation: A boolean indicating whether to verify the generated sequences. Not be used in production, as it is very slow.
 
@@ -73,7 +77,20 @@ class TwoQubitRb:
         for i, qe in config["elements"].items():
             if "operations" not in qe:
                 qe["operations"] = {}
-        self._rb_baker = RBBaker(config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate)
+
+        self._command_registry = CommandRegistry()
+        self._sequence_tracker = SequenceTracker(command_registry=self._command_registry)
+
+        single_qubit_gate_generator = decorate_single_qubit_generator_with_command_recording(
+            single_qubit_gate_generator, self._command_registry
+        )
+        two_qubit_gate_generators = decorate_two_qubit_gate_generator_with_command_recording(
+            two_qubit_gate_generators, self._command_registry
+        )
+        self._rb_baker = RBBaker(
+            config, single_qubit_gate_generator, two_qubit_gate_generators, interleaving_gate, self._command_registry
+        )
+
         self._interleaving_gate = interleaving_gate
         self._interleaving_tableau = tableau_from_cirq(interleaving_gate) if interleaving_gate is not None else None
         self._config = self._rb_baker.bake()
@@ -192,6 +209,8 @@ class TwoQubitRb:
         for sequence_depth in sequence_depths:
             for repeat in range(num_repeats):
                 sequence = self._gen_rb_sequence(sequence_depth)
+                if self._sequence_tracker is not None:
+                    self._sequence_tracker.make_sequence(sequence)
                 job.insert_input_stream("__gates_len_is__", len(sequence))
                 for qe in self._rb_baker.all_elements:
                     job.insert_input_stream(f"{qe}_is", self._decode_sequence_for_element(qe, sequence))
@@ -218,13 +237,6 @@ class TwoQubitRb:
             num_circuits_per_depth (int): The number of different circuit randomizations per depth.
             num_shots_per_circuit (int): The number of shots per particular circuit.
 
-        Example:
-            >>> from qm.QuantumMachinesManager import QuantumMachinesManager
-            >>> from qm.qua import *
-            >>> from qua_config import config  # generation not in scope of this example
-            >>> from TwoQubitRB import TwoQubitRB
-            >>> qmm = QuantumMachinesManager(config)
-
         """
 
         prog = self._gen_qua_program(circuit_depths, num_circuits_per_depth, num_shots_per_circuit)
@@ -245,3 +257,40 @@ class TwoQubitRb:
             num_averages=num_shots_per_circuit,
             state=job.result_handles.get("state").fetch_all(),
         )
+
+    def print_command_mapping(self):
+        """
+        Prints the mapping of Command ID index, which is understood by the
+        input stream, into single-qubit and two-qubit gates.
+        """
+        self._command_registry.print_commands()
+
+    def print_sequences(self):
+        """
+        Prints a break-down of all gates/commands which were played in
+        each random sequence.
+        """
+        self._sequence_tracker.print_sequences()
+
+    def save_command_mapping_to_file(self, path: Union[str, Path]):
+        """
+        Saves a text file containing the mapping of Command ID index, which
+        is understood by the input stream, into single-qubit and two-qubit gates.
+        """
+        self._command_registry.save_to_file(path)
+
+    def save_sequences_to_file(self, path: Union[str, Path]):
+        """
+        Save a text file of the break-down of all gates/commands which
+        were played in each random sequence
+        """
+        self._sequence_tracker.save_to_file(path)
+
+    def verify_sequences(self):
+        """
+        Simulates the application of all random sequences on the |00> state
+        to ensure that they recover the qubit to |00> correctly.
+
+        Note: You should only call this function *after* self.run().
+        """
+        self._sequence_tracker.verify_sequences()

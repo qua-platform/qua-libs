@@ -17,7 +17,7 @@ Next steps before going to the next node:
 
 
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
@@ -131,25 +131,32 @@ else:
 
     # Process the data
     fidelity_vec = []
+    ground_fidelity_vec = []
     for i in range(len(amplitudes)):
         angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
             I_g[i], Q_g[i], I_e[i], Q_e[i], b_print=False, b_plot=False
         )
         fidelity_vec.append(fidelity)
+        ground_fidelity_vec.append(gg)
 
     # Plot the data
     plt.figure()
-    plt.plot(amplitudes * readout_amp, fidelity_vec, ".-")
+    plt.plot(amplitudes * readout_amp, fidelity_vec, "b.-", label="averaged fidelity")
+    plt.plot(amplitudes * readout_amp, ground_fidelity_vec, "r.-", label="ground fidelity")
     plt.title("Readout amplitude optimization")
     plt.xlabel("Readout amplitude [V]")
     plt.ylabel("Readout fidelity [%]")
     plt.legend(
         (
-            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% fidelity",
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV, for {max(fidelity_vec):.1f}% averaged fidelity",
+            f"readout_amp = {readout_amp * amplitudes[np.argmax(ground_fidelity_vec)] / u.mV:.3f} mV, for {max(ground_fidelity_vec):.1f}% ground fidelity"
         )
     )
     print(
-        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Fidelity={max(fidelity_vec):.1f}%)"
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(fidelity_vec)] / u.mV:.3f} mV (Averaged fidelity={max(fidelity_vec):.1f}%)"
+    )
+    print(
+        f"The optimal readout amplitude is {readout_amp * amplitudes[np.argmax(ground_fidelity_vec)] / u.mV:.3f} mV (Ground fidelity={max(ground_fidelity_vec):.1f}%)"
     )
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up

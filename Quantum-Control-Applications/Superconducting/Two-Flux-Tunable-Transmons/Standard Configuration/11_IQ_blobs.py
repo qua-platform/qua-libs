@@ -18,7 +18,7 @@ Next steps before going to the next node:
     - Update the g -> e threshold (ge_threshold) in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm.simulate import SimulationConfig
 from configuration import *

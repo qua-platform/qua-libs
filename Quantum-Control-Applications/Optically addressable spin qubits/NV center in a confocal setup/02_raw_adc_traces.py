@@ -15,7 +15,7 @@ It also allows to calibrate several parameters:
       be an event that can be detected and time-tagged in the subsequent scripts.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
@@ -46,7 +46,7 @@ with program() as TimeTagging_calibration:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 simulate = False
 

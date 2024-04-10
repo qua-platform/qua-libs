@@ -11,7 +11,7 @@ Next steps before going to the next node:
     - Update the DC gain and phase of the IQ signals (mixer_qubit_g & mixer_qubit_g or mixer_resonator_g & mixer_resonator_g)
     in the configuration.
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
@@ -28,7 +28,7 @@ with program() as cw_output:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 qm = qmm.open_qm(config)
 
 job = qm.execute(cw_output)

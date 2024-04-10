@@ -10,7 +10,7 @@ Next steps before going to the next node:
     - Update the delay between the laser and mw (mw_delay) and the mw length (mw_len) in the configuration.
     - Update the measurement length (meas_len_1) in the configuration.
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
@@ -95,7 +95,7 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

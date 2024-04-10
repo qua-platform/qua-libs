@@ -4,7 +4,7 @@ Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initiali
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time

@@ -6,7 +6,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 import time
 from qm import SimulationConfig, LoopbackInterface
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 
@@ -23,7 +23,7 @@ with program() as hello_QUA:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -33,11 +33,11 @@ simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     job_sim = qmm.simulate(config, hello_QUA, simulation_config)
     # Simulate blocks python until the simulation is done
     job_sim.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(hello_QUA)

@@ -8,7 +8,7 @@ The script is useful for inspecting signals prior to demodulation, ensuring the 
 correcting any non-zero DC offsets, and estimating the SNR.
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt

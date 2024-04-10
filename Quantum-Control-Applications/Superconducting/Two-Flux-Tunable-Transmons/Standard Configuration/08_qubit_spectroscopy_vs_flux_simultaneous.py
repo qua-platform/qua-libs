@@ -14,7 +14,7 @@ Before proceeding to the next node:
     - Update the relevant flux points in the configuration.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *

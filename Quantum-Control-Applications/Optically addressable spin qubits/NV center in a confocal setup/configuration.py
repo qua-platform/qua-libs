@@ -7,6 +7,7 @@ from qualang_tools.loops import from_array
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -15,9 +16,8 @@ def IQ_imbalance(g, phi):
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
     be seen here:
     https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-
-    :param g: relative gain imbalance between the I & Q ports (unit-less). Set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the I & Q ports (radians). Set to 0 for no phase imbalance.
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
     """
     c = np.cos(phi)
     s = np.sin(phi)
@@ -28,9 +28,11 @@ def IQ_imbalance(g, phi):
 #############
 # VARIABLES #
 #############
-u = unit(coerce_to_integer=True)
-qop_ip = "172.16.33.100"
-cluster_name = "Cluster_83"
+qop_ip = "127.0.0.1"  # Write the OPX IP address
+cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
+qop_port = None  # Write the QOP port if version < QOP220
+# Set octave_config to None if no octave are present
+octave_config = None
 
 # Frequencies
 NV_IF_freq = 40 * u.MHz
@@ -40,6 +42,7 @@ NV_LO_freq = 2.83 * u.GHz
 initialization_len_1 = 3000 * u.ns
 meas_len_1 = 500 * u.ns
 long_meas_len_1 = 5_000 * u.ns
+
 initialization_len_2 = 3000 * u.ns
 meas_len_2 = 500 * u.ns
 long_meas_len_2 = 5_000 * u.ns
@@ -52,11 +55,16 @@ wait_for_initialization = 5 * relaxation_time
 mw_amp_NV = 0.2  # in units of volts
 mw_len_NV = 100 * u.ns
 
-pi_amp_NV = 0.1  # in units of volts
-pi_len_NV = 100 * u.ns
+x180_amp_NV = 0.1  # in units of volts
+x180_len_NV = 32  # in units of ns
 
-pi_half_amp_NV = pi_amp_NV / 2  # in units of volts
-pi_half_len_NV = pi_len_NV
+x90_amp_NV = x180_amp_NV / 2  # in units of volts
+x90_len_NV = x180_len_NV  # in units of ns
+
+# RF parameters
+rf_frequency = 10 * u.MHz
+rf_amp = 0.1
+rf_length = 1000
 
 # Readout parameters
 signal_threshold_1 = -2_000  # ADC untis, to convert to volts divide by 4096 (12 bit ADC)
@@ -65,19 +73,22 @@ signal_threshold_2 = -2_000  # ADC untis, to convert to volts divide by 4096 (12
 # Delays
 detection_delay_1 = 80 * u.ns
 detection_delay_2 = 80 * u.ns
-mw_delay = 0 * u.ns
 laser_delay_1 = 0 * u.ns
 laser_delay_2 = 0 * u.ns
+mw_delay = 0 * u.ns
+rf_delay = 0 * u.ns
+
+
 wait_between_runs = 100
 
 config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "type": "opx1",
             "analog_outputs": {
                 1: {"offset": 0.0, "delay": mw_delay},  # NV I
                 2: {"offset": 0.0, "delay": mw_delay},  # NV Q
+                3: {"offset": 0.0, "delay": rf_delay},  # RF
             },
             "digital_outputs": {
                 1: {},  # AOM/Laser
@@ -103,6 +114,13 @@ config = {
                 "-y90": "-y90_pulse",
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
+            },
+        },
+        "RF": {
+            "singleInput": {"port": ("con1", 3)},
+            "intermediate_frequency": rf_frequency,
+            "operations": {
+                "const": "const_pulse_single",
             },
         },
         "AOM1": {
@@ -184,33 +202,38 @@ config = {
         },
         "x180_pulse": {
             "operation": "control",
-            "length": pi_len_NV,
-            "waveforms": {"I": "pi_wf", "Q": "zero_wf"},
+            "length": x180_len_NV,
+            "waveforms": {"I": "x180_wf", "Q": "zero_wf"},
         },
         "x90_pulse": {
             "operation": "control",
-            "length": pi_half_len_NV,
-            "waveforms": {"I": "pi_half_wf", "Q": "zero_wf"},
+            "length": x90_len_NV,
+            "waveforms": {"I": "x90_wf", "Q": "zero_wf"},
         },
         "-x90_pulse": {
             "operation": "control",
-            "length": pi_half_len_NV,
-            "waveforms": {"I": "minus_pi_half_wf", "Q": "zero_wf"},
+            "length": x90_len_NV,
+            "waveforms": {"I": "minus_x90_wf", "Q": "zero_wf"},
         },
         "-y90_pulse": {
             "operation": "control",
-            "length": pi_half_len_NV,
-            "waveforms": {"I": "zero_wf", "Q": "minus_pi_half_wf"},
+            "length": x90_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "minus_x90_wf"},
         },
         "y90_pulse": {
             "operation": "control",
-            "length": pi_half_len_NV,
-            "waveforms": {"I": "zero_wf", "Q": "pi_half_wf"},
+            "length": x90_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "x90_wf"},
         },
         "y180_pulse": {
             "operation": "control",
-            "length": pi_half_len_NV,
-            "waveforms": {"I": "zero_wf", "Q": "pi_wf"},
+            "length": x180_len_NV,
+            "waveforms": {"I": "zero_wf", "Q": "x180_wf"},
+        },
+        "const_pulse_single": {
+            "operation": "control",
+            "length": rf_length,  # in ns
+            "waveforms": {"single": "rf_const_wf"},
         },
         "laser_ON_1": {
             "operation": "control",
@@ -249,9 +272,10 @@ config = {
     },
     "waveforms": {
         "cw_wf": {"type": "constant", "sample": mw_amp_NV},
-        "pi_wf": {"type": "constant", "sample": pi_amp_NV},
-        "pi_half_wf": {"type": "constant", "sample": pi_half_amp_NV},
-        "minus_pi_half_wf": {"type": "constant", "sample": (-1) * pi_half_amp_NV},
+        "rf_const_wf": {"type": "constant", "sample": rf_amp},
+        "x180_wf": {"type": "constant", "sample": x180_amp_NV},
+        "x90_wf": {"type": "constant", "sample": x90_amp_NV},
+        "minus_x90_wf": {"type": "constant", "sample": -x90_amp_NV},
         "zero_wf": {"type": "constant", "sample": 0.0},
     },
     "digital_waveforms": {

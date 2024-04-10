@@ -3,7 +3,7 @@ This file is used to configure the Octave ports (gain, switch_mode, down-convers
 You need to run this file in order to update the Octaves with the new parameters.
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.octave import ClockMode
 
 from configuration import *

@@ -24,7 +24,7 @@ Next steps before going to the next node:
     - Save the current state by calling machine._save("current_state.json")
 """
 
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 from configuration import *

@@ -15,7 +15,7 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the pi pulse amplitude, labeled as "mw_amp_NV", in the configuration.
 """
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
@@ -78,7 +78,7 @@ with program() as power_rabi:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(host=qop_ip, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #
