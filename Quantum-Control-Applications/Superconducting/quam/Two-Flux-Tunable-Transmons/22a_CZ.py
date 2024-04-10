@@ -87,11 +87,12 @@ with program() as cz:
                 wait(20 * u.ns)
                 # Play a flux pulse on the qubit with the highest frequency to bring it close to the excited qubit while
                 # varying its amplitude and duration in order to observe the SWAP chevron.
-                set_dc_offset(q2.z.name, "single", dc)
+                q2.z.set_dc_offset(dc)
                 wait(t, q2.z.name)
                 align()
                 # Put back the qubit to the max frequency point
-                set_dc_offset(q2.z.name, "single", q2.z.min_offset)
+                q2.z.set_dc_offset(q2.z.min_offset)
+
                 # Wait some time to ensure that the flux pulse will end before the readout pulse
                 wait(20 * u.ns)
                 # Align the elements to measure after having waited a time "tau" after the qubit pulses.

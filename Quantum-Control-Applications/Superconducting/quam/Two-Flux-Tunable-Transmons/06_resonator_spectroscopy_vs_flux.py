@@ -84,8 +84,8 @@ with program() as multi_res_spec_vs_flux:
 
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping by tuning the OPX dc offset associated to the flux_line element
-                set_dc_offset(q1.z.name, "single", dc)
-                set_dc_offset(q2.z.name, "single", dc)
+                q1.z.set_dc_offset(dc)
+                q2.z.set_dc_offset(dc)
                 wait(100)  # Wait for the flux to settle
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
                 multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)

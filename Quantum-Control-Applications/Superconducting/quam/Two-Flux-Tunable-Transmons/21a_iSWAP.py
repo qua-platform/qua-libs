@@ -85,11 +85,11 @@ with program() as iswap:
                 wait(20 * u.ns)
                 # Play a flux pulse on the qubit with the highest frequency to bring it close to the excited qubit while
                 # varying its amplitude and duration in order to observe the SWAP chevron.
-                set_dc_offset(q2.z.name, "single", dc)
+                q2.z.set_dc_offset(dc)
                 q2.z.wait(t)
                 # Put back the qubit to the max frequency point
                 align()
-                set_dc_offset(q2.z.name, "single", q2.z.min_offset)
+                q2.z.set_dc_offset(q2.z.min_offset)
                 # Wait some time to ensure that the flux pulse will end before the readout pulse
                 wait(100)
                 align()

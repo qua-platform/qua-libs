@@ -21,13 +21,13 @@ class FluxLine(SingleChannel):
     min_offset: float = 0.0
 
     def to_independent_idle(self):  # TODO: put the functions here
-        set_dc_offset(self.name, "single", self.independent_offset)
+        self.set_dc_offset(self.independent_offset)
 
     def to_joint_idle(self):
-        set_dc_offset(self.name, "single", self.joint_offset)
+        self.set_dc_offset(self.joint_offset)
 
     def to_min(self):
-        set_dc_offset(self.name, "single", self.min_offset)
+        self.set_dc_offset(self.min_offset)
 
 
 @quam_dataclass

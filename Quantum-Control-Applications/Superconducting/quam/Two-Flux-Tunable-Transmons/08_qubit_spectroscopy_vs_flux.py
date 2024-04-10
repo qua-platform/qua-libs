@@ -84,8 +84,8 @@ with program() as multi_qubit_spec_vs_flux:
             update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping
-                set_dc_offset(q1.z.name, "single", dc)
-                set_dc_offset(q2.z.name, "single", dc)
+                q1.z.set_dc_offset(dc)
+                q2.z.set_dc_offset(dc)
                 wait(100)  # Wait for the flux to settle
 
                 # Saturate qubit
