@@ -1,56 +1,38 @@
 {
-    "network": {
-        "host": "172.16.33.101",
-        "cluster_name": "Cluster_81"
-    },
     "wiring": {
-        "qubits": [
+        "gates": [
             {
-                "port_I": [
+                "port": [
                     "con1",
-                    3
-                ],
-                "port_Q": [
-                    "con1",
-                    4
-                ],
-                "port_Z": [
-                    "con1",
-                    5
+                    1
                 ]
             },
             {
-                "port_I": [
+                "port": [
                     "con1",
-                    6
-                ],
-                "port_Q": [
+                    2
+                ]
+            },
+            {
+                "port": [
                     "con1",
-                    7
-                ],
-                "port_Z": [
-                    "con1",
-                    8
+                    3
                 ]
             }
         ],
         "resonator": {
-            "opx_output_I": [
+            "opx_output": [
+                "con1",
+                4
+            ],
+            "opx_input": [
                 "con1",
                 1
-            ],
-            "opx_output_Q": [
-                "con1",
-                2
-            ],
-            "opx_input_I": [
-                "con1",
-                1
-            ],
-            "opx_input_Q": [
-                "con1",
-                2
             ]
         }
+    },
+    "network": {
+        "host": "172.16.33.101",
+        "cluster_name": "Cluster_81"
     }
 }

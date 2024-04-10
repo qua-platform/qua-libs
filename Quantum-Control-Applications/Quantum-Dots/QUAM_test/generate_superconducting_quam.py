@@ -4,7 +4,7 @@ import json
 from quam.components import *
 from quam.components.channels import IQChannel, InOutSingleChannel, SingleChannel
 from quam.components.pulses import ConstantReadoutPulse
-from components import StickyChannelAddon, ReadoutResonator, QuAM, VirtualGateSet
+from components import StickyChannelAddon, QuAM, VirtualGateSet
 from qm.octave import QmOctaveConfig
 from quam.core import QuamRoot
 
@@ -38,30 +38,28 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
     # Define the connectivity
     quam.wiring = {
         "gates": [
-            {
-                gates_list[k]: ("con1", k+1),
-            } for k in len(gates_list)
+            {"port":("con1", k+1)} for k in range(len(gates_list))
         ],
         "resonator": {
-            "res1": ("con1", 4),
+            "opx_output": ("con1", 4),
+            "opx_input": ("con1", 1),
         },
     }
     quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
-
     # Add gates
     quam.gates = {
-        {
         name: SingleChannel(
             id=name,
-            opx_output=f"#/wiring/gates/{name}/port_I",
-            sticky=StickyChannelAddon(duration=200, digital=False),
-        ) for name in gates_list},
+            # opx_output=f"#/wiring/gates/{k}/port",
+            opx_output=("con1", 1),
+            # sticky=StickyChannelAddon(duration=200, digital=False),
+        ) for k, name in enumerate(gates_list)
     }
 
     quam.resonator = InOutSingleChannel(
         id="resonator",
-        opx_output=("con1", 1),
-        opx_input=("con1", 1),
+        opx_output=f"#/wiring/resonator/opx_output",
+        opx_input=f"#/wiring/resonator/opx_input",
         intermediate_frequency=50e6,
         time_of_flight=24
     )
@@ -70,71 +68,71 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
         gates=["#/gates/P1", "#/gates/P2"],  # Be careful with ordering
         virtual_gates={"eps": [-11.6, 6.51], "U": [11.6, 6.51]},
         pulse_defaults=[
-            pulses.SquarePulse(amplitude=None, length=None),
-            pulses.SquarePulse(amplitude=None, length=None),
-            pulses.SquarePulse(amplitude=None, length=None),
+            pulses.SquarePulse(amplitude=0.25, length=16),
+            pulses.SquarePulse(amplitude=0.25, length=16),
+            pulses.SquarePulse(amplitude=0.25, length=16),
         ],
     )
 
-    # Add the transmon components (xy, z and resonator) to the quam
-    for idx in range(num_qubits):
-        # Create qubit components
-        transmon = Transmon(
-            id=idx,
-            xy=IQChannel(
-                opx_output_I=f"#/wiring/qubits/{idx}/port_I",
-                opx_output_Q=f"#/wiring/qubits/{idx}/port_Q",
-                frequency_converter_up=octave.RF_outputs[2 * (idx + 1)].get_reference(),
-                intermediate_frequency=100 * u.MHz,
-            ),
-            z=FluxLine(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
-            resonator=ReadoutResonator(
-                opx_output_I="#/wiring/resonator/opx_output_I",
-                opx_output_Q="#/wiring/resonator/opx_output_Q",
-                opx_input_I="#/wiring/resonator/opx_input_I",
-                opx_input_Q="#/wiring/resonator/opx_input_Q",
-                opx_input_offset_I=0.0,
-                opx_input_offset_Q=0.0,
-                frequency_converter_up=octave.RF_outputs[1].get_reference(),
-                frequency_converter_down=octave.RF_inputs[1].get_reference(),
-                intermediate_frequency=50 * u.MHz,
-                depletion_time=1 * u.us,
-            ),
-        )
-        # Add the transmon pulses to the quam
-        transmon.xy.operations["x180"] = pulses.DragPulse(
-            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-        )
-        transmon.xy.operations["x90"] = pulses.DragPulse(
-            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-        )
-        transmon.xy.operations["-x90"] = pulses.DragPulse(
-            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-        )
-        transmon.xy.operations["y180"] = pulses.DragPulse(
-            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-        )
-        transmon.xy.operations["y90"] = pulses.DragPulse(
-            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-        )
-        transmon.xy.operations["-y90"] = pulses.DragPulse(
-            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-        )
-        transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0)
-        transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
-        transmon.resonator.operations["readout"] = ConstantReadoutPulse(
-            length=1 * u.us, amplitude=0.00123, threshold=0.0
-        )
-        quam.qubits[transmon.name] = transmon
-        quam.active_qubit_names.append(transmon.name)
-        # Set the Octave frequency and channels TODO: be careful to set the right upconverters!!
-        octave.RF_outputs[2 * (idx + 1)].channel = transmon.xy.get_reference()
-        octave.RF_outputs[2 * (idx + 1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency
-
-        octave.RF_outputs[1].channel = transmon.resonator.get_reference()
-        octave.RF_inputs[1].channel = transmon.resonator.get_reference()
-        octave.RF_outputs[1].LO_frequency = 4 * u.GHz
-        octave.RF_inputs[1].LO_frequency = 4 * u.GHz
+    # # Add the transmon components (xy, z and resonator) to the quam
+    # for idx in range(num_qubits):
+    #     # Create qubit components
+    #     transmon = Transmon(
+    #         id=idx,
+    #         xy=IQChannel(
+    #             opx_output_I=f"#/wiring/qubits/{idx}/port_I",
+    #             opx_output_Q=f"#/wiring/qubits/{idx}/port_Q",
+    #             frequency_converter_up=octave.RF_outputs[2 * (idx + 1)].get_reference(),
+    #             intermediate_frequency=100 * u.MHz,
+    #         ),
+    #         z=FluxLine(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
+    #         resonator=ReadoutResonator(
+    #             opx_output_I="#/wiring/resonator/opx_output_I",
+    #             opx_output_Q="#/wiring/resonator/opx_output_Q",
+    #             opx_input_I="#/wiring/resonator/opx_input_I",
+    #             opx_input_Q="#/wiring/resonator/opx_input_Q",
+    #             opx_input_offset_I=0.0,
+    #             opx_input_offset_Q=0.0,
+    #             frequency_converter_up=octave.RF_outputs[1].get_reference(),
+    #             frequency_converter_down=octave.RF_inputs[1].get_reference(),
+    #             intermediate_frequency=50 * u.MHz,
+    #             depletion_time=1 * u.us,
+    #         ),
+    #     )
+    #     # Add the transmon pulses to the quam
+    #     transmon.xy.operations["x180"] = pulses.DragPulse(
+    #         amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+    #     )
+    #     transmon.xy.operations["x90"] = pulses.DragPulse(
+    #         amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+    #     )
+    #     transmon.xy.operations["-x90"] = pulses.DragPulse(
+    #         amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+    #     )
+    #     transmon.xy.operations["y180"] = pulses.DragPulse(
+    #         amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+    #     )
+    #     transmon.xy.operations["y90"] = pulses.DragPulse(
+    #         amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+    #     )
+    #     transmon.xy.operations["-y90"] = pulses.DragPulse(
+    #         amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+    #     )
+    #     transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0)
+    #     transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
+    #     transmon.resonator.operations["readout"] = ConstantReadoutPulse(
+    #         length=1 * u.us, amplitude=0.00123, threshold=0.0
+    #     )
+    #     quam.qubits[transmon.name] = transmon
+    #     quam.active_qubit_names.append(transmon.name)
+    #     # Set the Octave frequency and channels TODO: be careful to set the right upconverters!!
+    #     octave.RF_outputs[2 * (idx + 1)].channel = transmon.xy.get_reference()
+    #     octave.RF_outputs[2 * (idx + 1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency
+    #
+    #     octave.RF_outputs[1].channel = transmon.resonator.get_reference()
+    #     octave.RF_inputs[1].channel = transmon.resonator.get_reference()
+    #     octave.RF_outputs[1].LO_frequency = 4 * u.GHz
+    #     octave.RF_inputs[1].LO_frequency = 4 * u.GHz
     return quam, octave_config
 
 
@@ -142,7 +140,7 @@ if __name__ == "__main__":
     folder = Path("")
     folder.mkdir(exist_ok=True)
 
-    quam, octave_config = create_quam_superconducting_referenced(num_qubits=2)
+    quam, octave_config = create_quam_superconducting_referenced(gates_list=["P1", "P2", "sensor"])
     quam.save(folder / "quam", content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
