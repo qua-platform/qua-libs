@@ -29,7 +29,31 @@
                 "con1",
                 1
             ]
-        }
+        },
+        "tia": {
+            "opx_output": [
+                "con1",
+                4
+            ],
+            "opx_input": [
+                "con1",
+                2
+            ]
+        },
+        "qdac_triggers": [
+            {
+                "digital_marker": [
+                    "con1",
+                    1
+                ]
+            },
+            {
+                "digital_marker": [
+                    "con1",
+                    2
+                ]
+            }
+        ]
     },
     "network": {
         "host": "172.16.33.101",

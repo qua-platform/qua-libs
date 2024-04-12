@@ -4,7 +4,8 @@ from copy import copy
 from typing import List, Union, Dict, Optional, ClassVar, Tuple
 import warnings
 from quam import QuamComponent
-from quam.components.channels import QuamDict, IQChannel, SingleChannel, InOutSingleChannel, Channel, AmpValuesType, QuaNumberType, QuaExpressionType, StreamType, ChirpType, DigitalOutputChannel
+from quam.components.channels import IQChannel,  InOutSingleChannel, Channel, DigitalOutputChannel
+from quam.components.channels import QuamDict, AmpValuesType, QuaNumberType, QuaExpressionType, StreamType, ChirpType
 from quam.components.pulses import Pulse
 from quam.components.octave import Octave
 from quam.core import QuamRoot, quam_dataclass
@@ -21,7 +22,8 @@ from qm.qua._dsl import (
 
 # import macros
 
-__all__ = ["StickyChannelAddon", "VirtualGateSet", "QuAM"]
+__all__ = ["VirtualGateSet", "QuAM", "StickyChannelAddon", "SingleChannel"]
+
 
 ################################### ADDONS #############################################################################
 ########################################################################################################################
@@ -57,8 +59,8 @@ class StickyChannelAddon(QuamComponent):
             "digital": self.digital,
             "duration": self.duration,
         }
-
-
+#
+#
 # @quam_dataclass
 # class Channel(QuamComponent):
 #     """Base QuAM component for a channel, can be output, input or both.
@@ -77,7 +79,7 @@ class StickyChannelAddon(QuamComponent):
 #     _default_label: ClassVar[str] = "ch"  # Used to determine name from id
 #
 #     digital_outputs: Dict[str, DigitalOutputChannel] = field(default_factory=dict)
-#     # sticky: StickyChannelAddon = None
+#     sticky: StickyChannelAddon = None
 #
 #     @property
 #     def name(self) -> str:
@@ -170,9 +172,7 @@ class StickyChannelAddon(QuamComponent):
 #
 #         """
 #         if validate and pulse_name not in self.operations:
-#             raise KeyError(
-#                 f"Operation '{pulse_name}' not found in channel '{self.name}'"
-#             )
+#             raise KeyError(f"Operation '{pulse_name}' not found in channel '{self.name}'")
 #
 #         if amplitude_scale is not None:
 #             if not isinstance(amplitude_scale, _PulseAmp):
@@ -221,20 +221,14 @@ class StickyChannelAddon(QuamComponent):
 #             be added. If the actual wait time has significance, such as in characterization
 #             experiments, the actual wait time should always be verified with a simulator.
 #         """
-#         other_elements_str = [
-#             element if isinstance(element, str) else str(element)
-#             for element in other_elements
-#         ]
+#         other_elements_str = [element if isinstance(element, str) else str(element) for element in other_elements]
 #         wait(duration, self.name, *other_elements_str)
 #
 #     def align(self, *other_elements):
 #         if not other_elements:
 #             align()
 #         else:
-#             other_elements_str = [
-#                 element if isinstance(element, str) else str(element)
-#                 for element in other_elements
-#             ]
+#             other_elements_str = [element if isinstance(element, str) else str(element) for element in other_elements]
 #             align(self.name, *other_elements_str)
 #
 #     def frame_rotation(self, angle: QuaNumberType):
@@ -264,9 +258,7 @@ class StickyChannelAddon(QuamComponent):
 #         """
 #         frame_rotation(angle, self.name)
 #
-#     def _config_add_controller(
-#         self, config: Dict[str, dict], controller_name: str
-#     ) -> Dict[str, dict]:
+#     def _config_add_controller(self, config: Dict[str, dict], controller_name: str) -> Dict[str, dict]:
 #         """Adds a controller to the config if it doesn't exist, and returns its config.
 #
 #         config.controllers.<controller_name> will be created if it doesn't exist.
@@ -327,82 +319,98 @@ class StickyChannelAddon(QuamComponent):
 #         config["elements"][self.name] = {"operations": self.pulse_mapping}
 #
 #         self._config_add_digital_outputs(config)
-# @quam_dataclass
-# class SingleChannel(Channel):
-#     """QuAM component for a single (not IQ) output channel.
-#
-#     Args:
-#         operations (Dict[str, Pulse]): A dictionary of pulses to be played on this
-#             channel. The key is the pulse label (e.g. "X90") and value is a Pulse.
-#         id (str, int): The id of the channel, used to generate the name.
-#             Can be a string, or an integer in which case it will add
-#             `Channel._default_label`.
-#         opx_output (Tuple[str, int]): Channel output port from the OPX perspective,
-#             a tuple of (controller_name, port).
-#         filter_fir_taps (List[float]): FIR filter taps for the output port.
-#         filter_iir_taps (List[float]): IIR filter taps for the output port.
-#         opx_output_offset (float): DC offset for the output port.
-#         intermediate_frequency (float): Intermediate frequency of OPX output, default
-#             is None.
-#         sticky (Sticky): Optional sticky parameters for the channel, i.e. defining
-#             whether successive pulses are applied w.r.t the previous pulse or w.r.t 0 V.
-#             If not specified, this channel is not sticky.
-#     """
-#
-#     opx_output: Tuple[str, int]
-#     filter_fir_taps: List[float] = None
-#     filter_iir_taps: List[float] = None
-#
-#     opx_output_offset: float = 0.0
-#     intermediate_frequency: float = None
-#     #
-#     # sticky = StickyChannelAddon = None
-#
-#     def apply_to_config(self, config: dict):
-#         """Adds this SingleChannel to the QUA configuration.
-#
-#         See [`QuamComponent.apply_to_config`][quam.core.quam_classes.QuamComponent.apply_to_config]
-#         for details.
-#         """
-#         # Add pulses & waveforms
-#         super().apply_to_config(config)
-#
-#         if str_ref.is_reference(self.name):
-#             raise AttributeError(
-#                 f"Channel {self.get_reference()} cannot be added to the config because"
-#                 " it doesn't have a name. Either set channel.id to a string or"
-#                 " integer, or channel should be an attribute of another QuAM component"
-#                 " with a name."
-#             )
-#
-#         element_config = config["elements"][self.name]
-#         element_config["singleInput"] = {"port": tuple(self.opx_output)}
-#
-#         if self.intermediate_frequency is not None:
-#             element_config["intermediate_frequency"] = self.intermediate_frequency
-#
-#         controller_name, port = self.opx_output
-#         controller_cfg = self._config_add_controller(config, controller_name)
-#         analog_output = controller_cfg["analog_outputs"].setdefault(port, {})
-#         # If no offset specified, it will be added at the end of the config generation
-#         offset = self.opx_output_offset
-#         if offset is not None:
-#             if abs(analog_output.get("offset", offset) - offset) > 1e-4:
-#                 warnings.warn(
-#                     f"Channel {self.name} has conflicting output offsets: "
-#                     f"{analog_output['offset']} V and {offset} V. Multiple channel "
-#                     f"elements are trying to set different offsets to port {port}. "
-#                     f"Using the last offset {offset} V"
-#                 )
-#             analog_output["offset"] = offset
-#
-#         if self.filter_fir_taps is not None:
-#             output_filter = analog_output.setdefault("filter", {})
-#             output_filter["feedforward"] = list(self.filter_fir_taps)
-#
-#         if self.filter_iir_taps is not None:
-#             output_filter = analog_output.setdefault("filter", {})
-#             output_filter["feedback"] = list(self.filter_iir_taps)
+
+@quam_dataclass
+class SingleChannel(Channel):
+    """QuAM component for a single (not IQ) output channel.
+
+    Args:
+        operations (Dict[str, Pulse]): A dictionary of pulses to be played on this
+            channel. The key is the pulse label (e.g. "X90") and value is a Pulse.
+        id (str, int): The id of the channel, used to generate the name.
+            Can be a string, or an integer in which case it will add
+            `Channel._default_label`.
+        opx_output (Tuple[str, int]): Channel output port from the OPX perspective,
+            a tuple of (controller_name, port).
+        filter_fir_taps (List[float]): FIR filter taps for the output port.
+        filter_iir_taps (List[float]): IIR filter taps for the output port.
+        opx_output_offset (float): DC offset for the output port.
+        intermediate_frequency (float): Intermediate frequency of OPX output, default
+            is None.
+        sticky (Sticky): Optional sticky parameters for the channel, i.e. defining
+            whether successive pulses are applied w.r.t the previous pulse or w.r.t 0 V.
+            If not specified, this channel is not sticky.
+    """
+
+    opx_output: Tuple[str, int]
+    filter_fir_taps: List[float] = None
+    filter_iir_taps: List[float] = None
+
+    opx_output_offset: float = None
+    intermediate_frequency: float = None
+
+    sticky: StickyChannelAddon = None
+
+    def set_dc_offset(self, offset: QuaNumberType):
+        """Set the DC offset of an element's input to the given value.
+        This value will remain the DC offset until changed or until the Quantum Machine
+        is closed.
+
+        Args:
+            offset (QuaNumberType): The DC offset to set the input to.
+                This is limited by the OPX output voltage range.
+                The number can be a QUA variable
+        """
+        set_dc_offset(element=self.name, element_input="single", offset=offset)
+
+    def apply_to_config(self, config: dict):
+        """Adds this SingleChannel to the QUA configuration.
+
+        See [`QuamComponent.apply_to_config`][quam.core.quam_classes.QuamComponent.apply_to_config]
+        for details.
+        """
+        # Add pulses & waveforms
+        super().apply_to_config(config)
+
+        if str_ref.is_reference(self.name):
+            raise AttributeError(
+                f"Channel {self.get_reference()} cannot be added to the config because"
+                " it doesn't have a name. Either set channel.id to a string or"
+                " integer, or channel should be an attribute of another QuAM component"
+                " with a name."
+            )
+
+        element_config = config["elements"][self.name]
+        element_config["singleInput"] = {"port": tuple(self.opx_output)}
+
+        if self.intermediate_frequency is not None:
+            element_config["intermediate_frequency"] = self.intermediate_frequency
+
+        controller_name, port = self.opx_output
+        controller_cfg = self._config_add_controller(config, controller_name)
+        analog_output = controller_cfg["analog_outputs"].setdefault(port, {})
+        # If no offset specified, it will be added at the end of the config generation
+        offset = self.opx_output_offset
+        if offset is not None:
+            if abs(analog_output.get("offset", offset) - offset) > 1e-4:
+                warnings.warn(
+                    f"Channel {self.name} has conflicting output offsets: "
+                    f"{analog_output['offset']} V and {offset} V. Multiple channel "
+                    f"elements are trying to set different offsets to port {port}. "
+                    f"Using the last offset {offset} V"
+                )
+            analog_output["offset"] = offset
+
+        if self.filter_fir_taps is not None:
+            output_filter = analog_output.setdefault("filter", {})
+            output_filter["feedforward"] = list(self.filter_fir_taps)
+
+        if self.filter_iir_taps is not None:
+            output_filter = analog_output.setdefault("filter", {})
+            output_filter["feedback"] = list(self.filter_iir_taps)
+
+
+
 @quam_dataclass
 class VirtualPulse(Pulse):
     amplitudes: Dict[str, float]
@@ -418,6 +426,7 @@ class VirtualPulse(Pulse):
 
 
 ########################################################################################################################
+
 
 @quam_dataclass
 class VirtualGateSet(QuamComponent):
@@ -605,17 +614,41 @@ class FluxLine(SingleChannel):
 #     #         host=self.network["host"], cluster_name=self.network["cluster_name"], octave=octave_config
 #     #     )
 
+
 @quam_dataclass
 class QuAM(QuamRoot):
-    gates: Dict[str, SingleChannel] = field(default_factory=dict)
+    # resonator (tank circuit) for RF reflectometry
     resonator: InOutSingleChannel = None
+    # TIA (IV converter) for dc transport measurement
+    tia: InOutSingleChannel = None
+    # QDAC triggers
+    qdac_triggers: Dict[str, SingleChannel] = field(default_factory=dict)
+    # single gates
+    gates: Dict[str, SingleChannel] = field(default_factory=dict)
+    # Virtual gates as a combination of single gates
     virtual_gate_set: VirtualGateSet = None
+    # Architecture and network settings
     wiring: dict = field(default_factory=dict)
     network: dict = field(default_factory=dict)
-    # virtual_gate_set_twin: VirtualGateSet = None
 
-    def align_gates(self, ):
+    def align_gates(
+        self,
+    ):
         align(*self.gates)
 
-    def align_all(self,):
+    def align_all(
+        self,
+    ):
         align(self.resonator.name, *self.gates)
+
+    # @property
+    # def active_qubits(self) -> List[Transmon]:
+    #     """Return the list of active qubits"""
+    #     return [self.qubits[q] for q in self.active_qubit_names]
+
+    def connect(self):
+        from qm import QuantumMachinesManager
+
+        return QuantumMachinesManager(
+            host=self.network["host"], cluster_name=self.network["cluster_name"], octave=self.octave.get_octave_config()
+        )

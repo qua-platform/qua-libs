@@ -1,32 +1,104 @@
 {
-    "gates": {
-        "P1": {
-            "id": "P1",
-            "opx_output": [
-                "con1",
-                1
-            ]
-        },
-        "P2": {
-            "id": "P2",
-            "opx_output": [
-                "con1",
-                1
-            ]
-        },
-        "sensor": {
-            "id": "sensor",
-            "opx_output": [
-                "con1",
-                1
-            ]
-        }
-    },
     "resonator": {
+        "operations": {
+            "readout": {
+                "length": 1000,
+                "threshold": 0.0,
+                "amplitude": 0.1,
+                "axis_angle": null,
+                "__class__": "quam.components.pulses.ConstantReadoutPulse"
+            }
+        },
         "id": "resonator",
         "opx_output": "#/wiring/resonator/opx_output",
         "intermediate_frequency": 50000000.0,
         "opx_input": "#/wiring/resonator/opx_input"
+    },
+    "tia": {
+        "operations": {
+            "readout": {
+                "length": 1000,
+                "threshold": 0.0,
+                "amplitude": 0.0,
+                "axis_angle": null,
+                "__class__": "quam.components.pulses.ConstantReadoutPulse"
+            }
+        },
+        "id": "tia",
+        "opx_output": "#/wiring/tia/opx_output",
+        "opx_input": "#/wiring/tia/opx_input"
+    },
+    "qdac_triggers": {
+        "trig1": {
+            "operations": {
+                "trigger": {
+                    "length": 16,
+                    "digital_marker": "ON",
+                    "amplitude": 0.0,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "trig1",
+            "digital_outputs": {
+                "marker1": {
+                    "opx_output": "#/wiring/qdac_triggers/0/digital_marker",
+                    "delay": 0,
+                    "buffer": 0
+                }
+            },
+            "opx_output": [
+                "con1",
+                4
+            ]
+        },
+        "trig2": {
+            "operations": {
+                "trigger": {
+                    "length": 16,
+                    "digital_marker": "ON",
+                    "amplitude": 0.1,
+                    "__class__": "quam.components.pulses.SquarePulse"
+                }
+            },
+            "id": "trig2",
+            "digital_outputs": {
+                "marker2": {
+                    "opx_output": "#/wiring/qdac_triggers/1/digital_marker",
+                    "delay": 0,
+                    "buffer": 0
+                }
+            },
+            "opx_output": [
+                "con1",
+                4
+            ]
+        }
+    },
+    "gates": {
+        "P1": {
+            "id": "P1",
+            "opx_output": "#/wiring/gates/0/port",
+            "sticky": {
+                "duration": 200,
+                "digital": false
+            }
+        },
+        "P2": {
+            "id": "P2",
+            "opx_output": "#/wiring/gates/1/port",
+            "sticky": {
+                "duration": 200,
+                "digital": false
+            }
+        },
+        "sensor": {
+            "id": "sensor",
+            "opx_output": "#/wiring/gates/2/port",
+            "sticky": {
+                "duration": 200,
+                "digital": false
+            }
+        }
     },
     "virtual_gate_set": {
         "gates": [
@@ -44,11 +116,6 @@
             ]
         },
         "pulse_defaults": [
-            {
-                "length": 16,
-                "amplitude": 0.25,
-                "__class__": "quam.components.pulses.SquarePulse"
-            },
             {
                 "length": 16,
                 "amplitude": 0.25,

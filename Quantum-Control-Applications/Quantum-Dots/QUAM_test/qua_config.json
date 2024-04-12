@@ -3,51 +3,38 @@
     "controllers": {
         "con1": {
             "analog_outputs": {
+                "4": {
+                    "offset": 0.0
+                },
                 "1": {
                     "offset": 0.0
                 },
-                "4": {
+                "2": {
+                    "offset": 0.0
+                },
+                "3": {
                     "offset": 0.0
                 }
             },
-            "digital_outputs": {},
+            "digital_outputs": {
+                "1": {},
+                "2": {}
+            },
             "analog_inputs": {
                 "1": {
+                    "offset": 0.0
+                },
+                "2": {
                     "offset": 0.0
                 }
             }
         }
     },
     "elements": {
-        "P1": {
-            "operations": {},
-            "singleInput": {
-                "port": [
-                    "con1",
-                    1
-                ]
-            }
-        },
-        "P2": {
-            "operations": {},
-            "singleInput": {
-                "port": [
-                    "con1",
-                    1
-                ]
-            }
-        },
-        "sensor": {
-            "operations": {},
-            "singleInput": {
-                "port": [
-                    "con1",
-                    1
-                ]
-            }
-        },
         "resonator": {
-            "operations": {},
+            "operations": {
+                "readout": "resonator.readout.pulse"
+            },
             "singleInput": {
                 "port": [
                     "con1",
@@ -63,6 +50,94 @@
             },
             "smearing": 0,
             "time_of_flight": 24
+        },
+        "tia": {
+            "operations": {
+                "readout": "tia.readout.pulse"
+            },
+            "singleInput": {
+                "port": [
+                    "con1",
+                    4
+                ]
+            },
+            "outputs": {
+                "out1": [
+                    "con1",
+                    2
+                ]
+            },
+            "smearing": 0,
+            "time_of_flight": 24
+        },
+        "trig1": {
+            "operations": {
+                "trigger": "trig1.trigger.pulse"
+            },
+            "digitalInputs": {
+                "marker1": {
+                    "port": [
+                        "con1",
+                        1
+                    ],
+                    "delay": 0,
+                    "buffer": 0
+                }
+            },
+            "singleInput": {
+                "port": [
+                    "con1",
+                    4
+                ]
+            }
+        },
+        "trig2": {
+            "operations": {
+                "trigger": "trig2.trigger.pulse"
+            },
+            "digitalInputs": {
+                "marker2": {
+                    "port": [
+                        "con1",
+                        2
+                    ],
+                    "delay": 0,
+                    "buffer": 0
+                }
+            },
+            "singleInput": {
+                "port": [
+                    "con1",
+                    4
+                ]
+            }
+        },
+        "P1": {
+            "operations": {},
+            "singleInput": {
+                "port": [
+                    "con1",
+                    1
+                ]
+            }
+        },
+        "P2": {
+            "operations": {},
+            "singleInput": {
+                "port": [
+                    "con1",
+                    2
+                ]
+            }
+        },
+        "sensor": {
+            "operations": {},
+            "singleInput": {
+                "port": [
+                    "con1",
+                    3
+                ]
+            }
         }
     },
     "pulses": {
@@ -73,6 +148,48 @@
                 "I": "const_wf",
                 "Q": "zero_wf"
             }
+        },
+        "resonator.readout.pulse": {
+            "operation": "measurement",
+            "length": 1000,
+            "digital_marker": "ON",
+            "waveforms": {
+                "single": "resonator.readout.wf"
+            },
+            "integration_weights": {
+                "iw1": "resonator.readout.iw1",
+                "iw2": "resonator.readout.iw2",
+                "iw3": "resonator.readout.iw3"
+            }
+        },
+        "tia.readout.pulse": {
+            "operation": "measurement",
+            "length": 1000,
+            "digital_marker": "ON",
+            "waveforms": {
+                "single": "tia.readout.wf"
+            },
+            "integration_weights": {
+                "iw1": "tia.readout.iw1",
+                "iw2": "tia.readout.iw2",
+                "iw3": "tia.readout.iw3"
+            }
+        },
+        "trig1.trigger.pulse": {
+            "operation": "control",
+            "length": 16,
+            "digital_marker": "ON",
+            "waveforms": {
+                "single": "trig1.trigger.wf"
+            }
+        },
+        "trig2.trigger.pulse": {
+            "operation": "control",
+            "length": 16,
+            "digital_marker": "ON",
+            "waveforms": {
+                "single": "trig2.trigger.wf"
+            }
         }
     },
     "waveforms": {
@@ -81,6 +198,22 @@
             "sample": 0.0
         },
         "const_wf": {
+            "type": "constant",
+            "sample": 0.1
+        },
+        "resonator.readout.wf": {
+            "type": "constant",
+            "sample": 0.1
+        },
+        "tia.readout.wf": {
+            "type": "constant",
+            "sample": 0.0
+        },
+        "trig1.trigger.wf": {
+            "type": "constant",
+            "sample": 0.0
+        },
+        "trig2.trigger.wf": {
             "type": "constant",
             "sample": 0.1
         }
@@ -95,7 +228,92 @@
             ]
         }
     },
-    "integration_weights": {},
+    "integration_weights": {
+        "resonator.readout.iw1": {
+            "cosine": [
+                [
+                    1.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    -0.0,
+                    1000
+                ]
+            ]
+        },
+        "resonator.readout.iw2": {
+            "cosine": [
+                [
+                    0.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    1.0,
+                    1000
+                ]
+            ]
+        },
+        "resonator.readout.iw3": {
+            "cosine": [
+                [
+                    -0.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    -1.0,
+                    1000
+                ]
+            ]
+        },
+        "tia.readout.iw1": {
+            "cosine": [
+                [
+                    1.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    -0.0,
+                    1000
+                ]
+            ]
+        },
+        "tia.readout.iw2": {
+            "cosine": [
+                [
+                    0.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    1.0,
+                    1000
+                ]
+            ]
+        },
+        "tia.readout.iw3": {
+            "cosine": [
+                [
+                    -0.0,
+                    1000
+                ]
+            ],
+            "sine": [
+                [
+                    -1.0,
+                    1000
+                ]
+            ]
+        }
+    },
     "mixers": {},
     "oscillators": {}
 }

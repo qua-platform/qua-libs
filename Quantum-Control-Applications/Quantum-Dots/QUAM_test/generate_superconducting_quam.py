@@ -2,16 +2,16 @@ from pathlib import Path
 import json
 
 from quam.components import *
-from quam.components.channels import IQChannel, InOutSingleChannel, SingleChannel
+from quam.components.channels import InOutSingleChannel, DigitalOutputChannel
 from quam.components.pulses import ConstantReadoutPulse
-from components import StickyChannelAddon, QuAM, VirtualGateSet
+from components import QuAM, VirtualGateSet, SingleChannel, Channel, StickyChannelAddon
 from qm.octave import QmOctaveConfig
 from quam.core import QuamRoot
 
 from qualang_tools.units import unit
 
 
-def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, QmOctaveConfig):
+def create_quam_quantumdots_referenced(gates_list: list[str]) -> (QuamRoot, QmOctaveConfig):
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -25,35 +25,38 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
     quam = QuAM()
 
     # Add the Octave to the quam
-    octave = Octave(
-        name="octave1",
-        ip="172.16.33.101",
-        port=11050,
-    )
-    quam.octave = octave
-    octave.initialize_frequency_converters()
-    octave.print_summary()
-    octave_config = octave.get_octave_config()
+    # octave = Octave(
+    #     name="octave1",
+    #     ip="172.16.33.101",
+    #     port=11050,
+    # )
+    # quam.octave = octave
+    # octave.initialize_frequency_converters()
+    # octave.print_summary()
+    # octave_config = octave.get_octave_config()
 
     # Define the connectivity
     quam.wiring = {
-        "gates": [
-            {"port":("con1", k+1)} for k in range(len(gates_list))
-        ],
+        "gates": [{"port": ("con1", k + 1)} for k in range(len(gates_list))],
         "resonator": {
             "opx_output": ("con1", 4),
             "opx_input": ("con1", 1),
         },
+        "tia": {
+            "opx_output": ("con1", 4),
+            "opx_input": ("con1", 2),
+        },
+        "qdac_triggers": [{"digital_marker": ("con1", 1)}, {"digital_marker": ("con1", 2)}],
     }
     quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
     # Add gates
     quam.gates = {
         name: SingleChannel(
             id=name,
-            # opx_output=f"#/wiring/gates/{k}/port",
-            opx_output=("con1", 1),
-            # sticky=StickyChannelAddon(duration=200, digital=False),
-        ) for k, name in enumerate(gates_list)
+            opx_output=f"#/wiring/gates/{k}/port",
+            sticky=StickyChannelAddon(duration=200, digital=False),
+        )
+        for k, name in enumerate(gates_list)
     }
 
     quam.resonator = InOutSingleChannel(
@@ -61,14 +64,44 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
         opx_output=f"#/wiring/resonator/opx_output",
         opx_input=f"#/wiring/resonator/opx_input",
         intermediate_frequency=50e6,
-        time_of_flight=24
+        time_of_flight=24,
     )
+    quam.resonator.operations["readout"] = ConstantReadoutPulse(
+        length=1 * u.us, amplitude=0.1, threshold=0.0, axis_angle=None
+    )
+
+    quam.tia = InOutSingleChannel(
+        id="tia",
+        opx_output=f"#/wiring/tia/opx_output",
+        opx_input=f"#/wiring/tia/opx_input",
+    )
+    # axis_angle to None to work with single channel, otherwise IQ
+    quam.tia.operations["readout"] = ConstantReadoutPulse(
+        length=1 * u.us, amplitude=0.0, threshold=0.0, axis_angle=None
+    )
+
+    quam.qdac_triggers["trig1"] = SingleChannel(
+        id="trig1",
+        digital_outputs={
+            "marker1": DigitalOutputChannel(opx_output="#/wiring/qdac_triggers/0/digital_marker", delay=0, buffer=0)
+        },
+        opx_output=("con1", 4)
+    )
+    quam.qdac_triggers["trig2"] = SingleChannel(
+        id="trig2",
+        digital_outputs={
+            "marker2": DigitalOutputChannel(opx_output="#/wiring/qdac_triggers/1/digital_marker", delay=0, buffer=0)
+        },
+        opx_output=("con1", 4)
+    )
+    quam.qdac_triggers["trig1"].operations["trigger"] = pulses.SquarePulse(amplitude=0.0, length=16, axis_angle=None, digital_marker="ON")
+    quam.qdac_triggers["trig2"].operations["trigger"] = pulses.SquarePulse(amplitude=0.10, length=16, axis_angle=None, digital_marker="ON")
+
 
     quam.virtual_gate_set = VirtualGateSet(
         gates=["#/gates/P1", "#/gates/P2"],  # Be careful with ordering
         virtual_gates={"eps": [-11.6, 6.51], "U": [11.6, 6.51]},
         pulse_defaults=[
-            pulses.SquarePulse(amplitude=0.25, length=16),
             pulses.SquarePulse(amplitude=0.25, length=16),
             pulses.SquarePulse(amplitude=0.25, length=16),
         ],
@@ -100,24 +133,6 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
     #         ),
     #     )
     #     # Add the transmon pulses to the quam
-    #     transmon.xy.operations["x180"] = pulses.DragPulse(
-    #         amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-    #     )
-    #     transmon.xy.operations["x90"] = pulses.DragPulse(
-    #         amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-    #     )
-    #     transmon.xy.operations["-x90"] = pulses.DragPulse(
-    #         amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
-    #     )
-    #     transmon.xy.operations["y180"] = pulses.DragPulse(
-    #         amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-    #     )
-    #     transmon.xy.operations["y90"] = pulses.DragPulse(
-    #         amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-    #     )
-    #     transmon.xy.operations["-y90"] = pulses.DragPulse(
-    #         amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
-    #     )
     #     transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0)
     #     transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
     #     transmon.resonator.operations["readout"] = ConstantReadoutPulse(
@@ -133,14 +148,14 @@ def create_quam_superconducting_referenced(gates_list: list[str]) -> (QuamRoot, 
     #     octave.RF_inputs[1].channel = transmon.resonator.get_reference()
     #     octave.RF_outputs[1].LO_frequency = 4 * u.GHz
     #     octave.RF_inputs[1].LO_frequency = 4 * u.GHz
-    return quam, octave_config
+    return quam
 
 
 if __name__ == "__main__":
     folder = Path("")
     folder.mkdir(exist_ok=True)
 
-    quam, octave_config = create_quam_superconducting_referenced(gates_list=["P1", "P2", "sensor"])
+    quam = create_quam_quantumdots_referenced(gates_list=["P1", "P2", "sensor"])
     quam.save(folder / "quam", content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
