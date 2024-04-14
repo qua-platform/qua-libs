@@ -16,7 +16,7 @@ The script will generate random circuits with the chosen gate set and run them o
 
 As opposed to Randomized Benchmarking, we do not invert the randomly generated circuit by applying an inverse, but we rather perform a fidelity estimation over the statistics of the outcomes when measuring the system in the computational basis.
 
-There are therefore four steps in the script:
+There are therefore three steps in the script:
 - Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation.
 - Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ gate)
 - Theoretical simulation: The script will simulate the random circuits on the classical side to calculate the ideal probability distributions.
