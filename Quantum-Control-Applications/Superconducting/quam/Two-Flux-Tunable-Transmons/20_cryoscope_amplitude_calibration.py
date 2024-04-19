@@ -184,5 +184,15 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-# TODO: store the fit parameters
-# machine.save("quam")
+    # TODO: store the fit parameters
+
+    # Save data from the node
+    data = {
+        f"{qb.name}_time": xplot,
+        f"{qb.name}_coarse_detuning": coarse_detuning,
+        f"{qb.name}_fit": np.polyval(pol, xplot),
+        f"{qb.name}_fit_coef": pol,
+        f"{qb.name}_state": state,
+        "figure": fig,
+    }
+    node_save("cryoscope_vs_amplitude", data, machine)

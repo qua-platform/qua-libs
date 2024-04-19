@@ -85,8 +85,6 @@ with program() as iq_blobs:
             Q_e_st[i].save_all(f"Q_e_q{i}")
 
 
-
-
 ###########################
 # Run or Simulate Program #
 ###########################
@@ -110,14 +108,18 @@ else:
     # for state discrimination and derive the fidelity matrix
     hist1 = np.histogram(I_g_q1, bins=100)
     rus_threshold_1 = hist1[1][1:][np.argmax(hist1[0])]
-    angle1, threshold1, fidelity1, gg1, ge1, eg1, ee1 = two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
+    angle1, threshold1, fidelity1, gg1, ge1, eg1, ee1 = two_state_discriminator(
+        I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True
+    )
     plt.subplot(223)
     plt.axvline(x=rus_threshold_1)
     plt.suptitle(f"{q1.name}")
     fig1 = plt.gcf()
     hist2 = np.histogram(I_g_q2, bins=100)
     rus_threshold_2 = hist2[1][1:][np.argmax(hist2[0])]
-    angle2, threshold2, fidelity2, gg2, ge2, eg2, ee2 = two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
+    angle2, threshold2, fidelity2, gg2, ge2, eg2, ee2 = two_state_discriminator(
+        I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True
+    )
     plt.subplot(223)
     plt.axvline(x=rus_threshold_2)
     plt.suptitle(f"{q2.name}")

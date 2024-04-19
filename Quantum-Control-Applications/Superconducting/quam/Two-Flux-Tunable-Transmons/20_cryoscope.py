@@ -49,7 +49,7 @@ from scipy import optimize, signal
 
 from components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
-from digital_filters import exponential_decay, single_exponential_correction
+from qualang_tools.digital_filters import exponential_decay, single_exponential_correction
 
 
 ###################################################
@@ -93,7 +93,7 @@ def baked_waveform(qubit, waveform, pulse_duration):
 ###################
 # The QUA program #
 ###################
-qb = q2  # Qubit under study
+qb = q1  # Qubit under study
 flux_operation = "const"
 flux_pulse_len = q1.z.operations[flux_operation].length
 flux_pulse_amp = q1.z.operations[flux_operation].amplitude
@@ -202,7 +202,7 @@ else:
         # Derive the Bloch vector components from the two projections
         Sx = state[:, 0] * 2 - 1
         Sy = state[:, 1] * 2 - 1
-        qubit_state = Sx + 1j * Sy
+        qubit_state = (Sx - np.mean(Sx[10:])) + 1j * (Sy - np.mean(Sy[10:]))
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[-1]
@@ -211,7 +211,7 @@ else:
         detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(detuning[-int(flux_pulse_len / 2) :])
-        step_response_volt = np.sqrt(step_response_freq)
+        step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
 
@@ -273,7 +273,7 @@ else:
     plt.subplot(121)
     plt.plot(xplot, step_response_volt, "o-", label="Data")
     plt.plot(xplot, exponential_decay(xplot, A, tau), label="Fit")
-    plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    # plt.text(100, 0.95, f"A = {A:.2f}\ntau = {tau:.2f}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
     plt.axhline(y=1.01)
     plt.axhline(y=0.99)
     plt.xlabel("Flux pulse duration [ns]")
@@ -286,7 +286,7 @@ else:
     plt.plot(with_filter, label="After Bias-T with filter")
     plt.plot(pulse, label="Ideal WF")  # pulse
     plt.plot(list(step_response_volt), label="Experimental data")
-    plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+    # plt.text(40, 0.93, f"IIR = {iir}\nFIR = {fir}", bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
     plt.legend(loc="upper right")
@@ -306,6 +306,8 @@ else:
         f"{qb.name}_state": state,
         f"{qb.name}_fir": list(fir),
         f"{qb.name}_iir": list(iir),
+        f"{qb.name}_A": A,
+        f"{qb.name}_tau": tau,
         "figure": fig,
     }
     node_save("cryoscope_1ns", data, machine)

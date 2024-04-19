@@ -183,12 +183,14 @@ else:
         f"{rr1.name}_frequency": dfs + rr1.intermediate_frequency,
         f"{rr1.name}_fidelity": fidelity_vec[0],
         f"{rr1.name}_amp_opt": rr1.operations["readout"].amplitude,
-        f"{rr1.name}_if_opt": rr1.intermediate_frequency + dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]],
+        f"{rr1.name}_if_opt": rr1.intermediate_frequency
+        + dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]],
         f"{rr2.name}_amplitude": amplitudes * rr2.operations["readout"].amplitude,
         f"{rr2.name}_frequency": dfs + rr2.intermediate_frequency,
         f"{rr2.name}_fidelity": fidelity_vec[1],
         f"{rr2.name}_amp_opt": rr2.operations["readout"].amplitude,
-        f"{rr2.name}_if_opt": rr2.intermediate_frequency + dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]],
+        f"{rr2.name}_if_opt": rr2.intermediate_frequency
+        + dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]],
         "figure": fig,
     }
     rr1.intermediate_frequency += dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]]

@@ -215,4 +215,3 @@ else:
 
 # Save data from the node
 node_save("ramsey", data, machine)
-

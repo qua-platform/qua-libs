@@ -251,12 +251,19 @@
             "z": {
                 "operations": {
                     "const": {
-                        "length": 100,
-                        "amplitude": 0.1,
+                        "length": 52,
+                        "amplitude": -0.104,
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "opx_output": "#/wiring/qubits/1/port_Z"
+                "opx_output": "#/wiring/qubits/1/port_Z",
+                "filter_fir_taps": [
+                    0.20532801942051312,
+                    -0.10650977140459907
+                ],
+                "filter_iir_taps": [
+                    0.901181751984086
+                ]
             },
             "resonator": {
                 "operations": {

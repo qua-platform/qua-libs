@@ -57,6 +57,7 @@ q2 = machine.active_qubits[1]
 ###################
 # The QUA program #
 ###################
+qb = q2  # The qubit whose flux will be swept
 n_avg = 40
 
 # The flux pulse durations in clock cycles (4ns) - Must be larger than 4 clock cycles.
@@ -86,11 +87,11 @@ with program() as cz:
                 wait(20 * u.ns)
                 # Play a flux pulse on the qubit with the highest frequency to bring it close to the excited qubit while
                 # varying its amplitude and duration in order to observe the SWAP chevron.
-                q2.z.set_dc_offset(dc)
+                qb.z.set_dc_offset(dc)
                 wait(t, q2.z.name)
                 align()
                 # Put back the qubit to the max frequency point
-                q2.z.set_dc_offset(q2.z.min_offset)
+                qb.z.to_min()
 
                 # Wait some time to ensure that the flux pulse will end before the readout pulse
                 wait(20 * u.ns)
@@ -173,5 +174,18 @@ else:
 
     # q1.z.cz.length =
     # q1.z.cz.level =
-    # machine.save("quam")
-# np.savez(save_dir/'cz', I1=I1, Q1=Q1, I2=I2, Q2=Q2, ts=ts, dcs=dcs)
+
+    # Save data from the node
+    data = {
+        f"{q1.name}_flux_pulse_amplitude": dcs,
+        f"{q1.name}_flux_pulse_duration": 4 * ts,
+        f"{q1.name}_I": I1.T,
+        f"{q1.name}_Q": Q1.T,
+        f"{q2.name}_flux_pulse_amplitude": dcs,
+        f"{q2.name}_flux_pulse_duration": 4 * ts,
+        f"{q2.name}_I": I2.T,
+        f"{q2.name}_Q": Q2.T,
+        f"qubit_flux": qb.name,
+        "figure": fig,
+    }
+    node_save("CZ_chevron_fine", data, machine)

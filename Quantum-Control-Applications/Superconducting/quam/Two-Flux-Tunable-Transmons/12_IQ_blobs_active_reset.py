@@ -32,6 +32,7 @@ qmm = machine.connect()
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
 
+
 def active_reset(qubit):
     count = declare(int)
     I = declare(fixed)
@@ -46,6 +47,8 @@ def active_reset(qubit):
         assign(count, count + 1)
         assign(cont_condition, ((I > qubit.resonator.operations["readout"].threshold) & (count < 3)))
     return I, Q
+
+
 def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
     I = declare(fixed)
     Q = declare(fixed)
@@ -72,6 +75,7 @@ def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
         qubit.xy.play(pi_operation_name, condition=state)
         qubit.xy.align(qubit.resonator.name)
         assign(attempts, attempts + 1)
+
 
 ###################
 # The QUA program #

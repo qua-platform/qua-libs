@@ -205,4 +205,18 @@ else:
 
     # qb.z.iswap.length =
     # qb.z.iswap.level =
-    # machine.save("quam")
+
+    # Save data from the node
+    data = {
+        f"{q1.name}_flux_pulse_amplitude": amps * flux_pulse_amp,
+        f"{q1.name}_flux_pulse_duration": xplot,
+        f"{q1.name}_I": I1.T,
+        f"{q1.name}_Q": Q1.T,
+        f"{q2.name}_flux_pulse_amplitude": amps * flux_pulse_amp,
+        f"{q2.name}_flux_pulse_duration": xplot,
+        f"{q2.name}_I": I2.T,
+        f"{q2.name}_Q": Q2.T,
+        f"qubit_flux": qb.name,
+        "figure": fig,
+    }
+    node_save("iSWAP_chevron_fine", data, machine)
