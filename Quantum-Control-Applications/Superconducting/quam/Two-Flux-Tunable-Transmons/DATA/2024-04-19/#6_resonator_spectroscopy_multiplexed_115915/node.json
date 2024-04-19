@@ -1,0 +1,14 @@
+{
+    "created_at": "2024-04-19T11:59:15+02:00",
+    "metadata": {
+        "name": "resonator_spectroscopy_multiplexed",
+        "data_path": "2024-04-19/#6_resonator_spectroscopy_multiplexed_115915"
+    },
+    "data": {
+        "quam": "./state.json"
+    },
+    "id": 6,
+    "parents": [
+        5
+    ]
+}

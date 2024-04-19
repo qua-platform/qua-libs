@@ -1,0 +1,13 @@
+{
+    "q0_flux_bias": "./arrays.npz#q0_flux_bias",
+    "q0_frequency": "./arrays.npz#q0_frequency",
+    "q0_R": "./arrays.npz#q0_R",
+    "q0_phase": "./arrays.npz#q0_phase",
+    "q0_min_offset": 0.0,
+    "q1_flux_bias": "./arrays.npz#q1_flux_bias",
+    "q1_frequency": "./arrays.npz#q1_frequency",
+    "q1_R": "./arrays.npz#q1_R",
+    "q1_phase": "./arrays.npz#q1_phase",
+    "q1_min_offset": 0.0,
+    "figure": "./figure.png"
+}

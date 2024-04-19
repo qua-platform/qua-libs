@@ -1,0 +1,14 @@
+{
+    "created_at": "2024-04-19T12:29:22+02:00",
+    "metadata": {
+        "name": "qubit_spectroscopy",
+        "data_path": "2024-04-19/#17_qubit_spectroscopy_122922"
+    },
+    "data": {
+        "quam": "./state.json"
+    },
+    "id": 17,
+    "parents": [
+        16
+    ]
+}

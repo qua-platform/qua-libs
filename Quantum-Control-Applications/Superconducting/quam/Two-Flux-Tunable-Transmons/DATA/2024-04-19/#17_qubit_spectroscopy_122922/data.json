@@ -1,0 +1,19 @@
+{
+    "q0_frequency": "./arrays.npz#q0_frequency",
+    "q0_R": "./arrays.npz#q0_R",
+    "q0_phase": "./arrays.npz#q0_phase",
+    "q1_frequency": "./arrays.npz#q1_frequency",
+    "q1_R": "./arrays.npz#q1_R",
+    "q1_phase": "./arrays.npz#q1_phase",
+    "q1_min_offset": 0.0,
+    "figure": "./figure.png",
+    "q0": {
+        "res_if": 151736672,
+        "fit_successful": true
+    },
+    "q1": {
+        "res_if": 253444725,
+        "fit_successful": true
+    },
+    "fit_figure": "./fit_figure.png"
+}

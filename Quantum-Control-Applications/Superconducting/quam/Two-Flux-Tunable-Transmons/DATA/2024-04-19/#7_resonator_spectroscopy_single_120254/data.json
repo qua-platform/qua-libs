@@ -1,0 +1,10 @@
+{
+    "frequencies": "./arrays.npz#frequencies",
+    "R": "./arrays.npz#R",
+    "phase": "./arrays.npz#phase",
+    "figure_raw": "./figure_raw.png",
+    "q0.resonator": {
+        "resonator_frequency": null,
+        "successful_fit": false
+    }
+}

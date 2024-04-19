@@ -1,0 +1,14 @@
+{
+    "created_at": "2024-04-19T12:02:54+02:00",
+    "metadata": {
+        "name": "resonator_spectroscopy_single",
+        "data_path": "2024-04-19/#7_resonator_spectroscopy_single_120254"
+    },
+    "data": {
+        "quam": "./state.json"
+    },
+    "id": 7,
+    "parents": [
+        6
+    ]
+}

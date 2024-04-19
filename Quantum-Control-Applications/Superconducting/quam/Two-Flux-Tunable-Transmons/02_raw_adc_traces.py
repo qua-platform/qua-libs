@@ -9,13 +9,12 @@ correcting any non-zero DC offsets, and estimating the SNR.
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.units import unit
 from components import QuAM
-
+from macros import node_save
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -23,7 +22,7 @@ from components import QuAM
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
@@ -93,7 +92,7 @@ else:
     adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
     adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
     # Plot data
-    plt.figure()
+    fig = plt.figure()
     plt.subplot(121)
     plt.title("Single run")
     plt.plot(adc1_single_run, label="Input 1")
@@ -117,4 +116,16 @@ else:
     rr2.opx_input_offset_I -= np.mean(adc1)
     rr1.opx_input_offset_Q -= np.mean(adc2)
     rr2.opx_input_offset_Q -= np.mean(adc2)
-    machine.save("quam")
+
+    # Save data from the node
+    data = {
+        "offset_1": np.mean(adc1),
+        "offset_2": np.mean(adc2),
+        "raw_adc_1": adc1,
+        "raw_adc_2": adc2,
+        "raw_adc_1_single_shot": adc1_single_run,
+        "raw_adc_2_single_shot": adc2_single_run,
+        "figure": fig,
+    }
+    node_save("raw_adc_traces", data, machine)
+

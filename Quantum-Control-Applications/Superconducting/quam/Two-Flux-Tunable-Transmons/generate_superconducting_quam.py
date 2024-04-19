@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 
 from quam.components import *
-from quam.components.channels import IQChannel
+from quam.components.channels import IQChannel, DigitalOutputChannel
 from quam.components.pulses import ConstantReadoutPulse
 from components import Transmon, ReadoutResonator, QuAM, FluxLine
 from qm.octave import QmOctaveConfig
@@ -40,9 +40,10 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     quam.wiring = {
         "qubits": [
             {
-                "port_I": ("con1", 3 * k + 3),
-                "port_Q": ("con1", 3 * k + 4),
-                "port_Z": ("con1", 3 * k + 5),
+                "port_I": ("con1", 4 * k + 3),
+                "port_Q": ("con1", 4 * k + 4),
+                "port_Z": ("con1", 4 * k + 5),
+                "digital_port": ("con1", 4 * k + 3)
             }
             for k in range(num_qubits)  # TODO: what if k>2?
         ],
@@ -51,9 +52,11 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
             "opx_output_Q": ("con1", 2),
             "opx_input_I": ("con1", 1),
             "opx_input_Q": ("con1", 2),
+            "digital_port": ("con1", 1)
         },
     }
-    quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81"}
+    quam.network = {"host": "172.16.33.101", "cluster_name": "Cluster_81",
+                    "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA"}
     # Add the transmon components (xy, z and resonator) to the quam
     for idx in range(num_qubits):
         # Create qubit components
@@ -64,6 +67,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 opx_output_Q=f"#/wiring/qubits/{idx}/port_Q",
                 frequency_converter_up=octave.RF_outputs[2 * (idx + 1)].get_reference(),
                 intermediate_frequency=100 * u.MHz,
+                digital_outputs={"octave_switch": DigitalOutputChannel(opx_output=f"#/wiring/qubits/{idx}/digital_port", delay=87, buffer=15)},  # 57ns, 18ns for QOP222 and above
             ),
             z=FluxLine(opx_output=f"#/wiring/qubits/{idx}/port_Z"),
             resonator=ReadoutResonator(
@@ -71,6 +75,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 opx_output_Q="#/wiring/resonator/opx_output_Q",
                 opx_input_I="#/wiring/resonator/opx_input_I",
                 opx_input_Q="#/wiring/resonator/opx_input_Q",
+                digital_outputs={"octave_switch": DigitalOutputChannel(opx_output=f"#/wiring/qubits/{idx}/digital_port", delay=87, buffer=15)},  # 57ns, 18ns for QOP222 and above
                 opx_input_offset_I=0.0,
                 opx_input_offset_Q=0.0,
                 frequency_converter_up=octave.RF_outputs[1].get_reference(),
@@ -81,27 +86,27 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
         )
         # Add the transmon pulses to the quam
         transmon.xy.operations["x180"] = pulses.DragPulse(
-            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0, digital_marker="ON"
         )
         transmon.xy.operations["x90"] = pulses.DragPulse(
-            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0, digital_marker="ON"
         )
         transmon.xy.operations["-x90"] = pulses.DragPulse(
-            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0
+            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=0, digital_marker="ON"
         )
         transmon.xy.operations["y180"] = pulses.DragPulse(
-            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+            amplitude=0.1, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90, digital_marker="ON"
         )
         transmon.xy.operations["y90"] = pulses.DragPulse(
-            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+            amplitude=0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90, digital_marker="ON"
         )
         transmon.xy.operations["-y90"] = pulses.DragPulse(
-            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90
+            amplitude=-0.1 / 2, sigma=7, alpha=0, anharmonicity=-200 * u.MHz, length=40, axis_angle=90, digital_marker="ON"
         )
-        transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0)
+        transmon.xy.operations["saturation"] = pulses.SquarePulse(amplitude=0.25, length=10 * u.us, axis_angle=0, digital_marker="ON")
         transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
         transmon.resonator.operations["readout"] = ConstantReadoutPulse(
-            length=1 * u.us, amplitude=0.00123, threshold=0.0
+            length=1 * u.us, amplitude=0.00123, threshold=0.0, digital_marker="ON"
         )
         quam.qubits[transmon.name] = transmon
         quam.active_qubit_names.append(transmon.name)

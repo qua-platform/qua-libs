@@ -3,16 +3,15 @@ A simple sandbox to showcase different QUA functionalities during the installati
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from components import QuAM
-
+from macros import node_save
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
@@ -29,6 +28,8 @@ with program() as hello_qua:
         with for_(a, 0, a < 1.1, a + 0.05):
             play("x180" * amp(a), machine.qubits["q0"].xy.name)
         wait(25, machine.qubits["q0"].xy.name)
+        align()
+        measure("readout", machine.qubits["q1"].resonator.name, None)
 
 
 ###########################

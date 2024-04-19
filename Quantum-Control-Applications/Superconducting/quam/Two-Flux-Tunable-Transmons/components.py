@@ -6,8 +6,8 @@ from quam.components.octave import Octave
 from quam.core import QuamRoot, quam_dataclass
 
 from qm.qua import align
-
-
+from qualang_tools.results.data_handler import DataHandler
+from typing import ClassVar
 __all__ = ["Transmon", "FluxLine", "ReadoutResonator", "QuAM"]
 
 
@@ -68,7 +68,7 @@ class Transmon(QuamComponent):
     T2echo: int = 10_000
     thermalization_time_factor: int = 5
     anharmonicity: int = 150e6
-    f_01: int = 4.50e9
+    # f_01: int = 4.50e9
 
     @property
     def thermalization_time(self):
@@ -105,6 +105,15 @@ class QuAM(QuamRoot):
 
     active_qubit_names: List[str] = field(default_factory=list)
 
+    _data_handler: ClassVar[DataHandler] = None
+
+    @property
+    def data_handler(self):
+        if self._data_handler is None:
+            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
+            DataHandler.node_data = {"quam": "./state.json"}
+        return self._data_handler
+
     @property
     def active_qubits(self) -> List[Transmon]:
         """Return the list of active qubits"""
@@ -126,6 +135,10 @@ class QuAM(QuamRoot):
         for q in self.active_qubits:
             q.z.to_min()
         align()
+
+    @property
+    def get_data_handler(self) -> DataHandler:
+        return DataHandler(root_data_folder=self.network["data_folder"])
 
     def connect(self):
         from qm import QuantumMachinesManager

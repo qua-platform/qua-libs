@@ -20,7 +20,6 @@ Before proceeding to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
@@ -31,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout, node_save
 
 
 ###################################################
@@ -42,7 +41,7 @@ from macros import qua_declaration, multiplexed_readout
 u = unit(coerce_to_integer=True)
 # Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
@@ -154,7 +153,19 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-# Update machine with max frequency point for both resonator and qubit
-# q1.z.min_offset =
-# q2.z.min_offset =
-# machine.save("quam")
+    # Update machine with max frequency point for both resonator and qubit
+    # q1.z.min_offset =
+    # q2.z.min_offset =
+    # Save data from the node
+    data = {
+        f"{q1.resonator.name}_flux_bias": dcs,
+        f"{q1.resonator.name}_frequency": q1.resonator.intermediate_frequency + dfs,
+        f"{q1.resonator.name}_R": A1,
+        f"{q1.resonator.name}_min_offset": q1.z.min_offset,
+        f"{q2.resonator.name}_flux_bias": dcs,
+        f"{q2.resonator.name}_frequency": q2.resonator.intermediate_frequency + dfs,
+        f"{q2.resonator.name}_R": A2,
+        f"{q2.resonator.name}_min_offset": q2.z.min_offset,
+        "figure": fig,
+    }
+    node_save("resonator_spectroscopy_vs_flux", data, machine)

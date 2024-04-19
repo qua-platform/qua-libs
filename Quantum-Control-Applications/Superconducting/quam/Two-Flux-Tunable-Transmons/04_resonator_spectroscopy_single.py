@@ -17,15 +17,15 @@ Before proceeding to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from components import QuAM
-import matplotlib.pyplot as plt
+from macros import node_save
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy import signal
 
 
@@ -35,7 +35,7 @@ from scipy import signal
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
@@ -137,12 +137,20 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        "frequencies": frequencies,
+        "R": R,
+        "phase": signal.detrend(np.unwrap(phase)),
+        "figure_raw": fig
+    }
+
     # Fit the results to extract the resonance frequency
     try:
         from qualang_tools.plot.fitting import Fit
 
         fit = Fit()
-        plt.figure()
+        fig_fit = plt.figure()
         res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies / u.MHz, R, plot=True)
         plt.title(f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
         plt.xlabel("Intermediate frequency [MHz]")
@@ -150,9 +158,18 @@ else:
         print(f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz")
 
         # Update QUAM
-        rr.intermediate_frequency = res_spec_fit["f"][0]
+        rr.intermediate_frequency = int(res_spec_fit["f"][0] * u.MHz)
         rr.frequency_bare = rr.rf_frequency
-        machine.save("quam")
+        # Save data from the node
+        data[f"{rr.name}"] = {
+            "resonator_frequency": int(res_spec_fit['f'][0] * u.MHz),
+            "successful_fit": True
+        }
+        data["figure_fit"] = fig_fit
 
     except (Exception,):
+        data["successful_fit"] = False
         pass
+
+    # Save data from the node
+    node_save("resonator_spectroscopy_single", data, machine)

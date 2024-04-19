@@ -21,7 +21,6 @@ Before proceeding to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 
 from qualang_tools.results import fetching_tool, progress_counter
@@ -33,7 +32,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration
+from macros import qua_declaration, node_save
 
 
 ###################################################
@@ -42,7 +41,7 @@ from macros import qua_declaration
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
@@ -175,4 +174,16 @@ else:
 
     # rr1.operations["readout"].amplitude =
     # rr2.operations["readout"].amplitude =
-    # machine.save("quam")
+    # Save data from the node
+    data = {
+        f"{rr1.name}_amplitude": amps * rr1.operations["readout"].amplitude,
+        f"{rr1.name}_frequency": dfs + rr1.intermediate_frequency,
+        f"{rr1.name}_R": A1,
+        f"{rr1.name}_readout_amplitude": prev_amp1,
+        f"{rr2.name}_amplitude": amps * rr2.operations["readout"].amplitude,
+        f"{rr2.name}_frequency": dfs + rr2.intermediate_frequency,
+        f"{rr2.name}_R": A2,
+        f"{rr2.name}_readout_amplitude": prev_amp2,
+        "figure": fig,
+    }
+    node_save("resonator_spectroscopy_vs_amplitude", data, machine)

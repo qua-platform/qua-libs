@@ -37,7 +37,6 @@ Next steps before going to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
@@ -49,7 +48,7 @@ import numpy as np
 from scipy import optimize, signal
 
 from components import QuAM
-from macros import qua_declaration, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout, node_save
 from digital_filters import exponential_decay, single_exponential_correction
 
 
@@ -59,7 +58,7 @@ from digital_filters import exponential_decay, single_exponential_correction
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()

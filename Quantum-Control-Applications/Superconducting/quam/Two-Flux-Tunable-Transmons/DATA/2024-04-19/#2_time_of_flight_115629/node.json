@@ -1,0 +1,14 @@
+{
+    "created_at": "2024-04-19T11:56:29+02:00",
+    "metadata": {
+        "name": "time_of_flight",
+        "data_path": "2024-04-19/#2_time_of_flight_115629"
+    },
+    "data": {
+        "quam": "./state.json"
+    },
+    "id": 2,
+    "parents": [
+        1
+    ]
+}

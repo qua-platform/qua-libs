@@ -1,8 +1,10 @@
 from qm.qua import *
 from components import FluxLine, QuAM
 
-# def wait_depletion_time(quam: "QuAM"):
-#
+def node_save(name:str, data: dict, quam: QuAM):
+    quam.data_handler.save_data(data=data, name=name)
+    quam.save(path=quam.data_handler.path / "state.json")
+    quam.save(path="state.json")
 
 
 def apply_all_flux_to_min(quam: "QuAM"):

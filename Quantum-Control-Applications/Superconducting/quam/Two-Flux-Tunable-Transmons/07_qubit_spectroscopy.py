@@ -27,7 +27,6 @@ Before proceeding to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
@@ -38,7 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, multiplexed_readout
+from macros import qua_declaration, multiplexed_readout, node_save
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -46,7 +45,7 @@ from macros import qua_declaration, multiplexed_readout
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam")
+machine = QuAM.load("state.json")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.octave.get_octave_config()
@@ -164,12 +163,23 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        f"{q1.name}_frequency": dfs + q1.xy.intermediate_frequency,
+        f"{q1.name}_R": np.abs(s1),
+        f"{q1.name}_phase": np.angle(s1),
+        f"{q2.name}_frequency": dfs + q2.xy.intermediate_frequency,
+        f"{q2.name}_R": np.abs(s2),
+        f"{q2.name}_phase": np.angle(s2),
+        "figure": fig,
+    }
+
     # Fit the results to extract the resonance frequency
     try:
         from qualang_tools.plot.fitting import Fit
 
         fit = Fit()
-        plt.figure()
+        fit_fig = plt.figure()
         plt.suptitle("Qubit spectroscopy")
         plt.subplot(121)
         res_1 = fit.reflection_resonator_spectroscopy(
@@ -179,6 +189,13 @@ else:
         plt.xlabel(f"{q1.name} IF [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{q1.name}")
+
+        q1.xy.intermediate_frequency = int(res_1["f"][0] * u.MHz)
+        data[f"{q1.name}"] = {
+            "res_if": q1.xy.intermediate_frequency,
+            "fit_successful": True
+        }
+
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy(
             (q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True
@@ -188,9 +205,15 @@ else:
         plt.title(f"{q2.name}")
         plt.tight_layout()
 
-        q1.xy.intermediate_frequency = res_1["f"][0] * u.MHz
-        q2.xy.intermediate_frequency = res_2["f"][0] * u.MHz
-        # machine.save("quam")
+        q2.xy.intermediate_frequency = int(res_2["f"][0] * u.MHz)
+        data[f"{q2.name}"] = {
+            "res_if": q2.xy.intermediate_frequency,
+            "fit_successful": True
+        }
+        data["fit_figure"] = fit_fig
 
     except (Exception,):
+        data["successful_fit"] = False
         pass
+    # Save data from the node
+    node_save("qubit_spectroscopy", data, machine)

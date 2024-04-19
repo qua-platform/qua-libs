@@ -18,17 +18,20 @@
                 "2": {
                     "offset": 0.0
                 },
-                "6": {
-                    "offset": 0.0
-                },
                 "7": {
                     "offset": 0.0
                 },
                 "8": {
                     "offset": 0.0
+                },
+                "9": {
+                    "offset": 0.0
                 }
             },
-            "digital_outputs": {},
+            "digital_outputs": {
+                "3": {},
+                "7": {}
+            },
             "analog_inputs": {
                 "1": {
                     "offset": 0.0
@@ -49,6 +52,16 @@
                 "y90": "q0.xy.y90.pulse",
                 "-y90": "q0.xy.-y90.pulse",
                 "saturation": "q0.xy.saturation.pulse"
+            },
+            "digitalInputs": {
+                "octave_switch": {
+                    "port": [
+                        "con1",
+                        3
+                    ],
+                    "delay": 87,
+                    "buffer": 15
+                }
             },
             "intermediate_frequency": 100000000,
             "RF_inputs": {
@@ -72,6 +85,16 @@
         "q0.resonator": {
             "operations": {
                 "readout": "q0.resonator.readout.pulse"
+            },
+            "digitalInputs": {
+                "octave_switch": {
+                    "port": [
+                        "con1",
+                        3
+                    ],
+                    "delay": 87,
+                    "buffer": 15
+                }
             },
             "intermediate_frequency": 50000000,
             "RF_inputs": {
@@ -99,6 +122,16 @@
                 "-y90": "q1.xy.-y90.pulse",
                 "saturation": "q1.xy.saturation.pulse"
             },
+            "digitalInputs": {
+                "octave_switch": {
+                    "port": [
+                        "con1",
+                        7
+                    ],
+                    "delay": 87,
+                    "buffer": 15
+                }
+            },
             "intermediate_frequency": 100000000,
             "RF_inputs": {
                 "port": [
@@ -114,13 +147,23 @@
             "singleInput": {
                 "port": [
                     "con1",
-                    8
+                    9
                 ]
             }
         },
         "q1.resonator": {
             "operations": {
                 "readout": "q1.resonator.readout.pulse"
+            },
+            "digitalInputs": {
+                "octave_switch": {
+                    "port": [
+                        "con1",
+                        7
+                    ],
+                    "delay": 87,
+                    "buffer": 15
+                }
             },
             "intermediate_frequency": 50000000,
             "RF_inputs": {
@@ -151,6 +194,7 @@
         "q0.xy.x180.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.x180.wf.I",
                 "Q": "q0.xy.x180.wf.Q"
@@ -159,6 +203,7 @@
         "q0.xy.x90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.x90.wf.I",
                 "Q": "q0.xy.x90.wf.Q"
@@ -167,6 +212,7 @@
         "q0.xy.-x90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.-x90.wf.I",
                 "Q": "q0.xy.-x90.wf.Q"
@@ -175,6 +221,7 @@
         "q0.xy.y180.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.y180.wf.I",
                 "Q": "q0.xy.y180.wf.Q"
@@ -183,6 +230,7 @@
         "q0.xy.y90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.y90.wf.I",
                 "Q": "q0.xy.y90.wf.Q"
@@ -191,6 +239,7 @@
         "q0.xy.-y90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.-y90.wf.I",
                 "Q": "q0.xy.-y90.wf.Q"
@@ -199,6 +248,7 @@
         "q0.xy.saturation.pulse": {
             "operation": "control",
             "length": 10000,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.xy.saturation.wf.I",
                 "Q": "q0.xy.saturation.wf.Q"
@@ -228,6 +278,7 @@
         "q1.xy.x180.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.x180.wf.I",
                 "Q": "q1.xy.x180.wf.Q"
@@ -236,6 +287,7 @@
         "q1.xy.x90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.x90.wf.I",
                 "Q": "q1.xy.x90.wf.Q"
@@ -244,6 +296,7 @@
         "q1.xy.-x90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.-x90.wf.I",
                 "Q": "q1.xy.-x90.wf.Q"
@@ -252,6 +305,7 @@
         "q1.xy.y180.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.y180.wf.I",
                 "Q": "q1.xy.y180.wf.Q"
@@ -260,6 +314,7 @@
         "q1.xy.y90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.y90.wf.I",
                 "Q": "q1.xy.y90.wf.Q"
@@ -268,6 +323,7 @@
         "q1.xy.-y90.pulse": {
             "operation": "control",
             "length": 40,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.-y90.wf.I",
                 "Q": "q1.xy.-y90.wf.Q"
@@ -276,6 +332,7 @@
         "q1.xy.saturation.pulse": {
             "operation": "control",
             "length": 10000,
+            "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.xy.saturation.wf.I",
                 "Q": "q1.xy.saturation.wf.Q"
@@ -1572,11 +1629,11 @@
                     "input_attenuators": "off",
                     "I_connection": [
                         "con1",
-                        6
+                        7
                     ],
                     "Q_connection": [
                         "con1",
-                        7
+                        8
                     ]
                 }
             },
