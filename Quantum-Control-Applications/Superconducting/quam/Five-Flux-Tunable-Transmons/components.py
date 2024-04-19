@@ -68,7 +68,6 @@ class Transmon(QuamComponent):
     T2echo: int = 10_000
     thermalization_time_factor: int = 5
     anharmonicity: int = 150e6
-    f_01: int = 4.50e9
 
     @property
     def thermalization_time(self):
