@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM, Transmon, ReadoutResonator
+from macros import node_save
 
 
 ###################################################
@@ -102,7 +103,7 @@ def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
         rr2.play("readout")
     else:
         rr1.play("readout")
-    resonator.measure("readout", I_var=I_xy, Q_var=Q_xy)
+    resonator.measure("readout", qua_vars=(I_xy, Q_xy))
     return I_xy, Q_xy
 
 
@@ -164,6 +165,7 @@ if simulate:
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
+    data = {}
     # Loop over the two qubits
     for qb, rr in [[q1, rr1], [q2, rr2]]:
         # Send the QUA program to the OPX, which compiles and executes it
@@ -195,5 +197,12 @@ else:
             plt.tight_layout()
             plt.pause(0.1)
 
+            data[f"{qb.name}_I"] = I
+            data[f"{qb.name}_Q"] = Q
+            data[f"{qb.name}_figure"] = fig
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # Save data from the node
+    node_save("all_xy", data, machine)

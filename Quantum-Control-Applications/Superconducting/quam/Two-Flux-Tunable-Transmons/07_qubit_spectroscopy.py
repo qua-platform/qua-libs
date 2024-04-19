@@ -191,10 +191,7 @@ else:
         plt.title(f"{q1.name}")
 
         q1.xy.intermediate_frequency = int(res_1["f"][0] * u.MHz)
-        data[f"{q1.name}"] = {
-            "res_if": q1.xy.intermediate_frequency,
-            "fit_successful": True
-        }
+        data[f"{q1.name}"] = {"res_if": q1.xy.intermediate_frequency, "fit_successful": True}
 
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy(
@@ -206,10 +203,7 @@ else:
         plt.tight_layout()
 
         q2.xy.intermediate_frequency = int(res_2["f"][0] * u.MHz)
-        data[f"{q2.name}"] = {
-            "res_if": q2.xy.intermediate_frequency,
-            "fit_successful": True
-        }
+        data[f"{q2.name}"] = {"res_if": q2.xy.intermediate_frequency, "fit_successful": True}
         data["fit_figure"] = fit_fig
 
     except (Exception,):

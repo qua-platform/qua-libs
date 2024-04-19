@@ -1,9 +1,0 @@
-{
-    "offset_1": -0.012432456054687499,
-    "offset_2": -0.00759298828125,
-    "raw_adc_1": "./arrays.npz#raw_adc_1",
-    "raw_adc_2": "./arrays.npz#raw_adc_2",
-    "raw_adc_1_single_shot": "./arrays.npz#raw_adc_1_single_shot",
-    "raw_adc_2_single_shot": "./arrays.npz#raw_adc_2_single_shot",
-    "figure": "./figure.png"
-}

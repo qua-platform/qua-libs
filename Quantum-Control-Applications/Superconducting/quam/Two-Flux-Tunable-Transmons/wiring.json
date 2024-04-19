@@ -1,0 +1,69 @@
+{
+    "network": {
+        "host": "172.16.33.101",
+        "cluster_name": "Cluster_81",
+        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA"
+    },
+    "wiring": {
+        "qubits": [
+            {
+                "port_I": [
+                    "con1",
+                    3
+                ],
+                "port_Q": [
+                    "con1",
+                    4
+                ],
+                "port_Z": [
+                    "con1",
+                    5
+                ],
+                "digital_port": [
+                    "con1",
+                    3
+                ]
+            },
+            {
+                "port_I": [
+                    "con1",
+                    7
+                ],
+                "port_Q": [
+                    "con1",
+                    8
+                ],
+                "port_Z": [
+                    "con1",
+                    9
+                ],
+                "digital_port": [
+                    "con1",
+                    7
+                ]
+            }
+        ],
+        "resonator": {
+            "opx_output_I": [
+                "con1",
+                1
+            ],
+            "opx_output_Q": [
+                "con1",
+                2
+            ],
+            "opx_input_I": [
+                "con1",
+                1
+            ],
+            "opx_input_Q": [
+                "con1",
+                2
+            ],
+            "digital_port": [
+                "con1",
+                1
+            ]
+        }
+    }
+}

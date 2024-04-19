@@ -72,7 +72,7 @@ with program() as resonator_spec:
             # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency(rr.name, f)
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
-            rr.measure("readout", I_var=I, Q_var=Q)
+            rr.measure("readout", qua_vars=(I, Q))
             # Wait for the resonator to deplete
             rr.wait(machine.get_depletion_time * u.ns)
             # Save the 'I' & 'Q' quadratures to their respective streams
@@ -138,12 +138,7 @@ else:
     qm.close()
 
     # Save data from the node
-    data = {
-        "frequencies": frequencies,
-        "R": R,
-        "phase": signal.detrend(np.unwrap(phase)),
-        "figure_raw": fig
-    }
+    data = {"frequencies": frequencies, "R": R, "phase": signal.detrend(np.unwrap(phase)), "figure_raw": fig}
 
     # Fit the results to extract the resonance frequency
     try:
@@ -161,10 +156,7 @@ else:
         rr.intermediate_frequency = int(res_spec_fit["f"][0] * u.MHz)
         rr.frequency_bare = rr.rf_frequency
         # Save data from the node
-        data[f"{rr.name}"] = {
-            "resonator_frequency": int(res_spec_fit['f'][0] * u.MHz),
-            "successful_fit": True
-        }
+        data[f"{rr.name}"] = {"resonator_frequency": int(res_spec_fit["f"][0] * u.MHz), "successful_fit": True}
         data["figure_fit"] = fig_fit
 
     except (Exception,):

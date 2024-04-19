@@ -89,7 +89,7 @@ with program() as multi_res_spec_vs_amp:
             with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
                 rr1.wait(machine.get_depletion_time * u.ns)  # wait for the resonator to relax
-                rr1.measure("readout", I_var=I[0], Q_var=Q[0])  # TODO: *amp(a)
+                rr1.measure("readout", qua_vars=(I[0], Q[0]), amplitude_scale=a)
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
 
@@ -97,7 +97,7 @@ with program() as multi_res_spec_vs_amp:
 
                 # resonator 2
                 rr2.wait(machine.get_depletion_time * u.ns)  # wait for the resonator to relax
-                rr2.measure("readout", I_var=I[1], Q_var=Q[1])  # TODO: *amp(a)
+                rr2.measure("readout", qua_vars=(I[1], Q[1]), amplitude_scale=a)
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])
 

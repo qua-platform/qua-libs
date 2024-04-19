@@ -8,6 +8,7 @@ from quam.core import QuamRoot, quam_dataclass
 from qm.qua import align
 from qualang_tools.results.data_handler import DataHandler
 from typing import ClassVar
+
 __all__ = ["Transmon", "FluxLine", "ReadoutResonator", "QuAM"]
 
 
@@ -68,7 +69,6 @@ class Transmon(QuamComponent):
     T2echo: int = 10_000
     thermalization_time_factor: int = 5
     anharmonicity: int = 150e6
-    # f_01: int = 4.50e9
 
     @property
     def thermalization_time(self):

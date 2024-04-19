@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import node_savefrom macros import multiplexed_readout
+from macros import multiplexed_readout, node_save
 
 
 ###################################################
@@ -128,6 +128,7 @@ else:
     # fetch data
     D1, D2 = results.fetch_all()
     # Plot the results
+    fig = plt.figure()
     plt.subplot(211)
     plt.plot(dfs, D1)
     plt.xlabel("Readout detuning [MHz]")
@@ -145,7 +146,17 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        f"{rr1.name}_frequency": dfs + rr1.intermediate_frequency,
+        f"{rr1.name}_D": D1,
+        f"{rr1.name}_if_opt": rr1.intermediate_frequency + dfs[np.argmax(D1)],
+        f"{rr2.name}_frequency": dfs + rr2.intermediate_frequency,
+        f"{rr2.name}_D": D2,
+        f"{rr2.name}_if_opt": rr2.intermediate_frequency + dfs[np.argmax(D2)],
+        "figure": fig,
+    }
     # Update the state
     rr1.intermediate_frequency += dfs[np.argmax(D1)]
     rr2.intermediate_frequency += dfs[np.argmax(D2)]
-    # machine.save("quam")
+    node_save("readout_frequency_optimization", data, machine)

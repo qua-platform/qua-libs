@@ -145,6 +145,17 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        f"{q1.name}_time": times * 4,
+        f"{q1.name}_I": np.abs(I1),
+        f"{q1.name}_Q": np.angle(Q1),
+        f"{q2.name}_time": times * 4,
+        f"{q2.name}_I": np.abs(I2),
+        f"{q2.name}_Q": np.angle(Q2),
+        "figure": fig,
+    }
+
     # Fit the results to extract the x180 length
     try:
         from qualang_tools.plot.fitting import Fit
@@ -157,21 +168,24 @@ else:
         plt.title(f"{q1.name}")
         plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
+        q1.xy.operations[operation].length = int(round(1 / rabi_fit1["f"][0] / 2 / 4) * 4)
+        data[f"{q1.name}"] = {"x180_length": q1.xy.operations[operation].length, "fit_successful": True}
+        print(
+            f"Optimal x180_len for {q1.name} = {q1.xy.operations[operation].length} ns for {q1.xy.operations[operation].amplitude:} V"
+        )
         plt.subplot(122)
         rabi_fit2 = fit.rabi(4 * times, I2, plot=True)
         plt.title(f"{q2.name}")
         plt.xlabel("Rabi pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.tight_layout()
+        q2.xy.operations[operation].length = int(round(1 / rabi_fit2["f"][0] / 2 / 4) * 4)
+        data[f"{q2.name}"] = {"x180_length": q2.xy.operations[operation].length, "fit_successful": True}
         print(
-            f"Optimal x180_len for {q1.name} = {round(1 / rabi_fit1['f'][0] / 2 / 4) * 4} ns for {q1.xy.operations[operation].amplitude:} V"
+            f"Optimal x180_len for {q2.name} = {q2.xy.operations[operation].length} ns for {q2.xy.operations[operation].amplitude:} V"
         )
-        print(
-            f"Optimal x180_len for {q2.name} = {round(1 / rabi_fit2['f'][0] / 2 / 4) * 4} ns for {q2.xy.operations[operation].amplitude:} V"
-        )
-        q1.xy.operations[operation].length = round(1 / rabi_fit1["f"][0] / 2 / 4) * 4
-        q2.xy.operations[operation].length = round(1 / rabi_fit2["f"][0] / 2 / 4) * 4.0
-        # machine.save("quam")
 
     except (Exception,):
         pass
+    # Save data from the node
+    node_save("time_rabi", data, machine)

@@ -159,3 +159,17 @@ else:
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # Save data from the node
+    data = {
+        f"{q1.name}_amplitude": 4 * t_delay,
+        f"{q1.name}_frequency": dfs + q1.xy.intermediate_frequency,
+        f"{q1.name}_I": np.abs(I1),
+        f"{q1.name}_Q": np.angle(Q1),
+        f"{q2.name}_amplitude": 4 * t_delay,
+        f"{q2.name}_frequency": dfs + q2.xy.intermediate_frequency,
+        f"{q2.name}_I": np.abs(I2),
+        f"{q2.name}_Q": np.angle(Q2),
+        "figure": fig,
+    }
+    node_save("ramsey_chevron", data, machine)

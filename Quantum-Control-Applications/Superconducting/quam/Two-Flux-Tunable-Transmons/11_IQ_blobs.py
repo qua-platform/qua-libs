@@ -26,6 +26,7 @@ from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
@@ -84,6 +85,8 @@ with program() as iq_blobs:
             Q_e_st[i].save_all(f"Q_e_q{i}")
 
 
+
+
 ###########################
 # Run or Simulate Program #
 ###########################
@@ -105,11 +108,20 @@ else:
     I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
     # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
     # for state discrimination and derive the fidelity matrix
-    angle1, threshold1, fidelity1, _, _, _, _ = two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
+    hist1 = np.histogram(I_g_q1, bins=100)
+    rus_threshold_1 = hist1[1][1:][np.argmax(hist1[0])]
+    angle1, threshold1, fidelity1, gg1, ge1, eg1, ee1 = two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
+    plt.subplot(223)
+    plt.axvline(x=rus_threshold_1)
     plt.suptitle(f"{q1.name}")
-    angle2, threshold2, fidelity2, _, _, _, _ = two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
+    fig1 = plt.gcf()
+    hist2 = np.histogram(I_g_q2, bins=100)
+    rus_threshold_2 = hist2[1][1:][np.argmax(hist2[0])]
+    angle2, threshold2, fidelity2, gg2, ge2, eg2, ee2 = two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
+    plt.subplot(223)
+    plt.axvline(x=rus_threshold_2)
     plt.suptitle(f"{q2.name}")
-
+    fig2 = plt.gcf()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
@@ -117,7 +129,39 @@ else:
     q1.resonator.operations["readout"].integration_weights_angle += angle1
     # rr1.readout_fidelity = fidelity1
     q1.resonator.operations["readout"].threshold = threshold1
+
+    q1.resonator.operations["readout"].rus_exit_threshold = rus_threshold_1
+
     q2.resonator.operations["readout"].integration_weights_angle += angle2
     # rr2.readout_fidelity = fidelity2
     q2.resonator.operations["readout"].threshold = threshold2
-    # machine.save("quam")
+    q2.resonator.operations["readout"].rus_exit_threshold = rus_threshold_2
+
+    # # Save data from the node
+    data = {
+        f"{q1.name}_amplitude": I_g_q1,
+        f"{q1.name}_frequency": Q_g_q1,
+        f"{q1.name}_I": I_e_q1,
+        f"{q1.name}_Q": Q_e_q1,
+        f"{q1.name}_figure": fig1,
+        f"{q1.name}": {
+            "angle": angle1,
+            "threshold": threshold1,
+            "rus_exit_threshold": rus_threshold_1,
+            "fidelity": fidelity1,
+            "confusion_matrix": [[gg1, ge1], [eg1, ee1]],
+        },
+        f"{q2.name}_amplitude": I_g_q2,
+        f"{q2.name}_frequency": Q_g_q2,
+        f"{q2.name}_I": I_e_q2,
+        f"{q2.name}_Q": Q_e_q2,
+        f"{q2.name}_figure": fig2,
+        f"{q2.name}": {
+            "angle": angle2,
+            "threshold": threshold2,
+            "rus_exit_threshold": rus_threshold_2,
+            "fidelity": fidelity2,
+            "confusion_matrix": [[gg2, ge2], [eg2, ee2]],
+        },
+    }
+    node_save("iq_blobs", data, machine)

@@ -23,15 +23,14 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.loops import from_array
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.units import unit
-from qualang_tools.analysis.discriminator import two_state_discriminator
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from macros import node_save
 
 
 ###################################################
@@ -60,20 +59,20 @@ qb = q2
 ####################
 # Helper functions #
 ####################
-def update_readout_length(qubit, new_readout_length, ringdown_length):
-    config["pulses"][f"readout_pulse_{qubit}"]["length"] = new_readout_length
-    config["integration_weights"][f"cosine_weights_{qubit}"] = {
-        "cosine": [(1.0, new_readout_length + ringdown_length)],
-        "sine": [(0.0, new_readout_length + ringdown_length)],
-    }
-    config["integration_weights"][f"sine_weights_{qubit}"] = {
-        "cosine": [(0.0, new_readout_length + ringdown_length)],
-        "sine": [(1.0, new_readout_length + ringdown_length)],
-    }
-    config["integration_weights"][f"minus_sine_weights_{qubit}"] = {
-        "cosine": [(0.0, new_readout_length + ringdown_length)],
-        "sine": [(-1.0, new_readout_length + ringdown_length)],
-    }
+# def update_readout_length(qubit, new_readout_length, ringdown_length):
+#     config["pulses"][f"readout_pulse_{qubit}"]["length"] = new_readout_length
+#     config["integration_weights"][f"cosine_weights_{qubit}"] = {
+#         "cosine": [(1.0, new_readout_length + ringdown_length)],
+#         "sine": [(0.0, new_readout_length + ringdown_length)],
+#     }
+#     config["integration_weights"][f"sine_weights_{qubit}"] = {
+#         "cosine": [(0.0, new_readout_length + ringdown_length)],
+#         "sine": [(1.0, new_readout_length + ringdown_length)],
+#     }
+#     config["integration_weights"][f"minus_sine_weights_{qubit}"] = {
+#         "cosine": [(0.0, new_readout_length + ringdown_length)],
+#         "sine": [(-1.0, new_readout_length + ringdown_length)],
+#     }
 
 
 ###################
@@ -81,12 +80,14 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 ###################
 
 n_avg = 1e4  # number of averages
-
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 7 * u.us
 ringdown_len = 0 * u.us
-update_readout_length(q1.name, readout_len, ringdown_len)
-update_readout_length(q2.name, readout_len, ringdown_len)
+rr1.operations["readout"].length = readout_len
+rr2.operations["readout"].length = readout_len
+config = machine.generate_config()
+# update_readout_length(q1.name, readout_len, ringdown_len)
+# update_readout_length(q2.name, readout_len, ringdown_len)
 # Set the accumulated demod parameters
 division_length = 10  # size of one demodulation slice in clock cycles
 number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
@@ -124,15 +125,7 @@ with program() as ro_duration_opt:
         else:
             measure("readout", rr1.name, None)
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
-        measure(  # TODO: with QuAM
-            "readout",
-            rr.name,
-            None,
-            demod.accumulated("cos", II, division_length, "out1"),
-            demod.accumulated("sin", IQ, division_length, "out2"),
-            demod.accumulated("minus_sin", QI, division_length, "out1"),
-            demod.accumulated("cos", QQ, division_length, "out2"),
-        )
+        rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
         # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
@@ -145,7 +138,7 @@ with program() as ro_duration_opt:
         align()
 
         # Measure the excited state.
-        play("x180", qb.name + "_xy")
+        qb.xy.play("x180")
         align()
         # Play on the second resonator to be in the same conditions as with multiplexed readout
         if rr == rr1:
@@ -153,15 +146,7 @@ with program() as ro_duration_opt:
         else:
             measure("readout", rr1.name, None)
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
-        measure(
-            "readout",
-            rr.name,
-            None,
-            demod.accumulated("cos", II, division_length, "out1"),
-            demod.accumulated("sin", IQ, division_length, "out2"),
-            demod.accumulated("minus_sin", QI, division_length, "out1"),
-            demod.accumulated("cos", QQ, division_length, "out2"),
-        )
+        rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
         # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
@@ -269,5 +254,13 @@ else:
     qm.close()
 
     # Update the state
-    rr.readout_pulse_length = opt_readout_length
-    # machine.save("quam")
+    rr.operations["readout"].length = opt_readout_length
+
+    # Save data from the node
+    data = {
+        f"{rr.name}_time": x_plot,
+        f"{rr.name}_SNR": SNR,
+        f"{rr.name}_opt_readout_length": opt_readout_length,
+        "figure": fig,
+    }
+    node_save("readout_duration_optimization", data, machine)

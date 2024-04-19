@@ -188,6 +188,17 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        f"{q1.name}_amplitude": amps * q1.xy.operations[operation].amplitude,
+        f"{q1.name}_I": np.abs(I1),
+        f"{q1.name}_Q": np.angle(Q1),
+        f"{q2.name}_amplitude": amps * q2.xy.operations[operation].amplitude,
+        f"{q2.name}_I": np.abs(I2),
+        f"{q2.name}_Q": np.angle(Q2),
+        "figure": fig,
+    }
+
     # Get the optimal pi pulse amplitude when doing error amplification
     try:
         q1.xy.operations[operation].amplitude = (
@@ -196,6 +207,10 @@ else:
         q2.xy.operations[operation].amplitude = (
             amps[np.argmax(np.sum(I2, axis=0))] * q2.xy.operations[operation].amplitude
         )
-        machine.save("quam")
+
+        data[f"{q1.name}"] = {"x180_amplitude": q1.xy.operations[operation].amplitude, "fit_successful": True}
+        data[f"{q2.name}"] = {"x180_amplitude": q2.xy.operations[operation].amplitude, "fit_successful": True}
     except (Exception,):
         pass
+    # Save data from the node
+    node_save("power_rabi", data, machine)

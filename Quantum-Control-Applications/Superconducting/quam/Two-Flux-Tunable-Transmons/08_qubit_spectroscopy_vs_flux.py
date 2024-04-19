@@ -168,6 +168,10 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Set the relevant flux points
+    # q1.z.min_offset =
+    # q1.z.min_offset =
+
     # Save data from the node
     data = {
         f"{q1.name}_flux_bias": dcs,
@@ -182,9 +186,4 @@ else:
         f"{q2.name}_min_offset": q2.z.min_offset,
         "figure": fig,
     }
-    # Set the relevant flux points
-    # q1.z.min_offset =
-    # q1.z.min_offset =
-
     node_save("qubit_spectroscopy_vs_flux", data, machine)
-

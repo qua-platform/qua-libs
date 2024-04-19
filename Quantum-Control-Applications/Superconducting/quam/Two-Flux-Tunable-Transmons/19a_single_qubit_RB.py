@@ -31,6 +31,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 from components import QuAM, Transmon
+from macros import node_save
 
 
 ###################################################
@@ -221,7 +222,7 @@ with program() as rb:
                     else:
                         q1.resonator.play("readout")
                     # Make sure you updated the ge_threshold and angle if you want to use state discrimination
-                    qubit.resonator.measure("readout", I_var=I, Q_var=Q)
+                    qubit.resonator.measure("readout", qua_vars=(I, Q))
                     save(I, I_st)
                     save(Q, Q_st)
                     # Make sure you updated the ge_threshold
@@ -349,13 +350,26 @@ else:
         f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
     )
     # Plots
-    plt.figure()
+    fig = plt.figure()
     plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
     plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
     plt.xlabel("Number of Clifford gates")
     plt.ylabel("Sequence Fidelity")
     plt.title(f"Single qubit RB for {qubit.name}")
 
-    # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # Save data from the node
+    data = {
+        f"{qubit.name}_depth": x,
+        f"{qubit.name}_fidelity": value_avg,
+        f"{qubit.name}_error": error_avg,
+        f"{qubit.name}_fit": power_law(x, *pars),
+        f"{qubit.name}_covariance_par": pars,
+        f"{qubit.name}_error_rate": one_minus_p,
+        f"{qubit.name}_clifford_set_infidelity": r_c,
+        f"{qubit.name}_gate_infidelity": r_g,
+        "figure": fig,
+    }
+    node_save("randomized_benchmarking", data, machine)

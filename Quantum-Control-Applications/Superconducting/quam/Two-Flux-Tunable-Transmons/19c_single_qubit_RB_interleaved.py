@@ -33,7 +33,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 from components import QuAM, Transmon
-
+from macros import node_save
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -251,7 +251,7 @@ with program() as rb:
                     else:
                         q1.resonator.play("readout")
                     # Make sure you updated the ge_threshold and angle if you want to use state discrimination
-                    qubit.resonator.measure("readout", I_var=I, Q_var=Q)
+                    qubit.resonator.measure("readout", qua_vars=(I, Q))
                     save(I, I_st)
                     save(Q, Q_st)
                     # Make sure you updated the ge_threshold
@@ -386,6 +386,19 @@ else:
     plt.ylabel("Sequence Fidelity")
     plt.title(f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})")
 
-    # np.savez("rb_values", value)
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+    # Save data from the node
+    data = {
+        f"{qubit.name}_depth": x,
+        f"{qubit.name}_fidelity": value_avg,
+        f"{qubit.name}_error": error_avg,
+        f"{qubit.name}_fit": power_law(x, *pars),
+        f"{qubit.name}_covariance_par": pars,
+        f"{qubit.name}_error_rate": one_minus_p,
+        f"{qubit.name}_clifford_set_infidelity": r_c,
+        f"{qubit.name}_gate_infidelity": r_g,
+        "figure": fig,
+    }
+    node_save(f"randomized_benchmarking_interleaved_{get_interleaved_gate(interleaved_gate_index)}", data, machine)

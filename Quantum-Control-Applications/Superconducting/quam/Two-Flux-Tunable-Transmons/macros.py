@@ -1,7 +1,8 @@
 from qm.qua import *
 from components import FluxLine, QuAM
 
-def node_save(name:str, data: dict, quam: QuAM):
+
+def node_save(name: str, data: dict, quam: QuAM):
     quam.data_handler.save_data(data=data, name=name)
     quam.save(path=quam.data_handler.path / "state.json")
     quam.save(path="state.json")
@@ -40,12 +41,11 @@ def qua_declaration(nb_of_qubits):
     return I, I_st, Q, Q_st, n, n_st
 
 
-def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""):
+def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential: bool = False, amplitude_scale=None, weights=""):
     """Perform multiplexed readout on two resonators"""
 
     for ind, q in enumerate(quam.active_qubits):
-        # TODO: demod.accumulated?
-        q.resonator.measure("readout", I[ind], Q[ind])  # TODO: implement amplitude sweep
+        q.resonator.measure("readout", qua_vars=(I[ind], Q[ind]), amplitude_scale=amplitude_scale)
 
         if I_st is not None:
             save(I[ind], I_st[ind])

@@ -128,4 +128,3 @@ else:
         "figure": fig,
     }
     node_save("raw_adc_traces", data, machine)
-

@@ -19,12 +19,16 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.loops import from_array
-from macros import qua_declaration, multiplexed_readout
+from qualang_tools.units import unit
+from qualang_tools.analysis.discriminator import two_state_discriminator
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 
 ###################################################
@@ -43,10 +47,8 @@ qmm = machine.connect()
 # Get the relevant QuAM components
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
-
-# The resonator frequencies
-res_if_1 = rr1.f_opt - machine.local_oscillators.readout[rr1.LO_index].freq
-res_if_2 = rr2.f_opt - machine.local_oscillators.readout[rr2.LO_index].freq
+rr1 = machine.active_qubits[0].resonator
+rr2 = machine.active_qubits[1].resonator
 
 
 ###################
@@ -73,14 +75,14 @@ with program() as ro_amp_freq_opt:
     with for_(*from_array(df, dfs)):
         save(counter, n_st)
         # Update the resonators frequency
-        update_frequency(rr1.name, df + res_if_1)
-        update_frequency(rr2.name, df + res_if_2)
+        update_frequency(rr1.name, df + rr1.intermediate_frequency)
+        update_frequency(rr2.name, df + rr2.intermediate_frequency)
         with for_(*from_array(a, amplitudes)):
             with for_(n, 0, n < n_runs, n + 1):
                 # ground iq blobs for both qubits
                 wait(machine.get_thermalization_time * u.ns)
                 align()
-                multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+                multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st, amplitude_scale=a)
 
                 # excited iq blobs for both qubits
                 align()
@@ -89,7 +91,7 @@ with program() as ro_amp_freq_opt:
                 q1.xy.play("x180")
                 q2.xy.play("x180")
                 align()
-                multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_", amplitude=a)
+                multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st, amplitude_scale=a)
         # Save the counter to get the progress bar
         assign(counter, counter + 1)
 
@@ -145,16 +147,20 @@ else:
             fidelity_vec[1][i][j] = fidelity_q2
 
     # Plot the data
-    plt.figure()
+    fig = plt.figure()
     plt.suptitle("Readout amplitude optimization")
     plt.subplot(121)
-    plt.pcolor((dfs + res_if_1) / u.MHz, amplitudes * rr1.readout_pulse_amp, fidelity_vec[0])
+    plt.pcolor(
+        (dfs + rr1.intermediate_frequency) / u.MHz, amplitudes * rr1.operations["readout"].amplitude, fidelity_vec[0]
+    )
     plt.title(f"{rr1.name}")
     plt.colorbar()
     plt.ylabel("Readout amplitude [V]")
     plt.xlabel("Readout IF [MHz]")
     plt.subplot(122)
-    plt.pcolor((dfs + res_if_2) / u.MHz, amplitudes * rr2.readout_pulse_amp, fidelity_vec[1])
+    plt.pcolor(
+        (dfs + rr2.intermediate_frequency) / u.MHz, amplitudes * rr2.operations["readout"].amplitude, fidelity_vec[1]
+    )
     plt.title(f"{rr2.name}")
     plt.colorbar()
     plt.ylabel("Readout amplitude [V]")
@@ -162,12 +168,29 @@ else:
     plt.tight_layout()
 
     # Update the state
-    rr1.f_opt += dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]]
     rr1.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[0][0]]
-    rr2.f_opt += dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]]
+
     rr2.readout_pulse_amp *= amplitudes[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[0][0]]
     rr1.readout_fidelity = np.amax(fidelity_vec[0])
     rr2.readout_fidelity = np.amax(fidelity_vec[1])
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-    # machine.save("quam")
+
+    # Save data from the node
+    data = {
+        f"{rr1.name}_amplitude": amplitudes * rr1.operations["readout"].amplitude,
+        f"{rr1.name}_frequency": dfs + rr1.intermediate_frequency,
+        f"{rr1.name}_fidelity": fidelity_vec[0],
+        f"{rr1.name}_amp_opt": rr1.operations["readout"].amplitude,
+        f"{rr1.name}_if_opt": rr1.intermediate_frequency + dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]],
+        f"{rr2.name}_amplitude": amplitudes * rr2.operations["readout"].amplitude,
+        f"{rr2.name}_frequency": dfs + rr2.intermediate_frequency,
+        f"{rr2.name}_fidelity": fidelity_vec[1],
+        f"{rr2.name}_amp_opt": rr2.operations["readout"].amplitude,
+        f"{rr2.name}_if_opt": rr2.intermediate_frequency + dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]],
+        "figure": fig,
+    }
+    rr1.intermediate_frequency += dfs[np.where(fidelity_vec[0] == np.amax(fidelity_vec[0]))[1][0]]
+    rr2.intermediate_frequency += dfs[np.where(fidelity_vec[1] == np.amax(fidelity_vec[1]))[1][0]]
+    node_save("readout_amplitude_frequency_optimization", data, machine)

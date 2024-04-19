@@ -80,14 +80,14 @@ with program() as multi_res_spec:
 
             # resonator 1
             update_frequency(rr1.name, df + rr1.intermediate_frequency)
-            rr1.measure("readout", I_var=I[0], Q_var=Q[0])
+            rr1.measure("readout", qua_vars=(I[0], Q[0]))
             save(I[0], I_st[0])
             save(Q[0], Q_st[0])
 
             # rr2.align(rr1.name)  # Uncomment to measure sequentially
             # resonator 2
             update_frequency(rr2.name, df + rr2.intermediate_frequency)
-            rr2.measure("readout", I_var=I[1], Q_var=Q[1])
+            rr2.measure("readout", qua_vars=(I[1], Q[1]))
             save(I[1], I_st[1])
             save(Q[1], Q_st[1])
 
@@ -170,7 +170,7 @@ else:
         from qualang_tools.plot.fitting import Fit
 
         fit = Fit()
-        fig_fit =plt.figure()
+        fig_fit = plt.figure()
         plt.suptitle("Multiplexed resonator spectroscopy")
         plt.subplot(121)
         res_1 = fit.reflection_resonator_spectroscopy((rr1.intermediate_frequency + dfs) / u.MHz, np.abs(s1), plot=True)
@@ -179,10 +179,7 @@ else:
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
         plt.title(f"{rr1.name}")
         rr1.intermediate_frequency = int(res_1["f"][0] * u.MHz)
-        data[f"{rr1.name}"] = {
-            "resonator_frequency": int(rr1.intermediate_frequency),
-            "successful_fit": True
-        }
+        data[f"{rr1.name}"] = {"resonator_frequency": int(rr1.intermediate_frequency), "successful_fit": True}
         plt.subplot(122)
         res_2 = fit.reflection_resonator_spectroscopy((rr2.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True)
         plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
@@ -190,10 +187,7 @@ else:
         plt.title(f"{rr2.name}")
         plt.tight_layout()
         rr2.intermediate_frequency = int(res_2["f"][0] * u.MHz)
-        data[f"{rr2.name}"] = {
-            "resonator_frequency": int(rr2.intermediate_frequency),
-            "successful_fit": True
-        }
+        data[f"{rr2.name}"] = {"resonator_frequency": int(rr2.intermediate_frequency), "successful_fit": True}
         data["figure_fit"] = fig_fit
     except (Exception,):
         data["successful_fit"] = False

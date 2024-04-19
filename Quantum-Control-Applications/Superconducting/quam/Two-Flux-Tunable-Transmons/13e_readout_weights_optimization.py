@@ -26,10 +26,15 @@ Next steps before going to the next node:
 
 from qm.qua import *
 from qm import SimulationConfig
-from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.units import unit
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from components import QuAM
+from macros import node_save
 
 
 ###################################################
@@ -48,6 +53,8 @@ qmm = machine.connect()
 # Get the relevant QuAM components
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
+rr1 = q1.resonator
+rr2 = q2.resonator
 
 
 ####################
@@ -118,17 +125,20 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 # The QUA program #
 ###################
 # Select the resonator and qubit to measure (no multiplexing here)
-rr = rr2
 qb = q2
+rr = rr2
+
 n_avg = 1e4  # number of averages
 
 # Set maximum readout duration for this scan and update the configuration accordingly
-readout_len = rr.readout_pulse_length
+readout_len = rr.operations["readout"].length
 ringdown_len = 0 * u.us
-update_readout_length(q1.name, readout_len, ringdown_len)
-update_readout_length(q2.name, readout_len, ringdown_len)
+rr1.operations["readout"].length = readout_len
+rr2.operations["readout"].length = readout_len
+config = machine.generate_config()
+
 # Set the sliced demod parameters
-division_length = 10  # Size of each demodulation slice in clock cycles
+division_length = 8  # Size of each demodulation slice in clock cycles
 number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
@@ -162,15 +172,8 @@ with program() as opt_weights:
         else:
             measure("readout", rr1.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        measure(  # TODO: with QuAM
-            "readout",
-            rr.name,
-            None,
-            demod.sliced("cos", II, division_length, "out1"),
-            demod.sliced("sin", IQ, division_length, "out2"),
-            demod.sliced("minus_sin", QI, division_length, "out1"),
-            demod.sliced("cos", QQ, division_length, "out2"),
-        )
+        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             save(II[ind], II_st)
@@ -178,28 +181,21 @@ with program() as opt_weights:
             save(QI[ind], QI_st)
             save(QQ[ind], QQ_st)
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.name)
+        wait(machine.get_thermalization_time * u.ns, rr.name)
 
         align()
 
         # Measure the excited state.
-        play("x180", qb.name + "_xy")
+        qb.xy.play("x180")
         align()
         # Play on the second resonator to be in the same conditions as with multiplexed readout
         if rr == rr1:
-            measure("readout", rr2.name, None)
+            rr2.measure("readout")
         else:
-            measure("readout", rr1.name, None)
+            rr1.measure("readout")
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        measure(
-            "readout",
-            rr.name,
-            None,
-            demod.sliced("cos", II, division_length, "out1"),
-            demod.sliced("sin", IQ, division_length, "out2"),
-            demod.sliced("minus_sin", QI, division_length, "out1"),
-            demod.sliced("cos", QQ, division_length, "out2"),
-        )
+        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             save(II[ind], II_st)
@@ -208,7 +204,7 @@ with program() as opt_weights:
             save(QQ[ind], QQ_st)
 
         # Wait for the qubit to decay to the ground state
-        wait(cooldown_time * u.ns, rr.name)
+        wait(machine.get_thermalization_time * u.ns, rr.name)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
@@ -263,25 +259,33 @@ else:
     # Plot the results
     plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    weights_real = list(norm_subtracted_trace.real)
-    weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
-    weights_imag = list(norm_subtracted_trace.imag)
-    weights_minus_real = list((-1) * norm_subtracted_trace.real)
-    # Save the weights for later use in the config
-    np.savez(
-        f"optimal_weights_{rr.name}",
-        weights_real=weights_real,
-        weights_minus_imag=weights_minus_imag,
-        weights_imag=weights_imag,
-        weights_minus_real=weights_minus_real,
-    )
+    weights_real = norm_subtracted_trace.real
+    weights_imag = norm_subtracted_trace.imag
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
     # Update the state
-    rr.opt_weights.weights_real = weights_real
-    rr.opt_weights.weights_minus_imag = weights_minus_imag
-    rr.opt_weights.weights_imag = weights_imag
-    rr.opt_weights.weights_minus_real = weights_minus_real
-    # machine.save("quam")
+    from quam.components.pulses import SquareReadoutPulse
+
+    rr.operations["readout_opt"] = SquareReadoutPulse(
+        length=rr.operations["readout"].length,
+        amplitude=rr.operations["readout"].amplitude,
+        threshold=rr.operations["readout"].threshold,
+        digital_marker="ON",
+        integration_weights=weights_real,
+    )
+
+    # Save data from the node
+    data = {
+        f"{rr.name}_time": x_plot,
+        f"{rr.name}_ground_trace_real": ground_trace.real,
+        f"{rr.name}_excited_trace_real": excited_trace.real,
+        f"{rr.name}_norm_subtracted_trace_real": norm_subtracted_trace.real,
+        f"{rr.name}_ground_trace_imag": ground_trace.imag,
+        f"{rr.name}_excited_trace_imag": excited_trace.imag,
+        f"{rr.name}_norm_subtracted_trace_imag": norm_subtracted_trace.imag,
+        f"{rr.name}_opt_weights": weights_real,
+        "figure": plt.gcf(),
+    }
+    node_save("readout_weights_optimization", data, machine)

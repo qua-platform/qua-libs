@@ -1,9 +1,0 @@
-{
-    "q0.resonator_x_axis": "./arrays.npz#q0.resonator_x_axis",
-    "q0.resonator_y_axis": "./arrays.npz#q0.resonator_y_axis",
-    "q0.resonator_raw_data": "./arrays.npz#q0.resonator_raw_data",
-    "q1.resonator_x_axis": "./arrays.npz#q1.resonator_x_axis",
-    "q1.resonator_y_axis": "./arrays.npz#q1.resonator_y_axis",
-    "q1.resonator_raw_data": "./arrays.npz#q1.resonator_raw_data",
-    "figure": "./figure.png"
-}

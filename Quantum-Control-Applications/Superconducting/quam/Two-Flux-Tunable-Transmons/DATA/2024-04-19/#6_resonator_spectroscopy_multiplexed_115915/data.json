@@ -1,9 +1,0 @@
-{
-    "q0.resonator_frequencies": "./arrays.npz#q0.resonator_frequencies",
-    "q0.resonator_R": "./arrays.npz#q0.resonator_R",
-    "q0.resonator_phase": "./arrays.npz#q0.resonator_phase",
-    "q1.resonator_frequencies": "./arrays.npz#q1.resonator_frequencies",
-    "q1.resonator_R": "./arrays.npz#q1.resonator_R",
-    "q1.resonator_phase": "./arrays.npz#q1.resonator_phase",
-    "figure_raw": "./figure_raw.png"
-}

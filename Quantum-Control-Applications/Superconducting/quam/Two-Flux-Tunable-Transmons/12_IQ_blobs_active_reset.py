@@ -12,7 +12,7 @@ from qualang_tools.analysis.discriminator import two_state_discriminator
 import matplotlib.pyplot as plt
 import numpy as np
 
-from components import QuAM
+from components import QuAM, Transmon
 from macros import qua_declaration, multiplexed_readout, node_save
 
 ###################################################
@@ -32,6 +32,47 @@ qmm = machine.connect()
 q1 = machine.active_qubits[0]
 q2 = machine.active_qubits[1]
 
+def active_reset(qubit):
+    count = declare(int)
+    I = declare(fixed)
+    Q = declare(fixed)
+    assign(count, 0)
+    cont_condition = declare(bool)
+    assign(cont_condition, ((I > qubit.resonator.operations["readout"].threshold) & (count < 3)))
+    with while_(cont_condition):
+        qubit.xy.play("x180")
+        qubit.xy.align(qubit.resonator.name)
+        qubit.resonator.measure("readout", qua_vars=(I, Q))
+        assign(count, count + 1)
+        assign(cont_condition, ((I > qubit.resonator.operations["readout"].threshold) & (count < 3)))
+    return I, Q
+def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
+    I = declare(fixed)
+    Q = declare(fixed)
+    state = declare(bool)
+    attempts = declare(int, value=1)
+    assign(attempts, 1)
+    operation = qubit.resonator.operations["readout"]
+    qubit.xy.align(qubit.resonator.name)
+    # First measurement
+    qubit.resonator.measure("readout", qua_vars=(I, Q))
+    # Single shot state discrimination
+    assign(state, I > operation.threshold)
+    # Wait for the resonator to deplete
+    wait(qubit.resonator.depletion_time // 4, qubit.xy.name)
+    # Conditional play to actively reset the qubit to ground
+    qubit.xy.play(pi_operation_name, condition=state)
+    qubit.xy.align(qubit.resonator.name)
+    # Repeat until the qubit is in the ground state  with high probability (rus_exit_threshold)
+    with while_(I > operation.rus_exit_threshold):
+        qubit.xy.align(qubit.resonator.name)
+        qubit.resonator.measure("readout", qua_vars=(I, Q))
+        assign(state, I > operation.threshold)
+        wait(qubit.resonator.depletion_time // 4, qubit.xy.name)
+        qubit.xy.play(pi_operation_name, condition=state)
+        qubit.xy.align(qubit.resonator.name)
+        assign(attempts, attempts + 1)
+
 ###################
 # The QUA program #
 ###################
@@ -47,21 +88,19 @@ with program() as iq_blobs:
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs
-        # reset_qubit("cooldown", q1.xy.name, rr1.name, cooldown_time=cooldown_time)
-        reset_qubit("cooldown", q2.xy.name, rr2.name, cooldown_time=cooldown_time)
+        apply_initialize_active(q1)
         # wait(machine.get_thermalization_time * u.ns)
-        reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=1, Ig=I_g[0])
         align()
-        multiplexed_readout(I_g, I_g_st, Q_g, Q_g_st, resonators=active_qubits, weights="rotated_")
+        multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st)
 
         # excited iq blobs
-        align()
+        apply_initialize_active(q1)
         # wait(machine.get_thermalization_time * u.ns)
-        reset_qubit("active", q1.xy.name, rr1.name, threshold=q1.ge_threshold, max_tries=10, Ig=I_g[0])
+        align()
         q1.xy.play("x180")
         q2.xy.play("x180")
         align()
-        multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=active_qubits, weights="rotated_")
+        multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st)
 
     with stream_processing():
         for i in range(2):

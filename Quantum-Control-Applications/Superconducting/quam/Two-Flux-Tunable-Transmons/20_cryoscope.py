@@ -268,7 +268,7 @@ else:
     with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], pulse)  # Output filter , DAC Output
 
     # Plot all data
-    plt.figure()
+    fig = plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.subplot(121)
     plt.plot(xplot, step_response_volt, "o-", label="Data")
@@ -298,4 +298,14 @@ else:
     # Update the state
     qb.z.filter_fir_taps = list(fir)
     qb.z.filter_iir_taps = list(iir)
-# machine.save("quam")
+
+    # Save data from the node
+    data = {
+        f"{qb.name}_time": xplot,
+        f"{qb.name}_step_response_volt": step_response_volt,
+        f"{qb.name}_state": state,
+        f"{qb.name}_fir": list(fir),
+        f"{qb.name}_iir": list(iir),
+        "figure": fig,
+    }
+    node_save("cryoscope_1ns", data, machine)

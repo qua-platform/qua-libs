@@ -164,6 +164,17 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # Save data from the node
+    data = {
+        f"{q1.name}_amplitude": 4 * idle_times,
+        f"{q1.name}_I": np.abs(I1),
+        f"{q1.name}_Q": np.angle(Q1),
+        f"{q2.name}_amplitude": 4 * idle_times,
+        f"{q2.name}_I": np.abs(I2),
+        f"{q2.name}_Q": np.angle(Q2),
+        "figure": fig,
+    }
+
     # Fit data to extract the qubits frequency and T2*
     try:
         from qualang_tools.plot.fitting import Fit
@@ -178,6 +189,14 @@ else:
         plt.title(f"{q1.name}")
         plt.legend((f"T2* = {int(fit_I1['T2'][0])} ns\n df = {int(fit_I1['f'][0] * u.GHz - detuning)/u.kHz} kHz",))
         plt.subplot(122)
+
+        # Update the state
+        qubit_detuning_q1 = fit_I1["f"][0] * u.GHz - detuning
+        q1.T2ramsey = int(fit_I1["T2"][0])
+        q1.xy.intermediate_frequency -= qubit_detuning_q1
+        data[f"{q1.name}"] = {"T2*": q1.T2ramsey, "if_01": q1.xy.intermediate_frequency, "fit_successful": True}
+        print(f"Detuning to add to {q1.name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
+
         fit_I2 = fit.ramsey(4 * idle_times, I2, plot=True)
         plt.xlabel("idle_times [ns]")
         plt.title(f"{q2.name}")
@@ -185,15 +204,15 @@ else:
         plt.tight_layout()
 
         # Update the state
-        qubit_detuning_q1 = fit_I1["f"][0] * u.GHz - detuning
         qubit_detuning_q2 = fit_I2["f"][0] * u.GHz - detuning
-        print(f"Detuning to add to {q1.name}: {-qubit_detuning_q1 / u.kHz:.3f} kHz")
-        print(f"Detuning to add to {q2.name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
-        q1.T2ramsey = int(fit_I1["T2"][0])
-        q1.xy.intermediate_frequency -= qubit_detuning_q1
         q2.T2ramsey = int(fit_I2["T2"][0])
         q2.xy.intermediate_frequency -= qubit_detuning_q2
+        data[f"{q2.name}"] = {"T2*": q2.T2ramsey, "if_01": q2.xy.intermediate_frequency, "fit_successful": True}
+        print(f"Detuning to add to {q2.name}: {-qubit_detuning_q2 / u.kHz:.3f} kHz")
     except (Exception,):
+        data["fit_successful"] = False
         pass
 
-# machine.save("quam")
+# Save data from the node
+node_save("ramsey", data, machine)
+
