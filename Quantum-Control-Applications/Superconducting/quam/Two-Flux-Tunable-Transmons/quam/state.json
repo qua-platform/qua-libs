@@ -7,12 +7,14 @@
             "1": {
                 "id": 1,
                 "channel": "#/qubits/q1/resonator",
-                "LO_frequency": 4000000000
+                "LO_frequency": 4000000000,
+                "output_mode": "always_on"
             },
             "2": {
                 "id": 2,
                 "channel": "#/qubits/q0/xy",
-                "LO_frequency": 7000000000
+                "LO_frequency": 7000000000,
+                "output_mode": "always_on"
             },
             "3": {
                 "id": 3
@@ -20,7 +22,8 @@
             "4": {
                 "id": 4,
                 "channel": "#/qubits/q1/xy",
-                "LO_frequency": 7000000000
+                "LO_frequency": 7000000000,
+                "output_mode": "always_on"
             },
             "5": {
                 "id": 5

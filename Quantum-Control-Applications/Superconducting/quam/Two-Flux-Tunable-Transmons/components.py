@@ -8,6 +8,9 @@ from quam.core import QuamRoot, quam_dataclass
 from qm.qua import align
 from qualang_tools.results.data_handler import DataHandler
 from typing import ClassVar
+from qualang_tools.octave_tools import octave_calibration_tool
+from qm import QuantumMachine
+
 
 __all__ = ["Transmon", "FluxLine", "ReadoutResonator", "QuAM"]
 
@@ -84,6 +87,20 @@ class Transmon(QuamComponent):
         """The 0-2 (e-f) transition frequency in Hz"""
         return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency - self.anharmonicity
 
+    def calibrate_octave(self, QM: QuantumMachine):
+        octave_calibration_tool(
+            QM,
+            self.xy.name,
+            lo_frequencies=self.xy.frequency_converter_up.LO_frequency,
+            intermediate_frequencies=self.xy.intermediate_frequency,
+        )
+        octave_calibration_tool(
+            QM,
+            self.resonator.name,
+            lo_frequencies=self.resonator.frequency_converter_up.LO_frequency,
+            intermediate_frequencies=self.resonator.intermediate_frequency,
+        )
+
     @property
     def name(self):
         return self.id if isinstance(self.id, str) else f"q{self.id}"
@@ -146,3 +163,7 @@ class QuAM(QuamRoot):
         return QuantumMachinesManager(
             host=self.network["host"], cluster_name=self.network["cluster_name"], octave=self.octave.get_octave_config()
         )
+
+    def calibrate_active_qubits(self, QM: QuantumMachine):
+        for name in self.active_qubit_names:
+            self.qubits[name].calibrate_octave(QM)

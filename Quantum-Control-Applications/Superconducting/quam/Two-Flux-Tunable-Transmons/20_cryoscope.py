@@ -182,6 +182,8 @@ if simulate:
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
+    # Calibrate the active qubits
+    # machine.calibrate_active_qubits(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(cryoscope)
     # Get results from QUA program

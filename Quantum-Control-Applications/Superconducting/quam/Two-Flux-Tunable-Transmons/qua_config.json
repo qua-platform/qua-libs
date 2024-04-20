@@ -1595,7 +1595,7 @@
                     "LO_frequency": 4000000000,
                     "LO_source": "internal",
                     "gain": 0,
-                    "output_mode": "always_off",
+                    "output_mode": "always_on",
                     "input_attenuators": "off",
                     "I_connection": [
                         "con1",
@@ -1610,7 +1610,7 @@
                     "LO_frequency": 7000000000,
                     "LO_source": "internal",
                     "gain": 0,
-                    "output_mode": "always_off",
+                    "output_mode": "always_on",
                     "input_attenuators": "off",
                     "I_connection": [
                         "con1",
@@ -1625,7 +1625,7 @@
                     "LO_frequency": 7000000000,
                     "LO_source": "internal",
                     "gain": 0,
-                    "output_mode": "always_off",
+                    "output_mode": "always_on",
                     "input_attenuators": "off",
                     "I_connection": [
                         "con1",

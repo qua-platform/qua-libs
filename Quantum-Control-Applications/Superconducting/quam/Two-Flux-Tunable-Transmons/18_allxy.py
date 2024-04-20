@@ -165,6 +165,8 @@ if simulate:
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
+    # Calibrate the active qubits
+    # machine.calibrate_active_qubits(qm)
     data = {}
     # Loop over the two qubits
     for qb, rr in [[q1, rr1], [q2, rr2]]:

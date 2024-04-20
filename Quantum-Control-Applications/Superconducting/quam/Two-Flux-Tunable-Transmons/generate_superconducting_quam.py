@@ -162,11 +162,14 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
         # Set the Octave frequency and channels TODO: be careful to set the right upconverters!!
         octave.RF_outputs[2 * (idx + 1)].channel = transmon.xy.get_reference()
         octave.RF_outputs[2 * (idx + 1)].LO_frequency = 7 * u.GHz  # Remember to set the LO frequency
+        octave.RF_outputs[2 * (idx + 1)].output_mode = "always_on"
 
         octave.RF_outputs[1].channel = transmon.resonator.get_reference()
         octave.RF_inputs[1].channel = transmon.resonator.get_reference()
         octave.RF_outputs[1].LO_frequency = 4 * u.GHz
         octave.RF_inputs[1].LO_frequency = 4 * u.GHz
+        octave.RF_outputs[1].output_mode = "always_on"
+
     return quam, octave_config
 
 
