@@ -205,6 +205,7 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
+                "zero": "zero_pulse",
                 "saturation": "saturation_pulse",
                 "pi": "square_pi_pulse",
                 "pi_half": "square_pi_half_pulse",
@@ -243,6 +244,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "zero_pulse": {
+            "operation": "control",
+            "length": x180_len,
+            "waveforms": {
+                "I": "zero_wf",
                 "Q": "zero_wf",
             },
         },
