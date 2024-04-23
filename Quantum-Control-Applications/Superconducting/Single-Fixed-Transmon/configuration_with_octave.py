@@ -151,6 +151,7 @@ resonator_IF = 60 * u.MHz
 
 readout_len = 5000
 readout_amp = 0.2
+midcircuit_readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -173,6 +174,7 @@ else:
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+midcircuit_ge_threshold = 0.0
 
 #############################################
 #                  Config                   #
@@ -200,6 +202,7 @@ config = {
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
+                "zero": "zero_pulse",
                 "saturation": "saturation_pulse",
                 "pi": "square_pi_pulse",
                 "pi_half": "square_pi_half_pulse",
@@ -218,6 +221,7 @@ config = {
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse",
+                "midcircuit_readout": "midcircuit_readout_pulse",
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -254,6 +258,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "zero_pulse": {
+            "operation": "control",
+            "length": x180_len,
+            "waveforms": {
+                "I": "zero_wf",
                 "Q": "zero_wf",
             },
         },
@@ -346,6 +358,26 @@ config = {
             },
             "digital_marker": "ON",
         },
+        "midcircuit_readout_pulse": {
+            "operation": "measurement",
+            "length": readout_len,
+            "waveforms": {
+                "I": "midcircuit_readout_wf",
+                "Q": "zero_wf",
+            },
+            "integration_weights": {
+                "cos": "cosine_weights",
+                "sin": "sine_weights",
+                "minus_sin": "minus_sine_weights",
+                "rotated_cos": "rotated_cosine_weights",
+                "rotated_sin": "rotated_sine_weights",
+                "rotated_minus_sin": "rotated_minus_sine_weights",
+                "opt_cos": "opt_cosine_weights",
+                "opt_sin": "opt_sine_weights",
+                "opt_minus_sin": "opt_minus_sine_weights",
+            },
+            "digital_marker": "ON",
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
@@ -366,6 +398,7 @@ config = {
         "minus_y90_Q_wf": {"type": "arbitrary", "samples": minus_y90_Q_wf.tolist()},
         "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
         "readout_wf": {"type": "constant", "sample": readout_amp},
+        "midcircuit_readout_wf": {"type": "constant", "sample": midcircuit_readout_amp},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
