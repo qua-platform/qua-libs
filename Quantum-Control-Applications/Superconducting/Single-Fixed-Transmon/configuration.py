@@ -149,6 +149,7 @@ mixer_resonator_phi = 0.0
 
 readout_len = 5000
 readout_amp = 0.2
+midcircuit_readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -171,6 +172,7 @@ else:
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+midciruit_ge_threshold = 0.0
 
 #############################################
 #                  Config                   #
@@ -225,6 +227,7 @@ config = {
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse",
+                "midcircuit_readout": "midcircuit_readout_pulse",
             },
             "outputs": {
                 "out1": ("con1", 1),
@@ -332,6 +335,26 @@ config = {
             },
             "digital_marker": "ON",
         },
+        "midcircuit_readout_pulse": {
+            "operation": "measurement",
+            "length": readout_len,
+            "waveforms": {
+                "I": "midcircuit_readout_wf",
+                "Q": "zero_wf",
+            },
+            "integration_weights": {
+                "cos": "cosine_weights",
+                "sin": "sine_weights",
+                "minus_sin": "minus_sine_weights",
+                "rotated_cos": "rotated_cosine_weights",
+                "rotated_sin": "rotated_sine_weights",
+                "rotated_minus_sin": "rotated_minus_sine_weights",
+                "opt_cos": "opt_cosine_weights",
+                "opt_sin": "opt_sine_weights",
+                "opt_minus_sin": "opt_minus_sine_weights",
+            },
+            "digital_marker": "ON",
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
@@ -352,6 +375,7 @@ config = {
         "minus_y90_Q_wf": {"type": "arbitrary", "samples": minus_y90_Q_wf.tolist()},
         "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
         "readout_wf": {"type": "constant", "sample": readout_amp},
+        "midcircuit_readout_wf": {"type": "constant", "sample": midcircuit_readout_amp},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
