@@ -9,12 +9,192 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.loops import from_array
+from qualang_tools.analysis import two_state_discriminator
 
 
 ##############
 # QUA macros #
 ##############
 
+def fit_polynomial(x_values, y_values, order):
+    # Fit the polynomial of the given order
+    coefficients = np.polyfit(x_values, y_values, order)
+    
+    # Create a polynomial function from the coefficients
+    p = np.poly1d(coefficients)
+    
+    return coefficients, p
+
+def iq_blobs_analysis(Ig, Qg, Ie, Qe, method):
+    """
+        It takes I,Q data for ground and excited from save_all() and then
+        uses it in three possible ways: Fidelity, SNR, or Overlap
+    """
+    if method == "fidelity":
+
+        if np.ndim(Ig) == 3:
+            tr_Ig = np.transpose(Ig, axes=[1, 2, 0])
+            tr_Ie = np.transpose(Ie, axes=[1, 2, 0])
+            tr_Qg = np.transpose(Qg, axes=[1, 2, 0])
+            tr_Qe = np.transpose(Qe, axes=[1, 2, 0])
+
+            y_dim_len = len(tr_Ig)
+            x_dim_len = len(tr_Ig[0])
+
+            angles = []
+            thresholds = []
+            fidelities = []
+
+            for i in range(y_dim_len):
+                angles_col = []
+                thresholds_col = []
+                fidelities_col = []
+
+                for j in range(x_dim_len):
+                    angle_val, threshold_val, fidelity_val, gg_val, ge_val, eg_val, ee_val = two_state_discriminator(tr_Ig[i, j], tr_Qg[i, j], tr_Ie[i, j], tr_Qe[i, j], False, False)
+                    angles_col.append(angle_val)
+                    thresholds_col.append(threshold_val)
+                    fidelities_col.append(fidelity_val)
+
+                angles.append(angles_col)
+                thresholds.append(thresholds_col)
+                fidelities.append(fidelities_col)
+
+        elif np.ndim(Ig) == 2:
+
+            tr_Ig = np.transpose(Ig, axes=[1, 0])
+            tr_Ie = np.transpose(Ie, axes=[1, 0])
+            tr_Qg = np.transpose(Qg, axes=[1, 0])
+            tr_Qe = np.transpose(Qe, axes=[1, 0])
+
+            y_dim_len = len(tr_Ig)
+
+            angles = []
+            thresholds = []
+            fidelities = []
+
+            for i in range(y_dim_len):
+
+                angle_val, threshold_val, fidelity_val, gg_val, ge_val, eg_val, ee_val = two_state_discriminator(tr_Ig[i], tr_Qg[i], tr_Ie[i], tr_Qe[i], False, False)
+                angles.append(angle_val)
+                thresholds.append(threshold_val)
+                fidelities.append(fidelity_val)
+
+        else:
+            angles = []
+            thresholds = []
+            fidelities = []
+            angle_val, threshold_val, fidelity_val, gg_val, ge_val, eg_val, ee_val = two_state_discriminator(Ig, Qg, Ie, Qe, False, False)
+            angles.append(angle_val)
+            thresholds.append(threshold_val)
+            fidelities.append(fidelity_val)
+            
+        return np.array(angles), np.array(thresholds), np.array(fidelities)
+    
+    elif method == "snr":
+
+        if np.ndim(Ig) > 0:
+
+            Ig_avg = np.mean(Ig, axis=0)
+            Qg_avg = np.mean(Qg, axis=0)
+            Ie_avg = np.mean(Ie, axis=0)
+            Qe_avg = np.mean(Qe, axis=0)
+
+            Ig_var = np.mean(Ig ** 2, axis=0) - Ig_avg ** 2
+            Qg_var = np.mean(Qg ** 2, axis=0) - Qg_avg ** 2
+            Ie_var = np.mean(Ie ** 2, axis=0) - Ie_avg ** 2
+            Qe_var = np.mean(Qe ** 2, axis=0) - Qe_avg ** 2
+
+            var = (Ig_var + Qg_var + Ie_var + Qe_var) / 4
+
+            Z = (Ie_avg - Ig_avg) + 1j*(Qe_avg - Qg_avg)
+
+            SNR = (np.abs(Z) ** 2) / (2 * var)
+
+        else:
+            
+            Ig_avg = np.mean(Ig)
+            Qg_avg = np.mean(Qg)
+            Ie_avg = np.mean(Ie)
+            Qe_avg = np.mean(Qe)
+
+            Ig_var = np.mean(Ig ** 2) - Ig_avg ** 2
+            Qg_var = np.mean(Qg ** 2) - Qg_avg ** 2
+            Ie_var = np.mean(Ie ** 2) - Ie_avg ** 2
+            Qe_var = np.mean(Qe ** 2) - Qe_avg ** 2
+
+            var = (Ig_var + Qg_var + Ie_var + Qe_var) / 4
+
+            Z = (Ie_avg - Ig_avg) + 1j*(Qe_avg - Qg_avg)
+
+            SNR = (np.abs(Z) ** 2) / (2 * var)
+
+
+        return SNR, Z, var
+    
+    elif method == "overlap":
+
+        if np.ndim(Ig) == 3:
+
+            tr_Ig = np.transpose(Ig, axes=[1, 2, 0])
+            tr_Ie = np.transpose(Ie, axes=[1, 2, 0])
+            tr_Qg = np.transpose(Qg, axes=[1, 2, 0])
+            tr_Qe = np.transpose(Qe, axes=[1, 2, 0])
+
+            y_dim_len = len(tr_Ig)
+            x_dim_len = len(tr_Ig[0])
+
+            overlap = []
+
+            for i in range(y_dim_len):
+
+                overlap_col = []
+
+                for j in range(x_dim_len):
+
+                    min_i = np.min(np.concatenate((tr_Ie[i, j], tr_Ig[i, j])))
+                    min_q = np.min(np.concatenate((tr_Qe[i, j], tr_Qg[i, j])))
+                    max_i = np.max(np.concatenate((tr_Ie[i, j], tr_Ig[i, j])))
+                    max_q = np.max(np.concatenate((tr_Qe[i, j], tr_Qg[i, j])))
+
+                    r = [[min_i, max_i],[min_q, max_q]]
+
+                    P_e, _, _ = np.histogram2d(tr_Ie[i, j], tr_Qe[i, j], bins=35, range=r)
+                    P_g, _, _ = np.histogram2d(tr_Ig[i, j], tr_Qg[i, j], bins=35, range=r)
+
+                    overlap_col.append(np.sum(P_e * P_g)/(np.sqrt(np.sum(P_e ** 2)) * np.sqrt(np.sum(P_g ** 2))))
+                
+                overlap.append(overlap_col)
+
+        elif np.ndim(Ig) == 2:
+
+            tr_Ig = np.transpose(Ig, axes=[1, 0])
+            tr_Ie = np.transpose(Ie, axes=[1, 0])
+            tr_Qg = np.transpose(Qg, axes=[1, 0])
+            tr_Qe = np.transpose(Qe, axes=[1, 0])
+
+            y_dim_len = len(tr_Ig)
+
+            overlap = []
+
+            for i in range(y_dim_len):
+
+                min_i = np.min(np.concatenate((tr_Ie[i], tr_Ig[i])))
+                min_q = np.min(np.concatenate((tr_Qe[i], tr_Qg[i])))
+                max_i = np.max(np.concatenate((tr_Ie[i], tr_Ig[i])))
+                max_q = np.max(np.concatenate((tr_Qe[i], tr_Qg[i])))
+
+                r = [[min_i, max_i],[min_q, max_q]]
+
+                P_e, _, _ = np.histogram2d(tr_Ie[i], tr_Qe[i], bins=35, range=r)
+                P_g, _, _ = np.histogram2d(tr_Ig[i], tr_Qg[i], bins=35, range=r)
+
+                overlap.append(np.sum(P_e * P_g)/(np.sqrt(np.sum(P_e ** 2)) * np.sqrt(np.sum(P_g ** 2))))
+
+        else:
+            pass
+
+        return np.array(overlap)
 
 def reset_qubit(method, **kwargs):
     """
