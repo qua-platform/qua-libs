@@ -45,7 +45,7 @@
             "id": 0,
             "xy": {
                 "operations": {
-                    "x180": {
+                    "x180_DragGaussian": {
                         "length": 40,
                         "digital_marker": "ON",
                         "axis_angle": 0,
@@ -55,56 +55,104 @@
                         "anharmonicity": "#/qubits/q0/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "x90": {
-                        "length": "#../x180/length",
+                    "x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 0,
                         "amplitude": 0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "-x90": {
-                        "length": "#../x180/length",
+                    "-x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 0,
                         "amplitude": -0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "y180": {
-                        "length": "#../x180/length",
+                    "y180_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
-                        "amplitude": "#../x180/amplitude",
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "amplitude": "#../x180_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "y90": {
-                        "length": "#../x180/length",
+                    "y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
                         "amplitude": 0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "-y90": {
-                        "length": "#../x180/length",
+                    "-y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
                         "amplitude": -0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
+                    "x180_Square": {
+                        "length": 100,
+                        "digital_marker": "ON",
+                        "amplitude": 0.25,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "x90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.125,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "-x90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": -0.125,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "y180_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.25,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "y90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.125,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "-y90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": -0.125,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "x180": "#./x180_DragGaussian",
+                    "x90": "#./x90_DragGaussian",
+                    "-x90": "#./-x90_DragGaussian",
+                    "y180": "#./y180_DragGaussian",
+                    "y90": "#./y90_DragGaussian",
+                    "-y90": "#./-y90_DragGaussian",
                     "saturation": {
                         "length": 10000,
                         "digital_marker": "ON",
@@ -157,8 +205,9 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.0,
-                "opx_input_offset_Q": 0.0,
+                "time_of_flight": 28,
+                "opx_input_offset_I": 0.012271699218750001,
+                "opx_input_offset_Q": 0.0074459033203125,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         },
@@ -166,7 +215,7 @@
             "id": 1,
             "xy": {
                 "operations": {
-                    "x180": {
+                    "x180_DragGaussian": {
                         "length": 40,
                         "digital_marker": "ON",
                         "axis_angle": 0,
@@ -176,56 +225,104 @@
                         "anharmonicity": "#/qubits/q1/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "x90": {
-                        "length": "#../x180/length",
+                    "x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 0,
                         "amplitude": 0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "-x90": {
-                        "length": "#../x180/length",
+                    "-x90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 0,
                         "amplitude": -0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "y180": {
-                        "length": "#../x180/length",
+                    "y180_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
-                        "amplitude": "#../x180/amplitude",
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "amplitude": "#../x180_DragGaussian/amplitude",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "y90": {
-                        "length": "#../x180/length",
+                    "y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
                         "amplitude": 0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
-                    "-y90": {
-                        "length": "#../x180/length",
+                    "-y90_DragGaussian": {
+                        "length": "#../x180_DragGaussian/length",
                         "digital_marker": "ON",
                         "axis_angle": 90,
                         "amplitude": -0.05,
-                        "sigma": "#../x180/sigma",
-                        "alpha": "#../x180/alpha",
-                        "anharmonicity": "#../x180/anharmonicity",
+                        "sigma": "#../x180_DragGaussian/sigma",
+                        "alpha": "#../x180_DragGaussian/alpha",
+                        "anharmonicity": "#../x180_DragGaussian/anharmonicity",
                         "__class__": "quam.components.pulses.DragPulse"
                     },
+                    "x180_Square": {
+                        "length": 100,
+                        "digital_marker": "ON",
+                        "amplitude": 0.25,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "x90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.125,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "-x90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": -0.125,
+                        "axis_angle": 0,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "y180_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.25,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "y90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": 0.125,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "-y90_Square": {
+                        "length": "#../x180_Square/length",
+                        "digital_marker": "ON",
+                        "amplitude": -0.125,
+                        "axis_angle": 90,
+                        "__class__": "quam.components.pulses.SquarePulse"
+                    },
+                    "x180": "#./x180_DragGaussian",
+                    "x90": "#./x90_DragGaussian",
+                    "-x90": "#./-x90_DragGaussian",
+                    "y180": "#./y180_DragGaussian",
+                    "y90": "#./y90_DragGaussian",
+                    "-y90": "#./-y90_DragGaussian",
                     "saturation": {
                         "length": 10000,
                         "digital_marker": "ON",
@@ -278,8 +375,9 @@
                 "intermediate_frequency": 50000000,
                 "opx_input_I": "#/wiring/resonator/opx_input_I",
                 "opx_input_Q": "#/wiring/resonator/opx_input_Q",
-                "opx_input_offset_I": 0.0,
-                "opx_input_offset_Q": 0.0,
+                "time_of_flight": 28,
+                "opx_input_offset_I": 0.012271699218750001,
+                "opx_input_offset_Q": 0.0074459033203125,
                 "frequency_converter_down": "#/octave/RF_inputs/1"
             }
         }
@@ -349,11 +447,13 @@
     "network": {
         "host": "172.16.33.101",
         "cluster_name": "Cluster_81",
+        "octave_ip": "172.16.33.101",
+        "octave_port": 11050,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA"
     },
     "active_qubit_names": [
         "q0",
         "q1"
     ],
-    "__class__": "components.QuAM"
+    "__class__": "quam_components.quam_components.QuAM"
 }

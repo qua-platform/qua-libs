@@ -64,6 +64,8 @@
     "network": {
         "host": "172.16.33.101",
         "cluster_name": "Cluster_81",
+        "octave_ip": "172.16.33.101",
+        "octave_port": 11050,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA"
     }
 }

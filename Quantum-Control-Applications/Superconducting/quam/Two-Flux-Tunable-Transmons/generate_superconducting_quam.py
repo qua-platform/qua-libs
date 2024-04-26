@@ -1,14 +1,12 @@
-from pathlib import Path
-import json
-
+from quam.core import QuamRoot
 from quam.components import *
 from quam.components.channels import IQChannel, DigitalOutputChannel
-from quam.components.pulses import SquareReadoutPulse
-from components import Transmon, ReadoutResonator, QuAM, FluxLine
+from quam.components.pulses import SquareReadoutPulse, Pulse
+from quam_components import *
 from qm.octave import QmOctaveConfig
-from quam.core import QuamRoot
-
 from qualang_tools.units import unit
+from pathlib import Path
+import json
 
 
 def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOctaveConfig):
@@ -20,22 +18,11 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     Returns:
         QuamRoot: A QuAM with the specified number of qubits.
     """
+    # TODO: how do I add a qubit to an existing quam without loosing the saved values
     # Class containing tools to help handling units and conversions.
     u = unit(coerce_to_integer=True)
     # Initiate the QuAM class
     quam = QuAM()
-
-    # Add the Octave to the quam
-    octave = Octave(
-        name="octave1",
-        ip="172.16.33.101",
-        port=11050,
-    )
-    quam.octave = octave
-    octave.initialize_frequency_converters()
-    # octave.print_summary()
-    octave_config = octave.get_octave_config()
-
     # Define the connectivity
     quam.wiring = {
         "qubits": [
@@ -45,7 +32,7 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 "port_Z": ("con1", 4 * k + 5),
                 "digital_port": ("con1", 4 * k + 3),
             }
-            for k in range(num_qubits)  # TODO: what if k>2?
+            for k in range(num_qubits)
         ],
         "resonator": {
             "opx_output_I": ("con1", 1),
@@ -58,8 +45,19 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
     quam.network = {
         "host": "172.16.33.101",
         "cluster_name": "Cluster_81",
+        "octave_ip": "172.16.33.101",
+        "octave_port": 11050,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA",
     }
+    # Add the Octave to the quam
+    octave = Octave(
+        name="octave1",
+        ip="172.16.33.101",
+        port=11050,
+    )
+    quam.octave = octave
+    octave.initialize_frequency_converters()
+    octave_config = octave.get_octave_config()
     # Add the transmon components (xy, z and resonator) to the quam
     for idx in range(num_qubits):
         # Create qubit components
@@ -95,8 +93,11 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
                 depletion_time=1 * u.us,
             ),
         )
+
         # Add the transmon pulses to the quam
-        transmon.xy.operations["x180"] = pulses.DragPulse(
+        # TODO: make sigma=length/5
+        # TODO: Make gates amplitude a reference to x180 amplitude
+        transmon.xy.operations["x180_DragGaussian"] = pulses.DragPulse(
             amplitude=0.1,
             sigma=7,
             alpha=1.0,
@@ -105,51 +106,71 @@ def create_quam_superconducting_referenced(num_qubits: int) -> (QuamRoot, QmOcta
             axis_angle=0,
             digital_marker="ON",
         )
-        transmon.xy.operations["x90"] = pulses.DragPulse(
+        transmon.xy.operations["x90_DragGaussian"] = pulses.DragPulse(
             amplitude=0.1 / 2,
-            sigma="#../x180/sigma",
-            alpha="#../x180/alpha",
-            anharmonicity="#../x180/anharmonicity",
-            length="#../x180/length",
+            sigma="#../x180_DragGaussian/sigma",
+            alpha="#../x180_DragGaussian/alpha",
+            anharmonicity="#../x180_DragGaussian/anharmonicity",
+            length="#../x180_DragGaussian/length",
             axis_angle=0,
             digital_marker="ON",
         )
-        transmon.xy.operations["-x90"] = pulses.DragPulse(
+        transmon.xy.operations["-x90_DragGaussian"] = pulses.DragPulse(
             amplitude=-0.1 / 2,
-            sigma="#../x180/sigma",
-            alpha="#../x180/alpha",
-            anharmonicity="#../x180/anharmonicity",
-            length="#../x180/length",
+            sigma="#../x180_DragGaussian/sigma",
+            alpha="#../x180_DragGaussian/alpha",
+            anharmonicity="#../x180_DragGaussian/anharmonicity",
+            length="#../x180_DragGaussian/length",
             axis_angle=0,
             digital_marker="ON",
         )
-        transmon.xy.operations["y180"] = pulses.DragPulse(
-            amplitude="#../x180/amplitude",
-            sigma="#../x180/sigma",
-            alpha="#../x180/alpha",
-            anharmonicity="#../x180/anharmonicity",
-            length="#../x180/length",
+        transmon.xy.operations["y180_DragGaussian"] = pulses.DragPulse(
+            amplitude="#../x180_DragGaussian/amplitude",
+            sigma="#../x180_DragGaussian/sigma",
+            alpha="#../x180_DragGaussian/alpha",
+            anharmonicity="#../x180_DragGaussian/anharmonicity",
+            length="#../x180_DragGaussian/length",
             axis_angle=90,
             digital_marker="ON",
         )
-        transmon.xy.operations["y90"] = pulses.DragPulse(
+        transmon.xy.operations["y90_DragGaussian"] = pulses.DragPulse(
             amplitude=0.1 / 2,
-            sigma="#../x180/sigma",
-            alpha="#../x180/alpha",
-            anharmonicity="#../x180/anharmonicity",
-            length="#../x180/length",
+            sigma="#../x180_DragGaussian/sigma",
+            alpha="#../x180_DragGaussian/alpha",
+            anharmonicity="#../x180_DragGaussian/anharmonicity",
+            length="#../x180_DragGaussian/length",
             axis_angle=90,
             digital_marker="ON",
         )
-        transmon.xy.operations["-y90"] = pulses.DragPulse(
+        transmon.xy.operations["-y90_DragGaussian"] = pulses.DragPulse(
             amplitude=-0.1 / 2,
-            sigma="#../x180/sigma",
-            alpha="#../x180/alpha",
-            anharmonicity="#../x180/anharmonicity",
-            length="#../x180/length",
+            sigma="#../x180_DragGaussian/sigma",
+            alpha="#../x180_DragGaussian/alpha",
+            anharmonicity="#../x180_DragGaussian/anharmonicity",
+            length="#../x180_DragGaussian/length",
             axis_angle=90,
             digital_marker="ON",
         )
+        transmon.xy.operations["x180_Square"] = pulses.SquarePulse(
+            amplitude=0.25, length=100, axis_angle=0, digital_marker="ON"
+        )
+        transmon.xy.operations["x90_Square"] = pulses.SquarePulse(
+            amplitude=0.25 / 2, length="#../x180_Square/length", axis_angle=0, digital_marker="ON"
+        )
+        transmon.xy.operations["-x90_Square"] = pulses.SquarePulse(
+            amplitude=-0.25 / 2, length="#../x180_Square/length", axis_angle=0, digital_marker="ON"
+        )
+        transmon.xy.operations["y180_Square"] = pulses.SquarePulse(
+            amplitude=0.25, length="#../x180_Square/length", axis_angle=90, digital_marker="ON"
+        )
+        transmon.xy.operations["y90_Square"] = pulses.SquarePulse(
+            amplitude=0.25 / 2, length="#../x180_Square/length", axis_angle=90, digital_marker="ON"
+        )
+        transmon.xy.operations["-y90_Square"] = pulses.SquarePulse(
+            amplitude=-0.25 / 2, length="#../x180_Square/length", axis_angle=90, digital_marker="ON"
+        )
+        transmon.set_gate_shape("DragGaussian")
+
         transmon.xy.operations["saturation"] = pulses.SquarePulse(
             amplitude=0.25, length=10 * u.us, axis_angle=0, digital_marker="ON"
         )
@@ -178,14 +199,14 @@ if __name__ == "__main__":
     folder.mkdir(exist_ok=True)
 
     machine, _ = create_quam_superconducting_referenced(num_qubits=2)
-    machine.save(folder / "quam", content_mapping={"wiring.json": {"wiring", "network"}})
+    machine.save(folder / "quam_machine", content_mapping={"wiring.json": {"wiring", "network"}})
     machine.save(folder / "state.json")
 
     qua_file = folder / "qua_config.json"
     qua_config = machine.generate_config()
     json.dump(qua_config, qua_file.open("w"), indent=4)
 
-    quam_loaded = QuAM.load(folder / "quam")
+    quam_loaded = QuAM.load("state.json")
     qua_file_loaded = folder / "qua_config2.json"
     qua_config_loaded = quam_loaded.generate_config()
     json.dump(qua_config_loaded, qua_file.open("w"), indent=4)

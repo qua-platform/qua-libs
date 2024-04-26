@@ -23,7 +23,7 @@ class FluxLine(SingleChannel):
     joint_offset: float = 0.0
     min_offset: float = 0.0
 
-    def to_independent_idle(self):  # TODO: put the functions here
+    def to_independent_idle(self):
         self.set_dc_offset(self.independent_offset)
 
     def to_joint_idle(self):
@@ -100,6 +100,10 @@ class Transmon(QuamComponent):
             lo_frequencies=self.resonator.frequency_converter_up.LO_frequency,
             intermediate_frequencies=self.resonator.intermediate_frequency,
         )
+
+    def set_gate_shape(self, gate_shape: str):
+        for gate in ["x180", "x90", "-x90", "y180", "y90", "-y90"]:
+            self.xy.operations[gate] = "#./" + gate + "_" + gate_shape
 
     @property
     def name(self):
