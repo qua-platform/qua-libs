@@ -1,6 +1,4 @@
 from dataclasses import dataclass, asdict, field
-from typing import Literal
-
 import numpy as np
 
 
@@ -28,7 +26,7 @@ class XEBConfig:
     n_shots: int = 101
     impose_0_cycle: bool = False
     apply_two_qb_gate: bool = False
-    gate_set_choice: Literal["sw", "t"] = "sw"
+    gate_set_choice: str = "sw"
     save_dir: str = ""
     should_save_data: bool = True
     generate_new_data: bool = True
