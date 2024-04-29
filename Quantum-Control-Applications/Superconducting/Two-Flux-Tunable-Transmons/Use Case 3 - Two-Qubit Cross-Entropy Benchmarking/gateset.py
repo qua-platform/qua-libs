@@ -1,40 +1,33 @@
-"""
-File containing the definition of custom random single qubit gates for XEB, used as
-a gate set for the XEB benchmarking. We provide here the definition of two gate sets,
-based on two different papers implementing the XEB benchmarking protocol.
-Note that the gates are assumed to be all doable through the modulation of the amplitude matrix of a baseline
-calibrated X/2 (SX) pulse. One could modify the XEB code to allow for dedicated pulses for each gate (using the
-QUA switch-case functionality).
-
-The first gate set is based on the Google Supremacy paper (https://www.nature.com/articles/s41586-019-1666-5),
-where the gate set consists of the X/2, Y/2 and SW gates. The SW gate is defined as the unitary gate corresponding
-to the square root of the W gate, where W is a pi/2 rotation around the X+Y axis.
-
-The second gate set is based on https://arxiv.org/abs/1608.00263, where the gate set consists of the X/2, Y/2
-and T gates. T is a pi/4 rotation around the Z axis and is implemented as a virtual frame rotation in the QUA code.
-We define an amplitude matrix for the latter gate for consistency with the other gates.
-
-Author: Arthur Strauss - Quantum Machines
-Last updated: 2024-04-30
-"""
-
 from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping as gate_map
 from qiskit.circuit.library import UnitaryGate, RYGate
 from scipy.linalg import sqrtm
 import numpy as np
+from typing import Literal
 
 
-def generate_gate_set(gate_set: str):
+def generate_gate_set(gate_set: Literal["sw", "t"]) -> dict:
     """
     Generate a gate set from a string for random single qubit gates for XEB.
-    Two of the gates are always X/2 and Y/2, the third gate is determined by the provided string
-    (for now, can be only "sw" or "t")
-    Each single qubit gate is assumed to be playable through the modulation of the amplitude matrix of a baseline
-    calibrated X/2 (SX) pulse
+
+    This function generates a dictionary of single-qubit gates for XEB (Cross-Entropy Benchmarking)
+    based on the provided gate set string.
+
+    The available gate sets are:
+    - "sw": X/2, Y/2, and SW gates. SW gate is defined as the square root of the W gate.
+    - "t": X/2, Y/2, and T gates. T gate is a pi/4 rotation around the Z axis.
+
+    Each single qubit gate is assumed to be playable through the modulation of the amplitude
+    matrix of a baseline calibrated X/2 (SX) pulse (motivating the systematic definition of an
+    amplitude matrix for each gate). However in the main QUA script, one could choose how to play
+    each gate based on a QUA switch-case statement.
+
     Args:
-        gate_set (str): String of gate names separated by commas
+        gate_set (Literal['sw', 't']): String indicating the desired gate set.
+
     Returns:
-        dict: Dictionary of single qubit gates
+        dict: Dictionary containing the generated single qubit gates.
+    Raises:
+        ValueError: If an invalid gate set string is provided.
     """
 
     SX, T, X, Y = [gate_map()[gate] for gate in ["sx", "t", "x", "y"]]
@@ -56,6 +49,6 @@ def generate_gate_set(gate_set: str):
         }  # No actual need for amp_matrix (done with frame rotation)
         gate_dict[2] = T_dict
     else:
-        raise ValueError("Invalid gate set")
+        raise ValueError(f"Invalid gate set: {gate_set}. Allowed values are 'sw' or 't'.")
 
     return gate_dict
