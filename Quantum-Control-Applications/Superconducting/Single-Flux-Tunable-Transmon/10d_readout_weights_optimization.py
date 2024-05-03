@@ -223,10 +223,10 @@ else:
     # Plot the results
     plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    weights_real = list(norm_subtracted_trace.real)
-    weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
-    weights_imag = list(norm_subtracted_trace.imag)
-    weights_minus_real = list((-1) * norm_subtracted_trace.real)
+    weights_real = [(x, division_length * 4) for x in norm_subtracted_trace.real]
+    weights_minus_imag = [(-x, division_length * 4) for x in norm_subtracted_trace.imag]
+    weights_imag = [(x, division_length * 4) for x in norm_subtracted_trace.imag]
+    weights_minus_real = [(-x, division_length * 4) for x in norm_subtracted_trace.real]
     # Save the weights for later use in the config
     np.savez(
         "optimal_weights",

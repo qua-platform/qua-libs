@@ -205,15 +205,16 @@ if opt_weights:
     from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
     weights_q1 = np.load("optimal_weights_q1.npz")
-    opt_weights_real_q1 = convert_integration_weights(weights_q1["weights_real"])
-    opt_weights_minus_imag_q1 = convert_integration_weights(weights_q1["weights_minus_imag"])
-    opt_weights_imag_q1 = convert_integration_weights(weights_q1["weights_imag"])
-    opt_weights_minus_real_q1 = convert_integration_weights(weights_q1["weights_minus_real"])
+    opt_weights_real = weights_q1["weights_real"]
+    opt_weights_minus_imag = weights_q1["weights_minus_imag"]
+    opt_weights_imag = weights_q1["weights_imag"]
+    opt_weights_minus_real = weights_q1["weights_minus_real"]
+
     weights_q2 = np.load("optimal_weights_q2.npz")
-    opt_weights_real_q2 = convert_integration_weights(weights_q2["weights_real"])
-    opt_weights_minus_imag_q2 = convert_integration_weights(weights_q2["weights_minus_imag"])
-    opt_weights_imag_q2 = convert_integration_weights(weights_q2["weights_imag"])
-    opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
+    opt_weights_real = weights_q2["weight_real"]
+    opt_weights_minus_imag = weights_q2["weights_minus_imag"]
+    opt_weights_imag = weights_q2["weights_imag"]
+    opt_weights_minus_real = weights_q2["weights_minus_real"]
 else:
     opt_weights_real_q1 = [(1.0, readout_len)]
     opt_weights_minus_imag_q1 = [(1.0, readout_len)]
