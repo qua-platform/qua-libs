@@ -230,13 +230,13 @@ else:
         plt.suptitle(f"Integration weight optimization for qubit {i+1}")
         plt.tight_layout()
         # Reshape the optimal integration weights to match the configuration
-        weights_real = list(norm_subtracted_trace[i].real)
-        weights_minus_imag = list((-1) * norm_subtracted_trace[i].imag)
-        weights_imag = list(norm_subtracted_trace[i].imag)
-        weights_minus_real = list((-1) * norm_subtracted_trace[i].real)
+        weights_real = [(x, division_length * 4) for x in norm_subtracted_trace[i].real]
+        weights_minus_imag = [(-x, division_length * 4) for x in norm_subtracted_trace[i].imag]
+        weights_imag = [(x, division_length * 4) for x in norm_subtracted_trace[i].imag]
+        weights_minus_real = [(-x, division_length * 4) for x in norm_subtracted_trace[i].real]
         # Save the weights for later use in the config
         np.savez(
-            "optimal_weights",
+            f"optimal_weights_q{i+1}",
             weights_real=weights_real,
             weights_minus_imag=weights_minus_imag,
             weights_imag=weights_imag,
