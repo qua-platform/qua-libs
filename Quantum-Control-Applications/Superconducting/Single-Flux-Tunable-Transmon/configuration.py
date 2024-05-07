@@ -166,7 +166,7 @@ else:
     opt_weights_minus_imag = [(0.0, readout_len)]
     opt_weights_imag = [(0.0, readout_len)]
     opt_weights_minus_real = [(-1.0, readout_len)]
-
+    
 ##########################################
 #               Flux line                #
 ##########################################
