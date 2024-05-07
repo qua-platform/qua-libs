@@ -222,13 +222,13 @@ if opt_weights:
     opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
 else:
     opt_weights_real_q1 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q1 = [(1.0, readout_len)]
-    opt_weights_imag_q1 = [(1.0, readout_len)]
-    opt_weights_minus_real_q1 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q1 = [(0.0, readout_len)]
+    opt_weights_imag_q1 = [(0.0, readout_len)]
+    opt_weights_minus_real_q1 = [(-1.0, readout_len)]
     opt_weights_real_q2 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q2 = [(1.0, readout_len)]
-    opt_weights_imag_q2 = [(1.0, readout_len)]
-    opt_weights_minus_real_q2 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q2 = [(0.0, readout_len)]
+    opt_weights_imag_q2 = [(0.0, readout_len)]
+    opt_weights_minus_real_q2 = [(-1.0, readout_len)]
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi
