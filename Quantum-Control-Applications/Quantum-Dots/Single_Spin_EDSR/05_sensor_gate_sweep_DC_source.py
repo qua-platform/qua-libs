@@ -36,7 +36,7 @@ with program() as charge_sensor_sweep:
     j = declare(int)  # QUA integer used as an index to loop over the voltage points
     n_st = declare_stream()  # Stream for the iteration number (progress bar)
 
-    with for_(i, 0, i < n_points + 1, i + 1):
+    with for_(i, 0, i < n_points, i + 1):
         # Pause the OPX to update the external DC voltages in Python
         pause()
         # Wait for the voltages to settle (depends on the voltage source bandwidth)
@@ -99,10 +99,15 @@ else:
         # Resume the QUA program (escape the 'pause' statement)
         job.resume()
         # Wait until the program reaches the 'pause' statement again, indicating that the QUA program is done
-        wait_until_job_is_paused(job)
+        if i < n_points-1:
+            wait_until_job_is_paused(job)
         if i == 0:
             # Get results from QUA program and initialize live plotting
-            results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
+            results = fetching_tool(job, data_list=["iteration"], mode="live")
+        iteration = results.fetch_all()[0]
+        progress_counter(iteration, n_points)
+
+    results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"])
     # Fetch the data from the last OPX run corresponding to the current slow axis iteration
     I, Q, DC_signal, iteration = results.fetch_all()
     # Convert results into Volts
@@ -110,8 +115,6 @@ else:
     R = np.abs(S)  # Amplitude
     phase = np.angle(S)  # Phase
     DC_signal = u.demod2volts(DC_signal, readout_len)
-    # Progress bar
-    progress_counter(iteration, n_points)
     # Plot results
     plt.suptitle("Charge sensor gate sweep")
     plt.subplot(211)
