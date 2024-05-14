@@ -179,7 +179,7 @@ with program() as rb:
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
             # Only played the depth corresponding to target_depth
-            with if_((depth == 1) | (depth == depth_target)):
+            with if_(depth == depth_target):
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can be replaced by active reset
                     wait(thermalization_time * u.ns, "resonator")
