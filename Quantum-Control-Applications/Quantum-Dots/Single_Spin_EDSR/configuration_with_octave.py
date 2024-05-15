@@ -159,7 +159,8 @@ class OPX_virtual_gate_sequence:
         if level is not None:
             if type(level) is not list or len(level) != len(self._elements):
                 raise TypeError(
-                    "the provided level must be a list of same length as the number of elements involved in the virtual gate.")
+                    "the provided level must be a list of same length as the number of elements involved in the virtual gate."
+                )
 
         if voltage_point_name is not None and duration is None:
             _duration = self._voltage_points[voltage_point_name]["duration"]
