@@ -92,7 +92,7 @@ class OPX_virtual_gate_sequence:
             assign(self._expression, level)
             new_average = Cast.mul_int_by_fixed(duration, self._expression)
         elif self.is_QUA(duration):
-            new_average = Cast.mul_int_by_fixed(duration, level)
+            new_average = Cast.mul_int_by_fixed(duration, float(level))
         else:
             new_average = int(np.round(level * duration))
 
@@ -137,8 +137,10 @@ class OPX_virtual_gate_sequence:
         """
         self._check_duration(duration)
         self._check_duration(ramp_duration)
-        if type(level) is not list or len(level) != len(self._elements):
-            raise TypeError("the provided level must be a list of same length as the number of elements involved in the virtual gate.")
+        if level is not None:
+            if type(level) is not list or len(level) != len(self._elements):
+                raise TypeError(
+                    "the provided level must be a list of same length as the number of elements involved in the virtual gate.")
         
         if voltage_point_name is not None and duration is None:
             _duration = self._voltage_points[voltage_point_name]["duration"]
