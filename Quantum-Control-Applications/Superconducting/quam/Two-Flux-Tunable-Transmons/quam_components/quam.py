@@ -47,12 +47,12 @@ class QuAM(QuamRoot):
         return [self.qubits[q] for q in self.active_qubit_names]
 
     @property
-    def get_depletion_time(self) -> int:
+    def depletion_time(self) -> int:
         """Return the longest depletion time amongst the active qubits."""
         return max([q.resonator.depletion_time for q in self.active_qubits])
 
     @property
-    def get_thermalization_time(self) -> int:
+    def thermalization_time(self) -> int:
         """Return the longest thermalization time amongst the active qubits."""
         return max([q.thermalization_time for q in self.active_qubits])
 
