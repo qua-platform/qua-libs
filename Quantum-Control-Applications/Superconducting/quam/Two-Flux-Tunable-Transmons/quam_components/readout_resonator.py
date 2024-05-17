@@ -13,7 +13,6 @@ class ReadoutResonator(InOutIQChannel):
         frequency_bare (int, float): the bare resonator frequency in Hz.
     """
 
-    # TODO: update with inferred frequencies
     depletion_time: int = 1000
     frequency_bare: float = None
 
