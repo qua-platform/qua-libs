@@ -130,8 +130,6 @@ def rewire_for_active_qubits(quam: QuAM, active_qubit_names: List[str]):
         quam.octave.RF_outputs[2 * (idx + 1)].LO_frequency = q.f_01 - q.xy.intermediate_frequency
 
 
-
-
 if __name__ == "__main__":
     folder = Path("")
     folder.mkdir(exist_ok=True)
