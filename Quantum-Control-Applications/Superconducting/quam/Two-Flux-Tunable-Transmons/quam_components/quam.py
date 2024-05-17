@@ -74,7 +74,7 @@ class QuAM(QuamRoot):
             octave=self.octave.get_octave_config(),
         )
 
-    def calibrate_active_qubits(self, QM: QuantumMachine) -> None:
+    def calibrate_octave_active_qubits(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave ports for all the active qubits.
 
         Args:
