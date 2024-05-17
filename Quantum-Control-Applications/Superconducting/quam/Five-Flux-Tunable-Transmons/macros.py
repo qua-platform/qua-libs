@@ -1,5 +1,5 @@
 from qm.qua import *
-from components import FluxLine, QuAM
+from ..quam_components import FluxLine, QuAM
 
 # def wait_depletion_time(quam: "QuAM"):
 #

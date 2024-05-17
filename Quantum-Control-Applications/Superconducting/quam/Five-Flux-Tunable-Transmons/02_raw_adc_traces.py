@@ -14,7 +14,7 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.units import unit
-from components import QuAM
+from ..quam_components import QuAM
 
 
 ###################################################

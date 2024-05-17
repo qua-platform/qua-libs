@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
-from components import QuAM, Transmon
+from ..quam_components import QuAM, Transmon
 
 
 ###################################################

@@ -22,7 +22,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from components import QuAM
+from ..quam_components import QuAM
 from macros import node_save
 import numpy as np
 import matplotlib.pyplot as plt

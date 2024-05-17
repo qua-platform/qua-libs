@@ -17,10 +17,6 @@ __all__ = ["QuAM"]
 class QuAM(QuamRoot):
     """Example QuAM root component."""
 
-    @classmethod
-    def load(cls, *args, **kwargs) -> "QuAM":
-        return super().load(*args, **kwargs)
-
     octave: Octave = None
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
@@ -30,6 +26,10 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
 
     _data_handler: ClassVar[DataHandler] = None
+
+    @classmethod
+    def load(cls, *args, **kwargs) -> "QuAM":
+        return super().load(*args, **kwargs)
 
     @property
     def data_handler(self) -> DataHandler:
@@ -47,12 +47,12 @@ class QuAM(QuamRoot):
     @property
     def depletion_time(self) -> int:
         """Return the longest depletion time amongst the active qubits."""
-        return max([q.resonator.depletion_time for q in self.active_qubits])
+        return max(q.resonator.depletion_time for q in self.active_qubits)
 
     @property
     def thermalization_time(self) -> int:
         """Return the longest thermalization time amongst the active qubits."""
-        return max([q.thermalization_time for q in self.active_qubits])
+        return max(q.thermalization_time for q in self.active_qubits)
 
     def apply_all_flux_to_min(self) -> None:
         """Apply the offsets that bring all the active qubits to the minimum frequency point."""

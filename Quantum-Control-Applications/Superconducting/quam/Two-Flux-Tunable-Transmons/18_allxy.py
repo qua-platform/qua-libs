@@ -23,7 +23,7 @@ from qualang_tools.units import unit
 import matplotlib.pyplot as plt
 import numpy as np
 
-from components import QuAM, Transmon, ReadoutResonator
+from ..quam_components import QuAM, Transmon, ReadoutResonator
 from macros import node_save
 
 

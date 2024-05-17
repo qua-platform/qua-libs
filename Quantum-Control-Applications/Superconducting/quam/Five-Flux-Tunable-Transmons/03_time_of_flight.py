@@ -18,7 +18,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from components import QuAM
+from ..quam_components import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter

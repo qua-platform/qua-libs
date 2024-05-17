@@ -1,5 +1,5 @@
 from qm.qua import *
-from components import FluxLine, QuAM
+from ..quam_components import FluxLine, QuAM
 
 
 def node_save(name: str, data: dict, quam: QuAM):

@@ -4,7 +4,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 
 from qm.qua import *
 from qm import SimulationConfig
-from components import QuAM
+from ..quam_components import QuAM
 from macros import node_save
 
 ###################################################
