@@ -1,6 +1,6 @@
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
-from .Transmon_component import Transmon
+from .transmon import Transmon
 
 from qm.qua import align
 from qm import QuantumMachinesManager, QuantumMachine
@@ -35,7 +35,9 @@ class QuAM(QuamRoot):
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
+            self._data_handler = DataHandler(
+                root_data_folder=self.network["data_folder"]
+            )
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 
@@ -67,7 +69,9 @@ class QuAM(QuamRoot):
         Returns: the opened Quantum Machine Manager.
         """
         return QuantumMachinesManager(
-            host=self.network["host"], cluster_name=self.network["cluster_name"], octave=self.octave.get_octave_config()
+            host=self.network["host"],
+            cluster_name=self.network["cluster_name"],
+            octave=self.octave.get_octave_config(),
         )
 
     def calibrate_active_qubits(self, QM: QuantumMachine) -> None:

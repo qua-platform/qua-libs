@@ -1,8 +1,8 @@
 from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, Pulse
 from quam import QuamComponent
-from .FluxLine_component import FluxLine
-from .ReadoutResonator_component import ReadoutResonator
+from .flux_line import FluxLine
+from .readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine
 from typing import Union
@@ -28,6 +28,7 @@ class Transmon(QuamComponent):
         thermalization_time_factor (int): thermalization time in units of T1.
         anharmonicity (int, float): the transmon anharmonicity in Hz.
     """
+
     # TODO: update with inferred frequencies
 
     id: Union[int, str]
@@ -55,12 +56,18 @@ class Transmon(QuamComponent):
     @property
     def f_01(self):
         """The 0-1 (g-e) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency
+        return (
+            self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency
+        )
 
     @property
     def f_12(self):
         """The 0-2 (e-f) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency - self.anharmonicity
+        return (
+            self.xy.frequency_converter_up.LO_frequency
+            + self.xy.intermediate_frequency
+            - self.anharmonicity
+        )
 
     def calibrate_octave(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave channels (xy and resonator) linked to this transmon for the LO frequency, intermediate
