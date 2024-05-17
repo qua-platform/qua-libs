@@ -4,7 +4,7 @@ from typing import List
 from quam.components import *
 from quam.components.channels import IQChannel
 from quam.components.pulses import ConstantReadoutPulse
-from ..quam_components import Transmon, ReadoutResonator, QuAM, FluxLine
+from components import Transmon, ReadoutResonator, QuAM, FluxLine
 from qm.octave import QmOctaveConfig
 from quam.core import QuamRoot
 

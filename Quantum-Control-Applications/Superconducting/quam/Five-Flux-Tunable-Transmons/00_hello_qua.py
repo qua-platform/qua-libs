@@ -5,7 +5,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from ..quam_components import QuAM
+from components import QuAM
 
 
 ###################################################

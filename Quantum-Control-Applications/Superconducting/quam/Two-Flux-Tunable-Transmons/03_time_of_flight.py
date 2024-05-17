@@ -17,7 +17,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from ..quam_components import QuAM
+from components import QuAM
 from macros import node_save
 import numpy as np
 import matplotlib.pyplot as plt

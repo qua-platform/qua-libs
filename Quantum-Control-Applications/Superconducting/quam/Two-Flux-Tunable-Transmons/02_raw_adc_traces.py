@@ -13,7 +13,7 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.units import unit
-from ..quam_components import QuAM
+from components import QuAM
 from macros import node_save
 
 ###################################################

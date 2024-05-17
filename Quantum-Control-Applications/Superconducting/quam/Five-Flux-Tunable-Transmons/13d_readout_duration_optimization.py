@@ -31,7 +31,7 @@ from qualang_tools.analysis.discriminator import two_state_discriminator
 import matplotlib.pyplot as plt
 import numpy as np
 
-from ..quam_components import QuAM
+from components import QuAM
 from macros import qua_declaration, multiplexed_readout
 
 

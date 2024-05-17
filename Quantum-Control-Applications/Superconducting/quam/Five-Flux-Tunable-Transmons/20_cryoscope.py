@@ -48,7 +48,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize, signal
 
-from ..quam_components import QuAM
+from components import QuAM
 from macros import qua_declaration, multiplexed_readout
 from digital_filters import exponential_decay, single_exponential_correction
 
