@@ -89,6 +89,8 @@ k_depth = 2 # Choose the depth index (looking for 2nd depth in provided depths a
 circuit = xeb_job.circuits[k_depth][k_seq] # Circuit of depth k_depth and sequence k_seq
 circuit.draw('mpl') # Draw the circuit (can also use print(circuit) for text representation)
 ```
+An example of the output would be the following circuit:
+[![XEB Circuit](xeb_circuit.png)](xeb_circuit.png)
 
 
 The user can also fetch the results of the experiment by calling the `XEBJob.result()` method. This method returns a `XEBResult` object, which contains all results from the experiment, such as the cross-entropy fidelities (calculated for both linear and log-entropy XEB), the theoretical and experimental probability distributions, as well as the outliers and singularities obtained when calculating the log-entropy. The user can then use the `XEBResult` object to visualize the results, or to extract the relevant information. See for example the following code snippet:
@@ -98,8 +100,46 @@ xeb_result.plot_fidelities(fit_linear=True, fit_log_entropy = True) # Plot the f
 xeb_result.plot_state_heatmap() # Plot a comparison between expected and actual probability distributions for all sequences
 
 ```
+An example of the output would be the following plots:
+[![XEB Fidelities](xeb_fidelities.png)](xeb_fidelities.png)
+[![State Heatmap](state_heatmap.png)](state_heatmap.png)
 
+As one can see, the script provides a comprehensive set of tools to analyze the results of the XEB experiment, and to extract the relevant information for the user.
+Typically, the state heatmap shows here the comparison between the expected and actual probability distributions for all sequences, and the noise tends to increase the homogeneity of the speckles with increasing depths because of the accumulation of errors.
 
+## Additional tool: Simulating the XEB experiment with Qiskit Aer [6]
+
+XEB can be simulated at the circuit level by leveraging basic definitions of a noisy quantum simulator. We show below how
+the `XEB` class can be used to simulate the XEB experiment with Qiskit Aer. The user can then compare the results obtained from the quantum computer with the simulation to validate the experiment.
+The way to create the simulation is to provide a custom `AerBackend` object that will simulate the (noisy) quantum computer.
+
+```python
+from qiskit_aer.noise import depolarizing_error, NoiseModel
+from qiskit_aer import AerSimulator
+import matplotlib.pyplot as plt
+num_qubits = 2  # Number of qubits
+apply_CZ = True  # Apply CZ gate
+error1q = 0.07
+error2q = 0.03
+effective_error = error2q + num_qubits*error1q if num_qubits == 2 and apply_CZ else num_qubits*error1q
+depol_error1q = depolarizing_error(error1q, 1)
+depol_error2q = depolarizing_error(error2q, 2)
+sq_gate_set = ["h", "t", "rx", "ry", "sw"]
+noise_model = NoiseModel(basis_gates = sq_gate_set)
+if num_qubits == 2:
+    noise_model.add_all_qubit_quantum_error(depol_error2q, ["cz"])
+noise_model.add_all_qubit_quantum_error(depol_error1q, sq_gate_set)
+# noise_model.add_all_qubit_quantum_error(depol_error1q, [ 'rx', 'sw', 'ry', 't'])
+backend = AerSimulator(noise_model=noise_model, method="density_matrix", basis_gates=noise_model.basis_gates)
+```
+
+The error rates and the types of errors can be adjusted to mimic the noise of the quantum computer. The user can then create a custom `AerBackend` object that will simulate the (noisy) quantum computer. The `AerBackend` object can then be passed to the `XEB` class to simulate the experiment through:
+```python
+job = xeb.simulate(backend)
+results = job.result()
+results.plot_fidelities(fit_linear=True, fit_log_entropy = True) # Plot the fidelities (choose which curves to display)
+...
+```
 
 ## References
 
@@ -112,3 +152,6 @@ xeb_result.plot_state_heatmap() # Plot a comparison between expected and actual 
 [4] [Qiskit](https://qiskit.org/): An Open-source Framework for Quantum Computing. 
 
 [5] [Cirq](https://quantumai.google/cirq): An Open-source Framework for NISQ Algorithms. 
+
+[6] [Qiskit Aer](https://qiskit.github.io/qiskit-aer/) : High-performance simulator for quantum circuits.
+
