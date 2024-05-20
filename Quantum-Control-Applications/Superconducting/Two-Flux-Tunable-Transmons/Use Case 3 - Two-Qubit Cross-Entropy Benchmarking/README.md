@@ -7,7 +7,7 @@ estimating gate and layer fidelities in near-term quantum devices [3]. The proto
 We leverage the power of QUA and the OPX to perform real-time gate random sampling, which allows us to generate random circuits on the fly and straightforwardly execute them on the quantum computer. The script will then calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity.
 
 ## Experimental Setup
-<img align="right" width="400" src="setup.png">
+<img align="right" width="400" src="images/setup.png">
 
 The use-case in this example is tailored for a superconducting quantum processor using flux-tunable transmon qubits, where we focus on a subset of two qubits that are capacitively coupled to each other. Single qubit operations are controlled by sending microwave pulses through a xy-line that is capacitively coupled to the individual qubits. The two-qubit gate is implemented by a controlled-Z (CZ) gate utilizing fast-flux pulses to rapidly change the qubit frequencies. One important experiment on the way of tuning up a CZ gate is the flux-pulse calibration that yield qubit state oscillations depending on the pulse parameters. This experiment was performed and presented in the use-case [Two-Qubit Gate Optimization](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 
@@ -22,7 +22,7 @@ The protocol relies on the ability to perform random circuits on the quantum com
 The advantage of using QUA is that the randomization of the circuits can be done in parallel to circuit execution through real-time processing and random sampling.
 
 The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate, as depicted in the circuit below:
-[![XEB Circuit](xeb_circuit.png)](xeb_circuit.png)
+[![XEB Circuit](images/xeb_circuit.png)](images/xeb_circuit.png)
 
 In this circuit, we have used the $SW$ gate defined in [2] as: 
 $$
@@ -90,7 +90,7 @@ circuit = xeb_job.circuits[k_depth][k_seq] # Circuit of depth k_depth and sequen
 circuit.draw('mpl') # Draw the circuit (can also use print(circuit) for text representation)
 ```
 An example of the output would be the following circuit:
-[![XEB Circuit](xeb_circuit.png)](xeb_circuit.png)
+[![XEB Circuit](images/xeb_circuit.png)](images/xeb_circuit.png)
 
 
 The user can also fetch the results of the experiment by calling the `XEBJob.result()` method. This method returns a `XEBResult` object, which contains all results from the experiment, such as the cross-entropy fidelities (calculated for both linear and log-entropy XEB), the theoretical and experimental probability distributions, as well as the outliers and singularities obtained when calculating the log-entropy. The user can then use the `XEBResult` object to visualize the results, or to extract the relevant information. See for example the following code snippet:
@@ -101,8 +101,8 @@ xeb_result.plot_state_heatmap() # Plot a comparison between expected and actual 
 
 ```
 An example of the output would be the following plots:
-[![XEB Fidelities](xeb_fidelities.png)](xeb_fidelities.png)
-[![State Heatmap](state_heatmap.png)](state_heatmap.png)
+[![XEB Fidelities](images/xeb_fidelities.png)](images/xeb_fidelities.png)
+[![State Heatmap](images/state_heatmap.png)](images/state_heatmap.png)
 
 As one can see, the script provides a comprehensive set of tools to analyze the results of the XEB experiment, and to extract the relevant information for the user.
 Typically, the state heatmap shows here the comparison between the expected and actual probability distributions for all sequences, and the noise tends to increase the homogeneity of the speckles with increasing depths because of the accumulation of errors.
