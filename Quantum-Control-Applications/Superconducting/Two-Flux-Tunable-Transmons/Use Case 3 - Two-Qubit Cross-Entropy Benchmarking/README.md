@@ -21,19 +21,85 @@ Prior to running the XEB example file `xeb_2q.py`, the user has to run the calib
 The protocol relies on the ability to perform random circuits on the quantum computer and compare the results with the ideal simulation. 
 The advantage of using QUA is that the randomization of the circuits can be done in parallel to circuit execution through real-time processing and random sampling.
 
-The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate. 
+The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate, as depicted in the circuit below:
+[![XEB Circuit](xeb_circuit.png)](xeb_circuit.png)
+
+In this circuit, we have used the $SW$ gate defined in [2] as: 
+$$
+SW = \sqrt{W} =\sqrt{\frac{X+Y}{\sqrt{2}}}
+$$
 The script will generate random circuits with the chosen gate set and run them on the quantum computer. The script will then calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity (from which the two-qubit gate fidelity can be inferred).
 
 As opposed to Randomized Benchmarking, we do not invert the randomly generated circuit by applying an inverse, but we rather perform a fidelity estimation over the statistics of the outcomes when measuring the system in the computational basis.
 
 There are therefore four steps in the script:
 - Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation.
-- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ gate)
-- Theoretical simulation: The script will simulate the random circuits on the classical side to calculate the ideal probability distributions.
-- Cross-entropy calculation: The script will calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity.
+- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate)
+- Theoretical simulation: The script simulates the random circuits on the classical side to compute the theoretical quantum state, from which we deduce the probabilities of getting all possible measurement outcomes.
+- Cross-entropy calculation: The script computes the cross-entropy between the expected and empirically deduced probability distributions to estimate the layer fidelity.
 
 This script requires Qiskit [2] (we recommend installing beyond 1.0, see documentation [here](https://qiskit.org/documentation/install.html) or check this [video](https://youtu.be/dZWz4Gs_BuI?si=EOqyeOhZ05YcBlXA)) for the reconstruction of theoretical quantum circuits. This is helpful as it enables the user to leverage all Qiskit visualization tools to debug the experiments.
-For the post-processing, we leverage Cirq [3] to calculate the cross-entropy between the ideal and actual probability distributions.
+For the post-processing, we leverage tools from Cirq library [3] to compute the cross-entropy between the expected and actual probability distributions.
+
+## Running the script
+
+The script is designed to mimic a similar execution workflow to what you would encounter with a Qiskit Experiment.
+We first provide a class `XEBConfig` that defines the parameters of the experiment, such as: 
+- `seqs`: the number of random circuits to be generated.
+- `depths`: the array of depths for the random circuits.
+- `n_shots`: the number of shots for each circuit.
+- `qubits_ids`: the qubits indices (or qubit names) involved in the experiment. They should match the qubits defined in the QuAM. Note that the script can handle only one or two qubits for now.
+- `baseline_gate_name`: the name of the operation that will be used as a baseline for the random circuits. The name should match the name of the operation defined in the QuAM/configuration for implementing the $SX$ gate (equivalently X/2).
+- `gate_set_choice`: it corresponds to the set of single qubit gates that will be used to generate random layers in the circuit. For now, the user can choose two different gate sets:
+  - "sw": This gate set contains the following gates: $SX$, $SY$, and $SW$, as done in [2].
+  - "t": This gate set contains the following gates: $SX$, $SY$, and $T$, as done in [1].
+- `two_qb_gate`: this is the gate that will be used as the entangling gate in the circuit. The user should specify this gate as a `QUAGate` object, which collects the macro for implementing the two-qubit gate, as well as its logical definition in the circuit for computing its effect in a statevector simulation. All standard gates (CZ, CNOT/CX, iSWAP, SWAP, ECR) are supported through the simple specification of a string depicting the name of the gate (in lowercase). See the example below:
+```python
+from quam.examples.superconducting_qubits import Transmon
+from qua_gate import QUAGate
+def two_qubit_gate_macro(qubit1: Transmon, qubit2: Transmon):
+    # Insert your macro for implementing your two qubit gate here, this macro should depend on the two qubits indices provided as integers.
+    # We provide an example of a CZ gate implementation
+    play('cz', 'cz_between_q1_q2_element')
+    
+two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
+
+```
+Additional parameters are available in the config such as:
+- `impose_0_cycle`: boolean indicating if first cycle should be set to a default setting (usually the Hadamard gate).
+- `save_dir`: the directory where the results will be saved through the `DataHandler`
+- `save_data`: boolean indicating if the data should be saved or not.
+- `generate_new_data`: boolean indicating if the data should be generated or loaded from a previous run.
+- `disjoint_processing`: boolean indicating if the processing should be done for each qubit separately or jointly.
+
+The user can then run a XEB experiment by creating an instance of the `XEB` class (taking as input the `XEBConfig`, 
+a `QuAM` object and a `QuantumMachinesManager` instance) calling the `run` method.
+
+## Results fetching
+
+The call to `XEB.run()` will return an instance of a `XEBJob`, which is analogous to a Qiskit `Job`. This class enables 
+you to fetch the quantum circuits that were run on the quantum computer, through the attribute `XEBJob.circuits`.
+The output of this attribute is a two-dimensional list of `QuantumCircuit` objects, where the inner and outer dimensions correspond respectively to the depths and random sequences. The user can then use the `QuantumCircuit` objects to visualize the circuits, or to extract the gates that were run on the quantum computer. See for example the following code snippet:
+```python
+from quam.xeb import XEBJob
+from qiskit import QuantumCircuit
+xeb_job = XEB.run()
+k_seq = 3 # Choose the sequence index
+k_depth = 2 # Choose the depth index (looking for 2nd depth in provided depths array)
+circuit = xeb_job.circuits[k_depth][k_seq] # Circuit of depth k_depth and sequence k_seq
+circuit.draw('mpl') # Draw the circuit (can also use print(circuit) for text representation)
+```
+
+
+The user can also fetch the results of the experiment by calling the `XEBJob.result()` method. This method returns a `XEBResult` object, which contains all results from the experiment, such as the cross-entropy fidelities (calculated for both linear and log-entropy XEB), the theoretical and experimental probability distributions, as well as the outliers and singularities obtained when calculating the log-entropy. The user can then use the `XEBResult` object to visualize the results, or to extract the relevant information. See for example the following code snippet:
+```python
+xeb_result = xeb_job.result()
+xeb_result.plot_fidelities(fit_linear=True, fit_log_entropy = True) # Plot the fidelities (choose which curves to display)
+xeb_result.plot_state_heatmap() # Plot a comparison between expected and actual probability distributions for all sequences
+
+```
+
+
 
 ## References
 

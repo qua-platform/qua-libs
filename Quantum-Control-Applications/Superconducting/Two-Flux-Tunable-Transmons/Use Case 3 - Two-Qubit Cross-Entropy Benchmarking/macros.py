@@ -10,8 +10,9 @@ from matplotlib import pyplot as plt, colors
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np
-from scipy.optimize import optimize
+from scipy import optimize
 from scipy.stats import stats
+from quam.components import Channel
 
 
 def assign_amplitude_matrix(gate, amp_matrix, gate_dict: dict):
@@ -40,11 +41,11 @@ def qua_declaration(n_qubits: int, readout_elements: list):
     I_st, Q_st = [[declare_stream() for _ in range(n_qubits)] for _ in range(2)]
     # Workaround to manually assign the results variables to the readout elements
     for i in range(n_qubits):
-        assign_variables_to_element(readout_elements[i], I[i], Q[i])
+        assign_variables_to_element(readout_elements[i].name, I[i], Q[i])
     return I, I_st, Q, Q_st
 
 
-def play_T_gate_set(gate, amp_matrix, qubit_el):
+def play_T_gate_set(gate, amp_matrix, qubit_el: Channel, baseline_op: str):
     """
     QUA Macro for the T gate set
     The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the T gate.
@@ -55,42 +56,129 @@ def play_T_gate_set(gate, amp_matrix, qubit_el):
     with switch_(gate, unsafe=True):
         for j in range(2):  # X90, Y90
             with case_(j):
-                play("sx" * amp(*amp_matrix), qubit_el)
+                qubit_el.play(baseline_op, amp(*amp_matrix))
         with case_(2):  # T gate
-            frame_rotation_2pi(0.125, qubit_el)
+            frame_rotation_2pi(0.125, qubit_el.name)
 
 
-def play_SW_gate_set(gate, amp_matrix, qubit_el):
+def play_SW_gate_set(gate, amp_matrix, qubit_el: Channel, baseline_op: str):
     """
     QUA Macro for the SW gate set
     The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the SW gate.
     :param gate: Gate index
     :param amp_matrix: Amplitude matrix
     :param qubit_el: Qubit element
+    :param baseline_op: Baseline operation (default "sx")
     """
     with switch_(gate, unsafe=True):
-        for j, gate in enumerate(["sx", "sy"]):  # X90, Y90, SW
+        for j in range(3):  # X90, Y90, SW
             with case_(j):
-                play(gate, qubit_el)
-        with case_(2):
-            play("sx" * amp(*amp_matrix), qubit_el)
+                qubit_el.play(baseline_op, amp(*amp_matrix))
 
 
-def play_random_sq_gate(gate, amp_matrix, qubit_el, gate_dict: dict):
+def play_random_sq_gate(gate, amp_matrix, qubit_el: Channel, gate_dict: dict, baseline_op: str):
     """
-    QUA Macro for playing a random single-qubit gate
+    QUA Macro for playing a random single-qubit gate. This macro is built through amplitude matrix modulation of a provided
+    baseline pulse implementing the pi/2 rotation around the x-axis.
     :param gate: Gate index
     :param amp_matrix: Amplitude matrix
     :param qubit_el: Qubit element
     :param gate_dict: Dictionary of gates
+    :param baseline_op: Baseline operation (default "sx") implementing the pi/2 rotation around the x-axis
     """
 
     if gate_dict[2]["gate"].name == "t":  # T gate involves frame rotation
-        play_T_gate_set(gate, amp_matrix, qubit_el)
+        play_T_gate_set(gate, amp_matrix, qubit_el, baseline_op)
     elif gate_dict[2]["gate"].label == "sw":
-        play_SW_gate_set(gate, amp_matrix, qubit_el)
+        play_SW_gate_set(gate, amp_matrix, qubit_el, baseline_op)
     else:
-        play("sx" * amp(*amp_matrix), qubit_el)
+        qubit_el.play(baseline_op, amp(*amp_matrix))
+
+
+def reset_qubit(method: str, qubit: str, resonator: str, **kwargs):
+    """
+    Macro to reset the qubit state.
+
+    If method is 'cooldown', then the variable cooldown_time (in clock cycles) must be provided as a python integer > 4.
+
+    **Example**: reset_qubit('cooldown', cooldown_times=500)
+
+    If method is 'active', then 3 parameters are available as listed below.
+
+    **Example**: reset_qubit('active', threshold=-0.003, max_tries=3)
+
+    :param method: Method the reset the qubit state. Can be either 'cooldown' or 'active'.
+    :param qubit: The qubit element. Must be defined in the config.
+    :param resonator: The resonator element. Must be defined in the config.
+    :key cooldown_time: qubit relaxation time in clock cycle, needed if method is 'cooldown'. Must be an integer > 4.
+    :key threshold: threshold to discriminate between the ground and excited state, needed if method is 'active'.
+    :key max_tries: python integer for the maximum number of tries used to perform active reset,
+        needed if method is 'active'. Must be an integer > 0 and default value is 1.
+    :key Ig: A QUA variable for the information in the `I` quadrature used for active reset. If not given, a new
+        variable will be created. Must be of type `Fixed`.
+    :return:
+    """
+    if method == "cooldown":
+        # Check cooldown_time
+        cooldown_time = kwargs.get("cooldown_time", None)
+        if (cooldown_time is None) or (cooldown_time < 4):
+            raise Exception("'cooldown_time' must be an integer > 4 clock cycles")
+        # Reset qubit state
+        wait(cooldown_time, qubit)
+    elif method == "active":
+        # Check threshold
+        threshold = kwargs.get("threshold", None)
+        if threshold is None:
+            raise Exception("'threshold' must be specified for active reset.")
+        # Check max_tries
+        max_tries = kwargs.get("max_tries", 1)
+        if (max_tries is None) or (not float(max_tries).is_integer()) or (max_tries < 1):
+            raise Exception("'max_tries' must be an integer > 0.")
+        # Check Ig
+        Ig = kwargs.get("Ig", None)
+        # Reset qubit state
+        return active_reset(threshold, qubit, resonator, max_tries=max_tries, Ig=Ig)
+
+
+# Macro for performing active reset until successful for a given number of tries.
+def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=None):
+    """Macro for performing active reset until successful for a given number of tries.
+
+    :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.
+    :param qubit: The qubit element. Must be defined in the config.
+    :param resonator: The resonator element. Must be defined in the config.
+    :param max_tries: python integer for the maximum number of tries used to perform active reset. Must >= 1.
+    :param Ig: A QUA variable for the information in the `I` quadrature. Should be of type `Fixed`. If not given, a new
+        variable will be created
+    :return: A QUA variable for the information in the `I` quadrature and the number of tries after success.
+    """
+    if Ig is None:
+        Ig = declare(fixed)
+    if (max_tries < 1) or (not float(max_tries).is_integer()):
+        raise Exception("max_count must be an integer >= 1.")
+    # Initialize Ig to be > threshold
+    assign(Ig, threshold + 2**-28)
+    # Number of tries for active reset
+    counter = declare(int)
+    # Reset the number of tries
+    assign(counter, 0)
+
+    # Perform active feedback
+    align(qubit, resonator)
+    # Use a while loop and counter for other protocols and tests
+    with while_((Ig > threshold) & (counter < max_tries)):
+        # Measure the resonator
+        measure(
+            "readout",
+            resonator,
+            None,
+            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", Ig),
+        )
+        # Play a pi pulse to get back to the ground state
+        play("x180", qubit, condition=(Ig > threshold))
+        # Increment the number of tries
+        assign(counter, counter + 1)
+    return Ig, counter
 
 
 def cz_gate(control, target, CZ_operations: dict):
@@ -146,19 +234,6 @@ def create_subplot(data, subplot_number, title, depths, seqs):
     ax.set_xticks(depths)
     ax.set_yticks(np.arange(1, seqs + 1))
     plt.colorbar()
-
-
-def per_cycle_depth(df):
-    fid_lsq = df["numerator"].sum() / df["denominator"].sum()
-
-    cycle_depth = df.name
-    xx = np.linspace(0, df["x"].max())
-    (l,) = plt.plot(xx, fid_lsq * xx, color=colors[cycle_depth])
-    plt.scatter(df["x"], df["y"], color=colors[cycle_depth])
-
-    global _lines
-    _lines += [l]  # for legend
-    return pd.Series({"fidelity": fid_lsq})
 
 
 # Define Cirq functions for fitting (redefined here for avoiding additional dependencies)
