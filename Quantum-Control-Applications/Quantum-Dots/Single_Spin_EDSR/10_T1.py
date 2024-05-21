@@ -136,8 +136,6 @@ if simulate:
     plt.subplot(212)
     get_filtered_voltage(job.get_simulated_samples().con1.analog["1"], 1e-9, bias_tee_cut_off_frequency, True)
 
-    plt.show()
-
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
