@@ -57,7 +57,7 @@ class Transmon(QuamComponent):
 
     @property
     def inferred_anharmonicity(self) -> float:
-        """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
+        """The transmon anharmonicity in Hz, derived from f_01 and f_12."""
         name = getattr(self, "name", self.__class__.__name__)
         if not isinstance(self.f_01, (float, int)):
             raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_01=} is not a number")
@@ -73,15 +73,6 @@ class Transmon(QuamComponent):
     def thermalization_time(self):
         """The transmon thermalization time in ns."""
         return self.thermalization_time_factor * self.T1
-
-    # @property
-    # def f_12(self):
-    #     """The 0-2 (e-f) transition frequency in Hz"""
-    #     return (
-    #         self.xy.frequency_converter_up.LO_frequency
-    #         + self.xy.intermediate_frequency
-    #         - self.anharmonicity
-    #     )
 
     def calibrate_octave(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave channels (xy and resonator) linked to this transmon for the LO frequency, intermediate
