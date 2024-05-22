@@ -50,12 +50,20 @@ class Transmon(QuamComponent):
         """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
         name = getattr(self, "name", self.__class__.__name__)
         if not isinstance(self.f_01, (float, int)):
-            raise AttributeError(f"Error inferring f_12 channel {name}: f_01 is not a number: {self.f_01}")
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.f_01=} is not a number")
         if not isinstance(self.anharmonicity, (float, int)):
-            raise AttributeError(
-                f"Error inferring f_12 for channel {name}: " f"anharmonicity is not a number: {self.anharmonicity}"
-            )
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.anharmonicity=} is not a number")
         return self.f_01 + self.anharmonicity
+
+    @property
+    def inferred_anharmonicity(self) -> float:
+        """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
+        name = getattr(self, "name", self.__class__.__name__)
+        if not isinstance(self.f_01, (float, int)):
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_01=} is not a number")
+        if not isinstance(self.f_12, (float, int)):
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
+        return self.f_12 - self.f_01
 
     @property
     def sigma(self, operation: Pulse):
