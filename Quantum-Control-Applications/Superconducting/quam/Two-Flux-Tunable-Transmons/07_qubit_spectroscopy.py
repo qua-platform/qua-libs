@@ -119,7 +119,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Calibrate the active qubits
-    # machine.calibrate_active_qubits(qm)
+    # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_qubit_spec)
     # Get results from QUA program
