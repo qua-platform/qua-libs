@@ -36,14 +36,26 @@ class Transmon(QuamComponent):
     resonator: ReadoutResonator = None
 
     f_01: float = None
-    f_12: float = None
+    f_12: float = "#./inferred_f_12"
+    anharmonicity: int = 150e6
 
     T1: int = 10_000
     T2ramsey: int = 10_000
     T2echo: int = 10_000
     thermalization_time_factor: int = 5
-    anharmonicity: int = 150e6
     sigma_time_factor: int = 5
+
+    @property
+    def inferred_f_12(self) -> float:
+        """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
+        name = getattr(self, "name", self.__class__.__name__)
+        if not isinstance(self.f_01, (float, int)):
+            raise AttributeError(f"Error inferring f_12 channel {name}: f_01 is not a number: {self.f_01}")
+        if not isinstance(self.anharmonicity, (float, int)):
+            raise AttributeError(
+                f"Error inferring f_12 for channel {name}: " f"anharmonicity is not a number: {self.anharmonicity}"
+            )
+        return self.f_01 + self.anharmonicity
 
     @property
     def sigma(self, operation: Pulse):
