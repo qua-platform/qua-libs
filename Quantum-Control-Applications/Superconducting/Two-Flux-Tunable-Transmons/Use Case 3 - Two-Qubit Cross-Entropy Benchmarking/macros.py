@@ -6,7 +6,7 @@ Last updated: 2024-04-30
 """
 
 import pandas as pd
-from matplotlib import pyplot as plt, colors
+from matplotlib import pyplot as plt
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np

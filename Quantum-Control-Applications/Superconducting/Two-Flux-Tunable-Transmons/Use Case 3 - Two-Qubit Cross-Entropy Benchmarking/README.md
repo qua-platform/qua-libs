@@ -13,12 +13,16 @@ The use-case in this example is tailored for a superconducting quantum processor
 
 ## Prerequisites
 Prior to running the XEB example file `xeb_2q.py`, the user has to run the calibrations that define the gate and measurement parameters:
-- Single Qubit Gates: Implement three single qubit gates: $X/2$ (SX), $Y/2$ (SY), and either $T$ or $SW$ (depending on the gate set choice, see below)
+- Single Qubit Gate: Implement a single qubit gate that will be used as a baseline for the random circuits. This gate should be calibrated to produce a $\pi$/2 rotation around the X axis.
 - Flux-Pulsed CZ Gate: Implement the two-qubit gate of interest, that will form the entangling layer in the experiment (together with the single qubit gates).
 - Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩.
+
+Additionally, the user should install Qiskit to run the experiment. The installation instructions can be found [here](https://docs.quantum.ibm.com/start/install). 
+We offer the user the possibility to also leverage Qiskit Aer to simulate the XEB experiment on a noisy backend. To enable such simulation the user can also install Qiskit Aer by following the instructions [here](https://qiskit.github.io/qiskit-aer/getting_started.html).
+
 ## How does the script work?
 
-The protocol relies on the ability to perform random circuits on the quantum computer and compare the results with the ideal simulation. 
+The protocol relies on the ability to generate and execute random circuits on the quantum computer and compare the results with the ideal simulation. 
 The advantage of using QUA is that the randomization of the circuits can be done in parallel to circuit execution through real-time processing and random sampling.
 
 The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate, as depicted in the circuit below:
@@ -33,8 +37,8 @@ The script will generate random circuits with the chosen gate set and run them o
 As opposed to Randomized Benchmarking, we do not invert the randomly generated circuit by applying an inverse, but we rather perform a fidelity estimation over the statistics of the outcomes when measuring the system in the computational basis.
 
 There are therefore four steps in the script:
-- Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation.
-- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate)
+- Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation. The circuits are randomized through the choice of the single qubit gates that are applied to each qubit at each layer (depth).
+- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate). Alternatively, it is possible to play dedicated pulses for each of the random gates, through the use of a QUA `switch`statement (cf. QUA macros `play_random_sq_gate`, `play_SW_gate_set` and `play_T_gate_set to see different implementations).
 - Theoretical simulation: The script simulates the random circuits on the classical side to compute the theoretical quantum state, from which we deduce the probabilities of getting all possible measurement outcomes.
 - Cross-entropy calculation: The script computes the cross-entropy between the expected and empirically deduced probability distributions to estimate the layer fidelity.
 
@@ -90,7 +94,7 @@ circuit = xeb_job.circuits[k_depth][k_seq] # Circuit of depth k_depth and sequen
 circuit.draw('mpl') # Draw the circuit (can also use print(circuit) for text representation)
 ```
 An example of the output would be the following circuit:
-[![XEB Circuit](images/xeb_circuit.png)](images/xeb_circuit.png)
+[![XEB Circuit](images/output_circuit.png)](images/output_circuit.png)
 
 
 The user can also fetch the results of the experiment by calling the `XEBJob.result()` method. This method returns a `XEBResult` object, which contains all results from the experiment, such as the cross-entropy fidelities (calculated for both linear and log-entropy XEB), the theoretical and experimental probability distributions, as well as the outliers and singularities obtained when calculating the log-entropy. The user can then use the `XEBResult` object to visualize the results, or to extract the relevant information. See for example the following code snippet:
