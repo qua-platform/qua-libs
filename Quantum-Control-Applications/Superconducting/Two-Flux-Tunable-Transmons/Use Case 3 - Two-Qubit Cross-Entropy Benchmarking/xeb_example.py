@@ -5,36 +5,21 @@ from quam.components import *
 from quam.examples.superconducting_qubits import Transmon, QuAM
 from xeb_config import XEBConfig
 from xeb import XEB
-from quam.components.pulses import GaussianPulse
-from qiskit_aer.noise import depolarizing_error, NoiseModel
-from qiskit_aer import AerSimulator
-import matplotlib.pyplot as plt
-num_qubits = 2  # Number of qubits
-apply_CZ = True  # Apply CZ gate
-error1q = 0.07
-error2q = 0.03
-effective_error = error2q + num_qubits*error1q if num_qubits == 2 and apply_CZ else num_qubits*error1q
-depol_error1q = depolarizing_error(error1q, 1)
-depol_error2q = depolarizing_error(error2q, 2)
-sq_gate_set = ["h", "t", "rx", "ry", "sw"]
-noise_model = NoiseModel(basis_gates = sq_gate_set)
-if num_qubits == 2:
-    noise_model.add_all_qubit_quantum_error(depol_error2q, ["cz"])
-noise_model.add_all_qubit_quantum_error(depol_error1q, sq_gate_set)
-# noise_model.add_all_qubit_quantum_error(depol_error1q, [ 'rx', 'sw', 'ry', 't'])
-backend = AerSimulator(noise_model=noise_model, method="density_matrix", basis_gates=noise_model.basis_gates)
-# backend.target.add_instruction(SW, properties={(qubit,): None for qubit in range(num_qubits)}, name="sw")
-print(noise_model.noise_qubits)
-print(noise_model)
-print(backend.operation_names)
+from quam.components.pulses import GaussianPulse, ReadoutPulse
+from simulated_backend import backend
+from qua_gate import QUAGate
+
+def cz_gate(qubit1, qubit2):
+    play('cz_pulse', qubit1_el)
+    frame_rotation
 xeb_config = XEBConfig(
     seqs=10,
     depths=np.arange(50),
     n_shots=100,
-    qubits_ids=["q0", 'q1'],
+    qubits_ids=["q0", "q1"],
     baseline_gate_name="X90",
     gate_set_choice="sw",
-    two_qb_gate=None,
+    two_qb_gate=QUAGate("cz", cz_gate),
     impose_0_cycle=False,
     save_dir="",
     should_save_data=True,
@@ -42,7 +27,7 @@ xeb_config = XEBConfig(
     disjoint_processing=False,
 )
 
-machine = QuAM()  #
+machine = QuAM()
 
 num_qubits = 2
 for idx in range(num_qubits):
@@ -78,15 +63,6 @@ for idx in range(num_qubits):
         ),
     )
     machine.qubits[transmon.name] = transmon
-
-# Create a Gaussian pulse
-gaussian_pulses = [GaussianPulse(length=20, amplitude=0.2, sigma=3) for _ in range(4)]
-
-# Attach the pulse to the XY channel of the first qubit
-machine.qubits["q0"].xy.operations["X90"] = gaussian_pulses[0]
-machine.qubits["q0"].resonator.operations["readout"] = gaussian_pulses[1]
-machine.qubits["q1"].xy.operations["X90"] = gaussian_pulses[2]
-machine.qubits["q1"].resonator.operations["readout"] = gaussian_pulses[3]
 qmm = QuantumMachinesManager(
     host="tyler-263ed49e.dev.quantum-machines.co",
     port=443,
@@ -94,11 +70,12 @@ qmm = QuantumMachinesManager(
 )
 
 xeb = XEB(xeb_config, quam=machine, qmm=qmm)
-job = xeb.simulate(backend)
+job = xeb.run(simulate=False)
 
-job.circuits[3][2].draw('mpl')
-results = job.result()
-plt.figure()
-results.plot_fidelities()
-results.plot_state_heatmap()
-results.plot_records()
+job.circuits[3][5].draw("mpl")
+
+result = job.result()
+
+result.plot_fidelities()
+result.plot_records()
+result.plot_state_heatmap()

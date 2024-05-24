@@ -2,8 +2,9 @@ from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping
 from qiskit.circuit.library import UnitaryGate
 from dataclasses import dataclass
 import numpy as np
-from typing import Callable, Union
+from typing import Callable, Union, Optional
 from quam.examples.superconducting_qubits.components import Transmon
+import warnings
 
 
 class QUAGate:
@@ -17,8 +18,10 @@ class QUAGate:
         gate_macro: Callable: The QUA macro that implements the gate.
     """
 
-    def __init__(self, gate: Union[str, np.ndarray], gate_macro: Callable[[Transmon, Transmon], None]):
+    def __init__(self, gate: Union[str, np.ndarray], gate_macro: Optional[Callable[[Transmon, Transmon], None]] = None):
         self.gate_macro = gate_macro
+        if gate_macro is None:
+            warnings.warn("No gate macro provided, the gate will not be implemented in QUA.")
 
         if isinstance(gate, str):
             gate = gate.lower()

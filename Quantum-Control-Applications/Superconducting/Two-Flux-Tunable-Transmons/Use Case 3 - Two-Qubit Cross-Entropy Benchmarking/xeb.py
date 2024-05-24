@@ -1,19 +1,17 @@
 from dataclasses import asdict
 from typing import Union
-
-import matplotlib.pyplot as plt
+from macros import *
 from qiskit.circuit.library import UnitaryGate
 from qiskit_aer import AerJob
 from scipy.linalg import sqrtm
 
 from xeb_config import XEBConfig
-from qm.qua import *
 from qiskit.circuit import QuantumCircuit
-from qiskit_aer.backends.aerbackend import AerBackend
+from qiskit.providers import BackendV2
 from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping as gate_map
-from qiskit.quantum_info import Statevector, state_fidelity
+from qiskit.quantum_info import Statevector
 from qualang_tools.results import DataHandler
-from macros import *
+
 from quam import QuamRoot
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.jobs.running_qm_job import RunningQmJob
@@ -116,7 +114,10 @@ class XEB:
                         # Could be modified by the user to impose a specific gate at 0-cycle
                         if self.xeb_config.impose_0_cycle:
                             for qubit in self.qubit_elements:
-                                qubit.play(self.xeb_config.baseline_gate_name, amplitude_scale=amp(*0.70710678 * np.array([1.0, -1.0, 1.0, 1.0])))
+                                qubit.play(
+                                    self.xeb_config.baseline_gate_name,
+                                    amplitude_scale=amp(*0.70710678 * np.array([1.0, -1.0, 1.0, 1.0])),
+                                )
 
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
@@ -210,7 +211,7 @@ class XEB:
 
         return XEBJob(job, self.xeb_config, self.data_handler)
 
-    def simulate(self, backend: AerBackend):
+    def simulate(self, backend: BackendV2):
         """
             Simulate the XEB experiment: To simulate it, you must provide an AerBackend object with a noise model
             corresponding to your experiments parameters.
@@ -230,11 +231,15 @@ class XEB:
         backend = AerSimulator(noise_model=noise_model, method="density_matrix", basis_gates=noise_model.basis_gates)
         ```
             Args:
-                backend: AerBackend object to simulate the experiment. Note that it should carry a noise model
+                backend: AerBackend object to simulate the experiment. Note that it should carry a noise model to see
+                a fidelity decay.
 
             Returns: XEBJob object containing the information about the experiment (including results)
 
         """
+        from qiskit_aer.backends.aerbackend import AerBackend
+
+        assert isinstance(backend, AerBackend), "The backend should be an AerBackend object"
         num_qubits = len(self.xeb_config.qubits_ids)
         random_gates = len(self.xeb_config.gate_dict)
         sq_gates, counts_list, states_list, circuits_list = [], [], [], []
@@ -248,8 +253,9 @@ class XEB:
                     # Generate random single qubit gates
                     # Start the sequence with a random gate
                     if self.xeb_config.impose_0_cycle:
-                        sq_gates[s][i][q][0] = np.random.randint(random_gates-1 if self.xeb_config.impose_0_cycle
-                                                                 else random_gates)
+                        sq_gates[s][i][q][0] = np.random.randint(
+                            random_gates - 1 if self.xeb_config.impose_0_cycle else random_gates
+                        )
                 for d_ in range(1, d):  # For each growing depth (all cycles until maximum depth d)
                     for q in range(num_qubits):  # For each qubit
                         sq_gates[s][i][q][d_] = np.random.randint(random_gates)
@@ -323,6 +329,7 @@ class XEBJob:
                 for _, _ in enumerate(self.xeb_config.depths):
                     circuits[s].append(self.job.circuits()[idx].remove_final_measurements(inplace=False))
                     circuits[s][-1].data.pop(-1)  # Remove save_density_matrix instruction
+                    circuits[s][-1].measure_all(inplace=True)
                     idx += 1
 
         else:
@@ -405,7 +412,11 @@ class XEBJob:
 
         if self.xeb_config.should_save_data:
             self.data_handler.save_data(
-                data={"xeb_config": asdict(self.xeb_config), "sq_indices": np.array(self._sq_indices), **deepcopy(saved_data)}
+                data={
+                    "xeb_config": asdict(self.xeb_config),
+                    "sq_indices": np.array(self._sq_indices),
+                    **deepcopy(saved_data),
+                }
             )
 
         return XEBResult(self.xeb_config, self.circuits, saved_data, self.data_handler)
@@ -585,7 +596,7 @@ class XEBResult:
         Returns:
 
         """
-        plt.rcParams['text.usetex'] = True
+        plt.rcParams["text.usetex"] = True
         xx = np.linspace(0, self.linear_fidelities["depth"].max())
 
         try:  # Fit the data for the linear XEB
@@ -731,12 +742,15 @@ class XEBResult:
         """
         Save the results of the XEB experiment
         """
-        self.data_handler.save_data(data={"config": asdict(self.xeb_config),
-                                          "fidelities": self.log_fidelities,
-                                          "linear_fidelities": self.linear_fidelities,
-                                          "records": self.records,
-                                          "measured_probs": self.measured_probs,
-                                          "expected_probs": self.expected_probs,
-                                          "singularity": self.singularities,
-                                          "outliers": self.outliers,
-                                          })
+        self.data_handler.save_data(
+            data={
+                "config": asdict(self.xeb_config),
+                "fidelities": self.log_fidelities,
+                "linear_fidelities": self.linear_fidelities,
+                "records": self.records,
+                "measured_probs": self.measured_probs,
+                "expected_probs": self.expected_probs,
+                "singularity": self.singularities,
+                "outliers": self.outliers,
+            }
+        )
