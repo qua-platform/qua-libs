@@ -20,6 +20,13 @@ It is organized in the following sections:
    3. Configuring the digital switches
    4. Configuring the down converter modules
    5. Calibration
+
+Here is how the OPX+, Octave and spectrum analyzer should be configured for each step:
+![OPX+/Octave connectivity schematic](octave_introduction.png)
+*Key*: 
+ - **Blue** = must be connected for all steps
+ - **Yellow** = must be connected for steps 2, 3 and 5 only
+ - **Pink** = must be connected for Step 4 only
         
 ## [configuration.py](configuration.py) 
 This file contains the config dictionary that the `hello_octave.py` file uses.
