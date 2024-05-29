@@ -231,9 +231,9 @@ else:
         plt.tight_layout()
 
         weights_real = norm_subtracted_trace.real
-        weights_minus_imag = - norm_subtracted_trace.imag
+        weights_minus_imag = -norm_subtracted_trace.imag
         weights_imag = norm_subtracted_trace.imag
-        weights_minus_real = - norm_subtracted_trace.real
+        weights_minus_real = -norm_subtracted_trace.real
         # Save the weights for later use in the config
         np.savez(
             f"optimal_weights_q{i+1}",
@@ -241,7 +241,7 @@ else:
             weights_minus_imag=weights_minus_imag,
             weights_imag=weights_imag,
             weights_minus_real=weights_minus_real,
-            division_length=division_length
+            division_length=division_length,
         )
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
     # For this, you can just copy and paste the following lines into the "integration_weights" section:

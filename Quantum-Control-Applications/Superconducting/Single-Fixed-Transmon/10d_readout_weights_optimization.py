@@ -223,9 +223,9 @@ else:
     plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
     weights_real = norm_subtracted_trace.real
-    weights_minus_imag = - norm_subtracted_trace.imag
+    weights_minus_imag = -norm_subtracted_trace.imag
     weights_imag = norm_subtracted_trace.imag
-    weights_minus_real = - norm_subtracted_trace.real
+    weights_minus_real = -norm_subtracted_trace.real
     # Save the weights for later use in the config
     np.savez(
         "optimal_weights",
@@ -233,7 +233,7 @@ else:
         weights_minus_imag=weights_minus_imag,
         weights_imag=weights_imag,
         weights_minus_real=weights_minus_real,
-        division_length=division_length
+        division_length=division_length,
     )
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
     # For this, you can just copy and paste the following lines into the "integration_weights" section:
