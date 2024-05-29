@@ -1,19 +1,9 @@
-"""
-QUA-Config supporting the following instrument setups:
- - OPX+ & Octave
- - OPX1000 w/ LF-FEM & Octave
-
-working for QOP222 and qm-qua==1.1.5 and newer.
-"""
-
 from pathlib import Path
 import numpy as np
-from qm.qua import StreamType
 from qm.qua._dsl import _ResultStream
-
-from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
+from qm.qua import StreamType
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -23,24 +13,15 @@ u = unit(coerce_to_integer=True)
 
 # These stream processing functions are defined so that streams can be
 # processed in the same way through these functions regardless of whether
-# an LF-FEM, MW-FEM or OPX+.
+# an MW-FEM, LF-FEM or OPX+.
 def input1(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input1()
+    """ Returns the real part of MW-FEM ADC input 1"""
+    return raw_adc_stream.input1().real()
 
 
 def input2(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input2()
-
-
-def port(octave_name: str, octave_channel: int, fem=None):
-    """ Generates a controller port config. """
-    if fem is None:
-        return (octave_name, octave_channel)
-    else:
-        return (octave_name, fem, octave_channel)
-
+    """ Returns the imaginary part of MW-FEM ADC input 1"""
+    return raw_adc_stream.input1().image()
 
 ######################
 # Network parameters #
@@ -48,40 +29,19 @@ def port(octave_name: str, octave_channel: int, fem=None):
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-opx_1000 = False
+
+octave_config = None
+con = "con1"
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
-
-############################
-# Set octave configuration #
-############################
-con = "con1"
-
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
-
-#####################
-# OPX configuration #
-#####################
-
 #############################################
 #                  Qubits                   #
 #############################################
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
+mixer_qubit_g = 0.0
+mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -177,8 +137,10 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 5.5 * u.GHz
+resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
+mixer_resonator_g = 0.0
+mixer_resonator_phi = 0.0
 
 readout_len = 5000
 readout_amp = 0.2
@@ -195,9 +157,10 @@ if opt_weights:
     opt_weights_minus_real = weights["weights_minus_real"]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(0.0, readout_len)]
-    opt_weights_imag = [(0.0, readout_len)]
-    opt_weights_minus_real = [(-1.0, readout_len)]
+    opt_weights_minus_imag = [(1.0, readout_len)]
+    opt_weights_imag = [(1.0, readout_len)]
+    opt_weights_minus_real = [(1.0, readout_len)]
+
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
@@ -206,63 +169,58 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-opx_1000 = True
-opx_1000_lf_fem_port = 1  # Should be the LF-FEM index, e.g., 1
-
-controllers = {
-    "analog_outputs": {
-        1: {"offset": 0.0},  # I resonator
-        2: {"offset": 0.0},  # Q resonator
-        3: {"offset": 0.0},  # I qubit
-        4: {"offset": 0.0},  # Q qubit
-    },
-    "digital_outputs": {},
-    "analog_inputs": {
-        1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-        2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-    }
-}
-
-if opx_1000:
-    #############################################
-    #                OPX 1000                   #
-    #############################################
-    # define template for a chassis with just a single LF-FEM
-    controllers_template = {
-        con: {
-            "type": "opx1000",
-            "fems": {
-                opx_1000_lf_fem_port: {"type": "LF", **controllers}
-            }
-        }
-    }
-    # define a custom connectivity to point the octave to the LF-FEM
-    rf_outputs_1 = {
-        "I_connection": port("con1", 1, fem=opx_1000_lf_fem_port),
-        "Q_connection": port("con1", 2, fem=opx_1000_lf_fem_port),
-    }
-    rf_outputs_2 = {
-        "I_connection": port("con1", 3, fem=opx_1000_lf_fem_port),
-        "Q_connection": port("con1", 4, fem=opx_1000_lf_fem_port),
-    }
-    octave_connectivity = {
-        "IF_outputs": {
-            "IF_out1": {"port": ("con1", 1), "name": "out1"},
-            "IF_out2": {"port": ("con1", 2), "name": "out2"},
-        },
-    }
-else:
-    rf_outputs_1, rf_outputs_2 = {}, {}
-    octave_connectivity = {"connectivity": con}
-    controllers_template = {con: controllers}
-
+fem_port = 1
 
 config = {
     "version": 1,
-    "controllers": controllers_template,
+    "controllers": {
+        con: {
+            "type": "opx1000",
+            "fems": {
+                fem_port: {
+                    # The keyword "band" refers to the following frequency bands:
+                    #   band #1: 50 MHz up to 5.5 GHz higher
+                    #   band #2: 4.5 GHz up to 7.5 GHz higher
+                    #   band #3: 6.5 GHz up to 10.5 GHz higher
+                    "type": "MW",
+                    "analog_outputs": {
+                        1: {"band": 2},  # I qubit
+                        2: {"band": 2},  # Q qubit
+                        3: {"band": 2},  # I resonator
+                        4: {"band": 2},  # Q resonator
+                    },
+                    "digital_outputs": {},
+                    "analog_inputs": {
+                        1: {"band": 2},  # I from down-conversion
+                        2: {"band": 2},  # Q from down-conversion
+                    },
+
+                }
+            }
+        },
+    },
     "elements": {
+        "resonator": {
+            "MWInput": {
+                "port": (con, 1),
+                "oscillator_frequency": resonator_LO,
+            },
+            "intermediate_frequency": resonator_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "readout": "readout_pulse",
+            },
+            "MWOutput": {
+                "port": (con, 1),
+            },
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
+        },
         "qubit": {
-            "RF_inputs": {"port": port("octave1", 2)},
+            "MWInput": {
+                "port": (con, 1),
+                "oscillator_frequency": qubit_LO,
+            },
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -277,44 +235,6 @@ config = {
                 "-y90": "-y90_pulse",
             },
         },
-        "resonator": {
-            "RF_inputs": {"port": port("octave1", 1)},
-            "RF_outputs": {"port": port("octave1", 1)},
-            "intermediate_frequency": resonator_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "readout": "readout_pulse",
-            },
-            "time_of_flight": time_of_flight,
-            "smearing": 0,
-        },
-    },
-    "octaves": {
-        "octave1": {
-            "RF_outputs": {
-                1: {
-                    **rf_outputs_1,
-                    "LO_frequency": resonator_LO,
-                    "LO_source": "internal",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-                2: {
-                    **rf_outputs_2,
-                    "LO_frequency": qubit_LO,
-                    "LO_source": "internal",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-            },
-            "RF_inputs": {
-                1: {
-                    "LO_frequency": resonator_LO,
-                    "LO_source": "internal",
-                },
-            },
-            **octave_connectivity
-        }
     },
     "pulses": {
         "const_pulse": {
@@ -475,5 +395,5 @@ config = {
             "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
-    },
+    }
 }
