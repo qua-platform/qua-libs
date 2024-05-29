@@ -229,11 +229,11 @@ else:
         plot_three_complex_arrays(x_plot, ground_trace[i], excited_trace[i], norm_subtracted_trace[i])
         plt.suptitle(f"Integration weight optimization for qubit {i+1}")
         plt.tight_layout()
-        # Reshape the optimal integration weights to match the configuration
-        weights_real = [(x, division_length * 4) for x in norm_subtracted_trace[i].real]
-        weights_minus_imag = [(-x, division_length * 4) for x in norm_subtracted_trace[i].imag]
-        weights_imag = [(x, division_length * 4) for x in norm_subtracted_trace[i].imag]
-        weights_minus_real = [(-x, division_length * 4) for x in norm_subtracted_trace[i].real]
+
+        weights_real = norm_subtracted_trace.real
+        weights_minus_imag = - norm_subtracted_trace.imag
+        weights_imag = norm_subtracted_trace.imag
+        weights_minus_real = - norm_subtracted_trace.real
         # Save the weights for later use in the config
         np.savez(
             f"optimal_weights_q{i+1}",
@@ -241,6 +241,7 @@ else:
             weights_minus_imag=weights_minus_imag,
             weights_imag=weights_imag,
             weights_minus_real=weights_minus_real,
+            division_length=division_length
         )
     # After obtaining the optimal weights, you need to load them to the 'integration_weights' dictionary in the config.
     # For this, you can just copy and paste the following lines into the "integration_weights" section:
