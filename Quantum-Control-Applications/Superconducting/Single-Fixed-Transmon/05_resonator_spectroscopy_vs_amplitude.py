@@ -41,8 +41,7 @@ dfs = np.arange(-span, +span + 0.1, df)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.001
 a_max = 1.99
-da = 0.01
-amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
+amplitudes = np.geomspace(a_min, a_max, 20)
 
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
@@ -58,7 +57,7 @@ with program() as resonator_spec_2D:
         with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency("resonator", df + resonator_IF)
-            with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the readout amplitude
+            with for_each_(a, amplitudes):
                 # Measure the resonator (send a readout pulse whose amplitude is rescaled by the pre-factor 'a' [-2, 2)
                 # and demodulate the signals to get the 'I' & 'Q' quadratures)
                 measure(
@@ -127,6 +126,8 @@ else:
         plt.cla()
         plt.title(r"$R=\sqrt{I^2 + Q^2}$ (normalized)")
         plt.pcolor(amplitudes * readout_amp, dfs / u.MHz, R)
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp, amplitudes[-1] * readout_amp)
         plt.ylabel("Readout detuning [MHz]")
         plt.subplot(212)
         plt.cla()
@@ -134,5 +135,7 @@ else:
         plt.pcolor(amplitudes * readout_amp, dfs / u.MHz, signal.detrend(np.unwrap(phase)))
         plt.ylabel("Readout detuning [MHz]")
         plt.xlabel("Readout amplitude [V]")
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp, amplitudes[-1] * readout_amp)
         plt.pause(0.1)
         plt.tight_layout()
