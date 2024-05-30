@@ -1,5 +1,7 @@
 from pathlib import Path
 import numpy as np
+from qm.qua import StreamType
+from qm.qua._dsl import _ResultStream
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -24,6 +26,19 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
+# These stream processing functions are defined so that streams can be
+# processed in the same way through these functions regardless of whether
+# an LF-FEM, MW-FEM or OPX+.
+def input1(raw_adc_stream: StreamType) -> _ResultStream:
+    """ Returns a handle to the LF-FEM ADC input 2"""
+    return raw_adc_stream.input1()
+
+
+def input2(raw_adc_stream: StreamType) -> _ResultStream:
+    """ Returns a handle to the LF-FEM ADC input 2"""
+    return raw_adc_stream.input2()
+
+
 ######################
 # Network parameters #
 ######################
@@ -39,6 +54,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #####################
 # Set octave_config to None if no octave are present
 octave_config = None
+con = "con1"
 
 #############################################
 #                  Qubits                   #
@@ -173,28 +189,55 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
+opx_1000 = True
+opx_1000_lf_fem_port = 1  # Should be the LF-FEM index or None if OPX+
+
+
+def port(octave_name: str, octave_channel: int, fem=opx_1000_lf_fem_port):
+    """ Generates a controller port config. """
+    if fem is None:
+        return (octave_name, octave_channel)
+    else:
+        return (octave_name, fem, octave_channel)
+
+
+controller_settings = {
+    "analog_outputs": {
+        1: {"offset": 0.0},  # I qubit
+        2: {"offset": 0.0},  # Q qubit
+        3: {"offset": 0.0},  # I resonator
+        4: {"offset": 0.0},  # Q resonator
+    },
+    "digital_outputs": {},
+    "analog_inputs": {
+        1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
+        2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
+    }
+}
+
+if opx_1000:
+    # define template for a chassis with just a single LF-FEM
+    controllers = {
+        con: {
+            "type": "opx1000",
+            "fems": {
+                opx_1000_lf_fem_port: {"type": "LF", **controller_settings}
+            }
+        }
+    }
+else:
+    controllers = {con: controller_settings}
+
+
+
 config = {
     "version": 1,
-    "controllers": {
-        "con1": {
-            "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit
-                2: {"offset": 0.0},  # Q qubit
-                3: {"offset": 0.0},  # I resonator
-                4: {"offset": 0.0},  # Q resonator
-            },
-            "digital_outputs": {},
-            "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-                2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-            },
-        },
-    },
+    "controllers": controllers,
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": port("con1", 1),
+                "Q": port("con1", 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
@@ -214,8 +257,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": port("con1", 3),
+                "Q": port("con1", 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -225,8 +268,8 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": port("con1", 1),
+                "out2": port("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
