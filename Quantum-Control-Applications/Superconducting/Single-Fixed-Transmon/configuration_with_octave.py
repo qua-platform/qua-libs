@@ -209,7 +209,7 @@ ge_threshold = 0.0
 opx_1000 = True
 opx_1000_lf_fem_port = 1  # Should be the LF-FEM index, e.g., 1
 
-controllers = {
+controller_settings = {
     "analog_outputs": {
         1: {"offset": 0.0},  # I resonator
         2: {"offset": 0.0},  # Q resonator
@@ -228,11 +228,11 @@ if opx_1000:
     #                OPX 1000                   #
     #############################################
     # define template for a chassis with just a single LF-FEM
-    controllers_template = {
+    controllers = {
         con: {
             "type": "opx1000",
             "fems": {
-                opx_1000_lf_fem_port: {"type": "LF", **controllers}
+                opx_1000_lf_fem_port: {"type": "LF", **controller_settings}
             }
         }
     }
@@ -252,14 +252,17 @@ if opx_1000:
         },
     }
 else:
+    #############################################
+    #                   OPX+                    #
+    #############################################
     rf_outputs_1, rf_outputs_2 = {}, {}
     octave_connectivity = {"connectivity": con}
-    controllers_template = {con: controllers}
+    controllers = {con: controller_settings}
 
 
 config = {
     "version": 1,
-    "controllers": controllers_template,
+    "controllers": controllers,
     "elements": {
         "qubit": {
             "RF_inputs": {"port": port("octave1", 2)},
