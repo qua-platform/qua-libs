@@ -125,7 +125,6 @@ Each two-qubit Clifford can be decomposed into 1/720 symplectic gates (commands 
 #### Why use commands instead of baking all the Cliffords?
 It would cost too much waveform memory to pre-upload all 11,520 two-qubit Clifford gates onto the OPX. Ideally, we could just bake all possible single-qubit and two-qubit gates, and this would be the most memory-friendly and efficient way to reconstruct 2Q Cliffords on the fly. However, the real-time switch-case on the OPX has a certain latency, which can be greater than the duration of a single gate, leading to gaps between consecutive gates. Therefore, the extended length of a "command" and smaller volume of commands compared with the two-qubit Cliffords provide an efficient middle-ground for navigating the OPX's unique constraints.
 
-
 #### How can I recover information about what random circuits I ran?
 
 Since this method hides the details of how the sequences are generated, we have added methods which expose the breakdown of the randomly generated sequences:
