@@ -17,7 +17,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
-from configuration import *
+from configuration_with_microwave_fem import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
@@ -54,7 +54,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 #######################
 # Simulate or execute #
 #######################
-simulate = False
+simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
