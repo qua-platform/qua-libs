@@ -30,21 +30,21 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #############################################
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
-mixer_qubit_g = 0.0
-mixer_qubit_phi = 0.0
+qubit_power = -4  # power in dBm at waveform amp = 1
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
 
+# Note: amplitudes can be -1..1 and are scaled up to `qubit_power` at amp=1
 # Continuous wave
 const_len = 100
-const_amp = 0.1
+const_amp = 0.25
 # Saturation_pulse
 saturation_len = 10 * u.us
-saturation_amp = 0.1
+saturation_amp = 0.25
 # Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.1
+square_pi_amp = 0.25
 # Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
@@ -52,7 +52,7 @@ AC_stark_detuning = 0 * u.MHz
 
 x180_len = 40
 x180_sigma = x180_len / 5
-x180_amp = 0.35
+x180_amp = 1
 x180_wf, x180_der_wf = np.array(
     drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
@@ -129,11 +129,11 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
-mixer_resonator_g = 0.0
-mixer_resonator_phi = 0.0
+resonator_power = 1  # power in dBm at waveform amp = 1
 
+# Note: amplitudes can be -1..1 and are scaled up to `resonator_power` at amp=1
 readout_len = 5000
-readout_amp = 0.2
+readout_amp = 0.8
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -147,9 +147,9 @@ if opt_weights:
     opt_weights_minus_real = weights["weights_minus_real"]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(1.0, readout_len)]
-    opt_weights_imag = [(1.0, readout_len)]
-    opt_weights_minus_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(0.0, readout_len)]
+    opt_weights_imag = [(0.0, readout_len)]
+    opt_weights_minus_real = [(-1.0, readout_len)]
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
@@ -181,16 +181,15 @@ config = {
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
-                    # The keyword "full_scale_power_dbm" is the maximum power of a
-                    # normalized waveform. Waveforms are defined on [-1, 1].
+                    # The keyword "full_scale_power_dbm" is the maximum power of
+                    # normalized pulse waveforms in [-1,1] (e.g., the power at 1.0 arb.)
                     # Its range is -41dBm to +10dBm with 3dBm steps.
-                    #   i.e., voltage = waveform_sample * full_scale_power_dbm.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 2, "full_scale_power_dbm": -11},  # I qubit
-                        2: {"band": 2, "full_scale_power_dbm": -11},  # Q qubit
-                        3: {"band": 2, "full_scale_power_dbm": -11},  # I resonator
-                        4: {"band": 2, "full_scale_power_dbm": -11},  # Q resonator
+                        1: {"band": 2, "full_scale_power_dbm": qubit_power},  # I qubit
+                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # Q qubit
+                        3: {"band": 2, "full_scale_power_dbm": resonator_power},  # I resonator
+                        4: {"band": 2, "full_scale_power_dbm": resonator_power},  # Q resonator
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
