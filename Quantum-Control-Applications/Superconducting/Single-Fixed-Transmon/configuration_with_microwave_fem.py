@@ -10,19 +10,6 @@ from qm.qua import StreamType
 #######################
 u = unit(coerce_to_integer=True)
 
-
-# These stream processing functions are defined so that streams can be
-# processed in the same way through these functions regardless of whether
-# an MW-FEM, LF-FEM or OPX+.
-def input1(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns the real part of MW-FEM ADC input 1"""
-    return raw_adc_stream.input1().real()
-
-
-def input2(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns the imaginary part of MW-FEM ADC input 1"""
-    return raw_adc_stream.input1().image()
-
 ######################
 # Network parameters #
 ######################

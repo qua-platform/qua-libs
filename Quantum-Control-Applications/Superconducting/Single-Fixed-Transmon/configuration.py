@@ -26,18 +26,6 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-# These stream processing functions are defined so that streams can be
-# processed in the same way through these functions regardless of whether
-# an LF-FEM, MW-FEM or OPX+.
-def input1(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input1()
-
-
-def input2(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input2()
-
 
 ######################
 # Network parameters #

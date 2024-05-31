@@ -21,19 +21,6 @@ from qualang_tools.units import unit
 u = unit(coerce_to_integer=True)
 
 
-# These stream processing functions are defined so that streams can be
-# processed in the same way through these functions regardless of whether
-# an LF-FEM, MW-FEM or OPX+.
-def input1(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input1()
-
-
-def input2(raw_adc_stream: StreamType) -> _ResultStream:
-    """ Returns a handle to the LF-FEM ADC input 2"""
-    return raw_adc_stream.input2()
-
-
 def port(octave_name: str, octave_channel: int, fem=None):
     """ Generates a controller port config. """
     if fem is None:

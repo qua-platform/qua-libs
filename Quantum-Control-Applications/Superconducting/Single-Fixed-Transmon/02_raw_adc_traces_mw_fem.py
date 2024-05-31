@@ -34,11 +34,9 @@ with program() as raw_trace_prog:
 
     with stream_processing():
         # Will save average:
-        adc_st.input1().average().save("adc1")
-        adc_st.input2().average().save("adc2")
+        adc_st.input1().average().save("adc")
         # Will save only last run:
-        adc_st.input1().save("adc1_single_run")
-        adc_st.input2().save("adc2_single_run")
+        adc_st.input1().save("adc_single_run")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -57,7 +55,6 @@ if simulate:
     job = qmm.simulate(config, raw_trace_prog, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
-
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
@@ -68,26 +65,22 @@ else:
     # Waits (blocks the Python console) until all results have been acquired
     res_handles.wait_for_all_values()
     # Fetch the raw ADC traces and convert them into Volts
-    adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-    adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
-    adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-    adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
+    adc = u.raw2volts(res_handles.get("adc").fetch_all())
+    adc_single_run = u.raw2volts(res_handles.get("adc_single_run").fetch_all())
     # Plot data
     plt.figure()
     plt.subplot(121)
     plt.title("Single run")
-    plt.plot(adc1_single_run, label="Input 1")
-    plt.plot(adc2_single_run, label="Input 2")
+    plt.plot(adc_single_run.real, label="I")
+    plt.plot(adc_single_run.imag, label="Q")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
 
     plt.subplot(122)
     plt.title("Averaged run")
-    plt.plot(adc1, label="Input 1")
-    plt.plot(adc2, label="Input 2")
+    plt.plot(adc.real, label="I")
+    plt.plot(adc.imag, label="Q")
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.tight_layout()
-
-    print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
