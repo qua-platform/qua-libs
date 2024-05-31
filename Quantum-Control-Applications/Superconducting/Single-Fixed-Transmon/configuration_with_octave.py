@@ -2,14 +2,10 @@
 QUA-Config supporting the following instrument setups:
  - OPX+ & Octave
  - OPX1000 w/ LF-FEM & Octave
-
-working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
 from pathlib import Path
 import numpy as np
-from qm.qua import StreamType
-from qm.qua._dsl import _ResultStream
 
 from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
@@ -19,14 +15,6 @@ from qualang_tools.units import unit
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
-
-
-def port(octave_name: str, octave_channel: int, fem=None):
-    """ Generates a controller port config. """
-    if fem is None:
-        return (octave_name, octave_channel)
-    else:
-        return (octave_name, fem, octave_channel)
 
 
 ######################
@@ -196,6 +184,15 @@ ge_threshold = 0.0
 opx_1000 = True
 opx_1000_lf_fem_port = 1  # Should be the LF-FEM index, e.g., 1
 
+
+def port(controller: str, channel: int, fem=opx_1000_lf_fem_port):
+    """ Generates a controller port config. """
+    if fem is None:
+        return controller, channel
+    else:
+        return controller, fem, channel
+
+
 controller_settings = {
     "analog_outputs": {
         1: {"offset": 0.0},  # I resonator
@@ -214,6 +211,15 @@ if opx_1000:
     #############################################
     #                OPX 1000                   #
     #############################################
+    # The "sampling_rate" can be modified at the cost of bandwidth, i.e.,
+    #   1 GS/s <--> 750MHz bandwidth (default)
+    #   2 GS/s <--> 400MHz bandwidth
+    # e.g.,
+    controller_settings["analog_outputs"][1]["sampling_rate"] = 1e9  # 2e9
+    controller_settings["analog_inputs"][1]["sampling_rate"] = 1e9  # 2e9
+    # WARNING: using 2 GS/s requires double the samples for the same duration
+    # in custom waveforms, e.g. DRAG pulses.
+
     # define template for a chassis with just a single LF-FEM
     controllers = {
         con: {
@@ -223,19 +229,14 @@ if opx_1000:
             }
         }
     }
-    # define a custom connectivity to point the octave to the LF-FEM
-    rf_outputs_1 = {
-        "I_connection": port("con1", 1, fem=opx_1000_lf_fem_port),
-        "Q_connection": port("con1", 2, fem=opx_1000_lf_fem_port),
-    }
-    rf_outputs_2 = {
-        "I_connection": port("con1", 3, fem=opx_1000_lf_fem_port),
-        "Q_connection": port("con1", 4, fem=opx_1000_lf_fem_port),
-    }
+    # define a custom connectivity to the Octave from the LF-FEM
+    rf_outputs_1 = {"I_connection": port("con1", 1), "Q_connection": port("con1", 2)}
+    rf_outputs_2 = {"I_connection": port("con1", 3), "Q_connection": port("con1", 4)}
+    # define a custom connectivity to the LF-FEM form the Octave
     octave_connectivity = {
         "IF_outputs": {
-            "IF_out1": {"port": ("con1", 1), "name": "out1"},
-            "IF_out2": {"port": ("con1", 2), "name": "out2"},
+            "IF_out1": {"port": port("con1", 1), "name": "out1"},
+            "IF_out2": {"port": port("con1", 2), "name": "out2"},
         },
     }
 else:
@@ -252,7 +253,7 @@ config = {
     "controllers": controllers,
     "elements": {
         "qubit": {
-            "RF_inputs": {"port": port("octave1", 2)},
+            "RF_inputs": {"port": ("octave1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -268,8 +269,8 @@ config = {
             },
         },
         "resonator": {
-            "RF_inputs": {"port": port("octave1", 1)},
-            "RF_outputs": {"port": port("octave1", 1)},
+            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",

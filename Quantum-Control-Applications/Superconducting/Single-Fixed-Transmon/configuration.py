@@ -1,7 +1,11 @@
+"""
+QUA-Config supporting the following instrument setups:
+ - OPX+ & External Mixers
+ - OPX1000 w/ LF-FEM & External Mixers
+"""
+
 from pathlib import Path
 import numpy as np
-from qm.qua import StreamType
-from qm.qua._dsl import _ResultStream
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -177,16 +181,16 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-opx_1000 = True
-opx_1000_lf_fem_port = 1  # Should be the LF-FEM index or None if OPX+
+opx_1000 = False
+opx_1000_lf_fem_port = None  # Should be the LF-FEM index or None if OPX+
 
 
-def port(octave_name: str, octave_channel: int, fem=opx_1000_lf_fem_port):
+def port(controller: str, channel: int, fem=opx_1000_lf_fem_port):
     """ Generates a controller port config. """
     if fem is None:
-        return (octave_name, octave_channel)
+        return controller, channel
     else:
-        return (octave_name, fem, octave_channel)
+        return controller, fem, channel
 
 
 controller_settings = {
@@ -204,6 +208,15 @@ controller_settings = {
 }
 
 if opx_1000:
+    # The "sampling_rate" can be modified at the cost of bandwidth, i.e.,
+    #   1 GS/s <--> 750MHz bandwidth (default)
+    #   2 GS/s <--> 400MHz bandwidth
+    # e.g.,
+    controller_settings["analog_outputs"][1]["sampling_rate"] = 1e9  # 2e9
+    controller_settings["analog_inputs"][1]["sampling_rate"] = 1e9  # 2e9
+    # WARNING: using 2 GS/s requires double the samples for the same duration
+    # in custom waveforms, e.g. DRAG pulses.
+
     # define template for a chassis with just a single LF-FEM
     controllers = {
         con: {
@@ -215,7 +228,6 @@ if opx_1000:
     }
 else:
     controllers = {con: controller_settings}
-
 
 
 config = {

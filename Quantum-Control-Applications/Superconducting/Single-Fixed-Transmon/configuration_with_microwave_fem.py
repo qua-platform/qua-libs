@@ -1,9 +1,12 @@
+"""
+QUA-Config supporting the following instrument setups:
+ - OPX1000 w/ MW-FEM
+"""
+
 from pathlib import Path
 import numpy as np
-from qm.qua._dsl import _ResultStream
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from qm.qua import StreamType
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -158,6 +161,15 @@ ge_threshold = 0.0
 #############################################
 fem_port = 1
 
+
+def port(controller: str, channel: int, fem=fem_port):
+    """ Generates a controller port config. """
+    if fem is None:
+        return controller, channel
+    else:
+        return controller, fem, channel
+
+
 config = {
     "version": 1,
     "controllers": {
@@ -166,15 +178,19 @@ config = {
             "fems": {
                 fem_port: {
                     # The keyword "band" refers to the following frequency bands:
-                    #   band #1: 50 MHz up to 5.5 GHz higher
-                    #   band #2: 4.5 GHz up to 7.5 GHz higher
-                    #   band #3: 6.5 GHz up to 10.5 GHz higher
+                    #   1: (50 MHz - 5.5 GHz)
+                    #   2: (4.5 GHz - 7.5 GHz)
+                    #   3: (6.5 GHz - 10.5 GHz)
+                    # The keyword "full_scale_power_dbm" is the maximum power of a
+                    # normalized waveform. Waveforms are defined on [-1, 1].
+                    # Its range is -41dBm to +10dBm with 3dBm steps.
+                    #   i.e., voltage = waveform_sample * full_scale_power_dbm.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 2},  # I qubit
-                        2: {"band": 2},  # Q qubit
-                        3: {"band": 2},  # I resonator
-                        4: {"band": 2},  # Q resonator
+                        1: {"band": 2, "full_scale_power_dbm": -11},  # I qubit
+                        2: {"band": 2, "full_scale_power_dbm": -11},  # Q qubit
+                        3: {"band": 2, "full_scale_power_dbm": -11},  # I resonator
+                        4: {"band": 2, "full_scale_power_dbm": -11},  # Q resonator
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -189,7 +205,7 @@ config = {
     "elements": {
         "resonator": {
             "MWInput": {
-                "port": (con, 1),
+                "port": port(con, 1),
                 "oscillator_frequency": resonator_LO,
             },
             "intermediate_frequency": resonator_IF,
@@ -198,14 +214,14 @@ config = {
                 "readout": "readout_pulse",
             },
             "MWOutput": {
-                "port": (con, 1),
+                "port": port(con, 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "qubit": {
             "MWInput": {
-                "port": (con, 1),
+                "port": port(con, 1),
                 "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,
