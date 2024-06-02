@@ -12,8 +12,8 @@ from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping
 from qiskit.quantum_info import Statevector
 from qualang_tools.results import DataHandler
 
-from quam import QuamRoot
-from qm import QuantumMachinesManager, SimulationConfig
+from components import QuAM
+from qm import SimulationConfig
 from qm.jobs.running_qm_job import RunningQmJob
 from qm.jobs.simulated_job import SimulatedJob
 import seaborn as sns
@@ -24,17 +24,15 @@ SW = UnitaryGate(sqrtm(W), label="sw")  # from Supremacy paper
 
 
 class XEB:
-    def __init__(self, xeb_config: XEBConfig, quam: QuamRoot, qmm: QuantumMachinesManager):
+    def __init__(self, xeb_config: XEBConfig, quam: QuAM):
         """
         Initialize the XEB experiment
         Args:
             xeb_config: XEBConfig object containing the parameters of the experiment
-            quam:
-            qmm:
+            quam: QuAM object containing the Quantum Machine configuration
         """
         self.xeb_config = xeb_config
         self.quam = quam
-        self.qmm = qmm
         self.qubits = [quam.qubits[qubit_id] for qubit_id in xeb_config.qubits_ids]
         self.qubit_elements = [qubit.xy for qubit in self.qubits]
         self.readout_elements = [qubit.resonator for qubit in self.qubits]
@@ -116,7 +114,156 @@ class XEB:
                             for qubit in self.qubit_elements:
                                 qubit.play(
                                     self.xeb_config.baseline_gate_name,
-                                    amplitude_scale=amp(*0.70710678 * np.array([1.0, -1.0, 1.0, 1.0])),
+                                    amplitude_scale=amp(*list(0.70710678 * np.array([1.0, -1.0, 1.0, 1.0]))),
+                                )
+
+                        # Play all cycles generated for sequence s of depth d
+                        with for_(depth_, 0, depth_ < depth, depth_ + 1):
+                            for q, qubit in enumerate(self.qubit_elements):  # Play single qubit gates on both qubits
+                                play_random_sq_gate(
+                                    gate[q][depth_],
+                                    [amp_matrix[q][i][depth_] for i in range(4)],
+                                    qubit,
+                                    self.xeb_config.gate_dict,
+                                    self.xeb_config.baseline_gate_name,
+                                )
+
+                            # Insert your two-qubit gate macro here
+                            if self.xeb_config.two_qb_gate is not None:
+                                for qubit in self.qubit_elements:
+                                    qubit.align(qubit.parent.z.name, qubit.parent.resonator.name)
+                                self.xeb_config.two_qb_gate.gate_macro(self.qubits[0], self.qubits[1])
+                                for qubit in self.qubit_elements:
+                                    qubit.align(qubit.parent.z, qubit.parent.resonator)
+
+                        # Measure the state (insert your readout macro here)
+                        for q_idx, readout_element in enumerate(self.readout_elements):
+                            readout_element.measure("readout", qua_vars=(I[q_idx], Q[q_idx]))
+                            # State Estimation: returned as an integer, to be later converted to bitstrings
+                            assign(state[q_idx], I[q_idx] > ge_thresholds[q_idx])
+                            save(state[q_idx], state_st[q_idx])
+                            assign(tot_state_, tot_state_ + 2**q_idx * Cast.to_int(state[q_idx]))
+
+                            reset_qubit(
+                                "active",
+                                self.qubits[q_idx].name,
+                                readout_element.name,
+                                threshold=ge_thresholds[q_idx],
+                                max_tries=5,
+                                Ig=I[q_idx],
+                            )
+
+                        with switch_(tot_state_):
+                            for i in range(dim):  # Bitstring conversion
+                                with case_(i):
+                                    assign(counts[i], counts[i] + 1)  # counts for 00, 01, 10 and 11
+                        assign(tot_state_, 0)  # Resetting the state
+                    for i in range(dim):  # Resetting Bitstring collection
+                        save(counts[i], counts_st[i])
+                        assign(counts[i], 0)
+
+            # Save the results
+            with stream_processing():
+                for q in range(n_qubits):
+                    gate_st[q].save_all(f"g{q}")
+                    I_st[q].buffer(self.xeb_config.n_shots).map(FUNCTIONS.average()).buffer(
+                        len(self.xeb_config.depths)
+                    ).save_all(f"I{q}")
+                    Q_st[q].buffer(self.xeb_config.n_shots).map(FUNCTIONS.average()).buffer(
+                        len(self.xeb_config.depths)
+                    ).save_all(f"Q{q}")
+                    state_st[q].boolean_to_int().buffer(self.xeb_config.n_shots).map(FUNCTIONS.average()).buffer(
+                        len(self.xeb_config.depths)
+                    ).save_all(f"state{q}")
+                for i in range(dim):
+                    string = "s" + binary(i, n_qubits)
+                    counts_st[i].buffer(len(self.xeb_config.depths)).save_all(string)
+
+                if simulate:
+                    for q in range(n_qubits):
+                        for d_ in range(4):
+                            amp_st[q][d_].save_all(f"a{q + 1}_{binary(d_, 2)}")
+
+        return xeb_prog
+
+    def _xeb_prog2(self, simulate: bool = False):
+        # Define the QUA program
+        n_qubits = self.xeb_config.n_qubits
+        dim = self.xeb_config.dim
+        random_gates = len(self.xeb_config.gate_dict)
+        ge_thresholds = [
+            readout_element.operations["readout"]["threshold"] for readout_element in self.readout_elements
+        ]
+
+        with program() as xeb_prog:
+            # Declare QUA variables
+            I, I_st, Q, Q_st = qua_declaration(n_qubits=n_qubits, readout_elements=self.readout_elements)
+            depth, depth_, n, s, tot_state_ = [declare(int) for _ in range(5)]
+            gate = [
+                declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
+            ]  # Gate indices list for both qubits
+            amp_matrix = [[declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)]
+            counts = declare(int, value=[0] * dim)  # Counts for all possible bitstrings (00, 01, 10, 11)
+            state = [declare(bool) for _ in range(n_qubits)]  # Qubit states
+            # Declare streams
+            counts_st = [
+                declare_stream() for _ in range(dim)
+            ]  # Stream for counts of all possible bitstrings (00, 01, 10, 11)
+            state_st = [declare_stream() for _ in range(n_qubits)]  # Stream for individual qubit states
+            gate_st = [
+                declare_stream() for _ in range(n_qubits)
+            ]  # Stream for gate indices (enabling circuit reconstruction in post-processing)
+
+            # Setting seed for reproducibility
+            r = Random()
+            r.set_seed(12321)
+
+            # If simulating, update the frequency to 0 to visualize sequence
+            if simulate:
+                amp_st = [[declare_stream() for _ in range(4)] for _ in range(n_qubits)]
+                for qubit in self.qubit_elements:
+                    update_frequency(qubit.name, 0)
+
+            # Generate the random sequences
+            with for_(s, 0, s < self.xeb_config.seqs, s + 1):
+                # NOTE: randomizing is done for each growing-depths and sequence (some other strategies could be used)
+                for q in range(n_qubits):
+                    first_gate = random_gates - 1 if self.xeb_config.impose_0_cycle else random_gates
+                    assign(gate[q][0], r.rand_int(first_gate))
+                    save(gate[q][0], gate_st[q])
+                    with for_(depth_, 1, depth_ < self.xeb_config.depths, depth_ + 1):
+                        assign(gate[q][depth_], r.rand_int(random_gates))
+                        with while_(
+                            gate[q][depth_] == gate[q][depth_ - 1]
+                        ):  # Make sure same gate is not applied twice in a row
+                            assign(gate[q][depth_], r.rand_int(random_gates))
+
+                        # Map indices into amplitude matrix arguments
+                        # (each index corresponds to a random gate)
+                        assign_amplitude_matrix(
+                            gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)], self.xeb_config.gate_dict
+                        )
+                        save(gate[q][depth_], gate_st[q])
+
+                        if simulate:
+                            for amp_matrix_element in range(4):
+                                save(amp_matrix[q][amp_matrix_element][depth_], amp_st[q][amp_matrix_element])
+
+                # Run the XEB sequence
+                with for_(n, 0, n < self.xeb_config.n_shots, n + 1):
+                    with for_each_(depth, self.xeb_config.depths):
+
+                        # Reset the qubits to their ground states (here simple wait but could be an active reset macro)
+                        if simulate:
+                            wait(25, *[qubit.name for qubit in self.qubit_elements])
+
+                        # NOTE: imposing first gate at 0-cycle:
+                        # Could be modified by the user to impose a specific gate at 0-cycle
+                        if self.xeb_config.impose_0_cycle:
+                            for qubit in self.qubit_elements:
+                                qubit.play(
+                                    self.xeb_config.baseline_gate_name,
+                                    amplitude_scale=amp(*list(0.70710678 * np.array([1.0, -1.0, 1.0, 1.0]))),
                                 )
 
                         # Play all cycles generated for sequence s of depth d
@@ -201,10 +348,11 @@ class XEB:
 
         config = self.quam.generate_config()
         xeb_prog = self._xeb_prog(simulate)
+        qmm = self.quam.connect()
         if simulate:
-            job = self.qmm.simulate(config, xeb_prog, simulate=SimulationConfig(1000))
+            job = qmm.simulate(config, xeb_prog, simulate=SimulationConfig(1000))
         elif self.xeb_config.generate_new_data:
-            qm = self.qmm.open_qm(config)
+            qm = qmm.open_qm(config)
             job = qm.execute(xeb_prog)
         else:
             raise NotImplementedError("Data fetching from previous runs is not yet implemented")
