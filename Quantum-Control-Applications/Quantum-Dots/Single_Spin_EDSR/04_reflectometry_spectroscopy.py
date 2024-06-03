@@ -13,6 +13,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Update the config with the resonance frequency for reflectometry readout.
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

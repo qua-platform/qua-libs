@@ -26,6 +26,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the qubit frequency and update the configuration.
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

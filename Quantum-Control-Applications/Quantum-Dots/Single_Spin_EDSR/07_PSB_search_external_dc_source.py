@@ -22,6 +22,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the PSB region and update the config.
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

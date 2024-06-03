@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import butter, lfilter
 from typing import Union
 from numpy.typing import NDArray
+import numpy as np
 
 
 def round_to_fixed(x, number_of_bits=12):

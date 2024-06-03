@@ -13,6 +13,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
     the variable gain of the OPX analog input can be modified to fit the signal within the ADC range of +/-0.5V.
     This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
