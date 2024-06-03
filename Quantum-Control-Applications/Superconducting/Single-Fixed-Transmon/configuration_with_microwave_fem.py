@@ -185,14 +185,12 @@ config = {
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
                     #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   waveform_in_volts = waveform * max_voltage_amp
-                    # Its range is -41dBm to +10dBm with 3dBm steps.
+                    #   waveform_pp_in_volts = waveform * max_voltage_amp
+                    # Its range is -40dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 2, "full_scale_power_dbm": qubit_power},  # I qubit
-                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # Q qubit
-                        3: {"band": 2, "full_scale_power_dbm": resonator_power},  # I resonator
-                        4: {"band": 2, "full_scale_power_dbm": resonator_power},  # Q resonator
+                        1: {"band": 2, "full_scale_power_dbm": resonator_power},  # resonator
+                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # qubit
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -223,7 +221,7 @@ config = {
         },
         "qubit": {
             "MWInput": {
-                "port": port(con, 1),
+                "port": port(con, 2),
                 "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,

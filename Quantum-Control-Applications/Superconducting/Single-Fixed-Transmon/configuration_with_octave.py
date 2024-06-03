@@ -221,8 +221,8 @@ if opx_1000:
     #   2 GS/s: uses two cores per output
     # WARNING: using 2 GS/s requires double the number of samples for the same duration in arbitrary waveforms.
     # NOTE: duration parameterization of arb. waveforms, sticky elements and chripring aren't yet supported in 2 GS/s.
-    controller_settings["analog_outputs"][1]["sampling_rate"] = 1e9  # 2e9
-    controller_settings["analog_inputs"][1]["sampling_rate"] = 1e9  # 2e9
+    controller_settings["analog_outputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
+    controller_settings["analog_inputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
     # At 2 GS/s, use the "upsampling_mode" to optimize output for
     #   unmodulated pulses (plays the same sample twice):   "pulse"  (default)
     #   modulated pulses (interpolates between samples):    "mw"
