@@ -182,7 +182,10 @@ config = {
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
                     # The keyword "full_scale_power_dbm" is the maximum power of
-                    # normalized pulse waveforms in [-1,1] (e.g., the power at 1.0 arb.)
+                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
+                    #   power_mw = 10**(full_scale_power_dbm / 10)
+                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
+                    #   waveform_in_volts = waveform * max_voltage_amp
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {

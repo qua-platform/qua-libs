@@ -211,14 +211,22 @@ if opx_1000:
     #############################################
     #                OPX 1000                   #
     #############################################
-    # The "sampling_rate" can be modified at the cost of bandwidth, i.e.,
-    #   1 GS/s <--> 750MHz bandwidth (default)
-    #   2 GS/s <--> 400MHz bandwidth
-    # e.g.,
+    # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+    #   "direct":    1Vpp (-0.5 to 0.5), 750MHz bandwidth (default)
+    #   "amplified": 5Vpp (-2.5 to 2.5), 400MHz bandwidth
+    controller_settings["analog_outputs"][1]["output_mode"] = "direct"  # "amplified"
+
+    # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+    #   1 GS/s: uses one core per output (default)
+    #   2 GS/s: uses two cores per output
+    # WARNING: using 2 GS/s requires double the number of samples for the same duration in arbitrary waveforms.
+    # NOTE: duration parameterization of arb. waveforms, sticky elements and chripring aren't yet supported in 2 GS/s.
     controller_settings["analog_outputs"][1]["sampling_rate"] = 1e9  # 2e9
     controller_settings["analog_inputs"][1]["sampling_rate"] = 1e9  # 2e9
-    # WARNING: using 2 GS/s requires double the samples for the same duration
-    # in custom waveforms, e.g. DRAG pulses.
+    # At 2 GS/s, use the "upsampling_mode" to optimize output for
+    #   unmodulated pulses (plays the same sample twice):   "pulse"  (default)
+    #   modulated pulses (interpolates between samples):    "mw"
+    # controller_settings["analog_inputs"][1]["upsampling_mode"] = "mw"
 
     # define template for a chassis with just a single LF-FEM
     controllers = {
