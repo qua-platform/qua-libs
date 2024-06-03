@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Union
+from typing import Union, List
 from macros import *
 from qiskit.circuit.library import UnitaryGate
 from qiskit_aer import AerJob
@@ -44,7 +44,7 @@ class XEB:
         dim = self.xeb_config.dim
         random_gates = len(self.xeb_config.gate_dict)
         ge_thresholds = [
-            readout_element.operations["readout"]["threshold"] for readout_element in self.readout_elements
+            readout_element.operations["readout"].threshold for readout_element in self.readout_elements
         ]
 
         with program() as xeb_prog:
@@ -142,11 +142,13 @@ class XEB:
                             # State Estimation: returned as an integer, to be later converted to bitstrings
                             assign(state[q_idx], I[q_idx] > ge_thresholds[q_idx])
                             save(state[q_idx], state_st[q_idx])
+                            save(I[q_idx], I_st[q_idx])
+                            save(Q[q_idx], Q_st[q_idx])
                             assign(tot_state_, tot_state_ + 2**q_idx * Cast.to_int(state[q_idx]))
 
                             reset_qubit(
                                 "active",
-                                self.qubits[q_idx].name,
+                                self.qubits[q_idx].xy.name,
                                 readout_element.name,
                                 threshold=ge_thresholds[q_idx],
                                 max_tries=5,
@@ -450,8 +452,10 @@ class XEBJob:
         self.job = running_job
         self._simulate = simulate
         self._result_handles = (
-            self.job.result() if isinstance(running_job, AerJob) else self.job.result_handles.wait_for_all_values()
+            self.job.result() if isinstance(running_job, AerJob) else self.job.result_handles
         )
+        if not isinstance(running_job, AerJob):
+            self._result_handles.wait_for_all_values()
         self.xeb_config = xeb_config
         self.data_handler = data_handler
         self._gate_sequences = []
@@ -502,6 +506,7 @@ class XEBJob:
                             qc.append(self.xeb_config.gate_dict[self._sq_indices[s][d_][q, d]]["gate"], [q])
                         if self.xeb_config.two_qb_gate is not None:
                             qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
+                    qc.measure_all()
                     circuits[s].append(qc)
         return circuits
 
@@ -559,9 +564,11 @@ class XEBJob:
             saved_data = {"quadratures": quadratures, "states": states, "counts": counts}
 
         if self.xeb_config.should_save_data:
+            xeb_config = asdict(self.xeb_config)
+            xeb_config["two_qb_gate"] = self.xeb_config.two_qb_gate.gate.name
             self.data_handler.save_data(
                 data={
-                    "xeb_config": asdict(self.xeb_config),
+                    "xeb_config": xeb_config,
                     "sq_indices": np.array(self._sq_indices),
                     **deepcopy(saved_data),
                 }
@@ -587,7 +594,7 @@ class XEBResult:
 
     def __init__(self, xeb_config: XEBConfig, circuits, saved_data, data_handler: DataHandler = None):
         self.xeb_config = xeb_config
-        self.circuits = circuits
+        self.circuits: List[List[QuantumCircuit]] = circuits
         self.saved_data = saved_data
         self.data_handler = data_handler
         (
@@ -639,7 +646,7 @@ class XEBResult:
         for s in range(seqs):
             for d_, d in enumerate(depths):
                 if not self.xeb_config.disjoint_processing:
-                    qc = self.circuits[s][d_]
+                    qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
                     expected_probs[s, d_] = np.round(Statevector(qc).probabilities(), 5)  # [1, 0]
                     measured_probs[s, d_] = (
                         np.array([counts[binary(i, n_qubits)][s][d_] for i in range(dim)]) / self.xeb_config.n_shots
