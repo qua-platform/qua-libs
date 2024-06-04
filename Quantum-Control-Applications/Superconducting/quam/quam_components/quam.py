@@ -17,7 +17,7 @@ __all__ = ["QuAM"]
 class QuAM(QuamRoot):
     """Example QuAM root component."""
 
-    octave: Octave = None
+    octaves: Dict[str, Octave] = field(default_factory=dict)
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
