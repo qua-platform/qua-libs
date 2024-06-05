@@ -78,5 +78,10 @@ class QuAM(QuamRoot):
         Args:
             QM (QuantumMachine): the running quantum machine.
         """
+        from qm.octave.octave_mixer_calibration import NoCalibrationElements
+
         for name in self.active_qubit_names:
-            self.qubits[name].calibrate_octave(QM)
+            try:
+                self.qubits[name].calibrate_octave(QM)
+            except NoCalibrationElements:
+                print(f"No calibration elements found for {name}. Skipping calibration.")
