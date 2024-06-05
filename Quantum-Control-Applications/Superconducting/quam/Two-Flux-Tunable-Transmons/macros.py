@@ -59,4 +59,4 @@ def node_save(name: str, data: dict, quam: QuAM):
     quam.save(path=quam.data_handler.path / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
 
     # Save QuAM to current working directory `state.json`
-    quam.save(path="state.json")
+    quam.save(path="quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
