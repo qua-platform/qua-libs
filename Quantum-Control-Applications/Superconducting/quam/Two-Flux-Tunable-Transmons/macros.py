@@ -1,9 +1,6 @@
 from qm.qua import *
 from components import QuAM
 
-# def wait_depletion_time(quam: "QuAM"):
-#
-
 
 def apply_all_flux_to_min(quam: "QuAM"):
     align()
@@ -52,3 +49,14 @@ def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.
 
         if sequential and ind < len(qubits) - 1:
             align(q.resonator.name, qubits[ind + 1].resonator.name)
+
+
+def node_save(name: str, data: dict, quam: QuAM):
+    # Save results
+    quam.data_handler.save_data(data=data, name=name)
+
+    # Save QuAM to the data folder
+    quam.save(path=quam.data_handler.path / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
+
+    # Save QuAM to current working directory `state.json`
+    quam.save(path="state.json")
