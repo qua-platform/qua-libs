@@ -66,11 +66,25 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        return QuantumMachinesManager(
+        settings = dict(
             host=self.network["host"],
             cluster_name=self.network["cluster_name"],
-            octave=self.octave.get_octave_config(),
+            octave=self.get_octave_config(),
         )
+        if "port" in self.network:
+            settings["port"] = self.network["port"]
+        return QuantumMachinesManager(**settings)
+
+    def get_octave_config(self) -> dict:
+        """Return the Octave configuration."""
+        octave_config = None
+        for octave in self.octaves.values():
+            if octave_config is None:
+                octave_config = octave.get_octave_config()
+            else:
+                octave_config.add_device_info(octave.name, octave.ip, octave.port)
+
+        return octave_config
 
     def calibrate_octave_ports(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave ports for all the active qubits.

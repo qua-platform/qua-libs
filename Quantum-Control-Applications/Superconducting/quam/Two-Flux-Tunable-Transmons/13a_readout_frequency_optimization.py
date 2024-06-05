@@ -36,10 +36,10 @@ from macros import multiplexed_readout, node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -79,14 +79,14 @@ with program() as ro_freq_opt:
             update_frequency(rr2.name, df + rr2.intermediate_frequency)
 
             # Wait for the qubit to decay to the ground state
-            wait(machine.get_thermalization_time * u.ns)
+            wait(machine.thermalization_time * u.ns)
             align()
             # Measure the state of the resonators
             multiplexed_readout([q1, q2], I_g, None, Q_g, None)
 
             align()
             # Wait for thermalization again in case of measurement induced transitions
-            wait(machine.get_thermalization_time * u.ns)
+            wait(machine.thermalization_time * u.ns)
             # Play the x180 gate to put the qubits in the excited state
             q1.xy.play("x180")
             q2.xy.play("x180")

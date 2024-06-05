@@ -41,10 +41,10 @@ from macros import node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -236,7 +236,7 @@ with program() as rb:
             with if_((depth == 2) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     # Can replace by active reset
-                    qubit.resonator.wait(machine.get_thermalization_time * u.ns)
+                    qubit.resonator.wait(machine.thermalization_time * u.ns)
                     # Align the two elements to play the sequence after qubit initialization
                     qubit.resonator.align(qubit.xy.name)
                     # The strict_timing ensures that the sequence will be played without gaps

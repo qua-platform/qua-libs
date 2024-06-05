@@ -38,10 +38,10 @@ from macros import qua_declaration, multiplexed_readout, node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -64,13 +64,13 @@ with program() as iq_blobs:
 
     with for_(n, 0, n < n_runs, n + 1):
         # ground iq blobs for both qubits
-        wait(machine.get_thermalization_time * u.ns)
+        wait(machine.thermalization_time * u.ns)
         align()
         multiplexed_readout([q1, q2], I_g, I_g_st, Q_g, Q_g_st)
 
         align()
         # Wait for the qubit to decay to the ground state in the case of measurement induced transitions
-        wait(machine.get_thermalization_time * u.ns)
+        wait(machine.thermalization_time * u.ns)
         # excited iq blobs for both qubits
         q1.xy.play("x180")
         q2.xy.play("x180")

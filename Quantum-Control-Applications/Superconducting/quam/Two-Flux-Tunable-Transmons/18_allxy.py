@@ -33,10 +33,10 @@ from macros import node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -129,7 +129,7 @@ def get_prog(qubit, resonator):
             # Get a value from the pseudo-random number generator on the OPX FPGA
             assign(r_, r.rand_int(21))
             # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-            wait(machine.get_thermalization_time * u.ns)
+            wait(machine.thermalization_time * u.ns)
             # Plays a random XY sequence
             # The switch/case method allows to map a python index (here "i") to a QUA number (here "r_") in order to switch
             # between elements in a python list (here "sequence") that cannot be converted into a QUA array (here because it
