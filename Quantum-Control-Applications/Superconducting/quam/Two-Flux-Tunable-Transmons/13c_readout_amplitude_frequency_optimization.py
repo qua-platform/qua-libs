@@ -82,7 +82,7 @@ with program() as ro_amp_freq_opt:
                 # ground iq blobs for both qubits
                 wait(machine.get_thermalization_time * u.ns)
                 align()
-                multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st, amplitude_scale=a)
+                multiplexed_readout([q1, q2], I_g, I_g_st, Q_g, Q_g_st, amplitude_scale=a)
 
                 # excited iq blobs for both qubits
                 align()
@@ -91,7 +91,7 @@ with program() as ro_amp_freq_opt:
                 q1.xy.play("x180")
                 q2.xy.play("x180")
                 align()
-                multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st, amplitude_scale=a)
+                multiplexed_readout([q1, q2], I_e, I_e_st, Q_e, Q_e_st, amplitude_scale=a)
         # Save the counter to get the progress bar
         assign(counter, counter + 1)
 

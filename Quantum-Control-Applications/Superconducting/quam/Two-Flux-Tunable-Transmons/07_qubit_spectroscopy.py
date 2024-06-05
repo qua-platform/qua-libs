@@ -91,7 +91,7 @@ with program() as multi_qubit_spec:
             align(q2.xy.name, q2.resonator.name)
 
             # QUA macro the readout the state of the active resonators (defined in macros.py)
-            multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)
+            multiplexed_readout([q1, q2], I, I_st, Q, Q_st, sequential=False)
             # Wait for the qubit to decay to the ground state
             wait(machine.get_thermalization_time * u.ns)
 

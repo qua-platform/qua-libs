@@ -93,7 +93,7 @@ with program() as cryoscope:
 
                 # Measure resonators state after the sequence
                 align()
-                multiplexed_readout(machine, I, I_st, Q, Q_st)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
                 # State discrimination
                 assign(state[0], I[0] > q1.resonator.operations["readout"].threshold)
                 assign(state[1], I[1] > q2.resonator.operations["readout"].threshold)

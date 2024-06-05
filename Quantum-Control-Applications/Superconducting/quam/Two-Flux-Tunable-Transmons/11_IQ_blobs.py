@@ -66,7 +66,7 @@ with program() as iq_blobs:
         # ground iq blobs for both qubits
         wait(machine.get_thermalization_time * u.ns)
         align()
-        multiplexed_readout(machine, I_g, I_g_st, Q_g, Q_g_st)
+        multiplexed_readout([q1, q2], I_g, I_g_st, Q_g, Q_g_st)
 
         align()
         # Wait for the qubit to decay to the ground state in the case of measurement induced transitions
@@ -75,7 +75,7 @@ with program() as iq_blobs:
         q1.xy.play("x180")
         q2.xy.play("x180")
         align()
-        multiplexed_readout(machine, I_e, I_e_st, Q_e, Q_e_st)
+        multiplexed_readout([q1, q2], I_e, I_e_st, Q_e, Q_e_st)
 
     with stream_processing():
         for i in range(2):

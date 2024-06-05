@@ -88,7 +88,7 @@ with program() as ramsey:
 
                 align()
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(machine, I, I_st, Q, Q_st)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
                 # Wait for the qubits to decay to the ground state
                 wait(machine.get_thermalization_time * u.ns)
 

@@ -92,7 +92,7 @@ with program() as multi_qubit_spec_vs_flux:
                 q2.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
 
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(machine, I, I_st, Q, Q_st)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
                 # Wait for the qubit to decay to the ground state
                 wait(machine.get_thermalization_time * u.ns)
 

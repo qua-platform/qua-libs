@@ -126,7 +126,7 @@ with program() as iswap:
                 # Wait some time to ensure that the flux pulse will end before the readout pulse
                 wait(20 * u.ns)
                 # Measure the state of the resonators
-                multiplexed_readout(machine, I, I_st, Q, Q_st)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
                 # Wait for the qubits to decay to the ground state
                 wait(machine.get_thermalization_time * u.ns)
 

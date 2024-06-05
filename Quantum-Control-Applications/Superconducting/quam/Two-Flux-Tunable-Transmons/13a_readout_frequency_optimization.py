@@ -82,7 +82,7 @@ with program() as ro_freq_opt:
             wait(machine.get_thermalization_time * u.ns)
             align()
             # Measure the state of the resonators
-            multiplexed_readout(machine, I_g, None, Q_g, None)
+            multiplexed_readout([q1, q2], I_g, None, Q_g, None)
 
             align()
             # Wait for thermalization again in case of measurement induced transitions
@@ -93,7 +93,7 @@ with program() as ro_freq_opt:
             # Align the elements to measure after playing the qubit pulses.
             align()
             # Measure the state of the resonator
-            multiplexed_readout(machine, I_e, None, Q_e, None)
+            multiplexed_readout([q1, q2], I_e, None, Q_e, None)
 
             # Derive the distance between the blobs for |g> and |e>
             for i in range(len(machine.active_qubits)):

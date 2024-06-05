@@ -86,7 +86,7 @@ with program() as echo:
             # Align the elements to measure after playing the qubit pulse.
             align()
             # Measure the state of the resonators
-            multiplexed_readout(machine, I, I_st, Q, Q_st)
+            multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
             # Wait for the qubits to decay to the ground state
             wait(machine.get_thermalization_time * u.ns)
 
