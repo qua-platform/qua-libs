@@ -1,11 +1,54 @@
-from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping as gate_map
-from qiskit.circuit.library import UnitaryGate, RYGate
-from scipy.linalg import sqrtm
+
+from qiskit.circuit.library import RYGate
+from qua_gate import QUAGate
+from qm.qua import play, amp, frame_rotation_2pi
 import numpy as np
-from typing import Literal
+from typing import Literal, Callable, Optional, List, Dict
+from quam.components import Channel
+
+def play_sq_gate_macro(baseline_gate_name: str, amp_matrix: Optional[List] = None) -> Callable[[Channel], None]:
+    """
+    Play a single qubit gate on a given qubit element.
+
+    This function plays a single qubit gate on a given qubit element, by modulating the amplitude matrix of a baseline
+    calibrated X/2 (SX) pulse.
+
+    Args:
+        baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis.
+        amp_matrix (np.ndarray): Amplitude matrix of the gate.
+    """
+    def play_sq_gate(qubit_el: Channel):
+        qubit_el.play(baseline_gate_name, amplitude_scale=amp(*amp_matrix) if amp_matrix is not None else None)
+    return play_sq_gate
 
 
-def generate_gate_set(gate_set: Literal["sw", "t"]) -> dict:
+def play_virtual_t_gate(qubit_el: Channel):
+    """
+    Play a virtual T gate on a given qubit element.
+
+    This function plays a virtual T gate on a given qubit element, by doing a frame rotation of pi/8 around the Z axis.
+    """
+    frame_rotation_2pi(0.125, qubit_el.name)
+
+
+class QUAGateSet(dict):
+    """
+    Class to store a set of QUA gates for XEB.
+
+    Args:
+        gate_set (Literal['sw', 't']): String indicating the desired gate set.
+        baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis.
+    """
+
+    def __init__(self, gate_set: Literal["sw", "t"], baseline_gate_name: str):
+        super().__init__(generate_gate_set(gate_set, baseline_gate_name))
+        self.name = gate_set
+
+    def __str__(self):
+        return f"QUAGateSet({super().__str__()})"
+
+
+def generate_gate_set(gate_set: Literal["sw", "t"], baseline_gate_name: str) -> Dict[int, QUAGate]:
     """
     Generate a gate set from a string for random single qubit gates for XEB.
 
@@ -23,6 +66,7 @@ def generate_gate_set(gate_set: Literal["sw", "t"]) -> dict:
 
     Args:
         gate_set (Literal['sw', 't']): String indicating the desired gate set.
+        baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis.
 
     Returns:
         dict: Dictionary containing the generated single qubit gates.
@@ -30,24 +74,22 @@ def generate_gate_set(gate_set: Literal["sw", "t"]) -> dict:
         ValueError: If an invalid gate set string is provided.
     """
 
-    SX, T, X, Y = [gate_map()[gate] for gate in ["sx", "t", "x", "y"]]
-    SY = RYGate(np.pi / 2)
+    sx_gate = QUAGate("sx", play_sq_gate_macro(baseline_gate_name), amp_matrix=[1.0, 0.0, 0.0, 1.0])
+    SY = RYGate(np.pi/2).to_matrix()
+    sy_gate = QUAGate(("sy", SY), play_sq_gate_macro(baseline_gate_name, [0.0, -1.0, 1.0, 0.0]),
+                      amp_matrix=[0.0, 1.0, 1.0, 0.0])
 
-    # Define the relevant amplitude matrices for all single-qubit gates (all generated through initial X90 gate)
-    X90_dict = {"gate": SX, "amp_matrix": np.array([1.0, 0.0, 0.0, 1.0])}
-    Y90_dict = {"gate": SY, "amp_matrix": np.array([0.0, -1.0, 1.0, 0.0])}
-    gate_dict = {0: X90_dict, 1: Y90_dict}
+    gate_dict = {0: sx_gate, 1: sy_gate}
     if gate_set == "sw":
-        W = UnitaryGate((X.to_matrix() + Y.to_matrix()) / np.sqrt(2), label="W")
-        SW = UnitaryGate(sqrtm(W), label="sw")  # from Supremacy paper
-        SW_dict = {"gate": SW, "amp_matrix": 0.70710678 * np.array([1.0, -1.0, 1.0, 1.0])}
-        gate_dict[2] = SW_dict
+        sw_amp_matrix = list(0.70710678 * np.array([1.0, -1.0, 1.0, 1.0]))
+        sw_gate = QUAGate(("sw", np.array([[1, -np.sqrt(1j)],
+                                   [np.sqrt(-1j), 1]])/np.sqrt(2)),
+                          play_sq_gate_macro(baseline_gate_name, sw_amp_matrix),
+                          amp_matrix=sw_amp_matrix)
+        gate_dict[2] = sw_gate
     elif gate_set == "t":
-        T_dict = {
-            "gate": T,
-            "amp_matrix": np.array([1.0, 0.0, 0.0, 1]),
-        }  # No actual need for amp_matrix (done with frame rotation)
-        gate_dict[2] = T_dict
+        t_gate = QUAGate("t", play_virtual_t_gate)
+        gate_dict[2] = t_gate
     else:
         raise ValueError(f"Invalid gate set: {gate_set}. Allowed values are 'sw' or 't'.")
 

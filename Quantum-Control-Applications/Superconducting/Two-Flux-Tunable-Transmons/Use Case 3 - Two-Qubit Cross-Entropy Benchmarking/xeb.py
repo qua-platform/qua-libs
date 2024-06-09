@@ -1,10 +1,10 @@
 from dataclasses import asdict
-from typing import Union, List
+from typing import Union, List, Optional
 from macros import *
 from qiskit.circuit.library import UnitaryGate
 from qiskit_aer import AerJob
 from scipy.linalg import sqrtm
-
+import pandas as pd
 from xeb_config import XEBConfig
 from qiskit.circuit import QuantumCircuit
 from qiskit.providers import BackendV2
@@ -19,8 +19,8 @@ from qm.jobs.simulated_job import SimulatedJob
 import seaborn as sns
 from copy import deepcopy
 
-W = UnitaryGate((gate_map()["x"].to_matrix() + gate_map()["y"].to_matrix()) / np.sqrt(2), label="w")
-SW = UnitaryGate(sqrtm(W), label="sw")  # from Supremacy paper
+SW = UnitaryGate(np.array([[1, -np.sqrt(1j)],
+                                   [np.sqrt(-1j), 1]])/np.sqrt(2), label="sw")  # from Supremacy paper
 
 
 class XEB:
@@ -38,11 +38,31 @@ class XEB:
         self.readout_elements = [qubit.resonator for qubit in self.qubits]
         self.data_handler = DataHandler(name="XEB", root_data_folder=xeb_config.save_dir)
 
+    def _play_random_sq_gate(self, qubit: Channel, gate_idx, amp_matrix: Optional[List] = None):
+        """
+        Play a random single qubit gate on a given qubit element.
+
+        This function plays a random single qubit gate on a given qubit element, by modulating the amplitude matrix of a
+        baseline calibrated X/2 (SX) pulse.
+
+        Args:
+            qubit (Channel): Qubit element on which to play the gate.
+            gate_idx (QUA int): Index of the gate to play.
+            amp_matrix (List): Amplitude matrix of the gate.
+        """
+        if self.xeb_config.gate_set.name == "sw":
+            qubit.play(self.xeb_config.baseline_gate_name, amplitude_scale=amp(*amp_matrix))
+        elif self.xeb_config.gate_set.name == "t":
+            with switch_(gate_idx):
+                for i in range(len(self.xeb_config.gate_set)):
+                    with case_(i):
+                        self.xeb_config.gate_set[i].gate_macro(qubit)
+
     def _xeb_prog(self, simulate: bool = False):
         # Define the QUA program
         n_qubits = self.xeb_config.n_qubits
         dim = self.xeb_config.dim
-        random_gates = len(self.xeb_config.gate_dict)
+        random_gates = len(self.xeb_config.gate_set)
         ge_thresholds = [
             readout_element.operations["readout"].threshold for readout_element in self.readout_elements
         ]
@@ -54,7 +74,8 @@ class XEB:
             gate = [
                 declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
             ]  # Gate indices list for both qubits
-            amp_matrix = [[declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)]
+            if self.xeb_config.gate_set.name == "sw":
+                amp_matrix = [[declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)]
             counts = declare(int, value=[0] * dim)  # Counts for all possible bitstrings (00, 01, 10, 11)
             state = [declare(bool) for _ in range(n_qubits)]  # Qubit states
             # Declare streams
@@ -84,7 +105,8 @@ class XEB:
                         first_gate = random_gates - 1 if self.xeb_config.impose_0_cycle else random_gates
                         assign(gate[q][0], r.rand_int(first_gate))
                         save(gate[q][0], gate_st[q])
-                        with for_(depth_, 1, depth_ < depth, depth_ + 1):
+                    with for_(depth_, 1, depth_ < depth, depth_ + 1):
+                        for q in range(n_qubits):
                             assign(gate[q][depth_], r.rand_int(random_gates))
                             with while_(
                                 gate[q][depth_] == gate[q][depth_ - 1]
@@ -93,12 +115,14 @@ class XEB:
 
                             # Map indices into amplitude matrix arguments
                             # (each index corresponds to a random gate)
-                            assign_amplitude_matrix(
-                                gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)], self.xeb_config.gate_dict
-                            )
+                            if self.xeb_config.gate_set.name == "sw":
+                                assign_amplitude_matrix(
+                                    gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)],
+                                    self.xeb_config.gate_set
+                                )
                             save(gate[q][depth_], gate_st[q])
 
-                            if simulate:
+                            if simulate and self.xeb_config.gate_set.name == "sw":
                                 for amp_matrix_element in range(4):
                                     save(amp_matrix[q][amp_matrix_element][depth_], amp_st[q][amp_matrix_element])
 
@@ -120,13 +144,9 @@ class XEB:
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
                             for q, qubit in enumerate(self.qubit_elements):  # Play single qubit gates on both qubits
-                                play_random_sq_gate(
-                                    gate[q][depth_],
-                                    [amp_matrix[q][i][depth_] for i in range(4)],
-                                    qubit,
-                                    self.xeb_config.gate_dict,
-                                    self.xeb_config.baseline_gate_name,
-                                )
+                                self._play_random_sq_gate(qubit, gate[q][depth_],
+                                                          [amp_matrix[q][i][depth_] for i in range(4)]
+                                                          if self.xeb_config.gate_set.name == "sw" else None)
 
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None:
@@ -189,10 +209,11 @@ class XEB:
         return xeb_prog
 
     def _xeb_prog2(self, simulate: bool = False):
+        # TODO: Work in progress : generate only sequence of max depth and invert n_shots and seqs loops
         # Define the QUA program
         n_qubits = self.xeb_config.n_qubits
         dim = self.xeb_config.dim
-        random_gates = len(self.xeb_config.gate_dict)
+        random_gates = len(self.xeb_config.gate_set)
         ge_thresholds = [
             readout_element.operations["readout"]["threshold"] for readout_element in self.readout_elements
         ]
@@ -243,7 +264,7 @@ class XEB:
                         # Map indices into amplitude matrix arguments
                         # (each index corresponds to a random gate)
                         assign_amplitude_matrix(
-                            gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)], self.xeb_config.gate_dict
+                            gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)], self.xeb_config.gate_set
                         )
                         save(gate[q][depth_], gate_st[q])
 
@@ -275,7 +296,7 @@ class XEB:
                                     gate[q][depth_],
                                     [amp_matrix[q][i][depth_] for i in range(4)],
                                     qubit,
-                                    self.xeb_config.gate_dict,
+                                    self.xeb_config.gate_set,
                                     self.xeb_config.baseline_gate_name,
                                 )
 
@@ -391,7 +412,7 @@ class XEB:
 
         assert isinstance(backend, AerBackend), "The backend should be an AerBackend object"
         num_qubits = len(self.xeb_config.qubits_ids)
-        random_gates = len(self.xeb_config.gate_dict)
+        random_gates = len(self.xeb_config.gate_set)
         sq_gates, counts_list, states_list, circuits_list = [], [], [], []
         # Generate sequences
         for s in range(self.xeb_config.seqs):  # For each sequence
@@ -422,7 +443,7 @@ class XEB:
                     qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
                 for d_ in range(d):  # Apply layers
                     for q in range(num_qubits):  # For each qubit, append single qubit gates
-                        qc.append(self.xeb_config.gate_dict[sq_gates[s][i][q][d_]]["gate"], [q])
+                        qc.append(self.xeb_config.gate_set[sq_gates[s][i][q][d_]].gate, [q])
                     # Apply CZ gate
                     if num_qubits == 2 and self.xeb_config.two_qb_gate is not None:
                         qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
@@ -493,7 +514,7 @@ class XEBJob:
                     for d_ in range(d):
                         for q in range(self.xeb_config.n_qubits):
                             self._sq_indices[s][i][q, d_] = g[q][idx]
-                            idx += 1
+                        idx += 1
 
             for s in range(self.xeb_config.seqs):
                 circuits.append([])
@@ -503,7 +524,7 @@ class XEBJob:
                         qc.append(SW, range(self.xeb_config.n_qubits))
                     for d in range(depth):
                         for q in range(self.xeb_config.n_qubits):
-                            qc.append(self.xeb_config.gate_dict[self._sq_indices[s][d_][q, d]]["gate"], [q])
+                            qc.append(self.xeb_config.gate_set[self._sq_indices[s][d_][q, d]].gate, [q])
                         if self.xeb_config.two_qb_gate is not None:
                             qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
                     qc.measure_all()
@@ -566,13 +587,14 @@ class XEBJob:
         if self.xeb_config.should_save_data:
             xeb_config = asdict(self.xeb_config)
             xeb_config["two_qb_gate"] = self.xeb_config.two_qb_gate.gate.name
-            self.data_handler.save_data(
-                data={
-                    "xeb_config": xeb_config,
-                    "sq_indices": np.array(self._sq_indices),
-                    **deepcopy(saved_data),
-                }
-            )
+            if self.xeb_config.should_save_data:
+                self.data_handler.save_data(
+                    data={
+                        "xeb_config": xeb_config,
+                        "sq_indices": self._sq_indices,
+                        **deepcopy(saved_data),
+                    }
+                )
 
         return XEBResult(self.xeb_config, self.circuits, saved_data, self.data_handler)
 
@@ -751,7 +773,8 @@ class XEBResult:
         Returns:
 
         """
-        plt.rcParams["text.usetex"] = True
+        plt.figure()
+        plt.rcParams["text.usetex"] = False
         xx = np.linspace(0, self.linear_fidelities["depth"].max())
 
         try:  # Fit the data for the linear XEB
@@ -816,6 +839,7 @@ class XEBResult:
         colors = sns.cubehelix_palette(n_colors=len(depths))
         colors = {k: colors[i] for i, k in enumerate(depths)}
         _lines = []
+        plt.figure()
 
         def per_cycle_depth(df, _lines=None):
             fid_lsq = df["numerator"].sum() / df["denominator"].sum()

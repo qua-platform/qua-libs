@@ -4,8 +4,7 @@ This script contains useful QUA macros for the two-qubit cross-entropy benchmark
 Author: Arthur Strauss - Quantum Machines
 Last updated: 2024-04-30
 """
-
-import pandas as pd
+from typing import Dict
 from matplotlib import pyplot as plt
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -14,6 +13,7 @@ from quam.examples.superconducting_qubits import Transmon
 from scipy import optimize
 from scipy.stats import stats
 from quam.components import Channel
+from qua_gate import QUAGate
 
 
 def assign_amplitude_matrix(gate, amp_matrix, gate_dict: dict):
@@ -46,38 +46,7 @@ def qua_declaration(n_qubits: int, readout_elements: list):
     return I, I_st, Q, Q_st
 
 
-def play_T_gate_set(gate, amp_matrix, qubit_el: Channel, baseline_op: str):
-    """
-    QUA Macro for the T gate set
-    The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the T gate.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
-    """
-    with switch_(gate, unsafe=True):
-        for j in range(2):  # X90, Y90
-            with case_(j):
-                qubit_el.play(baseline_op, amp(*amp_matrix))
-        with case_(2):  # T gate
-            frame_rotation_2pi(0.125, qubit_el.name)
-
-
-def play_SW_gate_set(gate, amp_matrix, qubit_el: Channel, baseline_op: str):
-    """
-    QUA Macro for the SW gate set
-    The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the SW gate.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
-    :param baseline_op: Baseline operation (default "sx")
-    """
-    with switch_(gate, unsafe=True):
-        for j in range(3):  # X90, Y90, SW
-            with case_(j):
-                qubit_el.play(baseline_op, amp(*amp_matrix))
-
-
-def play_random_sq_gate(gate, amp_matrix, qubit_el: Channel, gate_dict: dict, baseline_op: str):
+def play_random_sq_gate(gate, qubit_el: Channel, amp_matrix, gate_dict: Dict[int, QUAGate], baseline_op: str):
     """
     QUA Macro for playing a random single-qubit gate. This macro is built through amplitude matrix modulation of a provided
     baseline pulse implementing the pi/2 rotation around the x-axis.
@@ -88,12 +57,13 @@ def play_random_sq_gate(gate, amp_matrix, qubit_el: Channel, gate_dict: dict, ba
     :param baseline_op: Baseline operation (default "sx") implementing the pi/2 rotation around the x-axis
     """
 
-    if gate_dict[2]["gate"].name == "t":  # T gate involves frame rotation
-        play_T_gate_set(gate, amp_matrix, qubit_el, baseline_op)
-    elif gate_dict[2]["gate"].label == "sw":
-        play_SW_gate_set(gate, amp_matrix, qubit_el, baseline_op)
+    if gate_dict[2].name == "sw":
+        qubit_el.play(baseline_op, amplitude_scale=amp(*amp_matrix))
     else:
-        qubit_el.play(baseline_op, amp(*amp_matrix))
+        with switch_(gate, unsafe=True):
+            for i in range(len(gate_dict)):
+                with case_(i):
+                    gate_dict[i].gate_macro(qubit_el)
 
 
 def reset_qubit(method: str, qubit: Transmon, **kwargs):
@@ -118,7 +88,6 @@ def reset_qubit(method: str, qubit: Transmon, **kwargs):
         variable will be created. Must be of type `Fixed`.
     :return:
     """
-    #TODO: Refine active reset for QuAM
     if method == "cooldown":
         # Check cooldown_time
         cooldown_time = kwargs.get("cooldown_time", None)
