@@ -2,7 +2,7 @@ from dataclasses import dataclass, asdict, field
 from typing import Literal, List, Union, Optional
 
 import numpy as np
-from gateset import generate_gate_set
+from gateset import QUAGateSet
 from qua_gate import QUAGate
 
 
@@ -30,7 +30,7 @@ class XEBConfig:
 
     seqs: int
     depths: Union[np.ndarray, List[int]]
-    n_shots: int = 101
+    n_shots: int = 1024
     qubits_ids: List[Union[int, str]] = field(default_factory=lambda: [0, 1])
     baseline_gate_name: str = "sx"
     gate_set_choice: Literal["sw", "t"] = "sw"
@@ -45,6 +45,6 @@ class XEBConfig:
         if isinstance(self.depths, List):
             self.depths = np.array(self.depths)
 
-        self.gate_dict = generate_gate_set(self.gate_set_choice)
+        self.gate_set = QUAGateSet(self.gate_set_choice, self.baseline_gate_name)
         self.n_qubits = len(self.qubits_ids)
         self.dim = 2**self.n_qubits
