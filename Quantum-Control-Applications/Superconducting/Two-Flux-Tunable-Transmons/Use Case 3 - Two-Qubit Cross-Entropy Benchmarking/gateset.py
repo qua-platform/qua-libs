@@ -28,7 +28,7 @@ def play_virtual_t_gate(qubit_el: Channel):
 
     This function plays a virtual T gate on a given qubit element, by doing a frame rotation of pi/8 around the Z axis.
     """
-    frame_rotation_2pi(0.125, qubit_el.name)
+    qubit_el.frame_rotation_2pi(0.125)
 
 
 class QUAGateSet(dict):
