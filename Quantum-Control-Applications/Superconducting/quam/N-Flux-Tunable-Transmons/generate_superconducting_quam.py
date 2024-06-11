@@ -12,19 +12,18 @@ u = unit(coerce_to_integer=True)
 
 
 def create_default_wiring(num_qubits: int) -> dict:
-    # TODO Handle proper wiring
     wiring = {"qubits": {}}
-    assert num_qubits < 3, "Only 1 or 2 qubits are supported."
 
+    #
     for q_idx in range(1, num_qubits + 1):
         octave_output_idx = 1 + q_idx
         wiring["qubits"][f"q{q_idx}"] = {
             "xy": {
-                "opx_output_I": ("con1", 3 * q_idx),
-                "opx_output_Q": ("con1", 3 * q_idx + 1),
+                "opx_output_I": ("con1", 3 * q_idx),  # 3, 6
+                "opx_output_Q": ("con1", 3 * q_idx + 1),  # 4, 7
                 "frequency_converter_up": f"#/octaves/octave1/RF_outputs/{octave_output_idx}",
             },
-            "z": {"opx_output": ("con1", 3 * q_idx + 2)},
+            "z": {"opx_output": ("con1", 3 * q_idx + 2)},  # 5, 8
             "opx_output_digital": ("con1", 1),
             "resonator": {
                 "opx_output_I": ("con1", 1),
@@ -149,11 +148,15 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
     else:
         raise ValueError("Either num_qubits or wiring must be provided.")
 
+    host_ip = "172.16.33.101"
+    octave_ip = host_ip  # or "192.168.88.X" if configured internally
+    octave_port = 11050  # 11XXX where XXX are the last digits of the Octave IP or 80 if configured internally
+
     machine.network = {
-        "host": "172.16.33.101",
+        "host": host_ip,
         "cluster_name": "Cluster_81",
-        "octave_ip": "172.16.33.101",
-        "octave_port": 11050,
+        "octave_ip": host_ip,
+        "octave_port": octave_port,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA",
     }
     print("Please update the default network settings in: quam.network")
@@ -165,8 +168,8 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
         # Add the Octave to the quam
         octave = Octave(
             name="octave1",
-            ip="172.16.33.101",
-            port=11050,
+            ip=octave_ip,
+            port=octave_port,
         )
         machine.octaves["octave1"] = octave
         octave.initialize_frequency_converters()

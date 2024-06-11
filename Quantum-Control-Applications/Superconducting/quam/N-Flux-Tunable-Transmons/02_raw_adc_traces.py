@@ -30,9 +30,7 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-rr1 = machine.active_qubits[0].resonator
-rr2 = machine.active_qubits[1].resonator
-rr = [q.resonator for q in machine.active_qubits]
+resonators = [q.resonator for q in machine.active_qubits]
 
 ###################
 # The QUA program #
@@ -44,15 +42,17 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-        reset_phase(rr1.name)
-        reset_phase(rr2.name)
-        # Measure the resonator (send a readout pulse and record the raw ADC trace)
-        rr1.measure("readout", stream=adc_st)
-        # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
-        rr2.measure("readout")
+        for i in range(len(resonators)):
+            if i == 0:
+                # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
+                reset_phase(resonators[i].name)
+                # Measure the resonator (send a readout pulse and record the raw ADC trace)
+                resonators[i].measure("readout", stream=adc_st)
+            else:
+                # Play the readout on all other resonators to make sure that the ADC won't saturate in multiplexed readout
+                resonators[i].measure("readout")
         # Wait for the resonator to deplete
-        wait(machine.depletion_time * u.ns, rr1.name, rr2.name)
+        wait(machine.depletion_time * u.ns, *[rr.name for rr in resonators])
 
     with stream_processing():
         # Will save average:
@@ -112,10 +112,9 @@ else:
     print(f"\nInput1 mean: {np.mean(adc1)} V\n" f"Input2 mean: {np.mean(adc2)} V")
 
     # Update QUAM
-    rr1.opx_input_offset_I -= np.mean(adc1)
-    rr2.opx_input_offset_I -= np.mean(adc1)
-    rr1.opx_input_offset_Q -= np.mean(adc2)
-    rr2.opx_input_offset_Q -= np.mean(adc2)
+    for resonator in resonators:
+        resonator.opx_input_offset_I -= np.mean(adc1)
+        resonator.opx_input_offset_Q -= np.mean(adc2)
 
     # Save data from the node
     data = {
