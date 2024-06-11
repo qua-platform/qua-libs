@@ -20,7 +20,7 @@ from configuration import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
-from qualang_tools.octave_tools import update_correction_for_each_IF
+from qualang_tools.octave_tools import get_correction_for_each_LO_and_IF
 import matplotlib.pyplot as plt
 
 
@@ -53,7 +53,7 @@ frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 
 # Get the list of intermediate IFs at which the correction matrix will be updated in QUA and the corresponding
 # correction matrix elements
-IFs, c00, c01, c10, c11, offset_I, offset_Q = update_correction_for_each_IF(
+IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_LO_and_IF(
     path_to_database="",
     config=config,
     element="qubit",
