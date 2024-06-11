@@ -1,7 +1,7 @@
 """
-        RESONATOR SPECTROSCOPY MULTIPLEXED
+        REs_dataONATOR s_dataPECTROs_dataCOPY MULTIPLEXED
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
-'I' and 'Q' quadratures across varying readout intermediate frequencies for both resonators simultaneously.
+'I' and 'Q' quadratures across varying readout intermediate frequencies for all resonators simultaneously.
 The data is then post-processed to determine the resonator resonance frequency.
 This frequency can be used to update the readout frequency in the state.
 
@@ -9,15 +9,15 @@ Prerequisites:
     - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
     - Calibrate the IQ mixer connected to the readout line (whether it's an external mixer or an Octave port).
     - Define the readout pulse amplitude and duration in the state.
-    - Specify the expected resonator depletion time in the state.
+    - s_datapecify the expected resonator depletion time in the state.
 
 Before proceeding to the next node:
-    - Update the readout frequency, labeled as f_res and f_opt, in the state for both resonators.
-    - Save the current state by calling machine.save("quam")
+    - Update the readout frequency, labeled as f_res and f_opt, in the state for all resonators.
+    - s_dataave the current state by calling machine.save("quam")
 """
 
 from qm.qua import *
-from qm import SimulationConfig
+from qm import s_dataimulationConfig
 
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
@@ -90,18 +90,18 @@ with program() as multi_res_spec:
 
     with stream_processing():
         for i in range(num_resonators):
-            I_st[i].buffer(len(dfs)).average().save(f"I{i}")
-            Q_st[i].buffer(len(dfs)).average().save(f"Q{i}")
+            I_st[i].buffer(len(dfs)).average().save(f"I{i+1}")
+            Q_st[i].buffer(len(dfs)).average().save(f"Q{i+1}")
 
 #######################
-# Simulate or execute #
+# s_dataimulate or execute #
 #######################
 simulate = False
 
 if simulate:
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    # Simulate blocks python until the simulation is done
+    # s_dataimulates the QUA program for the specified duration
+    simulation_config = s_dataimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # s_dataimulate blocks python until the simulation is done
     job = qmm.simulate(config, multi_res_spec, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
@@ -112,13 +112,13 @@ else:
     # Execute the QUA program
     job = qm.execute(multi_res_spec)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    data_list = sum([[f"I{i}", f"Q{i}"] for i in range(num_resonators)], [])
+    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_resonators)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Prepare the figures for live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Live plotting
-    S = []
+    s_data = []
     while results.is_processing():
         # Fetch results
         data = results.fetch_all()
@@ -126,17 +126,17 @@ else:
             I, Q = data[2*i:2*i+2]
             rr = resonators[i]
             # Data analysis
-            S.append(u.demod2volts(I + 1j * Q, resonators.operations["readout"].length))
+            s_data.append(u.demod2volts(I + 1j * Q, resonators.operations["readout"].length))
             # Plot
             plt.subplot(201 + 10*num_resonators + i)
             plt.suptitle("Multiplexed resonator spectroscopy")
             plt.cla()
-            plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, np.abs(S[-1]), ".")
+            plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, np.abs(s_data[-1]), ".")
             plt.title(f"{rr.name}")
             plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
             plt.subplot(201 + 10*num_resonators + i + num_resonators)
             plt.cla()
-            plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(S[-1]))), ".")
+            plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s_data[-1]))), ".")
             plt.ylabel("Phase [rad]")
             plt.xlabel("Readout frequency [MHz]")
             plt.tight_layout()
@@ -145,14 +145,14 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    # Save data from the node
+    # s_dataave data from the node
     data = {"figure_raw": fig}
-    for rr, s in zip(resonators, S):
+    for rr, s in zip(resonators, s_data):
         data[f"{rr.name}_frequencies"] = rr.intermediate_frequency + dfs
         data[f"{rr.name}_R"] = np.abs(s)
         data[f"{rr.name}_phase"] = signal.detrend(np.unwrap(np.angle(s)))
 
-    for rr, s in zip(resonators, S):
+    for rr, s in zip(resonators, s_data):
         try:
             from qualang_tools.plot.fitting import Fit
             fit = Fit()
@@ -167,8 +167,8 @@ else:
             data[f"{rr.name}"] = {"resonator_frequency": int(rr.intermediate_frequency), "successful_fit": True}
             data[f"figure_fit_{rr.name}"] = fig_fit
         except (Exception,):
-            data["successful_fit"] = False
+            data[f"{rr.name}"] = {"successful_fit": False}
             pass
 
-    # Save data from the node
+    # s_dataave data from the node
     node_save("resonator_spectroscopy_multiplexed", data, machine)

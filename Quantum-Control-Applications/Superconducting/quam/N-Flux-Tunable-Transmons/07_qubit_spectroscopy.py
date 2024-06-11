@@ -53,8 +53,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -70,7 +70,7 @@ dfs = np.arange(-60e6, +80e6, 1e6)
 
 with program() as multi_qubit_spec:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
 
     # Bring the active qubits to the minimum frequency point
@@ -79,31 +79,25 @@ with program() as multi_qubit_spec:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(df, dfs)):
-            # Update the qubit frequencies
-            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
-            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
+            # Update the qubit frequencies for all qubits
+            for q in qubits:
+                update_frequency(q.xy.name, df + q.xy.intermediate_frequency)
 
-            # qubit 1
-            q1.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
-            align(q1.xy.name, q1.resonator.name)  # TODO: use q1.align() instead?
-            # qubit 2
-            q2.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
-            align(q2.xy.name, q2.resonator.name)
+            for q in qubits:
+                # Play the saturation pulse
+                q.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
+                align(q.xy.name, q.resonator.name)
 
             # QUA macro the readout the state of the active resonators (defined in macros.py)
-            multiplexed_readout([q1, q2], I, I_st, Q, Q_st, sequential=False)
+            multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False)
             # Wait for the qubit to decay to the ground state
             wait(machine.thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
-        # resonator 1
-        I_st[0].buffer(len(dfs)).average().save("I1")
-        Q_st[0].buffer(len(dfs)).average().save("Q1")
-        # resonator 2
-        I_st[1].buffer(len(dfs)).average().save("I2")
-        Q_st[1].buffer(len(dfs)).average().save("Q2")
-
+        for i in range(num_qubits):
+            I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 ###########################
 # Run or Simulate Program #
@@ -123,42 +117,39 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_qubit_spec)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = ["n"] + sum([[f"I{i}", f"Q{i}"] for i in range(num_qubits)], [])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I = fetched_data[1::2]
+        Q = fetched_data[2::2]
+
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
-        # Convert results into Volts
-        s1 = u.demod2volts(I1 + 1j * Q1, q1.resonator.operations["readout"].length)
-        s2 = u.demod2volts(I2 + 1j * Q2, q2.resonator.operations["readout"].length)
-        # Plot results
+
         plt.suptitle("Qubit spectroscopy")
-        plt.subplot(221)
-        plt.cla()
-        plt.plot(dfs / u.MHz, np.abs(s1))
-        plt.grid(True)
-        plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"{q1.name} (f_01: {q1.xy.rf_frequency / u.MHz} MHz)")
-        plt.subplot(223)
-        plt.cla()
-        plt.plot(dfs / u.MHz, np.angle(s1))
-        plt.grid(True)
-        plt.ylabel("Phase [rad]")
-        plt.xlabel(f"{q1.name} detuning [MHz]")
-        plt.subplot(222)
-        plt.cla()
-        plt.plot(dfs / u.MHz, np.abs(s2))
-        plt.grid(True)
-        plt.title(f"{q2.name} (f_01: {q2.xy.rf_frequency / u.MHz} MHz)")
-        plt.subplot(224)
-        plt.cla()
-        plt.plot(dfs / u.MHz, np.angle(s2))
-        plt.grid(True)
-        plt.xlabel(f"{q2.name} detuning [MHz]")
+        s_data = []
+        for i, q in enumerate(qubits):
+            s = u.demod2volts(I[i] + 1j * Q[i], q.resonator.operations["readout"].length)
+            s_data.append(s)
+            plt.subplot(2, num_qubits, i + 1)
+            plt.cla()
+            plt.plot(dfs / u.MHz, np.abs(s))
+            plt.grid(True)
+            plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
+            plt.title(f"{q.name} (f_01: {q.xy.rf_frequency / u.MHz} MHz)")
+            plt.subplot(2, num_qubits, num_qubits + i + 1)
+            plt.cla()
+            plt.plot(dfs / u.MHz, np.angle(s))
+            plt.grid(True)
+            plt.ylabel("Phase [rad]")
+            plt.xlabel(f"{q.name} detuning [MHz]")
+
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -166,50 +157,39 @@ else:
     qm.close()
 
     # Save data from the node
-    data = {
-        f"{q1.name}_frequency": dfs + q1.xy.intermediate_frequency,
-        f"{q1.name}_R": np.abs(s1),
-        f"{q1.name}_phase": np.angle(s1),
-        f"{q2.name}_frequency": dfs + q2.xy.intermediate_frequency,
-        f"{q2.name}_R": np.abs(s2),
-        f"{q2.name}_phase": np.angle(s2),
-        "figure": fig,
-    }
+    data = {}
+    for i, q in enumerate(qubits):
+        data[f"{q.name}_frequency"] = dfs + q.xy.intermediate_frequency
+        data[f"{q.name}_R"] = np.abs(s_data[i])
+        data[f"{q.name}_phase"] = np.angle(s_data[i])
+    data["figure"] = fig
 
     # Fit the results to extract the resonance frequency
-    try:
-        from qualang_tools.plot.fitting import Fit
+    for i, q in enumerate(qubits):
+        try:
+            from qualang_tools.plot.fitting import Fit
 
-        fit = Fit()
-        fit_fig = plt.figure()
-        plt.suptitle("Qubit spectroscopy")
-        plt.subplot(121)
-        res_1 = fit.reflection_resonator_spectroscopy(
-            (q1.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s1), plot=True
-        )
-        plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{q1.name} IF [MHz]")
-        plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        plt.title(f"{q1.name}")
+            fit = Fit()
+            fit_fig = plt.figure()
+            plt.suptitle("Qubit spectroscopy")
+            plt.subplot(1, num_qubits, i + 1)
+            res = fit.reflection_resonator_spectroscopy(
+                (q.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s_data[i]), plot=True
+            )
+            plt.legend((f"f = {res['f'][0]:.3f} MHz",))
+            plt.xlabel(f"{q.name} IF [MHz]")
+            plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
+            plt.title(f"{q.name}")
 
-        q1.xy.intermediate_frequency = int(res_1["f"][0] * u.MHz)
-        data[f"{q1.name}"] = {"res_if": q1.xy.intermediate_frequency, "fit_successful": True}
+            q.xy.intermediate_frequency = int(res["f"][0] * u.MHz)
+            data[f"{q.name}"] = {"res_if": q.xy.intermediate_frequency, "fit_successful": True}
 
-        plt.subplot(122)
-        res_2 = fit.reflection_resonator_spectroscopy(
-            (q2.xy.intermediate_frequency + dfs) / u.MHz, np.abs(s2), plot=True
-        )
-        plt.legend((f"f = {res_2['f'][0]:.3f} MHz",))
-        plt.xlabel(f"{q2.name} IF [MHz]")
-        plt.title(f"{q2.name}")
-        plt.tight_layout()
+            plt.tight_layout()
+            data["fit_figure"] = fit_fig
 
-        q2.xy.intermediate_frequency = int(res_2["f"][0] * u.MHz)
-        data[f"{q2.name}"] = {"res_if": q2.xy.intermediate_frequency, "fit_successful": True}
-        data["fit_figure"] = fit_fig
+        except Exception:
+            data[f"{q.name}"] = {"successful_fit": False}
+            pass
 
-    except (Exception,):
-        data["successful_fit"] = False
-        pass
     # Save data from the node
     node_save("qubit_spectroscopy", data, machine)

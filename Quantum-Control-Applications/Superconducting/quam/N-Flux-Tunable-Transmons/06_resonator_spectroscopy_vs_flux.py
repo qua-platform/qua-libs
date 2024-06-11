@@ -32,27 +32,23 @@ import numpy as np
 from components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
 
-
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class t handle unit and conversion functions
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam_state")
-# Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
-# Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+resonators = [qubit.resonator for qubit in machine.active_qubits]
+num_resonators = len(resonators)
 
 ###################
 # The QUA program #
@@ -64,10 +60,9 @@ dcs = np.linspace(-0.49, 0.49, 50)
 # The frequency sweep around the resonator resonance frequency f_opt
 dfs = np.arange(-50e6, 5e6, 0.1e6)
 
-
 with program() as multi_res_spec_vs_flux:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_resonators)
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
@@ -77,28 +72,26 @@ with program() as multi_res_spec_vs_flux:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(df, dfs)):
-            # Update the resonator frequencies
-            update_frequency(q1.resonator.name, df + q1.resonator.intermediate_frequency)
-            update_frequency(q2.resonator.name, df + q2.resonator.intermediate_frequency)
+            # Update the resonator frequencies for all resonators
+            for rr in resonators:
+                update_frequency(rr.name, df + rr.intermediate_frequency)
 
             with for_(*from_array(dc, dcs)):
-                # Flux sweeping by tuning the OPX dc offset associated to the flux_line element
-                q1.z.set_dc_offset(dc)
-                q2.z.set_dc_offset(dc)
+                # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
+                for qubit in qubits:
+                    qubit.z.set_dc_offset(dc)
                 wait(100)  # Wait for the flux to settle
+
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout([q1, q2], I, I_st, Q, Q_st, sequential=False)
-                # wait for the resonators to relax
-                wait(machine.depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
+                multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False)
+                # Wait for the resonators to relax
+                wait(machine.depletion_time * u.ns, *[rr.name for rr in resonators])
 
     with stream_processing():
         n_st.save("n")
-        # resonator 1
-        I_st[0].buffer(len(dcs)).buffer(len(dfs)).average().save("I1")
-        Q_st[0].buffer(len(dcs)).buffer(len(dfs)).average().save("Q1")
-        # resonator 2
-        I_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("I2")
-        Q_st[1].buffer(len(dcs)).buffer(len(dfs)).average().save("Q2")
+        for i, rr in enumerate(resonators):
+            I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 #######################
 # Simulate or execute #
@@ -118,56 +111,52 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = ["n"] + sum([[f"I{i}", f"Q{i}"] for i in range(num_resonators)], [])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I = fetched_data[1::2]
+        Q = fetched_data[2::2]
+
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
-        # Convert results into Volts and normalize
-        s1 = u.demod2volts(I1 + 1j * Q1, q1.resonator.operations["readout"].length)
-        s2 = u.demod2volts(I2 + 1j * Q2, q2.resonator.operations["readout"].length)
-
-        A1 = np.abs(s1)
-        A2 = np.abs(s2)
 
         plt.suptitle("Resonator spectroscopy vs flux")
-        plt.subplot(121)
-        plt.cla()
-        plt.title(f"{q1.resonator.name} (LO: {q1.resonator.frequency_converter_up.LO_frequency / u.MHz} MHz)")
-        plt.xlabel("flux [V]")
-        plt.ylabel(f"{q1.resonator.name} IF [MHz]")
-        plt.pcolor(dcs, q1.resonator.intermediate_frequency / u.MHz + dfs / u.MHz, A1)
-        plt.plot(q1.z.min_offset, q1.resonator.intermediate_frequency / u.MHz, "r*")
-        plt.subplot(122)
-        plt.cla()
-        plt.title(f"{q2.resonator.name} (LO: {q2.resonator.frequency_converter_up.LO_frequency / u.MHz} MHz)")
-        plt.xlabel("flux [V]")
-        plt.ylabel(f"{q2.resonator.name} IF [MHz]")
-        plt.pcolor(dcs, q2.resonator.intermediate_frequency / u.MHz + dfs / u.MHz, A2)
-        plt.plot(q2.z.min_offset, q2.resonator.intermediate_frequency / u.MHz, "r*")
+        A_data = []
+        for i, (qubit, rr) in enumerate(zip(resonators)):
+            s = u.demod2volts(I[i] + 1j * Q[i], rr.operations["readout"].length)
+            A = np.abs(s)
+            A_data.append(A)
+            # Plot
+            plt.subplot(1, num_resonators, i + 1)
+            plt.cla()
+            plt.title(f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)")
+            plt.xlabel("flux [V]")
+            plt.ylabel(f"{rr.name} IF [MHz]")
+            plt.pcolor(dcs, rr.intermediate_frequency / u.MHz + dfs / u.MHz, A)
+            plt.plot(qubit.z.min_offset, rr.intermediate_frequency / u.MHz, "r*")
+
         plt.tight_layout()
         plt.pause(0.1)
 
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat up
     qm.close()
 
     # Update machine with max frequency point for both resonator and qubit
     # q1.z.min_offset =
     # q2.z.min_offset =
     # Save data from the node
-    data = {
-        f"{q1.resonator.name}_flux_bias": dcs,
-        f"{q1.resonator.name}_frequency": q1.resonator.intermediate_frequency + dfs,
-        f"{q1.resonator.name}_R": A1,
-        f"{q1.resonator.name}_min_offset": q1.z.min_offset,
-        f"{q2.resonator.name}_flux_bias": dcs,
-        f"{q2.resonator.name}_frequency": q2.resonator.intermediate_frequency + dfs,
-        f"{q2.resonator.name}_R": A2,
-        f"{q2.resonator.name}_min_offset": q2.z.min_offset,
-        "figure": fig,
-    }
+    data = {}
+    for i, (qubit, rr) in enumerate(zip(qubits, resonators)):
+        data[f"{rr.name}_flux_bias"] = dcs
+        data[f"{rr.name}_frequency"] = qubit.resonator.intermediate_frequency + dfs
+        data[f"{rr.name}_R"] = A_data[i]
+        data[f"{rr.name}_min_offset"] = qubit.z.min_offset
+    data["figure"] = fig
+
     node_save("resonator_spectroscopy_vs_flux", data, machine)
