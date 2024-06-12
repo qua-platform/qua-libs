@@ -1,5 +1,5 @@
 """
-        CRYOSCOPE
+CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
 (implemented on the OPX) to pre-distort the flux pulses and improve the two-qubit gates fidelity.
 Since the flux line ends on the qubit chip, it is not possible to measure the flux pulse after propagation through the

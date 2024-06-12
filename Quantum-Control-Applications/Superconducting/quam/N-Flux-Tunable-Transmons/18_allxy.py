@@ -1,5 +1,5 @@
 """
-        ALL-XY MEASUREMENT
+ALL-XY MEASUREMENT
 The program consists in playing a random sequence of predefined gates after which the theoretical qubit state is known.
 See [Reed's Thesis](https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf) for more details.
 
@@ -41,15 +41,13 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
-rr1 = q1.resonator
-rr2 = q2.resonator
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ##############################
 # Program-specific variables #
 ##############################
-n_points = 1000_000
+n_points = 100_000
 
 
 # All XY sequences. The sequence names must match corresponding operation in the config
@@ -99,10 +97,9 @@ def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
-    if resonator == rr1:
-        rr2.play("readout")
-    else:
-        rr1.play("readout")
+    for other_qubit in qubits:
+        if other_qubit.resonator != resonator:
+            other_qubit.resonator.play("readout")
     resonator.measure("readout", qua_vars=(I_xy, Q_xy))
     return I_xy, Q_xy
 
@@ -112,7 +109,7 @@ def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
 ###################
 # Define the QUA program in a function so that one can call it for the two qubits successively
 def get_prog(qubit, resonator):
-    with program() as ALLXY:
+    with program() as all_xy:
         n = declare(int)
         n_st = declare_stream()
         r = Random()  # Pseudo random number generator
@@ -148,7 +145,7 @@ def get_prog(qubit, resonator):
             for i in range(21):
                 I_st[i].average().save(f"I{i}")
                 Q_st[i].average().save(f"Q{i}")
-    return ALLXY
+    return all_xy
 
 
 ###########################
@@ -159,19 +156,21 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, get_prog(q1, rr1), simulation_config)
+    program = get_prog(qubits[0], qubits[0].resonator)
+    job = qmm.simulate(config, program, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
-    # Open the quantum machine
-    qm = qmm.open_qm(config)
-    # Calibrate the active qubits
-    # machine.calibrate_octave_ports(qm)
-    data = {}
-    # Loop over the two qubits
-    for qb, rr in [[q1, rr1], [q2, rr2]]:
-        # Send the QUA program to the OPX, which compiles and executes it
-        job = qm.execute(get_prog(qb, rr))
+    # Perform AllXY for each qubit separately
+    for qubit in qubits:
+        # Prepare data for saving
+        data = {}
+        # Open the quantum machine
+        qm = qmm.open_qm(config)
+        # Calibrate the active qubits
+        # machine.calibrate_octave_ports(qm)
+        program = get_prog(qubit, qubit.resonator)
+        job = qm.execute(program)
         data_list = ["iteration"] + np.concatenate([[f"I{i}", f"Q{i}"] for i in range(21)]).tolist()
         results = fetching_tool(job, data_list, mode="live")
         fig, ax = plt.subplots(2, 1)
@@ -195,14 +194,14 @@ else:
             ax[1].plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, "-")
             ax[1].set_ylabel("Q quadrature [a.u.]")
             ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
-            plt.suptitle(f"All XY {qb.name}")
+            plt.suptitle(f"All XY {qubit.name}")
             plt.tight_layout()
             plt.pause(0.1)
 
-            data[qb.name] = {"I": I, "Q": Q, "figure": fig}
+            data[qubit.name] = {"I": I, "Q": Q, "figure": fig}
 
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
-    qm.close()
+        # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+        qm.close()
 
-    # Save data from the node
-    node_save("all_xy", data, machine)
+        # Save data from the node
+        node_save("all_xy", data, machine)

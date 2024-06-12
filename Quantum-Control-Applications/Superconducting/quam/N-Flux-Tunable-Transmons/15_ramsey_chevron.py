@@ -1,5 +1,5 @@
 """
-        RAMSEY CHEVRON (IDLE TIME VS FREQUENCY)
+RAMSEY CHEVRON (IDLE TIME VS FREQUENCY)
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different qubit intermediate
 frequencies and idle times.
 From the results, one can estimate the qubit frequency more precisely than by doing Rabi and also gets a rough estimate
@@ -33,7 +33,7 @@ from macros import qua_declaration, multiplexed_readout, node_save
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class containing tools to help handling units and conversions.
+# Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam_state")
@@ -44,9 +44,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
-
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -60,7 +59,7 @@ t_delay = np.arange(4, 300, 4)
 
 
 with program() as ramsey:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
     t = declare(int)  # QUA variable for the idle time
     df = declare(int)  # QUA variable for the qubit detuning
 
@@ -72,34 +71,26 @@ with program() as ramsey:
 
         with for_(*from_array(df, dfs)):
             # Update the qubits frequency
-            update_frequency(q1.xy.name, df + q1.xy.intermediate_frequency)
-            update_frequency(q2.xy.name, df + q2.xy.intermediate_frequency)
+            for qubit in qubits:
+                update_frequency(qubit.xy.name, df + qubit.xy.intermediate_frequency)
 
             with for_(*from_array(t, t_delay)):
-                # qubit 1
-                q1.xy.play("x90")
-                q1.xy.wait(t)
-                q1.xy.play("x90")
-
-                # qubit 2
-                q2.xy.play("x90")
-                q2.xy.wait(t)
-                q2.xy.play("x90")
+                for qubit in qubits:
+                    qubit.xy.play("x90")
+                    qubit.xy.wait(t)
+                    qubit.xy.play("x90")
 
                 align()
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
+                multiplexed_readout(qubits, I, I_st, Q, Q_st)
                 # Wait for the qubits to decay to the ground state
                 wait(machine.thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
-        # resonator 1
-        I_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("I1")
-        Q_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q1")
-        # resonator 2
-        I_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("I2")
-        Q_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q2")
+        for i in range(len(machine.active_qubits)):
+            I_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"I{i+1}")
+            Q_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"Q{i+1}")
 
 
 ###########################
@@ -120,42 +111,34 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ramsey)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], ["n"])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
-    fig = plt.figure()
-    interrupt_on_close(fig, job)  #  Interrupts the job when closing the figure
+    fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
+    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I_data = fetched_data[1::2]
+        Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
-        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
-        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
+        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
+        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
         plt.suptitle("Ramsey chevron")
-        plt.subplot(221)
-        plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
-        plt.title(f"{q1.name} - I, f_01={int(q1.f_01 / u.MHz)} MHz")
-        plt.ylabel("detuning [MHz]")
-        plt.subplot(223)
-        plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, Q1)
-        plt.title(f"{q1.name} - Q")
-        plt.xlabel("Idle time [ns]")
-        plt.ylabel("detuning [MHz]")
-        plt.subplot(222)
-        plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
-        plt.title(f"{q2.name} - I, f_01={int(q2.f_01 / u.MHz)} MHz")
-        plt.subplot(224)
-        plt.cla()
-        plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
-        plt.title(f"{q2.name} - Q")
-        plt.xlabel("Idle time [ns]")
+        for i, qubit in enumerate(qubits):
+            axes[i, 0].cla()
+            axes[i, 0].pcolor(4 * t_delay, dfs / u.MHz, I_volts[i])
+            axes[i, 0].set_title(f"{qubit.name} - I, f_01={int(qubit.f_01 / u.MHz)} MHz")
+            axes[i, 0].set_ylabel("detuning [MHz]")
+            axes[i, 1].cla()
+            axes[i, 1].pcolor(4 * t_delay, dfs / u.MHz, Q_volts[i])
+            axes[i, 1].set_title(f"{qubit.name} - Q")
+            axes[i, 1].set_xlabel("Idle time [ns]")
+            axes[i, 1].set_ylabel("detuning [MHz]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -163,15 +146,12 @@ else:
     qm.close()
 
     # Save data from the node
-    data = {
-        f"{q1.name}_amplitude": 4 * t_delay,
-        f"{q1.name}_frequency": dfs + q1.xy.intermediate_frequency,
-        f"{q1.name}_I": np.abs(I1),
-        f"{q1.name}_Q": np.angle(Q1),
-        f"{q2.name}_amplitude": 4 * t_delay,
-        f"{q2.name}_frequency": dfs + q2.xy.intermediate_frequency,
-        f"{q2.name}_I": np.abs(I2),
-        f"{q2.name}_Q": np.angle(Q2),
-        "figure": fig,
-    }
+    data = {}
+    for i, qubit in enumerate(qubits):
+        data[f"{qubit.name}_time"] = t_delay * 4
+        data[f"{qubit.name}_frequency"] = dfs + qubit.xy.intermediate_frequency
+        data[f"{qubit.name}_I"] = np.abs(I_volts[i])
+        data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
+    data["figure"] = fig
+
     node_save("ramsey_chevron", data, machine)
