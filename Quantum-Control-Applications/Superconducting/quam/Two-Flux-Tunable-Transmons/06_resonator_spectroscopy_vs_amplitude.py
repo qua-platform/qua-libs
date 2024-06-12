@@ -41,10 +41,10 @@ from macros import qua_declaration, node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -88,7 +88,7 @@ with program() as multi_res_spec_vs_amp:
 
             with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
-                rr1.wait(machine.get_depletion_time * u.ns)  # wait for the resonator to relax
+                rr1.wait(machine.depletion_time * u.ns)  # wait for the resonator to relax
                 rr1.measure("readout", qua_vars=(I[0], Q[0]), amplitude_scale=a)
                 save(I[0], I_st[0])
                 save(Q[0], Q_st[0])
@@ -96,7 +96,7 @@ with program() as multi_res_spec_vs_amp:
                 ## rr2.align(rr1.name)  # Uncomment to measure sequentially and avoid overflow
 
                 # resonator 2
-                rr2.wait(machine.get_depletion_time * u.ns)  # wait for the resonator to relax
+                rr2.wait(machine.depletion_time * u.ns)  # wait for the resonator to relax
                 rr2.measure("readout", qua_vars=(I[1], Q[1]), amplitude_scale=a)
                 save(I[1], I_st[1])
                 save(Q[1], Q_st[1])

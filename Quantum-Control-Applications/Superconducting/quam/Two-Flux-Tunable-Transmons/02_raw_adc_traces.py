@@ -22,10 +22,10 @@ from macros import node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -52,7 +52,7 @@ with program() as raw_trace_prog:
         # Play the readout on rr2 as well for making sure that the ADC won't be saturated for multiplexed readout
         rr2.measure("readout")
         # Wait for the resonator to deplete
-        wait(machine.get_depletion_time * u.ns, rr1.name, rr2.name)
+        wait(machine.depletion_time * u.ns, rr1.name, rr2.name)
 
     with stream_processing():
         # Will save average:

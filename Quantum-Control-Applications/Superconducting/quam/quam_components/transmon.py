@@ -1,8 +1,8 @@
 from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, Pulse
 from quam import QuamComponent
-from .FluxLine_component import FluxLine
-from .ReadoutResonator_component import ReadoutResonator
+from .flux_line import FluxLine
+from .readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine
 from typing import Union
@@ -28,7 +28,6 @@ class Transmon(QuamComponent):
         thermalization_time_factor (int): thermalization time in units of T1.
         anharmonicity (int, float): the transmon anharmonicity in Hz.
     """
-    # TODO: update with inferred frequencies
 
     id: Union[int, str]
 
@@ -36,12 +35,35 @@ class Transmon(QuamComponent):
     z: FluxLine = None
     resonator: ReadoutResonator = None
 
+    f_01: float = None
+    f_12: float = "#./inferred_f_12"
+    anharmonicity: int = 150e6
+
     T1: int = 10_000
     T2ramsey: int = 10_000
     T2echo: int = 10_000
     thermalization_time_factor: int = 5
-    anharmonicity: int = 150e6
     sigma_time_factor: int = 5
+
+    @property
+    def inferred_f_12(self) -> float:
+        """The 0-2 (e-f) transition frequency in Hz, derived from f_01 and anharmonicity"""
+        name = getattr(self, "name", self.__class__.__name__)
+        if not isinstance(self.f_01, (float, int)):
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.f_01=} is not a number")
+        if not isinstance(self.anharmonicity, (float, int)):
+            raise AttributeError(f"Error inferring f_12 for channel {name}: {self.anharmonicity=} is not a number")
+        return self.f_01 + self.anharmonicity
+
+    @property
+    def inferred_anharmonicity(self) -> float:
+        """The transmon anharmonicity in Hz, derived from f_01 and f_12."""
+        name = getattr(self, "name", self.__class__.__name__)
+        if not isinstance(self.f_01, (float, int)):
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_01=} is not a number")
+        if not isinstance(self.f_12, (float, int)):
+            raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
+        return self.f_12 - self.f_01
 
     @property
     def sigma(self, operation: Pulse):
@@ -51,16 +73,6 @@ class Transmon(QuamComponent):
     def thermalization_time(self):
         """The transmon thermalization time in ns."""
         return self.thermalization_time_factor * self.T1
-
-    @property
-    def f_01(self):
-        """The 0-1 (g-e) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency
-
-    @property
-    def f_12(self):
-        """The 0-2 (e-f) transition frequency in Hz"""
-        return self.xy.frequency_converter_up.LO_frequency + self.xy.intermediate_frequency - self.anharmonicity
 
     def calibrate_octave(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave channels (xy and resonator) linked to this transmon for the LO frequency, intermediate
@@ -91,3 +103,18 @@ class Transmon(QuamComponent):
     def name(self):
         """The name of the transmon"""
         return self.id if isinstance(self.id, str) else f"q{self.id}"
+
+    def __matmul__(self, other):
+        if not isinstance(other, Transmon):
+            raise ValueError(
+                "Cannot create a qubit pair (q1 @ q2) with a non-qubit object, " f"where q1={self} and q2={other}"
+            )
+
+        if self is other:
+            raise ValueError("Cannot create a qubit pair with same qubit (q1 @ q1), where q1={self}")
+
+        for qubit_pair in self._root.qubit_pairs:
+            if qubit_pair.qubit_control is self and qubit_pair.qubit_target is other:
+                return qubit_pair
+        else:
+            raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")

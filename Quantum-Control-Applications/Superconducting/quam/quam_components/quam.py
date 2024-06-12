@@ -1,6 +1,6 @@
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
-from .Transmon_component import Transmon
+from .transmon import Transmon
 
 from qm.qua import align
 from qm import QuantumMachinesManager, QuantumMachine
@@ -17,11 +17,7 @@ __all__ = ["QuAM"]
 class QuAM(QuamRoot):
     """Example QuAM root component."""
 
-    @classmethod
-    def load(cls, *args, **kwargs) -> "QuAM":
-        return super().load(*args, **kwargs)
-
-    octave: Octave = None
+    octaves: Dict[str, Octave] = field(default_factory=dict)
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
@@ -30,6 +26,10 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
 
     _data_handler: ClassVar[DataHandler] = None
+
+    @classmethod
+    def load(cls, *args, **kwargs) -> "QuAM":
+        return super().load(*args, **kwargs)
 
     @property
     def data_handler(self) -> DataHandler:
@@ -45,14 +45,14 @@ class QuAM(QuamRoot):
         return [self.qubits[q] for q in self.active_qubit_names]
 
     @property
-    def get_depletion_time(self) -> int:
+    def depletion_time(self) -> int:
         """Return the longest depletion time amongst the active qubits."""
-        return max([q.resonator.depletion_time for q in self.active_qubits])
+        return max(q.resonator.depletion_time for q in self.active_qubits)
 
     @property
-    def get_thermalization_time(self) -> int:
+    def thermalization_time(self) -> int:
         """Return the longest thermalization time amongst the active qubits."""
-        return max([q.thermalization_time for q in self.active_qubits])
+        return max(q.thermalization_time for q in self.active_qubits)
 
     def apply_all_flux_to_min(self) -> None:
         """Apply the offsets that bring all the active qubits to the minimum frequency point."""
@@ -66,15 +66,36 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        return QuantumMachinesManager(
-            host=self.network["host"], cluster_name=self.network["cluster_name"], octave=self.octave.get_octave_config()
+        settings = dict(
+            host=self.network["host"],
+            cluster_name=self.network["cluster_name"],
+            octave=self.get_octave_config(),
         )
+        if "port" in self.network:
+            settings["port"] = self.network["port"]
+        return QuantumMachinesManager(**settings)
 
-    def calibrate_active_qubits(self, QM: QuantumMachine) -> None:
+    def get_octave_config(self) -> dict:
+        """Return the Octave configuration."""
+        octave_config = None
+        for octave in self.octaves.values():
+            if octave_config is None:
+                octave_config = octave.get_octave_config()
+            else:
+                octave_config.add_device_info(octave.name, octave.ip, octave.port)
+
+        return octave_config
+
+    def calibrate_octave_ports(self, QM: QuantumMachine) -> None:
         """Calibrate the Octave ports for all the active qubits.
 
         Args:
             QM (QuantumMachine): the running quantum machine.
         """
+        from qm.octave.octave_mixer_calibration import NoCalibrationElements
+
         for name in self.active_qubit_names:
-            self.qubits[name].calibrate_octave(QM)
+            try:
+                self.qubits[name].calibrate_octave(QM)
+            except NoCalibrationElements:
+                print(f"No calibration elements found for {name}. Skipping calibration.")

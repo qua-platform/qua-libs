@@ -35,10 +35,10 @@ from scipy import signal
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -74,7 +74,7 @@ with program() as resonator_spec:
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
             rr.measure("readout", qua_vars=(I, Q))
             # Wait for the resonator to deplete
-            rr.wait(machine.get_depletion_time * u.ns)
+            rr.wait(machine.depletion_time * u.ns)
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
             save(Q, Q_st)
@@ -105,7 +105,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Calibrate the active qubits
-    # machine.calibrate_active_qubits(qm)
+    # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(resonator_spec)
     # Get results from QUA program

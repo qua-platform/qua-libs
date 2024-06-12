@@ -1,11 +1,5 @@
 from qm.qua import *
-from components import FluxLine, QuAM
-
-
-def node_save(name: str, data: dict, quam: QuAM):
-    quam.data_handler.save_data(data=data, name=name)
-    quam.save(path=quam.data_handler.path / "state.json")
-    quam.save(path="state.json")
+from components import QuAM
 
 
 def apply_all_flux_to_min(quam: "QuAM"):
@@ -41,16 +35,28 @@ def qua_declaration(nb_of_qubits):
     return I, I_st, Q, Q_st, n, n_st
 
 
-def multiplexed_readout(quam: "QuAM", I, I_st, Q, Q_st, sequential: bool = False, amplitude_scale=None, weights=""):
+def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""):
     """Perform multiplexed readout on two resonators"""
 
-    for ind, q in enumerate(quam.active_qubits):
-        q.resonator.measure("readout", qua_vars=(I[ind], Q[ind]), amplitude_scale=amplitude_scale)
+    for ind, q in enumerate(qubits):
+        # TODO: demod.accumulated?
+        q.resonator.measure("readout", qua_vars=(I[ind], Q[ind]))  # TODO: implement amplitude sweep
 
         if I_st is not None:
             save(I[ind], I_st[ind])
         if Q_st is not None:
             save(Q[ind], Q_st[ind])
 
-        if sequential and ind < len(quam.active_qubits) - 1:
-            align(q.resonator.name, quam.active_qubits[ind + 1].resonator.name)
+        if sequential and ind < len(qubits) - 1:
+            align(q.resonator.name, qubits[ind + 1].resonator.name)
+
+
+def node_save(name: str, data: dict, quam: QuAM):
+    # Save results
+    quam.data_handler.save_data(data=data, name=name)
+
+    # Save QuAM to the data folder
+    quam.save(path=quam.data_handler.path / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
+
+    # Save QuAM to current working directory `state.json`
+    quam.save(path="quam_state", content_mapping={"wiring.json": {"wiring", "network"}})

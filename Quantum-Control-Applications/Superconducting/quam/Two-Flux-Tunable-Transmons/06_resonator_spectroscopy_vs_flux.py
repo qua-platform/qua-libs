@@ -41,11 +41,11 @@ from macros import qua_declaration, multiplexed_readout, node_save
 u = unit(coerce_to_integer=True)
 # Instantiate the abstract machine
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Load the config
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open the Quantum Machine Manager
 # Open Communication with the QOP
 qmm = machine.connect()
@@ -87,9 +87,9 @@ with program() as multi_res_spec_vs_flux:
                 q2.z.set_dc_offset(dc)
                 wait(100)  # Wait for the flux to settle
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(machine, I, I_st, Q, Q_st, sequential=False)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st, sequential=False)
                 # wait for the resonators to relax
-                wait(machine.get_depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
+                wait(machine.depletion_time * u.ns, q1.resonator.name, q2.resonator.name)
 
     with stream_processing():
         n_st.save("n")
@@ -114,7 +114,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Calibrate the active qubits
-    # machine.calibrate_active_qubits(qm)
+    # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program

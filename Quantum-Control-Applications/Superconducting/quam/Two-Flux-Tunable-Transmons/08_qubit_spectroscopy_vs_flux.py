@@ -33,10 +33,10 @@ from macros import qua_declaration, multiplexed_readout, node_save
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("state.json")
+machine = QuAM.load("quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.octave.get_octave_config()
+octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -92,9 +92,9 @@ with program() as multi_qubit_spec_vs_flux:
                 q2.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
 
                 # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(machine, I, I_st, Q, Q_st)
+                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
                 # Wait for the qubit to decay to the ground state
-                wait(machine.get_thermalization_time * u.ns)
+                wait(machine.thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
@@ -120,7 +120,7 @@ else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Calibrate the active qubits
-    # machine.calibrate_active_qubits(qm)
+    # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_qubit_spec_vs_flux)
     # Get results from QUA program
