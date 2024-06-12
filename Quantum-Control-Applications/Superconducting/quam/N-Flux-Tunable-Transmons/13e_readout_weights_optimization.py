@@ -1,5 +1,5 @@
 """
-        READOUT OPTIMISATION: INTEGRATION WEIGHTS
+READOUT OPTIMIZATION: INTEGRATION WEIGHTS
 This sequence involves assessing the state of the resonator in two distinct scenarios: first, after thermalization
 (with the qubit in the |g> state) and then following the application of a pi pulse to the qubit (transitioning the
 qubit to the |e> state).
@@ -40,7 +40,7 @@ from macros import node_save
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class containing tools to help handling units and conversions.
+# Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam_state")
@@ -51,11 +51,12 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
-rr1 = q1.resonator
-rr2 = q2.resonator
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
+# Select the resonator and qubit to measure (no multiplexing here)
+qb = qubits[1]
+rr = qb.resonator
 
 ####################
 # Helper functions #
@@ -124,17 +125,13 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 ###################
 # The QUA program #
 ###################
-# Select the resonator and qubit to measure (no multiplexing here)
-qb = q2
-rr = rr2
-
 n_avg = 1e4  # number of averages
 
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = rr.operations["readout"].length
 ringdown_len = 0 * u.us
-rr1.operations["readout"].length = readout_len
-rr2.operations["readout"].length = readout_len
+for qubit in qubits:
+    qubit.resonator.operations["readout"].length = readout_len
 config = machine.generate_config()
 
 # Set the sliced demod parameters
@@ -166,11 +163,9 @@ with program() as opt_weights:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Measure the ground state.
-        # Play on the second resonator to be in the same conditions as with multiplexed readout
-        if rr == rr1:
-            measure("readout", rr2.name, None)
-        else:
-            measure("readout", rr1.name, None)
+        for other_rr in [q.resonator for q in qubits if q.resonator != rr]:
+            # Play on the other resonators to be in the same conditions as with multiplexed readout
+            measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
         rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
 
@@ -188,11 +183,9 @@ with program() as opt_weights:
         # Measure the excited state.
         qb.xy.play("x180")
         align()
-        # Play on the second resonator to be in the same conditions as with multiplexed readout
-        if rr == rr1:
-            rr2.measure("readout")
-        else:
-            rr1.measure("readout")
+        for other_rr in [q.resonator for q in qubits if q.resonator != rr]:
+            # Play on the other resonators to be in the same conditions as with multiplexed readout
+            measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
         rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
 

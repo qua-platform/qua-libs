@@ -29,7 +29,6 @@ import numpy as np
 from components import QuAM
 from macros import multiplexed_readout, node_save
 
-
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
@@ -44,10 +43,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
-rr1 = machine.active_qubits[0].resonator
-rr2 = machine.active_qubits[1].resonator
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -59,15 +56,15 @@ dfs = np.arange(-2e6, 2e6, 0.02e6)
 
 with program() as ro_freq_opt:
     n = declare(int)
-    I_g = [declare(fixed) for _ in range(2)]
-    Q_g = [declare(fixed) for _ in range(2)]
-    I_e = [declare(fixed) for _ in range(2)]
-    Q_e = [declare(fixed) for _ in range(2)]
+    I_g = [declare(fixed) for _ in range(num_qubits)]
+    Q_g = [declare(fixed) for _ in range(num_qubits)]
+    I_e = [declare(fixed) for _ in range(num_qubits)]
+    Q_e = [declare(fixed) for _ in range(num_qubits)]
     DI = declare(fixed)
     DQ = declare(fixed)
-    D = [declare(fixed) for _ in range(2)]
+    D = [declare(fixed) for _ in range(num_qubits)]
     df = declare(int)
-    D_st = [declare_stream() for _ in range(2)]
+    D_st = [declare_stream() for _ in range(num_qubits)]
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
@@ -75,37 +72,36 @@ with program() as ro_freq_opt:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             # Update the resonator frequencies
-            update_frequency(rr1.name, df + rr1.intermediate_frequency)
-            update_frequency(rr2.name, df + rr2.intermediate_frequency)
+            for qubit in qubits:
+                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
 
-            # Wait for the qubit to decay to the ground state
+            # Wait for the qubits to decay to the ground state
             wait(machine.thermalization_time * u.ns)
             align()
             # Measure the state of the resonators
-            multiplexed_readout([q1, q2], I_g, None, Q_g, None)
+            multiplexed_readout(qubits, I_g, None, Q_g, None)
 
             align()
             # Wait for thermalization again in case of measurement induced transitions
             wait(machine.thermalization_time * u.ns)
             # Play the x180 gate to put the qubits in the excited state
-            q1.xy.play("x180")
-            q2.xy.play("x180")
+            for qubit in qubits:
+                qubit.xy.play("x180")
             # Align the elements to measure after playing the qubit pulses.
             align()
-            # Measure the state of the resonator
-            multiplexed_readout([q1, q2], I_e, None, Q_e, None)
+            # Measure the state of the resonators
+            multiplexed_readout(qubits, I_e, None, Q_e, None)
 
             # Derive the distance between the blobs for |g> and |e>
-            for i in range(len(machine.active_qubits)):
+            for i in range(num_qubits):
                 assign(DI, (I_e[i] - I_g[i]) * 100)
                 assign(DQ, (Q_e[i] - Q_g[i]) * 100)
                 assign(D[i], DI * DI + DQ * DQ)
                 save(D[i], D_st[i])
 
     with stream_processing():
-        for i in range(len(machine.active_qubits)):
-            D_st[i].buffer(len(dfs)).average().save(f"D{i+1}")
-
+        for i in range(num_qubits):
+            D_st[i].buffer(len(dfs)).average().save(f"D{i + 1}")
 
 ###########################
 # Run or Simulate Program #
@@ -126,39 +122,37 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(ro_freq_opt)
     # Get results from QUA program
-    results = fetching_tool(job, ["D1", "D2"])
-    # fetch data
-    D1, D2 = results.fetch_all()
+
+    result_keys = [f"D{i + 1}" for i in range(num_qubits)]
+    results = fetching_tool(job, result_keys)
+    D_data = results.fetch_all()
+
     # Plot the results
-    fig = plt.figure()
-    plt.subplot(211)
-    plt.plot(dfs, D1)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{q1.name} - f_opt = {int(rr1.f_01 / u.MHz)} MHz")
-    plt.subplot(212)
-    plt.plot(dfs, D2)
-    plt.xlabel("Readout detuning [MHz]")
-    plt.ylabel("Distance between IQ blobs [a.u.]")
-    plt.title(f"{q2.name} - f_opt = {int(rr2.f_01 / u.MHz)} MHz")
+    fig, axes = plt.subplots(num_qubits, 1, figsize=(10, 4 * num_qubits))
+    if num_qubits == 1:
+        axes = [axes]
+
+    for i, qubit in enumerate(qubits):
+        axes[i].plot(dfs, D_data[i])
+        axes[i].set_xlabel("Readout detuning [MHz]")
+        axes[i].set_ylabel("Distance between IQ blobs [a.u.]")
+        axes[i].set_title(f"{qubit.name} - f_opt = {int(qubit.resonator.f_01 / u.MHz)} MHz")
+        print(f"{qubit.resonator.name}: Shifting readout frequency by {dfs[np.argmax(D_data[i])]} Hz")
+
     plt.tight_layout()
-    print(f"{rr1.name}: Shift readout frequency by {dfs[np.argmax(D1)]} Hz")
-    print(f"{rr2.name}: Shift readout frequency by {dfs[np.argmax(D2)]} Hz")
+    plt.show()
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
     # Save data from the node
-    data = {
-        f"{rr1.name}_frequency": dfs + rr1.intermediate_frequency,
-        f"{rr1.name}_D": D1,
-        f"{rr1.name}_if_opt": rr1.intermediate_frequency + dfs[np.argmax(D1)],
-        f"{rr2.name}_frequency": dfs + rr2.intermediate_frequency,
-        f"{rr2.name}_D": D2,
-        f"{rr2.name}_if_opt": rr2.intermediate_frequency + dfs[np.argmax(D2)],
-        "figure": fig,
-    }
-    # Update the state
-    rr1.intermediate_frequency += dfs[np.argmax(D1)]
-    rr2.intermediate_frequency += dfs[np.argmax(D2)]
+    data = {}
+    for i, qubit in enumerate(qubits):
+        data[f"{qubit.resonator.name}_frequency"] = dfs + qubit.resonator.intermediate_frequency
+        data[f"{qubit.resonator.name}_D"] = D_data[i]
+        data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency + dfs[np.argmax(D_data[i])]
+        # Update the state
+        qubit.resonator.intermediate_frequency += dfs[np.argmax(D_data[i])]
+
+    data["figure"] = fig
     node_save("readout_frequency_optimization", data, machine)

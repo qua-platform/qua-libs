@@ -1,5 +1,5 @@
 """
-        POWER RABI WITH ERROR AMPLIFICATION
+POWER RABI WITH ERROR AMPLIFICATION
 This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
 measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
 By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
@@ -45,8 +45,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -61,8 +61,8 @@ amps = np.arange(0.6, 1.4, 0.01)
 N_pi = 1  # Maximum number of qubit pulses
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
-with program() as rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+with program() as power_rabi:
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
@@ -76,23 +76,18 @@ with program() as rabi:
             with for_(*from_array(a, amps)):
                 # Loop for error amplification (perform many qubit pulses)
                 with for_(count, 0, count < npi, count + 1):
-                    q1.xy.play("x180", amplitude_scale=a)
-                    q2.xy.play("x180", amplitude_scale=a)
+                    for qubit in qubits:
+                        qubit.xy.play("x180", amplitude_scale=a)
                 # Align all elements to measure after playing the qubit pulse.
                 align()
-                # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
-                # Wait for the qubit to decay to the ground state
+                multiplexed_readout(qubits, I, I_st, Q, Q_st)
                 wait(machine.thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
-        # resonator 1
-        I_st[0].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("I1")
-        Q_st[0].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("Q1")
-        # resonator 2
-        I_st[1].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("I2")
-        Q_st[1].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save("Q2")
+        for i, qubit in enumerate(qubits):
+            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i+1}")
+            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i+1}")
 
 
 ###########################
@@ -112,107 +107,82 @@ else:
     # Calibrate the active qubits
     # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(rabi)
+    job = qm.execute(power_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
-        # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
-        # Convert the results into Volts
-        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
-        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
-        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
-        # Progress bar
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I = fetched_data[1::2]
+        Q = fetched_data[2::2]
         progress_counter(n, n_avg, start_time=results.start_time)
+        I_volts, Q_volts = [], []
         # Plot results
-        if I1.shape[0] > 1:
-            plt.suptitle("Power Rabi with error amplification")
-            plt.subplot(321)
-            plt.cla()
-            plt.pcolor(amps * q1.xy.operations[operation].amplitude, N_pi_vec, I1)
-            plt.title(f"{q1.name} - I")
-            plt.subplot(323)
-            plt.cla()
-            plt.pcolor(amps * q1.xy.operations[operation].amplitude, N_pi_vec, Q1)
-            plt.title(f"{q1.name} - Q")
-            plt.xlabel("Qubit pulse amplitude [V]")
-            plt.ylabel("Number of Rabi pulses")
-            plt.subplot(322)
-            plt.cla()
-            plt.pcolor(amps * q2.xy.operations[operation].amplitude, N_pi_vec, I2)
-            plt.title(f"{q2.name} - I")
-            plt.subplot(324)
-            plt.cla()
-            plt.pcolor(amps * q2.xy.operations[operation].amplitude, N_pi_vec, Q2)
-            plt.title(f"{q2.name} - Q")
-            plt.xlabel("Qubit pulse amplitude [V]")
-            plt.ylabel("Number of Rabi pulses")
-            plt.subplot(325)
-            plt.cla()
-            plt.plot(amps * q1.xy.operations[operation].amplitude, np.sum(I1, axis=0))
-            plt.axvline(q1.xy.operations[operation].amplitude, color="k")
-            plt.xlabel("Rabi pulse amplitude [V]")
-            plt.ylabel(r"$\Sigma$ of Rabi pulses")
-            plt.subplot(326)
-            plt.cla()
-            plt.plot(amps * q2.xy.operations[operation].amplitude, np.sum(I2, axis=0))
-            plt.axvline(q2.xy.operations[operation].amplitude, color="k")
-            plt.xlabel("Rabi pulse amplitude [V]")
-            plt.tight_layout()
+        for i, qubit in enumerate(qubits):
+            if I[i].shape[0] > 1:
+                # Convert into volts
+                I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+                Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
+                # Plot
+                plt.suptitle("Power Rabi with error amplification")
+                plt.subplot(3, num_qubits, i+1)
+                plt.cla()
+                plt.pcolor(amps * qubit.xy.operations[operation].amplitude, N_pi_vec, I_volts[i])
+                plt.title(f"{qubit.name} - I")
+                plt.subplot(3, num_qubits, i+num_qubits+1)
+                plt.cla()
+                plt.pcolor(amps * qubit.xy.operations[operation].amplitude, N_pi_vec, Q_volts[i])
+                plt.title(f"{qubit.name} - Q")
+                plt.xlabel("Qubit pulse amplitude [V]")
+                plt.ylabel("Number of Rabi pulses")
+                plt.subplot(3, num_qubits, i+2*num_qubits+1)
+                plt.cla()
+                plt.plot(amps * qubit.xy.operations[operation].amplitude, np.sum(I_volts[i], axis=0))
+                plt.axvline(qubit.xy.operations[operation].amplitude, color="k")
+                plt.xlabel("Rabi pulse amplitude [V]")
+                plt.ylabel(r"$\Sigma$ of Rabi pulses")
 
-        else:
-            plt.suptitle("Power Rabi")
-            plt.subplot(221)
-            plt.cla()
-            plt.plot(amps * q1.xy.operations[operation].amplitude, I1[0])
-            plt.title(f"{q1.name}")
-            plt.ylabel("I quadrature [V]")
-            plt.subplot(223)
-            plt.cla()
-            plt.plot(amps * q1.xy.operations[operation].amplitude, Q1[0])
-            plt.xlabel("qubit pulse amplitudre [V]")
-            plt.ylabel("Q quadrature [V]")
-            plt.subplot(222)
-            plt.cla()
-            plt.plot(amps * q2.xy.operations[operation].amplitude, I2[0])
-            plt.title(f"{q2.name}")
-            plt.subplot(224)
-            plt.cla()
-            plt.plot(amps * q2.xy.operations[operation].amplitude, Q2[0])
-            plt.xlabel("qubit pulse amplitude [V]")
+            else:
+                plt.suptitle("Power Rabi")
+                plt.subplot(2, num_qubits, i+1)
+                plt.cla()
+                plt.plot(amps * qubit.xy.operations[operation].amplitude, I_volts[i])
+                plt.title(f"{qubit.name}")
+                plt.ylabel("I quadrature [V]")
+                plt.subplot(2, num_qubits, i+num_qubits+1)
+                plt.cla()
+                plt.plot(amps * qubit.xy.operations[operation].amplitude, Q_volts[i])
+                plt.xlabel("Qubit Pulse Amplitude [V]")
+                plt.ylabel("Q quadrature [V]")
+
         plt.tight_layout()
         plt.pause(0.1)
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+    data = {}
+    for i, qubit in enumerate(qubits):
+        data[f"{qubit.name}_amplitude"] = amps * qubit.xy.operations[operation].amplitude
+        data[f"{qubit.name}_I"] = np.abs(I_volts[i])
+        data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
 
-    # Save data from the node
-    data = {
-        f"{q1.name}_amplitude": amps * q1.xy.operations[operation].amplitude,
-        f"{q1.name}_I": np.abs(I1),
-        f"{q1.name}_Q": np.angle(Q1),
-        f"{q2.name}_amplitude": amps * q2.xy.operations[operation].amplitude,
-        f"{q2.name}_I": np.abs(I2),
-        f"{q2.name}_Q": np.angle(Q2),
-        "figure": fig,
-    }
+        # Get the optimal pi pulse amplitude when doing error amplification
+        try:
+            qubit.xy.operations[operation].amplitude = (
+                amps[np.argmax(np.sum(I_volts[i], axis=0))] * qubit.xy.operations[operation].amplitude
+            )
 
-    # Get the optimal pi pulse amplitude when doing error amplification
-    try:
-        q1.xy.operations[operation].amplitude = (
-            amps[np.argmax(np.sum(I1, axis=0))] * q1.xy.operations[operation].amplitude
-        )
-        q2.xy.operations[operation].amplitude = (
-            amps[np.argmax(np.sum(I2, axis=0))] * q2.xy.operations[operation].amplitude
-        )
+            data[f"{qubit.name}"] = {"x180_amplitude": qubit.xy.operations[operation].amplitude, "successful_fit": True}
 
-        data[f"{q1.name}"] = {"x180_amplitude": q1.xy.operations[operation].amplitude, "fit_successful": True}
-        data[f"{q2.name}"] = {"x180_amplitude": q2.xy.operations[operation].amplitude, "fit_successful": True}
-    except (Exception,):
-        pass
+        except (Exception,):
+            data[f"{qubit.name}"] = {"successful_fit": True}
+            pass
+
+    data["figure"] = fig
+
     # Save data from the node
     node_save("power_rabi", data, machine)

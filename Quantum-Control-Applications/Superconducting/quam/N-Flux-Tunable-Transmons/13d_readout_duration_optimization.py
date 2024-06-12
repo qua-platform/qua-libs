@@ -1,7 +1,7 @@
 """
-        READOUT OPTIMISATION: DURATION
+READOUT OPTIMIZATION: DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
-(with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
+(with the qubits in the |g> state) and then after applying a pi pulse to the qubits (transitioning the qubits to the
 |e> state). The "demod.accumulated" method is employed to assess the state of the resonator over varying durations.
 Reference: (https://docs.quantum-machines.co/0.1/qm-qua-sdk/docs/Guides/features/?h=accumulated#accumulated-demodulation)
 The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to determine
@@ -36,7 +36,7 @@ from macros import node_save
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class containing tools to help handling units and conversions.
+# Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam_state")
@@ -47,14 +47,12 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
-rr1 = q1.resonator
-rr2 = q2.resonator
-# Select the resonator and qubit to measure (no multiplexing here)
-rr = rr2
-qb = q2
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
+# Select the resonator and qubit to measure (no multiplexing here)
+qb = qubits[0]
+rr = qb.resonator
 
 ####################
 # Helper functions #
@@ -74,7 +72,6 @@ qb = q2
 #         "sine": [(-1.0, new_readout_length + ringdown_length)],
 #     }
 
-
 ###################
 # The QUA program #
 ###################
@@ -83,8 +80,7 @@ n_avg = 1e4  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 7 * u.us
 ringdown_len = 0 * u.us
-rr1.operations["readout"].length = readout_len
-rr2.operations["readout"].length = readout_len
+rr.operations["readout"].length = readout_len
 config = machine.generate_config()
 # update_readout_length(q1.name, readout_len, ringdown_len)
 # update_readout_length(q2.name, readout_len, ringdown_len)
@@ -96,7 +92,6 @@ print("The readout has been sliced in the following number of divisions", number
 
 # Time axis for the plots at the end
 x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
-
 
 with program() as ro_duration_opt:
     n = declare(int)
@@ -119,14 +114,11 @@ with program() as ro_duration_opt:
 
     with for_(n, 0, n < n_avg, n + 1):
         # Measure the ground state.
-        # Play on the second resonator to be in the same conditions as with multiplexed readout
-        if rr == rr1:
-            measure("readout", rr2.name, None)
-        else:
-            measure("readout", rr1.name, None)
+        for other_rr in [q.resonator for q in qubits if q.resonator != rr]:
+            # Play on the other resonators to be in the same conditions as with multiplexed readout
+            measure("readout", other_rr.name, None)
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
         rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
-        # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
             save(I[ind], Ig_st)
@@ -140,12 +132,9 @@ with program() as ro_duration_opt:
         # Measure the excited state.
         qb.xy.play("x180")
         align()
-        # Play on the second resonator to be in the same conditions as with multiplexed readout
-        if rr == rr1:
-            measure("readout", rr2.name, None)
-        else:
-            measure("readout", rr1.name, None)
-        # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
+        # Play on the other resonators to be in the same conditions as with multiplexed readout
+        for other_rr in [q.resonator for q in qubits if q.resonator != rr]:
+            measure("readout", other_rr.name, None)
         rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
         # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):

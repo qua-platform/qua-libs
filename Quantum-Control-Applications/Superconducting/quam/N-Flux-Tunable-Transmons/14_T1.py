@@ -1,6 +1,6 @@
 """
-        T1 MEASUREMENT
-The sequence consists in putting the qubit in the excited stated by playing the x180 pulse and measuring the resonator
+T1 MEASUREMENT
+The sequence consists in putting the qubits in the excited state by playing the x180 pulse and measuring the resonator
 after a varying time. The qubit T1 is extracted by fitting the exponential decay of the measured quadratures.
 
 Prerequisites:
@@ -31,7 +31,7 @@ from macros import qua_declaration, multiplexed_readout, node_save
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
-# Class containing tools to help handling units and conversions.
+# Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load("quam_state")
@@ -42,8 +42,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -57,7 +57,7 @@ t_delay = np.arange(4, 10000, 40)
 # t_delay = np.logspace(np.log10(4), np.log10(12 * u.us), 29)
 
 with program() as T1:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
     t = declare(int)  # QUA variable for the wait time
 
     # Bring the active qubits to the minimum frequency point
@@ -67,16 +67,11 @@ with program() as T1:
         save(n, n_st)
 
         with for_(*from_array(t, t_delay)):
-            # qubit 1
-            q1.xy.play("x180")
-            q1.xy.wait(t)
-
-            # qubit 2
-            q2.xy.play("x180")
-            q2.xy.wait(t)
-
+            for qubit in qubits:
+                qubit.xy.play("x180")
+                qubit.xy.wait(t)
             align()
-            multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
+            multiplexed_readout(qubits, I, I_st, Q, Q_st)
             # Wait for the qubits to decay to the ground state
             wait(machine.thermalization_time * u.ns)
 
@@ -111,40 +106,33 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], ["n"])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
-    fig = plt.figure()
+    fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I_data = fetched_data[1::2]
+        Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
-        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
-        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
+        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
+        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
         plt.suptitle("T1")
-        plt.subplot(221)
-        plt.cla()
-        plt.plot(t_delay * 4, I1, ".")
-        plt.title(f"{q1.name}")
-        plt.ylabel("I quadrature [V]")
-        plt.subplot(223)
-        plt.cla()
-        plt.plot(t_delay * 4, Q1, ".")
-        plt.xlabel("Wait time [ns]")
-        plt.ylabel("Q quadrature [V]")
-        plt.subplot(222)
-        plt.cla()
-        plt.plot(t_delay * 4, I2, ".")
-        plt.title(f"{q2.name}")
-        plt.subplot(224)
-        plt.cla()
-        plt.plot(t_delay * 4, Q2, ".")
-        plt.xlabel("Wait time [ns]")
+        for i, qubit in enumerate(qubits):
+            axes[i, 0].cla()
+            axes[i, 0].plot(t_delay * 4, I_volts[i], ".")
+            axes[i, 0].set_title(f"{qubit.name}")
+            axes[i, 0].set_ylabel("I quadrature [V]")
+            axes[i, 1].cla()
+            axes[i, 1].plot(t_delay * 4, Q_volts[i], ".")
+            axes[i, 1].set_xlabel("Wait time [ns]")
+            axes[i, 1].set_ylabel("Q quadrature [V]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -152,46 +140,33 @@ else:
     qm.close()
 
     # Save data from the node
-    data = {
-        f"{q1.name}_time": t_delay * 4,
-        f"{q1.name}_I": I1,
-        f"{q1.name}_Q": Q1,
-        f"{q2.name}_time": t_delay * 4,
-        f"{q2.name}_I": I2,
-        f"{q2.name}_Q": Q2,
-        "figure": fig,
-    }
+    data = {}
+    for i, qubit in enumerate(qubits):
+        data[f"{qubit.name}_time"] = t_delay * 4
+        data[f"{qubit.name}_I"] = I_volts[i]
+        data[f"{qubit.name}_Q"] = Q_volts[i]
+    data["figure"] = fig
 
-# Fit the data to extract T1
-try:
-    from qualang_tools.plot.fitting import Fit
+    # Fit the data to extract T1
+    for i, qubit in enumerate(qubits):
+        try:
+            from qualang_tools.plot.fitting import Fit
 
-    fit = Fit()
-    plt.figure()
-    plt.suptitle("T1")
-    plt.subplot(121)
-    fit_1 = fit.T1(4 * t_delay, I1, plot=True)
-    plt.xlabel("Wait time [ns]")
-    plt.ylabel("I quadrature [V]")
-    plt.title(f"{q1.name}")
-    plt.legend((f"T1 = {np.round(np.abs(fit_1['T1'][0]) / 4) * 4:.0f} ns",))
-    plt.subplot(122)
-    q1.T1 = int(np.round(np.abs(fit_1["T1"][0]) / 4) * 4)
-    data[f"{q1.name}"] = {"T1": q1.T1, "fit_successful": True}
+            fit = Fit()
+            plt.figure()
+            plt.suptitle("T1")
+            plt.subplot(num_qubits, 1, i+1)
+            fit_res = fit.T1(4 * t_delay, I_volts[i], plot=True)
+            plt.xlabel("Wait time [ns]")
+            plt.ylabel("I quadrature [V]")
+            plt.title(f"{qubit.name}")
+            plt.legend((f"T1 = {np.round(np.abs(fit_res['T1'][0]) / 4) * 4:.0f} ns",))
+            qubit.T1 = int(np.round(np.abs(fit_res["T1"][0]) / 4) * 4)
+            data[f"{qubit.name}"] = {"T1": qubit.T1, "successful_fit": True}
+            plt.tight_layout()
+        except (Exception,):
+            data[f"{qubit.name}"] = {"successful_fit": False}
+            pass
 
-    fit_2 = fit.T1(4 * t_delay, I2, plot=True)
-    plt.xlabel("Wait time [ns]")
-    plt.ylabel("I quadrature [V]")
-    plt.title(f"{q2.name}")
-    plt.legend((f"T1 = {np.round(np.abs(fit_2['T1'][0]) / 4) * 4:.0f} ns",))
-    plt.tight_layout()
-    q2.T1 = int(np.round(np.abs(fit_2["T1"][0]) / 4) * 4)
-    data[f"{q2.name}"] = {"T1": q2.T1, "fit_successful": True}
-
-    # Update the state
-except (Exception,):
-    data["fit_successful"] = False
-    pass
-
-# Save data from the node
-node_save("T1", data, machine)
+    # Save data from the node
+    node_save("T1", data, machine)

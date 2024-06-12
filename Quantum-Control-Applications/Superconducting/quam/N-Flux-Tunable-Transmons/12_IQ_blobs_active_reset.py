@@ -1,6 +1,5 @@
 """
-        ACTIVE RESET (Work in progress, use with care)
-
+ACTIVE RESET (Work in progress, use with care)
 """
 
 from qm.qua import *
@@ -29,8 +28,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 
 def active_reset(qubit):
@@ -66,7 +65,7 @@ def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
     # Conditional play to actively reset the qubit to ground
     qubit.xy.play(pi_operation_name, condition=state)
     qubit.xy.align(qubit.resonator.name)
-    # Repeat until the qubit is in the ground state  with high probability (rus_exit_threshold)
+    # Repeat until the qubit is in the ground state with high probability (rus_exit_threshold)
     with while_(I > operation.rus_exit_threshold):
         qubit.xy.align(qubit.resonator.name)
         qubit.resonator.measure("readout", qua_vars=(I, Q))
@@ -82,37 +81,35 @@ def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
 ###################
 n_runs = 10000  # Number of runs
 
-
 with program() as iq_blobs:
-    I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
-    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
+    I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=num_qubits)
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=num_qubits)
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_runs, n + 1):
-        # ground iq blobs
-        apply_initialize_active(q1)
-        # wait(machine.thermalization_time * u.ns)
+        # ground iq blobs for all qubits
+        for qubit in qubits:
+            apply_initialize_active(qubit)
         align()
-        multiplexed_readout([q1, q2], I_g, I_g_st, Q_g, Q_g_st)
+        multiplexed_readout(qubits, I_g, I_g_st, Q_g, Q_g_st)
 
-        # excited iq blobs
-        apply_initialize_active(q1)
-        # wait(machine.thermalization_time * u.ns)
+        # excited iq blobs for all qubits
+        for qubit in qubits:
+            apply_initialize_active(qubit)
         align()
-        q1.xy.play("x180")
-        q2.xy.play("x180")
+        for qubit in qubits:
+            qubit.xy.play("x180")
         align()
-        multiplexed_readout([q1, q2], I_e, I_e_st, Q_e, Q_e_st)
+        multiplexed_readout(qubits, I_e, I_e_st, Q_e, Q_e_st)
 
     with stream_processing():
-        for i in range(2):
+        for i in range(num_qubits):
             I_g_st[i].save_all(f"I_g_q{i}")
             Q_g_st[i].save_all(f"Q_g_q{i}")
             I_e_st[i].save_all(f"I_e_q{i}")
             Q_e_st[i].save_all(f"Q_e_q{i}")
-
 
 ###########################
 # Run or Simulate Program #
@@ -132,15 +129,48 @@ else:
     # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iq_blobs)
-    # fetch data
-    results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
-    I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
-    # Plot the IQ blobs, rotate them to get the separation along the 'I' quadrature, estimate a threshold between them
-    # for state discrimination and derive the fidelity matrix
-    two_state_discriminator(I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, True, True)
-    plt.suptitle(f"{q1.name}")
-    two_state_discriminator(I_g_q2, Q_g_q2, I_e_q2, Q_e_q2, True, True)
-    plt.suptitle(f"{q2.name}")
+    data_list = sum([[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)], [])
+    results = fetching_tool(job, data_list)
+    fetched_data = results.fetch_all()
+    I_g_data = fetched_data[1::2]
+    Q_g_data = fetched_data[2::2]
+    I_e_data = fetched_data[3::2]
+    Q_e_data = fetched_data[4::2]
+    # Prepare for save data
+    data = {}
+    # Plot the results
+    figs = []
+    for i, qubit in enumerate(qubits):
+        I_g = I_g_data[i]
+        Q_g = Q_g_data[i]
+        I_e = I_e_data[i]
+        Q_e = Q_e_data[i]
 
-    # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+        hist = np.histogram(I_g, bins=100)
+        rus_threshold = hist[1][1:][np.argmax(hist[0])]
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, True)
+
+        plt.suptitle(f"{qubit.name} - IQ Blobs")
+        plt.axvline(rus_threshold, color='k', linestyle='--', label='Threshold')
+        figs.append(plt.gcf())
+
+        data[f"{qubit.name}_I_g"] = I_g
+        data[f"{qubit.name}_Q_g"] = Q_g
+        data[f"{qubit.name}_I_e"] = I_e
+        data[f"{qubit.name}_Q_e"] = Q_e
+        data[f"{qubit.name}"] = {
+            "angle": angle,
+            "threshold": threshold,
+            "rus_exit_threshold": rus_threshold,
+            "fidelity": fidelity,
+            "confusion_matrix": [[gg, ge], [eg, ee]],
+        }
+        data[f"{qubit.name}_figure"] = figs[i]
+
+        qubit.resonator.operations["readout"].integration_weights_angle += angle
+        qubit.resonator.operations["readout"].threshold = threshold
+        qubit.resonator.operations["readout"].rus_exit_threshold = rus_threshold
+
     qm.close()
+
+    node_save("iq_blobs", data, machine)

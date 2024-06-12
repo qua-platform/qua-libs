@@ -1,5 +1,5 @@
 """
-        TIME RABI
+TIME RABI
 The sequence consists in playing the qubit pulse (x180 or square_pi or else) and measuring the state of the resonator
 for different qubit pulse durations.
 The results are then post-processed to find the qubit pulse duration for the chosen amplitude.
@@ -44,8 +44,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-q1 = machine.active_qubits[0]
-q2 = machine.active_qubits[1]
+qubits = machine.active_qubits
+num_qubits = len(qubits)
 
 ###################
 # The QUA program #
@@ -58,8 +58,8 @@ n_avg = 100  # The number of averages
 # must be larger than 4 clock cycles and larger than the pi_len defined in the state
 times = np.arange(4, 200, 2)
 
-with program() as rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+with program() as time_rabi:
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
     t = declare(int)  # QUA variable for the qubit pulse duration
 
     # Bring the active qubits to the minimum frequency point
@@ -69,23 +69,20 @@ with program() as rabi:
         save(n, n_st)
         with for_(*from_array(t, times)):
             # Play the qubit drives with varying durations
-            q1.xy.play(operation, duration=t)
-            q2.xy.play(operation, duration=t)
+            for qubit in qubits:
+                qubit.xy.play(operation, duration=t)
             # Align all elements to measure after playing the qubit pulse.
             align()
             # QUA macro the readout the state of the active resonators (defined in macros.py)
-            multiplexed_readout([q1, q2], I, I_st, Q, Q_st)
+            multiplexed_readout(qubits, I, I_st, Q, Q_st)
             # Wait for the qubit to decay to the ground state
             wait(machine.thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("n")
-        # resonator 1
-        I_st[0].buffer(len(times)).average().save("I1")
-        Q_st[0].buffer(len(times)).average().save("Q1")
-        # resonator 2
-        I_st[1].buffer(len(times)).average().save("I2")
-        Q_st[1].buffer(len(times)).average().save("Q2")
+        for i, qubit in enumerate(qubits):
+            I_st[i].buffer(len(times)).average().save(f"I{i+1}")
+            Q_st[i].buffer(len(times)).average().save(f"Q{i+1}")
 
 
 ###########################
@@ -96,7 +93,7 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, rabi, simulation_config)
+    job = qmm.simulate(config, time_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -105,89 +102,70 @@ else:
     # Calibrate the active qubits
     # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(rabi)
+    job = qm.execute(time_rabi)
     # Get results from QUA program
-    results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+    interrupt_on_close(fig, job)
     while results.is_processing():
-        # Fetch results
-        n, I1, Q1, I2, Q2 = results.fetch_all()
-        # Convert the results into Volts
-        I1 = u.demod2volts(I1, q1.resonator.operations["readout"].length)
-        Q1 = u.demod2volts(Q1, q1.resonator.operations["readout"].length)
-        I2 = u.demod2volts(I2, q2.resonator.operations["readout"].length)
-        Q2 = u.demod2volts(Q2, q2.resonator.operations["readout"].length)
+        fetched_data = results.fetch_all()
+        n = fetched_data[0]
+        I = fetched_data[1::2]
+        Q = fetched_data[2::2]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.get_start_time())
         # Plot results
         plt.suptitle("Time Rabi")
-        plt.subplot(221)
-        plt.cla()
-        plt.plot(times * 4, I1)
-        plt.title(f"{q1.name}")
-        plt.ylabel("I quadrature [V]")
-        plt.subplot(223)
-        plt.cla()
-        plt.plot(times * 4, Q1)
-        plt.xlabel("qubit pulse duration [ns]")
-        plt.ylabel("Q quadrature [V]")
-        plt.subplot(222)
-        plt.cla()
-        plt.plot(times * 4, I2)
-        plt.title(f"{q2.name}")
-        plt.subplot(224)
-        plt.cla()
-        plt.plot(times * 4, Q2)
-        plt.xlabel("qubit pulse duration [ns]")
+        I_volts, Q_volts = [], []
+        for i, qubit in enumerate(qubits):
+            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
+            plt.subplot(2, num_qubits, i+1)
+            plt.cla()
+            plt.plot(times * 4, I_volts[i])
+            plt.title(f"{qubit.name}")
+            plt.ylabel("I quadrature [V]")
+            plt.subplot(2, num_qubits, i+num_qubits+1)
+            plt.cla()
+            plt.plot(times * 4, Q_volts[i])
+            plt.xlabel("qubit pulse duration [ns]")
+            plt.ylabel("Q quadrature [V]")
         plt.tight_layout()
         plt.pause(0.1)
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
-
-    # Save data from the node
-    data = {
-        f"{q1.name}_time": times * 4,
-        f"{q1.name}_I": np.abs(I1),
-        f"{q1.name}_Q": np.angle(Q1),
-        f"{q2.name}_time": times * 4,
-        f"{q2.name}_I": np.abs(I2),
-        f"{q2.name}_Q": np.angle(Q2),
-        "figure": fig,
-    }
+    data = {}
+    for i, qubit in enumerate(qubits):
+        data[f"{qubit.name}_time"] = times * 4
+        data[f"{qubit.name}_I"] = np.abs(I_volts[i])
+        data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
+    data["figure"] = fig
 
     # Fit the results to extract the x180 length
-    try:
-        from qualang_tools.plot.fitting import Fit
+    for i, qubit in enumerate(qubits):
+        try:
+            from qualang_tools.plot.fitting import Fit
 
-        fit = Fit()
-        plt.figure()
-        plt.suptitle("Time Rabi")
-        plt.subplot(121)
-        rabi_fit1 = fit.rabi(4 * times, I1, plot=True)
-        plt.title(f"{q1.name}")
-        plt.xlabel("Rabi pulse duration [ns]")
-        plt.ylabel("I quadrature [V]")
-        q1.xy.operations[operation].length = int(round(1 / rabi_fit1["f"][0] / 2 / 4) * 4)
-        data[f"{q1.name}"] = {"x180_length": q1.xy.operations[operation].length, "fit_successful": True}
-        print(
-            f"Optimal x180_len for {q1.name} = {q1.xy.operations[operation].length} ns for {q1.xy.operations[operation].amplitude:} V"
-        )
-        plt.subplot(122)
-        rabi_fit2 = fit.rabi(4 * times, I2, plot=True)
-        plt.title(f"{q2.name}")
-        plt.xlabel("Rabi pulse duration [ns]")
-        plt.ylabel("I quadrature [V]")
-        plt.tight_layout()
-        q2.xy.operations[operation].length = int(round(1 / rabi_fit2["f"][0] / 2 / 4) * 4)
-        data[f"{q2.name}"] = {"x180_length": q2.xy.operations[operation].length, "fit_successful": True}
-        print(
-            f"Optimal x180_len for {q2.name} = {q2.xy.operations[operation].length} ns for {q2.xy.operations[operation].amplitude:} V"
-        )
+            fit = Fit()
+            plt.figure()
+            plt.suptitle("Time Rabi")
+            plt.subplot(1, num_qubits, i+1)
+            rabi_fit1 = fit.rabi(4 * times, I_volts[i], plot=True)
+            plt.title(f"{qubit.name}")
+            plt.xlabel("Rabi pulse duration [ns]")
+            plt.ylabel("I quadrature [V]")
+            qubit.xy.operations[operation].length = int(round(1 / rabi_fit1["f"][0] / 2 / 4) * 4)
+            data[f"{qubit.name}"] = {"x180_length": qubit.xy.operations[operation].length, "successful_fit": True}
+            print(
+                f"Optimal x180_len for {qubit.name} = {qubit.xy.operations[operation].length} ns "
+                f"for {qubit.xy.operations[operation].amplitude:} V"
+            )
 
-    except (Exception,):
-        pass
+        except (Exception,):
+            data[f"{qubit.name}"] = {"successful_fit": False}
+
     # Save data from the node
     node_save("time_rabi", data, machine)
