@@ -3,7 +3,7 @@
 This folder contains scripts and examples for different qubits types, all the way from basic to advanced protocols. 
 It also includes various examples and results from labs as listed below.
 
-Note that for them to work, you would need to download the latest version of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools#installation), as well as [QuAM](https://github.com/qua-platform/quam) and [quam_components](https://github.com/qua-platform/quam_components).
+Note that for them to work, you would need to download the latest version of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools#installation), as well as [QuAM](https://github.com/qua-platform/quam).
 
 ## Superconducting Qubits
 ### [N-flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons)

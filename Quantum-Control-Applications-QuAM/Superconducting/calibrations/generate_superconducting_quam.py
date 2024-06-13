@@ -291,7 +291,6 @@ def _example_wiring(num_qubits: int):
         flux_lines.append((f"con{z_opx}", z_ch))
         res_lines.append((f"con1", 1, "octave1", 1))
 
-    print(xy_lines, flux_lines, res_lines)
     return xy_lines, flux_lines, res_lines
 
 
