@@ -13,9 +13,13 @@ u = unit(coerce_to_integer=True)
 
 
 def create_default_wiring(num_qubits: int) -> dict:
+    """
+    Create a wiring config tailored to the number of qubits.
+
+    """
     wiring = {"qubits": {}}
 
-    # Generate example wiring for each qubit by default
+    # Generate example wiring by default
     xy_lines, flux_lines, res_lines = _example_wiring(num_qubits)
 
     # Uncomment this to manually set wiring for each qubit
@@ -181,11 +185,11 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
         for i in range(math.ceil(num_qubits / 4)):
             # Assumes 1 Octave for every 4 qubits
             octave = Octave(
-                name=f"octave{i}",
+                name=f"octave{i+1}",
                 ip=octave_ip,
                 port=octave_port,
             )
-            machine.octaves[f"octave{i}"] = octave
+            machine.octaves[f"octave{i+1}"] = octave
             octave.initialize_frequency_converters()
             print("Please update the octave settings in: quam.octave")
 
@@ -296,14 +300,14 @@ if __name__ == "__main__":
     folder.mkdir(exist_ok=True)
 
     machine = create_quam_superconducting(num_qubits=5)
-    machine.save(folder / "quam_machine", content_mapping={"wiring.json": {"wiring", "network"}})
-    machine.save(folder / "state.json")
-
-    qua_file = folder / "qua_config.json"
-    qua_config = machine.generate_config()
-    json.dump(qua_config, qua_file.open("w"), indent=4)
-
-    quam_loaded = QuAM.load("state.json")
-    qua_file_loaded = folder / "qua_config2.json"
-    qua_config_loaded = quam_loaded.generate_config()
-    json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
+    # machine.save(folder / "quam_machine", content_mapping={"wiring.json": {"wiring", "network"}})
+    # machine.save(folder / "state.json")
+    #
+    # qua_file = folder / "qua_config.json"
+    # qua_config = machine.generate_config()
+    # json.dump(qua_config, qua_file.open("w"), indent=4)
+    #
+    # quam_loaded = QuAM.load("state.json")
+    # qua_file_loaded = folder / "qua_config2.json"
+    # qua_config_loaded = quam_loaded.generate_config()
+    # json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
