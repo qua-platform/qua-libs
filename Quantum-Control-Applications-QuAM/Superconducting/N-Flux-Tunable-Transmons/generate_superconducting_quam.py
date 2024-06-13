@@ -1,3 +1,4 @@
+import math
 from typing import Dict
 from quam.components import pulses, Octave, IQChannel, DigitalOutputChannel
 
@@ -14,23 +15,34 @@ u = unit(coerce_to_integer=True)
 def create_default_wiring(num_qubits: int) -> dict:
     wiring = {"qubits": {}}
 
-    #
-    for q_idx in range(1, num_qubits + 1):
-        octave_output_idx = 1 + q_idx
+    # Generate example wiring for each qubit by default
+    xy_lines, flux_lines, res_lines = _example_wiring(num_qubits)
+
+    # Uncomment this to manually set wiring for each qubit
+    # res_lines  = [("con1", 1, "octave1", 1)]*num_qubits
+    # xy_lines   = [("con1", 3, "octave1", 2), ...]
+    # flux_lines = [("con1", 9), ...]
+
+    for q_idx in range(0, num_qubits):
+        res_con, res_I_ch_out, res_octave, res_octave_ch = res_lines[q_idx]
+        xy_con, xy_I_ch, xy_octave, xy_octave_ch = xy_lines[q_idx]
+        z_opx, z_ch = flux_lines[q_idx]
+
+        # Note: The Q channel is set to the I channel plus one.
         wiring["qubits"][f"q{q_idx}"] = {
             "xy": {
-                "opx_output_I": ("con1", 3 * q_idx),  # 3, 6
-                "opx_output_Q": ("con1", 3 * q_idx + 1),  # 4, 7
-                "frequency_converter_up": f"#/octaves/octave1/RF_outputs/{octave_output_idx}",
+                "opx_output_I": (xy_con, xy_I_ch),
+                "opx_output_Q": (xy_con, xy_I_ch + 1),
+                "frequency_converter_up": f"#/octaves/{xy_octave}/RF_outputs/{xy_octave_ch}",
             },
-            "z": {"opx_output": ("con1", 3 * q_idx + 2)},  # 5, 8
-            "opx_output_digital": ("con1", 1),
+            "z": {"opx_output": (z_opx, z_ch)},
+            "opx_output_digital": (xy_con, xy_I_ch),
             "resonator": {
-                "opx_output_I": ("con1", 1),
-                "opx_output_Q": ("con1", 2),
-                "opx_input_I": ("con1", 1),
-                "opx_input_Q": ("con1", 2),
-                "digital_port": ("con1", 1),
+                "opx_output_I": (res_con, res_I_ch_out),
+                "opx_output_Q": (res_con, res_I_ch_out + 1),
+                "opx_input_I": (res_con, 1),
+                "opx_input_Q": (res_con, 2),
+                "digital_port": (res_con, res_I_ch_out),
                 "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
                 "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
             },
@@ -166,14 +178,16 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
         print("If you haven't configured the octaves, please run: octave.initialize_frequency_converters()")
     else:
         # Add the Octave to the quam
-        octave = Octave(
-            name="octave1",
-            ip=octave_ip,
-            port=octave_port,
-        )
-        machine.octaves["octave1"] = octave
-        octave.initialize_frequency_converters()
-        print("Please update the octave settings in: quam.octave")
+        for i in range(math.ceil(num_qubits / 4)):
+            # Assumes 1 Octave for every 4 qubits
+            octave = Octave(
+                name=f"octave{i}",
+                ip=octave_ip,
+                port=octave_port,
+            )
+            machine.octaves[f"octave{i}"] = octave
+            octave.initialize_frequency_converters()
+            print("Please update the octave settings in: quam.octave")
 
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
@@ -240,11 +254,48 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
     return machine
 
 
+def _example_wiring(num_qubits: int):
+    """
+    An example wiring is provided in the following physical order on the
+    numbered channels of the OPX+ and Octave:
+
+    1. Assigns wiring for a single feed-line for the resonator.
+    2. Assigns XY wiring (I and Q) consecutively for each qubit.
+    3. Assigns Z wiring consecutively for each qubit.
+
+    Notes:
+    - Requires multiple OPX+ after 2 qubits.
+    - Requires multiple octaves after 4 qubits.
+    """
+    xy_lines, flux_lines, res_lines = [], [], []
+    num_feedlines = 1
+    num_opx_chs = 10
+    for q_idx in range(num_qubits):
+        xy_idx = 2*num_feedlines + 2 * q_idx
+        z_idx = 2*num_feedlines + 2 * num_qubits + q_idx
+
+        xy_ch = xy_idx % num_opx_chs + 1
+        z_ch = z_idx % num_opx_chs + 1
+
+        xy_opx = xy_idx // num_opx_chs + 1
+        z_opx = z_idx // num_opx_chs + 1
+
+        xy_octave = xy_opx
+        xy_octave_ch = (xy_ch + 1) // 2
+
+        xy_lines.append((f"con{xy_opx}", xy_ch, f"octave{xy_octave}", xy_octave_ch))
+        flux_lines.append((f"con{z_opx}", z_ch))
+        res_lines.append((f"con1", 1, "octave1", 1))
+
+    print(xy_lines, flux_lines, res_lines)
+    return xy_lines, flux_lines, res_lines
+
+
 if __name__ == "__main__":
     folder = Path("")
     folder.mkdir(exist_ok=True)
 
-    machine = create_quam_superconducting(num_qubits=2)
+    machine = create_quam_superconducting(num_qubits=5)
     machine.save(folder / "quam_machine", content_mapping={"wiring.json": {"wiring", "network"}})
     machine.save(folder / "state.json")
 
