@@ -7,7 +7,6 @@ from qualang_tools.units import unit
 from pathlib import Path
 import json
 
-
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 

@@ -3,7 +3,7 @@ from .readout_resonator import *
 from .flux_line import *
 from .tunable_coupler import *
 from .qubit_pair import *
-from .quam import *
+from .quam_root import *
 
 __all__ = [
     *transmon.__all__,
@@ -11,5 +11,5 @@ __all__ = [
     *flux_line.__all__,
     *tunable_coupler.__all__,
     *qubit_pair.__all__,
-    *quam.__all__,
+    *quam_root.__all__,
 ]

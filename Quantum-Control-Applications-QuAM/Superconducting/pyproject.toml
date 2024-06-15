@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quam_components"
+name = "quam-components"
 version = "0.1.0"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"
@@ -25,4 +25,4 @@ main = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["quam_components"]
+where = ["."]
