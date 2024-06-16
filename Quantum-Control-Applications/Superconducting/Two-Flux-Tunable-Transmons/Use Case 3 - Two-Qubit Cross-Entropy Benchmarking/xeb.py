@@ -18,8 +18,7 @@ from qm.jobs.simulated_job import SimulatedJob
 import seaborn as sns
 from copy import deepcopy
 
-SW = UnitaryGate(np.array([[1, -np.sqrt(1j)],
-                                   [np.sqrt(-1j), 1]])/np.sqrt(2), label="sw")  # from Supremacy paper
+SW = UnitaryGate(np.array([[1, -np.sqrt(1j)], [np.sqrt(-1j), 1]]) / np.sqrt(2), label="sw")  # from Supremacy paper
 
 
 class XEB:
@@ -76,9 +75,7 @@ class XEB:
         n_qubits = self.xeb_config.n_qubits
         dim = self.xeb_config.dim
         random_gates = len(self.xeb_config.gate_set)
-        ge_thresholds = [
-            readout_element.operations["readout"].threshold for readout_element in self.readout_elements
-        ]
+        ge_thresholds = [readout_element.operations["readout"].threshold for readout_element in self.readout_elements]
 
         with program() as xeb_prog:
             # Declare QUA variables
@@ -88,7 +85,9 @@ class XEB:
                 declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
             ]  # Gate indices list for both qubits
             if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
-                amp_matrix = [[declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)]
+                amp_matrix = [
+                    [declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)
+                ]
             counts = declare(int, value=[0] * dim)  # Counts for all possible bitstrings (00, 01, 10, 11)
             state = [declare(bool) for _ in range(n_qubits)]  # Qubit states
             # Declare streams
@@ -129,8 +128,9 @@ class XEB:
                             # Map indices into amplitude matrix arguments
                             # (each index corresponds to a random gate)
                             if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
-                                self._assign_amplitude_matrix(gate[q][depth_],
-                                                              [amp_matrix[q][i][depth_] for i in range(4)])
+                                self._assign_amplitude_matrix(
+                                    gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)]
+                                )
                             save(gate[q][depth_], gate_st[q])
 
                             if simulate and self.xeb_config.gate_set.run_through_amp_matrix_modulation:
@@ -155,9 +155,15 @@ class XEB:
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
                             for q, qubit in enumerate(self.qubit_elements):  # Play single qubit gates on both qubits
-                                self._play_random_sq_gate(qubit, gate[q][depth_],
-                                                          [amp_matrix[q][i][depth_] for i in range(4)]
-                                                          if self.xeb_config.gate_set.name == "sw" else None)
+                                self._play_random_sq_gate(
+                                    qubit,
+                                    gate[q][depth_],
+                                    (
+                                        [amp_matrix[q][i][depth_] for i in range(4)]
+                                        if self.xeb_config.gate_set.name == "sw"
+                                        else None
+                                    ),
+                                )
 
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None:
@@ -224,9 +230,7 @@ class XEB:
         n_qubits = self.xeb_config.n_qubits
         dim = self.xeb_config.dim
         random_gates = len(self.xeb_config.gate_set)
-        ge_thresholds = [
-            readout_element.operations["readout"].threshold for readout_element in self.readout_elements
-        ]
+        ge_thresholds = [readout_element.operations["readout"].threshold for readout_element in self.readout_elements]
 
         with program() as xeb_prog:
             # Declare QUA variables
@@ -236,8 +240,9 @@ class XEB:
                 declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
             ]  # Gate indices list for both qubits
             if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
-                amp_matrix = [[declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in
-                              range(n_qubits)]
+                amp_matrix = [
+                    [declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)
+                ]
             counts = declare(int, value=[0] * dim)  # Counts for all possible bitstrings (00, 01, 10, 11)
             state = [declare(bool) for _ in range(n_qubits)]  # Qubit states
             # Declare streams
@@ -271,15 +276,16 @@ class XEB:
                         for q in range(n_qubits):
                             assign(gate[q][depth_], r.rand_int(random_gates))
                             with while_(
-                                    gate[q][depth_] == gate[q][depth_ - 1]
+                                gate[q][depth_] == gate[q][depth_ - 1]
                             ):  # Make sure same gate is not applied twice in a row
                                 assign(gate[q][depth_], r.rand_int(random_gates))
 
                             # Map indices into amplitude matrix arguments
                             # (each index corresponds to a random gate)
                             if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
-                                self._assign_amplitude_matrix(gate[q][depth_],
-                                                              [amp_matrix[q][i][depth_] for i in range(4)])
+                                self._assign_amplitude_matrix(
+                                    gate[q][depth_], [amp_matrix[q][i][depth_] for i in range(4)]
+                                )
                             save(gate[q][depth_], gate_st[q])
 
                             if simulate and self.xeb_config.gate_set.run_through_amp_matrix_modulation:
@@ -304,9 +310,15 @@ class XEB:
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
                             for q, qubit in enumerate(self.qubit_elements):  # Play single qubit gates on both qubits
-                                self._play_random_sq_gate(qubit, gate[q][depth_],
-                                                          [amp_matrix[q][i][depth_] for i in range(4)]
-                                                          if self.xeb_config.gate_set.name == "sw" else None)
+                                self._play_random_sq_gate(
+                                    qubit,
+                                    gate[q][depth_],
+                                    (
+                                        [amp_matrix[q][i][depth_] for i in range(4)]
+                                        if self.xeb_config.gate_set.name == "sw"
+                                        else None
+                                    ),
+                                )
 
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None:
@@ -324,7 +336,7 @@ class XEB:
                             save(state[q_idx], state_st[q_idx])
                             save(I[q_idx], I_st[q_idx])
                             save(Q[q_idx], Q_st[q_idx])
-                            assign(tot_state_, tot_state_ + 2 ** q_idx * Cast.to_int(state[q_idx]))
+                            assign(tot_state_, tot_state_ + 2**q_idx * Cast.to_int(state[q_idx]))
 
                             reset_qubit(
                                 "active",
@@ -482,9 +494,7 @@ class XEBJob:
     ):
         self.job = running_job
         self._simulate = simulate
-        self._result_handles = (
-            self.job.result() if isinstance(running_job, AerJob) else self.job.result_handles
-        )
+        self._result_handles = self.job.result() if isinstance(running_job, AerJob) else self.job.result_handles
         if not isinstance(running_job, AerJob):
             self._result_handles.wait_for_all_values()
         self.xeb_config = xeb_config

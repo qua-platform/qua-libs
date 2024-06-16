@@ -6,7 +6,6 @@ from simulated_backend import backend
 from qua_gate import QUAGate
 from qm.qua import *
 
-simulate = False
 
 def cz_gate(qubit1: Transmon, qubit2: Transmon):
     """
@@ -19,12 +18,12 @@ def cz_gate(qubit1: Transmon, qubit2: Transmon):
     qubit1.z.set_dc_offset(0)
     qubit1.z.wait(10)
 
-cz_qua = QUAGate("cz", cz_gate)
 
+cz_qua = QUAGate("cz", cz_gate)
 
 xeb_config = XEBConfig(
     seqs=10,
-    depths=np.arange(50),
+    depths=np.arange(1, 50),
     n_shots=100,
     qubits_ids=["q0", "q1"],
     baseline_gate_name="x90",
@@ -36,6 +35,8 @@ xeb_config = XEBConfig(
     generate_new_data=True,
     disjoint_processing=False,
 )
+
+simulate = False
 machine = QuAM.load("state.json")
 xeb = XEB(xeb_config, quam=machine)
 if simulate:

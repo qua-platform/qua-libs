@@ -4,6 +4,7 @@ This script contains useful QUA macros for the two-qubit cross-entropy benchmark
 Author: Arthur Strauss - Quantum Machines
 Last updated: 2024-04-30
 """
+
 from typing import Dict
 from matplotlib import pyplot as plt
 from qm.qua import *

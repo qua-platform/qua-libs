@@ -22,9 +22,12 @@ class QUAGate:
             do have this attribute set.
     """
 
-    def __init__(self, gate: Union[str, Tuple[str, np.ndarray]],
-                 gate_macro: Optional[Callable[[Any], None]] = None,
-                 amp_matrix: Optional[List] = None):
+    def __init__(
+        self,
+        gate: Union[str, Tuple[str, np.ndarray]],
+        gate_macro: Optional[Callable[[Any], None]] = None,
+        amp_matrix: Optional[List] = None,
+    ):
         self.gate_macro = gate_macro
         self.amp_matrix = self._validate_amp_matrix(amp_matrix)
         if gate_macro is None and amp_matrix is None:
@@ -42,8 +45,10 @@ class QUAGate:
         elif isinstance(gate, Tuple):
             self.gate = UnitaryGate(gate[1], label=gate[0])
         else:
-            raise ValueError("Invalid gate definition, please provide a valid gate name"
-                             " or a tuple containing custom name and matrix definition.")
+            raise ValueError(
+                "Invalid gate definition, please provide a valid gate name"
+                " or a tuple containing custom name and matrix definition."
+            )
 
     def __str__(self):
         return f"QUAGate({self.gate.name})"
