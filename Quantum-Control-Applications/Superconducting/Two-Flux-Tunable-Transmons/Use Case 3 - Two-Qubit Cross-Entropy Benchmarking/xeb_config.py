@@ -20,6 +20,8 @@ class XEBConfig:
         gate_set_choice (str): Choice of gate set for XEB (choose "sw" or "t") or a custom gate set as a dictionary of QUAGate objects
         two_qb_gate (Optional[QUAGate]): Two-qubit gate to be used in the experiment
         impose_0_cycle (bool): Whether to impose the first gate at 0-cycle
+        reset_method (str): Method used to reset the qubits (choose "active" or "cooldown")
+        reset_kwargs (Optional[Dict[str, Union[float, str, int]]]): Keyword arguments for the reset method (default {"cooldown_time": 20, "max_tries": None, "pi_pulse_name": None})
         save_dir (str): Directory where the data will be saved
         should_save_data (bool): Whether to save the data
         generate_new_data (bool): Whether to generate new data
@@ -36,6 +38,11 @@ class XEBConfig:
     gate_set_choice: Union[Literal["sw", "t"], Dict[int, QUAGate]] = "sw"
     two_qb_gate: Optional[QUAGate] = None
     impose_0_cycle: bool = False
+    reset_method: Literal["active", "cooldown"] = "cooldown"
+    reset_kwargs: Optional[Dict[str, Union[float, str, int]]] = field(default_factory=lambda: {"cooldown_time": 20,
+                                                                                               "max_tries": None,
+                                                                                               "pi_pulse": None,
+                                                                                               })
     save_dir: str = ""
     should_save_data: bool = True
     generate_new_data: bool = True

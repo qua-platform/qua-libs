@@ -21,7 +21,7 @@ We encourage you to reach out to the Customer Success team to set your QuAM acco
 Prior to running the XEB example file `xeb_example.py`, the user has to run the calibrations that define the gate and measurement parameters:
 - Single Qubit Gate: Implement a single qubit gate that will be used as a baseline for the random circuits. This gate should be calibrated to produce a $\pi$/2 rotation around the X axis (or equivalently the $SX$ gate as indicated [here](https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.SXGate). On top of this that we will later refer to as the baseline gate, the user can also calibrate the other single qubit gates that will be used in the random circuits (e.g. $SY$, $SW$ or $T$ gates as done in [2] and [1]).
 - a Two-Qubit gate: Implement the two-qubit gate of interest, that will form the entangling layer in the experiment (together with the single qubit gates). For this flux-tunable use case, we will consider the $CZ$ (controlled phase) gate.
-- Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩.
+- Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩. Each qubit should have in its operations a readout operation called `"readout"`.
 
 Additionally, the user should install Qiskit to run the experiment. The installation instructions can be found [here](https://docs.quantum.ibm.com/start/install). 
 We offer the user the possibility to also leverage Qiskit Aer to simulate the XEB experiment on a noisy backend. To enable such simulation the user can also install Qiskit Aer by following the instructions [here](https://qiskit.github.io/qiskit-aer/getting_started.html).
@@ -90,6 +90,8 @@ two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
 ```
 Additional parameters are available in the config such as:
 - `impose_0_cycle`: boolean indicating if first cycle should be set to a default setting (usually the Hadamard gate).
+- `reset_method`: the method used to reset the qubits. The user can choose between `"active"` (active reset) and `"cooldown"` (passive reset).
+- `reset_kwargs`: the arguments for the reset method. The user can provide a dictionary of the form `{"cooldown_time": 1000, "max_tries": 1, "pi_pulse":"x180"}`. The first key corresponds to the cooldown time in ns (used if `reset_method` is `"cooldown"`, the second key corresponds to the maximum number of tries before the reset is considered done (used when `reset_method` is `"active"`, and the third key corresponds to the pulse used for the reset (a $\pi$ rotation around the X axis). Note that in the case of an active reset, the threshold is automatically retrieved from the QuAM configuration file (through the `ReadoutPulse`).
 - `save_dir`: the directory where the results will be saved through the `DataHandler`
 - `save_data`: boolean indicating if the data should be saved or not.
 - `generate_new_data`: boolean indicating if the data should be generated or loaded from a previous run.
