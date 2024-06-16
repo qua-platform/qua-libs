@@ -39,10 +39,13 @@ class XEBConfig:
     two_qb_gate: Optional[QUAGate] = None
     impose_0_cycle: bool = False
     reset_method: Literal["active", "cooldown"] = "cooldown"
-    reset_kwargs: Optional[Dict[str, Union[float, str, int]]] = field(default_factory=lambda: {"cooldown_time": 20,
-                                                                                               "max_tries": None,
-                                                                                               "pi_pulse": None,
-                                                                                               })
+    reset_kwargs: Optional[Dict[str, Union[float, str, int]]] = field(
+        default_factory=lambda: {
+            "cooldown_time": 20,
+            "max_tries": None,
+            "pi_pulse": None,
+        }
+    )
     save_dir: str = ""
     should_save_data: bool = True
     generate_new_data: bool = True

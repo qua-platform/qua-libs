@@ -5,7 +5,6 @@ Author: Arthur Strauss - Quantum Machines
 Last updated: 2024-04-30
 """
 
-from typing import Dict
 from matplotlib import pyplot as plt
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
@@ -13,22 +12,6 @@ import numpy as np
 from quam.examples.superconducting_qubits import Transmon
 from scipy import optimize
 from scipy.stats import stats
-from quam.components import Channel
-from qua_gate import QUAGate
-
-
-def assign_amplitude_matrix(gate, amp_matrix, gate_dict: dict):
-    """
-    QUA Macro for assigning the amplitude matrix arguments for a given gate index.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix arguments
-    :param gate_dict: Dictionary of gates
-    """
-    with switch_(gate):
-        for i in range(len(gate_dict)):
-            with case_(i):
-                for j in range(4):
-                    assign(amp_matrix[j], gate_dict[i]["amp_matrix"][j])
 
 
 def qua_declaration(n_qubits: int, readout_elements: list):
@@ -45,26 +28,6 @@ def qua_declaration(n_qubits: int, readout_elements: list):
     for i in range(n_qubits):
         assign_variables_to_element(readout_elements[i].name, I[i], Q[i])
     return I, I_st, Q, Q_st
-
-
-def play_random_sq_gate(gate, qubit_el: Channel, amp_matrix, gate_dict: Dict[int, QUAGate], baseline_op: str):
-    """
-    QUA Macro for playing a random single-qubit gate. This macro is built through amplitude matrix modulation of a provided
-    baseline pulse implementing the pi/2 rotation around the x-axis.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
-    :param gate_dict: Dictionary of gates
-    :param baseline_op: Baseline operation (default "sx") implementing the pi/2 rotation around the x-axis
-    """
-
-    if gate_dict[2].name == "sw":
-        qubit_el.play(baseline_op, amplitude_scale=amp(*amp_matrix))
-    else:
-        with switch_(gate, unsafe=True):
-            for i in range(len(gate_dict)):
-                with case_(i):
-                    gate_dict[i].gate_macro(qubit_el)
 
 
 def reset_qubit(method: str, qubit: Transmon, **kwargs):
