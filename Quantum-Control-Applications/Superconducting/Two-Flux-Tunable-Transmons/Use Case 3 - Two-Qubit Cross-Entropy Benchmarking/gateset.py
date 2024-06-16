@@ -3,8 +3,9 @@ from qiskit.circuit.library import RYGate
 from qua_gate import QUAGate
 from qm.qua import play, amp, frame_rotation_2pi
 import numpy as np
-from typing import Literal, Callable, Optional, List, Dict
+from typing import Literal, Callable, Optional, List, Dict, Union
 from quam.components import Channel
+
 
 def play_sq_gate_macro(baseline_gate_name: str, amp_matrix: Optional[List] = None) -> Callable[[Channel], None]:
     """
@@ -36,16 +37,34 @@ class QUAGateSet(dict):
     Class to store a set of QUA gates for XEB.
 
     Args:
-        gate_set (Literal['sw', 't']): String indicating the desired gate set.
+        gate_set (Union[Literal['sw', 't', Dict[int, QUAGate]]): Gate Set for XEB. Two native gates sets are available
+            through the strings 'sw' and 't'. Those sets respectively contain the X/2, Y/2, and SW gates, and the X/2, Y/2,
+            and T gates. In the "sw" gate set, all gates are assumed to be playable through the modulation of the amplitude
+            matrix of a baseline calibrated X/2 (SX) pulse.
+            In the "t" gate set, the T gate is a virtual pi/4 rotation around the Z axis.
+
+            Alternatively, a custom gate set can be provided as a dictionary of QUAGate objects. If a custom gate
+            set is provided, the dictionary keys should be the gate indices. The gate indices should start from 0 and be
+            consecutive integers. The dictionary values should be QUAGate objects.
         baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis.
     """
 
-    def __init__(self, gate_set: Literal["sw", "t"], baseline_gate_name: str):
-        super().__init__(generate_gate_set(gate_set, baseline_gate_name))
+    def __init__(self, gate_set: Union[Literal["sw", "t"], Dict[int, QUAGate]], baseline_gate_name: str):
+        if isinstance(gate_set, dict):
+            super().__init__(gate_set)
+        else:
+            super().__init__(generate_gate_set(gate_set, baseline_gate_name))
         self.name = gate_set
 
     def __str__(self):
         return f"QUAGateSet({super().__str__()})"
+
+    @property
+    def run_through_amp_matrix_modulation(self):
+        """
+        Check if all gates in the set can be played through the modulation of the amplitude matrix of a baseline gate.
+        """
+        return all(gate.amp_matrix is not None for gate in self.values())
 
 
 def generate_gate_set(gate_set: Literal["sw", "t"], baseline_gate_name: str) -> Dict[int, QUAGate]:

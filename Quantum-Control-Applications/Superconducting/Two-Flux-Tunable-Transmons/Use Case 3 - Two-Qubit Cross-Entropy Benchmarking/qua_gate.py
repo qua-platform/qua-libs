@@ -12,21 +12,21 @@ class QUAGate:
 
     Args:
         gate: str|(str, np.ndarray): The logical definition of the gate, either a string with the name of the gate or a
-        tuple containing the gate name and a numpy array defining its matrix. All standard gates present in Qiskit
-        standard library are supported with the string definition.
+            tuple containing the gate name and a numpy array defining its matrix. All standard gates present in Qiskit
+            standard library are supported with the string definition.
         gate_macro: Callable: The QUA macro that implements the gate.
         amp_matrix: List: If the gate is a single qubit gate and can be obtained by a modulation of the amplitude matrix
-        of a baseline gate, this parameter should contain the amplitude matrix of the gate. This avoids the need to
-        provide a gate_macro and the induced switch case latency overhead.
+            of a baseline X/2 gate, this parameter should contain the amplitude matrix enabling the computation of the
+            gate from a SX pulse. This avoids the need to provide a gate_macro and the induced switch case latency
+            overhead. Note: The removal of the switch case overhead is possible only if all gates in the gate set
+            do have this attribute set.
     """
 
     def __init__(self, gate: Union[str, Tuple[str, np.ndarray]],
                  gate_macro: Optional[Callable[[Any], None]] = None,
                  amp_matrix: Optional[List] = None):
         self.gate_macro = gate_macro
-        if amp_matrix is not None:
-            assert len(amp_matrix) == 4, "Amplitude matrix must have 4 elements."
-        self.amp_matrix = amp_matrix
+        self.amp_matrix = self._validate_amp_matrix(amp_matrix)
         if gate_macro is None and amp_matrix is None:
             warnings.warn("No gate macro or amp_matrix provided, the gate will not be implemented in QUA.")
 
@@ -47,6 +47,25 @@ class QUAGate:
 
     def __str__(self):
         return f"QUAGate({self.gate.name})"
+
+    def __repr__(self):
+        return f"QUAGate({self.gate.name})"
+
+    def _validate_amp_matrix(self, amp_matrix: Optional[List] = None):
+        """
+        Validate the amplitude matrix of the gate.
+
+        Args:
+            amp_matrix: List: The amplitude matrix of the gate.
+        """
+        if amp_matrix is not None:
+            if not isinstance(amp_matrix, List):
+                raise ValueError("Amplitude matrix must be a list.")
+            if len(amp_matrix) != 4:
+                raise ValueError("Amplitude matrix must have 4 elements.")
+            if not all([isinstance(amp, (float, int)) for amp in amp_matrix]):
+                raise ValueError("Amplitude matrix elements must be of type float or int.")
+        return amp_matrix
 
     @property
     def name(self):

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict, field
-from typing import Literal, List, Union, Optional
+from typing import Literal, List, Union, Optional, Dict
 
 import numpy as np
 from gateset import QUAGateSet
@@ -17,7 +17,7 @@ class XEBConfig:
         n_shots (int): Number of averages per sequence
         qubits_ids (List[Union[int, str]]): List of qubit identifiers for the targeted qubits as specified in the QuAM
         baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis (default "sx")
-        gate_set_choice (str): Choice of gate set for XEB (choose "sw" or "t")
+        gate_set_choice (str): Choice of gate set for XEB (choose "sw" or "t") or a custom gate set as a dictionary of QUAGate objects
         two_qb_gate (Optional[QUAGate]): Two-qubit gate to be used in the experiment
         impose_0_cycle (bool): Whether to impose the first gate at 0-cycle
         save_dir (str): Directory where the data will be saved
@@ -33,7 +33,7 @@ class XEBConfig:
     n_shots: int = 1024
     qubits_ids: List[Union[int, str]] = field(default_factory=lambda: [0, 1])
     baseline_gate_name: str = "sx"
-    gate_set_choice: Literal["sw", "t"] = "sw"
+    gate_set_choice: Union[Literal["sw", "t"], Dict[int, QUAGate]] = "sw"
     two_qb_gate: Optional[QUAGate] = None
     impose_0_cycle: bool = False
     save_dir: str = ""

@@ -13,11 +13,13 @@ The use-case in this example is tailored for a superconducting quantum processor
 This experiment was performed and presented in the use-case [Two-Qubit Gate Optimization](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope). Note that the code provided in this use-case is a standalone script that can be run independently of the previous use-case. 
 
 ## Prerequisites
-The XEB script is designed to be compatible with QuAM, and therefore requires the user to migrate his original QUA configuration file into a QuAM json file and have access to dedicated QuAM components. This script being designed for the use case of flux-tunable superconducting qubits, we provide a dedicated example of template QuAM components for this use case in the `quam_components` folder. The user can use these components as a starting point to build his own QuAM configuration file. The user should also have access to the QuAM library, which can be found [here](https://docs.quantum-machines.co/quam/).
+The XEB script is designed to be compatible with QuAM, and therefore requires the user to migrate his original QUA configuration file into a QuAM json file and have access to dedicated QuAM components.
+This script being designed for the use case of flux-tunable superconducting qubits, we provide a dedicated example of template QuAM components for this use case in the `quam_components` folder. The user can use these components as a starting point to build his own QuAM configuration file.
+The user should also have access to the QuAM library, which can be found [here](https://docs.quantum-machines.co/quam/).
 We encourage you to reach out to the Customer Success team to set your QuAM accordingly. Moreover, note that this example might require dedicated adjustments depending on the way the gates are implemented on your platform.
 
 Prior to running the XEB example file `xeb_example.py`, the user has to run the calibrations that define the gate and measurement parameters:
-- Single Qubit Gate: Implement a single qubit gate that will be used as a baseline for the random circuits. This gate should be calibrated to produce a $\pi$/2 rotation around the X axis.
+- Single Qubit Gate: Implement a single qubit gate that will be used as a baseline for the random circuits. This gate should be calibrated to produce a $\pi$/2 rotation around the X axis (or equivalently the $SX$ gate as indicated [here](https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.SXGate). On top of this that we will later refer to as the baseline gate, the user can also calibrate the other single qubit gates that will be used in the random circuits (e.g. $SY$, $SW$ or $T$ gates as done in [2] and [1]).
 - a Two-Qubit gate: Implement the two-qubit gate of interest, that will form the entangling layer in the experiment (together with the single qubit gates). For this flux-tunable use case, we will consider the $CZ$ (controlled phase) gate.
 - Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩.
 
@@ -26,15 +28,18 @@ We offer the user the possibility to also leverage Qiskit Aer to simulate the XE
 
 ## How does the script work?
 
-The protocol relies on the ability to generate and execute random circuits on the quantum computer and compare the results with the ideal simulation. 
+The protocol relies on the OPX's ability to generate and execute in real-time random circuits on the quantum computer and compare the results with the ideal simulation. 
 The advantage of using QUA is that the randomization of the circuits can be done in parallel to circuit execution through real-time processing and random sampling.
 
-The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate, as depicted in the circuit below:
+The user can choose which gate set to use to generate random unitaries. Usually, the experiment is performed with layers of random single-qubit gates followed by one fixed two-qubit gate, as depicted in the circuit below with the gate set formed by the gates $SX$, $SY$, and $SW$ [2]:
 [![XEB Circuit](images/xeb_circuit.png)](images/xeb_circuit.png)
 
 In this circuit, we have used the $SW$ gate defined in [2] as: 
 $$
-SW = \sqrt{W} =\sqrt{\frac{X+Y}{\sqrt{2}}}
+W^{1 / 2} \equiv R_{X+Y}(\pi / 2)=\frac{1}{\sqrt{2}}\left[\begin{array}{cc}
+1 & -\sqrt{i} \\
+\sqrt{-i} & 1
+\end{array}\right]
 $$
 The script will generate random circuits with the chosen gate set and run them on the quantum computer. The script will then calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity (from which the two-qubit gate fidelity can be inferred).
 
@@ -42,7 +47,7 @@ As opposed to Randomized Benchmarking, we do not invert the randomly generated c
 
 There are therefore four steps in the script:
 - Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation. The circuits are randomized through the choice of the single qubit gates that are applied to each qubit at each layer (depth).
-- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate). Alternatively, it is possible to play dedicated pulses for each of the random gates, through the use of a QUA `switch`statement (at the expense of more latency).
+- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate). Alternatively, it is possible to play dedicated pulses for each of the random gates, through the use of a QUA `switch`statement (at the expense of possible more latency, depending on your gate durations). 
 - Theoretical simulation: The script simulates the random circuits on the classical side to compute the theoretical quantum state, from which we deduce the probabilities of getting all possible measurement outcomes.
 - Cross-entropy calculation: The script computes the cross-entropy between the expected and empirically deduced probability distributions to estimate the layer fidelity.
 
@@ -54,13 +59,23 @@ For the post-processing, we reproduce tools from Cirq library [3] to compute the
 The script is designed to mimic a similar execution workflow to what you would encounter with a Qiskit Experiment.
 We first provide a class `XEBConfig` that defines the parameters of the experiment, such as: 
 - `seqs`: the number of random circuits to be generated.
-- `depths`: the array of depths for the random circuits.
+- `depths`: the array of depths for the random circuits. Those depths will be used to generate random circuits of varying depths, and will lead to the determination of a layer fidelity through a fit of the cross-entropy curve.
 - `n_shots`: the number of shots for each circuit.
 - `qubits_ids`: the qubits indices (or qubit names) involved in the experiment. They should match the qubits defined in the QuAM. Note that the script can handle only one or two qubits for now.
 - `baseline_gate_name`: the name of the operation that will be used as a baseline for the random circuits. The name should match the name of the operation defined in the QuAM/configuration for implementing the $SX$ gate (equivalently X/2).
-- `gate_set_choice`: it corresponds to the set of single qubit gates that will be used to generate random layers in the circuit. For now, the user can choose two different gate sets:
-  - `"sw"`: This gate set contains the following gates: $SX$, $SY$, and $SW$, as done in [2].
-  - "t"`: This gate set contains the following gates: $SX$, $SY$, and $T$, as done in [1].
+- `gate_set_choice`: it corresponds to the set of single qubit gates that will be used to generate random layers in the circuit. The user can choose two native different gate sets inspired from the literature [1] [2]:
+  - `"sw"`: This gate set contains the following gates: $SX$, $SY$, and $SW$, as done in [2]. In this case, the implementation assumes that both $SY$ and $SW$ gates can be obtained from the $SX$ baseline calibration through a suitable amplitude matrix modulation (achieved in real-time).
+  - "t"`: This gate set contains the following gates: $SX$, $SY$, and $T$, as done in [1]. In this case, the implementation assumes that $SY$ can be obtained from the $SX$ baseline calibration through a suitable amplitude matrix modulation (achieved in real-time), and that the $T$ gate can be implemented through a simple virtual-Z gate (frame rotation) of an angle $\pi/4$.
+  - Alternatively, the user can define a custom gate set by providing a dictionary of the following form:
+    ```python
+    from qua_gate import QUAGate
+    gate_set = {
+        0: QUAGate("sx", sx_macro),
+        1: QUAGate("sy", sy_macro),
+        2: QUAGate("other_gate", other_gate_macro)
+    ...
+    }
+    ```
 - `two_qb_gate`: this is the gate that will be used as the entangling gate in the circuit. The user should specify this gate as a `QUAGate` object, which collects the macro for implementing the two-qubit gate, as well as its logical definition in the circuit for computing its effect in a statevector simulation. All standard gates (CZ, CNOT/CX, iSWAP, SWAP, ECR) are supported through the simple specification of a string depicting the name of the gate (in lowercase). See the example below:
 ```python
 from quam.examples.superconducting_qubits import Transmon
@@ -78,7 +93,7 @@ Additional parameters are available in the config such as:
 - `save_dir`: the directory where the results will be saved through the `DataHandler`
 - `save_data`: boolean indicating if the data should be saved or not.
 - `generate_new_data`: boolean indicating if the data should be generated or loaded from a previous run.
-- `disjoint_processing`: boolean indicating if the processing should be done for each qubit separately or jointly.
+- `disjoint_processing`: boolean indicating if the post-processing should be done for each qubit separately or jointly. This can be useful when one wants to assess crosstalk effects between qubits when no two-qubit gate is applied (qubits are therefore not entangled).
 
 The user can then run a XEB experiment by creating an instance of the `XEB` class (taking as input the `XEBConfig`, 
 and a `QuAM` object) calling the `run` method.
@@ -87,7 +102,7 @@ and a `QuAM` object) calling the `run` method.
 
 The call to `XEB.run()` will return an instance of a `XEBJob`, which is analogous to a Qiskit `Job`. This class enables 
 you to fetch the quantum circuits that were run on the quantum computer, through the attribute `XEBJob.circuits`.
-The output of this attribute is a two-dimensional list of `QuantumCircuit` objects, where the inner and outer dimensions correspond respectively to the depths and random sequences. The user can then use the `QuantumCircuit` objects to visualize the circuits, or to extract the gates that were run on the quantum computer. See for example the following code snippet:
+The output of this attribute is a two-dimensional list of `QuantumCircuit` objects, where the outer and inner dimensions correspond respectively to the different random sequences and depths. The user can then use the `QuantumCircuit` objects to visualize the circuits, or to extract the gates that were run on the quantum computer. See for example the following code snippet:
 ```python
 from quam.xeb import XEBJob
 from qiskit import QuantumCircuit
