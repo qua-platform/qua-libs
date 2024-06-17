@@ -41,11 +41,9 @@ with program() as raw_trace_prog:
 
     with stream_processing():
         # Will save average:
-        adc_st.input1().average().save("adc1")
-        adc_st.input2().average().save("adc2")
+        adc_st.input1().average().save("adc")
         # Will save only last run:
-        adc_st.input1().save("adc1_single_run")
-        adc_st.input2().save("adc2_single_run")
+        adc_st.input1().save("adc_single_run")
 
 
 #####################################
@@ -56,7 +54,7 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 #######################
 # Simulate or execute #
 #######################
-simulate = False
+simulate = True
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
@@ -75,18 +73,10 @@ else:
     # Waits (blocks the Python console) until all results have been acquired
     res_handles.wait_for_all_values()
     # Fetch the raw ADC traces and convert them into Volts
-    adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-    adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
-    adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-    adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
-    # Derive the average values
-    adc1_mean = np.mean(adc1)
-    adc2_mean = np.mean(adc2)
-    # Remove the average values
-    adc1_unbiased = adc1 - np.mean(adc1)
-    adc2_unbiased = adc2 - np.mean(adc2)
+    adc = u.raw2volts(res_handles.get("adc").fetch_all())
+    adc_single_run = u.raw2volts(res_handles.get("adc_single_run").fetch_all())
     # Filter the data to get the pulse arrival time
-    signal = savgol_filter(np.abs(adc1_unbiased + 1j * adc2_unbiased), 11, 3)
+    signal = savgol_filter(np.abs(adc), 11, 3)
     # Detect the arrival of the readout signal
     th = (np.mean(signal[:100]) + np.mean(signal[:-100])) / 2
     delay = np.where(signal > th)[0][0]
@@ -96,27 +86,20 @@ else:
     fig = plt.figure()
     plt.subplot(121)
     plt.title("Single run")
-    plt.plot(adc1_single_run, "b", label="Input 1")
-    plt.plot(adc2_single_run, "r", label="Input 2")
+    plt.plot(adc_single_run.real, "b", label="I")
+    plt.plot(adc_single_run.imag, "r", label="Q")
     xl = plt.xlim()
     yl = plt.ylim()
-    plt.axhline(y=0.5)
-    plt.axhline(y=-0.5)
-    plt.plot(xl, adc1_mean * np.ones(2), "k--")
-    plt.plot(xl, adc2_mean * np.ones(2), "k--")
-    plt.plot(delay * np.ones(2), yl, "k--")
+    plt.axvline(delay, color="k", linestyle="--", label="TOF")
+    plt.fill_between(range(len(adc_single_run)), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
     plt.subplot(122)
     plt.title("Averaged run")
-    plt.plot(adc1, "b", label="Input 1")
-    plt.plot(adc2, "r", label="Input 2")
-    xl = plt.xlim()
-    yl = plt.ylim()
-    plt.plot(xl, adc1_mean * np.ones(2), "k--")
-    plt.plot(xl, adc2_mean * np.ones(2), "k--")
-    plt.plot(delay * np.ones(2), yl, "k--")
+    plt.plot(adc.real, "b", label="I")
+    plt.plot(adc.imag, "r", label="Q")
+    plt.axvline(delay, color="k", linestyle="--", label="TOF")
     plt.xlabel("Time [ns]")
     plt.legend()
     plt.grid("all")
@@ -124,6 +107,4 @@ else:
     plt.show()
 
     # Update the config
-    print(f"DC offset to add to I in the config: {-adc1_mean:.6f} V")
-    print(f"DC offset to add to Q in the config: {-adc2_mean:.6f} V")
     print(f"Time Of Flight to add in the config: {delay} ns")
