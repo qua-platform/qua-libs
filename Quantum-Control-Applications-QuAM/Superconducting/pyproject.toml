@@ -18,11 +18,11 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 
-[project.optional-dependencies]
-main = [
+dependencies = [
     "quam @ git+https://github.com/qua-platform/quam.git",
     "qualang-tools"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
+
