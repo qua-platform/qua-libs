@@ -1,17 +1,11 @@
 """
-QUA-Config supporting the following instrument setups:
- - OPX1000 w/ MW-FEM
+QUA-Config supporting OPX1000 w/ MW-FEM
 """
 
 from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-
-#######################
-# AUXILIARY FUNCTIONS #
-#######################
-u = unit(coerce_to_integer=True)
 
 ######################
 # Network parameters #
@@ -21,16 +15,20 @@ cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 octave_config = None
+
 con = "con1"
+fem = 1
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #############################################
 #                  Qubits                   #
 #############################################
+u = unit(coerce_to_integer=True)
+
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
-qubit_power = -4  # power in dBm at waveform amp = 1
+qubit_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -38,13 +36,13 @@ thermalization_time = 5 * qubit_T1
 # Note: amplitudes can be -1..1 and are scaled up to `qubit_power` at amp=1
 # Continuous wave
 const_len = 100
-const_amp = 0.25
+const_amp = 0.03
 # Saturation_pulse
 saturation_len = 10 * u.us
-saturation_amp = 0.25
+saturation_amp = 0.03
 # Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.25
+square_pi_amp = 0.03
 # Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
@@ -129,11 +127,11 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
-resonator_power = 1  # power in dBm at waveform amp = 1
+resonator_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 
 # Note: amplitudes can be -1..1 and are scaled up to `resonator_power` at amp=1
 readout_len = 5000
-readout_amp = 0.8
+readout_amp = 0.6
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -141,10 +139,10 @@ depletion_time = 2 * u.us
 opt_weights = False
 if opt_weights:
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = weights["weights_real"]
-    opt_weights_minus_imag = weights["weights_minus_imag"]
-    opt_weights_imag = weights["weights_imag"]
-    opt_weights_minus_real = weights["weights_minus_real"]
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
     opt_weights_minus_imag = [(0.0, readout_len)]
@@ -159,15 +157,6 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-fem_port = 1
-
-
-def port(controller: str, channel: int, fem=fem_port):
-    """ Generates a controller port config. """
-    if fem is None:
-        return controller, channel
-    else:
-        return controller, fem, channel
 
 
 config = {
@@ -176,7 +165,7 @@ config = {
         con: {
             "type": "opx1000",
             "fems": {
-                fem_port: {
+                fem: {
                     # The keyword "band" refers to the following frequency bands:
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
@@ -186,7 +175,7 @@ config = {
                     #   power_mw = 10**(full_scale_power_dbm / 10)
                     #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
                     #   amp_in_volts = waveform * max_voltage_amp
-                    #   ^ equivalent to non-MW-FEM amp
+                    #   ^ equivalent to OPX+ amp
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
@@ -206,7 +195,7 @@ config = {
     "elements": {
         "resonator": {
             "MWInput": {
-                "port": port(con, 1),
+                "port": (con, fem, 1),
                 "oscillator_frequency": resonator_LO,
             },
             "intermediate_frequency": resonator_IF,
@@ -215,14 +204,14 @@ config = {
                 "readout": "readout_pulse",
             },
             "MWOutput": {
-                "port": port(con, 1),
+                "port": (con, fem, 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "qubit": {
             "MWInput": {
-                "port": port(con, 2),
+                "port": (con, fem, 2),
                 "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,

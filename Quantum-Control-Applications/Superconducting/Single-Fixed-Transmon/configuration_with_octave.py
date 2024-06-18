@@ -1,7 +1,5 @@
 """
-QUA-Config supporting the following instrument setups:
- - OPX+ & Octave
- - OPX1000 w/ LF-FEM & Octave
+QUA-Config supporting OPX+ & Octave
 """
 
 from pathlib import Path
@@ -173,6 +171,7 @@ else:
     opt_weights_minus_imag = [(0.0, readout_len)]
     opt_weights_imag = [(0.0, readout_len)]
     opt_weights_minus_real = [(-1.0, readout_len)]
+
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
@@ -181,84 +180,23 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-opx_1000 = True
-opx_1000_lf_fem_port = 1  # Should be the LF-FEM index, e.g., 1
-
-
-def port(controller: str, channel: int, fem=opx_1000_lf_fem_port):
-    """ Generates a controller port config. """
-    if fem is None:
-        return controller, channel
-    else:
-        return controller, fem, channel
-
-
-controller_settings = {
-    "analog_outputs": {
-        1: {"offset": 0.0},  # I resonator
-        2: {"offset": 0.0},  # Q resonator
-        3: {"offset": 0.0},  # I qubit
-        4: {"offset": 0.0},  # Q qubit
-    },
-    "digital_outputs": {},
-    "analog_inputs": {
-        1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-        2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-    }
-}
-
-if opx_1000:
-    #############################################
-    #                OPX 1000                   #
-    #############################################
-    # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
-    #   "direct":    1Vpp (-0.5 to 0.5), 750MHz bandwidth (default)
-    #   "amplified": 5Vpp (-2.5 to 2.5), 400MHz bandwidth
-    controller_settings["analog_outputs"][1]["output_mode"] = "direct"  # "amplified"
-
-    # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
-    #   1 GS/s: uses one core per output (default)
-    #   2 GS/s: uses two cores per output
-    # WARNING: using 2 GS/s requires double the number of samples for the same duration in arbitrary waveforms.
-    # NOTE: duration parameterization of arb. waveforms, sticky elements and chripring aren't yet supported in 2 GS/s.
-    controller_settings["analog_outputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
-    controller_settings["analog_inputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
-    # At 2 GS/s, use the "upsampling_mode" to optimize output for
-    #   unmodulated pulses (plays the same sample twice):   "pulse"  (default)
-    #   modulated pulses (interpolates between samples):    "mw"
-    # controller_settings["analog_inputs"][1]["upsampling_mode"] = "mw"
-
-    # define template for a chassis with just a single LF-FEM
-    controllers = {
-        con: {
-            "type": "opx1000",
-            "fems": {
-                opx_1000_lf_fem_port: {"type": "LF", **controller_settings}
-            }
-        }
-    }
-    # define a custom connectivity to the Octave from the LF-FEM
-    rf_outputs_1 = {"I_connection": port("con1", 1), "Q_connection": port("con1", 2)}
-    rf_outputs_2 = {"I_connection": port("con1", 3), "Q_connection": port("con1", 4)}
-    # define a custom connectivity to the LF-FEM form the Octave
-    octave_connectivity = {
-        "IF_outputs": {
-            "IF_out1": {"port": port("con1", 1), "name": "out1"},
-            "IF_out2": {"port": port("con1", 2), "name": "out2"},
-        },
-    }
-else:
-    #############################################
-    #                   OPX+                    #
-    #############################################
-    rf_outputs_1, rf_outputs_2 = {}, {}
-    octave_connectivity = {"connectivity": con}
-    controllers = {con: controller_settings}
-
-
 config = {
     "version": 1,
-    "controllers": controllers,
+    "controllers": {
+        con: {
+            "analog_outputs": {
+                1: {"offset": 0.0},  # I resonator
+                2: {"offset": 0.0},  # Q resonator
+                3: {"offset": 0.0},  # I qubit
+                4: {"offset": 0.0},  # Q qubit
+            },
+            "digital_outputs": {},
+            "analog_inputs": {
+                1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
+                2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
+            }
+        }
+    },
     "elements": {
         "qubit": {
             "RF_inputs": {"port": ("octave1", 2)},
@@ -292,14 +230,12 @@ config = {
         "octave1": {
             "RF_outputs": {
                 1: {
-                    **rf_outputs_1,
                     "LO_frequency": resonator_LO,
                     "LO_source": "internal",
                     "output_mode": "always_on",
                     "gain": 0,
                 },
                 2: {
-                    **rf_outputs_2,
                     "LO_frequency": qubit_LO,
                     "LO_source": "internal",
                     "output_mode": "always_on",
@@ -312,7 +248,7 @@ config = {
                     "LO_source": "internal",
                 },
             },
-            **octave_connectivity
+            "connectivity": "con1"
         }
     },
     "pulses": {

@@ -1,7 +1,5 @@
 """
-QUA-Config supporting the following instrument setups:
- - OPX+ & Octave
- - OPX1000 w/ LF-FEM & Octave
+QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
 
 from pathlib import Path
@@ -160,18 +158,20 @@ depletion_time = 2 * u.us
 opt_weights = False
 if opt_weights:
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = weights["weights_real"]
-    opt_weights_minus_imag = weights["weights_minus_imag"]
-    opt_weights_imag = weights["weights_imag"]
-    opt_weights_minus_real = weights["weights_minus_real"]
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
     opt_weights_minus_imag = [(0.0, readout_len)]
     opt_weights_imag = [(0.0, readout_len)]
     opt_weights_minus_real = [(-1.0, readout_len)]
+
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
+
 
 
 #############################################
