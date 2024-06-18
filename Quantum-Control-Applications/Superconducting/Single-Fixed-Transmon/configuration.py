@@ -181,71 +181,29 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-opx_1000 = False
-opx_1000_lf_fem_port = None  # Should be the LF-FEM index or None if OPX+
-
-
-def port(controller: str, channel: int, fem=opx_1000_lf_fem_port):
-    """ Generates a controller port config. """
-    if fem is None:
-        return controller, channel
-    else:
-        return controller, fem, channel
-
-
-controller_settings = {
-    "analog_outputs": {
-        1: {"offset": 0.0},  # I qubit
-        2: {"offset": 0.0},  # Q qubit
-        3: {"offset": 0.0},  # I resonator
-        4: {"offset": 0.0},  # Q resonator
-    },
-    "digital_outputs": {},
-    "analog_inputs": {
-        1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-        2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-    }
-}
-
-if opx_1000:
-    # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
-    #   "direct":    1Vpp (-0.5 to 0.5), 750MHz bandwidth (default)
-    #   "amplified": 5Vpp (-2.5 to 2.5), 400MHz bandwidth
-    controller_settings["analog_outputs"][1]["output_mode"] = "direct"  # "amplified"
-
-    # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
-    #   1 GS/s: uses one core per output (default)
-    #   2 GS/s: uses two cores per output
-    # WARNING: using 2 GS/s requires double the number of samples for the same duration in arbitrary waveforms.
-    # NOTE: duration parameterization of arb. waveforms, sticky elements and chripring aren't yet supported in 2 GS/s.
-    controller_settings["analog_outputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
-    controller_settings["analog_inputs"][1]["sampling_rate"] = int(1e9)  # int(2e9)
-    # At 2 GS/s, use the "upsampling_mode" to optimize output for
-    #   unmodulated pulses (plays the same sample twice):   "pulse"  (default)
-    #   modulated pulses (interpolates between samples):    "mw"
-    # controller_settings["analog_inputs"][1]["upsampling_mode"] = "mw"
-
-    # define template for a chassis with just a single LF-FEM
-    controllers = {
-        con: {
-            "type": "opx1000",
-            "fems": {
-                opx_1000_lf_fem_port: {"type": "LF", **controller_settings}
-            }
-        }
-    }
-else:
-    controllers = {con: controller_settings}
-
 
 config = {
     "version": 1,
-    "controllers": controllers,
+    "controllers": {
+        con: {
+            "analog_outputs": {
+                1: {"offset": 0.0},  # I qubit
+                2: {"offset": 0.0},  # Q qubit
+                3: {"offset": 0.0},  # I resonator
+                4: {"offset": 0.0},  # Q resonator
+            },
+            "digital_outputs": {},
+            "analog_inputs": {
+                1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
+                2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
+            }
+        }
+    },
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": port("con1", 1),
-                "Q": port("con1", 2),
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
@@ -265,8 +223,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": port("con1", 3),
-                "Q": port("con1", 4),
+                "I": ("con1", 3),
+                "Q": ("con1", 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -276,8 +234,8 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": port("con1", 1),
-                "out2": port("con1", 2),
+                "out1": ("con1", 1),
+                "out2": ("con1", 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,

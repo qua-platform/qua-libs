@@ -1,6 +1,5 @@
 """
-QUA-Config supporting the following instrument setups:
- - OPX1000 w/ MW-FEM
+QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
 
 from pathlib import Path
@@ -13,6 +12,22 @@ from qualang_tools.units import unit
 #######################
 u = unit(coerce_to_integer=True)
 
+
+# IQ imbalance matrix
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
+
+
 ######################
 # Network parameters #
 ######################
@@ -20,41 +35,56 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-octave_config = None
-con = "con1"
-
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
+
+#####################
+# OPX configuration #
+#####################
+# Set octave_config to None if no octave are present
+octave_config = None
+con = "con1"
+fem = 1
+
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 7 * u.GHz
+sampling_rate = int(1e9)  # or, int(2e9)
+qubit_LO = 7 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_IF = 50 * u.MHz
-qubit_power = -4  # power in dBm at waveform amp = 1
+mixer_qubit_g = 0.0
+mixer_qubit_phi = 0.0
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
 
-# Note: amplitudes can be -1..1 and are scaled up to `qubit_power` at amp=1
 # Continuous wave
 const_len = 100
-const_amp = 0.25
+const_amp = 0.1
 # Saturation_pulse
 saturation_len = 10 * u.us
-saturation_amp = 0.25
+saturation_amp = 0.1
 # Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.25
+square_pi_amp = 0.1
 # Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
 
-x180_len = 40
+x180_len = 4
 x180_sigma = x180_len / 5
-x180_amp = 1
+x180_amp = 0.35
 x180_wf, x180_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
+    drag_gaussian_pulse_waveforms(
+        amplitude=x180_amp,
+        length=x180_len,
+        sigma=x180_sigma,
+        alpha=drag_coef,
+        anharmonicity=anharmonicity,
+        detuning=AC_stark_detuning,
+        sampling_rate=sampling_rate
+    )
 )
 x180_I_wf = x180_wf
 x180_Q_wf = x180_der_wf
@@ -63,9 +93,9 @@ x180_Q_wf = x180_der_wf
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x90_wf, x90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x90_amp, x90_len, x90_sigma, drag_coef, anharmonicity, AC_stark_detuning)
-)
+x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(
+    x90_amp, x90_len, x90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+))
 x90_I_wf = x90_wf
 x90_Q_wf = x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -73,16 +103,9 @@ x90_Q_wf = x90_der_wf
 minus_x90_len = x180_len
 minus_x90_sigma = minus_x90_len / 5
 minus_x90_amp = -x90_amp
-minus_x90_wf, minus_x90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        minus_x90_amp,
-        minus_x90_len,
-        minus_x90_sigma,
-        drag_coef,
-        anharmonicity,
-        AC_stark_detuning,
-    )
-)
+minus_x90_wf, minus_x90_der_wf = np.array(drag_gaussian_pulse_waveforms(
+    minus_x90_amp, minus_x90_len, minus_x90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+))
 minus_x90_I_wf = minus_x90_wf
 minus_x90_Q_wf = minus_x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -90,8 +113,8 @@ minus_x90_Q_wf = minus_x90_der_wf
 y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
-y180_wf, y180_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(y180_amp, y180_len, y180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
+y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(
+    y180_amp, y180_len, y180_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate)
 )
 y180_I_wf = (-1) * y180_der_wf
 y180_Q_wf = y180_wf
@@ -100,9 +123,9 @@ y180_Q_wf = y180_wf
 y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = y180_amp / 2
-y90_wf, y90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(y90_amp, y90_len, y90_sigma, drag_coef, anharmonicity, AC_stark_detuning)
-)
+y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(
+    y90_amp, y90_len, y90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+))
 y90_I_wf = (-1) * y90_der_wf
 y90_Q_wf = y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -110,16 +133,9 @@ y90_Q_wf = y90_wf
 minus_y90_len = y180_len
 minus_y90_sigma = minus_y90_len / 5
 minus_y90_amp = -y90_amp
-minus_y90_wf, minus_y90_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(
-        minus_y90_amp,
-        minus_y90_len,
-        minus_y90_sigma,
-        drag_coef,
-        anharmonicity,
-        AC_stark_detuning,
-    )
-)
+minus_y90_wf, minus_y90_der_wf = np.array(drag_gaussian_pulse_waveforms(
+    minus_y90_amp, minus_y90_len, minus_y90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+))
 minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -129,11 +145,11 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 resonator_IF = 60 * u.MHz
-resonator_power = 1  # power in dBm at waveform amp = 1
+mixer_resonator_g = 0.0
+mixer_resonator_phi = 0.0
 
-# Note: amplitudes can be -1..1 and are scaled up to `resonator_power` at amp=1
 readout_len = 5000
-readout_amp = 0.8
+readout_amp = 0.2
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -155,75 +171,59 @@ else:
 rotation_angle = (0.0 / 180) * np.pi
 ge_threshold = 0.0
 
-
 #############################################
 #                  Config                   #
 #############################################
-fem_port = 1
-
-
-def port(controller: str, channel: int, fem=fem_port):
-    """ Generates a controller port config. """
-    if fem is None:
-        return controller, channel
-    else:
-        return controller, fem, channel
-
-
 config = {
     "version": 1,
     "controllers": {
         con: {
             "type": "opx1000",
             "fems": {
-                fem_port: {
-                    # The keyword "band" refers to the following frequency bands:
-                    #   1: (50 MHz - 5.5 GHz)
-                    #   2: (4.5 GHz - 7.5 GHz)
-                    #   3: (6.5 GHz - 10.5 GHz)
-                    # The keyword "full_scale_power_dbm" is the maximum power of
-                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
-                    #   power_mw = 10**(full_scale_power_dbm / 10)
-                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   amp_in_volts = waveform * max_voltage_amp
-                    #   ^ equivalent to non-MW-FEM amp
-                    # Its range is -41dBm to +10dBm with 3dBm steps.
-                    "type": "MW",
+                fem: {
+                    "type": "LF",
                     "analog_outputs": {
-                        1: {"band": 2, "full_scale_power_dbm": resonator_power},  # resonator
-                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # qubit
+                        # I qubit
+                        1: {
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            "output_mode": "direct",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "mw",
+                        },
+                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # I resonator
+                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Q resonator
+                        4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2},  # I from down-conversion
-                        2: {"band": 2},  # Q from down-conversion
-                    },
-
+                        # I from down-conversion
+                        1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
+                        # Q from down-conversion
+                        2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
+                    }
                 }
             }
-        },
+        }
     },
     "elements": {
-        "resonator": {
-            "MWInput": {
-                "port": port(con, 1),
-                "oscillator_frequency": resonator_LO,
-            },
-            "intermediate_frequency": resonator_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "readout": "readout_pulse",
-            },
-            "MWOutput": {
-                "port": port(con, 1),
-            },
-            "time_of_flight": time_of_flight,
-            "smearing": 0,
-        },
         "qubit": {
-            "MWInput": {
-                "port": port(con, 2),
-                "oscillator_frequency": qubit_LO,
+            "mixInputs": {
+                "I": ("con1", fem, 1),
+                "Q": ("con1", fem, 2),
+                "lo_frequency": qubit_LO,
+                "mixer": "mixer_qubit",
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
@@ -238,6 +238,25 @@ config = {
                 "y180": "y180_pulse",
                 "-y90": "-y90_pulse",
             },
+        },
+        "resonator": {
+            "mixInputs": {
+                "I": ("con1", fem, 3),
+                "Q": ("con1", fem, 4),
+                "lo_frequency": resonator_LO,
+                "mixer": "mixer_resonator",
+            },
+            "intermediate_frequency": resonator_IF,
+            "operations": {
+                "cw": "const_pulse",
+                "readout": "readout_pulse",
+            },
+            "outputs": {
+                "out1": ("con1", fem, 1),
+                "out2": ("con1", fem, 2),
+            },
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
         },
     },
     "pulses": {
@@ -399,5 +418,21 @@ config = {
             "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
-    }
+    },
+    "mixers": {
+        "mixer_qubit": [
+            {
+                "intermediate_frequency": qubit_IF,
+                "lo_frequency": qubit_LO,
+                "correction": IQ_imbalance(mixer_qubit_g, mixer_qubit_phi),
+            }
+        ],
+        "mixer_resonator": [
+            {
+                "intermediate_frequency": resonator_IF,
+                "lo_frequency": resonator_LO,
+                "correction": IQ_imbalance(mixer_resonator_g, mixer_resonator_phi),
+            }
+        ],
+    },
 }
