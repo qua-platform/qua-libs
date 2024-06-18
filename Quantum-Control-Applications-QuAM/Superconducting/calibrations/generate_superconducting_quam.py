@@ -274,8 +274,8 @@ def _example_wiring(num_qubits: int):
     num_feedlines = 1
     num_opx_chs = 10
     for q_idx in range(num_qubits):
-        xy_idx = 2*num_feedlines + 2 * q_idx
-        z_idx = 2*num_feedlines + 2 * num_qubits + q_idx
+        xy_idx = 2 * num_feedlines + 2 * q_idx
+        z_idx = 2 * num_feedlines + 2 * num_qubits + q_idx
 
         xy_ch = xy_idx % num_opx_chs + 1
         z_ch = z_idx % num_opx_chs + 1
@@ -295,17 +295,16 @@ def _example_wiring(num_qubits: int):
 
 if __name__ == "__main__":
     folder = Path("")
-    folder.mkdir(exist_ok=True)
+    quam_folder = folder / "quam_state"
 
     machine = create_quam_superconducting(num_qubits=5)
-    machine.save(folder / "quam_machine", content_mapping={"wiring.json": {"wiring", "network"}})
-    machine.save(folder / "state.json")
+    machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
     qua_config = machine.generate_config()
     json.dump(qua_config, qua_file.open("w"), indent=4)
 
-    quam_loaded = QuAM.load("state.json")
+    quam_loaded = QuAM.load(quam_folder)
     qua_file_loaded = folder / "qua_config2.json"
     qua_config_loaded = quam_loaded.generate_config()
     json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
