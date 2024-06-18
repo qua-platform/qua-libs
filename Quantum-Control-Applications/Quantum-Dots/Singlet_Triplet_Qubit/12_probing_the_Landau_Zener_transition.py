@@ -27,6 +27,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the different adiabatic and diabatic regimes...
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

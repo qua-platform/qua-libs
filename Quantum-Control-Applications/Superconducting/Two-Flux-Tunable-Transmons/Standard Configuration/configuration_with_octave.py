@@ -2,7 +2,6 @@
 Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
-
 from pathlib import Path
 import numpy as np
 from set_octave import OctaveUnit, octave_declaration
