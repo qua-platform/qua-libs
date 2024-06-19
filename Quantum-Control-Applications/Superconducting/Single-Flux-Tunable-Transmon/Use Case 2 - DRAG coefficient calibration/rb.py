@@ -145,13 +145,13 @@ with program() as rb:
 
                 # qubit cooldown based on state discrimination
                 measure(
-                    "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
+                    "readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin",  I_g)
                 )
                 # To prepare the ground state we used -0.0003 which is a more strict threshold (3 sigma)
                 # to guarantee higher ground state fidelity
                 with while_(I_g > -0.0003):
                     measure(
-                        "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
+                        "readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin",  I_g)
                     )
                 align()
                 wait(resonator_cooldown)

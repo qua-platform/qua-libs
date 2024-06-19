@@ -8,6 +8,7 @@ from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
+
 ######################
 # Network parameters #
 ######################
@@ -21,18 +22,15 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 ############################
 # Set octave configuration #
 ############################
-con = "con1"
-fem = 1  # Should be the LF-FEM index, e.g., 1
-
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
+octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
+# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
 # If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
 # or directly to the Octave (without QM the router), use the local octave IP and port 80.
 # octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con=con)
+# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
 
 # Add the octaves
 octaves = [octave_1]
@@ -42,6 +40,9 @@ octave_config = octave_declaration(octaves)
 #####################
 # OPX configuration #
 #####################
+con = "con1"
+fem = 1  # Should be the LF-FEM index, e.g., 1
+
 
 #############################################
 #                  Qubits                   #
@@ -50,8 +51,8 @@ u = unit(coerce_to_integer=True)
 
 sampling_rate = int(1e9)  # or, int(2e9)
 
-qubit_LO = 7 * u.GHz
-qubit_IF = 50 * u.MHz
+qubit_LO = 7.4 * u.GHz
+qubit_IF = 110 * u.MHz
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -141,7 +142,7 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 5.5 * u.GHz
+resonator_LO = 4.8 * u.GHz
 resonator_IF = 60 * u.MHz
 
 readout_len = 5000
@@ -163,17 +164,28 @@ else:
     opt_weights_imag = [(0.0, readout_len)]
     opt_weights_minus_real = [(-1.0, readout_len)]
 
-# IQ Plane
-rotation_angle = (0.0 / 180) * np.pi
+##########################################
+#               Flux line                #
+##########################################
+max_frequency_point = 0.0
+flux_settle_time = 100 * u.ns
+
+# Resonator frequency versus flux fit parameters according to resonator_spec_vs_flux
+# amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
+amplitude_fit, frequency_fit, phase_fit, offset_fit = [0, 0, 0, 0]
+
+# FLux pulse parameters
+const_flux_len = 200
+const_flux_amp = 0.45
+
+# IQ Plane Angle
+rotation_angle = (0 / 180) * np.pi
+# Threshold for single shot g-e discrimination
 ge_threshold = 0.0
-
-
 
 #############################################
 #                  Config                   #
 #############################################
-
-
 config = {
     "version": 1,
     "controllers": {
@@ -183,7 +195,7 @@ config = {
                 fem: {
                     "type": "LF",
                     "analog_outputs": {
-                        # I qubit
+                        # I resonator
                         1: {
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
@@ -200,12 +212,19 @@ config = {
                             #   unmodulated pulses (optimized for clean step response): "pulse"
                             "upsampling_mode": "mw",
                         },
-                        # Q qubit
-                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
-                        # I resonator
-                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Q resonator
+                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # I qubit
+                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Q qubit
                         4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Flux line
+                        5: {
+                            "offset": max_frequency_point,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -215,7 +234,8 @@ config = {
                         2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
                     }
                 }
-            }
+
+            },
         }
     },
     "elements": {
@@ -225,10 +245,10 @@ config = {
             "operations": {
                 "cw": "const_pulse",
                 "saturation": "saturation_pulse",
-                "pi": "square_pi_pulse",
-                "pi_half": "square_pi_half_pulse",
-                "x90": "x90_pulse",
+                "pi": "pi_pulse",
+                "pi_half": "pi_half_pulse",
                 "x180": "x180_pulse",
+                "x90": "x90_pulse",
                 "-x90": "-x90_pulse",
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
@@ -245,6 +265,23 @@ config = {
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
+        },
+        "flux_line": {
+            "singleInput": {
+                "port": (con, fem, 5),
+            },
+            "operations": {
+                "const": "const_flux_pulse",
+            },
+        },
+        "flux_line_sticky": {
+            "singleInput": {
+                "port": (con, fem, 5),
+            },
+            "sticky": {"analog": True, "duration": 20},
+            "operations": {
+                "const": "const_flux_pulse",
+            },
         },
     },
     "octaves": {
@@ -269,10 +306,24 @@ config = {
                     "LO_source": "internal",
                 },
             },
-            "connectivity": (con, fem)
+            "connectivity": (con, fem),
         }
     },
     "pulses": {
+        "const_single_pulse": {
+            "operation": "control",
+            "length": const_len,
+            "waveforms": {
+                "single": "const_wf",
+            },
+        },
+        "const_flux_pulse": {
+            "operation": "control",
+            "length": const_flux_len,
+            "waveforms": {
+                "single": "const_flux_wf",
+            },
+        },
         "const_pulse": {
             "operation": "control",
             "length": const_len,
@@ -281,26 +332,26 @@ config = {
                 "Q": "zero_wf",
             },
         },
-        "square_pi_pulse": {
-            "operation": "control",
-            "length": square_pi_len,
-            "waveforms": {
-                "I": "square_pi_wf",
-                "Q": "zero_wf",
-            },
-        },
-        "square_pi_half_pulse": {
-            "operation": "control",
-            "length": square_pi_len,
-            "waveforms": {
-                "I": "square_pi_half_wf",
-                "Q": "zero_wf",
-            },
-        },
         "saturation_pulse": {
             "operation": "control",
             "length": saturation_len,
             "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
+        },
+        "pi_pulse": {
+            "operation": "control",
+            "length": square_pi_len,
+            "waveforms": {
+                "I": "pi_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "pi_half_pulse": {
+            "operation": "control",
+            "length": square_pi_len,
+            "waveforms": {
+                "I": "pi_half_wf",
+                "Q": "zero_wf",
+            },
         },
         "x90_pulse": {
             "operation": "control",
@@ -374,8 +425,9 @@ config = {
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
-        "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
-        "square_pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
+        "pi_wf": {"type": "constant", "sample": square_pi_amp},
+        "pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
+        "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf": {"type": "arbitrary", "samples": x90_I_wf.tolist()},
         "x90_Q_wf": {"type": "arbitrary", "samples": x90_Q_wf.tolist()},

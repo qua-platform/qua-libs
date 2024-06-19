@@ -118,7 +118,7 @@ else:
     #     play("x180", "qubit")
     #     align("qubit", "resonator")
     #     measure("readout", "resonator", None,
-    #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
+    #                 dual_demod.full("rotated_cos", "rotated_sin", I))
     #
     #########################################
     #
@@ -131,7 +131,7 @@ else:
     #     play("x180", "qubit")
     #     align("qubit", "resonator")
     #     measure("readout", "resonator", None,
-    #                 dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I))
+    #                 dual_demod.full("rotated_cos", "rotated_sin", I))
     #     assign(count, count + 1)
     #     assign(cont_condition, ((I > threshold) & (count < 3)))
     #

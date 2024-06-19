@@ -15,17 +15,16 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-octave_config = None
-con = "con1"
-mw_fem = 1
-lf_fem = 2
-
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 
 #####################
 # OPX configuration #
 #####################
+con = "con1"
+mw_fem = 1
+lf_fem = 2
+
 # Set octave_config to None if no octave are present
 octave_config = None
 
@@ -38,7 +37,7 @@ sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO = 7.4 * u.GHz
 qubit_IF = 110 * u.MHz
-qubit_power = 1  # power in dBm at waveform amp = 1
+qubit_power = 1  # power in dBm at waveform amp = 1 (steps of 3 dB)
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -208,7 +207,6 @@ config = {
                     "digital_outputs": {},
                     "analog_inputs": {
                         1: {"band": 2},  # I from down-conversion
-                        2: {"band": 2},  # Q from down-conversion
                     },
 
                 },
@@ -272,8 +270,7 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": (con, mw_fem, 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,

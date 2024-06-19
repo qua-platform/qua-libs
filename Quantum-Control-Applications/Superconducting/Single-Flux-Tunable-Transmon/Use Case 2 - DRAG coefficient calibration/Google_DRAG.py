@@ -42,13 +42,13 @@ with program() as drag:
         with for_(*from_array(a, amps)):
             with for_(it, iter_min, it <= iter_max, it + d):
                 measure(
-                    "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
+                    "readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin",  I_g)
                 )
                 # To prepare the ground state we used -0.0003 which is a more strict threshold (3 sigma)
                 # to guarantee higher ground state fidelity
                 with while_(I_g > -0.0003):
                     measure(
-                        "readout", "resonator", None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
+                        "readout", "resonator", None, dual_demod.full("rotated_cos", "rotated_sin",  I_g)
                     )
                 align()
                 wait(resonator_cooldown)
@@ -60,8 +60,8 @@ with program() as drag:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "rotated_sin",  I),
+                    dual_demod.full("rotated_minus_sin", "rotated_cos",  Q),
                 )
                 save(I, I_st)
                 save(Q, Q_st)

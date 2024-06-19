@@ -1,12 +1,10 @@
+"""
+QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
+"""
 from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-
-#######################
-# AUXILIARY FUNCTIONS #
-#######################
-u = unit(coerce_to_integer=True)
 
 
 # IQ imbalance matrix
@@ -37,12 +35,19 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #####################
 # OPX configuration #
 #####################
+con = "con1"
+fem = 1  # Should be the LF-FEM index, e.g., 1
+
 # Set octave_config to None if no octave are present
 octave_config = None
 
 #############################################
 #                  Qubits                   #
 #############################################
+u = unit(coerce_to_integer=True)
+
+sampling_rate = int(1e9)  # or, int(2e9)
+
 qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
 # Qubits IF
@@ -82,24 +87,38 @@ AC_stark_detuning_q2 = 0 * u.MHz
 
 # DRAG waveforms
 x180_wf_q1, x180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        amplitude=pi_amp_q1,
+        length=pi_len,
+        sigma=pi_sigma,
+        alpha=drag_coef_q1,
+        anharmonicity=anharmonicity_q1,
+        detuning=AC_stark_detuning_q1,
+        sampling_rate=sampling_rate
+    )
 )
 x180_I_wf_q1 = x180_wf_q1
 x180_Q_wf_q1 = x180_der_wf_q1
 x180_wf_q2, x180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+    )
 )
 x180_I_wf_q2 = x180_wf_q2
 x180_Q_wf_q2 = x180_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 x90_wf_q1, x90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+    )
 )
 x90_I_wf_q1 = x90_wf_q1
 x90_Q_wf_q1 = x90_der_wf_q1
 x90_wf_q2, x90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+    )
 )
 x90_I_wf_q2 = x90_wf_q2
 x90_Q_wf_q2 = x90_der_wf_q2
@@ -107,14 +126,14 @@ x90_Q_wf_q2 = x90_der_wf_q2
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
     )
 )
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
     )
 )
 minus_x90_I_wf_q2 = minus_x90_wf_q2
@@ -122,24 +141,32 @@ minus_x90_Q_wf_q2 = minus_x90_der_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y180_wf_q1, y180_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q1, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+    )
 )
 y180_I_wf_q1 = (-1) * y180_der_wf_q1
 y180_Q_wf_q1 = y180_wf_q1
 y180_wf_q2, y180_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+    )
 )
 y180_I_wf_q2 = (-1) * y180_der_wf_q2
 y180_Q_wf_q2 = y180_wf_q2
 # No DRAG when alpha=0, it's just a gaussian.
 
 y90_wf_q1, y90_der_wf_q1 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+    )
 )
 y90_I_wf_q1 = (-1) * y90_der_wf_q1
 y90_Q_wf_q1 = y90_wf_q1
 y90_wf_q2, y90_der_wf_q2 = np.array(
-    drag_gaussian_pulse_waveforms(pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2)
+    drag_gaussian_pulse_waveforms(
+        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+    )
 )
 y90_I_wf_q2 = (-1) * y90_der_wf_q2
 y90_Q_wf_q2 = y90_wf_q2
@@ -147,14 +174,14 @@ y90_Q_wf_q2 = y90_wf_q2
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1
+        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
     )
 )
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2
+        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
     )
 )
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
@@ -237,31 +264,70 @@ ge_threshold_q2 = 0.0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
-            "analog_outputs": {
-                1: {"offset": 0.0},  # I qubit1 XY
-                2: {"offset": 0.0},  # Q qubit1 XY
-                3: {"offset": 0.0},  # I qubit2 XY
-                4: {"offset": 0.0},  # Q qubit2 XY
-                5: {"offset": 0.0},  # I readout line
-                6: {"offset": 0.0},  # Q readout line
-                7: {"offset": max_frequency_point1},  # qubit1 Z
-                8: {"offset": max_frequency_point2},  # qubit2 Z
+        con: {
+            "type": "opx1000",
+            "fems": {
+                fem: {
+                    "type": "LF",
+                    "analog_outputs": {
+                        # Qubit 1 XY I-quadrature
+                        1: {
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            "output_mode": "direct",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "mw",
+                        },
+                        # Qubit 1 XY Q-quadrature
+                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Qubit 2 XY I-quadrature
+                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Qubit 2 XY Q-quadrature
+                        4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Resonator I-quadrature
+                        5: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Resonator Q-quadrature
+                        6: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # Q1 flux line
+                        7: {
+                            "offset": max_frequency_point1,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
+                        # Q2 flux line
+                        8: {
+                            "offset": max_frequency_point2,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
+                    },
+                    "digital_outputs": {},
+                    "analog_inputs": {
+                        # I from down-conversion
+                        1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
+                        # Q from down-conversion
+                        2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
+                    }
+                }
             },
-            "digital_outputs": {
-                1: {},
-            },
-            "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-                2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-            },
-        },
+        }
     },
     "elements": {
         "rr1": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": (con, fem, 5),
+                "Q": (con, fem, 6),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -271,16 +337,16 @@ config = {
                 "readout": "readout_pulse_q1",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "rr2": {
             "mixInputs": {
-                "I": ("con1", 5),
-                "Q": ("con1", 6),
+                "I": (con, fem, 5),
+                "Q": (con, fem, 6),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -290,16 +356,16 @@ config = {
                 "readout": "readout_pulse_q2",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
         "q1_xy": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -317,8 +383,8 @@ config = {
         },
         "q2_xy": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
@@ -336,7 +402,7 @@ config = {
         },
         "q1_z": {
             "singleInput": {
-                "port": ("con1", 7),
+                "port": (con, fem, 7),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -344,7 +410,7 @@ config = {
         },
         "q2_z": {
             "singleInput": {
-                "port": ("con1", 8),
+                "port": (con, fem, 8),
             },
             "operations": {
                 "const": "const_flux_pulse",

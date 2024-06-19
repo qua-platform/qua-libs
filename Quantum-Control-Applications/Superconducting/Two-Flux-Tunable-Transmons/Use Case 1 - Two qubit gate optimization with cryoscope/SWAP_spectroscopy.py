@@ -102,8 +102,8 @@ with program() as SWAP_spectroscopy:
                     "readout",
                     res_name,
                     None,
-                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "rotated_sin", I),
+                    dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
                 # State discrimination
                 assign(state, I > ge_threshold)

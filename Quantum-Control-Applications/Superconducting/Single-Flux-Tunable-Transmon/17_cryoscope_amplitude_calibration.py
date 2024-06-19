@@ -85,8 +85,8 @@ with program() as cryoscope_amp:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("cos", "sin",  I),
+                    dual_demod.full("minus_sin", "cos",  Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:

@@ -38,8 +38,8 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
         "readout",
         "resonator",
         None,
-        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+        dual_demod.full("rotated_cos", "rotated_sin",  I),
+        dual_demod.full("rotated_minus_sin", "rotated_cos",  Q),
     )
     if threshold is not None:
         assign(state, I > threshold)
@@ -71,8 +71,8 @@ def ge_averaged_measurement(cooldown_time, n_avg):
             "readout",
             "resonator",
             None,
-            dual_demod.full("cos", "out1", "sin", "out2", I),
-            dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            dual_demod.full("cos", "sin",  I),
+            dual_demod.full("minus_sin", "cos",  Q),
         )
         wait(cooldown_time, "resonator", "qubit")
         save(I, Ig_st)
@@ -86,8 +86,8 @@ def ge_averaged_measurement(cooldown_time, n_avg):
             "readout",
             "resonator",
             None,
-            dual_demod.full("cos", "out1", "sin", "out2", I),
-            dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            dual_demod.full("cos", "sin",  I),
+            dual_demod.full("minus_sin", "cos",  Q),
         )
         wait(cooldown_time, "resonator", "qubit")
         save(I, Ie_st)
