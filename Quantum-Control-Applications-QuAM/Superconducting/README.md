@@ -10,6 +10,8 @@ Then run the following command:
 # Install quam
 pip install git+https://github.com/qua-platform/quam.git
 # Install quam_components
-pip install -e . 
+pip install -e .  
+# or, if you see a red underline, in PyCharm, you can simply try
+# pip install .
 ```
-> **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_components`!
+> **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_components`! 
