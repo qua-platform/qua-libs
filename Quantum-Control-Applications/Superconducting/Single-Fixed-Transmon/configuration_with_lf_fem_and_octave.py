@@ -9,12 +9,6 @@ from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
-#######################
-# AUXILIARY FUNCTIONS #
-#######################
-u = unit(coerce_to_integer=True)
-
-
 ######################
 # Network parameters #
 ######################
@@ -54,7 +48,10 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
+u = unit(coerce_to_integer=True)
+
 sampling_rate = int(1e9)  # or, int(2e9)
+
 qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
 

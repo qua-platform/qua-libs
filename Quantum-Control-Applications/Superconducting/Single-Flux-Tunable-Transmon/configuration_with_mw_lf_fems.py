@@ -1,6 +1,5 @@
 """
-QUA-Config supporting the following instrument setups:
- - OPX1000 w/ LF-FEM + MW-FEM
+QUA-Config supporting OPX1000 w/ LF-FEM + MW-FEM
 """
 
 from pathlib import Path
@@ -8,10 +7,6 @@ import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
-#######################
-# AUXILIARY FUNCTIONS #
-#######################
-u = unit(coerce_to_integer=True)
 
 ######################
 # Network parameters #
@@ -22,6 +17,8 @@ qop_port = None  # Write the QOP port if version < QOP220
 
 octave_config = None
 con = "con1"
+mw_fem = 1
+lf_fem = 2
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
@@ -35,9 +32,13 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
+u = unit(coerce_to_integer=True)
+
+sampling_rate = int(1e9)  # or, int(2e9)
+
 qubit_LO = 7.4 * u.GHz
 qubit_IF = 110 * u.MHz
-qubit_power = -4  # power in dBm at waveform amp = 1
+qubit_power = 1  # power in dBm at waveform amp = 1
 
 qubit_T1 = int(10 * u.us)
 thermalization_time = 5 * qubit_T1
@@ -45,13 +46,13 @@ thermalization_time = 5 * qubit_T1
 # Note: amplitudes can be -1..1 and are scaled up to `qubit_power` at amp=1
 # Continuous wave
 const_len = 100
-const_amp = 0.25
+const_amp = 0.03
 # Saturation_pulse
 saturation_len = 10 * u.us
-saturation_amp = 0.25
+saturation_amp = 0.03
 # Square pi pulse
 square_pi_len = 100
-square_pi_amp = 0.25
+square_pi_amp = 0.03
 # Drag pulses
 drag_coef = 0
 anharmonicity = -200 * u.MHz
@@ -140,18 +141,19 @@ resonator_power = 1  # power in dBm at waveform amp = 1
 
 # Note: amplitudes can be -1..1 and are scaled up to `resonator_power` at amp=1
 readout_len = 5000
-readout_amp = 0.8
+readout_amp = 0.6
 
 time_of_flight = 24
 depletion_time = 2 * u.us
 
+
 opt_weights = False
 if opt_weights:
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = weights["weights_real"]
-    opt_weights_minus_imag = weights["weights_minus_imag"]
-    opt_weights_imag = weights["weights_imag"]
-    opt_weights_minus_real = weights["weights_minus_real"]
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
     opt_weights_minus_imag = [(0.0, readout_len)]
@@ -180,16 +182,13 @@ ge_threshold = 0.0
 #############################################
 #                  Config                   #
 #############################################
-mw_fem_port = 1
-lf_fem_port = 2
-
 config = {
     "version": 1,
     "controllers": {
         con: {
             "type": "opx1000",
             "fems": {
-                mw_fem_port: {
+                mw_fem: {
                     # The keyword "band" refers to the following frequency bands:
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
@@ -198,8 +197,9 @@ config = {
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
                     #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   waveform_pp_in_volts = waveform * max_voltage_amp
-                    # Its range is -40dBm to +10dBm with 3dBm steps.
+                    #   amp_in_volts = waveform * max_voltage_amp
+                    #   ^ equivalent to OPX+ amp
+                    # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
                         1: {"band": 2, "full_scale_power_dbm": resonator_power},  # resonator
@@ -212,26 +212,26 @@ config = {
                     },
 
                 },
-                lf_fem_port: {
+                lf_fem: {
                     "type": "LF",
                     "analog_outputs": {
                         # Flux line
                         1: {
                             "offset": max_frequency_point,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
-                            #   "direct":    1Vpp (-0.5 to 0.5), 750MHz bandwidth (default)
-                            #   "amplified": 5Vpp (-2.5 to 2.5), 400MHz bandwidth
-                            "output_mode": "amplified",  # 2.5Vpp range, but 400MHz bandwidth
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            "output_mode": "amplified",
                             # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
                             #   1 GS/s: uses one core per output (default)
                             #   2 GS/s: uses two cores per output
-                            # WARNING: using 2 GS/s requires double the number of samples for the same duration in arbitrary waveforms.
-                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chripring aren't yet supported in 2 GS/s.
-                            "sampling_rate": int(1e9)  # int(2e9)
-                            # At 2 GS/s, use the "upsampling_mode" to optimize output for
-                            #   unmodulated pulses (plays the same sample twice):   "pulse"  (default)
-                            #   modulated pulses (interpolates between samples):    "mw"
-                            # controller_settings["analog_inputs"][1]["upsampling_mode"] = "mw"
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "pulse",
                         },
                     },
                     "digital_outputs": {
@@ -244,7 +244,7 @@ config = {
     "elements": {
         "qubit": {
             "MWInput": {
-                "port": (con, mw_fem_port, 1),
+                "port": (con, mw_fem, 1),
                 "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,
@@ -263,7 +263,7 @@ config = {
         },
         "resonator": {
             "MWInput": {
-                "port": (con, mw_fem_port, 2),
+                "port": (con, mw_fem, 2),
                 "oscillator_frequency": resonator_LO,
             },
             "intermediate_frequency": resonator_IF,
@@ -280,7 +280,7 @@ config = {
         },
         "flux_line": {
             "singleInput": {
-                "port": (con, lf_fem_port, 1),
+                "port": (con, lf_fem, 1),
             },
             "operations": {
                 "const": "const_flux_pulse",
@@ -288,7 +288,7 @@ config = {
         },
         "flux_line_sticky": {
             "singleInput": {
-                "port": (con, lf_fem_port, 1),
+                "port": (con, lf_fem, 1),
             },
             "sticky": {"analog": True, "duration": 20},
             "operations": {
