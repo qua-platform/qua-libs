@@ -1,7 +1,7 @@
 """
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
-
+import os
 from qm.qua import *
 from qm import SimulationConfig
 from quam_components import QuAM
@@ -10,7 +10,7 @@ from quam_components import QuAM
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam_state")
+machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()

@@ -19,8 +19,9 @@ from qm import SimulationConfig
 from qualang_tools.units import unit
 from quam_components import QuAM
 from macros import node_save
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import os
 from scipy.signal import savgol_filter
 
 
@@ -30,7 +31,7 @@ from scipy.signal import savgol_filter
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam_state")
+machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()

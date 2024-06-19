@@ -1,4 +1,5 @@
 import math
+import os.path
 from typing import Dict
 from quam.components import pulses, Octave, IQChannel, DigitalOutputChannel
 
@@ -172,7 +173,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
         "cluster_name": "Cluster_81",
         "octave_ip": host_ip,
         "octave_port": octave_port,
-        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications/Superconducting/quam/Two-Flux-Tunable-Transmons/DATA",
+        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
     }
     print("Please update the default network settings in: quam.network")
 
@@ -187,6 +188,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
                 name=f"octave{i+1}",
                 ip=octave_ip,
                 port=octave_port,
+                calibration_db_path=os.path.dirname(__file__)
             )
             machine.octaves[f"octave{i+1}"] = octave
             octave.initialize_frequency_converters()

@@ -23,6 +23,7 @@ from qualang_tools.units import unit
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
@@ -34,7 +35,7 @@ from macros import qua_declaration, multiplexed_readout, node_save
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-machine = QuAM.load("quam_state")
+machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()

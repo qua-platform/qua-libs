@@ -1,0 +1,248 @@
+{
+    "network": {
+        "host": "172.16.33.101",
+        "cluster_name": "Cluster_81",
+        "octave_ip": "172.16.33.101",
+        "octave_port": 11050,
+        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data"
+    },
+    "wiring": {
+        "qubits": {
+            "q0": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        3
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        4
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2"
+                },
+                "z": {
+                    "opx_output": [
+                        "con2",
+                        3
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    3
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q1": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        5
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        6
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/3"
+                },
+                "z": {
+                    "opx_output": [
+                        "con2",
+                        4
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    5
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q2": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        7
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        8
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4"
+                },
+                "z": {
+                    "opx_output": [
+                        "con2",
+                        5
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    7
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q3": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        9
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        10
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/5"
+                },
+                "z": {
+                    "opx_output": [
+                        "con2",
+                        6
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    9
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q4": {
+                "xy": {
+                    "opx_output_I": [
+                        "con2",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con2",
+                        2
+                    ],
+                    "frequency_converter_up": "#/octaves/octave2/RF_outputs/1"
+                },
+                "z": {
+                    "opx_output": [
+                        "con2",
+                        7
+                    ]
+                },
+                "opx_output_digital": [
+                    "con2",
+                    1
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            }
+        }
+    }
+}
