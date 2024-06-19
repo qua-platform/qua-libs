@@ -296,7 +296,7 @@ def _example_wiring(num_qubits: int):
 
 
 if __name__ == "__main__":
-    folder = Path("")
+    folder = Path(__file__).parent
     quam_folder = folder / "quam_state"
 
     machine = create_quam_superconducting(num_qubits=5)
