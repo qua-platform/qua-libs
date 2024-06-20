@@ -197,6 +197,7 @@ config = {
                     "analog_outputs": {
                         # I resonator
                         1: {
+                            "offset": 0.0,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
@@ -213,11 +214,11 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # Q resonator
-                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # I qubit
-                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Q qubit
-                        4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Flux line
                         5: {
                             "offset": max_frequency_point,
