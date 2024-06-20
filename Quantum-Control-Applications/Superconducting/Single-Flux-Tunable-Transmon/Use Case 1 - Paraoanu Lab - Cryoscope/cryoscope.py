@@ -3,7 +3,7 @@ cryoscope.py: template for performing the cryoscope protocol.
 """
 import scipy.io
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration_SSB import *
 import matplotlib.pyplot as plt

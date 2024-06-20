@@ -3,7 +3,7 @@ cryoscope_amplitude_calibration.py: template for performing the detuning vs flux
 protocol.
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration_SSB import *
 import matplotlib.pyplot as plt

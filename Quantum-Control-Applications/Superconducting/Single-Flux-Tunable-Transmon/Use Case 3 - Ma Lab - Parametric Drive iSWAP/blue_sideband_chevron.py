@@ -1,6 +1,6 @@
 from qm import SimulationConfig
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter

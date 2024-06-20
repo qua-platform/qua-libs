@@ -12,7 +12,7 @@ from macros import (
 )
 import numpy as np
 from scipy import signal
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.simulate import SimulationConfig, LoopbackInterface
 from configuration import config, qop_ip
 import matplotlib.pyplot as plt
