@@ -221,7 +221,7 @@ config = {
     },
     "elements": {
         "qubit": {
-            "RF_inputs": {"port": ("octave1", fem, 2)},
+            "RF_inputs": {"port": ("octave1", 2)},
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -237,8 +237,8 @@ config = {
             },
         },
         "resonator": {
-            "RF_inputs": {"port": ("octave1", fem, 1)},
-            "RF_outputs": {"port": ("octave1", fem, 1)},
+            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_outputs": {"port": ("octave1", 1)},
             "intermediate_frequency": resonator_IF,
             "operations": {
                 "cw": "const_pulse",

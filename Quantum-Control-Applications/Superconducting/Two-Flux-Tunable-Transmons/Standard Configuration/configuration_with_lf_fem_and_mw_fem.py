@@ -319,8 +319,8 @@ config = {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q1",
             },
-            "outputs": {
-                "out1": (con, mw_fem, 1),
+            "MWOutput": {
+                "port": (con, mw_fem, 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -335,8 +335,8 @@ config = {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q2",
             },
-            "outputs": {
-                "out1": (con, mw_fem, 1),
+            "MWOutput": {
+                "port": (con, mw_fem, 1),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
