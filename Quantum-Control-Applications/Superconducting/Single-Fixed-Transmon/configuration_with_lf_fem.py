@@ -44,7 +44,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 # Set octave_config to None if no octave are present
 octave_config = None
 con = "con1"
-fem = 1
+fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 
 #############################################
 #                  Qubits                   #

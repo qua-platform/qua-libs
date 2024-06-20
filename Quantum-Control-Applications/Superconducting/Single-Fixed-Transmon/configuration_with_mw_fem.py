@@ -183,7 +183,6 @@ config = {
                     "digital_outputs": {},
                     "analog_inputs": {
                         1: {"band": 2},  # I from down-conversion
-                        2: {"band": 2},  # Q from down-conversion
                     },
 
                 }
