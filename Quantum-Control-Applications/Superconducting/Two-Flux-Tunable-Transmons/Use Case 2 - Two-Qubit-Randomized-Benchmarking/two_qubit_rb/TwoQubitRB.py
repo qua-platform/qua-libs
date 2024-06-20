@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Callable, List, Literal
 import cirq
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm.jobs.running_qm_job import RunningQmJob
 from qm.qua import *
 from qm.qua._dsl import _Expression
