@@ -69,8 +69,10 @@ thermalization_time = 5 * max(qubit1_T1, qubit2_T1)
 
 # CW pulse parameter
 const_len = 1000
-const_amp = 270 * u.mV
-
+const_amp = 125 * u.mV
+# Saturation_pulse
+saturation_len = 10 * u.us
+saturation_amp = 0.125
 # Pi pulse parameters
 pi_len = 40
 pi_sigma = pi_len / 5
@@ -272,6 +274,7 @@ config = {
                     "analog_outputs": {
                         # Resonator I-quadrature
                         1: {
+                            "offset": 0.0,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
@@ -288,15 +291,15 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # Resonator Q-quadrature
-                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 1 XY I-quadrature
-                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 1 XY Q-quadrature
-                        4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 1 XY I-quadrature
-                        5: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        5: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 2 XY Q-quadrature
-                        6: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        6: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Q1 flux line
                         7: {
                             "offset": max_frequency_point1,
@@ -351,6 +354,7 @@ config = {
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q1",
                 "x90": "x90_pulse_q1",
                 "-x90": "-x90_pulse_q1",
@@ -364,6 +368,7 @@ config = {
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
                 "cw": "const_pulse",
+                "saturation": "saturation_pulse",
                 "x180": "x180_pulse_q2",
                 "x90": "x90_pulse_q2",
                 "-x90": "-x90_pulse_q2",
@@ -433,6 +438,14 @@ config = {
             "length": const_len,
             "waveforms": {
                 "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
+        "saturation_pulse": {
+            "operation": "control",
+            "length": saturation_len,
+            "waveforms": {
+                "I": "saturation_wf",
                 "Q": "zero_wf",
             },
         },
@@ -575,6 +588,7 @@ config = {
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
+        "saturation_wf": {"type": "constant", "sample": saturation_amp},
         "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},

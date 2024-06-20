@@ -272,6 +272,7 @@ config = {
                     "analog_outputs": {
                         # Qubit 1 XY I-quadrature
                         1: {
+                            "offset": 0.0,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
@@ -288,15 +289,15 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # Qubit 1 XY Q-quadrature
-                        2: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 2 XY I-quadrature
-                        3: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Qubit 2 XY Q-quadrature
-                        4: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Resonator I-quadrature
-                        5: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        5: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Resonator Q-quadrature
-                        6: {"output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        6: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # Q1 flux line
                         7: {
                             "offset": max_frequency_point1,

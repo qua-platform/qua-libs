@@ -359,7 +359,7 @@ config = {
             },
         },
         "q2_xy": {
-            "mixInputs": {
+            "MWInput": {
                 "port": (con, mw_fem, 3),
                 "oscillator_frequency": qubit_LO_q2,
             },
