@@ -40,8 +40,8 @@ sampling_rate = int(1e9)  # or, int(2e9)
 u = unit()
 
 # IP address of the Quantum Orchestration Platform
-qop_ip = "172.16.33.107"
-cluster_name = "Beta_8"
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = None
 octave_config = None
 

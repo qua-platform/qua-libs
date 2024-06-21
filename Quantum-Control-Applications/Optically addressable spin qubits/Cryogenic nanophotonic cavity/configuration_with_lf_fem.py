@@ -35,8 +35,8 @@ fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 sampling_rate = int(1e9)  # or, int(2e9)
 
 u = unit()
-qop_ip = "172.16.33.107"
-cluster_name = "Beta_8"
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = None
 octave_config = None
 
