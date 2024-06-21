@@ -32,8 +32,8 @@ def print_2d(matrix):
 #############
 # VARIABLES #
 #############
-qop_ip = "172.16.33.107"
-cluster_name = "Beta_8"
+qop_ip = "127.0.0.1"
+cluster_name = "my_cluster"
 qop_port = 80
 
 octave_config = None
