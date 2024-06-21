@@ -121,9 +121,8 @@ config = {
                         4: {},  # F-transition AOM1
                         5: {},  # excited state mw switch0
                         6: {},  # excited state mw switch1
-                        7: {},  # SNSPD shutter AOM
-                        8: {},  # Yb mw switch0
-                        9: {},  # Yb mw switch1
+                        7: {},  # Yb mw switch0
+                        8: {},  # Yb mw switch1
                     },
                     "analog_inputs": {
                         1: {"offset": 0, "gain_db": 0, "sampling_rate": sampling_rate},  # SPCM
@@ -143,12 +142,12 @@ config = {
             "intermediate_frequency": Yb_IF_freq,
             "digitalInputs": {
                 "switch0": {
-                    "port": (con, fem, 8),
+                    "port": (con, fem, 7),
                     "delay": 136,
                     "buffer": 0,
                 },
                 "switch1": {
-                    "port": (con, fem, 9),
+                    "port": (con, fem, 8),
                     "delay": 136,
                     "buffer": 0,
                 },

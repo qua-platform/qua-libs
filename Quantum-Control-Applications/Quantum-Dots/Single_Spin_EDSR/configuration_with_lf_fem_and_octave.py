@@ -391,9 +391,9 @@ config = {
                         # Sensor gate
                         5: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
                         # RF Reflectometry
-                        9: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        7: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
                         # DC readout
-                        10: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        8: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
                     },
                     "digital_outputs": {
                         1: {},  # TTL for QDAC
@@ -495,7 +495,7 @@ config = {
         },
         "tank_circuit": {
             "singleInput": {
-                "port": (con, fem, 9),
+                "port": (con, fem, 7),
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -510,7 +510,7 @@ config = {
         },
         "TIA": {
             "singleInput": {
-                "port": (con, fem, 10),
+                "port": (con, fem, 8),
             },
             "operations": {
                 "readout": "readout_pulse",
