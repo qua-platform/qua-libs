@@ -35,7 +35,10 @@ fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 sampling_rate = int(1e9)  # or, int(2e9)
 
 u = unit()
-qop_ip = "172.16.2.103"
+qop_ip = "172.16.33.107"
+cluster_name = "Beta_8"
+qop_port = None
+octave_config = None
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz
@@ -80,6 +83,7 @@ config = {
                     "analog_outputs": {
                         # Yb I microwave
                         1: {
+                            "offset": 0.0,
                             "delay": mw_delay,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
@@ -98,6 +102,7 @@ config = {
                         },
                         # Yb Q microwave
                         2: {
+                            "offset": 0.0,
                             "delay": mw_delay,
                             "output_mode": "direct",
                             "sampling_rate": sampling_rate,
@@ -112,7 +117,7 @@ config = {
                             "upsampling_mode": "mw"
                         },
                         # Photon Source
-                        9: {"delay": mw_delay, "offset": 0.0},
+                        8: {"delay": mw_delay, "offset": 0.0},
                     },
                     "digital_outputs": {
                         1: {},  # A-transition AOM0

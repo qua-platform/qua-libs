@@ -30,7 +30,7 @@ with program() as TimeTagging_calibration:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 # Open Quantum Machine
 qm = qmm.open_qm(config)
 # Execute program

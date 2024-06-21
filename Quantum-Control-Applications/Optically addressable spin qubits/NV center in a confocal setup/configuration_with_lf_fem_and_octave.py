@@ -91,46 +91,54 @@ wait_after_measure = 1 * u.us  # Wait time after each measurement
 #############################################
 #                  Config                   #
 #############################################
+wait_between_runs = 100
+
 config = {
     "version": 1,
     "controllers": {
         con: {
-            "analog_outputs": {
-                # NV I
-                1: {
-                    "offset": 0.0,
-                    "delay": mw_delay,
-                    # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
-                    #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
-                    #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
-                    "output_mode": "direct",
-                    # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
-                    #   1 GS/s: uses one core per output (default)
-                    #   2 GS/s: uses two cores per output
-                    # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
-                    #       aren't yet supported in 2 GS/s.
-                    "sampling_rate": sampling_rate,
-                    # At 1 GS/s, use the "upsampling_mode" to optimize output for
-                    #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
-                    #   unmodulated pulses (optimized for clean step response): "pulse"
-                    "upsampling_mode": "mw",
-                },
-                # NV Q
-                2: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
-                # RF
-                3: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
-            },
-            "digital_outputs": {
-                1: {},  # Octave switch
-                2: {},  # AOM/Laser 1
-                3: {},  # SPCM1 - indicator
-                4: {},  # AOM/Laser 2
-                5: {},  # SPCM2 - indicator
-            },
-            "analog_inputs": {
-                1: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM1
-                2: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM2
-            },
+            "type": "opx1000",
+            "fems": {
+                fem: {
+                    "type": "LF",
+                    "analog_outputs": {
+                        # NV I
+                        1: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            "output_mode": "direct",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "mw",
+                        },
+                        # NV Q
+                        2: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        # RF
+                        3: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                    },
+                    "digital_outputs": {
+                        1: {},  # Octave switch
+                        2: {},  # AOM/Laser 1
+                        3: {},  # SPCM1 - indicator
+                        4: {},  # AOM/Laser 2
+                        5: {},  # SPCM2 - indicator
+                    },
+                    "analog_inputs": {
+                        1: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM1
+                        2: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM2
+                    },
+                }
+            }
         }
     },
     "elements": {
