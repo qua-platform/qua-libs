@@ -468,13 +468,13 @@ class XEBResult:
         self.saved_data = saved_data
         self.data_handler = data_handler
         (
-            self.measured_probs,
-            self.expected_probs,
-            self.records,
-            self.log_fidelities,
-            self.linear_fidelities,
-            self.singularities,
-            self.outliers,
+            self._measured_probs,
+            self._expected_probs,
+            self._records,
+            self._log_fidelities,
+            self._linear_fidelities,
+            self._singularities,
+            self._outliers,
         ) = self.retrieve_data()
 
     def retrieve_data(self):
@@ -781,3 +781,71 @@ class XEBResult:
                 "outliers": self.outliers,
             }
         )
+
+    @property
+    def measured_probs(self):
+        """
+        Measured probabilities of the states
+        Returns: Measured probabilities of the states
+        """
+        return self._measured_probs
+
+    @property
+    def expected_probs(self):
+        """
+        Expected probabilities of the states
+        Returns: Expected probabilities of the states
+        """
+        return self._expected_probs
+
+    @property
+    def records(self):
+        """
+        Records of the experiment
+        Returns: Records of the experiment
+        """
+        return self._records
+
+    @property
+    def log_fidelities(self):
+        """
+        Logarithmic fidelities
+        Returns: Logarithmic fidelities
+        """
+        return self._log_fidelities
+
+    @property
+    def linear_fidelities(self):
+        """
+        Linear fidelities
+        Returns: Linear fidelities
+        """
+        return self._linear_fidelities
+
+    @property
+    def singularities(self):
+        """
+        Singularities
+        Returns: Singularities
+        """
+        return self._singularities
+
+    @property
+    def outliers(self):
+        """
+        Outliers
+        Returns: Outliers
+        """
+        return self._outliers
+
+    @property
+    def purities(self):
+        """
+        Estimated purities of final states, computed from the variance of the measured probabilities
+        Returns: Purities
+        """
+        var_pt = (2**self.xeb_config.n_qubits - 1) / (
+            2 ** (2 * self.xeb_config.n_qubits)(2**self.xeb_config.n_qubits + 1)
+        )
+        purities = np.var(self.measured_probs, axis=-1) / var_pt
+        return purities

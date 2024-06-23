@@ -89,7 +89,6 @@ two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
 
 ```
 Additional parameters are available in the config such as:
-- `impose_0_cycle`: boolean indicating if first cycle should be set to a default setting (usually the Hadamard gate).
 - `reset_method`: the method used to reset the qubits. The user can choose between `"active"` (active reset) and `"cooldown"` (passive reset).
 - `reset_kwargs`: the arguments for the reset method. The user can provide a dictionary of the form `{"cooldown_time": 1000, "max_tries": 1, "pi_pulse":"x180"}`. The first key corresponds to the cooldown time in ns (used if `reset_method` is `"cooldown"`, the second key corresponds to the maximum number of tries before the reset is considered done (used when `reset_method` is `"active"`, and the third key corresponds to the pulse used for the reset (a $\pi$ rotation around the X axis). Note that in the case of an active reset, the threshold is automatically retrieved from the QuAM configuration file (through the `ReadoutPulse`).
 - `save_dir`: the directory where the results will be saved through the `DataHandler`
