@@ -5,27 +5,13 @@ Author: Arthur Strauss - Quantum Machines
 Last updated: 2024-04-30
 """
 
-import pandas as pd
-from matplotlib import pyplot as plt, colors
+from matplotlib import pyplot as plt
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np
-from scipy.optimize import optimize
+from quam.examples.superconducting_qubits import Transmon
+from scipy import optimize
 from scipy.stats import stats
-
-
-def assign_amplitude_matrix(gate, amp_matrix, gate_dict: dict):
-    """
-    QUA Macro for assigning the amplitude matrix arguments for a given gate index.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix arguments
-    :param gate_dict: Dictionary of gates
-    """
-    with switch_(gate):
-        for i in range(len(gate_dict)):
-            with case_(i):
-                for j in range(4):
-                    assign(amp_matrix[j], gate_dict[i]["amp_matrix"][j])
 
 
 def qua_declaration(n_qubits: int, readout_elements: list):
@@ -40,57 +26,91 @@ def qua_declaration(n_qubits: int, readout_elements: list):
     I_st, Q_st = [[declare_stream() for _ in range(n_qubits)] for _ in range(2)]
     # Workaround to manually assign the results variables to the readout elements
     for i in range(n_qubits):
-        assign_variables_to_element(readout_elements[i], I[i], Q[i])
+        assign_variables_to_element(readout_elements[i].name, I[i], Q[i])
     return I, I_st, Q, Q_st
 
 
-def play_T_gate_set(gate, amp_matrix, qubit_el):
+def reset_qubit(method: str, qubit: Transmon, **kwargs):
     """
-    QUA Macro for the T gate set
-    The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the T gate.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
+    Macro to reset the qubit state.
+
+    If method is 'cooldown', then the variable cooldown_time (in clock cycles) must be provided as a python integer > 4.
+
+    **Example**: reset_qubit('cooldown', cooldown_times=500)
+
+    If method is 'active', then 3 parameters are available as listed below.
+
+    **Example**: reset_qubit('active', threshold=-0.003, max_tries=3)
+
+    :param method: Method the reset the qubit state. Can be either 'cooldown' or 'active'.
+    :param qubit: The qubit to be addressed in QuAM
+    :key cooldown_time: qubit relaxation time in clock cycle, needed if method is 'cooldown'. Must be an integer > 4.
+    :key threshold: threshold to discriminate between the ground and excited state, needed if method is 'active'.
+    :key max_tries: python integer for the maximum number of tries used to perform active reset,
+        needed if method is 'active'. Must be an integer > 0 and default value is 1.
+    :key Ig: A QUA variable for the information in the `I` quadrature used for active reset. If not given, a new
+        variable will be created. Must be of type `Fixed`.
+    :key pi_pulse: The pulse to play to get back to the ground state. Default is 'x180'.
+    :return:
     """
-    with switch_(gate, unsafe=True):
-        for j in range(2):  # X90, Y90
-            with case_(j):
-                play("sx" * amp(*amp_matrix), qubit_el)
-        with case_(2):  # T gate
-            frame_rotation_2pi(0.125, qubit_el)
+    if method == "cooldown":
+        # Check cooldown_time
+        cooldown_time = kwargs.get("cooldown_time", None)
+        if (cooldown_time is None) or (cooldown_time < 4):
+            raise Exception("'cooldown_time' must be an integer > 4 clock cycles")
+        # Reset qubit state
+        qubit.xy.wait(cooldown_time)
+    elif method == "active":
+        # Check threshold
+        threshold = kwargs.get("threshold", None)
+        if threshold is None:
+            raise Exception("'threshold' must be specified for active reset.")
+        # Check max_tries
+        max_tries = kwargs.get("max_tries", 1)
+        if (max_tries is None) or (not float(max_tries).is_integer()) or (max_tries < 1):
+            raise Exception("'max_tries' must be an integer > 0.")
+        # Check Ig
+        Ig = kwargs.get("Ig", None)
+        pi_pulse_name = kwargs.get("pi_pulse", "x180")
+        # Reset qubit state
+        return active_reset(threshold, qubit, max_tries=max_tries, Ig=Ig, pi_pulse=pi_pulse_name)
 
 
-def play_SW_gate_set(gate, amp_matrix, qubit_el):
-    """
-    QUA Macro for the SW gate set
-    The two first cases will focus on the X90 and Y90 gates, while the last case will focus on the SW gate.
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
-    """
-    with switch_(gate, unsafe=True):
-        for j, gate in enumerate(["sx", "sy"]):  # X90, Y90, SW
-            with case_(j):
-                play(gate, qubit_el)
-        with case_(2):
-            play("sx" * amp(*amp_matrix), qubit_el)
+# Macro for performing active reset until successful for a given number of tries.
+def active_reset(threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pulse: str = "x180"):
+    """Macro for performing active reset until successful for a given number of tries.
 
-
-def play_random_sq_gate(gate, amp_matrix, qubit_el, gate_dict: dict):
+    :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.
+    :param qubit: The qubit element. Must be defined in the config.
+    :param resonator: The resonator element. Must be defined in the config.
+    :param max_tries: python integer for the maximum number of tries used to perform active reset. Must >= 1.
+    :param Ig: A QUA variable for the information in the `I` quadrature. Should be of type `Fixed`. If not given, a new
+        variable will be created
+    :param pi_pulse: The pulse to play to get back to the ground state. Default is 'x180'.
+    :return: A QUA variable for the information in the `I` quadrature and the number of tries after success.
     """
-    QUA Macro for playing a random single-qubit gate
-    :param gate: Gate index
-    :param amp_matrix: Amplitude matrix
-    :param qubit_el: Qubit element
-    :param gate_dict: Dictionary of gates
-    """
+    if Ig is None:
+        Ig = declare(fixed)
+    if (max_tries < 1) or (not float(max_tries).is_integer()):
+        raise Exception("max_count must be an integer >= 1.")
+    # Initialize Ig to be > threshold
+    assign(Ig, threshold + 2**-28)
+    # Number of tries for active reset
+    counter = declare(int)
+    # Reset the number of tries
+    assign(counter, 0)
 
-    if gate_dict[2]["gate"].name == "t":  # T gate involves frame rotation
-        play_T_gate_set(gate, amp_matrix, qubit_el)
-    elif gate_dict[2]["gate"].label == "sw":
-        play_SW_gate_set(gate, amp_matrix, qubit_el)
-    else:
-        play("sx" * amp(*amp_matrix), qubit_el)
+    # Perform active feedback
+    qubit.xy.align(qubit.resonator.name)
+    # Use a while loop and counter for other protocols and tests
+    with while_((Ig > threshold) & (counter < max_tries)):
+        # Measure the resonator
+        qubit.resonator.measure("readout")
+        # Play a pi pulse to get back to the ground state
+        qubit.xy.play(pi_pulse, condition=(Ig > threshold))
+        # Increment the number of tries
+        assign(counter, counter + 1)
+    return Ig, counter
 
 
 def cz_gate(control, target, CZ_operations: dict):
@@ -146,19 +166,6 @@ def create_subplot(data, subplot_number, title, depths, seqs):
     ax.set_xticks(depths)
     ax.set_yticks(np.arange(1, seqs + 1))
     plt.colorbar()
-
-
-def per_cycle_depth(df):
-    fid_lsq = df["numerator"].sum() / df["denominator"].sum()
-
-    cycle_depth = df.name
-    xx = np.linspace(0, df["x"].max())
-    (l,) = plt.plot(xx, fid_lsq * xx, color=colors[cycle_depth])
-    plt.scatter(df["x"], df["y"], color=colors[cycle_depth])
-
-    global _lines
-    _lines += [l]  # for legend
-    return pd.Series({"fidelity": fid_lsq})
 
 
 # Define Cirq functions for fitting (redefined here for avoiding additional dependencies)
