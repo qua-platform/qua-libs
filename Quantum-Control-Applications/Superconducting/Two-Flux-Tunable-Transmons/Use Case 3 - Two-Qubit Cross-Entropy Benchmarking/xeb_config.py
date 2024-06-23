@@ -19,7 +19,6 @@ class XEBConfig:
         baseline_gate_name (str): Name of the baseline gate implementing a pi/2 rotation around the x-axis (default "sx")
         gate_set_choice (str): Choice of gate set for XEB (choose "sw" or "t") or a custom gate set as a dictionary of QUAGate objects
         two_qb_gate (Optional[QUAGate]): Two-qubit gate to be used in the experiment
-        impose_0_cycle (bool): Whether to impose the first gate at 0-cycle
         reset_method (str): Method used to reset the qubits (choose "active" or "cooldown")
         reset_kwargs (Optional[Dict[str, Union[float, str, int]]]): Keyword arguments for the reset method (default {"cooldown_time": 20, "max_tries": None, "pi_pulse_name": None})
         save_dir (str): Directory where the data will be saved
@@ -37,7 +36,6 @@ class XEBConfig:
     baseline_gate_name: str = "sx"
     gate_set_choice: Union[Literal["sw", "t"], Dict[int, QUAGate]] = "sw"
     two_qb_gate: Optional[QUAGate] = None
-    impose_0_cycle: bool = False
     reset_method: Literal["active", "cooldown"] = "cooldown"
     reset_kwargs: Optional[Dict[str, Union[float, str, int]]] = field(
         default_factory=lambda: {

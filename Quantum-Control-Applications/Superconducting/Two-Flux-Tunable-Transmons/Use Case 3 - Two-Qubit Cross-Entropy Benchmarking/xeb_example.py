@@ -29,7 +29,6 @@ xeb_config = XEBConfig(
     baseline_gate_name="x90",
     gate_set_choice="sw",
     two_qb_gate=cz_qua,
-    impose_0_cycle=False,
     save_dir="",
     should_save_data=True,
     generate_new_data=True,
