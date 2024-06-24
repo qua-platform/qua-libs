@@ -1,6 +1,6 @@
 from qm.qua import *
 from configuration import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal

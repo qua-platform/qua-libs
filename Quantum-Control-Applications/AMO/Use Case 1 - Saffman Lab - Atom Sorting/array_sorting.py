@@ -1,5 +1,5 @@
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from qm import LoopbackInterface
 from config_array_sorting import *
@@ -677,8 +677,4 @@ else:
         SimulationConfig(
             simulation_duration,
             simulation_interface = LoopbackInterface(
-                [("con1", 1, "con1", 1),
-                 ("con1", 2, "con1", 2)]
-            ),
-        ),
-    )
+           
