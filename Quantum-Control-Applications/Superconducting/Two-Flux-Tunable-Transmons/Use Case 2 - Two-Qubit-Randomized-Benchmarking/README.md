@@ -109,7 +109,27 @@ res.plot_fidelity()
 ```
 
 ### Under the Hood: Clifford Sequence Generation
-In order to both efficiently generate random two-qubit clifford sequences with recovery and use minimal OPX resources within the compiled program, each Clifford is decomposed into two of 736 possible "commands". A command is an abstraction of gates which serves as a middle-ground between two-qubit Cliffords (too many to pre-load onto the OPX) and singular gates. A command is composed of single-qubit PhasedXZ gates and two-qubit gates. Each command is pre-baked as a pulse, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is streamed as input into the OPX as *2 x (circuit_depth + 1)* command IDs. Once the program receives the input stream, it is fed into a loop of switch cases, which play the pulse corresponding to the command ID.
+#### How are all the 11,520 2Q Cliffords loaded onto the OPX?
+In order to both:
+ 1. Efficiently generate random two-qubit clifford sequences and the recovery gate
+ 2. Use minimal OPX resources within the compiled program, 
+
+each Clifford is decomposed into two commands (out of 736 total).
+Every command is [baked](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) as a pulse in advance, loaded onto the OPX, and can be addressed according to its "command id", which is an index from 0 to 735. Thus, when a random sequence is generated, it is [streamed as input](https://docs.quantum-machines.co/1.1.7/qm-qua-sdk/docs/Guides/features/?h=input+stream#input-streams) into the OPX as *2 x (circuit_depth + 1)* command IDs. Once the program receives the input stream, it is fed into a loop of switch cases, which plays the pulse corresponding to the command ID.
+
+#### What is baking?
+[Baking](https://github.com/qua-platform/py-qua-tools/blob/main/qualang_tools/bakery/README.md) is a technique for pre-uploading pulses into waveform memory in order to overcome real-time limitations sometimes affecting play statements and frame rotations.
+
+#### What is a command?
+A command is an abstraction of a few quantum gates which can be re-used to construct cliffords. Commands serve as a middle-ground between two-qubit Cliffords (11,520 is too many to pre-load onto the OPX) and singular gates (too granular for the OPX to switch in time for the next gate). A command is composed of single-qubit PhasedXZ gates and two-qubit gates. The first 720 commands are symplectic gates, and the remaining 16 are Pauli gates.
+
+#### How do commands combine to make Cliffords?
+Each two-qubit Clifford can be decomposed into 1/720 symplectic gates (commands 0-719), followed by 1/16 Pauli gates (commands 720-735).
+
+#### Why use commands instead of baking all the Cliffords?
+It would cost too much waveform memory to pre-upload all 11,520 two-qubit Clifford gates onto the OPX. Ideally, we could just bake all possible single-qubit and two-qubit gates, and this would be the most memory-friendly and efficient way to reconstruct 2Q Cliffords on the fly. However, the real-time switch-case on the OPX has a certain latency, which can be greater than the duration of a single gate, leading to gaps between consecutive gates. Therefore, the extended length of a "command" and smaller volume of commands compared with the two-qubit Cliffords provide an efficient middle-ground for navigating the OPX's unique constraints.
+
+#### How can I recover information about what random circuits I ran?
 
 Since this method hides the details of how the sequences are generated, we have added methods which expose the breakdown of the randomly generated sequences:
 1. `rb.save_sequences_to_file(...)`: Saves which commands (and thus, gates) were used to construct each random sequence.
