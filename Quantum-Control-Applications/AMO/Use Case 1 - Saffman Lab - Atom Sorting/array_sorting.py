@@ -676,5 +676,6 @@ else:
         atom_sorting,
         SimulationConfig(
             simulation_duration,
-            simulation_interface = LoopbackInterface(
-           
+            simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)]),
+        ),
+    )

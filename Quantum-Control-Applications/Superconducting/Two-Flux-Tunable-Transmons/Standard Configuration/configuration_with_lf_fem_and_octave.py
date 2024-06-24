@@ -96,7 +96,7 @@ x180_wf_q1, x180_der_wf_q1 = np.array(
         alpha=drag_coef_q1,
         anharmonicity=anharmonicity_q1,
         detuning=AC_stark_detuning_q1,
-        sampling_rate=sampling_rate
+        sampling_rate=sampling_rate,
     )
 )
 x180_I_wf_q1 = x180_wf_q1
@@ -112,14 +112,26 @@ x180_Q_wf_q2 = x180_der_wf_q2
 
 x90_wf_q1, x90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 x90_I_wf_q1 = x90_wf_q1
 x90_Q_wf_q1 = x90_der_wf_q1
 x90_wf_q2, x90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 x90_I_wf_q2 = x90_wf_q2
@@ -128,14 +140,26 @@ x90_Q_wf_q2 = x90_der_wf_q2
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        -pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        -pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 minus_x90_I_wf_q2 = minus_x90_wf_q2
@@ -160,14 +184,26 @@ y180_Q_wf_q2 = y180_wf_q2
 
 y90_wf_q1, y90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 y90_I_wf_q1 = (-1) * y90_der_wf_q1
 y90_Q_wf_q1 = y90_wf_q1
 y90_wf_q2, y90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 y90_I_wf_q2 = (-1) * y90_der_wf_q2
@@ -176,14 +212,26 @@ y90_Q_wf_q2 = y90_wf_q2
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        -pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        -pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
@@ -291,15 +339,40 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # Resonator Q-quadrature
-                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Qubit 1 XY I-quadrature
-                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Qubit 1 XY Q-quadrature
-                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Qubit 1 XY I-quadrature
-                        5: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        5: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Qubit 2 XY Q-quadrature
-                        6: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        6: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Q1 flux line
                         7: {
                             "offset": max_frequency_point1,
@@ -321,7 +394,7 @@ config = {
                         1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
                         # Q from down-conversion
                         2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
-                    }
+                    },
                 }
             },
         }

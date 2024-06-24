@@ -84,8 +84,8 @@ def allXY(pulses):
         "readout",
         "resonator",
         None,
-        dual_demod.full("rotated_cos", "rotated_sin",  I_xy),
-        dual_demod.full("rotated_minus_sin", "rotated_cos",  Q_xy),
+        dual_demod.full("rotated_cos", "rotated_sin", I_xy),
+        dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
     return I_xy, Q_xy
 

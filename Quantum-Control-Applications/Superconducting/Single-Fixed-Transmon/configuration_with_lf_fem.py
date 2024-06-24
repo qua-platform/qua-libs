@@ -83,7 +83,7 @@ x180_wf, x180_der_wf = np.array(
         alpha=drag_coef,
         anharmonicity=anharmonicity,
         detuning=AC_stark_detuning,
-        sampling_rate=sampling_rate
+        sampling_rate=sampling_rate,
     )
 )
 x180_I_wf = x180_wf
@@ -93,9 +93,11 @@ x180_Q_wf = x180_der_wf
 x90_len = x180_len
 x90_sigma = x90_len / 5
 x90_amp = x180_amp / 2
-x90_wf, x90_der_wf = np.array(drag_gaussian_pulse_waveforms(
-    x90_amp, x90_len, x90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
-))
+x90_wf, x90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        x90_amp, x90_len, x90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+    )
+)
 x90_I_wf = x90_wf
 x90_Q_wf = x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -103,9 +105,17 @@ x90_Q_wf = x90_der_wf
 minus_x90_len = x180_len
 minus_x90_sigma = minus_x90_len / 5
 minus_x90_amp = -x90_amp
-minus_x90_wf, minus_x90_der_wf = np.array(drag_gaussian_pulse_waveforms(
-    minus_x90_amp, minus_x90_len, minus_x90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
-))
+minus_x90_wf, minus_x90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        minus_x90_amp,
+        minus_x90_len,
+        minus_x90_sigma,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
+        sampling_rate=sampling_rate,
+    )
+)
 minus_x90_I_wf = minus_x90_wf
 minus_x90_Q_wf = minus_x90_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -113,8 +123,10 @@ minus_x90_Q_wf = minus_x90_der_wf
 y180_len = x180_len
 y180_sigma = y180_len / 5
 y180_amp = x180_amp
-y180_wf, y180_der_wf = np.array(drag_gaussian_pulse_waveforms(
-    y180_amp, y180_len, y180_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate)
+y180_wf, y180_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        y180_amp, y180_len, y180_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+    )
 )
 y180_I_wf = (-1) * y180_der_wf
 y180_Q_wf = y180_wf
@@ -123,9 +135,11 @@ y180_Q_wf = y180_wf
 y90_len = x180_len
 y90_sigma = y90_len / 5
 y90_amp = y180_amp / 2
-y90_wf, y90_der_wf = np.array(drag_gaussian_pulse_waveforms(
-    y90_amp, y90_len, y90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
-))
+y90_wf, y90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        y90_amp, y90_len, y90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
+    )
+)
 y90_I_wf = (-1) * y90_der_wf
 y90_Q_wf = y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -133,9 +147,17 @@ y90_Q_wf = y90_wf
 minus_y90_len = y180_len
 minus_y90_sigma = minus_y90_len / 5
 minus_y90_amp = -y90_amp
-minus_y90_wf, minus_y90_der_wf = np.array(drag_gaussian_pulse_waveforms(
-    minus_y90_amp, minus_y90_len, minus_y90_sigma, drag_coef, anharmonicity, AC_stark_detuning, sampling_rate=sampling_rate
-))
+minus_y90_wf, minus_y90_der_wf = np.array(
+    drag_gaussian_pulse_waveforms(
+        minus_y90_amp,
+        minus_y90_len,
+        minus_y90_sigma,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
+        sampling_rate=sampling_rate,
+    )
+)
 minus_y90_I_wf = (-1) * minus_y90_der_wf
 minus_y90_Q_wf = minus_y90_wf
 # No DRAG when alpha=0, it's just a gaussian.
@@ -201,11 +223,26 @@ config = {
                             #   unmodulated pulses (optimized for clean step response): "pulse"
                             "upsampling_mode": "mw",
                         },
-                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # I resonator
-                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Q resonator
-                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
@@ -213,9 +250,9 @@ config = {
                         1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
                         # Q from down-conversion
                         2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
-                    }
+                    },
                 }
-            }
+            },
         }
     },
     "elements": {

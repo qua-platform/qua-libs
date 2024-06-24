@@ -139,12 +139,22 @@ config = {
                             # At 1 GS/s, use the "upsampling_mode" to optimize output for
                             #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
                             #   unmodulated pulses (optimized for clean step response): "pulse"
-                            "upsampling_mode": "mw"
+                            "upsampling_mode": "mw",
                         },
                         # Ensemble MW Control, Q-Quadrature
-                        2: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Resonator Baseband Control
-                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                     },
                     "digital_outputs": {
                         1: {},
@@ -159,7 +169,7 @@ config = {
                         2: {"offset": 0.0, "gain_db": 0},  # Q from down conversion
                     },
                 },
-            }
+            },
         }
     },
     "elements": {

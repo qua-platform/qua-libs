@@ -389,13 +389,33 @@ config = {
                             "upsampling_mode": "pulse",
                         },
                         # P2
-                        2: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        2: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                         # Sensor gate
-                        5: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        5: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                         # RF Reflectometry
-                        7: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        7: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # DC readout
-                        8: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        8: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                     },
                     "digital_outputs": {
                         1: {},  # TTL for QDAC
@@ -404,9 +424,9 @@ config = {
                     "analog_inputs": {
                         1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},  # RF reflectometry input
                         2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},  # DC readout input
-                    }
-                }
-            }
+                    },
+                },
+            },
         }
     },
     "elements": {

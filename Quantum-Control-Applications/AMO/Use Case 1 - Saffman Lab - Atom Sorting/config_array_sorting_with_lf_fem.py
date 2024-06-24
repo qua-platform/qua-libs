@@ -147,7 +147,7 @@ config = {
                         2: {"offset": 0.0},  # Not used yet
                     },
                 },
-            }
+            },
         }
     },
     "elements": {

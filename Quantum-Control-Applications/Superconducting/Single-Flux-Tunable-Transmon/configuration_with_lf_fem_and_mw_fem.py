@@ -208,7 +208,6 @@ config = {
                     "analog_inputs": {
                         1: {"band": 2},  # I from down-conversion
                     },
-
                 },
                 lf_fem: {
                     "type": "LF",
@@ -235,8 +234,8 @@ config = {
                     "digital_outputs": {
                         1: {},
                     },
-                }
-            }
+                },
+            },
         },
     },
     "elements": {
@@ -467,5 +466,5 @@ config = {
             "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
-    }
+    },
 }

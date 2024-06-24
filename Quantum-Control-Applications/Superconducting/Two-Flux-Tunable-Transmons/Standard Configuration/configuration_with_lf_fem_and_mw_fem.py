@@ -76,7 +76,7 @@ x180_wf_q1, x180_der_wf_q1 = np.array(
         alpha=drag_coef_q1,
         anharmonicity=anharmonicity_q1,
         detuning=AC_stark_detuning_q1,
-        sampling_rate=sampling_rate
+        sampling_rate=sampling_rate,
     )
 )
 x180_I_wf_q1 = x180_wf_q1
@@ -92,14 +92,26 @@ x180_Q_wf_q2 = x180_der_wf_q2
 
 x90_wf_q1, x90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 x90_I_wf_q1 = x90_wf_q1
 x90_Q_wf_q1 = x90_der_wf_q1
 x90_wf_q2, x90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 x90_I_wf_q2 = x90_wf_q2
@@ -108,14 +120,26 @@ x90_Q_wf_q2 = x90_der_wf_q2
 
 minus_x90_wf_q1, minus_x90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        -pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 minus_x90_I_wf_q1 = minus_x90_wf_q1
 minus_x90_Q_wf_q1 = minus_x90_der_wf_q1
 minus_x90_wf_q2, minus_x90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        -pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 minus_x90_I_wf_q2 = minus_x90_wf_q2
@@ -140,14 +164,26 @@ y180_Q_wf_q2 = y180_wf_q2
 
 y90_wf_q1, y90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 y90_I_wf_q1 = (-1) * y90_der_wf_q1
 y90_Q_wf_q1 = y90_wf_q1
 y90_wf_q2, y90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 y90_I_wf_q2 = (-1) * y90_der_wf_q2
@@ -156,14 +192,26 @@ y90_Q_wf_q2 = y90_wf_q2
 
 minus_y90_wf_q1, minus_y90_der_wf_q1 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q1 / 2, pi_len, pi_sigma, drag_coef_q1, anharmonicity_q1, AC_stark_detuning_q1, sampling_rate=sampling_rate
+        -pi_amp_q1 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q1,
+        anharmonicity_q1,
+        AC_stark_detuning_q1,
+        sampling_rate=sampling_rate,
     )
 )
 minus_y90_I_wf_q1 = (-1) * minus_y90_der_wf_q1
 minus_y90_Q_wf_q1 = minus_y90_wf_q1
 minus_y90_wf_q2, minus_y90_der_wf_q2 = np.array(
     drag_gaussian_pulse_waveforms(
-        -pi_amp_q2 / 2, pi_len, pi_sigma, drag_coef_q2, anharmonicity_q2, AC_stark_detuning_q2, sampling_rate=sampling_rate
+        -pi_amp_q2 / 2,
+        pi_len,
+        pi_sigma,
+        drag_coef_q2,
+        anharmonicity_q2,
+        AC_stark_detuning_q2,
+        sampling_rate=sampling_rate,
     )
 )
 minus_y90_I_wf_q2 = (-1) * minus_y90_der_wf_q2
@@ -270,7 +318,6 @@ config = {
                     "analog_inputs": {
                         1: {"band": 2},  # I from down-conversion
                     },
-
                 },
                 lf_fem: {
                     "type": "LF",
@@ -304,7 +351,7 @@ config = {
                     "digital_outputs": {
                         1: {},
                     },
-                }
+                },
             },
         }
     },

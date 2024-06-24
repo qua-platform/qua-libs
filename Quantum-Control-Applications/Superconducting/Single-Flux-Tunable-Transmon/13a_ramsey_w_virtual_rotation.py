@@ -73,8 +73,8 @@ with program() as ramsey:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "rotated_sin",  I),
-                dual_demod.full("rotated_minus_sin", "rotated_cos",  Q),
+                dual_demod.full("rotated_cos", "rotated_sin", I),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")

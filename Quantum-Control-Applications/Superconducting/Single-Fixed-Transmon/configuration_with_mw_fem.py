@@ -184,9 +184,8 @@ config = {
                     "analog_inputs": {
                         1: {"band": 2},  # I from down-conversion
                     },
-
                 }
-            }
+            },
         },
     },
     "elements": {
@@ -385,5 +384,5 @@ config = {
             "cosine": [(np.sin(rotation_angle), readout_len)],
             "sine": [(-np.cos(rotation_angle), readout_len)],
         },
-    }
+    },
 }

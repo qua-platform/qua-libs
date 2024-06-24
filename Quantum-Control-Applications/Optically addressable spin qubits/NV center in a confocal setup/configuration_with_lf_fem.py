@@ -120,9 +120,21 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # NV Q
-                        2: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # RF
-                        3: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                     },
                     "digital_outputs": {
                         1: {},  # AOM/Laser
@@ -135,17 +147,12 @@ config = {
                         2: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM2
                     },
                 }
-            }
+            },
         }
     },
     "elements": {
         "NV": {
-            "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
-                "lo_frequency": NV_LO_freq,
-                "mixer": "mixer_NV"
-            },
+            "mixInputs": {"I": (con, fem, 1), "Q": (con, fem, 2), "lo_frequency": NV_LO_freq, "mixer": "mixer_NV"},
             "intermediate_frequency": NV_IF_freq,
             "operations": {
                 "cw": "const_pulse",

@@ -46,6 +46,7 @@ octave_config = octave_declaration(octaves)
 #############################################
 sampling_rate = int(1e9)  # or, int(2e9)
 
+
 class OPX_virtual_gate_sequence:
     def __init__(self, configuration: dict, elements: list):
         """Framework allowing to design an arbitrary pulse sequence using virtual gates and pre-defined point from the
@@ -383,17 +384,47 @@ config = {
                             "upsampling_mode": "pulse",
                         },
                         # P2
-                        2: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        2: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                         # EDSR I quadrature
-                        3: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # EDSR Q quadrature
-                        4: {"offset": 0.0, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        4: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # Sensor gate
-                        5: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        5: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                         # RF Reflectometry
-                        7: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        7: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # DC readout
-                        8: {"offset": 0.0, "output_mode": "amplified", "sampling_rate": sampling_rate, "upsampling_mode": "pulse"},
+                        8: {
+                            "offset": 0.0,
+                            "output_mode": "amplified",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "pulse",
+                        },
                     },
                     "digital_outputs": {
                         1: {},  # TTL for QDAC
@@ -402,9 +433,9 @@ config = {
                     "analog_inputs": {
                         1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},  # RF reflectometry input
                         2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},  # DC readout input
-                    }
+                    },
                 }
-            }
+            },
         }
     },
     "elements": {

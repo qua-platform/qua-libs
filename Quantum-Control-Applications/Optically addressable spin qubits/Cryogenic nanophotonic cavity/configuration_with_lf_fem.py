@@ -106,7 +106,7 @@ config = {
                             "delay": mw_delay,
                             "output_mode": "direct",
                             "sampling_rate": sampling_rate,
-                            "upsampling_mode": "mw"
+                            "upsampling_mode": "mw",
                         },
                         # B^{RF}
                         3: {
@@ -114,7 +114,7 @@ config = {
                             "delay": mw_delay,
                             "output_mode": "direct",
                             "sampling_rate": sampling_rate,
-                            "upsampling_mode": "mw"
+                            "upsampling_mode": "mw",
                         },
                         # Photon Source
                         8: {"delay": mw_delay, "offset": 0.0},
@@ -133,17 +133,12 @@ config = {
                         1: {"offset": 0, "gain_db": 0, "sampling_rate": sampling_rate},  # SPCM
                     },
                 }
-            }
+            },
         }
     },
     "elements": {
         "Yb": {
-            "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
-                "lo_frequency": Yb_LO_freq,
-                "mixer": "mixer_Yb"
-            },
+            "mixInputs": {"I": (con, fem, 1), "Q": (con, fem, 2), "lo_frequency": Yb_LO_freq, "mixer": "mixer_Yb"},
             "intermediate_frequency": Yb_IF_freq,
             "digitalInputs": {
                 "switch0": {

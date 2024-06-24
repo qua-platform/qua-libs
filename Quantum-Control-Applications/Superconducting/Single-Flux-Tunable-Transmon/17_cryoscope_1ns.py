@@ -190,8 +190,8 @@ with program() as cryoscope:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("rotated_cos", "rotated_sin",  I),
-                    dual_demod.full("rotated_minus_sin", "rotated_cos",  Q),
+                    dual_demod.full("rotated_cos", "rotated_sin", I),
+                    dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
                 # State discrimination if the readout has been calibrated
                 if state_discrimination:

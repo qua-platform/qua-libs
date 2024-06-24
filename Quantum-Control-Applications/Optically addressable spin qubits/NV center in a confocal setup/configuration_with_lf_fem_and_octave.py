@@ -122,9 +122,21 @@ config = {
                             "upsampling_mode": "mw",
                         },
                         # NV Q
-                        2: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        2: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                         # RF
-                        3: {"offset": 0.0, "delay": mw_delay, "output_mode": "direct", "sampling_rate": sampling_rate, "upsampling_mode": "mw"},
+                        3: {
+                            "offset": 0.0,
+                            "delay": mw_delay,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                     },
                     "digital_outputs": {
                         1: {},  # Octave switch
@@ -138,7 +150,7 @@ config = {
                         2: {"offset": 0, "sampling_rate": sampling_rate},  # SPCM2
                     },
                 }
-            }
+            },
         }
     },
     "elements": {

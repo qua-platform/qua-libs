@@ -194,7 +194,7 @@ config = {
             "analog_inputs": {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
-            }
+            },
         }
     },
     "elements": {
@@ -248,7 +248,7 @@ config = {
                     "LO_source": "internal",
                 },
             },
-            "connectivity": "con1"
+            "connectivity": "con1",
         }
     },
     "pulses": {

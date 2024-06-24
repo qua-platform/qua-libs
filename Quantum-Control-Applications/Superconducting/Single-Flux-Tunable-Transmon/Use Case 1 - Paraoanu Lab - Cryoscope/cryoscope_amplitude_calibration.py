@@ -36,8 +36,8 @@ def ge_calibration(n_avg_cal):
             "short_readout",
             "resonator",
             None,
-            dual_demod.full("cos", "sin",  Ical),
-            dual_demod.full("minus_sin", "cos",  Qcal),
+            dual_demod.full("cos", "sin", Ical),
+            dual_demod.full("minus_sin", "cos", Qcal),
         )
         wait(cooldown_time, "resonator", "qubit")
         save(Ical, Igcal_st)
@@ -51,8 +51,8 @@ def ge_calibration(n_avg_cal):
             "short_readout",
             "resonator",
             None,
-            dual_demod.full("cos", "sin",  Ical),
-            dual_demod.full("minus_sin", "cos",  Qcal),
+            dual_demod.full("cos", "sin", Ical),
+            dual_demod.full("minus_sin", "cos", Qcal),
         )
         wait(cooldown_time, "resonator", "qubit")
         save(Ical, Iecal_st)
@@ -93,8 +93,8 @@ with program() as cryoscope_amp:
                     "short_readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "sin",  I),
-                    dual_demod.full("minus_sin", "cos",  Q),
+                    dual_demod.full("cos", "sin", I),
+                    dual_demod.full("minus_sin", "cos", Q),
                 )
                 # Wait cooldown time and save the results
                 wait(cooldown_time, "resonator", "qubit")
