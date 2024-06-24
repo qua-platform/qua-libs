@@ -10,7 +10,14 @@ from quam_components import QuAM
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
+
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Define a path relative to this script, i.e., ../configuration/quam_state
+config_path = os.path.join(current_dir, '..', 'configuration', 'quam_state')
+# Load the machine state
+machine = QuAM.load(config_path)
+
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()

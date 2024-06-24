@@ -171,7 +171,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
     machine.network = {
         "host": host_ip,
         "cluster_name": "Cluster_81",
-        "octave_ip": host_ip,
+        "octave_ip": octave_ip,
         "octave_port": octave_port,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
     }
@@ -186,8 +186,8 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None, oct
             # Assumes 1 Octave for every 4 qubits
             octave = Octave(
                 name=f"octave{i+1}",
-                ip=octave_ip,
-                port=octave_port,
+                ip=machine.network["octave_ip"],
+                port=machine.network["octave_port"],
                 calibration_db_path=os.path.dirname(__file__)
             )
             machine.octaves[f"octave{i+1}"] = octave
@@ -307,6 +307,5 @@ if __name__ == "__main__":
     json.dump(qua_config, qua_file.open("w"), indent=4)
 
     quam_loaded = QuAM.load(quam_folder)
-    qua_file_loaded = folder / "qua_config2.json"
     qua_config_loaded = quam_loaded.generate_config()
     json.dump(qua_config_loaded, qua_file.open("w"), indent=4)

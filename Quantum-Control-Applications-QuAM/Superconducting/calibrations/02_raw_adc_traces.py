@@ -43,15 +43,15 @@ with program() as raw_trace_prog:
     adc_st = declare_stream(adc_trace=True)  # The stream to store the raw ADC trace
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        for i in range(len(resonators)):
+        for i, resonator in enumerate(resonators):
             if i == 0:
                 # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
                 reset_phase(resonators[i].name)
                 # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                resonators[i].measure("readout", stream=adc_st)
+                resonator.measure("readout", stream=adc_st)
             else:
                 # Play the readout on all other resonators to make sure that the ADC won't saturate in multiplexed readout
-                resonators[i].measure("readout")
+                resonator.measure("readout")
         # Wait for the resonator to deplete
         wait(machine.depletion_time * u.ns, *[rr.name for rr in resonators])
 
