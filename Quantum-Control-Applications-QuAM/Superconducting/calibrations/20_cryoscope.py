@@ -36,6 +36,7 @@ Next steps before going to the next node:
     - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
+from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
@@ -58,8 +59,10 @@ from qualang_tools.digital_filters import exponential_decay, single_exponential_
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
+# Define a path relative to this script, i.e., ../configuration/quam_state
+config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
+machine = QuAM.load(config_path)
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()

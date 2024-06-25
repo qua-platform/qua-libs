@@ -20,6 +20,7 @@ Before proceeding to the next node:
     - Save the current state by calling machine.save("quam")
 """
 
+from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
 
@@ -40,8 +41,10 @@ from macros import qua_declaration, node_save
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
+# Define a path relative to this script, i.e., ../configuration/quam_state
+config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
+machine = QuAM.load(config_path)
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -59,9 +62,9 @@ prev_amps = [rr.operations["readout"].amplitude for rr in resonators]
 
 n_avg = 100  # The number of averages
 
-# Initial readout amplitude for all resonators
-for rr in resonators:
-    rr.operations["readout"].amplitude = 0.01
+# Uncomment this to override the initial readout amplitude for all resonators
+# for rr in resonators:
+#     rr.operations["readout"].amplitude = 0.01
 
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 amps = np.arange(0.05, 1.99, 0.01)

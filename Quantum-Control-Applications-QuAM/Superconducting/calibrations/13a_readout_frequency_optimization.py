@@ -17,6 +17,7 @@ Next steps before going to the next node:
     - Save the current state by calling machine.save("quam")
 """
 
+from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
@@ -35,8 +36,10 @@ from macros import multiplexed_readout, node_save
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
+# Define a path relative to this script, i.e., ../configuration/quam_state
+config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(os.path.join('..', 'configuration', 'quam_state'))
+machine = QuAM.load(config_path)
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
