@@ -88,7 +88,6 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
         res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports[q_idx]
         xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports[q_idx]
         z_module, z_ch = flux_ports[q_idx]
-        coupler_module, coupler_ch = flux_ports[q_idx]
 
         # Note: The Q channel is set to the I channel plus one.
         wiring["qubits"][f"q{q_idx}"] = {
@@ -98,7 +97,6 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
                 "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
             },
             "z": {"opx_output": port(z_module, z_ch)},
-            "coupler": {"opx_output": port(coupler_module, coupler_ch)},
             "opx_output_digital": port(xy_module, xy_i_ch),
             "resonator": {
                 "opx_output_I": port(res_module, res_i_ch_out),
@@ -112,12 +110,12 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
         }
 
     for q_idx in range(num_qubits - 1):
-        c_opx, c_ch = coupler_ports[q_idx]
+        c_module, c_ch = coupler_ports[q_idx]
 
         wiring["qubit_pairs"].append({
             "qubit_control": f"#/qubits/q{q_idx}", # reference to f"q{q_idx}"
             "qubit_target": f"#/qubits/q{q_idx + 1}", # reference to f"q{q_idx + 1}"
-            "coupler": {"opx_output": (c_opx, c_ch)},
+            "coupler": {"opx_output": port(c_module, c_ch)},
         })
 
     return wiring

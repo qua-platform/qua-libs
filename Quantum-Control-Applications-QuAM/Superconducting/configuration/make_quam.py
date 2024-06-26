@@ -42,13 +42,13 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
     else:
         raise ValueError("Either num_qubits or wiring must be provided.")
 
-    host_ip = "172.16.33.101"
-    octave_ip = host_ip  # or "192.168.88.X" if configured internally
-    octave_port = 11050  # 11XXX where XXX are the last digits of the Octave IP or 80 if configured internally
+    host_ip = "172.16.33.107"
+    octave_ip = "172.16.33.102"  # or "192.168.88.X" if configured internally
+    octave_port = 80  # 11XXX where XXX are the last digits of the Octave IP or 80 if configured internally
 
     machine.network = {
         "host": host_ip,
-        "cluster_name": "Cluster_81",
+        "cluster_name": "Beta_8",
         "octave_ip": octave_ip,
         "octave_port": octave_port,
         "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
@@ -149,6 +149,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
             coupler=coupler,
         )
         machine.qubit_pairs.append(qubit_pair)
+
     return machine
 
 
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     folder = Path(__file__).parent
     quam_folder = folder / "quam_state"
 
-    machine = create_quam_superconducting(num_qubits=5)
+    machine = create_quam_superconducting(num_qubits=2)
     machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
