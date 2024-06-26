@@ -24,7 +24,7 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
     num_channels_per_feedline = 2
     num_xy_channels_per_qubit = 2
     num_z_channels_per_qubit = 1
-    num_zz_channels_per_qubit = 1
+    num_coupler_channels_per_qubit = 1
 
     def allocate_module_port(idx):
         num_chs_per_module = 8 if using_opx_1000 else 10
@@ -43,13 +43,13 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
         res_idx = 0  # only one feedline, so the resonator is always at the first two channels
         xy_idx = num_channels_per_feedline * num_feedlines + num_xy_channels_per_qubit * q_idx
         z_idx = xy_idx + num_xy_channels_per_qubit * (num_qubits - q_idx) + num_z_channels_per_qubit * q_idx
-        zz_idx = z_idx + num_z_channels_per_qubit * (num_qubits - q_idx) + num_zz_channels_per_qubit * q_idx
+        coupler_idx = z_idx + num_z_channels_per_qubit * (num_qubits - q_idx) + num_coupler_channels_per_qubit * q_idx
 
         # Allocate a port for each index according to the OPX+ or OPX1000 channel layouts
         res_module, res_ch = allocate_module_port(res_idx)
         xy_module, xy_ch = allocate_module_port(xy_idx)
         z_module, z_ch = allocate_module_port(z_idx)
-        zz_module, zz_ch = allocate_module_port(zz_idx)
+        coupler_module, coupler_ch = allocate_module_port(coupler_idx)
         # Note: For I/Q channels, only the I-quadrature channel is returned, but both I/Q are accounted for.
 
         # Assign the octave ports for the XY channels
@@ -59,7 +59,7 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
         res_ports.append((res_module, res_ch, res_octave, res_octave_ch))
         xy_ports.append((xy_module, xy_ch, xy_octave, xy_octave_ch))
         flux_ports.append((z_module, z_ch))
-        coupler_ports.append((zz_module, zz_ch))
+        coupler_ports.append((coupler_module, coupler_ch))
 
     return res_ports, xy_ports, flux_ports, coupler_ports
 
@@ -88,7 +88,7 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
         res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports[q_idx]
         xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports[q_idx]
         z_module, z_ch = flux_ports[q_idx]
-        zz_module, zz_ch = flux_ports[q_idx]
+        coupler_module, coupler_ch = flux_ports[q_idx]
 
         # Note: The Q channel is set to the I channel plus one.
         wiring["qubits"][f"q{q_idx}"] = {
@@ -98,7 +98,7 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
                 "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
             },
             "z": {"opx_output": port(z_module, z_ch)},
-            "zz": {"opx_output": port(zz_module, zz_ch)},
+            "coupler": {"opx_output": port(coupler_module, coupler_ch)},
             "opx_output_digital": port(xy_module, xy_i_ch),
             "resonator": {
                 "opx_output_I": port(res_module, res_i_ch_out),
