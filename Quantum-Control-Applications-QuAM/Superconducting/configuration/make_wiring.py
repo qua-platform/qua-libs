@@ -68,7 +68,7 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
     """
     Create a wiring config tailored to the number of qubits.
     """
-    wiring = {"qubits": {}}
+    wiring = {"qubits": {}, "qubit_pairs": []}
 
     def port(module: int, ch: int):
         """
@@ -110,5 +110,14 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
                 "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
             },
         }
+
+    for q_idx in range(num_qubits - 1):
+        c_opx, c_ch = coupler_ports[q_idx]
+
+        wiring["qubit_pairs"].append({
+            "qubit_control": f"#/qubits/q{q_idx}", # reference to f"q{q_idx}"
+            "qubit_target": f"#/qubits/q{q_idx + 1}", # reference to f"q{q_idx + 1}"
+            "coupler": {"opx_output": (c_opx, c_ch)},
+        })
 
     return wiring

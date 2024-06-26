@@ -3,12 +3,12 @@ import os.path
 from typing import Dict
 
 from quam.components import Octave, IQChannel, DigitalOutputChannel
-from quam_components import Transmon, ReadoutResonator, QuAM, FluxLine
+from quam_components import Transmon, ReadoutResonator, QuAM, FluxLine, TunableCoupler, TransmonPair
 from qualang_tools.units import unit
 from pathlib import Path
 import json
 
-from make_pulses import add_default_transmon_pulses
+from make_pulses import add_default_transmon_pulses, add_default_coupler_pulses
 from make_wiring import create_default_wiring
 
 # Class containing tools to help handling units and conversions.
@@ -134,6 +134,21 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
     RF_input_resonator.LO_frequency = 4 * u.GHz
     print(f"Please set the LO frequency of {RF_input_resonator.get_reference()}")
 
+    # Add qubit pairs along with couplers
+    for i, qubit_pair_wiring in enumerate(machine.wiring.qubit_pairs):
+        qubit_control_name = qubit_pair_wiring.qubit_control.name
+        qubit_target_name = qubit_pair_wiring.qubit_target.name
+        coupler_name = f"coupler_{qubit_control_name}_{qubit_target_name}"
+        coupler = TunableCoupler(id=coupler_name, opx_output=qubit_pair_wiring.coupler.get_reference("opx_output"))
+        add_default_coupler_pulses(coupler)
+
+        # Note: The Q channel is set to the I channel plus one.
+        qubit_pair = TransmonPair(
+            qubit_control=qubit_pair_wiring.get_reference("qubit_control"),
+            qubit_target=qubit_pair_wiring.get_reference("qubit_target"),
+            coupler=coupler,
+        )
+        machine.qubit_pairs.append(qubit_pair)
     return machine
 
 
