@@ -3,11 +3,11 @@ from typing import Union, Tuple, Literal, Dict, Any
 from quam import quam_dataclass
 from quam.components import SingleChannel
 
-__all__ = ["SingleChannel1k"]
+__all__ = ["SingleChannelLfFem"]
 
 
 @quam_dataclass
-class SingleChannel1k(SingleChannel):
+class SingleChannelLfFem(SingleChannel):
     """QuAM component for a single (not IQ) output channel.
 
     Args:

@@ -1,12 +1,12 @@
 from quam.core import quam_dataclass
-from .single_channel_1k import SingleChannel1k
+from .single_channel_lf_fem import SingleChannelLfFem
 
 
 __all__ = ["FluxLine"]
 
 
 @quam_dataclass
-class FluxLine(SingleChannel1k):
+class FluxLine(SingleChannelLfFem):
     """Example QuAM component for a flux line.
 
     Args:

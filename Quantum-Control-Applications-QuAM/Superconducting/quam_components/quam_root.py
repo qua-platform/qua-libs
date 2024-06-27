@@ -8,8 +8,7 @@ from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
 from dataclasses import field
-from typing import List, Dict, ClassVar
-
+from typing import List, Dict, ClassVar, Any
 
 __all__ = ["QuAM"]
 
@@ -105,3 +104,35 @@ class QuAM(QuamRoot):
                 print(
                     f"No calibration elements found for {name}. Skipping calibration."
                 )
+
+    def generate_config(self) -> Dict[str, Any]:
+        config = super().generate_config()
+
+        # make sure to not override existing fem
+        lf_fem_remapping = {1: 3, 2: 4}
+        mw_fem_dummies = [1]
+
+        fems = config["controllers"]["con1"]["fems"]
+
+        for key in lf_fem_remapping:
+            fems[lf_fem_remapping[key]] = fems[key]
+            del fems[key]
+
+        for mw_fem_dummy in mw_fem_dummies:
+            fems[mw_fem_dummy] = {
+                "type": "MW",
+                "analog_outputs": {}
+            }
+
+        octave_rf_outputs = config["octaves"]["octave1"].get("RF_outputs", {})
+        octave_rf_inputs = config["octaves"]["octave1"].get("RF_inputs", {})
+        for octave_rf_config in [octave_rf_inputs, octave_rf_outputs]:
+            for octave_port in octave_rf_config.values():
+                for analog_port in ["I_connection", "Q_connection"]:
+                    if analog_port in octave_port:
+                        original_port = octave_port[analog_port]
+                        if original_port[1] in lf_fem_remapping:
+                            remapped_port = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
+                            octave_port[analog_port] = remapped_port
+
+        return config
