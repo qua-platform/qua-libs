@@ -16,7 +16,8 @@ u = unit(coerce_to_integer=True)
 
 
 def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
-                                octaves: Dict[str, Octave] = None, using_opx_1000: bool = True) -> QuAM:
+                                octaves: Dict[str, Octave] = None, using_opx_1000: bool = True,
+                                starting_fem: int = 1) -> QuAM:
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -38,7 +39,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
     if wiring is not None:
         machine.wiring = wiring
     elif num_qubits is not None:
-        machine.wiring = create_default_wiring(num_qubits, using_opx_1000)
+        machine.wiring = create_default_wiring(num_qubits, using_opx_1000, starting_fem)
     else:
         raise ValueError("Either num_qubits or wiring must be provided.")
 
@@ -157,7 +158,7 @@ if __name__ == "__main__":
     folder = Path(__file__).parent
     quam_folder = folder / "quam_state"
 
-    machine = create_quam_superconducting(num_qubits=2)
+    machine = create_quam_superconducting(num_qubits=2, starting_fem=3)
     machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"

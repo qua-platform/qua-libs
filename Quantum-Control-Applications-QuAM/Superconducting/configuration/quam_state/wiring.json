@@ -1,0 +1,138 @@
+{
+    "wiring": {
+        "qubits": {
+            "q0": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        3,
+                        3
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        3,
+                        4
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2"
+                },
+                "z": {
+                    "opx_output": [
+                        "con1",
+                        3,
+                        7
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    3,
+                    3
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        3,
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        3,
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q1": {
+                "xy": {
+                    "opx_output_I": [
+                        "con1",
+                        3,
+                        5
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        3,
+                        6
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/3"
+                },
+                "z": {
+                    "opx_output": [
+                        "con1",
+                        3,
+                        8
+                    ]
+                },
+                "opx_output_digital": [
+                    "con1",
+                    3,
+                    5
+                ],
+                "resonator": {
+                    "opx_output_I": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "opx_output_Q": [
+                        "con1",
+                        3,
+                        2
+                    ],
+                    "opx_input_I": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "opx_input_Q": [
+                        "con1",
+                        3,
+                        2
+                    ],
+                    "digital_port": [
+                        "con1",
+                        3,
+                        1
+                    ],
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            }
+        },
+        "qubit_pairs": [
+            {
+                "qubit_control": "#/qubits/q0",
+                "qubit_target": "#/qubits/q1",
+                "coupler": {
+                    "opx_output": [
+                        "con1",
+                        4,
+                        1
+                    ]
+                }
+            }
+        ]
+    },
+    "network": {
+        "host": "172.16.33.107",
+        "cluster_name": "Beta_8",
+        "octave_ip": "172.16.33.102",
+        "octave_port": 80,
+        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data"
+    }
+}

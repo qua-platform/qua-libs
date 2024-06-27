@@ -1,4 +1,4 @@
-def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
+def create_default_port_allocation(num_qubits: int, using_opx_1000: bool, starting_fem: int = 1):
     """
     An example port allocation is generated in the following physical order on
     the numbered channels of the OPX and Octave:
@@ -29,6 +29,8 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
     def allocate_module_port(idx):
         num_chs_per_module = 8 if using_opx_1000 else 10
         module = idx // num_chs_per_module + 1
+        if using_opx_1000 and starting_fem != 1:
+            module += starting_fem - 1
         ch = idx % num_chs_per_module + 1
         return module, ch
 
@@ -64,7 +66,7 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool):
     return res_ports, xy_ports, flux_ports, coupler_ports
 
 
-def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
+def create_default_wiring(num_qubits: int, using_opx_1000: bool = True, starting_fem: int = 1) -> dict:
     """
     Create a wiring config tailored to the number of qubits.
     """
@@ -82,7 +84,7 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True) -> dict:
         return (f"con1", module, ch) if using_opx_1000 else (f"con{module}", ch)
 
     # Generate example wiring by default
-    res_ports, xy_ports, flux_ports, coupler_ports = create_default_port_allocation(num_qubits, using_opx_1000)
+    res_ports, xy_ports, flux_ports, coupler_ports = create_default_port_allocation(num_qubits, using_opx_1000, starting_fem)
 
     for q_idx in range(0, num_qubits):
         res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports[q_idx]

@@ -108,42 +108,14 @@ class QuAM(QuamRoot):
     def generate_config(self) -> Dict[str, Any]:
         config = super().generate_config()
 
-        # make sure to not override existing fem
-        lf_fem_remapping = {1: 3, 2: 4}
         mw_fem_dummies = [1]
 
         fems = config["controllers"]["con1"]["fems"]
-
-        for key in lf_fem_remapping:
-            fems[lf_fem_remapping[key]] = fems[key]
-            del fems[key]
 
         for mw_fem_dummy in mw_fem_dummies:
             fems[mw_fem_dummy] = {
                 "type": "MW",
                 "analog_outputs": {}
             }
-
-        octave_rf_outputs = config["octaves"]["octave1"].get("RF_outputs", {})
-        octave_rf_inputs = config["octaves"]["octave1"].get("RF_inputs", {})
-        for octave_rf_config in [octave_rf_inputs, octave_rf_outputs]:
-            for octave_port in octave_rf_config.values():
-                for analog_port in ["I_connection", "Q_connection"]:
-                    if analog_port in octave_port:
-                        original_port = octave_port[analog_port]
-                        if original_port[1] in lf_fem_remapping:
-                            remapped_port = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
-                            octave_port[analog_port] = remapped_port
-
-        elements = config["elements"]
-        for element in elements.values():
-            if "digitalInputs" in element:
-                for operation in element["digitalInputs"]:
-                    original_port = element["digitalInputs"][operation]["port"]
-                    element["digitalInputs"][operation]["port"] = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
-
-            if "singleInput" in element:
-                original_port = element["singleInput"]["port"]
-                element["singleInput"]["port"] = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
 
         return config
