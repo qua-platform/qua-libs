@@ -204,6 +204,9 @@ config = {
             },
             "MWOutput": {
                 "port": (con, fem, 1),
+                # Note the 'oscillator_frequency' field will be renamed 'downconverter_frequency'
+                # and will be moved to the port definition in QOP 3.2.
+                "oscillator_frequency": resonator_LO,
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
