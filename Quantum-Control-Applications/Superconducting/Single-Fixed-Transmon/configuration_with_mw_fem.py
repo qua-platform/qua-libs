@@ -192,6 +192,9 @@ config = {
         "resonator": {
             "MWInput": {
                 "port": (con, fem, 1),
+                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
+                # and will be moved to the port definition in QOP 3.2.
+                # The ability to use multiple upconverters in the same output will also be added.
                 "oscillator_frequency": resonator_LO,
             },
             "intermediate_frequency": resonator_IF,
@@ -208,6 +211,9 @@ config = {
         "qubit": {
             "MWInput": {
                 "port": (con, fem, 2),
+                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
+                # and will be moved to the port definition in QOP 3.2.
+                # The ability to use multiple upconverters in the same output will also be added.
                 "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,
