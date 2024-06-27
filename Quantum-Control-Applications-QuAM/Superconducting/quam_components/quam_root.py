@@ -135,4 +135,15 @@ class QuAM(QuamRoot):
                             remapped_port = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
                             octave_port[analog_port] = remapped_port
 
+        elements = config["elements"]
+        for element in elements.values():
+            if "digitalInputs" in element:
+                for operation in element["digitalInputs"]:
+                    original_port = element["digitalInputs"][operation]["port"]
+                    element["digitalInputs"][operation]["port"] = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
+
+            if "singleInput" in element:
+                original_port = element["singleInput"]["port"]
+                element["singleInput"]["port"] = (original_port[0], lf_fem_remapping[original_port[1]], original_port[2])
+
         return config
