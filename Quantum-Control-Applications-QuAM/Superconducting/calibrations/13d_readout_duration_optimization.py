@@ -1,3 +1,4 @@
+# %%
 """
 READOUT OPTIMIZATION: DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
@@ -21,19 +22,20 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.units import unit
-
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-
 from quam_components import QuAM
 from macros import node_save
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -241,6 +243,8 @@ else:
         plt.pause(0.1)
         plt.tight_layout()
 
+    plt.show()
+
     # Get the optimal readout length in ns
     opt_readout_length = int(np.round(np.argmax(SNR) * division_length / 4) * 4 * 4)
     print(f"The optimal readout length is {opt_readout_length} ns (SNR={max(SNR)})")
@@ -258,4 +262,6 @@ else:
         f"{rr.name}_opt_readout_length": opt_readout_length,
         "figure": fig,
     }
-    node_save("readout_duration_optimization", data, machine)
+
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "readout_duration_optimization", data, additional_files)

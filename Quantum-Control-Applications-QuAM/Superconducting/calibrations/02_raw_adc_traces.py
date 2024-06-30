@@ -15,7 +15,10 @@ from quam_components import QuAM
 from macros import node_save
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -38,7 +41,7 @@ resonators = [q.resonator for q in machine.active_qubits]
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
@@ -50,7 +53,7 @@ with program() as raw_trace_prog:
                 # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
                 reset_phase(resonators[i].name)
                 # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                resonator.measure("readout", stream=adc_st)
+                resonator.measure("readout" * amp(0.5))
             else:
                 # Play the readout on all other resonators to make sure that the ADC won't saturate in multiplexed readout
                 resonator.measure("readout")
@@ -129,4 +132,10 @@ else:
         "raw_adc_2_single_shot": adc2_single_run,
         "figure": fig,
     }
-    node_save("raw_adc_traces", data, machine)
+
+
+
+
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "raw_adc_traces", data, additional_files)
+

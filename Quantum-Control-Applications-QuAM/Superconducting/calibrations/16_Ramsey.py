@@ -1,3 +1,4 @@
+# %%
 """
 RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
@@ -18,19 +19,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.loops import from_array
+from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -55,7 +58,7 @@ num_qubits = len(qubits)
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
+n_avg = 2
 
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 idle_times = np.arange(4, 1000, 5)
@@ -100,8 +103,8 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            I_st[i].buffer(len(idle_times)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(idle_times)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(idle_times)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(idle_times)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -140,16 +143,16 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
         plt.suptitle("Ramsey")
-        for i, qubit in enumerate(qubits):
-            axes[0, i].cla()
-            axes[0, i].plot(4 * idle_times, I_volts[i])
-            axes[0, i].set_ylabel("I [V]")
-            axes[0, i].set_title(f"{qubit.name}")
-            axes[1, i].cla()
-            axes[1, i].plot(4 * idle_times, Q_volts[i])
-            axes[1, i].set_xlabel("Idle time [ns]")
-            axes[1, i].set_ylabel("Q [V]")
-            axes[1, i].set_title(f"{qubit.name}")
+        for i, (ax, qubit) in enumerate(zip(axes, qubits)):
+            ax[0].cla()
+            ax[0].plot(4 * idle_times, I_volts[i])
+            ax[0].set_ylabel("I [V]")
+            ax[0].set_title(f"{qubit.name}")
+            ax[1].cla()
+            ax[1].plot(4 * idle_times, Q_volts[i])
+            ax[1].set_xlabel("Idle time [ns]")
+            ax[1].set_ylabel("Q [V]")
+            ax[1].set_title(f"{qubit.name}")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -163,16 +166,15 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    node_save("ramsey", data, machine)
 
+    fig_analysis = plt.figure()
+    plt.suptitle("Ramsey")
     # Fit data to extract the qubits frequency and T2*
     for i, qubit in enumerate(qubits):
         try:
             from qualang_tools.plot.fitting import Fit
 
             fit = Fit()
-            plt.figure()
-            plt.suptitle("Ramsey")
             plt.subplot(num_qubits, 1, i+1)
             fit_I = fit.ramsey(4 * idle_times, I_volts[i], plot=True)
             plt.xlabel("Idle time [ns]")
@@ -187,11 +189,14 @@ else:
             data[f"{qubit.name}"] = {"T2*": qubit.T2ramsey, "if_01": qubit.xy.intermediate_frequency, "successful_fit": True}
             print(f"Detuning to add to {qubit.name}: {-qubit_detuning / u.kHz:.3f} kHz")
             plt.tight_layout()
+            data["figure_analysis"] = fig_analysis
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": False}
             pass
-
     plt.show()
 
 # Save data from the node
-node_save("ramsey", data, machine)
+additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+node_save(machine, "ramsey", data, additional_files)
+
+# %%

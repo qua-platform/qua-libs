@@ -51,8 +51,9 @@ def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.
             align(q.resonator.name, qubits[ind + 1].resonator.name)
 
 
-def node_save(name: str, data: dict, quam: QuAM):
+def node_save(quam: QuAM, name: str, data: dict, additional_files: dict):
     # Save results
+    quam.data_handler.additional_files = additional_files
     quam.data_handler.save_data(data=data, name=name)
 
     # Save QuAM to the data folder

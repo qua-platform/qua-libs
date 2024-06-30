@@ -1,3 +1,4 @@
+# %%
 """
         RESONATOR SPECTROSCOPY
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
@@ -15,7 +16,9 @@ Before proceeding to the next node:
     - Update the readout frequency, labeled as f_res and f_opt, in the state.
     - Save the current state by calling machine.save("quam")
 """
+
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
@@ -23,11 +26,14 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from quam_components import QuAM
-from macros import node_save
+from macros import qua_declaration, multiplexed_readout, node_save
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from scipy import signal
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -51,7 +57,7 @@ rr = machine.active_qubits[0].resonator  # The resonator to measure
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 # The frequency sweep parameters
 ## rr1
 # frequencies = np.arange(10e6, 251e6, 1e6)
@@ -139,11 +145,13 @@ else:
         plt.pause(0.1)
         plt.tight_layout()
 
+    plt.show()
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
     # Save data from the node
-    data = {"frequencies": frequencies, "R": R, "phase": signal.detrend(np.unwrap(phase)), "figure_raw": fig}
+    data = {"frequencies": frequencies, "S": S, "phase": signal.detrend(np.unwrap(phase)), "figure_raw": fig}
 
     # Fit the results to extract the resonance frequency
     try:
@@ -167,6 +175,7 @@ else:
     except (Exception,):
         data["successful_fit"] = False
         pass
-
+    # additional files
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
-    node_save("resonator_spectroscopy_single", data, machine)
+    node_save(machine, "resonator_spectroscopy_single", data, additional_files)

@@ -1,3 +1,4 @@
+# %%
 """
         RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -21,20 +22,23 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
-
-from qualang_tools.results import fetching_tool, progress_counter
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from scipy import signal
 
-from quam_components import QuAM
-from macros import qua_declaration, node_save
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -121,7 +125,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    res_list = ["n"] + sum([[f"I{i}", f"Q{i}"] for i in range(num_resonators)], [])
+    res_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
     results = fetching_tool(job, res_list, mode="live")
     # Live plotting
     while results.is_processing():
@@ -156,6 +160,8 @@ else:
         plt.tight_layout()
         plt.pause(0.1)
 
+    plt.show()
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
@@ -167,5 +173,7 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_readout_amplitude"] = prev_amps[i]
     data["figure"] = fig
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "resonator_spectroscopy_vs_amplitude", data, additional_files)
 
-    node_save("resonator_spectroscopy_vs_amplitude", data, machine)
+# %%

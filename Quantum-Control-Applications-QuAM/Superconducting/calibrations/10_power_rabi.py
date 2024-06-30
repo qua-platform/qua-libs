@@ -1,3 +1,4 @@
+# %%
 """
 POWER RABI WITH ERROR AMPLIFICATION
 This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
@@ -18,19 +19,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -57,12 +60,12 @@ num_qubits = len(qubits)
 ###################
 
 operation = "x180"  # The qubit operation to play
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(0.6, 1.4, 0.01)
 # Number of applied Rabi pulses sweep
-N_pi = 1  # Maximum number of qubit pulses
+N_pi = 10  # Maximum number of qubit pulses
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
 with program() as power_rabi:
@@ -90,8 +93,8 @@ with program() as power_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -102,7 +105,7 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, rabi, simulation_config)
+    job = qmm.simulate(config, power_rabi, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
@@ -187,6 +190,9 @@ else:
             pass
 
     data["figure"] = fig
-
+    # additional files
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
-    node_save("power_rabi", data, machine)
+    node_save(machine, "power_rabi", data, additional_files)
+
+# %%

@@ -1,3 +1,4 @@
+# %%
 """
 RABI CHEVRON (DURATION VS FREQUENCY)
 This sequence involves executing the qubit pulse (such as x180, square_pi, or other types) and measuring the state
@@ -18,6 +19,7 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
@@ -27,10 +29,12 @@ from qualang_tools.units import unit
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -57,7 +61,7 @@ num_qubits = len(qubits)
 ###################
 
 operation = "x180"  # The qubit operation to play
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 # The frequency sweep with respect to the qubits resonance frequencies
 dfs = np.arange(-100e6, +100e6, 1e6)
@@ -89,8 +93,8 @@ with program() as rabi_chevron:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(durations)).buffer(len(dfs)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(durations)).buffer(len(dfs)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(durations)).buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(durations)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -135,7 +139,7 @@ else:
             plt.plot(qubit.xy.operations[operation].length, 0, "r*")
             plt.xlabel("Qubit pulse duration [ns]")
             plt.ylabel("Qubit detuning [MHz]")
-            plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
+            # plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
             plt.subplot(2, num_qubits, i+num_qubits+1)
             plt.cla()
             plt.pcolor(durations * 4, dfs / u.MHz, Q_volts[i])
@@ -154,4 +158,7 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    node_save("rabi_chevron_duration", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "rabi_chevron_duration", data, additional_files)
+
+# %%

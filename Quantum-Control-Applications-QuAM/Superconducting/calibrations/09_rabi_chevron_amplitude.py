@@ -1,3 +1,4 @@
+# %%
 """
 RABI CHEVRON (AMPLITUDE VS FREQUENCY)
 This sequence involves executing the qubit pulse (such as x180, square_pi, or other types) and measuring the state
@@ -18,19 +19,21 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -49,7 +52,7 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-qubits = machine.qubits
+qubits = machine.active_qubits
 num_qubits = len(qubits)
 
 ###################
@@ -57,7 +60,7 @@ num_qubits = len(qubits)
 ###################
 
 operation = "x180"  # The qubit operation to play
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 # The frequency sweep with respect to the qubits resonance frequencies
 dfs = np.arange(-100e6, +100e6, 1e6)
@@ -94,8 +97,8 @@ with program() as rabi_chevron:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -140,7 +143,7 @@ else:
             plt.plot(qubit.xy.operations[operation].amplitude, 0, "r*")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Qubit detuning [MHz]")
-            plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
+            # plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
             plt.subplot(2, num_qubits, i+num_qubits+1)
             plt.cla()
             plt.pcolor(amps * qubit.xy.operations[operation].amplitude, dfs / u.MHz, Q_volts[i])
@@ -161,5 +164,7 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "rabi_chevron_amplitude", data, additional_files)
 
-    node_save("rabi_chevron_amplitude", data, machine)
+# %%

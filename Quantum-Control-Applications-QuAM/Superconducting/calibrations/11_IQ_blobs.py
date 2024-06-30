@@ -1,3 +1,4 @@
+# %%
 """
         IQ BLOBS
 This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
@@ -20,18 +21,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from qualang_tools.analysis.discriminator import two_state_discriminator
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -150,4 +154,7 @@ else:
 
     qm.close()
 
-    node_save("iq_blobs", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "iq_blobs", data, additional_files)
+
+# %%

@@ -1,3 +1,4 @@
+# %%
 """
 ALL-XY MEASUREMENT
 The program consists in playing a random sequence of predefined gates after which the theoretical qubit state is known.
@@ -16,17 +17,21 @@ Prerequisites:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
+from quam_components import QuAM, Transmon, ReadoutResonator
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM, Transmon, ReadoutResonator
-from macros import node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -51,7 +56,7 @@ num_qubits = len(qubits)
 ##############################
 # Program-specific variables #
 ##############################
-n_points = 100_000
+n_points = 1_000
 
 
 # All XY sequences. The sequence names must match corresponding operation in the config
@@ -147,8 +152,8 @@ def get_prog(qubit, resonator):
         with stream_processing():
             n_st.save("iteration")
             for i in range(21):
-                I_st[i].average().save(f"I{i}")
-                Q_st[i].average().save(f"Q{i}")
+                I_st[i].average().save(f"I{i + 1}")
+                Q_st[i].average().save(f"Q{i + 1}")
     return all_xy
 
 
@@ -173,9 +178,9 @@ else:
         qm = qmm.open_qm(config)
         # Calibrate the active qubits
         # machine.calibrate_octave_ports(qm)
-        program = get_prog(qubit, qubit.resonator)
-        job = qm.execute(program)
-        data_list = ["iteration"] + np.concatenate([[f"I{i}", f"Q{i}"] for i in range(21)]).tolist()
+        all_xy = get_prog(qubit, qubit.resonator)
+        job = qm.execute(all_xy)
+        data_list = ["iteration"] + np.concatenate([[f"I{i + 1}", f"Q{i + 1}"] for i in range(21)]).tolist()
         results = fetching_tool(job, data_list, mode="live")
         fig, ax = plt.subplots(2, 1)
 
@@ -203,9 +208,12 @@ else:
             plt.pause(0.1)
 
             data[qubit.name] = {"I": I, "Q": Q, "figure": fig}
-
+        plt.show()
         # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
         qm.close()
 
         # Save data from the node
-        node_save("all_xy", data, machine)
+        additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+        node_save(machine, "all_xy", data, additional_files)
+
+# %%

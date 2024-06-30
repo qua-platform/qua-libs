@@ -1,3 +1,4 @@
+# %%
 """
 READOUT OPTIMIZATION: AMPLITUDE VS FREQUENCY
 The sequence consists of measuring the state of the resonator after thermalization (qubits in |g>) and after
@@ -18,19 +19,23 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -156,20 +161,20 @@ else:
     plt.suptitle("Readout amplitude optimization")
     for i, qubit in enumerate(qubits):
         ax = axes[i] if num_qubits > 1 else axes
-        ax.pcolor(
+        pcm = ax.pcolor(
             (dfs + qubit.resonator.intermediate_frequency) / u.MHz,
             amplitudes * qubit.resonator.operations["readout"].amplitude,
-            fidelity_vec[i]
+            fidelity_vec[i],
         )
         ax.set_title(f"{qubit.resonator.name}")
-        ax.colorbar()
+        fig.colorbar(pcm, ax)
         ax.set_ylabel("Readout amplitude [V]")
         ax.set_xlabel("Readout IF [MHz]")
     plt.tight_layout()
 
     # Update the state
     for i, qubit in enumerate(qubits):
-        qubit.resonator.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[i])]
+        qubit.resonator.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[i]) // len(dfs)]
         qubit.resonator.intermediate_frequency += dfs[np.argmax(fidelity_vec[i]) % len(dfs)]
         qubit.resonator.readout_fidelity = np.max(fidelity_vec[i])
 
@@ -187,4 +192,7 @@ else:
         data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency
 
-    node_save("readout_amplitude_frequency_optimization", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "readout_amplitude_frequency_optimization", data, additional_files)
+
+# %%

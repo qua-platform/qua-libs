@@ -1,3 +1,4 @@
+# %%
 """
         READOUT OPTIMISATION: FREQUENCY
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
@@ -18,18 +19,22 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -53,7 +58,7 @@ num_qubits = len(qubits)
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 # The frequency sweep parameters with respect to the resonators resonance frequencies
 dfs = np.arange(-2e6, 2e6, 0.02e6)
@@ -140,7 +145,7 @@ else:
         axes[i].plot(dfs, D_data[i])
         axes[i].set_xlabel("Readout detuning [MHz]")
         axes[i].set_ylabel("Distance between IQ blobs [a.u.]")
-        axes[i].set_title(f"{qubit.name} - f_opt = {int(qubit.resonator.f_01 / u.MHz)} MHz")
+        # axes[i].set_title(f"{qubit.name} - f_opt = {int(qubit.resonator.f_01 / u.MHz)} MHz")
         print(f"{qubit.resonator.name}: Shifting readout frequency by {dfs[np.argmax(D_data[i])]} Hz")
 
     plt.tight_layout()
@@ -159,4 +164,7 @@ else:
         qubit.resonator.intermediate_frequency += dfs[np.argmax(D_data[i])]
 
     data["figure"] = fig
-    node_save("readout_frequency_optimization", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "readout_frequency_optimization", data, additional_files)
+
+# %%

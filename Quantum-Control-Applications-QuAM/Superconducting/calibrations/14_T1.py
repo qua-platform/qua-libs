@@ -1,3 +1,4 @@
+# %%
 """
 T1 MEASUREMENT
 The sequence consists in putting the qubits in the excited state by playing the x180 pulse and measuring the resonator
@@ -15,19 +16,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -52,7 +55,7 @@ num_qubits = len(qubits)
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
+n_avg = 2
 
 # The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 # Linear sweep
@@ -87,8 +90,8 @@ with program() as T1:
             t_delay = get_equivalent_log_array(t_delay)
 
         for i in range(len(machine.active_qubits)):
-            I_st[i].buffer(len(t_delay)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(t_delay)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(t_delay)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(t_delay)).average().save(f"Q{i + 1}")
         n_st.save("n")
 
 
@@ -128,15 +131,15 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
         plt.suptitle("T1")
-        for i, qubit in enumerate(qubits):
-            axes[i, 0].cla()
-            axes[i, 0].plot(t_delay * 4, I_volts[i], ".")
-            axes[i, 0].set_title(f"{qubit.name}")
-            axes[i, 0].set_ylabel("I quadrature [V]")
-            axes[i, 1].cla()
-            axes[i, 1].plot(t_delay * 4, Q_volts[i], ".")
-            axes[i, 1].set_xlabel("Wait time [ns]")
-            axes[i, 1].set_ylabel("Q quadrature [V]")
+        for i, (ax, qubit) in enumerate(zip(axes, qubits)):
+            ax[0].cla()
+            ax[0].plot(t_delay * 4, I_volts[i], ".")
+            ax[0].set_title(f"{qubit.name}")
+            ax[0].set_ylabel("I quadrature [V]")
+            ax[1].cla()
+            ax[1].plot(t_delay * 4, Q_volts[i], ".")
+            ax[1].set_xlabel("Wait time [ns]")
+            ax[1].set_ylabel("Q quadrature [V]")
         plt.tight_layout()
         plt.pause(0.1)
 
@@ -151,14 +154,13 @@ else:
         data[f"{qubit.name}_Q"] = Q_volts[i]
     data["figure"] = fig
 
+    fig_analysis = fig_analysis = plt.figure()
+    plt.suptitle("T1")
     # Fit the data to extract T1
     for i, qubit in enumerate(qubits):
         try:
             from qualang_tools.plot.fitting import Fit
-
             fit = Fit()
-            plt.figure()
-            plt.suptitle("T1")
             plt.subplot(num_qubits, 1, i+1)
             fit_res = fit.T1(4 * t_delay, I_volts[i], plot=True)
             plt.xlabel("Wait time [ns]")
@@ -168,9 +170,15 @@ else:
             qubit.T1 = int(np.round(np.abs(fit_res["T1"][0]) / 4) * 4)
             data[f"{qubit.name}"] = {"T1": qubit.T1, "successful_fit": True}
             plt.tight_layout()
+            data["figure_analysis"] = fig_analysis
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": False}
             pass
+    plt.show()
 
+    # additional files
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
-    node_save("T1", data, machine)
+    node_save(machine, "T1", data, additional_files)
+
+# %%

@@ -1,20 +1,25 @@
+# %%
 """
 ACTIVE RESET (Work in progress, use with care)
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from qualang_tools.analysis.discriminator import two_state_discriminator
+from quam_components import QuAM, Transmon
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM, Transmon
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -83,7 +88,7 @@ def apply_initialize_active(qubit: Transmon, pi_operation_name="x180"):
 ###################
 # The QUA program #
 ###################
-n_runs = 10000  # Number of runs
+n_runs = 10  # Number of runs
 
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=num_qubits)
@@ -177,4 +182,7 @@ else:
 
     qm.close()
 
-    node_save("iq_blobs", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "iq_blobs", data, additional_files)
+
+# %%

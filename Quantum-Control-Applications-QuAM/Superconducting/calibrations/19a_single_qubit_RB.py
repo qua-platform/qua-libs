@@ -1,3 +1,4 @@
+# %%
 """
 SINGLE QUBIT RANDOMIZED BENCHMARKING (for gates >= 40ns)
 The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterwards.
@@ -20,20 +21,22 @@ Prerequisites:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.units import unit
-
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-from scipy.optimize import curve_fit
-
 from quam_components import QuAM, Transmon
 from macros import node_save
+
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+import numpy as np
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -58,10 +61,11 @@ qubits = machine.active_qubits
 # Program-specific variables #
 ##############################
 num_of_sequences = 50  # Number of random sequences
-n_avg = 20  # Number of averaging loops for each random sequence
+n_avg = 10  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
 delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+num_depths = max_circuit_depth // delta_clifford + 1
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
 state_discrimination = False
@@ -218,11 +222,11 @@ def get_rb_program(qubit: Transmon):
                             play_sequence(sequence_list, depth, qubit)
                         # Align the two elements to measure after playing the circuit.
                         qubit.resonator.align(qubit.xy.name)
-                        # Play through the 2nd resonator to be in the same condition as when the readout was optimized
-                        if qubit.resonator == q1.resonator:
-                            q2.resonator.play("readout")
-                        else:
-                            q1.resonator.play("readout")
+                        # # Play through the 2nd resonator to be in the same condition as when the readout was optimized
+                        # if qubit.resonator == q1.resonator:
+                        #     q2.resonator.play("readout")
+                        # else:
+                        #     q1.resonator.play("readout")
                         # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                         qubit.resonator.measure("readout", qua_vars=(I, Q))
                         save(I, I_st)
@@ -240,30 +244,18 @@ def get_rb_program(qubit: Transmon):
             # Save the counter for the progress bar
             save(m, m_st)
 
-    with stream_processing():
-        m_st.save("iteration")
-        if state_discrimination:
-            # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
-            ).buffer(num_of_sequences).save("state")
-            # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-            state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
-            ).average().save("state_avg")
-        else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-                num_of_sequences
-            ).save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-                num_of_sequences
-            ).save("Q")
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                "I_avg"
-            )
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                "Q_avg"
-            )
+        with stream_processing():
+            m_st.save("iteration")
+            if state_discrimination:
+                # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("state")
+                # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("state_avg")
+            else:
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("I")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("Q")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("I_avg")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("Q_avg")
 
     return rb
 
@@ -360,13 +352,14 @@ else:
             f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
         )
         # Plots
-        fig = plt.figure()
+        fig_analysis = plt.figure()
         plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
         plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
         plt.title(f"Single qubit RB for {qubit.name}")
 
+        plt.show()
         # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
         qm.close()
 
@@ -380,5 +373,9 @@ else:
         data[f"{qubit.name}_clifford_set_infidelity"] = r_c
         data[f"{qubit.name}_gate_infidelity"] = r_g
         data[f"{qubit.name}_figure"] = fig
+        data[f"{qubit.name}_figure_analysis"] = fig_analysis
 
-    node_save("randomized_benchmarking", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "randomized_benchmarking", data, additional_files)
+
+# %%

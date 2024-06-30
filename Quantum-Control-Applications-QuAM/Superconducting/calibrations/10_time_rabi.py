@@ -17,20 +17,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -56,7 +57,7 @@ num_qubits = len(qubits)
 ###################
 
 operation = "x180"  # The qubit operation to play
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 
 # Pulse duration sweep (in clock cycles = 4ns)
 # must be larger than 4 clock cycles and larger than the pi_len defined in the state
@@ -85,8 +86,8 @@ with program() as time_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(times)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(times)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(times)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(times)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -170,6 +171,7 @@ else:
 
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": False}
-
+    # additional files
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
-    node_save("time_rabi", data, machine)
+    node_save(machine, "time_rabi", data, additional_files)

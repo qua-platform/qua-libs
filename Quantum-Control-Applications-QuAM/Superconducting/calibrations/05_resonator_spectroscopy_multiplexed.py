@@ -1,3 +1,4 @@
+# %%
 """
         RESONATOR SPECTROSCOPY MULTIPLEXED
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
@@ -17,21 +18,23 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
-
-from qualang_tools.results import fetching_tool
+from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-
 from quam_components import QuAM
-from macros import node_save
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from scipy import signal
+
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -56,7 +59,7 @@ num_resonators = len(resonators)
 # The QUA program #
 ###################
 
-n_avg = 100  # The number of averages
+n_avg = 2  # The number of averages
 # The frequency sweep around the resonator resonance frequency f_opt
 dfs = np.arange(-4e6, +4e6, 0.1e6)
 # You can adjust the IF frequency here to manually adjust the resonator frequencies instead of updating the state
@@ -94,8 +97,8 @@ with program() as multi_res_spec:
 
     with stream_processing():
         for i in range(num_resonators):
-            I_st[i].buffer(len(dfs)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(dfs)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 #######################
 # Simulate or execute #
@@ -130,7 +133,7 @@ else:
             I, Q = data[2*i:2*i+2]
             rr = resonators[i]
             # Data analysis
-            s_data.append(u.demod2volts(I + 1j * Q, resonators.operations["readout"].length))
+            s_data.append(u.demod2volts(I + 1j * Q, rr.operations["readout"].length))
             # Plot
             plt.subplot(201 + 10*num_resonators + i)
             plt.suptitle("Multiplexed resonator spectroscopy")
@@ -153,15 +156,18 @@ else:
     data = {"figure_raw": fig}
     for rr, s in zip(resonators, s_data):
         data[f"{rr.name}_frequencies"] = rr.intermediate_frequency + dfs
+        data[f"{rr.name}_S"] = s
         data[f"{rr.name}_R"] = np.abs(s)
         data[f"{rr.name}_phase"] = signal.detrend(np.unwrap(np.angle(s)))
 
-    for rr, s in zip(resonators, s_data):
+
+    fig_fit = fig_analysis = plt.figure()
+    plt.suptitle("Multiplexed resonator spectroscopy")
+    for i, (rr, s) in enumerate(zip(resonators, s_data)):
         try:
             from qualang_tools.plot.fitting import Fit
             fit = Fit()
-            fig_fit = plt.figure()
-            plt.suptitle("Multiplexed resonator spectroscopy")
+            plt.subplot(1, num_resonators, i + 1)
             res_1 = fit.reflection_resonator_spectroscopy((rr.intermediate_frequency + dfs) / u.MHz, np.abs(s), plot=True)
             plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
             plt.xlabel(f"{rr.name} IF [MHz]")
@@ -173,6 +179,11 @@ else:
         except (Exception,):
             data[f"{rr.name}"] = {"successful_fit": False}
             pass
-
+    
+    plt.show()
+    # additional files
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
-    node_save("resonator_spectroscopy_multiplexed", data, machine)
+    node_save(machine, "resonator_spectroscopy_multiplexed", data, additional_files)
+
+# %%

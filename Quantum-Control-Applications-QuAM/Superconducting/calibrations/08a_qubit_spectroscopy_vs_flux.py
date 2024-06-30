@@ -15,19 +15,22 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -53,7 +56,7 @@ num_qubits = len(qubits)
 ###################
 
 operation = "saturation"  # The qubit operation to play, can be switched to "x180" when the qubits are found.
-n_avg = 100  # Number of averaging loops
+n_avg = 2  # Number of averaging loops
 cooldown_time = max(q.thermalization_time for q in qubits)
 
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
@@ -179,5 +182,6 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    node_save("qubit_spectroscopy_vs_flux", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files)
 

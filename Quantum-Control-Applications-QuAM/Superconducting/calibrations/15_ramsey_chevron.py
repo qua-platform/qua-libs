@@ -1,3 +1,4 @@
+# %%
 """
 RAMSEY CHEVRON (IDLE TIME VS FREQUENCY)
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different qubit intermediate
@@ -17,19 +18,21 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.loops import from_array
+from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -54,7 +57,7 @@ num_qubits = len(qubits)
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # Number of averaging loops
+n_avg = 2  # Number of averaging loops
 
 # Frequency detuning sweep in Hz
 dfs = np.arange(-10e6, 10e6, 0.1e6)
@@ -93,8 +96,8 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(len(machine.active_qubits)):
-            I_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"I{i+1}")
-            Q_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"Q{i+1}")
+            I_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(t_delay)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -133,18 +136,19 @@ else:
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
         plt.suptitle("Ramsey chevron")
-        for i, qubit in enumerate(qubits):
-            axes[i, 0].cla()
-            axes[i, 0].pcolor(4 * t_delay, dfs / u.MHz, I_volts[i])
-            axes[i, 0].set_title(f"{qubit.name} - I, f_01={int(qubit.f_01 / u.MHz)} MHz")
-            axes[i, 0].set_ylabel("detuning [MHz]")
-            axes[i, 1].cla()
-            axes[i, 1].pcolor(4 * t_delay, dfs / u.MHz, Q_volts[i])
-            axes[i, 1].set_title(f"{qubit.name} - Q")
-            axes[i, 1].set_xlabel("Idle time [ns]")
-            axes[i, 1].set_ylabel("detuning [MHz]")
+        for i, (ax, qubit) in enumerate(zip(axes, qubits)):
+            ax[0].cla()
+            ax[0].pcolor(4 * t_delay, dfs / u.MHz, I_volts[i])
+            # ax[0].set_title(f"{qubit.name} - I, f_01={int(qubit.f_01 / u.MHz)} MHz")
+            ax[0].set_ylabel("detuning [MHz]")
+            ax[1].cla()
+            ax[1].pcolor(4 * t_delay, dfs / u.MHz, Q_volts[i])
+            ax[1].set_title(f"{qubit.name} - Q")
+            ax[1].set_xlabel("Idle time [ns]")
+            ax[1].set_ylabel("detuning [MHz]")
         plt.tight_layout()
         plt.pause(0.1)
+    plt.show()
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
@@ -157,5 +161,7 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "ramsey_chevron", data, additional_files)
 
-    node_save("ramsey_chevron", data, machine)
+# %%

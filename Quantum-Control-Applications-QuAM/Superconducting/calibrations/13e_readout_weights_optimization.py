@@ -1,3 +1,4 @@
+# %%
 """
 READOUT OPTIMIZATION: INTEGRATION WEIGHTS
 This sequence involves assessing the state of the resonator in two distinct scenarios: first, after thermalization
@@ -25,18 +26,19 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -129,7 +131,7 @@ def update_readout_length(qubit, new_readout_length, ringdown_length):
 ###################
 # The QUA program #
 ###################
-n_avg = 1e4  # number of averages
+n_avg = 1e2  # number of averages
 
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = rr.operations["readout"].length
@@ -287,4 +289,11 @@ else:
         f"{rr.name}_opt_weights": weights_real,
         "figure": plt.gcf(),
     }
-    node_save("readout_weights_optimization", data, machine)
+
+
+
+
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "readout_weights_optimization", data, additional_files)
+
+# %%

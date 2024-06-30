@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE AMPLITUDE
 The goal of this protocol is to measure the frequency shift induced by a flux pulse of a given duration.
@@ -20,19 +21,21 @@ Prerequisites:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -60,7 +63,7 @@ q2 = machine.active_qubits[1]
 ###################
 
 qb = q1
-n_avg = 500
+n_avg = 2
 
 # Flux amplitude sweep (as a pre-factor of the flux amplitude) - must be within [-2; 2)
 flux_amp_array = np.linspace(0, 0.45, 1001)
@@ -201,4 +204,7 @@ else:
         f"{qb.name}_state": state,
         "figure": fig,
     }
-    node_save("cryoscope_vs_amplitude", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "cryoscope_vs_amplitude", data, additional_files)
+
+# %%

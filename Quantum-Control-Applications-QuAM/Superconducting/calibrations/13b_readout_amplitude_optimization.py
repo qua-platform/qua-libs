@@ -1,3 +1,4 @@
+# %%
 """
 READOUT OPTIMISATION: AMPLITUDE
 The sequence consists in measuring the state of the resonator after thermalization (qubit in |g>) and after
@@ -16,19 +17,23 @@ Next steps before going to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
+from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -171,8 +176,11 @@ else:
 
     data["figure"] = fig
 
-    # Update the state
-    rr1.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[0])]
-    rr2.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[1])]
+    # # Update the state
+    # rr1.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[0])]
+    # rr2.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[1])]
 
-    node_save("readout_amplitude_optimization", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "readout_amplitude_optimization", data, additional_files)
+
+# %%

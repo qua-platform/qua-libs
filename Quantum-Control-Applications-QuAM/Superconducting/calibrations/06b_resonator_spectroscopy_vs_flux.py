@@ -1,3 +1,4 @@
+# %%
 """
         RESONATOR SPECTROSCOPY VERSUS FLUX
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -20,19 +21,23 @@ Before proceeding to the next node:
 """
 
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
+from quam_components import QuAM
+from macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from scipy import signal
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+import matplotlib
+matplotlib.use("TKAgg")
+
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -58,7 +63,7 @@ num_resonators = len(resonators)
 # The QUA program #
 ###################
 
-n_avg = 200  # Number of averaging loops
+n_avg = 20  # Number of averaging loops
 # Flux bias sweep in V
 dcs = np.linspace(-0.49, 0.49, 50)
 # The frequency sweep around the resonator resonance frequency f_opt
@@ -115,7 +120,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i}", f"Q{i}"] for i in range(num_resonators)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -132,7 +137,7 @@ else:
 
         plt.suptitle("Resonator spectroscopy vs flux")
         A_data = []
-        for i, (qubit, rr) in enumerate(zip(resonators)):
+        for i, (qubit, rr) in enumerate(zip(qubits, resonators)):
             s = u.demod2volts(I[i] + 1j * Q[i], rr.operations["readout"].length)
             A = np.abs(s)
             A_data.append(A)
@@ -148,6 +153,8 @@ else:
         plt.tight_layout()
         plt.pause(0.1)
 
+    plt.show()
+
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat up
     qm.close()
 
@@ -162,5 +169,7 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_min_offset"] = qubit.z.min_offset
     data["figure"] = fig
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "resonator_spectroscopy_vs_flux", data, additional_files)
 
-    node_save("resonator_spectroscopy_vs_flux", data, machine)
+# %%

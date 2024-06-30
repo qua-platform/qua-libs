@@ -22,8 +22,10 @@ from quam_components import QuAM
 from macros import node_save
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from scipy.signal import savgol_filter
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -47,7 +49,7 @@ resonator = machine.active_qubits[0].resonator  # The resonator element
 ###################
 # The QUA program #
 ###################
-n_avg = 100  # Number of averaging loops
+n_avg = 2  # Number of averaging loops
 
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
@@ -163,4 +165,9 @@ else:
         "raw_adc_2_single_shot": adc2_single_run,
         "figure": fig,
     }
-    node_save("time_of_flight", data, machine)
+
+
+
+
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "time_of_flight", data, additional_files)

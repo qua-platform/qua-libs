@@ -1,7 +1,6 @@
 """
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
-import os
 from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig

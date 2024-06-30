@@ -1,3 +1,4 @@
+# %%
 """
 CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -36,22 +37,27 @@ Next steps before going to the next node:
     - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
+
 from pathlib import Path
+
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.loops import from_array
 from qualang_tools.bakery import baking
 from qualang_tools.units import unit
-
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-from scipy import optimize, signal
+from qualang_tools.digital_filters import exponential_decay, single_exponential_correction
 
 from quam_components import QuAM
 from macros import qua_declaration, multiplexed_readout, node_save
-from qualang_tools.digital_filters import exponential_decay, single_exponential_correction
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import optimize, signal
+
+import matplotlib
+matplotlib.use("TKAgg")
 
 
 ###################################################
@@ -316,4 +322,6 @@ else:
         f"{qb.name}_tau": tau,
         "figure": fig,
     }
-    node_save("cryoscope_1ns", data, machine)
+    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    node_save(machine, "cryoscope_1ns", data, additional_files)
+
