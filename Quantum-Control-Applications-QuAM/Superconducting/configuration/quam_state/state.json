@@ -4,7 +4,7 @@
             "name": "octave1",
             "ip": "172.16.33.102",
             "port": 80,
-            "calibration_db_path": "/home/dean/src/qm/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration",
+            "calibration_db_path": "/workspaces/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/calibrations/../configuration",
             "RF_outputs": {
                 "1": {
                     "id": 1,
@@ -189,7 +189,7 @@
             "resonator": {
                 "operations": {
                     "readout": {
-                        "length": 1000,
+                        "length": 1024,
                         "amplitude": 0.00123,
                         "threshold": 0.0,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
@@ -358,7 +358,7 @@
             "resonator": {
                 "operations": {
                     "readout": {
-                        "length": 1000,
+                        "length": 1024,
                         "amplitude": 0.00123,
                         "threshold": 0.0,
                         "__class__": "quam.components.pulses.SquareReadoutPulse"
@@ -385,8 +385,7 @@
     },
     "qubit_pairs": [
         {
-            "qubit_control": "#/wiring/qubit_pairs/0/qubit_control",
-            "qubit_target": "#/wiring/qubit_pairs/0/qubit_target",
+            "id": "q0_q1",
             "coupler": {
                 "operations": {
                     "const": {
@@ -397,12 +396,17 @@
                 },
                 "id": "coupler_q0_q1",
                 "opx_output": "#/wiring/qubit_pairs/0/coupler/opx_output"
-            }
+            },
+            "qubit_control": "#/wiring/qubit_pairs/0/qubit_control",
+            "qubit_target": "#/wiring/qubit_pairs/0/qubit_target"
         }
     ],
     "active_qubit_names": [
         "q0",
         "q1"
+    ],
+    "active_qubit_pair_names": [
+        "q0_q1"
     ],
     "__class__": "quam_components.quam_root.QuAM"
 }

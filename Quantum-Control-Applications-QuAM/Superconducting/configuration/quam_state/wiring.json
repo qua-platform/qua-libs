@@ -133,6 +133,6 @@
         "cluster_name": "Beta_8",
         "octave_ip": "172.16.33.102",
         "octave_port": 80,
-        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data"
+        "data_folder": "/workspaces/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data"
     }
 }

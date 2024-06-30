@@ -87,11 +87,11 @@ def add_default_transmon_pulses(transmon):
     )
     transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
     transmon.resonator.operations["readout"] = pulses.SquareReadoutPulse(
-        length=1 * u.us, amplitude=0.00123, threshold=0.0, digital_marker="ON"
+        length=1024 * u.ns, amplitude=0.00123, threshold=0.0, digital_marker="ON"
     )
 
 
-def add_default_coupler_pulses(coupler):
-    coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
+def add_default_transmon_pair_pulses(transmon_pair):
+    transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
 

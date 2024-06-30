@@ -25,6 +25,7 @@ class QuAM(QuamRoot):
     network: dict = field(default_factory=dict)
 
     active_qubit_names: List[str] = field(default_factory=list)
+    active_qubit_pair_names: List[str] = field(default_factory=list)
 
     _data_handler: ClassVar[DataHandler] = None
 
@@ -46,6 +47,11 @@ class QuAM(QuamRoot):
     def active_qubits(self) -> List[Transmon]:
         """Return the list of active qubits."""
         return [self.qubits[q] for q in self.active_qubit_names]
+
+    @property
+    def active_qubit_pairs(self) -> List[TransmonPair]:
+        """Return the list of active qubits."""
+        return self.qubit_pairs
 
     @property
     def depletion_time(self) -> int:

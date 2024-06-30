@@ -384,7 +384,7 @@
         },
         "q0.resonator.readout.pulse": {
             "operation": "measurement",
-            "length": 1000,
+            "length": 1024,
             "digital_marker": "ON",
             "waveforms": {
                 "I": "q0.resonator.readout.wf.I",
@@ -522,7 +522,7 @@
         },
         "q1.resonator.readout.pulse": {
             "operation": "measurement",
-            "length": 1000,
+            "length": 1024,
             "digital_marker": "ON",
             "waveforms": {
                 "I": "q1.resonator.readout.wf.I",
@@ -1787,13 +1787,13 @@
             "cosine": [
                 [
                     1.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     -0.0,
-                    1000
+                    1024
                 ]
             ]
         },
@@ -1801,13 +1801,13 @@
             "cosine": [
                 [
                     0.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     1.0,
-                    1000
+                    1024
                 ]
             ]
         },
@@ -1815,13 +1815,13 @@
             "cosine": [
                 [
                     -0.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     -1.0,
-                    1000
+                    1024
                 ]
             ]
         },
@@ -1829,13 +1829,13 @@
             "cosine": [
                 [
                     1.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     -0.0,
-                    1000
+                    1024
                 ]
             ]
         },
@@ -1843,13 +1843,13 @@
             "cosine": [
                 [
                     0.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     1.0,
-                    1000
+                    1024
                 ]
             ]
         },
@@ -1857,13 +1857,13 @@
             "cosine": [
                 [
                     -0.0,
-                    1000
+                    1024
                 ]
             ],
             "sine": [
                 [
                     -1.0,
-                    1000
+                    1024
                 ]
             ]
         }

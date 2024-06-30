@@ -6,6 +6,8 @@ __all__ = ["TunableCoupler"]
 
 @quam_dataclass
 class TunableCoupler(SingleChannelLfFem):
-    # Optimize for DC pulses
+    """
+    Example QuAM component for a tunable coupler.
+    """
     output_mode: str = "amplified"
     upsampling_mode: str = "pulse"

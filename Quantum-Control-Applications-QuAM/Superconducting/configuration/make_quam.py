@@ -8,7 +8,7 @@ from qualang_tools.units import unit
 from pathlib import Path
 import json
 
-from make_pulses import add_default_transmon_pulses, add_default_coupler_pulses
+from make_pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from make_wiring import create_default_wiring
 
 # Class containing tools to help handling units and conversions.
@@ -52,7 +52,7 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
         "cluster_name": "Beta_8",
         "octave_ip": octave_ip,
         "octave_port": octave_port,
-        "data_folder": "C:/git/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
+        "data_folder": "/workspaces/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
     }
     print("Please update the default network settings in: quam.network")
 
@@ -139,17 +139,20 @@ def create_quam_superconducting(num_qubits: int = None, wiring: dict = None,
     for i, qubit_pair_wiring in enumerate(machine.wiring.qubit_pairs):
         qubit_control_name = qubit_pair_wiring.qubit_control.name
         qubit_target_name = qubit_pair_wiring.qubit_target.name
-        coupler_name = f"coupler_{qubit_control_name}_{qubit_target_name}"
+        qubit_pair_name = f"{qubit_control_name}_{qubit_target_name}"
+        coupler_name = f"coupler_{qubit_pair_name}"
         coupler = TunableCoupler(id=coupler_name, opx_output=qubit_pair_wiring.coupler.get_reference("opx_output"))
-        add_default_coupler_pulses(coupler)
 
         # Note: The Q channel is set to the I channel plus one.
         qubit_pair = TransmonPair(
+            id=qubit_pair_name,
             qubit_control=qubit_pair_wiring.get_reference("qubit_control"),
             qubit_target=qubit_pair_wiring.get_reference("qubit_target"),
             coupler=coupler,
         )
-        machine.qubit_pairs.append(qubit_pair)
+        machine.qubit_pairs.append(qubit_pair) 
+        machine.active_qubit_pair_names.append(qubit_pair_name)
+        add_default_transmon_pair_pulses(qubit_pair)
 
     return machine
 
