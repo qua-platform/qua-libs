@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from qm.qua import *
 from quam_components import QuAM
 
@@ -59,5 +61,6 @@ def node_save(quam: QuAM, name: str, data: dict, additional_files: dict):
     # Save QuAM to the data folder
     quam.save(path=quam.data_handler.path / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
 
-    # Save QuAM to current working directory `state.json`
-    quam.save(path="quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
+    # Save QuAM to configuration directory / `state.json`
+    config_dir = Path(__file__).parent.parent / 'configuration'
+    quam.save(path=config_dir / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})

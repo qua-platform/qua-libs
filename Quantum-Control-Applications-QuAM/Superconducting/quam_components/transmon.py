@@ -4,7 +4,7 @@ from quam import QuamComponent
 from .flux_line import FluxLine
 from .readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
-from qm import QuantumMachine
+from qm import QuantumMachine, logger
 from typing import Union
 
 
@@ -81,12 +81,15 @@ class Transmon(QuamComponent):
         Args:
             QM (QuantumMachine): the running quantum machine.
         """
+        logger.info(f"Calibrating {self.xy.name}")
         octave_calibration_tool(
             QM,
             self.xy.name,
             lo_frequencies=self.xy.frequency_converter_up.LO_frequency,
             intermediate_frequencies=self.xy.intermediate_frequency,
         )
+
+        logger.info(f"Calibrating {self.resonator.name}")
         octave_calibration_tool(
             QM,
             self.resonator.name,

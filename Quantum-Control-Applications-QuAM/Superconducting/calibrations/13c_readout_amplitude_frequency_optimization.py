@@ -192,7 +192,8 @@ else:
         data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency
 
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "readout_amplitude_frequency_optimization", data, additional_files)
 
 # %%

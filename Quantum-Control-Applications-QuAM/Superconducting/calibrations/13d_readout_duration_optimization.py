@@ -263,5 +263,6 @@ else:
         "figure": fig,
     }
 
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "readout_duration_optimization", data, additional_files)

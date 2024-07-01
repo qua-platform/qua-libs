@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quam-components"
+name = "quam_components"
 version = "0.1.0"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"

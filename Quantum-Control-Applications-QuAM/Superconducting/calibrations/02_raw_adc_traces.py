@@ -37,6 +37,7 @@ qmm = machine.connect()
 
 # Get the relevant QuAM components
 resonators = [q.resonator for q in machine.active_qubits]
+target = 0
 
 ###################
 # The QUA program #
@@ -51,9 +52,9 @@ with program() as raw_trace_prog:
         for i, resonator in enumerate(resonators):
             if i == 0:
                 # Make sure that the readout pulse is sent with the same phase so that the acquired signal does not average out
-                reset_phase(resonators[i].name)
+                reset_phase(resonators[target].name)
                 # Measure the resonator (send a readout pulse and record the raw ADC trace)
-                resonator.measure("readout" * amp(0.5))
+                resonator.measure("readout", amplitude_scale=0.5, stream=adc_st)
             else:
                 # Play the readout on all other resonators to make sure that the ADC won't saturate in multiplexed readout
                 resonator.measure("readout")
@@ -133,9 +134,6 @@ else:
         "figure": fig,
     }
 
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in ["calibration_db.json", "optimal_weights.npz"]}
 
-
-
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "raw_adc_traces", data, additional_files)
-

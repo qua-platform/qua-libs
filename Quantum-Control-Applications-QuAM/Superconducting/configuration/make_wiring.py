@@ -1,4 +1,7 @@
-def create_default_port_allocation(num_qubits: int, using_opx_1000: bool, starting_fem: int = 1):
+import json
+
+
+def default_port_allocation(num_qubits: int, using_opx_1000: bool, starting_fem: int = 1):
     """
     An example port allocation is generated in the following physical order on
     the numbered channels of the OPX and Octave:
@@ -66,7 +69,44 @@ def create_default_port_allocation(num_qubits: int, using_opx_1000: bool, starti
     return res_ports, xy_ports, flux_ports, coupler_ports
 
 
-def create_default_wiring(num_qubits: int, using_opx_1000: bool = True, starting_fem: int = 1) -> dict:
+def custom_port_allocation(wiring: dict):
+    """
+    Convert the override dictionary to a tuple of lists for port allocation.
+
+    Then, use it to create a proper wiring dictionary.
+
+    Args:
+    - wiring_dict: Dictionary with custom port allocation per qubit.
+
+    Returns:
+    - res_ports: List of tuples (module, i_ch, octave, octave_ch) per qubit.
+    - xy_ports: List of tuples (module, i_ch, octave, octave_ch) per qubit.
+    - flux_ports: List of tuples (module, ch) per qubit.
+    - coupler_ports: List of tuples (module, ch) per qubit.
+    """
+    res_ports, xy_ports, flux_ports, coupler_ports = [], [], [], []
+
+    num_qubits = len(wiring["qubits"])
+    for q_idx in range(1, num_qubits + 1):
+        q_key = f"q{q_idx}"
+        if q_key in wiring["qubits"]:
+            res_ports.append(wiring["qubits"][q_key]["res"])
+            xy_ports.append(wiring["qubits"][q_key]["xy"])
+            flux_ports.append(wiring["qubits"][q_key]["flux"])
+        else:
+            raise ValueError(f"Override dictionary does not contain ports for qubit {q_idx}")
+
+    for q_idx in range(1, num_qubits):
+        q_pair_key = f"q{q_idx}{q_idx + 1}"
+        if q_pair_key in wiring["qubit_pairs"]:
+            coupler_ports.append(wiring["qubit_pairs"][q_pair_key]["coupler"])
+        else:
+            raise ValueError(f"Override dictionary does not contain coupler ports for qubit pair {q_idx}{q_idx + 1}")
+
+    return res_ports, xy_ports, flux_ports, coupler_ports
+
+
+def create_wiring(port_allocation, using_opx_1000: bool) -> dict:
     """
     Create a wiring config tailored to the number of qubits.
     """
@@ -84,8 +124,9 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True, starting
         return (f"con1", module, ch) if using_opx_1000 else (f"con{module}", ch)
 
     # Generate example wiring by default
-    res_ports, xy_ports, flux_ports, coupler_ports = create_default_port_allocation(num_qubits, using_opx_1000, starting_fem)
+    res_ports, xy_ports, flux_ports, coupler_ports = port_allocation
 
+    num_qubits = len(port_allocation[0])
     for q_idx in range(0, num_qubits):
         res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports[q_idx]
         xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports[q_idx]
@@ -121,3 +162,4 @@ def create_default_wiring(num_qubits: int, using_opx_1000: bool = True, starting
         })
 
     return wiring
+

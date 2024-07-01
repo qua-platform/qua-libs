@@ -201,7 +201,8 @@ else:
 
     plt.show()
     # additional files
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
     node_save(machine, "qubit_spectroscopy", data, additional_files)
 

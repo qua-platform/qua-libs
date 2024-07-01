@@ -161,7 +161,8 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "ramsey_chevron", data, additional_files)
 
 # %%

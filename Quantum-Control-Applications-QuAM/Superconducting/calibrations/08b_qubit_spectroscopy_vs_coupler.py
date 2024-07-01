@@ -186,7 +186,8 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         # data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files)
 
 # %%

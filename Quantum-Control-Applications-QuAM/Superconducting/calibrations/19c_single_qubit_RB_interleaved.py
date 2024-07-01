@@ -400,7 +400,8 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    additional_files = { v: v for v in [Path(__file__).name, "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
+                         ["calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, f"randomized_benchmarking_interleaved_{get_interleaved_gate(interleaved_gate_index)}", data, additional_files)
 
 # %%
