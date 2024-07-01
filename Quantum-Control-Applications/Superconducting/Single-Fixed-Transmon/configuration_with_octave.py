@@ -21,7 +21,6 @@ u = unit(coerce_to_integer=True)
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-opx_1000 = False
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
