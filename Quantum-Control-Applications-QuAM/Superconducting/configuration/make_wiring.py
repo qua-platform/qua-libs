@@ -137,10 +137,10 @@ def create_wiring(port_allocation, using_opx_1000: bool) -> dict:
             "xy": {
                 "opx_output_I": port(xy_module, xy_i_ch),
                 "opx_output_Q": port(xy_module, xy_i_ch + 1),
+                "digital_port": port(xy_module, xy_i_ch),
                 "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
             },
             "z": {"opx_output": port(z_module, z_ch)},
-            "opx_output_digital": port(xy_module, xy_i_ch),
             "resonator": {
                 "opx_output_I": port(res_module, res_i_ch_out),
                 "opx_output_Q": port(res_module, res_i_ch_out + 1),

@@ -81,8 +81,8 @@ def create_quam_superconducting(wiring: dict = None,
                 intermediate_frequency=100 * u.MHz,
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.get_reference("opx_output_digital"),
-                        delay=87,  # 57ns for QOP222 and above
+                        opx_output=qubit_wiring.xy.get_reference("digital_port"),
+                        delay=57,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
                 },
@@ -95,8 +95,8 @@ def create_quam_superconducting(wiring: dict = None,
                 opx_input_Q=qubit_wiring.resonator.get_reference("opx_input_Q"),
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.get_reference("opx_output_digital"),
-                        delay=87,  # 57ns for QOP222 and above
+                        opx_output=qubit_wiring.resonator.get_reference("digital_port"),
+                        delay=57,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
                 },
@@ -116,15 +116,19 @@ def create_quam_superconducting(wiring: dict = None,
         RF_output = transmon.xy.frequency_converter_up
         RF_output.channel = transmon.xy.get_reference()
         RF_output.output_mode = "always_on"
+        # RF_output.output_mode = "triggered"
         RF_output.LO_frequency = 7 * u.GHz
         print(f"Please set the LO frequency of {RF_output.get_reference()}")
+        print(f"Please set the output mode of {RF_output.get_reference()} to always_on or triggered")
 
     # Only set resonator RF outputs once
     RF_output_resonator = transmon.resonator.frequency_converter_up
     RF_output_resonator.channel = transmon.resonator.get_reference()
     RF_output_resonator.output_mode = "always_on"
+    # RF_output_resonator.output_mode = "triggered"
     RF_output_resonator.LO_frequency = 4 * u.GHz
     print(f"Please set the LO frequency of {RF_output_resonator.get_reference()}")
+    print(f"Please set the output mode of {RF_output_resonator.get_reference()} to always_on or triggered")
 
     RF_input_resonator = transmon.resonator.frequency_converter_down
     RF_input_resonator.channel = transmon.resonator.get_reference()

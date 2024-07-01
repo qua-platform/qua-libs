@@ -32,21 +32,20 @@ element = machine.active_qubits[0].xy
 ###################
 with program() as continuous_wave:
     i = declare(int)
-    with infinite_loop_():
-        # play for 10s
-        with for_(i, 0, i < 300_000, i + 1):
-            play("x180", element.name, duration=25_000)
+    # play for 10s
+    with for_(i, 0, i < 300_000, i + 1):
+        play("x180_Square", element.name, duration=25_000)
 
 
 ###########################
 # Run or Simulate Program #
 ###########################
 
-simulate = True
+simulate = False
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=5_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, continuous_wave, simulation_config)
     # Plot the simulated samples
@@ -56,4 +55,4 @@ else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
-    job = qm.execute(config)
+    job = qm.execute(continuous_wave)
