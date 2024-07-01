@@ -56,8 +56,8 @@ with program() as ro_amp_opt:
                 "readout" * amp(a),
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_g),
+                dual_demod.full("rotated_cos", "rotated_sin", I_g),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q_g),
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")
@@ -75,8 +75,8 @@ with program() as ro_amp_opt:
                 "readout" * amp(a),
                 "resonator",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_e),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q_e),
+                dual_demod.full("rotated_cos", "rotated_sin", I_e),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q_e),
             )
             # Wait for the qubit to decay to the ground state
             wait(thermalization_time * u.ns, "resonator")

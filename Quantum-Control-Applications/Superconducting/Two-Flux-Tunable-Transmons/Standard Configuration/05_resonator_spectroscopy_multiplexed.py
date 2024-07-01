@@ -57,8 +57,8 @@ with program() as multi_res_spec:
                 "readout",
                 "rr1",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I[0]),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[0]),
+                dual_demod.full("cos", "sin", I[0]),
+                dual_demod.full("minus_sin", "cos", Q[0]),
             )
             # Save the 'I' & 'Q' quadratures for rr1 to their respective streams
             save(I[0], I_st[0])
@@ -72,8 +72,8 @@ with program() as multi_res_spec:
                 "readout",
                 "rr2",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I[1]),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[1]),
+                dual_demod.full("cos", "sin", I[1]),
+                dual_demod.full("minus_sin", "cos", Q[1]),
             )
             # Save the 'I' & 'Q' quadratures for rr2 to their respective streams
             save(I[1], I_st[1])

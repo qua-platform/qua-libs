@@ -32,8 +32,8 @@ def multiplexed_readout(I, I_st, Q, Q_st, resonators, sequential=False, amplitud
             "readout" * amp(amplitude),
             f"rr{res}",
             None,
-            dual_demod.full(weights + "cos", "out1", weights + "sin", "out2", I[ind]),
-            dual_demod.full(weights + "minus_sin", "out1", weights + "cos", "out2", Q[ind]),
+            dual_demod.full(weights + "cos", weights + "sin", I[ind]),
+            dual_demod.full(weights + "minus_sin", weights + "cos", Q[ind]),
         )
 
         if I_st is not None:
@@ -141,7 +141,7 @@ def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=N
             "readout",
             resonator,
             None,
-            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", Ig),
+            dual_demod.full("rotated_cos", "rotated_sin", Ig),
         )
         # Play a pi pulse to get back to the ground state
         play("x180", qubit, condition=(Ig > threshold))

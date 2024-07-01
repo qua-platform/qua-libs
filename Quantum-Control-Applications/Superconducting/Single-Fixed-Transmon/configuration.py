@@ -1,3 +1,7 @@
+"""
+QUA-Config supporting OPX+ & External Mixers
+"""
+
 from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
@@ -39,6 +43,7 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #####################
 # Set octave_config to None if no octave are present
 octave_config = None
+con = "con1"
 
 #############################################
 #                  Qubits                   #
@@ -176,7 +181,7 @@ ge_threshold = 0.0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
+        con: {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
@@ -188,7 +193,7 @@ config = {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
             },
-        },
+        }
     },
     "elements": {
         "qubit": {

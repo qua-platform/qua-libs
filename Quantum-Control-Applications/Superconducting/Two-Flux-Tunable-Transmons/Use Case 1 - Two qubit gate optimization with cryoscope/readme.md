@@ -167,8 +167,8 @@ with for_(n, 0, n < n_avg, n + 1):
                 "readout",
                 "resonator0",
                 None,
-                dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                dual_demod.full("rotated_cos", "rotated_sin", I),
+                dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
             )
             save(I, I_st)
             save(Q, Q_st)

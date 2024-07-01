@@ -29,6 +29,9 @@ def IQ_imbalance(g, phi):
 #############
 u = unit()
 qop_ip = "172.16.2.103"
+cluster_name = None
+qop_port = None
+octave_config = None
 
 # Frequencies
 Yb_IF_freq = 40e6  # in units of Hz

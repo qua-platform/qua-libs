@@ -61,8 +61,8 @@ with program() as red_sideband:
                     "readout",
                     "resonator1",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", I),
-                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                    dual_demod.full("cos", "sin", I),
+                    dual_demod.full("minus_sin", "cos", Q),
                 )
                 # Save the 'I' & 'Q' quadratures to their respective streams
                 save(I, I_st)

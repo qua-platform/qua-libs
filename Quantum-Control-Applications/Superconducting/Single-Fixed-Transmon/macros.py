@@ -90,7 +90,7 @@ def active_reset(threshold, max_tries=1, Ig=None):
             "readout",
             "resonator",
             None,
-            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", Ig),
+            dual_demod.full("rotated_cos", "rotated_sin", Ig),
         )
         # Play a pi pulse to get back to the ground state
         play("pi", "qubit", condition=(Ig > threshold))
@@ -126,8 +126,8 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
         "readout",
         "resonator",
         None,
-        dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-        dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+        dual_demod.full("rotated_cos", "rotated_sin", I),
+        dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
     )
     if threshold is not None:
         assign(state, I > threshold)
@@ -326,7 +326,7 @@ class qubit_frequency_tracking:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", self.I),
+                    dual_demod.full("rotated_cos", "rotated_sin", self.I),
                 )
                 assign(self.res, self.I > self.ge_threshold)
                 ####################################################################################################
@@ -411,7 +411,7 @@ class qubit_frequency_tracking:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", self.I),
+                    dual_demod.full("cos", "sin", self.I),
                 )
                 if self.frame_rotation:
                     reset_frame(self.qubit)
@@ -508,7 +508,7 @@ class qubit_frequency_tracking:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "out1", "sin", "out2", self.I),
+                    dual_demod.full("cos", "sin", self.I),
                 )
                 if self.frame_rotation:
                     reset_frame(self.qubit)
