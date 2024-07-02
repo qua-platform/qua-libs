@@ -7,6 +7,8 @@ from quam.components.ports import (
     OPXPlusAnalogOutputPort,
     OPXPlusAnalogInputPort,
     OPXPlusDigitalOutputPort,
+    FEMPortsContainer,
+    OPXPlusPortsContainer,
 )
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
@@ -130,12 +132,8 @@ class QuAM(QuamRoot):
 
 
 class FEMQuAM(QuAM):
-    analog_outputs: Dict[Union[str, int], Dict[int, Dict[int, LFFEMAnalogOutputPort]]] = field(default_factory=dict)
-    analog_inputs: Dict[Union[str, int], Dict[int, Dict[int, LFFEMAnalogInputPort]]] = field(default_factory=dict)
-    digital_outputs: Dict[Union[str, int], Dict[int, Dict[int, FEMDigitalOutputPort]]] = field(default_factory=dict)
+    ports: FEMPortsContainer = field(default_factory=FEMPortsContainer)
 
 
 class OPXPlusQuAM(QuAM):
-    analog_outputs: Dict[Union[str, int], Dict[int, OPXPlusAnalogOutputPort]] = field(default_factory=dict)
-    analog_inputs: Dict[Union[str, int], Dict[int, OPXPlusAnalogInputPort]] = field(default_factory=dict)
-    digital_outputs: Dict[Union[str, int], Dict[int, OPXPlusDigitalOutputPort]] = field(default_factory=dict)
+    ports: OPXPlusPortsContainer = field(default_factory=OPXPlusPortsContainer)

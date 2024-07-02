@@ -1,6 +1,6 @@
 import math
 import os.path
-from typing import Dict, List
+from typing import Dict, List, Type, TypeVar
 
 from quam.components import Octave, IQChannel, DigitalOutputChannel
 from quam_components import (
@@ -36,10 +36,12 @@ from make_wiring import default_port_allocation, custom_port_allocation, create_
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 
+QuamTypes = TypeVar("QuamTypes", OPXPlusQuAM, FEMQuAM)
+
 
 def create_quam_superconducting(
-    wiring: dict = None, octaves: Dict[str, Octave] = None, mw_fem_dummies: List[int] = None
-) -> QuAM:
+    quam_class: Type[QuamTypes], wiring: dict = None, octaves: Dict[str, Octave] = None, mw_fem_dummies: List[int] = None
+) -> QuamTypes:
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -51,10 +53,8 @@ def create_quam_superconducting(
     # Initiate the QuAM class
     if mw_fem_dummies is None:
         mw_fem_dummies = []
-    if using_opx_1000:
-        machine = FEMQuAM(mw_fem_dummies=mw_fem_dummies)
-    else:
-        machine = OPXPlusQuAM(mw_fem_dummies=mw_fem_dummies)
+
+    machine = quam_class(mw_fem_dummies=mw_fem_dummies)
 
     # Define the connectivity
     if wiring is not None:
@@ -96,7 +96,7 @@ def create_quam_superconducting(
 
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
-        digital_output_port = machine.ports.get
+        digital_output_port = machine.ports.get_digital_output()
         _create_lf_digital_output_port(qubit_wiring, "opx_output_digital")
 
         # Create qubit components
@@ -190,8 +190,9 @@ if __name__ == "__main__":
     folder = Path(__file__).parent
     quam_folder = folder / "quam_state"
 
-    using_opx_1000 = True
+    quam_class = FEMQuAM
 
+    using_opx_1000 = isinstance(quam_class, FEMQuAM)
     # module refers to the FEM number (OPX1000) or OPX+ connection index (OPX+)
     custom_port_wiring = {
         "qubits": {
@@ -242,7 +243,8 @@ if __name__ == "__main__":
     # mw_fem_dummies = []
     mw_fem_dummies = [1, 2]
 
-    machine = create_quam_superconducting(wiring, mw_fem_dummies=mw_fem_dummies)
+    machine = create_quam_superconducting(quam_class, wiring, mw_fem_dummies=mw_fem_dummies)
+
     machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
