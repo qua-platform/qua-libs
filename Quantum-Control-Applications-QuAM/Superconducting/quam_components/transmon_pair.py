@@ -12,9 +12,9 @@ __all__ = ["TransmonPair"]
 @quam_dataclass
 class TransmonPair(QuamComponent):
     id: Union[int, str]
-    coupler: TunableCoupler = None
     qubit_control: Transmon
     qubit_target: Transmon
+    coupler: TunableCoupler = None
     coupler: Optional[TunableCoupler] = None
 
     extras: Dict[str, Any] = field(default_factory=dict)

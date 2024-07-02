@@ -1,7 +1,10 @@
 import math
 import os.path
 from typing import Dict, List, Type, TypeVar
+from pathlib import Path
+import json
 
+from qualang_tools.units import unit
 from quam.components import Octave, IQChannel, DigitalOutputChannel
 from quam_components import (
     Transmon,
@@ -13,22 +16,6 @@ from quam_components import (
     FEMQuAM,
     OPXPlusQuAM,
 )
-from typing import Dict, Literal
-from quam.components.ports import (
-    DigitalOutputPort,
-    FEMDigitalOutputPort,
-    LFAnalogOutputPort,
-    LFAnalogInputPort,
-    LFFEMAnalogInputPort,
-    LFFEMAnalogOutputPort,
-    OPXPlusAnalogInputPort,
-    OPXPlusAnalogOutputPort,
-    OPXPlusDigitalOutputPort,
-)
-from quam.core import QuamComponent
-from qualang_tools.units import unit
-from pathlib import Path
-import json
 
 from make_pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from make_wiring import default_port_allocation, custom_port_allocation, create_wiring
@@ -40,7 +27,10 @@ QuamTypes = TypeVar("QuamTypes", OPXPlusQuAM, FEMQuAM)
 
 
 def create_quam_superconducting(
-    quam_class: Type[QuamTypes], wiring: dict = None, octaves: Dict[str, Octave] = None, mw_fem_dummies: List[int] = None
+    quam_class: Type[QuamTypes],
+    wiring: dict = None,
+    octaves: Dict[str, Octave] = None,
+    mw_fem_dummies: List[int] = None,
 ) -> QuamTypes:
     """Create a QuAM with a number of qubits.
 
@@ -96,35 +86,41 @@ def create_quam_superconducting(
 
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
-        digital_output_port = machine.ports.get_digital_output()
-        _create_lf_digital_output_port(qubit_wiring, "opx_output_digital")
+        # Create all necessary ports
+        opx_output_digital = machine.ports.reference_to_port(qubit_wiring, "opx_output_digital", create=True)
+        xy_opx_output_I = machine.ports.reference_to_port(qubit_wiring.xy, "opx_output_I", create=True)
+        xy_opx_output_Q = machine.ports.reference_to_port(qubit_wiring.xy, "opx_output_Q", create=True)
+        z_opx_output = machine.ports.reference_to_port(qubit_wiring.z, "opx_output", create=True)
+        resonator_opx_output_I = machine.ports.reference_to_port(qubit_wiring.resonator, "opx_output_I", create=True)
+        resonator_opx_output_Q = machine.ports.reference_to_port(qubit_wiring.resonator, "opx_output_Q", create=True)
+        resonator_opx_input_I = machine.ports.reference_to_port(qubit_wiring.resonator, "opx_input_I", create=True)
+        resonator_opx_input_Q = machine.ports.reference_to_port(qubit_wiring.resonator, "opx_input_Q", create=True)
 
         # Create qubit components
         transmon = Transmon(
             id=qubit_name,
             xy=IQChannel(
-                opx_output_I=_create_lf_analog_output_port(qubit_wiring.xy, "opx_output_I"),
-                opx_output_Q=_create_lf_analog_output_port(qubit_wiring.xy, "opx_output_Q"),
+                opx_output_I=xy_opx_output_I.get_reference(),
+                opx_output_Q=xy_opx_output_Q.get_reference(),
                 frequency_converter_up=qubit_wiring.xy.frequency_converter_up.get_reference(),
                 intermediate_frequency=100 * u.MHz,
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        # opx_output=_create_lf_digital_output_port(qubit_wiring, "opx_output_digital"),
-                        opx_output=digital_output_port,
+                        opx_output=opx_output_digital.get_reference(),
                         delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
                 },
             ),
-            z=FluxLine(opx_output=qubit_wiring.z.get_reference("opx_output")),
+            z=FluxLine(opx_output=z_opx_output.get_reference()),
             resonator=ReadoutResonator(
-                opx_output_I=_create_lf_analog_output_port(qubit_wiring.resonator, "opx_output_I"),
-                opx_output_Q=_create_lf_analog_output_port(qubit_wiring.resonator, "opx_output_Q"),
-                opx_input_I=_create_lf_analog_input_port(qubit_wiring.resonator, "opx_input_I"),
-                opx_input_Q=_create_lf_analog_input_port(qubit_wiring.resonator, "opx_input_Q"),
+                opx_output_I=resonator_opx_output_I.get_reference(),
+                opx_output_Q=resonator_opx_output_Q.get_reference(),
+                opx_input_I=resonator_opx_input_I.get_reference(),
+                opx_input_Q=resonator_opx_input_Q.get_reference(),
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=digital_output_port.get_reference(),
+                        opx_output=opx_output_digital.get_reference(),
                         delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
@@ -192,7 +188,7 @@ if __name__ == "__main__":
 
     quam_class = FEMQuAM
 
-    using_opx_1000 = isinstance(quam_class, FEMQuAM)
+    using_opx_1000 = quam_class is FEMQuAM
     # module refers to the FEM number (OPX1000) or OPX+ connection index (OPX+)
     custom_port_wiring = {
         "qubits": {
