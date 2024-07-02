@@ -1,5 +1,13 @@
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
+from quam.components.ports import (
+    LFFEMAnalogOutputPort,
+    LFFEMAnalogInputPort,
+    FEMDigitalOutputPort,
+    OPXPlusAnalogOutputPort,
+    OPXPlusAnalogInputPort,
+    OPXPlusDigitalOutputPort,
+)
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
@@ -8,9 +16,10 @@ from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
 from dataclasses import field
-from typing import List, Dict, ClassVar, Any
+from typing import List, Dict, ClassVar, Any, Union
 
-__all__ = ["QuAM"]
+
+__all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
 
 @quam_dataclass
@@ -39,9 +48,7 @@ class QuAM(QuamRoot):
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            self._data_handler = DataHandler(
-                root_data_folder=self.network["data_folder"]
-            )
+            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 
@@ -109,9 +116,7 @@ class QuAM(QuamRoot):
             try:
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
-                print(
-                    f"No calibration elements found for {name}. Skipping calibration."
-                )
+                print(f"No calibration elements found for {name}. Skipping calibration.")
 
     def generate_config(self) -> Dict[str, Any]:
         config = super().generate_config()
@@ -119,9 +124,18 @@ class QuAM(QuamRoot):
         fems = config["controllers"]["con1"]["fems"]
 
         for mw_fem_dummy in self.mw_fem_dummies:
-            fems[mw_fem_dummy] = {
-                "type": "MW",
-                "analog_outputs": {}
-            }
+            fems[mw_fem_dummy] = {"type": "MW", "analog_outputs": {}}
 
         return config
+
+
+class FEMQuAM(QuAM):
+    analog_outputs: Dict[Union[str, int], Dict[int, Dict[int, LFFEMAnalogOutputPort]]] = field(default_factory=dict)
+    analog_inputs: Dict[Union[str, int], Dict[int, Dict[int, LFFEMAnalogInputPort]]] = field(default_factory=dict)
+    digital_outputs: Dict[Union[str, int], Dict[int, Dict[int, FEMDigitalOutputPort]]] = field(default_factory=dict)
+
+
+class OPXPlusQuAM(QuAM):
+    analog_outputs: Dict[Union[str, int], Dict[int, OPXPlusAnalogOutputPort]] = field(default_factory=dict)
+    analog_inputs: Dict[Union[str, int], Dict[int, OPXPlusAnalogInputPort]] = field(default_factory=dict)
+    digital_outputs: Dict[Union[str, int], Dict[int, OPXPlusDigitalOutputPort]] = field(default_factory=dict)

@@ -3,7 +3,29 @@ import os.path
 from typing import Dict, List
 
 from quam.components import Octave, IQChannel, DigitalOutputChannel
-from quam_components import Transmon, ReadoutResonator, QuAM, FluxLine, TunableCoupler, TransmonPair
+from quam_components import (
+    Transmon,
+    ReadoutResonator,
+    FluxLine,
+    TunableCoupler,
+    TransmonPair,
+    QuAM,
+    FEMQuAM,
+    OPXPlusQuAM,
+)
+from typing import Dict, Literal
+from quam.components.ports import (
+    DigitalOutputPort,
+    FEMDigitalOutputPort,
+    LFAnalogOutputPort,
+    LFAnalogInputPort,
+    LFFEMAnalogInputPort,
+    LFFEMAnalogOutputPort,
+    OPXPlusAnalogInputPort,
+    OPXPlusAnalogOutputPort,
+    OPXPlusDigitalOutputPort,
+)
+from quam.core import QuamComponent
 from qualang_tools.units import unit
 from pathlib import Path
 import json
@@ -15,9 +37,9 @@ from make_wiring import default_port_allocation, custom_port_allocation, create_
 u = unit(coerce_to_integer=True)
 
 
-def create_quam_superconducting(wiring: dict = None,
-                                octaves: Dict[str, Octave] = None,
-                                mw_fem_dummies: List[int] = None) -> QuAM:
+def create_quam_superconducting(
+    wiring: dict = None, octaves: Dict[str, Octave] = None, mw_fem_dummies: List[int] = None
+) -> QuAM:
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -29,7 +51,10 @@ def create_quam_superconducting(wiring: dict = None,
     # Initiate the QuAM class
     if mw_fem_dummies is None:
         mw_fem_dummies = []
-    machine = QuAM(mw_fem_dummies=mw_fem_dummies)
+    if using_opx_1000:
+        machine = FEMQuAM(mw_fem_dummies=mw_fem_dummies)
+    else:
+        machine = OPXPlusQuAM(mw_fem_dummies=mw_fem_dummies)
 
     # Define the connectivity
     if wiring is not None:
@@ -63,7 +88,7 @@ def create_quam_superconducting(wiring: dict = None,
                 name=f"octave{i+1}",
                 ip=machine.network["octave_ip"],
                 port=machine.network["octave_port"],
-                calibration_db_path=os.path.dirname(__file__)
+                calibration_db_path=os.path.dirname(__file__),
             )
             machine.octaves[f"octave{i+1}"] = octave
             octave.initialize_frequency_converters()
@@ -71,32 +96,36 @@ def create_quam_superconducting(wiring: dict = None,
 
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
+        digital_output_port = machine.ports.get
+        _create_lf_digital_output_port(qubit_wiring, "opx_output_digital")
+
         # Create qubit components
         transmon = Transmon(
             id=qubit_name,
             xy=IQChannel(
-                opx_output_I=qubit_wiring.xy.get_reference("opx_output_I"),
-                opx_output_Q=qubit_wiring.xy.get_reference("opx_output_Q"),
+                opx_output_I=_create_lf_analog_output_port(qubit_wiring.xy, "opx_output_I"),
+                opx_output_Q=_create_lf_analog_output_port(qubit_wiring.xy, "opx_output_Q"),
                 frequency_converter_up=qubit_wiring.xy.frequency_converter_up.get_reference(),
                 intermediate_frequency=100 * u.MHz,
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.xy.get_reference("digital_port"),
-                        delay=57,  # 57ns for QOP222 and above
+                        # opx_output=_create_lf_digital_output_port(qubit_wiring, "opx_output_digital"),
+                        opx_output=digital_output_port,
+                        delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
                 },
             ),
             z=FluxLine(opx_output=qubit_wiring.z.get_reference("opx_output")),
             resonator=ReadoutResonator(
-                opx_output_I=qubit_wiring.resonator.get_reference("opx_output_I"),
-                opx_output_Q=qubit_wiring.resonator.get_reference("opx_output_Q"),
-                opx_input_I=qubit_wiring.resonator.get_reference("opx_input_I"),
-                opx_input_Q=qubit_wiring.resonator.get_reference("opx_input_Q"),
+                opx_output_I=_create_lf_analog_output_port(qubit_wiring.resonator, "opx_output_I"),
+                opx_output_Q=_create_lf_analog_output_port(qubit_wiring.resonator, "opx_output_Q"),
+                opx_input_I=_create_lf_analog_input_port(qubit_wiring.resonator, "opx_input_I"),
+                opx_input_Q=_create_lf_analog_input_port(qubit_wiring.resonator, "opx_input_Q"),
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.resonator.get_reference("digital_port"),
-                        delay=57,  # 57ns for QOP222 and above
+                        opx_output=digital_output_port.get_reference(),
+                        delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
                 },
@@ -150,11 +179,12 @@ def create_quam_superconducting(wiring: dict = None,
             qubit_target=qubit_pair_wiring.get_reference("qubit_target"),
             coupler=coupler,
         )
-        machine.qubit_pairs.append(qubit_pair) 
+        machine.qubit_pairs.append(qubit_pair)
         machine.active_qubit_pair_names.append(qubit_pair_name)
         add_default_transmon_pair_pulses(qubit_pair)
 
     return machine
+
 
 if __name__ == "__main__":
     folder = Path(__file__).parent
@@ -196,8 +226,8 @@ if __name__ == "__main__":
             "q12": {"coupler": (3, 2)},
             "q23": {"coupler": (3, 3)},
             "q34": {"coupler": (3, 4)},
-            "q45": {"coupler": (3, 5)}
-        }
+            "q45": {"coupler": (3, 5)},
+        },
     }
 
     # port_allocation = default_port_allocation(
