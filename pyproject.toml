@@ -20,7 +20,7 @@ classifiers = [
 
 dependencies = [
     "quam @ git+https://github.com/qua-platform/quam.git",
-    "qm-qua @ file:./qm_qua-1.1.7.post20-py3-none-any.whl",
+    "qm-qua==1.2.0",
     "qualang-tools"
 ]
 

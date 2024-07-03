@@ -27,6 +27,7 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
     active_qubit_pair_names: List[str] = field(default_factory=list)
 
+    fem_delays: List[int] = field(default_factory=dict)
     mw_fem_dummies: List[int] = field(default_factory=list)
 
     _data_handler: ClassVar[DataHandler] = None
@@ -131,6 +132,11 @@ class QuAM(QuamRoot):
         config = super().generate_config()
 
         fems = config["controllers"]["con1"]["fems"]
+
+        for fem, delay in enumerate(self.fem_delays):
+            fem += 1
+            for analog_output in fems[fem].get("analog_outputs", {}).values():
+                analog_output["delay"] = delay
 
         for mw_fem_dummy in self.mw_fem_dummies:
             fems[mw_fem_dummy] = {

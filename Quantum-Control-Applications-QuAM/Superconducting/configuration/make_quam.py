@@ -17,7 +17,8 @@ u = unit(coerce_to_integer=True)
 
 def create_quam_superconducting(wiring: dict = None,
                                 octaves: Dict[str, Octave] = None,
-                                mw_fem_dummies: List[int] = None) -> QuAM:
+                                mw_fem_dummies: List[int] = None,
+                                fem_delays: List = None) -> QuAM:
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -29,7 +30,9 @@ def create_quam_superconducting(wiring: dict = None,
     # Initiate the QuAM class
     if mw_fem_dummies is None:
         mw_fem_dummies = []
-    machine = QuAM(mw_fem_dummies=mw_fem_dummies)
+    if fem_delays is None:
+        fem_delays = []
+    machine = QuAM(mw_fem_dummies=mw_fem_dummies, fem_delays=fem_delays)
 
     # Define the connectivity
     if wiring is not None:
@@ -212,10 +215,12 @@ if __name__ == "__main__":
 
     wiring = create_wiring(port_allocation, using_opx_1000=using_opx_1000)
 
-    # mw_fem_dummies = []
-    mw_fem_dummies = [1, 2]
+    mw_fem_dummies = []
+    # mw_fem_dummies = [1, 2]
 
-    machine = create_quam_superconducting(wiring, mw_fem_dummies=mw_fem_dummies)
+    fem_delays = [0, 0, 0]
+
+    machine = create_quam_superconducting(wiring, mw_fem_dummies=mw_fem_dummies, fem_delays=fem_delays)
     machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
     qua_file = folder / "qua_config.json"
