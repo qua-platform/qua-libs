@@ -100,7 +100,7 @@ flux_waveform = np.array([flux_pulse_amp] * flux_pulse_length)
 square_pulse_segments = baked_waveform(flux_waveform, flux_pulse_length, qb)
 
 with program() as cz:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=2)
     a = declare(fixed)  # QUA variable for the flux pulse amplitude pre-factor.
     segment = declare(int)  # QUA variable for the flux pulse segment index
 

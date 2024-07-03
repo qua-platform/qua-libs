@@ -56,9 +56,11 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-resonators = [qb.resonator for qb in machine.active_qubits]
-num_resonators = len(resonators)
+qubits = machine.active_qubits
+resonators = [qubit.resonator for qubit in machine.active_qubits]
 prev_amps = [rr.operations["readout"].amplitude for rr in resonators]
+num_qubits = len(qubits)
+num_resonators = len(resonators)
 
 ###################
 # The QUA program #
@@ -76,28 +78,40 @@ amps = np.arange(0.05, 1.99, 0.01)
 dfs = np.arange(-10e6, +10e6, 0.1e6)
 
 with program() as multi_res_spec_vs_amp:
-    # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_resonators)
+    # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
+    # For instance, here 'I' is a python list containing two QUA fixed variables.
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     a = declare(fixed)  # QUA variable for the readout amplitude pre-factor
     df = declare(int)  # QUA variable for the readout frequency
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        save(n, n_st)
+    for i, q in enumerate(qubits):
+        
+        # resonator of this qubit
+        rr = resonators[i]
 
-        with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
-            # Update the resonator frequencies for all resonators
-            for i, rr in enumerate(resonators):
+        with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
+            save(n, n_st)
+
+            with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
+                # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
+                rr.wait(machine.depletion_time * u.ns)
 
-            with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
-                for i, rr in enumerate(resonators):
-                    rr.wait(machine.depletion_time * u.ns)  # wait for the resonator to relax
+                with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
+                    # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
+
+                    # wait for the resonator to relax
+                    rr.wait(machine.depletion_time * u.ns)
+
+                    # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
+
+        align(*[rr.name for rr in resonators])
 
     with stream_processing():
         n_st.save("n")
@@ -165,6 +179,12 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
+    # resonators[0].operations["readout"].amplitude = 0.008
+    # resonators[1].operations["readout"].amplitude = 0.008
+    # resonators[2].operations["readout"].amplitude = 0.008
+    # resonators[3].operations["readout"].amplitude = 0.008
+    # resonators[4].operations["readout"].amplitude = 0.008
+
     # Save data from the node
     data = {}
     for i, rr in enumerate(resonators):
@@ -173,8 +193,10 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_readout_amplitude"] = prev_amps[i]
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "resonator_spectroscopy_vs_amplitude", data, additional_files)
 
 # %%

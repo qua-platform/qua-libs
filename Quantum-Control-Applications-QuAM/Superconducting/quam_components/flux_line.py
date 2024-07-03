@@ -35,3 +35,7 @@ class FluxLine(SingleChannelLfFem):
     def to_min(self):
         """Set the flux bias to the min offset"""
         self.set_dc_offset(self.min_offset)
+
+    def to_zero(self):
+        """Set the flux bias to the min offset"""
+        self.set_dc_offset(0.0)

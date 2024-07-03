@@ -69,7 +69,7 @@ N_pi = 10  # Maximum number of qubit pulses
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
 
 with program() as power_rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
@@ -116,7 +116,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(power_rabi)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -191,8 +191,10 @@ else:
 
     data["figure"] = fig
     # additional files
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     # Save data from the node
     node_save(machine, "power_rabi", data, additional_files)
 

@@ -72,31 +72,44 @@ dcs = np.linspace(-0.49, 0.49, 50)
 dfs = np.arange(-50e6, 5e6, 0.1e6)
 
 with program() as multi_res_spec_vs_flux:
-    # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_resonators)
+    # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
+    # For instance, here 'I' is a python list containing two QUA fixed variables.
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     dc = declare(fixed)  # QUA variable for the flux bias
     df = declare(int)  # QUA variable for the readout frequency
 
-    # Bring the active qubits to the minimum frequency point
-    machine.apply_all_flux_to_min()
+    for i, q in enumerate(qubits):
+        
+        # Bring the active qubits to the minimum frequency point
+        machine.apply_all_flux_to_min()
+        
+        # resonator of the qubit
+        rr = resonators[i]
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
-        with for_(*from_array(df, dfs)):
-            # Update the resonator frequencies for all resonators
-            for rr in resonators:
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+
+            with for_(*from_array(df, dfs)):
+                # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
 
-            with for_(*from_array(dc, dcs)):
-                # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
-                for coupler in couplers:
-                    coupler.set_dc_offset(dc)
-                wait(100)  # Wait for the flux to settle
+                with for_(*from_array(dc, dcs)):
+                    # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
+                    for coupler in couplers:
+                        coupler.set_dc_offset(dc)
+                    wait(100)  # Wait for the flux to settle
+                    
+                    # readout the resonator
+                    rr.measure("readout", qua_vars=(I[i], Q[i]))
 
-                # QUA macro the readout the state of the active resonators (defined in macros.py)
-                multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False)
-                # Wait for the resonators to relax
-                wait(machine.depletion_time * u.ns, *[rr.name for rr in resonators])
+                    # wait for the resonator to relax
+                    rr.wait(machine.depletion_time * u.ns)
+
+                    # save data
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+
+        align(*[rr.name for rr in resonators])
 
     with stream_processing():
         n_st.save("n")
@@ -172,8 +185,10 @@ else:
         data[f"{rr.name}_R"] = R_data[i]
         # data[f"{rr.name}_min_offset"] = qubit.z.min_offset
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "resonator_spectroscopy_vs_coupler", data, additional_files)
 
 # %%

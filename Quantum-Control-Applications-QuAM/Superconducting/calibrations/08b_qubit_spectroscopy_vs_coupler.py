@@ -50,6 +50,7 @@ qmm = machine.connect()
 
 # Get the relevant QuAM components
 qubits = machine.active_qubits
+qubit_pairs = machine.active_qubit_pairs
 couplers = [qubit_pair.coupler for qubit_pair in machine.active_qubit_pairs]
 num_qubits = len(qubits)
 num_couplers = len(couplers)
@@ -75,37 +76,44 @@ dcs = np.linspace(-0.05, 0.05, 40)
 # q1.xy.intermediate_frequency = 340e6
 # q2.xy.intermediate_frequency = 0
 
-with program() as multi_qubit_spec_vs_flux:
+with program() as multi_qubit_spec_vs_coupler:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
 
-    # Bring the active qubits to the minimum frequency point
-    machine.apply_all_flux_to_min()
+    for i, q in enumerate(qubits):
+        
+        # Bring the active qubits to the minimum frequency point
+        machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
 
-        with for_(*from_array(df, dfs)):
-            # Update the qubit frequencies for all qubits
-            for q in qubits:
+            with for_(*from_array(df, dfs)):
+                # Update the qubit frequencies for qubit
                 update_frequency(q.xy.name, df + q.xy.intermediate_frequency)
 
-            with for_(*from_array(dc, dcs)):
-                # Flux sweeping for all qubits
-                for coupler in couplers:
-                    coupler.set_dc_offset(dc)
-                wait(100)  # Wait for the flux to settle
+                with for_(*from_array(dc, dcs)):
+                    # Flux sweeping for qubit
+                    for coupler in couplers:
+                        coupler.set_dc_offset(dc)
+                    wait(100)  # Wait for the flux to settle
 
-                # Apply saturation pulse to all qubits
-                for q in qubits:
+                    # Apply saturation pulse to all qubits
                     q.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
 
-                # QUA macro to read the state of the active resonators
-                multiplexed_readout(qubits, I, I_st, Q, Q_st)
-                # Wait for the qubits to decay to the ground state
-                wait(cooldown_time * u.ns)
+                    # QUA macro to read the state of the active resonators
+                    q.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    
+                    # save data
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+
+                    # Wait for the qubits to decay to the ground state
+                    wait(cooldown_time * u.ns)
+
+        align(*qubits)
 
     with stream_processing():
         n_st.save("n")
@@ -121,7 +129,7 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, multi_qubit_spec_vs_flux, simulation_config)
+    job = qmm.simulate(config, multi_qubit_spec_vs_coupler, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     # Open the quantum machine
@@ -129,10 +137,10 @@ else:
     # Calibrate the active qubits
     # machine.calibrate_octave_ports(qm)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(multi_qubit_spec_vs_flux)
+    job = qm.execute(multi_qubit_spec_vs_coupler)
     # Get results from QUA program
 
-    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -171,10 +179,12 @@ else:
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    # Set the relevant flux points
-    # q[0].z.min_offset =
-    # q[1].z.min_offset =
-    # ...
+    # Set the decoupling bias for couplers
+    # couplers[0].decouple_offset = 0.0
+    # couplers[1].decouple_offset = 0.0
+    # couplers[2].decouple_offset = 0.0
+    # couplers[3].decouple_offset = 0.0
+    # couplers[4].decouple_offset = 0.0
 
     # Save data from the node
     data = {}
@@ -186,8 +196,10 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         # data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
-    node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files)
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
+    node_save(machine, "qubit_spectroscopy_vs_coupler", data, additional_files)
 
 # %%

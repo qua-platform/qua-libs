@@ -64,7 +64,7 @@ t_delay = np.arange(4, 10000, 40)
 # t_delay = np.logspace(np.log10(4), np.log10(12 * u.us), 29)
 
 with program() as T1:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     t = declare(int)  # QUA variable for the wait time
 
     # Bring the active qubits to the minimum frequency point
@@ -113,7 +113,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(T1)
     # Get results from QUA program
-    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], ["n"])
+    data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], ["n"])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
@@ -177,8 +177,10 @@ else:
     plt.show()
 
     # additional files
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     # Save data from the node
     node_save(machine, "T1", data, additional_files)
 

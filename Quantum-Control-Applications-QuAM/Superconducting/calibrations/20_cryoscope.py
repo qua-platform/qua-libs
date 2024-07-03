@@ -122,7 +122,7 @@ step_response = [1.0] * flux_pulse_len
 xplot = np.arange(0, len(flux_waveform) + 0.1, 1)
 
 with program() as cryoscope:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=2)
     segment = declare(int)  # QUA variable for the flux pulse segment index
     flag = declare(bool)  # QUA boolean to switch between x90 and y90
     state = [declare(bool) for _ in range(2)]  # State of the qubits
@@ -322,7 +322,9 @@ else:
         f"{qb.name}_tau": tau,
         "figure": fig,
     }
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "cryoscope_1ns", data, additional_files)
 

@@ -71,7 +71,7 @@ dcs = np.arange(-0.105, -0.10, 0.0001)
 
 
 with program() as cz:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration
     dc = declare(fixed)  # QUA variable for the flux pulse amplitude
 

@@ -64,8 +64,8 @@ n_runs = 4000
 amplitudes = np.arange(0.5, 1.99, 0.02)
 
 with program() as ro_amp_opt:
-    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
-    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=num_qubits)
+    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
     a = declare(fixed)  # QUA variable for the readout amplitude
     counter = declare(int, value=0)  # Counter for the progress bar
 
@@ -180,8 +180,10 @@ else:
     # rr1.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[0])]
     # rr2.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[1])]
 
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "readout_amplitude_optimization", data, additional_files)
 
 # %%

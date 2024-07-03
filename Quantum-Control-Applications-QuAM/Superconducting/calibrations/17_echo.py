@@ -67,7 +67,7 @@ idle_times = np.arange(4, 2000, 5)  # Linear sweep
 
 
 with program() as echo:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     t = declare(int)
 
     # Bring the active qubits to the minimum frequency point
@@ -122,7 +122,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(echo)
     # Get results from QUA program
-    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], ["n"])
+    data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], ["n"])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
@@ -189,9 +189,11 @@ else:
             pass
     plt.show()
 
-# Save data from the node
-additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
-node_save(machine, "ramsey", data, additional_files)
+    # Save data from the node
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
+    node_save(machine, "ramsey", data, additional_files)
 
 # %%

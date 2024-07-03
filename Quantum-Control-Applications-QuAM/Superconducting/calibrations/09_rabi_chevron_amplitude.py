@@ -68,7 +68,7 @@ dfs = np.arange(-100e6, +100e6, 1e6)
 amps = np.arange(0.0, 1.9, 0.02)
 
 with program() as rabi_chevron:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit detuning
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
 
@@ -117,7 +117,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rabi_chevron)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -164,8 +164,10 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "rabi_chevron_amplitude", data, additional_files)
 
 # %%

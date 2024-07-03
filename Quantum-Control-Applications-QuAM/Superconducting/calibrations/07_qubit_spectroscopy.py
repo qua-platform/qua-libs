@@ -78,7 +78,7 @@ dfs = np.arange(-60e6, +80e6, 1e6)
 
 with program() as multi_qubit_spec:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubitss=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
 
     # Bring the active qubits to the minimum frequency point
@@ -201,8 +201,10 @@ else:
 
     plt.show()
     # additional files
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     # Save data from the node
     node_save(machine, "qubit_spectroscopy", data, additional_files)
 

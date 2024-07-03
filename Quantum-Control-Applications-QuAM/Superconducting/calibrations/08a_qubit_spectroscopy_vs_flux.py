@@ -74,35 +74,42 @@ dcs = np.linspace(-0.05, 0.05, 40)
 
 with program() as multi_qubit_spec_vs_flux:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
     dc = declare(fixed)  # QUA variable for the flux dc level
 
-    # Bring the active qubits to the minimum frequency point
-    machine.apply_all_flux_to_min()
+    for i, q in enumerate(qubits):
+        
+        # Bring the active qubits to the minimum frequency point
+        machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
 
-        with for_(*from_array(df, dfs)):
-            # Update the qubit frequencies for all qubits
-            for q in qubits:
+            with for_(*from_array(df, dfs)):
+                # Update the qubit frequencies for all qubits
                 update_frequency(q.xy.name, df + q.xy.intermediate_frequency)
 
-            with for_(*from_array(dc, dcs)):
-                # Flux sweeping for all qubits
-                for i, q in enumerate(qubits):
+                with for_(*from_array(dc, dcs)):
+                    # Flux sweeping for all qubits
                     q.z.set_dc_offset(dc)
-                wait(100)  # Wait for the flux to settle
+                    wait(100)  # Wait for the flux to settle
 
-                # Apply saturation pulse to all qubits
-                for q in qubits:
+                    # Apply saturation pulse to all qubits
                     q.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
 
-                # QUA macro to read the state of the active resonators
-                multiplexed_readout(qubits, I, I_st, Q, Q_st)
-                # Wait for the qubits to decay to the ground state
-                wait(cooldown_time * u.ns)
+                    # QUA macro to read the state of the active resonators
+                    q.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    
+                    # save data
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+
+                    # Wait for the qubits to decay to the ground state
+                    wait(cooldown_time * u.ns)
+
+        align(*qubits)
+
 
     with stream_processing():
         n_st.save("n")
@@ -129,7 +136,7 @@ else:
     job = qm.execute(multi_qubit_spec_vs_flux)
     # Get results from QUA program
 
-    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -169,9 +176,11 @@ else:
     qm.close()
 
     # Set the relevant flux points
-    # q[0].z.min_offset =
-    # q[1].z.min_offset =
-    # ...
+    # qubits[0].z.min_offset = 0.0
+    # qubits[1].z.min_offset = 0.0
+    # qubits[2].z.min_offset = 0.0
+    # qubits[3].z.min_offset = 0.0
+    # qubits[4].z.min_offset = 0.0
 
     # Save data from the node
     data = {}
@@ -182,7 +191,9 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files)
 

@@ -68,8 +68,8 @@ amplitudes = np.arange(0.5, 1.5, 0.05)
 dfs = np.arange(-5e6, 5e6, 0.1e6)
 
 with program() as ro_amp_freq_opt:
-    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
-    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=num_qubits)
+    I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
     a = declare(fixed)  # QUA variable for the readout amplitude
     df = declare(int)  # QUA variable for the readout frequency detuning
     counter = declare(int, value=0)  # Counter for the progress bar
@@ -192,8 +192,10 @@ else:
         data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency
 
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "readout_amplitude_frequency_optimization", data, additional_files)
 
 # %%

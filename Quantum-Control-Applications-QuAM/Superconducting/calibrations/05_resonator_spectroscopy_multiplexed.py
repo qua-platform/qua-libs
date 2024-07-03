@@ -52,7 +52,9 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
+qubits = machine.active_qubits
 resonators = [qubit.resonator for qubit in machine.active_qubits]
+num_qubits = len(qubits)
 num_resonators = len(resonators)
 
 ###################
@@ -70,33 +72,36 @@ dfs = np.arange(-4e6, +4e6, 0.1e6)
 with program() as multi_res_spec:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
-    I = [declare(fixed) for _ in range(num_resonators)]
-    Q = [declare(fixed) for _ in range(num_resonators)]
-    I_st = [declare_stream() for _ in range(num_resonators)]
-    Q_st = [declare_stream() for _ in range(num_resonators)]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(df, dfs)):
-            # wait for the resonators to deplete
-            wait(machine.depletion_time * u.ns, *[rr.name for rr in resonators])
+    for i, q in enumerate(qubits):
+        
+        # resonator of this qubit
+        rr = resonators[i]
 
-            for i in range(num_resonators):
-                rr = resonators[i]
+        with for_(n, 0, n < n_avg, n + 1):
+            with for_(*from_array(df, dfs)):
+                # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
+                
                 rr.measure("readout", qua_vars=(I[i], Q[i]))
+
+                # wait for the resonator to relax
+                rr.wait(machine.depletion_time * u.ns)
+
+                # save data
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
-                # if i > 0:
-                #     # Uncomment to measure each resonator sequentially
-                #     resonators[i].align(resonators[i-1])
+
+        align(*[rr.name for rr in resonators])
 
     with stream_processing():
-        for i in range(num_resonators):
+        for i in range(num_qubits):
             I_st[i].buffer(len(dfs)).average().save(f"I{i + 1}")
             Q_st[i].buffer(len(dfs)).average().save(f"Q{i + 1}")
 
@@ -119,7 +124,7 @@ else:
     # Execute the QUA program
     job = qm.execute(multi_res_spec)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    data_list = sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_resonators)], [])
+    data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Prepare the figures for live plotting
     fig = plt.figure()
@@ -129,19 +134,19 @@ else:
     while results.is_processing():
         # Fetch results
         data = results.fetch_all()
-        for i in range(num_resonators):
+        for i in range(num_qubits):
             I, Q = data[2*i:2*i+2]
             rr = resonators[i]
             # Data analysis
             s_data.append(u.demod2volts(I + 1j * Q, rr.operations["readout"].length))
             # Plot
-            plt.subplot(201 + 10*num_resonators + i)
+            plt.subplot(201 + 10*num_qubits + i)
             plt.suptitle("Multiplexed resonator spectroscopy")
             plt.cla()
             plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, np.abs(s_data[-1]), ".")
             plt.title(f"{rr.name}")
             plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-            plt.subplot(201 + 10*num_resonators + i + num_resonators)
+            plt.subplot(201 + 10*num_qubits + i + num_qubits)
             plt.cla()
             plt.plot(rr.intermediate_frequency / u.MHz + dfs / u.MHz, signal.detrend(np.unwrap(np.angle(s_data[-1]))), ".")
             plt.ylabel("Phase [rad]")
@@ -160,14 +165,13 @@ else:
         data[f"{rr.name}_R"] = np.abs(s)
         data[f"{rr.name}_phase"] = signal.detrend(np.unwrap(np.angle(s)))
 
-
     fig_fit = fig_analysis = plt.figure()
     plt.suptitle("Multiplexed resonator spectroscopy")
     for i, (rr, s) in enumerate(zip(resonators, s_data)):
         try:
             from qualang_tools.plot.fitting import Fit
             fit = Fit()
-            plt.subplot(1, num_resonators, i + 1)
+            plt.subplot(1, num_qubits, i + 1)
             res_1 = fit.reflection_resonator_spectroscopy((rr.intermediate_frequency + dfs) / u.MHz, np.abs(s), plot=True)
             plt.legend((f"f = {res_1['f'][0]:.3f} MHz",))
             plt.xlabel(f"{rr.name} IF [MHz]")
@@ -181,9 +185,10 @@ else:
             pass
     
     plt.show()
-    # additional files
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    # additional files    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     # Save data from the node
     node_save(machine, "resonator_spectroscopy_multiplexed", data, additional_files)
 

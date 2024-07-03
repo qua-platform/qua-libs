@@ -18,7 +18,7 @@ def apply_all_flux_to_idle(quam: "QuAM"):
     align()
 
 
-def qua_declaration(nb_of_qubits):
+def qua_declaration(num_qubits):
     """
     Macro to declare the necessary QUA variables
 
@@ -27,12 +27,12 @@ def qua_declaration(nb_of_qubits):
     """
     n = declare(int)
     n_st = declare_stream()
-    I = [declare(fixed) for _ in range(nb_of_qubits)]
-    Q = [declare(fixed) for _ in range(nb_of_qubits)]
-    I_st = [declare_stream() for _ in range(nb_of_qubits)]
-    Q_st = [declare_stream() for _ in range(nb_of_qubits)]
+    I = [declare(fixed) for _ in range(num_qubits)]
+    Q = [declare(fixed) for _ in range(num_qubits)]
+    I_st = [declare_stream() for _ in range(num_qubits)]
+    Q_st = [declare_stream() for _ in range(num_qubits)]
     # Workaround to manually assign the results variables to the readout elements
-    # for i in range(nb_of_qubits):
+    # for i in range(num_qubits):
     #     assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
 

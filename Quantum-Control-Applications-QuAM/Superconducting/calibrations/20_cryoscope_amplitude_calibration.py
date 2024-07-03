@@ -69,7 +69,7 @@ n_avg = 2
 flux_amp_array = np.linspace(0, 0.45, 1001)
 
 with program() as cryoscope:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=2)
     flux_amp = declare(fixed)  # Flux amplitude pre-factor
     flag = declare(bool)  # QUA boolean to switch between x90 and y90
     state = [declare(bool) for _ in range(2)]
@@ -204,8 +204,10 @@ else:
         f"{qb.name}_state": state,
         "figure": fig,
     }
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "cryoscope_vs_amplitude", data, additional_files)
 
 # %%

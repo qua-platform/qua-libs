@@ -64,7 +64,7 @@ n_avg = 2  # The number of averages
 times = np.arange(4, 200, 2)
 
 with program() as time_rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     t = declare(int)  # QUA variable for the qubit pulse duration
 
     # Bring the active qubits to the minimum frequency point
@@ -109,7 +109,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(time_rabi)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i+1}", f"Q{i+1}"] for i in range(num_qubits)], [])
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -172,7 +172,9 @@ else:
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": False}
     # additional files
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / 'configuration' / v: v for v in 
+        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    }
     # Save data from the node
     node_save(machine, "time_rabi", data, additional_files)

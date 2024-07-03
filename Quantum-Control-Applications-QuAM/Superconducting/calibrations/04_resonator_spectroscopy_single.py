@@ -177,6 +177,6 @@ else:
         pass
     # additional files
     additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
     # Save data from the node
     node_save(machine, "resonator_spectroscopy_single", data, additional_files)

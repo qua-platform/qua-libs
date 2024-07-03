@@ -134,6 +134,6 @@ else:
         "figure": fig,
     }
 
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in ["calibration_db.json", "optimal_weights.npz"]}
+    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
 
     node_save(machine, "raw_adc_traces", data, additional_files)

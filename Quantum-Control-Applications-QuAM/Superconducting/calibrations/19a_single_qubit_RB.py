@@ -376,7 +376,7 @@ else:
         data[f"{qubit.name}_figure_analysis"] = fig_analysis
 
     additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         ["calibration_db.json", "optimal_weights.npz"]}
+                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
     node_save(machine, "randomized_benchmarking", data, additional_files)
 
 # %%

@@ -79,6 +79,13 @@ class QuAM(QuamRoot):
             q.z.to_min()
         align()
 
+    def apply_all_flux_to_zero(self) -> None:
+        """Apply the offsets that bring all the active qubits to the zero bias point."""
+        align()
+        for q in self.active_qubits:
+            q.z.to_zero()
+        align()
+
     def connect(self) -> QuantumMachinesManager:
         """Open a Quantum Machine Manager with the credentials ("host" and "cluster_name") as defined in the network file.
 
