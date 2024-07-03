@@ -65,6 +65,13 @@ class QuAM(QuamRoot):
         """Return the longest thermalization time amongst the active qubits."""
         return max(q.thermalization_time for q in self.active_qubits)
 
+    def apply_all_couplers_to_min(self) -> None:
+        """Apply the offsets that bring all the active qubit pairs to a decoupled point."""
+        align()
+        for qp in self.active_qubit_pairs:
+            qp.coupler.to_decouple_idle()
+        align()
+
     def apply_all_flux_to_min(self) -> None:
         """Apply the offsets that bring all the active qubits to the minimum frequency point."""
         align()
