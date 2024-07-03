@@ -38,13 +38,16 @@ def create_quam_superconducting(wiring: dict = None,
         raise ValueError("Wiring must be provided.")
 
     host_ip = "172.16.33.107"
-    octave_ip = "172.16.33.102"  # or "192.168.88.X" if configured internally
+    octave_ips = [
+        "172.16.33.102",
+        "172.16.33.103",
+    ]        # or "192.168.88.X" if configured internally
     octave_port = 80  # 11XXX where XXX are the last digits of the Octave IP or 80 if configured internally
 
     machine.network = {
         "host": host_ip,
         "cluster_name": "Beta_8",
-        "octave_ip": octave_ip,
+        "octave_ips": octave_ips,
         "octave_port": octave_port,
         "data_folder": "/home/dean/src/qm/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
     }
@@ -61,7 +64,7 @@ def create_quam_superconducting(wiring: dict = None,
             # Assumes 1 Octave for every 4 qubits
             octave = Octave(
                 name=f"octave{i+1}",
-                ip=machine.network["octave_ip"],
+                ip=machine.network["octave_ips"][i],
                 port=machine.network["octave_port"],
                 calibration_db_path=os.path.dirname(__file__)
             )
