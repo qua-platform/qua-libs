@@ -166,30 +166,30 @@ if __name__ == "__main__":
     custom_port_wiring = {
         "qubits": {
             "q1": {
-                "res": (4, 1, 1, 1),  # (module, i_ch, octave, octave_ch)
-                "xy": (4, 3, 1, 2),  # (module, i_ch, octave, octave_ch)
-                "flux": (4, 7),  # (module, i_ch)
+                "res": (1, 1, 1, 1),  # (module, i_ch, octave, octave_ch)
+                "xy": (1, 3, 1, 2),  # (module, i_ch, octave, octave_ch)
+                "flux": (1, 7),  # (module, i_ch)
             },
             "q2": {
-                "res": (4, 1, 1, 1),
-                "xy": (4, 5, 1, 3),
-                "flux": (4, 8),
+                "res": (1, 1, 1, 1),
+                "xy": (1, 5, 1, 3),
+                "flux": (1, 8),
             },
-            # "q3": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (1, 7, 1, 4),
-            #     "flux": (2, 7),
-            # },
-            # "q4": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (2, 1, 1, 5),
-            #     "flux": (2, 8),
-            # },
-            # "q5": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (2, 3, 2, 1),
-            #     "flux": (3, 1),
-            # }
+            "q3": {
+                "res": (1, 1, 1, 1),
+                "xy": (1, 7, 1, 4),
+                "flux": (2, 7),
+            },
+            "q4": {
+                "res": (1, 1, 1, 1),
+                "xy": (2, 1, 2, 1),
+                "flux": (2, 8),
+            },
+            "q5": {
+                "res": (1, 1, 1, 1),
+                "xy": (2, 3, 2, 2),
+                "flux": (3, 1),
+            }
         },
         "qubit_pairs": {
             # (module, ch)
