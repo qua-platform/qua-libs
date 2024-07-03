@@ -131,9 +131,11 @@ class QuAM(QuamRoot):
         return config
 
 
+@quam_dataclass
 class FEMQuAM(QuAM):
     ports: FEMPortsContainer = field(default_factory=FEMPortsContainer)
 
 
+@quam_dataclass
 class OPXPlusQuAM(QuAM):
     ports: OPXPlusPortsContainer = field(default_factory=OPXPlusPortsContainer)
