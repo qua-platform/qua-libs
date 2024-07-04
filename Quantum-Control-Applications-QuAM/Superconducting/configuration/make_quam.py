@@ -182,6 +182,9 @@ def create_quam_superconducting(
         machine.active_qubit_pair_names.append(qubit_pair_name)
         add_default_transmon_pair_pulses(qubit_pair)
 
+    machine.ports.get_analog_input("con1", 2, 1, create=True)
+    machine.ports.get_analog_input("con1", 2, 2, create=True)
+
     return machine
 
 
