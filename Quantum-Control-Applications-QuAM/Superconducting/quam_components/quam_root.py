@@ -38,8 +38,6 @@ class QuAM(QuamRoot):
     active_qubit_names: List[str] = field(default_factory=list)
     active_qubit_pair_names: List[str] = field(default_factory=list)
 
-    mw_fem_dummies: List[int] = field(default_factory=list)
-
     _data_handler: ClassVar[DataHandler] = None
 
     @classmethod
@@ -119,17 +117,6 @@ class QuAM(QuamRoot):
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
                 print(f"No calibration elements found for {name}. Skipping calibration.")
-
-    def generate_config(self) -> Dict[str, Any]:
-        config = super().generate_config()
-
-        fems = config["controllers"]["con1"]["fems"]
-
-        for mw_fem_dummy in self.mw_fem_dummies:
-            fems[mw_fem_dummy] = {"type": "MW", "analog_outputs": {}}
-
-        return config
-
 
 @quam_dataclass
 class FEMQuAM(QuAM):

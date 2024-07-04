@@ -30,7 +30,6 @@ def create_quam_superconducting(
     quam_class: Type[QuamTypes],
     wiring: dict = None,
     octaves: Dict[str, Octave] = None,
-    mw_fem_dummies: List[int] = None,
 ) -> QuamTypes:
     """Create a QuAM with a number of qubits.
 
@@ -41,10 +40,7 @@ def create_quam_superconducting(
         QuamRoot: A QuAM with the specified number of qubits.
     """
     # Initiate the QuAM class
-    if mw_fem_dummies is None:
-        mw_fem_dummies = []
-
-    machine = quam_class(mw_fem_dummies=mw_fem_dummies)
+    machine = quam_class()
 
     # Define the connectivity
     if wiring is not None:
@@ -197,30 +193,30 @@ if __name__ == "__main__":
     custom_port_wiring = {
         "qubits": {
             "q1": {
-                "res": (4, 1, 1, 1),  # (module, i_ch, octave, octave_ch)
-                "xy": (4, 3, 1, 2),  # (module, i_ch, octave, octave_ch)
-                "flux": (4, 7),  # (module, i_ch)
+                "res": (1, 1, 1, 1),  # (module, i_ch, octave, octave_ch)
+                "xy": (1, 3, 1, 2),  # (module, i_ch, octave, octave_ch)
+                "flux": (2, 5),  # (module, i_ch)
             },
             "q2": {
-                "res": (4, 1, 1, 1),
-                "xy": (4, 5, 1, 3),
-                "flux": (4, 8),
+                "res": (1, 1, 1, 1),
+                "xy": (1, 5, 1, 3),
+                "flux": (2, 6),
             },
-            # "q3": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (1, 7, 1, 4),
-            #     "flux": (2, 7),
-            # },
-            # "q4": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (2, 1, 1, 5),
-            #     "flux": (2, 8),
-            # },
-            # "q5": {
-            #     "res": (1, 1, 1, 1),
-            #     "xy": (2, 3, 2, 1),
-            #     "flux": (3, 1),
-            # }
+            "q3": {
+                "res": (1, 1, 1, 1),
+                "xy": (1, 7, 1, 4),
+                "flux": (2, 7),
+            },
+            "q4": {
+                "res": (1, 1, 1, 1),
+                "xy": (2, 1, 2, 1),
+                "flux": (2, 8),
+            },
+            "q5": {
+                "res": (1, 1, 1, 1),
+                "xy": (2, 3, 2, 2),
+                "flux": (3, 1),
+            }
         },
         "qubit_pairs": {
             # (module, ch)
@@ -240,10 +236,7 @@ if __name__ == "__main__":
 
     wiring = create_wiring(port_allocation, using_opx_1000=using_opx_1000)
 
-    # mw_fem_dummies = []
-    mw_fem_dummies = [1, 2]
-
-    machine = create_quam_superconducting(quam_class, wiring, mw_fem_dummies=mw_fem_dummies)
+    machine = create_quam_superconducting(quam_class, wiring)
 
     machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 

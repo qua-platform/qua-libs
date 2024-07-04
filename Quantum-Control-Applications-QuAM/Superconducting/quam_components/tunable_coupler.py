@@ -1,11 +1,12 @@
+from quam.components import SingleChannel
+from quam.components.ports import LFFEMAnalogOutputPort
 from quam.core import quam_dataclass
-from .single_channel_lf_fem import SingleChannelLfFem
 
 __all__ = ["TunableCoupler"]
 
 
 @quam_dataclass
-class TunableCoupler(SingleChannelLfFem):
+class TunableCoupler(SingleChannel):
     """
     Example QuAM component for a tunable coupler.
 
@@ -18,6 +19,11 @@ class TunableCoupler(SingleChannelLfFem):
 
     decouple_offset: float = 0.0
     interaction_offset: float = 0.0
+
+    def __post_init__(self):
+        if isinstance(self.opx_output, LFFEMAnalogOutputPort):
+            self.opx_output.upsampling_mode = self.upsampling_mode
+            self.opx_output.output_mode = self.output_mode
 
     def to_decouple_idle(self):
         """Set the tunable coupler to the decouple offset"""
