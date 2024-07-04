@@ -24,8 +24,8 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 qm = qmm.open_qm(config)
 
-element = machine.active_qubits[0].xy
-# element = machine.active_qubits[0].resonator
+element = machine.active_qubits[0].resonator
+# element = machine.active_qubits[0].xy
 
 ###################
 # The QUA program #
@@ -34,7 +34,8 @@ with program() as continuous_wave:
     i = declare(int)
     # play for 10s
     with for_(i, 0, i < 300_000, i + 1):
-        play("x180_Square", element.name, duration=25_000)
+        # play("x180_Square", element.name, duration=25_000)
+        play("const", element.name, duration=25_000)
 
 
 ###########################
