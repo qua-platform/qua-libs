@@ -161,8 +161,8 @@ def create_qubit_wiring_opx1000(xy_ports, res_ports, flux_ports, con="con1"):
         "resonator": {
             "opx_output_I": f"#/ports/analog_outputs/{con}/{res_module}/{res_i_ch_out}",
             "opx_output_Q": f"#/ports/analog_outputs/{con}/{res_module}/{res_i_ch_out+1}",
-            "opx_input_I": f"#/analog_inputs/{con}/{res_module}/1",
-            "opx_input_Q": f"#/analog_inputs/{con}/{res_module}/2",
+            "opx_input_I": f"#/ports/analog_inputs/{con}/{res_module}/1",
+            "opx_input_Q": f"#/ports/analog_inputs/{con}/{res_module}/2",
             "digital_port": f"#/ports/digital_outputs/{con}/{res_module}/{res_i_ch_out}",
             "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
             "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
