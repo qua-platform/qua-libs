@@ -26,7 +26,7 @@ A function is provided to create a "default" wiring. The default wiring assigns 
 This extends over multiple LF-FEMs, OPX+ and Octaves when needed.
 
 An example of this is scheme is shown up to two qubits in the schematic below:
-![OPX+ Wiring Scheme](opx-plus-wiring-scheme.gif)
+![OPX+ Wiring Scheme](wiring-opx-plus.gif)
 
 ### Custom Connectivity
 It's possible to override the default connectivity in the initial QuAM using the following dictionary:
@@ -56,4 +56,4 @@ Note:
 
 #### Current Wiring
 The current `custom_port_wiring` is developed for the OPX1000 with LF-FEMs in slots 1-3, and with 2 Octaves for 5 qubits. It deviates from the default wiring as follows:
-![OPX1000 5Q Wiring Scheme](opx1000-5q-wiring-scheme.gif)
+![OPX1000 5Q Wiring Scheme](wiring-opx1000-5q.gif)

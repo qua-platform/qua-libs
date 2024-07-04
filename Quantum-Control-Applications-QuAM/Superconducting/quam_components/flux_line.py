@@ -1,12 +1,13 @@
+from quam.components import SingleChannel
+from quam.components.ports import LFFEMAnalogOutputPort
 from quam.core import quam_dataclass
-from .single_channel_lf_fem import SingleChannelLfFem
 
 
 __all__ = ["FluxLine"]
 
 
 @quam_dataclass
-class FluxLine(SingleChannelLfFem):
+class FluxLine(SingleChannel):
     """Example QuAM component for a flux line.
 
     Args:
@@ -22,7 +23,10 @@ class FluxLine(SingleChannelLfFem):
     joint_offset: float = 0.0
     min_offset: float = 0.0
 
-    # TODO: Crosstalk matrix
+    def __post_init__(self) -> None:
+        if isinstance(self.opx_output, LFFEMAnalogOutputPort):
+            self.opx_output.upsampling_mode = self.upsampling_mode
+            self.opx_output.output_mode = self.output_mode
 
     def to_independent_idle(self):
         """Set the flux bias to the independent offset"""
