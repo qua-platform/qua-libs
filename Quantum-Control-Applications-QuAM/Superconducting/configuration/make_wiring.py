@@ -112,54 +112,105 @@ def create_wiring(port_allocation, using_opx_1000: bool) -> dict:
     """
     wiring = {"qubits": {}, "qubit_pairs": []}
 
-    def port(module: int, ch: int):
-        """
-        Generate the port tuple for the OPX+/OPX1000 according to the templates
-        - OPX+     (con, ch)
-        - OPX1000  (con, fem, ch)
-        The argument `module` refers to either the:
-         "con" index if using the OPX+, or the
-         "fem" index if using the OPX1000 (for a single OPX1000 only).
-        """
-        return (f"con1", module, ch) if using_opx_1000 else (f"con{module}", ch)
-
     # Generate example wiring by default
     res_ports, xy_ports, flux_ports, coupler_ports = port_allocation
 
     num_qubits = len(port_allocation[0])
     for q_idx in range(0, num_qubits):
-        res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports[q_idx]
-        xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports[q_idx]
-        z_module, z_ch = flux_ports[q_idx]
-
-        # Note: The Q channel is set to the I channel plus one.
-        wiring["qubits"][f"q{q_idx}"] = {
-            "xy": {
-                "opx_output_I": port(xy_module, xy_i_ch),
-                "opx_output_Q": port(xy_module, xy_i_ch + 1),
-                "digital_port": port(xy_module, xy_i_ch),
-                "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
-            },
-            "z": {"opx_output": port(z_module, z_ch)},
-            "resonator": {
-                "opx_output_I": port(res_module, res_i_ch_out),
-                "opx_output_Q": port(res_module, res_i_ch_out + 1),
-                "opx_input_I": port(res_module, 1),
-                "opx_input_Q": port(res_module, 2),
-                "digital_port": port(res_module, res_i_ch_out),
-                "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
-                "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
-            },
-        }
+        if using_opx_1000:
+            wiring["qubits"][f"q{q_idx}"] = create_qubit_wiring_opx1000(
+                xy_ports=xy_ports[q_idx], res_ports=res_ports[q_idx], flux_ports=flux_ports[q_idx], con="con1"
+            )
+        else:
+            wiring["qubits"][f"q{q_idx}"] = create_qubit_wiring_opx_plus(
+                xy_ports=xy_ports[q_idx], res_ports=res_ports[q_idx], flux_ports=flux_ports[q_idx]
+            )
 
     for q_idx in range(num_qubits - 1):
-        c_module, c_ch = coupler_ports[q_idx]
-
-        wiring["qubit_pairs"].append({
-            "qubit_control": f"#/qubits/q{q_idx}", # reference to f"q{q_idx}"
-            "qubit_target": f"#/qubits/q{q_idx + 1}", # reference to f"q{q_idx + 1}"
-            "coupler": {"opx_output": port(c_module, c_ch)},
-        })
+        if using_opx_1000:
+            qubit_pair_wiring = create_qubit_pair_wiring_opx1000(
+                coupler_ports=coupler_ports[q_idx],
+                qubit_control=q_idx,
+                qubit_target=q_idx + 1,
+            )
+        else:
+            qubit_pair_wiring = create_qubit_pair_wiring_opx_plus(
+                coupler_ports=coupler_ports[q_idx],
+                qubit_control=q_idx,
+                qubit_target=q_idx + 1,
+            )
+        wiring["qubit_pairs"].append(qubit_pair_wiring)
 
     return wiring
 
+
+def create_qubit_wiring_opx1000(xy_ports, res_ports, flux_ports, con="con1"):
+    res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports
+    xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports
+    z_module, z_ch = flux_ports
+
+    # Note: The Q channel is set to the I channel plus one.
+    return {
+        "xy": {
+            "opx_output_I": f"#/ports/analog_outputs/{con}/{xy_module}/{xy_i_ch}",
+            "opx_output_Q": f"#/ports/analog_outputs/{con}/{xy_module}/{xy_i_ch+1}",
+            "digital_port": f"#/ports/digital_outputs/{con}/{xy_module}/{xy_i_ch}",
+            "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
+        },
+        "z": {"opx_output": f"#/ports/analog_outputs/{con}/{z_module}/{z_ch}"},
+        "resonator": {
+            "opx_output_I": f"#/ports/analog_outputs/{con}/{res_module}/{res_i_ch_out}",
+            "opx_output_Q": f"#/ports/analog_outputs/{con}/{res_module}/{res_i_ch_out+1}",
+            "opx_input_I": f"#/analog_inputs/{con}/{res_module}/1",
+            "opx_input_Q": f"#/analog_inputs/{con}/{res_module}/2",
+            "digital_port": f"#/ports/digital_outputs/{con}/{res_module}/{res_i_ch_out}",
+            "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+            "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
+        },
+    }
+
+
+def create_qubit_pair_wiring_opx1000(coupler_ports, qubit_control, qubit_target, con="con1"):
+    c_module, c_ch = coupler_ports
+
+    return {
+        "qubit_control": f"#/qubits/q{qubit_control}",  # reference to f"q{q_idx}"
+        "qubit_target": f"#/qubits/q{qubit_target}",  # reference to f"q{q_idx + 1}"
+        "coupler": {"opx_output": f"#/ports/analog_outputs/{con}/{c_module}/{c_ch}"},
+    }
+
+
+def create_qubit_wiring_opx_plus(xy_ports, res_ports, flux_ports):
+    res_module, res_i_ch_out, res_octave, res_octave_ch = res_ports
+    xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports
+    z_module, z_ch = flux_ports
+
+    # Note: The Q channel is set to the I channel plus one.
+    return {
+        "xy": {
+            "opx_output_I": f"#/ports/analog_outputs/{xy_module}/{xy_i_ch}",
+            "opx_output_Q": f"#/ports/analog_outputs/{xy_module}/{xy_i_ch+1}",
+            "digital_port": f"#/ports/digital_outputs/{xy_module}/{xy_i_ch}",
+            "frequency_converter_up": f"#/octaves/octave{xy_octave}/RF_outputs/{xy_octave_ch}",
+        },
+        "z": {"opx_output": f"#/ports/analog_outputs/{z_module}/{z_ch}"},
+        "resonator": {
+            "opx_output_I": f"#/ports/analog_outputs/{res_module}/{res_i_ch_out}",
+            "opx_output_Q": f"#/ports/analog_outputs/{res_module}/{res_i_ch_out+1}",
+            "opx_input_I": f"#/analog_inputs/{res_module}/1",
+            "opx_input_Q": f"#/analog_inputs/{res_module}/2",
+            "digital_port": f"#/ports/digital_outputs/{res_module}/{res_i_ch_out}",
+            "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
+            "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
+        },
+    }
+
+
+def create_qubit_pair_wiring_opx_plus(coupler_ports, qubit_control, qubit_target, con="con1"):
+    c_module, c_ch = coupler_ports
+
+    return {
+        "qubit_control": f"#/qubits/q{qubit_control}",  # reference to f"q{q_idx}"
+        "qubit_target": f"#/qubits/q{qubit_target}",  # reference to f"q{q_idx + 1}"
+        "coupler": {"opx_output": f"#/ports/analog_outputs/{c_module}/{c_ch}"},
+    }
