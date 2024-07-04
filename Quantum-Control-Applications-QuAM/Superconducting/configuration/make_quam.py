@@ -71,7 +71,7 @@ def create_quam_superconducting(
         print("If you haven't configured the octaves, please run: octave.initialize_frequency_converters()")
     else:
         # Add the Octave to the quam
-        for i in range(math.ceil(num_qubits / 4)):
+        for i in range(len(octave_ips)):
             # Assumes 1 Octave for every 4 qubits
             octave = Octave(
                 name=f"octave{i+1}",
