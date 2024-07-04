@@ -174,12 +174,12 @@ if __name__ == "__main__":
             "q1": {
                 "res": (1, 1, 1, 1),  # (module, i_ch, octave, octave_ch)
                 "xy": (1, 3, 1, 2),  # (module, i_ch, octave, octave_ch)
-                "flux": (1, 7),  # (module, i_ch)
+                "flux": (2, 5),  # (module, i_ch)
             },
             "q2": {
                 "res": (1, 1, 1, 1),
                 "xy": (1, 5, 1, 3),
-                "flux": (1, 8),
+                "flux": (2, 6),
             },
             "q3": {
                 "res": (1, 1, 1, 1),
