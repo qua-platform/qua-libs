@@ -128,8 +128,9 @@ class QuAM(QuamRoot):
 
         for fem, delay in enumerate(self.fem_delays):
             fem += 1
-            for analog_output in fems[fem].get("analog_outputs", {}).values():
+            for analog_output in fems.get(fem, {}).get("analog_outputs", {}).values():
                 analog_output["delay"] = delay
+                analog_output["offset"] = 0.
 
         for mw_fem_dummy in self.mw_fem_dummies:
             fems[mw_fem_dummy] = {
