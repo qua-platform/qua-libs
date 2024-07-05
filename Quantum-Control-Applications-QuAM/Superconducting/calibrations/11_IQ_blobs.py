@@ -110,7 +110,13 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iq_blobs)
     # Fetch data
-    data_list = sum([[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)], [])
+    data_list = sum(
+        [
+            [f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"]
+            for i in range(num_qubits)
+        ],
+        [],
+    )
     results = fetching_tool(job, data_list)
     fetched_data = results.fetch_all()
     I_g_data = fetched_data[1::2]
@@ -129,7 +135,9 @@ else:
 
         hist = np.histogram(I_g, bins=100)
         rus_threshold = hist[1][1:][np.argmax(hist[0])]
-        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, b_plot=True)
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+            I_g, Q_g, I_e, Q_e, True, b_plot=True
+        )
 
         plt.suptitle(f"{qubit.name} - IQ Blobs")
         plt.axvline(rus_threshold, color="k", linestyle="--", label="Threshold")
@@ -154,9 +162,6 @@ else:
 
     qm.close()
 
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "iq_blobs", data, additional_files)
+    node_save(machine, "iq_blobs", data, additional_files=True)
 
 # %%

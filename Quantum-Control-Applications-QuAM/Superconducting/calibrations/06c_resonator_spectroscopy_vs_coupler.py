@@ -78,10 +78,10 @@ with program() as multi_res_spec_vs_flux:
     df = declare(int)  # QUA variable for the readout frequency
 
     for i, q in enumerate(qubits):
-        
+
         # Bring the active qubits to the minimum frequency point
         machine.apply_all_flux_to_min()
-        
+
         # resonator of the qubit
         rr = resonators[i]
 
@@ -97,7 +97,7 @@ with program() as multi_res_spec_vs_flux:
                     for coupler in couplers:
                         coupler.set_dc_offset(dc)
                     wait(100)  # Wait for the flux to settle
-                    
+
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]))
 
@@ -134,7 +134,9 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
+    data_list = ["n"] + sum(
+        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
+    )
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -159,7 +161,9 @@ else:
             # Plot
             plt.subplot(1, num_resonators, i + 1)
             plt.cla()
-            plt.title(f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)")
+            plt.title(
+                f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)"
+            )
             plt.xlabel("Coupler Bias [V]")
             plt.ylabel(f"{rr.name} IF [MHz]")
             plt.pcolor(dcs, rr.intermediate_frequency / u.MHz + dfs / u.MHz, R)
@@ -184,9 +188,6 @@ else:
         data[f"{rr.name}_R"] = R_data[i]
         # data[f"{rr.name}_min_offset"] = qubit.z.min_offset
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "resonator_spectroscopy_vs_coupler", data, additional_files)
+    node_save(machine, "resonator_spectroscopy_vs_coupler", data, additional_files=True)
 
 # %%

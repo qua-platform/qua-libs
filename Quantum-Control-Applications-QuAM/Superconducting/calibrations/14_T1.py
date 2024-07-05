@@ -124,8 +124,14 @@ else:
         I_data = fetched_data[1::2]
         Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
-        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
+        I_volts = [
+            u.demod2volts(I, qubit.resonator.operations["readout"].length)
+            for I, qubit in zip(I_data, qubits)
+        ]
+        Q_volts = [
+            u.demod2volts(Q, qubit.resonator.operations["readout"].length)
+            for Q, qubit in zip(Q_data, qubits)
+        ]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
@@ -177,10 +183,7 @@ else:
     plt.show()
 
     # additional files
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
     # Save data from the node
-    node_save(machine, "T1", data, additional_files)
+    node_save(machine, "T1", data, additional_files=True)
 
 # %%

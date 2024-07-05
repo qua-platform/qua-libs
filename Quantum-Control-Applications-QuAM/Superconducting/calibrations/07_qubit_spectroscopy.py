@@ -71,7 +71,9 @@ operation = "saturation"  # The qubit operation to play, can be switched to "x18
 n_avg = 2  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
-saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
+saturation_amp = (
+    0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
+)
 # Qubit detuning sweep with respect to their resonance frequencies
 dfs = np.arange(-60e6, +80e6, 1e6)
 
@@ -92,7 +94,11 @@ with program() as multi_qubit_spec:
 
             for q in qubits:
                 # Play the saturation pulse
-                q.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
+                q.xy.play(
+                    operation,
+                    amplitude_scale=saturation_amp,
+                    duration=saturation_len * u.ns,
+                )
                 align(q.xy.name, q.resonator.name)
 
             # QUA macro the readout the state of the active resonators (defined in macros.py)
@@ -142,7 +148,9 @@ else:
         plt.suptitle("Qubit spectroscopy")
         s_data = []
         for i, q in enumerate(qubits):
-            s = u.demod2volts(I[i] + 1j * Q[i], q.resonator.operations["readout"].length)
+            s = u.demod2volts(
+                I[i] + 1j * Q[i], q.resonator.operations["readout"].length
+            )
             s_data.append(s)
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
@@ -181,7 +189,9 @@ else:
             fit = Fit()
             plt.subplot(1, num_qubits, i + 1)
             res = fit.reflection_resonator_spectroscopy(
-                (q.xy.intermediate_frequency + dfs) / u.MHz, -np.angle(s_data[i]), plot=True
+                (q.xy.intermediate_frequency + dfs) / u.MHz,
+                -np.angle(s_data[i]),
+                plot=True,
             )
             plt.legend((f"f = {res['f'][0]:.3f} MHz",))
             plt.xlabel(f"{q.name} IF [MHz]")
@@ -189,7 +199,10 @@ else:
             plt.title(f"{q.name}")
 
             q.xy.intermediate_frequency = int(res["f"][0] * u.MHz)
-            data[f"{q.name}"] = {"res_if": q.xy.intermediate_frequency, "fit_successful": True}
+            data[f"{q.name}"] = {
+                "res_if": q.xy.intermediate_frequency,
+                "fit_successful": True,
+            }
 
             plt.tight_layout()
             data["fit_figure"] = fit_fig
@@ -200,10 +213,7 @@ else:
 
     plt.show()
     # additional files
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
     # Save data from the node
-    node_save(machine, "qubit_spectroscopy", data, additional_files)
+    node_save(machine, "qubit_spectroscopy", data, additional_files=True)
 
 # %%

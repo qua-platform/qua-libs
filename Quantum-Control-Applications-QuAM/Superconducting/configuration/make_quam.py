@@ -17,8 +17,15 @@ from quam_components import (
     OPXPlusQuAM,
 )
 
-from make_pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
-from make_wiring import default_port_allocation, custom_port_allocation, create_wiring
+from configuration.make_pulses import (
+    add_default_transmon_pulses,
+    add_default_transmon_pair_pulses,
+)
+from configuration.make_wiring import (
+    default_port_allocation,
+    custom_port_allocation,
+    create_wiring,
+)
 
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -60,7 +67,7 @@ def create_quam_superconducting(
         "cluster_name": "Beta_8",
         "octave_ips": octave_ips,
         "octave_port": octave_port,
-        "data_folder": "/home/dean/src/qm/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
+        "data_folder": "/Users/serwan/Repositories/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/data",
     }
     print("Please update the default network settings in: quam.network")
 
@@ -68,14 +75,16 @@ def create_quam_superconducting(
 
     if octaves is not None:
         machine.octaves = octaves
-        print("If you haven't configured the octaves, please run: octave.initialize_frequency_converters()")
+        print(
+            "If you haven't configured the octaves, please run: octave.initialize_frequency_converters()"
+        )
     else:
         # Add the Octave to the quam
         for i in range(len(octave_ips)):
             # Assumes 1 Octave for every 4 qubits
             octave = Octave(
                 name=f"octave{i+1}",
-                ip=machine.network["octave_ip"][i],
+                ip=machine.network["octave_ips"][i],
                 port=machine.network["octave_port"],
                 calibration_db_path=os.path.dirname(__file__),
             )
@@ -86,15 +95,33 @@ def create_quam_superconducting(
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
         # Create all necessary ports
-        machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("digital_port"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("opx_output_I"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("opx_output_Q"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.z.get_unreferenced_value("opx_output"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.resonator.get_unreferenced_value("opx_output_I"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.resonator.get_unreferenced_value("opx_output_Q"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.resonator.get_unreferenced_value("opx_input_I"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.resonator.get_unreferenced_value("opx_input_Q"), create=True)
-        machine.ports.reference_to_port(qubit_wiring.resonator.get_unreferenced_value("digital_port"), create=True)
+        machine.ports.reference_to_port(
+            qubit_wiring.xy.get_unreferenced_value("digital_port"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.xy.get_unreferenced_value("opx_output_I"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.xy.get_unreferenced_value("opx_output_Q"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.z.get_unreferenced_value("opx_output"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.resonator.get_unreferenced_value("opx_output_I"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.resonator.get_unreferenced_value("opx_output_Q"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.resonator.get_unreferenced_value("opx_input_I"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.resonator.get_unreferenced_value("opx_input_Q"), create=True
+        )
+        machine.ports.reference_to_port(
+            qubit_wiring.resonator.get_unreferenced_value("digital_port"), create=True
+        )
 
         # Create qubit components
         transmon = Transmon(
@@ -106,7 +133,9 @@ def create_quam_superconducting(
                 intermediate_frequency=100 * u.MHz,
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.xy.get_unreferenced_value("digital_port"),
+                        opx_output=qubit_wiring.xy.get_unreferenced_value(
+                            "digital_port"
+                        ),
                         delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
@@ -114,13 +143,23 @@ def create_quam_superconducting(
             ),
             z=FluxLine(opx_output=qubit_wiring.z.get_unreferenced_value("opx_output")),
             resonator=ReadoutResonator(
-                opx_output_I=qubit_wiring.resonator.get_unreferenced_value("opx_output_I"),
-                opx_output_Q=qubit_wiring.resonator.get_unreferenced_value("opx_output_Q"),
-                opx_input_I=qubit_wiring.resonator.get_unreferenced_value("opx_input_I"),
-                opx_input_Q=qubit_wiring.resonator.get_unreferenced_value("opx_input_Q"),
+                opx_output_I=qubit_wiring.resonator.get_unreferenced_value(
+                    "opx_output_I"
+                ),
+                opx_output_Q=qubit_wiring.resonator.get_unreferenced_value(
+                    "opx_output_Q"
+                ),
+                opx_input_I=qubit_wiring.resonator.get_unreferenced_value(
+                    "opx_input_I"
+                ),
+                opx_input_Q=qubit_wiring.resonator.get_unreferenced_value(
+                    "opx_input_Q"
+                ),
                 digital_outputs={
                     "octave_switch": DigitalOutputChannel(
-                        opx_output=qubit_wiring.resonator.get_unreferenced_value("digital_port"),
+                        opx_output=qubit_wiring.resonator.get_unreferenced_value(
+                            "digital_port"
+                        ),
                         delay=87,  # 57ns for QOP222 and above
                         buffer=15,  # 18ns for QOP222 and above
                     )
@@ -144,7 +183,9 @@ def create_quam_superconducting(
         # RF_output.output_mode = "triggered"
         RF_output.LO_frequency = 7 * u.GHz
         print(f"Please set the LO frequency of {RF_output.get_reference()}")
-        print(f"Please set the output mode of {RF_output.get_reference()} to always_on or triggered")
+        print(
+            f"Please set the output mode of {RF_output.get_reference()} to always_on or triggered"
+        )
 
     # Only set resonator RF outputs once
     RF_output_resonator = transmon.resonator.frequency_converter_up
@@ -153,7 +194,9 @@ def create_quam_superconducting(
     # RF_output_resonator.output_mode = "triggered"
     RF_output_resonator.LO_frequency = 4 * u.GHz
     print(f"Please set the LO frequency of {RF_output_resonator.get_reference()}")
-    print(f"Please set the output mode of {RF_output_resonator.get_reference()} to always_on or triggered")
+    print(
+        f"Please set the output mode of {RF_output_resonator.get_reference()} to always_on or triggered"
+    )
 
     RF_input_resonator = transmon.resonator.frequency_converter_down
     RF_input_resonator.channel = transmon.resonator.get_reference()
@@ -167,10 +210,13 @@ def create_quam_superconducting(
         qubit_pair_name = f"{qubit_control_name}_{qubit_target_name}"
         coupler_name = f"coupler_{qubit_pair_name}"
 
-        machine.ports.reference_to_port(qubit_pair_wiring.coupler.get_unreferenced_value("opx_output"), create=True)
+        machine.ports.reference_to_port(
+            qubit_pair_wiring.coupler.get_unreferenced_value("opx_output"), create=True
+        )
 
         coupler = TunableCoupler(
-            id=coupler_name, opx_output=qubit_pair_wiring.coupler.get_unreferenced_value("opx_output")
+            id=coupler_name,
+            opx_output=qubit_pair_wiring.coupler.get_unreferenced_value("opx_output"),
         )
 
         # Note: The Q channel is set to the I channel plus one.

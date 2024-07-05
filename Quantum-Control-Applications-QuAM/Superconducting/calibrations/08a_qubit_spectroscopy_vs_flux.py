@@ -60,7 +60,9 @@ cooldown_time = max(q.thermalization_time for q in qubits)
 
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
-saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
+saturation_amp = (
+    0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
+)
 
 # Qubit detuning sweep with respect to their resonance frequencies
 dfs = np.arange(-50e6, 100e6, 0.1e6)
@@ -78,7 +80,7 @@ with program() as multi_qubit_spec_vs_flux:
     dc = declare(fixed)  # QUA variable for the flux dc level
 
     for i, q in enumerate(qubits):
-        
+
         # Bring the active qubits to the minimum frequency point
         machine.apply_all_flux_to_min()
 
@@ -95,11 +97,15 @@ with program() as multi_qubit_spec_vs_flux:
                     wait(100)  # Wait for the flux to settle
 
                     # Apply saturation pulse to all qubits
-                    q.xy.play(operation, amplitude_scale=saturation_amp, duration=saturation_len * u.ns)
+                    q.xy.play(
+                        operation,
+                        amplitude_scale=saturation_amp,
+                        duration=saturation_len * u.ns,
+                    )
 
                     # QUA macro to read the state of the active resonators
                     q.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    
+
                     # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
@@ -108,7 +114,6 @@ with program() as multi_qubit_spec_vs_flux:
                     wait(cooldown_time * u.ns)
 
         align(*qubits)
-
 
     with stream_processing():
         n_st.save("n")
@@ -153,7 +158,9 @@ else:
         plt.suptitle("Qubit spectroscopy vs flux")
         s_data = []
         for i, q in enumerate(qubits):
-            s = u.demod2volts(I[i] + 1j * Q[i], q.resonator.operations["readout"].length)
+            s = u.demod2volts(
+                I[i] + 1j * Q[i], q.resonator.operations["readout"].length
+            )
             s_data.append(s)
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
@@ -164,7 +171,9 @@ else:
             plt.title(f"{q.name} (f_01: {q.f_01 / u.MHz} MHz)")
             plt.subplot(2, num_qubits, num_qubits + i + 1)
             plt.cla()
-            plt.pcolor(dcs, (q.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s)))
+            plt.pcolor(
+                dcs, (q.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s))
+            )
             plt.plot(q.z.min_offset, q.xy.intermediate_frequency / u.MHz, "r*")
             plt.xlabel("Flux [V]")
             plt.ylabel(f"{q.name} IF [MHz]")
@@ -190,7 +199,4 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files)
+    node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files=True)

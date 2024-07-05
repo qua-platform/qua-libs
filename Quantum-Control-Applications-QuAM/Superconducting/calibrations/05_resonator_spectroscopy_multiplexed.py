@@ -188,6 +188,6 @@ else:
         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
     }
     # Save data from the node
-    node_save(machine, "resonator_spectroscopy_multiplexed", data, additional_files)
+    node_save(machine, "resonator_spectroscopy_multiplexed", data, additional_files=True)
 
 # %%

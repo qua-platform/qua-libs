@@ -93,10 +93,15 @@ config = machine.generate_config()
 division_length = 10  # size of one demodulation slice in clock cycles
 number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
-print("The readout has been sliced in the following number of divisions", number_of_divisions)
+print(
+    "The readout has been sliced in the following number of divisions",
+    number_of_divisions,
+)
 
 # Time axis for the plots at the end
-x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
+x_plot = np.arange(
+    division_length * 4, readout_len + ringdown_len + 1, division_length * 4
+)
 
 with program() as ro_duration_opt:
     n = declare(int)
@@ -123,7 +128,9 @@ with program() as ro_duration_opt:
             # Play on the other resonators to be in the same conditions as with multiplexed readout
             measure("readout", other_rr.name, None)
         # With demod.accumulated, the results are QUA vectors with 1 point for each accumulated chunk
-        rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+        rr.measure_accumulated(
+            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
+        )
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
             save(I[ind], Ig_st)
@@ -140,7 +147,9 @@ with program() as ro_duration_opt:
         # Play on the other resonators to be in the same conditions as with multiplexed readout
         for other_rr in [q.resonator for q in qubits if q.resonator != rr]:
             measure("readout", other_rr.name, None)
-        rr.measure_accumulated("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+        rr.measure_accumulated(
+            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
+        )
         # Save the QUA vectors to their corresponding streams
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
             assign(I[ind], II[ind] + IQ[ind])
@@ -162,20 +171,52 @@ with program() as ro_duration_opt:
         Qe_st.buffer(number_of_divisions).average().save("Qe_avg")
         # variances
         (
-            ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
-            - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
+            (
+                (
+                    Ig_st.buffer(number_of_divisions)
+                    * Ig_st.buffer(number_of_divisions)
+                ).average()
+            )
+            - (
+                Ig_st.buffer(number_of_divisions).average()
+                * Ig_st.buffer(number_of_divisions).average()
+            )
         ).save("Ig_var")
         (
-            ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
-            - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
+            (
+                (
+                    Qg_st.buffer(number_of_divisions)
+                    * Qg_st.buffer(number_of_divisions)
+                ).average()
+            )
+            - (
+                Qg_st.buffer(number_of_divisions).average()
+                * Qg_st.buffer(number_of_divisions).average()
+            )
         ).save("Qg_var")
         (
-            ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
-            - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
+            (
+                (
+                    Ie_st.buffer(number_of_divisions)
+                    * Ie_st.buffer(number_of_divisions)
+                ).average()
+            )
+            - (
+                Ie_st.buffer(number_of_divisions).average()
+                * Ie_st.buffer(number_of_divisions).average()
+            )
         ).save("Ie_var")
         (
-            ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
-            - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
+            (
+                (
+                    Qe_st.buffer(number_of_divisions)
+                    * Qe_st.buffer(number_of_divisions)
+                ).average()
+            )
+            - (
+                Qe_st.buffer(number_of_divisions).average()
+                * Qe_st.buffer(number_of_divisions).average()
+            )
         ).save("Qe_var")
 
 
@@ -199,7 +240,17 @@ else:
     # Get results from QUA program
     results = fetching_tool(
         job,
-        data_list=["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"],
+        data_list=[
+            "Ig_avg",
+            "Qg_avg",
+            "Ie_avg",
+            "Qe_avg",
+            "Ig_var",
+            "Qg_var",
+            "Ie_var",
+            "Qe_var",
+            "iteration",
+        ],
         mode="live",
     )
     # Live plotting
@@ -207,7 +258,9 @@ else:
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = results.fetch_all()
+        Ig_avg, Qg_avg, Ie_avg, Qe_avg, Ig_var, Qg_var, Ie_var, Qe_var, iteration = (
+            results.fetch_all()
+        )
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Derive the SNR
@@ -262,7 +315,4 @@ else:
         "figure": fig,
     }
 
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "readout_duration_optimization", data, additional_files)
+    node_save(machine, "readout_duration_optimization", data, additional_files=True)

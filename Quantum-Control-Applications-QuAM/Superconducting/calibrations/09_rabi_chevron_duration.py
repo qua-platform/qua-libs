@@ -128,8 +128,12 @@ else:
         I_volts, Q_volts = [], []
         for i, qubit in enumerate(qubits):
             # Convert results into Volts
-            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
-            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
+            I_volts.append(
+                u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
+            )
+            Q_volts.append(
+                u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
+            )
             # Plot results
             plt.suptitle("Rabi chevron")
             plt.subplot(2, num_qubits, i + 1)
@@ -157,9 +161,6 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "rabi_chevron_duration", data, additional_files)
+    node_save(machine, "rabi_chevron_duration", data, additional_files=True)
 
 # %%
