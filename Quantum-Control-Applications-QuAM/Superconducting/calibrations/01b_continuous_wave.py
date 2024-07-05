@@ -5,7 +5,7 @@ A simple program to play a continuous wave for spectrum analysis
 from qm import SimulationConfig
 from qm.qua import *
 from pathlib import Path
-from quam_components import QuAM
+from quam_libs.components import QuAM
 import matplotlib.pyplot as plt
 
 ###################################################

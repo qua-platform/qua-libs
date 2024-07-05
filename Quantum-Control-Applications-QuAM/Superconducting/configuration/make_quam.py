@@ -6,7 +6,7 @@ import json
 
 from qualang_tools.units import unit
 from quam.components import Octave, IQChannel, DigitalOutputChannel
-from quam_components import (
+from quam_libs.components import (
     Transmon,
     ReadoutResonator,
     FluxLine,

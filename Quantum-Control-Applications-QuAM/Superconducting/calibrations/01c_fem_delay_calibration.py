@@ -18,8 +18,8 @@ from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import node_save
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter

@@ -4,7 +4,7 @@ from typing import Optional, Union
 import warnings
 
 from qm.qua import *
-from quam_components import QuAM
+from quam_libs.components import QuAM
 
 
 __all__ = [

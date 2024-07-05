@@ -37,8 +37,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-from quam_components import QuAM, Transmon
-from macros import qua_declaration, multiplexed_readout
+from quam_libs.components import QuAM, Transmon
+from quam_libs.macros import qua_declaration, multiplexed_readout
 
 
 ###################################################
@@ -364,8 +364,14 @@ with program() as arb_two_qst:
                 machine.qubits[qubit_list[0]].driving.drag_cosine.length,
             )
 
-            align(machine.qubits[qubit_list[0]].name, machine.readout_resonators[qubit_list[0]].name)
-            align(machine.qubits[qubit_list[1]].name, machine.readout_resonators[qubit_list[1]].name)
+            align(
+                machine.qubits[qubit_list[0]].name,
+                machine.readout_resonators[qubit_list[0]].name,
+            )
+            align(
+                machine.qubits[qubit_list[1]].name,
+                machine.readout_resonators[qubit_list[1]].name,
+            )
 
             # align()
 
@@ -399,7 +405,9 @@ with program() as arb_two_qst:
             # state_st[i].boolean_to_int().buffer(2).buffer(3).buffer(len(lengths)).average().save(f"states{q}")\
             # state_st[i].boolean_to_int().buffer(9).average().save(f"states{q}")
             # state_st[i].boolean_to_int().buffer(3).buffer(len(lengths)).save(f"states_no_avg{q}")
-            state_st[i].boolean_to_int().buffer(9).buffer(n_avg).save(f"state_all_shots{q}")
+            state_st[i].boolean_to_int().buffer(9).buffer(n_avg).save(
+                f"state_all_shots{q}"
+            )
             # state_st[i].boolean_to_int().buffer(len(lengths)).average().save(f"state{q}")
             n_st[i].save(f"iteration{q}")
 
@@ -433,7 +441,12 @@ with JobQueue("Daria", message="2QST"):
         # Get results from QUA program
         my_results = fetching_tool(
             job,
-            [f"state_all_shots{qubit_list[0]}", f"state_all_shots{qubit_list[1]}", "state_decimal", f"iteration{q}"],
+            [
+                f"state_all_shots{qubit_list[0]}",
+                f"state_all_shots{qubit_list[1]}",
+                "state_decimal",
+                f"iteration{q}",
+            ],
             mode="live",
         )
 
@@ -446,7 +459,9 @@ with JobQueue("Daria", message="2QST"):
             qubit_data["iteration"] = data[-1]
 
             # Progress bar
-            progress_counter(qubit_data["iteration"], n_avg, start_time=my_results.start_time)
+            progress_counter(
+                qubit_data["iteration"], n_avg, start_time=my_results.start_time
+            )
 
         # initiate res_dict[*]=0 for each msrmt round
         for k, v in res_dict.items():
@@ -483,7 +498,12 @@ with JobQueue("Daria", message="2QST"):
             for i in range(len(IZ)):
                 for j in range(len(IZ)):
                     res_dict[expec_name_1[k][i] + expec_name_2[k][j]].append(
-                        np.sum(np.matmul(ops_dict[IZ[i] + IZ[j]], np.matrix(P[:, :, k]).transpose()))
+                        np.sum(
+                            np.matmul(
+                                ops_dict[IZ[i] + IZ[j]],
+                                np.matrix(P[:, :, k]).transpose(),
+                            )
+                        )
                     )
         # print(res_dict)
         for k, v in res_dict.items():
@@ -493,7 +513,14 @@ with JobQueue("Daria", message="2QST"):
         x0[:] = 0.25
 
         # result = minimize(loss_func, x0=x0, args=(res_dict, ops_dict), method="BFGS", tol=1e-40, options={'maxiter':1000000, 'gtol':1e-30})
-        result = least_squares(loss_func, x0=x0, args=(res_dict, ops_dict), xtol=1e-15, gtol=1e-15, method="trf")
+        result = least_squares(
+            loss_func,
+            x0=x0,
+            args=(res_dict, ops_dict),
+            xtol=1e-15,
+            gtol=1e-15,
+            method="trf",
+        )
         # print(f'Cost = {result.cost}')
         # print(f'Optimality = {result.optimality}')
         # result.x
@@ -524,7 +551,10 @@ with JobQueue("Daria", message="2QST"):
                 + f"_2QST_SquarePulse_[qubit_data,res_dict]_RawData_Q{qubit_list}_ROdur_{machine.readout_lines[0].length}_avg_{n_avg}_Fid_{np.real(fid):.2f}_"
             )
             os.makedirs(data_dir + "\\", exist_ok=True)
-            np.save(data_dir + "\\" + "/" + datetime.now().strftime("%H%M%S") + file_name, [qubit_data, res_dict])
+            np.save(
+                data_dir + "\\" + "/" + datetime.now().strftime("%H%M%S") + file_name,
+                [qubit_data, res_dict],
+            )
 
             file_name = (
                 "_"
@@ -532,7 +562,10 @@ with JobQueue("Daria", message="2QST"):
                 + q2_gate
                 + f"_2QST_[rho]_RawData_Q{qubit_list}_ROdur_{machine.readout_lines[0].length}_avg_{n_avg}_Fid_{np.real(fid):.2f}_"
             )
-            np.save(data_dir + "\\" + "/" + datetime.now().strftime("%H%M%S") + file_name, rho)
+            np.save(
+                data_dir + "\\" + "/" + datetime.now().strftime("%H%M%S") + file_name,
+                rho,
+            )
         # Visualize the density matrix
 
         xlabels = ["|00>", "|01>", "|10>", "|11>"]
@@ -542,7 +575,12 @@ with JobQueue("Daria", message="2QST"):
             xlabels=xlabels,
             ylabels=xlabels,
             limits=[-0.3, 0.3],
-            options={"cmap": "winter_r", "bars_alpha": 0.5, "figsize": (7, 5), "zticks": [-0.2, 0, 0.2]},
+            options={
+                "cmap": "winter_r",
+                "bars_alpha": 0.5,
+                "figsize": (7, 5),
+                "zticks": [-0.2, 0, 0.2],
+            },
         )
         ax1.set_title("$\\mathcal{Re}~(\\rho$)", fontsize=17)
         ax1.view_init(azim=-38, elev=20)
@@ -552,7 +590,12 @@ with JobQueue("Daria", message="2QST"):
             xlabels=xlabels,
             ylabels=xlabels,
             limits=[-0.3, 0.3],
-            options={"cmap": "winter_r", "bars_alpha": 0.5, "figsize": (7, 5), "zticks": [-0.2, 0, 0.2]},
+            options={
+                "cmap": "winter_r",
+                "bars_alpha": 0.5,
+                "figsize": (7, 5),
+                "zticks": [-0.2, 0, 0.2],
+            },
         )
         ax2.set_title("$\\mathcal{Im}~(\\rho$)", fontsize=17)
         ax2.view_init(azim=-38, elev=20)

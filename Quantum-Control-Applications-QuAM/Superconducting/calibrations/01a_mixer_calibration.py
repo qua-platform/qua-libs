@@ -3,7 +3,7 @@ A simple program to calibrate Octave mixers for all qubits and resonators
 """
 
 from pathlib import Path
-from quam_components import QuAM
+from quam_libs.components import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #

@@ -26,8 +26,8 @@ from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np

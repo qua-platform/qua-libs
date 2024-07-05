@@ -24,8 +24,8 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
-from quam_components import QuAM, Transmon, ReadoutResonator
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM, Transmon, ReadoutResonator
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np

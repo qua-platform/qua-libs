@@ -30,8 +30,8 @@ from qualang_tools.units import unit
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib
 

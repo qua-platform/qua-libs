@@ -5,7 +5,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
-from quam_components import QuAM
+from quam_libs.components import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
