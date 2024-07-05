@@ -17,11 +17,11 @@ from quam_libs.components import (
     OPXPlusQuAM,
 )
 
-from configuration.make_pulses import (
+from make_pulses import (
     add_default_transmon_pulses,
     add_default_transmon_pair_pulses,
 )
-from configuration.make_wiring import (
+from make_wiring import (
     default_port_allocation,
     custom_port_allocation,
     create_wiring,

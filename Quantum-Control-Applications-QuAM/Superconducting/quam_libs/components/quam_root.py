@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
@@ -43,10 +44,8 @@ class QuAM(QuamRoot):
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
-        if not args:
-            import configuration.quam_state
-
-            args = (configuration.quam_state.__path__[0],)
+        if not args and "quam_state_path" in os.environ:
+            args = (os.environ["quam_state_path"],)
         return super().load(*args, **kwargs)
 
     def save(
@@ -56,17 +55,18 @@ class QuAM(QuamRoot):
         include_defaults: bool = False,
         ignore: Sequence[str] = None,
     ):
-        if path is None:
-            import configuration.quam_state
+        if path is None and "quam_state_path" in os.environ:
+            path = os.environ["quam_state_path"]
 
-            path = configuration.quam_state.__path__[0]
         super().save(path, content_mapping, include_defaults, ignore)
 
     @property
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
+            self._data_handler = DataHandler(
+                root_data_folder=self.network["data_folder"]
+            )
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 
@@ -148,7 +148,9 @@ class QuAM(QuamRoot):
             try:
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
-                print(f"No calibration elements found for {name}. Skipping calibration.")
+                print(
+                    f"No calibration elements found for {name}. Skipping calibration."
+                )
 
 
 @quam_dataclass
