@@ -108,8 +108,4 @@ def node_save(
     )
 
     # Save QuAM to configuration directory / `state.json`
-    config_dir = Path(__file__).parent.parent / "configuration"
-    quam.save(
-        path=config_dir / "quam_state",
-        content_mapping={"wiring.json": {"wiring", "network"}},
-    )
+    quam.save(content_mapping={"wiring.json": {"wiring", "network"}})
