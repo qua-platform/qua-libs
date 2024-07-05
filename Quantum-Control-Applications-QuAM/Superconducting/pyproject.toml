@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "quam_components"
+name = "quam_libs"
 version = "0.1.0"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"
@@ -10,11 +10,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
-]
-packages = [
-    { include = "quam_components" },
-    { include = "configuration" },
-    { include = "macros" },
 ]
 
 [tool.poetry.dependencies]
