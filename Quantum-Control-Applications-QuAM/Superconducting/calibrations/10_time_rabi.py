@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 ###################################################
@@ -38,10 +39,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -127,12 +126,12 @@ else:
         for i, qubit in enumerate(qubits):
             I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
             Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
-            plt.subplot(2, num_qubits, i+1)
+            plt.subplot(2, num_qubits, i + 1)
             plt.cla()
             plt.plot(times * 4, I_volts[i])
             plt.title(f"{qubit.name}")
             plt.ylabel("I quadrature [V]")
-            plt.subplot(2, num_qubits, i+num_qubits+1)
+            plt.subplot(2, num_qubits, i + num_qubits + 1)
             plt.cla()
             plt.plot(times * 4, Q_volts[i])
             plt.xlabel("qubit pulse duration [ns]")
@@ -157,7 +156,7 @@ else:
             fit = Fit()
             plt.figure()
             plt.suptitle("Time Rabi")
-            plt.subplot(1, num_qubits, i+1)
+            plt.subplot(1, num_qubits, i + 1)
             rabi_fit1 = fit.rabi(4 * times, I_volts[i], plot=True)
             plt.title(f"{qubit.name}")
             plt.xlabel("Rabi pulse duration [ns]")
@@ -173,8 +172,7 @@ else:
             data[f"{qubit.name}"] = {"successful_fit": False}
     # additional files
     additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
     }
     # Save data from the node
     node_save(machine, "time_rabi", data, additional_files)

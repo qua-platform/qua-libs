@@ -1,6 +1,7 @@
 """
 A simple sandbox to showcase different QUA functionalities during the installation.
 """
+
 from pathlib import Path
 from qm.qua import *
 from qm import SimulationConfig
@@ -11,10 +12,8 @@ from quam_components import QuAM
 ###################################################
 # Instantiate the QuAM class from the state file
 
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Load the machine state
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()

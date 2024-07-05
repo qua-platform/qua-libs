@@ -4,6 +4,9 @@ from qm.qua import *
 from quam_components import QuAM
 
 
+__all__ = ["apply_all_flux_to_min", "apply_all_flux_to_idle", "qua_declaration", "multiplexed_readout", "node_save"]
+
+
 def apply_all_flux_to_min(quam: "QuAM"):
     align()
     for q in quam.active_qubits:
@@ -22,7 +25,7 @@ def qua_declaration(num_qubits):
     """
     Macro to declare the necessary QUA variables
 
-    :param nb_of_qubits: Number of qubits used in this experiment
+    :param num_qubits: Number of qubits used in this experiment
     :return:
     """
     n = declare(int)
@@ -62,5 +65,5 @@ def node_save(quam: QuAM, name: str, data: dict, additional_files: dict):
     quam.save(path=quam.data_handler.path / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})
 
     # Save QuAM to configuration directory / `state.json`
-    config_dir = Path(__file__).parent.parent / 'configuration'
+    config_dir = Path(__file__).parent.parent / "configuration"
     quam.save(path=config_dir / "quam_state", content_mapping={"wiring.json": {"wiring", "network"}})

@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -43,10 +44,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -152,7 +151,12 @@ else:
         for i in range(len(amplitudes)):
             for k in range(num_qubits):
                 _, _, fidelity, _, _, _, _ = two_state_discriminator(
-                    I_g_data[k][j][i], Q_g_data[k][j][i], I_e_data[k][j][i], Q_e_data[k][j][i], b_print=False, b_plot=False
+                    I_g_data[k][j][i],
+                    Q_g_data[k][j][i],
+                    I_e_data[k][j][i],
+                    Q_e_data[k][j][i],
+                    b_print=False,
+                    b_plot=False,
                 )
                 fidelity_vec[k][i][j] = fidelity
 
@@ -182,9 +186,7 @@ else:
     qm.close()
 
     # Save data from the node
-    data = {
-        "figure": fig
-    }
+    data = {"figure": fig}
     for i, qubit in enumerate(qubits):
         data[f"{qubit.resonator.name}_amplitude"] = amplitudes * qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_frequency"] = dfs + qubit.resonator.intermediate_frequency
@@ -193,8 +195,7 @@ else:
         data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency
 
     additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
     }
     node_save(machine, "readout_amplitude_frequency_optimization", data, additional_files)
 

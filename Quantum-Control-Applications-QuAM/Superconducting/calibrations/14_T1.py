@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -38,10 +39,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -116,7 +115,7 @@ else:
     data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], ["n"])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
-    fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
+    fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
@@ -160,8 +159,9 @@ else:
     for i, qubit in enumerate(qubits):
         try:
             from qualang_tools.plot.fitting import Fit
+
             fit = Fit()
-            plt.subplot(num_qubits, 1, i+1)
+            plt.subplot(num_qubits, 1, i + 1)
             fit_res = fit.T1(4 * t_delay, I_volts[i], plot=True)
             plt.xlabel("Wait time [ns]")
             plt.ylabel("I quadrature [V]")
@@ -178,8 +178,7 @@ else:
 
     # additional files
     additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
     }
     # Save data from the node
     node_save(machine, "T1", data, additional_files)

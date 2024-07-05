@@ -38,6 +38,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -46,10 +47,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -63,6 +62,7 @@ num_qubits = len(qubits)
 # Select the resonator and qubit to measure (no multiplexing here)
 qb = qubits[1]
 rr = qb.resonator
+
 
 ####################
 # Helper functions #
@@ -290,11 +290,9 @@ else:
         "figure": plt.gcf(),
     }
 
-
-
-
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
+    additional_files = {
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
+    }
     node_save(machine, "readout_weights_optimization", data, additional_files)
 
 # %%

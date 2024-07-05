@@ -1,3 +1,4 @@
+from pathlib import Path
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
 from quam.components.ports import (
@@ -18,7 +19,7 @@ from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
 from dataclasses import field
-from typing import List, Dict, ClassVar, Any, Union
+from typing import List, Dict, ClassVar, Any, Sequence, Union
 
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
@@ -42,7 +43,24 @@ class QuAM(QuamRoot):
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
+        if not args:
+            import configuration.quam_state
+
+            args = (configuration.quam_state.__path__[0],)
         return super().load(*args, **kwargs)
+
+    def save(
+        self,
+        path: Union[Path, str] = None,
+        content_mapping: Dict[str, str] = None,
+        include_defaults: bool = False,
+        ignore: Sequence[str] = None,
+    ):
+        if path is None:
+            import configuration.quam_state
+
+            path = configuration.quam_state.__path__[0]
+        super().save(path, content_mapping, include_defaults, ignore)
 
     @property
     def data_handler(self) -> DataHandler:
@@ -131,6 +149,7 @@ class QuAM(QuamRoot):
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
                 print(f"No calibration elements found for {name}. Skipping calibration.")
+
 
 @quam_dataclass
 class FEMQuAM(QuAM):

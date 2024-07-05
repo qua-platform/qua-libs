@@ -38,6 +38,7 @@ from scipy.optimize import curve_fit
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -46,10 +47,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -275,9 +274,13 @@ def get_rb_interleaved_program(qubit: Transmon):
             m_st.save("iteration")
             if state_discrimination:
                 # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("state")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
+                    num_of_sequences
+                ).save("state")
                 # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("state_avg")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save(
+                    "state_avg"
+                )
             else:
                 I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("I")
                 Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("Q")
@@ -355,7 +358,9 @@ else:
         print("#########################")
         print("### Fitted Parameters ###")
         print("#########################")
-        print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+        print(
+            f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+        )
         print("Covariance Matrix")
         print(cov)
 
@@ -394,14 +399,20 @@ else:
             f"{qubit.name}_figure": fig,
             f"{qubit.name}_figure_analysis": fig_analysis,
         }
-    
+
     plt.show()
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
-    node_save(machine, f"randomized_benchmarking_interleaved_{get_interleaved_gate(interleaved_gate_index)}", data, additional_files)
+    additional_files = {
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
+    }
+    node_save(
+        machine,
+        f"randomized_benchmarking_interleaved_{get_interleaved_gate(interleaved_gate_index)}",
+        data,
+        additional_files,
+    )
 
 # %%

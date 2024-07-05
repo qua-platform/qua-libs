@@ -33,6 +33,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -41,10 +42,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -171,7 +170,9 @@ else:
     for i, qubit in enumerate(qubits):
         data[f"{qubit.resonator.name}_amplitude"] = amplitudes * qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_fidelity"] = fidelity_vec[i]
-        data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations["readout"].amplitude * amplitudes[np.argmax(fidelity_vec[i])]
+        data[f"{qubit.resonator.name}_amp_opt"] = (
+            qubit.resonator.operations["readout"].amplitude * amplitudes[np.argmax(fidelity_vec[i])]
+        )
         qubit.resonator.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[i])]
 
     data["figure"] = fig
@@ -181,8 +182,7 @@ else:
     # rr2.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[1])]
 
     additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
     }
     node_save(machine, "readout_amplitude_optimization", data, additional_files)
 

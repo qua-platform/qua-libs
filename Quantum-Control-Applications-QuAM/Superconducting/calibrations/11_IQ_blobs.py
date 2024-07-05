@@ -36,6 +36,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -44,10 +45,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -133,7 +132,7 @@ else:
         angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, b_plot=True)
 
         plt.suptitle(f"{qubit.name} - IQ Blobs")
-        plt.axvline(rus_threshold, color='k', linestyle='--', label='Threshold')
+        plt.axvline(rus_threshold, color="k", linestyle="--", label="Threshold")
         figs.append(plt.gcf())
 
         data[f"{qubit.name}_I_g"] = I_g
@@ -156,8 +155,7 @@ else:
     qm.close()
 
     additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+        Path(__file__).parent.parent / "configuration" / v: v for v in ["calibration_db.json", "optimal_weights.npz"]
     }
     node_save(machine, "iq_blobs", data, additional_files)
 
