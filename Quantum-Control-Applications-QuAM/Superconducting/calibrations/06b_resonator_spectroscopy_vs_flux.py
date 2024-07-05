@@ -28,14 +28,15 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -44,10 +45,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -79,10 +78,10 @@ with program() as multi_res_spec_vs_flux:
     df = declare(int)  # QUA variable for the readout frequency
 
     for i, q in enumerate(qubits):
-        
+
         # Bring the active qubits to the minimum frequency point
         machine.apply_all_flux_to_min()
-        
+
         # resonator of the qubit
         rr = resonators[i]
 
@@ -103,7 +102,7 @@ with program() as multi_res_spec_vs_flux:
 
                     # wait for the resonator to relax
                     rr.wait(machine.depletion_time * u.ns)
-                    
+
                     # save data
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
@@ -134,7 +133,9 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program
-    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
+    data_list = ["n"] + sum(
+        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
+    )
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -158,7 +159,9 @@ else:
             # Plot
             plt.subplot(1, num_resonators, i + 1)
             plt.cla()
-            plt.title(f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)")
+            plt.title(
+                f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)"
+            )
             plt.xlabel("flux [V]")
             plt.ylabel(f"{rr.name} IF [MHz]")
             plt.pcolor(dcs, rr.intermediate_frequency / u.MHz + dfs / u.MHz, A)
@@ -183,7 +186,7 @@ else:
     # qubits[2].z.min_offset = 0.0
     # qubits[3].z.min_offset = 0.0
     # qubits[4].z.min_offset = 0.0
-    
+
     # Save data from the node
     data = {}
     for i, (qubit, rr) in enumerate(zip(qubits, resonators)):
@@ -192,10 +195,6 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_min_offset"] = qubit.z.min_offset
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "resonator_spectroscopy_vs_flux", data, additional_files)
+    node_save(machine, "resonator_spectroscopy_vs_flux", data, additional_files=True)
 
 # %%

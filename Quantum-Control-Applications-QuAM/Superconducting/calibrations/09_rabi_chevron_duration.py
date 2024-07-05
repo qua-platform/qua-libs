@@ -30,10 +30,11 @@ from qualang_tools.units import unit
 import matplotlib.pyplot as plt
 import numpy as np
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -42,10 +43,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -129,18 +128,22 @@ else:
         I_volts, Q_volts = [], []
         for i, qubit in enumerate(qubits):
             # Convert results into Volts
-            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
-            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
+            I_volts.append(
+                u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
+            )
+            Q_volts.append(
+                u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
+            )
             # Plot results
             plt.suptitle("Rabi chevron")
-            plt.subplot(2, num_qubits, i+1)
+            plt.subplot(2, num_qubits, i + 1)
             plt.cla()
             plt.pcolor(durations * 4, dfs / u.MHz, I_volts[i])
             plt.plot(qubit.xy.operations[operation].length, 0, "r*")
             plt.xlabel("Qubit pulse duration [ns]")
             plt.ylabel("Qubit detuning [MHz]")
             # plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
-            plt.subplot(2, num_qubits, i+num_qubits+1)
+            plt.subplot(2, num_qubits, i + num_qubits + 1)
             plt.cla()
             plt.pcolor(durations * 4, dfs / u.MHz, Q_volts[i])
             plt.plot(qubit.xy.operations[operation].length, 0, "r*")
@@ -158,10 +161,6 @@ else:
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "rabi_chevron_duration", data, additional_files)
+    node_save(machine, "rabi_chevron_duration", data, additional_files=True)
 
 # %%

@@ -26,13 +26,14 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -41,10 +42,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -82,7 +81,9 @@ with program() as ro_freq_opt:
         with for_(*from_array(df, dfs)):
             # Update the resonator frequencies
             for qubit in qubits:
-                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
+                update_frequency(
+                    qubit.resonator.name, df + qubit.resonator.intermediate_frequency
+                )
 
             # Wait for the qubits to decay to the ground state
             wait(machine.thermalization_time * u.ns)
@@ -146,7 +147,9 @@ else:
         axes[i].set_xlabel("Readout detuning [MHz]")
         axes[i].set_ylabel("Distance between IQ blobs [a.u.]")
         # axes[i].set_title(f"{qubit.name} - f_opt = {int(qubit.resonator.f_01 / u.MHz)} MHz")
-        print(f"{qubit.resonator.name}: Shifting readout frequency by {dfs[np.argmax(D_data[i])]} Hz")
+        print(
+            f"{qubit.resonator.name}: Shifting readout frequency by {dfs[np.argmax(D_data[i])]} Hz"
+        )
 
     plt.tight_layout()
     plt.show()
@@ -157,15 +160,17 @@ else:
     # Save data from the node
     data = {}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.resonator.name}_frequency"] = dfs + qubit.resonator.intermediate_frequency
+        data[f"{qubit.resonator.name}_frequency"] = (
+            dfs + qubit.resonator.intermediate_frequency
+        )
         data[f"{qubit.resonator.name}_D"] = D_data[i]
-        data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency + dfs[np.argmax(D_data[i])]
+        data[f"{qubit.resonator.name}_if_opt"] = (
+            qubit.resonator.intermediate_frequency + dfs[np.argmax(D_data[i])]
+        )
         # Update the state
         qubit.resonator.intermediate_frequency += dfs[np.argmax(D_data[i])]
 
     data["figure"] = fig
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
-    node_save(machine, "readout_frequency_optimization", data, additional_files)
+    node_save(machine, "readout_frequency_optimization", data, additional_files=True)
 
 # %%

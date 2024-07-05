@@ -28,13 +28,14 @@ from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -43,10 +44,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -81,7 +80,9 @@ with program() as ro_amp_freq_opt:
         save(counter, n_st)
         # Update the resonators' frequencies
         for qubit in qubits:
-            update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
+            update_frequency(
+                qubit.resonator.name, df + qubit.resonator.intermediate_frequency
+            )
         with for_(*from_array(a, amplitudes)):
             with for_(n, 0, n < n_runs, n + 1):
                 # ground iq blobs for all qubits
@@ -103,10 +104,18 @@ with program() as ro_amp_freq_opt:
     with stream_processing():
         # Save all streamed points for plotting the IQ blobs
         for i in range(num_qubits):
-            I_g_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"I_g_q{i}")
-            Q_g_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"Q_g_q{i}")
-            I_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"I_e_q{i}")
-            Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(f"Q_e_q{i}")
+            I_g_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(
+                f"I_g_q{i}"
+            )
+            Q_g_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(
+                f"Q_g_q{i}"
+            )
+            I_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(
+                f"I_e_q{i}"
+            )
+            Q_e_st[i].buffer(n_runs).buffer(len(amplitudes)).buffer(len(dfs)).save(
+                f"Q_e_q{i}"
+            )
         n_st.save("n")
 
 
@@ -138,7 +147,13 @@ else:
         progress_counter(iteration[0], len(dfs), start_time=results.get_start_time())
 
     # Fetch data
-    data_list = sum([[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)], [])
+    data_list = sum(
+        [
+            [f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"]
+            for i in range(num_qubits)
+        ],
+        [],
+    )
     results = fetching_tool(job, data_list)
     fetched_data = results.fetch_all()
     I_g_data = fetched_data[1::2]
@@ -152,7 +167,12 @@ else:
         for i in range(len(amplitudes)):
             for k in range(num_qubits):
                 _, _, fidelity, _, _, _, _ = two_state_discriminator(
-                    I_g_data[k][j][i], Q_g_data[k][j][i], I_e_data[k][j][i], Q_e_data[k][j][i], b_print=False, b_plot=False
+                    I_g_data[k][j][i],
+                    Q_g_data[k][j][i],
+                    I_e_data[k][j][i],
+                    Q_e_data[k][j][i],
+                    b_print=False,
+                    b_plot=False,
                 )
                 fidelity_vec[k][i][j] = fidelity
 
@@ -174,28 +194,34 @@ else:
 
     # Update the state
     for i, qubit in enumerate(qubits):
-        qubit.resonator.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[i]) // len(dfs)]
-        qubit.resonator.intermediate_frequency += dfs[np.argmax(fidelity_vec[i]) % len(dfs)]
+        qubit.resonator.operations["readout"].amplitude *= amplitudes[
+            np.argmax(fidelity_vec[i]) // len(dfs)
+        ]
+        qubit.resonator.intermediate_frequency += dfs[
+            np.argmax(fidelity_vec[i]) % len(dfs)
+        ]
         qubit.resonator.readout_fidelity = np.max(fidelity_vec[i])
 
     # Close the quantum machines at the end to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
 
     # Save data from the node
-    data = {
-        "figure": fig
-    }
+    data = {"figure": fig}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.resonator.name}_amplitude"] = amplitudes * qubit.resonator.operations["readout"].amplitude
-        data[f"{qubit.resonator.name}_frequency"] = dfs + qubit.resonator.intermediate_frequency
+        data[f"{qubit.resonator.name}_amplitude"] = (
+            amplitudes * qubit.resonator.operations["readout"].amplitude
+        )
+        data[f"{qubit.resonator.name}_frequency"] = (
+            dfs + qubit.resonator.intermediate_frequency
+        )
         data[f"{qubit.resonator.name}_fidelity"] = fidelity_vec[i]
-        data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations["readout"].amplitude
+        data[f"{qubit.resonator.name}_amp_opt"] = qubit.resonator.operations[
+            "readout"
+        ].amplitude
         data[f"{qubit.resonator.name}_if_opt"] = qubit.resonator.intermediate_frequency
 
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "readout_amplitude_frequency_optimization", data, additional_files)
+    node_save(
+        machine, "readout_amplitude_frequency_optimization", data, additional_files
+    )
 
 # %%

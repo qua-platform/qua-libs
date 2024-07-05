@@ -24,13 +24,14 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
-from quam_components import QuAM, Transmon, ReadoutResonator
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM, Transmon, ReadoutResonator
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -39,10 +40,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -102,7 +101,9 @@ def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
         if pulse != "I":
             qubit.xy.play(pulse)  # Either play the sequence
         else:
-            qubit.xy.wait(qubit.xy.operations["x180"].length * u.ns)  # or wait if sequence is identity
+            qubit.xy.wait(
+                qubit.xy.operations["x180"].length * u.ns
+            )  # or wait if sequence is identity
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
@@ -180,7 +181,9 @@ else:
         # machine.calibrate_octave_ports(qm)
         all_xy = get_prog(qubit, qubit.resonator)
         job = qm.execute(all_xy)
-        data_list = ["iteration"] + np.concatenate([[f"I{i + 1}", f"Q{i + 1}"] for i in range(21)]).tolist()
+        data_list = ["iteration"] + np.concatenate(
+            [[f"I{i + 1}", f"Q{i + 1}"] for i in range(21)]
+        ).tolist()
         results = fetching_tool(job, data_list, mode="live")
         fig, ax = plt.subplots(2, 1)
 
@@ -197,12 +200,16 @@ else:
             ax[0].plot(-I, "-*")
             ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
             ax[0].set_ylabel("I quadrature [a.u.]")
-            ax[0].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
+            ax[0].set_xticks(
+                ticks=range(21), labels=[str(el) for el in sequence], rotation=45
+            )
             ax[1].cla()
             ax[1].plot(-Q, "-*")
             ax[1].plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, "-")
             ax[1].set_ylabel("Q quadrature [a.u.]")
-            ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
+            ax[1].set_xticks(
+                ticks=range(21), labels=[str(el) for el in sequence], rotation=45
+            )
             plt.suptitle(f"All XY {qubit.name}")
             plt.tight_layout()
             plt.pause(0.1)
@@ -213,8 +220,10 @@ else:
         qm.close()
 
         # Save data from the node
-        additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
-        node_save(machine, "all_xy", data, additional_files)
+        additional_files = {
+            Path(__file__).parent.parent / "configuration" / v: v
+            for v in ["calibration_db.json", "optimal_weights.npz"]
+        }
+        node_save(machine, "all_xy", data, additional_files=True)
 
 # %%

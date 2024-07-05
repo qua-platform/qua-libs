@@ -28,14 +28,15 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.units import unit
-from quam_components import QuAM, Transmon
-from macros import node_save
+from quam_libs.components import QuAM, Transmon
+from quam_libs.macros import node_save
 
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -44,10 +45,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -63,8 +62,12 @@ qubits = machine.active_qubits
 num_of_sequences = 50  # Number of random sequences
 n_avg = 10  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+delta_clifford = (
+    10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+)
+assert (
+    max_circuit_depth / delta_clifford
+).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 num_depths = max_circuit_depth // delta_clifford + 1
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -181,7 +184,9 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
 def get_rb_program(qubit: Transmon):
     with program() as rb:
         depth = declare(int)  # QUA variable for the varying depth
-        depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
+        depth_target = declare(
+            int
+        )  # QUA variable for the current depth (changes in steps of delta_clifford)
         # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
         saved_gate = declare(int)
         m = declare(int)  # QUA variable for the loop over random sequences
@@ -199,8 +204,12 @@ def get_rb_program(qubit: Transmon):
         # Bring the active qubits to the minimum frequency point
         machine.apply_all_flux_to_min()
 
-        with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
-            sequence_list, inv_gate_list = generate_sequence()  # Generate the random sequence of length max_circuit_depth
+        with for_(
+            m, 0, m < num_of_sequences, m + 1
+        ):  # QUA for_ loop over the random sequences
+            sequence_list, inv_gate_list = (
+                generate_sequence()
+            )  # Generate the random sequence of length max_circuit_depth
 
             assign(depth_target, 0)  # Initialize the current depth to 0
 
@@ -233,7 +242,10 @@ def get_rb_program(qubit: Transmon):
                         save(Q, Q_st)
                         # Make sure you updated the ge_threshold
                         if state_discrimination:
-                            assign(state, I > qubit.resonator.operations["readout"].threshold)
+                            assign(
+                                state,
+                                I > qubit.resonator.operations["readout"].threshold,
+                            )
                             save(state, state_st)
 
                     # Go to the next depth
@@ -248,14 +260,26 @@ def get_rb_program(qubit: Transmon):
             m_st.save("iteration")
             if state_discrimination:
                 # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("state")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_depths
+                ).buffer(num_of_sequences).save("state")
                 # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("state_avg")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_depths
+                ).average().save("state_avg")
             else:
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("I")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("Q")
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("I_avg")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("Q_avg")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
+                    num_of_sequences
+                ).save("I")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
+                    num_of_sequences
+                ).save("Q")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_depths
+                ).average().save("I_avg")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_depths
+                ).average().save("Q_avg")
 
     return rb
 
@@ -280,9 +304,13 @@ else:
         job = qm.execute(rb_program)
         # Get results from QUA program
         if state_discrimination:
-            results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
+            results = fetching_tool(
+                job, data_list=["state_avg", "iteration"], mode="live"
+            )
         else:
-            results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
+            results = fetching_tool(
+                job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
+            )
         # Live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -299,7 +327,9 @@ else:
                 value_avg = I
 
             # Progress bar
-            progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
+            progress_counter(
+                iteration, num_of_sequences, start_time=results.get_start_time()
+            )
             # Plot averaged values
             plt.cla()
             plt.plot(x, value_avg, marker=".")
@@ -333,7 +363,9 @@ else:
         print("#########################")
         print("### Fitted Parameters ###")
         print("#########################")
-        print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
+        print(
+            f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+        )
         print("Covariance Matrix")
         print(cov)
 
@@ -375,8 +407,6 @@ else:
         data[f"{qubit.name}_figure"] = fig
         data[f"{qubit.name}_figure_analysis"] = fig_analysis
 
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
-    node_save(machine, "randomized_benchmarking", data, additional_files)
+    node_save(machine, "randomized_benchmarking", data, additional_files=True)
 
 # %%

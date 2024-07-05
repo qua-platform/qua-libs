@@ -29,13 +29,14 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -44,10 +45,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -111,7 +110,13 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iq_blobs)
     # Fetch data
-    data_list = sum([[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)], [])
+    data_list = sum(
+        [
+            [f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"]
+            for i in range(num_qubits)
+        ],
+        [],
+    )
     results = fetching_tool(job, data_list)
     fetched_data = results.fetch_all()
     I_g_data = fetched_data[1::2]
@@ -130,10 +135,12 @@ else:
 
         hist = np.histogram(I_g, bins=100)
         rus_threshold = hist[1][1:][np.argmax(hist[0])]
-        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, b_plot=True)
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+            I_g, Q_g, I_e, Q_e, True, b_plot=True
+        )
 
         plt.suptitle(f"{qubit.name} - IQ Blobs")
-        plt.axvline(rus_threshold, color='k', linestyle='--', label='Threshold')
+        plt.axvline(rus_threshold, color="k", linestyle="--", label="Threshold")
         figs.append(plt.gcf())
 
         data[f"{qubit.name}_I_g"] = I_g
@@ -155,10 +162,6 @@ else:
 
     qm.close()
 
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "iq_blobs", data, additional_files)
+    node_save(machine, "iq_blobs", data, additional_files=True)
 
 # %%

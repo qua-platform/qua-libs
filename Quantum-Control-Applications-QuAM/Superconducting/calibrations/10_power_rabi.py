@@ -26,13 +26,14 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -41,10 +42,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -93,8 +92,12 @@ with program() as power_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
-            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
+            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
+                f"I{i + 1}"
+            )
+            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
+                f"Q{i + 1}"
+            )
 
 
 ###########################
@@ -132,35 +135,50 @@ else:
         for i, qubit in enumerate(qubits):
             if I[i].shape[0] > 1:
                 # Convert into volts
-                I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
-                Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
+                I_volts.append(
+                    u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
+                )
+                Q_volts.append(
+                    u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
+                )
                 # Plot
                 plt.suptitle("Power Rabi with error amplification")
-                plt.subplot(3, num_qubits, i+1)
+                plt.subplot(3, num_qubits, i + 1)
                 plt.cla()
-                plt.pcolor(amps * qubit.xy.operations[operation].amplitude, N_pi_vec, I_volts[i])
+                plt.pcolor(
+                    amps * qubit.xy.operations[operation].amplitude,
+                    N_pi_vec,
+                    I_volts[i],
+                )
                 plt.title(f"{qubit.name} - I")
-                plt.subplot(3, num_qubits, i+num_qubits+1)
+                plt.subplot(3, num_qubits, i + num_qubits + 1)
                 plt.cla()
-                plt.pcolor(amps * qubit.xy.operations[operation].amplitude, N_pi_vec, Q_volts[i])
+                plt.pcolor(
+                    amps * qubit.xy.operations[operation].amplitude,
+                    N_pi_vec,
+                    Q_volts[i],
+                )
                 plt.title(f"{qubit.name} - Q")
                 plt.xlabel("Qubit pulse amplitude [V]")
                 plt.ylabel("Number of Rabi pulses")
-                plt.subplot(3, num_qubits, i+2*num_qubits+1)
+                plt.subplot(3, num_qubits, i + 2 * num_qubits + 1)
                 plt.cla()
-                plt.plot(amps * qubit.xy.operations[operation].amplitude, np.sum(I_volts[i], axis=0))
+                plt.plot(
+                    amps * qubit.xy.operations[operation].amplitude,
+                    np.sum(I_volts[i], axis=0),
+                )
                 plt.axvline(qubit.xy.operations[operation].amplitude, color="k")
                 plt.xlabel("Rabi pulse amplitude [V]")
                 plt.ylabel(r"$\Sigma$ of Rabi pulses")
 
             else:
                 plt.suptitle("Power Rabi")
-                plt.subplot(2, num_qubits, i+1)
+                plt.subplot(2, num_qubits, i + 1)
                 plt.cla()
                 plt.plot(amps * qubit.xy.operations[operation].amplitude, I_volts[i])
                 plt.title(f"{qubit.name}")
                 plt.ylabel("I quadrature [V]")
-                plt.subplot(2, num_qubits, i+num_qubits+1)
+                plt.subplot(2, num_qubits, i + num_qubits + 1)
                 plt.cla()
                 plt.plot(amps * qubit.xy.operations[operation].amplitude, Q_volts[i])
                 plt.xlabel("Qubit Pulse Amplitude [V]")
@@ -173,17 +191,23 @@ else:
     qm.close()
     data = {}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.name}_amplitude"] = amps * qubit.xy.operations[operation].amplitude
+        data[f"{qubit.name}_amplitude"] = (
+            amps * qubit.xy.operations[operation].amplitude
+        )
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
 
         # Get the optimal pi pulse amplitude when doing error amplification
         try:
             qubit.xy.operations[operation].amplitude = (
-                amps[np.argmax(np.sum(I_volts[i], axis=0))] * qubit.xy.operations[operation].amplitude
+                amps[np.argmax(np.sum(I_volts[i], axis=0))]
+                * qubit.xy.operations[operation].amplitude
             )
 
-            data[f"{qubit.name}"] = {"x180_amplitude": qubit.xy.operations[operation].amplitude, "successful_fit": True}
+            data[f"{qubit.name}"] = {
+                "x180_amplitude": qubit.xy.operations[operation].amplitude,
+                "successful_fit": True,
+            }
 
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": True}
@@ -191,11 +215,7 @@ else:
 
     data["figure"] = fig
     # additional files
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
     # Save data from the node
-    node_save(machine, "power_rabi", data, additional_files)
+    node_save(machine, "power_rabi", data, additional_files=True)
 
 # %%

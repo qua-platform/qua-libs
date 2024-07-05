@@ -27,13 +27,14 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -42,10 +43,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -125,7 +124,7 @@ else:
     data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], ["n"])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
-    fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
+    fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
@@ -134,8 +133,14 @@ else:
         I_data = fetched_data[1::2]
         Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
-        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
+        I_volts = [
+            u.demod2volts(I, qubit.resonator.operations["readout"].length)
+            for I, qubit in zip(I_data, qubits)
+        ]
+        Q_volts = [
+            u.demod2volts(Q, qubit.resonator.operations["readout"].length)
+            for Q, qubit in zip(Q_data, qubits)
+        ]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
@@ -189,11 +194,11 @@ else:
             pass
     plt.show()
 
-    # Save data from the node
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "ramsey", data, additional_files)
+# Save data from the node
+additional_files = {
+    Path(__file__).parent.parent / "configuration" / v: v
+    for v in ["calibration_db.json", "optimal_weights.npz"]
+}
+node_save(machine, "ramsey", data, additional_files=True)
 
 # %%

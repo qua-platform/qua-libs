@@ -29,14 +29,15 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -45,10 +46,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -88,7 +87,7 @@ with program() as multi_res_spec_vs_amp:
     machine.apply_all_flux_to_min()
 
     for i, q in enumerate(qubits):
-        
+
         # resonator of this qubit
         rr = resonators[i]
 
@@ -100,7 +99,9 @@ with program() as multi_res_spec_vs_amp:
                 update_frequency(rr.name, df + rr.intermediate_frequency)
                 rr.wait(machine.depletion_time * u.ns)
 
-                with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
+                with for_(
+                    *from_array(a, amps)
+                ):  # QUA for_ loop for sweeping the readout amplitude
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
 
@@ -139,7 +140,9 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    res_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
+    res_list = ["n"] + sum(
+        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
+    )
     results = fetching_tool(job, res_list, mode="live")
     # Live plotting
     while results.is_processing():
@@ -155,7 +158,9 @@ else:
         plt.suptitle("Resonator spectroscopy vs amplitude")
         A_data = []
         for i, rr in enumerate(resonators):
-            s = u.demod2volts(I_data[i] + 1j * Q_data[i], rr.operations["readout"].length)
+            s = u.demod2volts(
+                I_data[i] + 1j * Q_data[i], rr.operations["readout"].length
+            )
             A = np.abs(s)
             # Normalize data
             row_sums = A.sum(axis=0)
@@ -193,10 +198,8 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_readout_amplitude"] = prev_amps[i]
     data["figure"] = fig
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "resonator_spectroscopy_vs_amplitude", data, additional_files)
+    node_save(
+        machine, "resonator_spectroscopy_vs_amplitude", data, additional_files=True
+    )
 
 # %%

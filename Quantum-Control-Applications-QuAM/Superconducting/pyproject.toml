@@ -1,28 +1,22 @@
-[build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "quam_components"
+[tool.poetry]
+name = "quam_libs"
 version = "0.1.0"
 description = "QuAM Components for Quantum Control"
 readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "BSD-3-Clause" }
-authors = [
-    { name = "Dean Poulos", email = "dean.poulos@quantum-machines.co" }
-]
+authors = ["Dean Poulos <dean.poulos@quantum-machines.co>"]
+license = "BSD-3-Clause"
+keywords = []
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent"
+    "Operating System :: OS Independent",
 ]
 
-dependencies = [
-    "quam @ git+https://github.com/qua-platform/quam.git",
-    "qualang-tools"
-]
+[tool.poetry.dependencies]
+python = ">=3.8"
+quam = { git = "https://github.com/qua-platform/quam.git" }
+qualang-tools = "*"
 
-[tool.setuptools.packages.find]
-where = ["."]
-
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -31,13 +31,14 @@ from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -46,10 +47,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -63,6 +62,7 @@ num_qubits = len(qubits)
 # Select the resonator and qubit to measure (no multiplexing here)
 qb = qubits[1]
 rr = qb.resonator
+
 
 ####################
 # Helper functions #
@@ -144,10 +144,15 @@ config = machine.generate_config()
 division_length = 8  # Size of each demodulation slice in clock cycles
 number_of_divisions = int((readout_len + ringdown_len) / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
-print("The readout has been sliced in the following number of divisions", number_of_divisions)
+print(
+    "The readout has been sliced in the following number of divisions",
+    number_of_divisions,
+)
 
 # Time axis for the plots at the end
-x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
+x_plot = np.arange(
+    division_length * 4, readout_len + ringdown_len + 1, division_length * 4
+)
 
 
 with program() as opt_weights:
@@ -173,7 +178,9 @@ with program() as opt_weights:
             # Play on the other resonators to be in the same conditions as with multiplexed readout
             measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+        rr.measure_sliced(
+            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
+        )
 
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
@@ -193,7 +200,9 @@ with program() as opt_weights:
             # Play on the other resonators to be in the same conditions as with multiplexed readout
             measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
+        rr.measure_sliced(
+            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
+        )
 
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
@@ -256,9 +265,13 @@ else:
     ground_trace = Ig + 1j * Qg
     excited_trace = Ie + 1j * Qe
     subtracted_trace = excited_trace - ground_trace
-    norm_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
+    norm_subtracted_trace = normalize_complex_array(
+        subtracted_trace
+    )  # <- these are the optimal weights :)
     # Plot the results
-    plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
+    plot_three_complex_arrays(
+        x_plot, ground_trace, excited_trace, norm_subtracted_trace
+    )
     # Reshape the optimal integration weights to match the configuration
     weights_real = norm_subtracted_trace.real
     weights_imag = norm_subtracted_trace.imag
@@ -290,11 +303,6 @@ else:
         "figure": plt.gcf(),
     }
 
-
-
-
-    additional_files = { Path(__file__).parent.parent / 'configuration' / v: v for v in 
-                         [Path(__file__), "calibration_db.json", "optimal_weights.npz"]}
-    node_save(machine, "readout_weights_optimization", data, additional_files)
+    node_save(machine, "readout_weights_optimization", data, additional_files=True)
 
 # %%

@@ -26,13 +26,14 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
 from qualang_tools.units import unit
-from quam_components import QuAM
-from macros import qua_declaration, multiplexed_readout, node_save
+from quam_libs.components import QuAM
+from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import matplotlib
+
 matplotlib.use("TKAgg")
 
 
@@ -41,10 +42,8 @@ matplotlib.use("TKAgg")
 ###################################################
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
-# Define a path relative to this script, i.e., ../configuration/quam_state
-config_path = Path(__file__).parent.parent / "configuration" / "quam_state"
 # Instantiate the QuAM class from the state file
-machine = QuAM.load(config_path)
+machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
@@ -69,7 +68,9 @@ detuning = 1e6
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     t = declare(int)  # QUA variable for the idle time
-    phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
+    phi = declare(
+        fixed
+    )  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
@@ -128,7 +129,7 @@ else:
     data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], ["n"])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
-    fig, axes = plt.subplots(2, num_qubits, figsize=(4*num_qubits, 8))
+    fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
@@ -137,8 +138,14 @@ else:
         I_data = fetched_data[1::2]
         Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
-        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
+        I_volts = [
+            u.demod2volts(I, qubit.resonator.operations["readout"].length)
+            for I, qubit in zip(I_data, qubits)
+        ]
+        Q_volts = [
+            u.demod2volts(Q, qubit.resonator.operations["readout"].length)
+            for Q, qubit in zip(Q_data, qubits)
+        ]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
@@ -175,18 +182,26 @@ else:
             from qualang_tools.plot.fitting import Fit
 
             fit = Fit()
-            plt.subplot(num_qubits, 1, i+1)
+            plt.subplot(num_qubits, 1, i + 1)
             fit_I = fit.ramsey(4 * idle_times, I_volts[i], plot=True)
             plt.xlabel("Idle time [ns]")
             plt.ylabel("I [V]")
             plt.title(f"{qubit.name}")
-            plt.legend((f"T2* = {int(fit_I['T2'][0])} ns\n df = {int(fit_I['f'][0] * u.GHz - detuning)/u.kHz} kHz",))
+            plt.legend(
+                (
+                    f"T2* = {int(fit_I['T2'][0])} ns\n df = {int(fit_I['f'][0] * u.GHz - detuning)/u.kHz} kHz",
+                )
+            )
 
             # Update the state
             qubit_detuning = fit_I["f"][0] * u.GHz - detuning
             qubit.T2ramsey = int(fit_I["T2"][0])
             qubit.xy.intermediate_frequency -= qubit_detuning
-            data[f"{qubit.name}"] = {"T2*": qubit.T2ramsey, "if_01": qubit.xy.intermediate_frequency, "successful_fit": True}
+            data[f"{qubit.name}"] = {
+                "T2*": qubit.T2ramsey,
+                "if_01": qubit.xy.intermediate_frequency,
+                "successful_fit": True,
+            }
             print(f"Detuning to add to {qubit.name}: {-qubit_detuning / u.kHz:.3f} kHz")
             plt.tight_layout()
             data["figure_analysis"] = fig_analysis
@@ -195,11 +210,11 @@ else:
             pass
     plt.show()
 
-    # Save data from the node
-    additional_files = {
-        Path(__file__).parent.parent / 'configuration' / v: v for v in 
-        [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
-    node_save(machine, "ramsey", data, additional_files)
+# Save data from the node
+additional_files = {
+    Path(__file__).parent.parent / "configuration" / v: v
+    for v in ["calibration_db.json", "optimal_weights.npz"]
+}
+node_save(machine, "ramsey", data, additional_files=True)
 
 # %%
