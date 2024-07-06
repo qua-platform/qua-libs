@@ -2,23 +2,18 @@
 """
         QUBIT SPECTROSCOPY AND CROSSTALK MATRIX POPULATION
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
-extract the 'I' and 'Q' quadratures. This is done across various readout intermediate frequencies and flux biases
-for every flux element's DC offset voltage. The resonator frequency as a function of flux bias is then extracted and fitted,
-allowing the parameters to be stored in the configuration.
+extract the 'I' and 'Q' quadratures. This is done across various qubit intermediate frequencies and flux biases
+for every flux element's DC offset voltage. The qubit frequency as a function of flux bias is then extracted and fitted,
+used to calculate the shift caused by flux biasing.
 
-Additionally, this program populates the crosstalk matrix with the shift in resonator frequency for each combination of resonator and flux element. The crosstalk compensation terms are then stored in each analog output's configuration.
+Additionally, this program populates the crosstalk matrix with the shift in resonator frequency for each combination of
+qubit and flux element. The crosstalk compensation terms are then stored in each analog output's configuration.
 
 This information can then be used to adjust the readout frequency for the maximum and minimum frequency points,
 as well as to correct for crosstalk in the system.
 
-Prerequisites:
-    - Calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
-    - Calibration of the IQ mixer connected to the readout line (be it an external mixer or an Octave port).
-    - Identification of the resonator's resonance frequency (referred to as "resonator_spectroscopy").
-    - Configuration of the readout pulse amplitude and duration.
-    - Specification of the expected resonator depletion time in the state.
-
 Before proceeding to the next node:
+    - Ensure that the crosstalk matrix is saved in the machine state
     - Save the current state by calling machine.save("quam")
 """
 
