@@ -258,7 +258,8 @@ for port, flux_element in flux_elements_by_port.items():
         x_idx = port_by_flux_element[q.z].port_id
         y_idx = port_by_flux_element[flux_element].port_id
         crosstalk_term = crosstalk_matrix_inverse_relative[y_idx, x_idx]
-        port_by_flux_element[flux_element].crosstalk[x_idx] = crosstalk_term
+        # Update crosstalk term
+        # port_by_flux_element[flux_element].crosstalk[x_idx] = crosstalk_term
 
 data = {}
 data["target_qubits"] = [q.z.name for q in target_qubits]
