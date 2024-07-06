@@ -66,7 +66,7 @@ flux_elements_by_port, port_by_flux_element = {}, {}
 for flux_element in target_flux_elements:
     port: LFFEMAnalogOutputPort = machine.ports.get_analog_ouptut(*flux_element.opx_output)
     flux_elements_by_port[port.port_id] = flux_element
-    port_by_flux_element[flux_element] = port
+    port_by_flux_element[flux_element.name] = port
 
 # Crosstalk matrix initialization (ordered by port id)
 crosstalk_matrix = np.ones((len(all_flux_elements), len(all_flux_elements)))
@@ -228,8 +228,8 @@ for port_id, flux_element in flux_elements_by_port.items():
 
             data[f"{q.xy.name}_frequency_shift_{flux_element.name}"] = qubit_frequency_shift
 
-            x_idx = port_by_flux_element[q.z].port_id
-            y_idx = port_by_flux_element[flux_element].port_id
+            x_idx = port_by_flux_element[q.z.name].port_id
+            y_idx = port_by_flux_element[flux_element.name].port_id
             crosstalk_matrix[x_idx, y_idx] = qubit_frequency_shift
 
             plt.show()
@@ -250,16 +250,16 @@ print(crosstalk_matrix_inverse)
 for port, flux_element in flux_elements_by_port.items():
     for i, q in enumerate(target_qubits):
         # todo: divide by diagonal element?
-        x_idx = port_by_flux_element[q.z].port_id
-        y_idx = port_by_flux_element[flux_element].port_id
+        x_idx = port_by_flux_element[q.z.name].port_id
+        y_idx = port_by_flux_element[flux_element.name].port_id
         crosstalk_term = crosstalk_matrix_inverse_relative[y_idx, x_idx]
         # Update crosstalk term
-        # port_by_flux_element[flux_element].crosstalk[x_idx] = crosstalk_term
+        # port_by_flux_element[flux_element.name].crosstalk[x_idx] = crosstalk_term
 
 data = {}
 data["target_qubits"] = [q.z.name for q in target_qubits]
 data["flux_elements"] = [elem.name for elem in target_flux_elements]
-data["flux_elements_ports"] = [port_by_flux_element[elem].port_id for elem in target_flux_elements]
+data["flux_elements_ports"] = [port_by_flux_element[elem.name].port_id for elem in target_flux_elements]
 data["crosstalk_matrix"] = crosstalk_matrix
 data["crosstalk_matrix_inverse"] = crosstalk_matrix_inverse
 data["crosstalk_matrix_inverse_relative"] = crosstalk_matrix_inverse_relative
