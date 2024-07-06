@@ -56,12 +56,12 @@ rr = machine.active_qubits[0].resonator  # The resonator to measure
 ###################
 # The QUA program #
 ###################
-n_avg = 2  # The number of averages
+n_avg = 100  # The number of averages
 # The frequency sweep parameters
 ## rr1
 # frequencies = np.arange(10e6, 251e6, 1e6)
 # rr2
-frequencies = np.arange(10e6, 251e6, 1e6)
+frequencies = np.arange(-300e6, 151e6, 1e5)
 
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -80,7 +80,7 @@ with program() as resonator_spec:
             *from_array(f, frequencies)
         ):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element
-            update_frequency(rr.name, f)
+            update_frequency(rr.name, f + rr.intermediate_frequency)
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
             rr.measure("readout", qua_vars=(I, Q))
             # Wait for the resonator to deplete
@@ -138,11 +138,19 @@ else:
         )
         ax1 = plt.subplot(211)
         plt.cla()
-        plt.plot(frequencies / u.MHz, R, ".")
+        plt.plot(
+            ((rr.LO_frequency + rr.intermediate_frequency) + frequencies) / u.MHz,
+            R,
+            ".",
+        )
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212, sharex=ax1)
         plt.cla()
-        plt.plot(frequencies / u.MHz, signal.detrend(np.unwrap(phase)), ".")
+        plt.plot(
+            ((rr.LO_frequency + rr.intermediate_frequency) + frequencies) / u.MHz,
+            signal.detrend(np.unwrap(phase)),
+            ".",
+        )
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)
@@ -166,7 +174,7 @@ else:
         from qualang_tools.plot.fitting import Fit
 
         fit = Fit()
-        fig_fit = plt.figure()
+        fig_analysis = plt.figure()
         res_spec_fit = fit.reflection_resonator_spectroscopy(
             frequencies / u.MHz, R, plot=True
         )
@@ -187,15 +195,12 @@ else:
             "resonator_frequency": int(res_spec_fit["f"][0] * u.MHz),
             "successful_fit": True,
         }
-        data["figure_fit"] = fig_fit
+        data["figure_fit"] = fig_analysis
 
     except (Exception,):
         data["successful_fit"] = False
         pass
-    # additional files
-    additional_files = {
-        Path(__file__).parent.parent / "configuration" / v: v
-        for v in [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
-    }
     # Save data from the node
     node_save(machine, "resonator_spectroscopy_single", data, additional_files=True)
+
+# %%

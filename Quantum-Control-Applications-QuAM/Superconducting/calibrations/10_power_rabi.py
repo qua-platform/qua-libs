@@ -59,10 +59,10 @@ num_qubits = len(qubits)
 ###################
 
 operation = "x180"  # The qubit operation to play
-n_avg = 2  # The number of averages
+n_avg = 100  # The number of averages
 
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-amps = np.arange(0.6, 1.4, 0.01)
+amps = np.arange(0.0, 2, 0.025)
 # Number of applied Rabi pulses sweep
 N_pi = 10  # Maximum number of qubit pulses
 N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
@@ -214,8 +214,8 @@ else:
             pass
 
     data["figure"] = fig
-    # additional files
     # Save data from the node
+    plt.show()
     node_save(machine, "power_rabi", data, additional_files=True)
 
 # %%

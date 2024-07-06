@@ -205,6 +205,6 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
         # data[f"{q.name}_min_offset"] = q.z.min_offset
     data["figure"] = fig
-    node_save(machine, "qubit_spectroscopy_vs_flux", data, additional_files=True)
+    node_save(machine, "qubit_spectroscopy_vs_coupler", data, additional_files=True)
 
 # %%

@@ -43,12 +43,12 @@ octave_config = machine.get_octave_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-resonator = machine.active_qubits[0].resonator  # The resonator element
+resonator = machine.active_qubits[1].resonator  # The resonator element
 
 ###################
 # The QUA program #
 ###################
-n_avg = 2  # Number of averaging loops
+n_avg = 400  # Number of averaging loops
 
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop

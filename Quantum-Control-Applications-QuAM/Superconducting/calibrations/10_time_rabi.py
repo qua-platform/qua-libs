@@ -179,6 +179,5 @@ else:
 
         except (Exception,):
             data[f"{qubit.name}"] = {"successful_fit": False}
-    # additional files
     # Save data from the node
     node_save(machine, "time_rabi", data, additional_files=True)

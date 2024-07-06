@@ -182,7 +182,6 @@ else:
             pass
     plt.show()
 
-    # additional files
     # Save data from the node
     node_save(machine, "T1", data, additional_files=True)
 
