@@ -95,7 +95,6 @@ def node_save(
                 warnings.warn(f"File {file} does not exist, unable to save file")
                 continue
             additional_files[str(filepath)] = filepath.name
-        print(additional_files=True)
     else:
         additional_files = {}
     quam.data_handler.additional_files = additional_files
