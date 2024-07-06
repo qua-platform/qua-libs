@@ -66,9 +66,9 @@ num_resonators = len(resonators)
 
 n_avg = 20  # Number of averaging loops
 # Flux bias sweep in V
-dcs = np.linspace(-0.49, 0.49, 50)
+dcs = np.linspace(-0.04, 0.04, 51)
 # The frequency sweep around the resonator resonance frequency f_opt
-dfs = np.arange(-50e6, 5e6, 0.1e6)
+dfs = np.arange(-4e6, 4e6, 0.1e6)
 
 with program() as multi_res_spec_vs_flux:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
@@ -88,14 +88,14 @@ with program() as multi_res_spec_vs_flux:
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
 
-            with for_(*from_array(df, dfs)):
-                # Update the resonator frequencies for resonator
-                update_frequency(rr.name, df + rr.intermediate_frequency)
+            with for_(*from_array(dc, dcs)):
+                # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
+                q.z.set_dc_offset(dc)
+                wait(100)  # Wait for the flux to settle
 
-                with for_(*from_array(dc, dcs)):
-                    # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
-                    q.z.set_dc_offset(dc)
-                    wait(100)  # Wait for the flux to settle
+                with for_(*from_array(df, dfs)):
+                    # Update the resonator frequencies for resonator
+                    update_frequency(rr.name, df + rr.intermediate_frequency)
 
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]))
@@ -112,8 +112,8 @@ with program() as multi_res_spec_vs_flux:
     with stream_processing():
         n_st.save("n")
         for i, rr in enumerate(resonators):
-            I_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"I{i + 1}")
-            Q_st[i].buffer(len(dcs)).buffer(len(dfs)).average().save(f"Q{i + 1}")
+            I_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(dfs)).buffer(len(dcs)).average().save(f"Q{i + 1}")
 
 #######################
 # Simulate or execute #
@@ -164,8 +164,16 @@ else:
             )
             plt.xlabel("flux [V]")
             plt.ylabel(f"{rr.name} IF [MHz]")
-            plt.pcolor(dcs, rr.intermediate_frequency / u.MHz + dfs / u.MHz, A)
-            plt.plot(qubit.z.min_offset, rr.intermediate_frequency / u.MHz, "r*")
+            plt.pcolor(
+                dcs,
+                (rr.LO_frequency + rr.intermediate_frequency) / u.MHz + dfs / u.MHz,
+                A.T,
+            )
+            plt.plot(
+                qubit.z.min_offset,
+                (rr.LO_frequency + rr.intermediate_frequency) / u.MHz,
+                "r*",
+            )
 
         plt.tight_layout()
         plt.pause(0.1)

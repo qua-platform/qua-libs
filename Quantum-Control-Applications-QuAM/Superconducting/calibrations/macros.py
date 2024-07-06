@@ -1,19 +1,10 @@
 import inspect
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 import warnings
 
 from qm.qua import *
 from quam_libs.components import QuAM
-
-
-__all__ = [
-    "apply_all_flux_to_min",
-    "apply_all_flux_to_idle",
-    "qua_declaration",
-    "multiplexed_readout",
-    "node_save",
-]
 
 
 def apply_all_flux_to_min(quam: "QuAM"):
@@ -34,7 +25,7 @@ def qua_declaration(num_qubits):
     """
     Macro to declare the necessary QUA variables
 
-    :param num_qubits: Number of qubits used in this experiment
+    :param nb_of_qubits: Number of qubits used in this experiment
     :return:
     """
     n = declare(int)
@@ -70,35 +61,28 @@ def multiplexed_readout(
 
 
 def node_save(
-    quam: QuAM,
-    name: str,
-    data: dict,
-    additional_files: Optional[Union[dict, bool]] = None,
+    quam: QuAM, name: str, data: dict, additional_files: Union[dict, bool] = None
 ):
     # Save results
     if isinstance(additional_files, dict):
         quam.data_handler.additional_files = additional_files
     elif additional_files is True:
-        files = ["../calibration_db.json", "optimal_weights.npz"]
-
+        additional_files = {}
+        files = ["../configuration/calibration_db.json", "optimal_weights.npz"]
         try:
             files.append(inspect.currentframe().f_back.f_locals["__file__"])
         except Exception:
-            warnings.warn(
-                "Could not find the script file path to save it in the data folder"
-            )
+            warnings.warn("Unable to save script file")
 
-        additional_files = {}
         for file in files:
-            filepath = Path(file)
-            if not filepath.exists():
-                warnings.warn(f"File {file} does not exist, unable to save file")
-                continue
-            additional_files[str(filepath)] = filepath.name
-        print(additional_files=True)
-    else:
-        additional_files = {}
-    quam.data_handler.additional_files = additional_files
+            file = Path(file)
+            if not file.exists():
+                warnings.warn(f"Unable to save additional file {file}")
+            additional_files[str(file)] = file.name
+    #     Path(__file__).parent.parent / 'configuration' / v: v for v in
+    #     [Path(__file__), "calibration_db.json", "optimal_weights.npz"]
+    # }
+
     quam.data_handler.save_data(data=data, name=name)
 
     # Save QuAM to the data folder
@@ -108,4 +92,8 @@ def node_save(
     )
 
     # Save QuAM to configuration directory / `state.json`
-    quam.save(content_mapping={"wiring.json": {"wiring", "network"}})
+    config_dir = Path(__file__).parent.parent / "configuration"
+    quam.save(
+        path=config_dir / "quam_state",
+        content_mapping={"wiring.json": {"wiring", "network"}},
+    )

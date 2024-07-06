@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 ###################################################
 # Instantiate the QuAM class from the state file
 
-# Load the machine state
+# Instantiate the QuAM class from the state file
 machine = QuAM.load()
 
 # Generate the OPX and Octave configurations

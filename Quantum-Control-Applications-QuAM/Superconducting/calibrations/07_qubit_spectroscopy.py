@@ -68,18 +68,18 @@ num_qubits = len(qubits)
 ###################
 
 operation = "saturation"  # The qubit operation to play, can be switched to "x180" when the qubits are found.
-n_avg = 2  # The number of averages
+n_avg = 600  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
-saturation_len = 10 * u.us  # In ns
+saturation_len = 20 * u.us  # In ns
 saturation_amp = (
-    0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
+    0.01  # pre-factor to the value defined in the config - restricted to [-2; 2)
 )
 # Qubit detuning sweep with respect to their resonance frequencies
-dfs = np.arange(-60e6, +80e6, 1e6)
+dfs = np.arange(-50e6, +50e6, 0.1e6)
 
 with program() as multi_qubit_spec:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubitss=num_qubits)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the qubit frequency
 
     # Bring the active qubits to the minimum frequency point
@@ -154,16 +154,25 @@ else:
             s_data.append(s)
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
-            plt.plot(dfs / u.MHz, np.abs(s))
+            plt.plot(
+                (q.xy.LO_frequency + q.xy.intermediate_frequency + dfs) / u.MHz,
+                np.abs(s),
+            )
             plt.grid(True)
             plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
             plt.title(f"{q.name} (f_01: {q.xy.rf_frequency / u.MHz} MHz)")
             plt.subplot(2, num_qubits, num_qubits + i + 1)
             plt.cla()
-            plt.plot(dfs / u.MHz, np.angle(s))
+            plt.plot(
+                (q.xy.LO_frequency + q.xy.intermediate_frequency + dfs) / u.MHz,
+                np.unwrap(np.angle(s)),
+            )
             plt.grid(True)
             plt.ylabel("Phase [rad]")
             plt.xlabel(f"{q.name} detuning [MHz]")
+            plt.plot(
+                (q.xy.LO_frequency + q.xy.intermediate_frequency) / u.MHz, 0.0, "r*"
+            )
 
         plt.tight_layout()
         plt.pause(0.1)
@@ -179,7 +188,7 @@ else:
         data[f"{q.name}_phase"] = np.angle(s_data[i])
     data["figure"] = fig
 
-    fit_fig = fig_analysis = plt.figure()
+    fig_analysis = plt.figure()
     plt.suptitle("Qubit spectroscopy")
     # Fit the results to extract the resonance frequency
     for i, q in enumerate(qubits):
@@ -189,8 +198,8 @@ else:
             fit = Fit()
             plt.subplot(1, num_qubits, i + 1)
             res = fit.reflection_resonator_spectroscopy(
-                (q.xy.intermediate_frequency + dfs) / u.MHz,
-                -np.angle(s_data[i]),
+                (q.xy.LO_frequency + q.xy.intermediate_frequency + dfs) / u.MHz,
+                -np.unwrap(np.angle(s_data[i])),
                 plot=True,
             )
             plt.legend((f"f = {res['f'][0]:.3f} MHz",))
@@ -198,14 +207,14 @@ else:
             plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
             plt.title(f"{q.name}")
 
-            q.xy.intermediate_frequency = int(res["f"][0] * u.MHz)
+            # q.xy.intermediate_frequency = int(res["f"][0] * u.MHz)
             data[f"{q.name}"] = {
                 "res_if": q.xy.intermediate_frequency,
                 "fit_successful": True,
             }
 
             plt.tight_layout()
-            data["fit_figure"] = fit_fig
+            data["fit_figure"] = fig_analysis
 
         except Exception:
             data[f"{q.name}"] = {"successful_fit": False}

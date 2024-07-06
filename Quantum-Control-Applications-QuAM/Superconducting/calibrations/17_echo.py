@@ -194,11 +194,7 @@ else:
             pass
     plt.show()
 
-# Save data from the node
-additional_files = {
-    Path(__file__).parent.parent / "configuration" / v: v
-    for v in ["calibration_db.json", "optimal_weights.npz"]
-}
-node_save(machine, "ramsey", data, additional_files=True)
+    # Save data from the node
+    node_save(machine, "ramsey", data, additional_files=True)
 
 # %%

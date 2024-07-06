@@ -72,9 +72,9 @@ n_avg = 100  # The number of averages
 #     rr.operations["readout"].amplitude = 0.01
 
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
-amps = np.arange(0.05, 1.99, 0.01)
+amps = np.arange(0.05, 1.99, 0.02)
 # The frequency sweep around the resonator resonance frequencies f_opt
-dfs = np.arange(-10e6, +10e6, 0.1e6)
+dfs = np.arange(-6e6, +6e6, 0.25e6)
 
 with program() as multi_res_spec_vs_amp:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
@@ -114,9 +114,10 @@ with program() as multi_res_spec_vs_amp:
 
         align(*[rr.name for rr in resonators])
 
-    with stream_processing():
-        n_st.save("n")
-        for i in range(num_resonators):
+        with stream_processing():
+            if not i:
+                n_st.save("n")
+            # for i in range(num_resonators):
             I_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"I{i + 1}")
             Q_st[i].buffer(len(amps)).buffer(len(dfs)).average().save(f"Q{i + 1}")
 
