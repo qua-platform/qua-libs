@@ -43,14 +43,14 @@ qubit2_frame_update = 0.12  # example values, should be taken from QPU parameter
 
 # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
 def bake_cz(baker: Baking, q1, q2):
-    q1_xy_element = qc.xy.name
-    q2_xy_element = qt.xy.name
-    q1_z_element = qc.z.name
+    qc_xy_element = qc.xy.name
+    qt_xy_element = qt.xy.name
+    qc_z_element = qc.z.name
 
-    baker.play("cz", q1_z_element)
+    baker.play("cz", qc_z_element)
     baker.align()
-    baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
-    baker.frame_rotation_2pi(qubit2_frame_update, q2_xy_element)
+    baker.frame_rotation_2pi(qubit1_frame_update, qc_xy_element)
+    baker.frame_rotation_2pi(qubit2_frame_update, qt_xy_element)
     baker.align()
 
 
