@@ -8,6 +8,9 @@ from quam_libs.macros import qua_declaration, multiplexed_readout, node_save
 import matplotlib.pyplot as plt
 import matplotlib
 
+
+# todo: make sure to install: cirq, xarray, tqdm
+
 matplotlib.use("TKAgg")
 
 machine = QuAM.load()
@@ -96,11 +99,26 @@ res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_
 # num_circuits_per_depth ~ how many random circuits within one depth
 # num_shots_per_circuit ~ repetitions of the same circuit (averaging)
 
+data = {}
+
 res.plot_hist()
+plt.show()
+
+res.plot_decay()
 plt.show()
 
 res.plot_fidelity()
 plt.show()
+
+A, alpha, B = res.fit_exponential()
+fidelity = res.get_fidelity()
+data["amplitude"] = A
+data["decay_rate"] = alpha
+data["mixed_state_probability"] = B
+data["fidelity"] = fidelity
+data["figure"] = plt.gcf()
+
+node_save(machine, "two_qubit_randomized_benchmarking", data, additional_files=True)
 
 # verify/save the random sequences created during the experiment
 rb.save_sequences_to_file("sequences.txt")  # saves the gates used in each random sequence
