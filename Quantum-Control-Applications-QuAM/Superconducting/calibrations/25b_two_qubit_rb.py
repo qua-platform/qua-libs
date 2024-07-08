@@ -65,16 +65,15 @@ def prep():
 def meas():
     threshold1 = 0.  # threshold for state discrimination 0 <-> 1 using the I quadrature
     threshold2 = 0.  # threshold for state discrimination 0 <-> 1 using the I quadrature
-    I1 = declare(fixed)
-    I2 = declare(fixed)
-    Q1 = declare(fixed)
-    Q2 = declare(fixed)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=len([qc, qt]))
     state1 = declare(bool)
     state2 = declare(bool)
-    # todo: fill in QuAM's multiplexed readout
-    multiplexed_readout(...)
-    assign(state1, I1 > threshold1)  # assume that all information is in I
-    assign(state2, I2 > threshold2)  # assume that all information is in I
+
+    multiplexed_readout([qc, qt], I, I_st, Q, Q_st)
+
+    assign(state1, I[0] > threshold1)  # assume that all information is in I
+    assign(state2, I[1] > threshold2)  # assume that all information is in I
+
     return state1, state2
 
 
