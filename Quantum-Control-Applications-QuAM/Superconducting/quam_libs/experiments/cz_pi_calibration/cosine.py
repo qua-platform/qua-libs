@@ -1,4 +1,4 @@
-from FittingBaseClass import FittingBaseClass
+from .FittingBaseClass import FittingBaseClass
 from typing import List, Union
 import numpy as np
 import matplotlib.pyplot as plt
