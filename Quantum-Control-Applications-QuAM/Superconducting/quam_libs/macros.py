@@ -55,10 +55,9 @@ def multiplexed_readout(
     """Perform multiplexed readout on two resonators"""
 
     for ind, q in enumerate(qubits):
-        # TODO: demod.accumulated?
         q.resonator.measure(
-            "readout", qua_vars=(I[ind], Q[ind])
-        )  # TODO: implement amplitude sweep
+            "readout", qua_vars=(I[ind], Q[ind]), amplitude_scale=amplitude
+        )
 
         if I_st is not None:
             save(I[ind], I_st[ind])
@@ -101,6 +100,9 @@ def node_save(
     quam.data_handler.save_data(data=data, name=name)
 
     # Save QuAM to the data folder
+    quam.save(
+        path=quam.data_handler.path / "state.json",
+    )
     quam.save(
         path=quam.data_handler.path / "quam_state",
         content_mapping={"wiring.json": {"wiring", "network"}},

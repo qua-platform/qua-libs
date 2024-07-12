@@ -11,8 +11,6 @@ from quam_libs.components import QuAM
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
 # Instantiate the QuAM class from the state file
-
-# Instantiate the QuAM class from the state file
 machine = QuAM.load()
 
 # Generate the OPX and Octave configurations

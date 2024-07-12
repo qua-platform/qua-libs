@@ -44,8 +44,15 @@ class QuAM(QuamRoot):
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":
-        if not args and "quam_state_path" in os.environ:
-            args = (os.environ["quam_state_path"],)
+        if not args:
+            if "QUAM_STATE_PATH" in os.environ:
+                args = (os.environ["QUAM_STATE_PATH"],)
+            else:
+                raise ValueError(
+                    "No path argument provided to load the QuAM state. "
+                    "Please provide a path or set the 'QUAM_STATE_PATH' environment variable. "
+                    "See the README for instructions."
+                )
         return super().load(*args, **kwargs)
 
     def save(
@@ -55,8 +62,8 @@ class QuAM(QuamRoot):
         include_defaults: bool = False,
         ignore: Sequence[str] = None,
     ):
-        if path is None and "quam_state_path" in os.environ:
-            path = os.environ["quam_state_path"]
+        if path is None and "QUAM_STATE_PATH" in os.environ:
+            path = os.environ["QUAM_STATE_PATH"]
 
         super().save(path, content_mapping, include_defaults, ignore)
 
