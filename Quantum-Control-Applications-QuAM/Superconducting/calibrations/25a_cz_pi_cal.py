@@ -152,6 +152,7 @@ with program() as cz_pi_cal:
                     frame_rotation_2pi(phi, qubit_to_flux_tune.xy.name)
                     play("x90", qubit_to_flux_tune.xy.name)
                     align()
+                    q1.z.play("const")
 
                     # Measure the state of the resonators
                     wait(4)
