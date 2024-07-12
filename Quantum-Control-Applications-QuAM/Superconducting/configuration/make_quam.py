@@ -1,4 +1,3 @@
-import math
 import os.path
 from typing import Dict, List, Type, TypeVar
 from pathlib import Path
@@ -6,7 +5,7 @@ import json
 
 from qualang_tools.units import unit
 from quam.components import Octave, IQChannel, DigitalOutputChannel
-from quam_components import (
+from quam_libs.components import (
     Transmon,
     ReadoutResonator,
     FluxLine,
@@ -49,35 +48,31 @@ def create_quam_superconducting(
         raise ValueError("Wiring must be provided.")
 
     host_ip = "192.168.1.52"
-    octave_ips = [
-        "192.168.1.52",
-        "192.168.1.52",
-        "192.168.1.52",
-    ]        # or "192.168.88.X" if configured internally
-    octave_ports = [
-        11243,
-        11240,
-        11241,
-    ]  # 11XXX where XXX are the last digits of the Octave IP or 80 if configured internally
+
+    octave_ips = [host_ip] * 3
+    # or "192.168.88.X" if configured internally
+    # octave_ips = ["192.168.88.251", ...]
+
+    octave_ports = [11243, 11240, 11241]  # 11XXX where XXX are the last digits of the Octave IP
+    # or 80 if configured internally
+    # octave_ips = [80] * 3
 
     machine.network = {
         "host": host_ip,
-        "cluster_name": "QPX_20q",
+        "cluster_name": "Cluster_Name",
         "octave_ips": octave_ips,
         "octave_ports": octave_ports,
-        "data_folder": r"C:\Users\ASQUM_2\Documents\GitHub\PYQUM\TEST\BETAsite\QM\OPX1000\data",
+        "data_folder": r"C:\data\path\to\folder",
     }
     print("Please update the default network settings in: quam.network")
-
-    num_qubits = len(wiring["qubits"])
 
     if octaves is not None:
         machine.octaves = octaves
         print("If you haven't configured the octaves, please run: octave.initialize_frequency_converters()")
+
     else:
         # Add the Octave to the quam
         for i in range(len(octave_ips)):
-            # Assumes 1 Octave for every 4 qubits
             octave = Octave(
                 name=f"octave{i+1}",
                 ip=machine.network["octave_ips"][i],
@@ -138,6 +133,7 @@ def create_quam_superconducting(
                 depletion_time=1 * u.us,
             ),
         )
+
         machine.qubits[transmon.name] = transmon
         machine.active_qubit_names.append(transmon.name)
 
@@ -189,11 +185,10 @@ def create_quam_superconducting(
         machine.active_qubit_pair_names.append(qubit_pair_name)
         add_default_transmon_pair_pulses(qubit_pair)
 
-    # Add additiional analog input ports
+    # Add additional input ports for calibrating the mixers
+    print(qubit_wiring.xy.frequency_converter_up.get_reference())
     machine.ports.get_analog_input("con1", 2, 1, create=True)
     machine.ports.get_analog_input("con1", 2, 2, create=True)
-
-    machine.active_qubits.pop(0)
 
     return machine
 
@@ -216,30 +211,30 @@ if __name__ == "__main__":
             "q2": {
                 "res": (1, 1, 1, 1),
                 "xy": (1, 5, 1, 3),
-                "flux": (3, 6),
+                "flux": (3, 1),
             },
             "q3": {
                 "res": (1, 1, 1, 1),
                 "xy": (1, 7, 1, 4),
-                "flux": (3, 7),
+                "flux": (3, 2),
             },
             "q4": {
                 "res": (1, 1, 1, 1),
                 "xy": (2, 1, 2, 1),
-                "flux": (3, 8),
+                "flux": (3, 3),
             },
             "q5": {
                 "res": (1, 1, 1, 1),
                 "xy": (2, 3, 2, 2),
-                "flux": (3, 1),
+                "flux": (3, 4),
             },
         },
         "qubit_pairs": {
             # (module, ch)
-            "q12": {"coupler": (3, 2)},
-            "q23": {"coupler": (3, 3)},
-            "q34": {"coupler": (3, 4)},
-            "q45": {"coupler": (3, 5)},
+            "q12": {"coupler": (3, 5)},
+            "q23": {"coupler": (3, 6)},
+            "q34": {"coupler": (3, 7)},
+            "q45": {"coupler": (3, 8)},
         },
     }
 
@@ -249,17 +244,15 @@ if __name__ == "__main__":
     #     starting_fem=3
     # )
     port_allocation = custom_port_allocation(custom_port_wiring)
-    print(f"{port_allocation=}")
     wiring = create_wiring(port_allocation, using_opx_1000=using_opx_1000)
-    print(f"{wiring=}")
     machine = create_quam_superconducting(quam_class, wiring)
 
-    # machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
+    machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
-    # qua_file = folder / "qua_config.json"
-    # qua_config = machine.generate_config()
-    # json.dump(qua_config, qua_file.open("w"), indent=4)
+    qua_file = folder / "qua_config.json"
+    qua_config = machine.generate_config()
+    json.dump(qua_config, qua_file.open("w"), indent=4)
 
-    # quam_loaded = QuAM.load(quam_folder)
-    # qua_config_loaded = quam_loaded.generate_config()
-    # json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
+    quam_loaded = QuAM.load(quam_folder)
+    qua_config_loaded = quam_loaded.generate_config()
+    json.dump(qua_config_loaded, qua_file.open("w"), indent=4)

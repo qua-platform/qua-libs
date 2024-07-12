@@ -39,7 +39,7 @@ with program() as hello_qua:
 # Run or Simulate Program #
 ###########################
 
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
