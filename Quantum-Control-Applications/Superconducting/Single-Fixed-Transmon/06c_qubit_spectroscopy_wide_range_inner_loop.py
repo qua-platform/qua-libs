@@ -17,7 +17,7 @@ Before proceeding to the next node:
 from qm.qua import *
 from qm import QuantumMachinesManager
 from configuration import *
-from qualang_tools.results import progress_counter
+from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
@@ -89,19 +89,6 @@ with program() as qubit_spec:
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-
-
-def wait_until_job_is_paused(current_job):
-    """
-    Waits until the OPX FPGA reaches the pause statement.
-    Used when the OPX sequence needs to be synchronized with an external parameter sweep.
-
-    :param current_job: the job object.
-    """
-    while not current_job.is_paused():
-        sleep(0.1)
-        pass
-    return True
 
 
 ###############
