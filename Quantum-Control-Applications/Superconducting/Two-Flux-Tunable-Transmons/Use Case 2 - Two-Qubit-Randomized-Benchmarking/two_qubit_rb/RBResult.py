@@ -42,7 +42,7 @@ class RBResult:
         plt.figure()
         plt.plot(self.circuit_depths, self.get_decay_curve(), 'o', label='Data')
         plt.plot(self.circuit_depths, rb_decay_curve(np.array(self.circuit_depths), A, alpha, B), '-',
-                 label=f'Fidelity={fidelity*100:.3f}%\n\alpha={alpha:.4f}')
+                 label=f'Fidelity={fidelity*100:.3f}%\nalpha={alpha:.4f}')
         plt.xlabel('Circuit Depth')
         plt.ylabel('Fidelity')
         plt.title('2Q Randomized Benchmarking Fidelity')
