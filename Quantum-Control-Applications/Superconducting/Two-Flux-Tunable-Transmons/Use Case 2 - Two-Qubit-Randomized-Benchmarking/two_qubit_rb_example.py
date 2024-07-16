@@ -132,3 +132,12 @@ rb.save_command_mapping_to_file('commands.txt')  # saves mapping from "command i
 # rb.print_sequence()
 # rb.print_command_mapping()
 # rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
+
+# # get the interleaved gate fidelity
+# from two_qubit_rb.RBResult import get_interleaved_gate_fidelity
+# interleaved_gate_fidelity = get_interleaved_gate_fidelity(
+#     num_qubits=2,
+#     reference_alpha=0.12345,  # replace with value from prior, non-interleaved experiment
+#     # interleaved_alpha=res.fit_exponential()[1],  # alpha from the interleaved experiment
+# )
+# print(f"Interleaved Gate Fidelity: {interleaved_gate_fidelity*100:.3f}")

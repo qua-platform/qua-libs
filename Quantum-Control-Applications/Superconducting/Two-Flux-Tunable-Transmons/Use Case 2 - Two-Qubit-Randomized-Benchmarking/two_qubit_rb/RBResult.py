@@ -42,7 +42,7 @@ class RBResult:
         plt.figure()
         plt.plot(self.circuit_depths, self.get_decay_curve(), 'o', label='Data')
         plt.plot(self.circuit_depths, rb_decay_curve(np.array(self.circuit_depths), A, alpha, B), '-',
-                 label=f'Fit: Fidelity={fidelity*100:.3f}%')
+                 label=f'Fidelity={fidelity*100:.3f}%\n\alpha={alpha:.4f}')
         plt.xlabel('Circuit Depth')
         plt.ylabel('Fidelity')
         plt.title('2Q Randomized Benchmarking Fidelity')
@@ -73,3 +73,8 @@ class RBResult:
 
 def rb_decay_curve(x, A, alpha, B):
     return A * alpha ** x + B
+
+
+def get_interleaved_gate_fidelity(num_qubits: int, reference_alpha: float, interleaved_alpha: float):
+    """ Formula from: https://arxiv.org/pdf/1210.7011 """
+    return 1 - ((2 ** num_qubits - 1) * (1 - interleaved_alpha / reference_alpha) / 2 ** num_qubits)
