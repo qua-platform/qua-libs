@@ -4,6 +4,7 @@ import xarray as xr
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
 
+
 @dataclasses.dataclass
 class RBResult:
     circuit_depths: list[int]
@@ -40,20 +41,23 @@ class RBResult:
         fidelity = self.get_fidelity(alpha)
 
         plt.figure()
-        plt.plot(self.circuit_depths, self.get_decay_curve(), 'o', label='Data')
-        plt.plot(self.circuit_depths, rb_decay_curve(np.array(self.circuit_depths), A, alpha, B), '-',
-                 label=f'Fidelity={fidelity*100:.3f}%\nalpha={alpha:.4f}')
-        plt.xlabel('Circuit Depth')
-        plt.ylabel('Fidelity')
-        plt.title('2Q Randomized Benchmarking Fidelity')
+        plt.plot(self.circuit_depths, self.get_decay_curve(), "o", label="Data")
+        plt.plot(
+            self.circuit_depths,
+            rb_decay_curve(np.array(self.circuit_depths), A, alpha, B),
+            "-",
+            label=f"Fidelity={fidelity*100:.3f}%\nalpha={alpha:.4f}",
+        )
+        plt.xlabel("Circuit Depth")
+        plt.ylabel("Fidelity")
+        plt.title("2Q Randomized Benchmarking Fidelity")
         plt.legend()
         plt.show()
 
     def fit_exponential(self):
         decay_curve = self.get_decay_curve()
 
-        popt, _ = curve_fit(rb_decay_curve, self.circuit_depths, decay_curve,
-                            p0=[0.75, -0.1, 0.25], maxfev=10000)
+        popt, _ = curve_fit(rb_decay_curve, self.circuit_depths, decay_curve, p0=[0.75, -0.1, 0.25], maxfev=10000)
         A, alpha, B = popt
 
         return A, alpha, B
@@ -61,7 +65,7 @@ class RBResult:
     def get_fidelity(self, alpha):
         # Calculate the average error rate per Clifford
         n_qubits = 2  # Assuming 2 qubits as per the context
-        d = 2 ** n_qubits
+        d = 2**n_qubits
         r = 1 - alpha - (1 - alpha) / d
         fidelity = 1 - r
 
@@ -72,9 +76,9 @@ class RBResult:
 
 
 def rb_decay_curve(x, A, alpha, B):
-    return A * alpha ** x + B
+    return A * alpha**x + B
 
 
 def get_interleaved_gate_fidelity(num_qubits: int, reference_alpha: float, interleaved_alpha: float):
-    """ Formula from: https://arxiv.org/pdf/1210.7011 """
-    return 1 - ((2 ** num_qubits - 1) * (1 - interleaved_alpha / reference_alpha) / 2 ** num_qubits)
+    """Formula from: https://arxiv.org/pdf/1210.7011"""
+    return 1 - ((2**num_qubits - 1) * (1 - interleaved_alpha / reference_alpha) / 2**num_qubits)
