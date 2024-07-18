@@ -128,7 +128,7 @@ plt.show()
 
 # verify/save the random sequences created during the experiment
 rb.save_sequences_to_file("sequences.txt")  # saves the gates used in each random sequence
-rb.save_command_mapping_to_file('commands.txt')  # saves mapping from "command id" to sequence
+rb.save_command_mapping_to_file("commands.txt")  # saves mapping from "command id" to sequence
 # rb.print_sequence()
 # rb.print_command_mapping()
 # rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
