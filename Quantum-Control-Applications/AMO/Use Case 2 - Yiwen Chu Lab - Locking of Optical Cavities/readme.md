@@ -59,13 +59,115 @@ Furthermore, the FFT in the figure below allows assessing the quality of the loc
 ## Detailed Description of Files and Functions
 ### The Filter Cavities Functions Library
 * `PID_derivation`: Derives PID/correction signal `corr` based on the `input_signal`, `target` value, and the PID gains.
+
+```python
+def PID_derivation(input_signal,corr,error,integrator_error,derivative_error,old_error, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha, target):
+    # calculate the error
+    assign(error, (target - input_signal) << bitshift_scale_factor) #bitshift the error
+    # calculate the integrator error with exponentially decreasing weights with coefficient alpha, see https://en.wikipedia.org/wiki/Exponential_smoothing
+    assign(integrator_error, (1.0 - alpha) * integrator_error + alpha * error)
+    # calculate the derivative error
+    assign(derivative_error, old_error - error)
+    # save old error to be error
+    assign(old_error, error)
+
+    assign(corr, gain_P * error + gain_I * integrator_error + gain_D * derivative_error)
+    return(corr)
+```
+
 * `opticalswitches_control`: Controls an optical switch not part of the optical cavity setup. The switch is controlled by playing digital markers from the OPX.
 * `RFswitch_control`: Selects the photodiode signal routet to the OPX input by sending a digital marker signal to an SP8T RF switch.
 * `measure_macro`: Measures the photodiode signal and modulates the phase of the PDH signal, playing digital pulses at the same time as the PDH modulator drive pulse. It handles both DC and AC measurements and can save the data if needed.
+
+```python
+def measure_macro(RFconfig,single_shot_DC_st,single_shot_AC_st,I,Q,savedata,N_avg=1,angle=0.0):
+    '''Measure macro used in FastLock. Plays the digital pulses at the same time as the PDH modulator drive pulse.
+    single_shot_DC/AC are not arguments, they're local variables declared inside this function.'''
+    n_avg = declare(int)
+    single_shot_DC = declare(fixed)
+    single_shot_AC = declare(fixed)
+    RFconfig_number=declare(int,value=RFswitch_lookup[RFconfig])
+    opticalconfig_number=declare(int,value=opticalswitches_lookup["0110"]) # Only OS2 and OS3 are ON
+
+    # assign(cavity_number,RFswitch_lookup[cavity])
+    with for_(n_avg, 0, n_avg<N_avg, n_avg+1):
+        # Ensure that the two digital oscillators will start with the same phase
+        reset_phase("phase_modulator")
+        reset_phase("detector_AC")
+        # Adjust the phase delay between the two
+        # frame_rotation_2pi(angle, "detector_AC")
+        frame_rotation_2pi(angle, "phase_modulator")
+        # Sync all the elements
+        align() # Wait for previous block of pulses (from previous loop iteration) to be finished
+        
+        # Select which photodiode signal is sent to the OPX input, using SP8T RF swich
+        RFswitch_control(RFconfig_number)
+        # Configure laser path with optical switches
+        opticalswitches_control(opticalconfig_number)
+        # Play the PDH sideband
+        play("cw", "phase_modulator")
+        # Measure and integrate the signal received by the detector --> DC measurement
+        measure("readout", "detector_DC", None, integration.full("constant", single_shot_DC, "out1"))
+        # Measure and demodulate the signal received by the detector --> AC measurement sqrt(I**2 + Q**2)
+        measure("readout", "detector_AC", None, demod.full("constant", I, "out1"), demod.full("constant", Q, "out1"))
+        assign(single_shot_AC, I)
+        reset_frame("phase_modulator") #reset the phase to undo the angle rotation above
+
+    with if_(savedata==True):
+        save(single_shot_DC, single_shot_DC_st)
+        save(single_shot_AC, single_shot_AC_st)
+        
+    return(single_shot_AC)
+```
+
 * `measure_macro_slowlock`: Measures and integrates signals used in the slow lock without saving data.
 * `slowLock`: Performs a slow lock by measuring the starting point and sweeping the offset until the AC signal changes sign significantly. Utilizes `measure_macro_slowlock`.
 * `fastLock`: Engages PID on the error signal from the low-frequency PDH, adjusting the offset in real-time to maintain lock. Utilizes `measure_macro`.
+
+```python
+def fastLock(cavity,single_shot_DC_st,single_shot_AC_st,I,Q,offset_opti,correction,error,int_error,der_error,old_error,gain_P_qua,gain_I_qua,gain_D_qua,lock_time,alpha_qua,target_qua=0.0,bitshift_scale_factor_qua=3,savedata=True):
+    '''Engages PID on error signal from low freq PDH'''
+    n_fastlock_repeat = declare(int)
+    N_fastlock_repeat = declare(int)
+    assign(N_fastlock_repeat, int(lock_time*1e9 / readout_len))
+    # play("offset" * amp(offset_opti), cavity) #Start at the previous setpoint
+    # wait(pause_time)
+    with for_(n_fastlock_repeat, 0, n_fastlock_repeat < N_fastlock_repeat, n_fastlock_repeat + 1):
+        single_shot_AC=measure_macro(cavity,single_shot_DC_st,single_shot_AC_st,I,Q,savedata)
+        # single_shot_AC=measure_macro_withavg(cavity,single_shot_DC_st,single_shot_AC_st,I,Q,savedata)
+        correction= PID_derivation(single_shot_AC,correction,error,int_error,der_error,old_error, bitshift_scale_factor_qua, gain_P_qua, gain_I_qua, gain_D_qua, alpha_qua, target_qua)
+        assign(offset_opti, offset_opti+correction)
+        play("offset" * amp(correction * 4), cavity) #sticky element, adds correction to previous value
+```
+
 * `fullock`: Uses `fastLock` to lock three cavities in series, sequentially locking each cavity to its target value.
+
+```python
+def fullock(locktime,dc_offset_cav1,dc_offset_cav2,dc_offset_cav3,single_shot_DC_cav1_st,single_shot_DC_cav2_st,single_shot_DC_cav3_st,single_shot_AC_cav1_st,single_shot_AC_cav2_st,single_shot_AC_cav3_st,correction_cav1,correction_cav2,correction_cav3,error_cav1,error_cav2,error_cav3,integrator_error_cav1,integrator_error_cav2,integrator_error_cav3,derivative_error_cav1,derivative_error_cav2,derivative_error_cav3,old_error_cav1,old_error_cav2,old_error_cav3,gain_P_qua,gain_I_qua,gain_D_qua,alpha_qua,target_qua,bitshift_scale_factor_qua,savedata=True):
+    '''Uses fastLock to lock three cavities in series, one after another'''
+    
+    savedata_qua=declare(bool,value=savedata)
+
+    I = declare(fixed)
+    Q = declare(fixed)
+    single_shot_DC = declare(fixed)
+    single_shot_AC = declare(fixed)
+    assign_variables_to_element("detector_DC", single_shot_DC)
+    assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
+
+    # Cavity 1
+    fastLock("filter_cavity_1",single_shot_DC_cav1_st,single_shot_AC_cav1_st,I,Q,
+                dc_offset_cav1,correction_cav1,error_cav1,integrator_error_cav1,derivative_error_cav1,old_error_cav1,
+                gain_P_qua,gain_I_qua,gain_D_qua,locktime,alpha_qua,target_qua,bitshift_scale_factor_qua,savedata_qua)
+    # Cavity 2
+    fastLock("filter_cavity_2",single_shot_DC_cav2_st,single_shot_AC_cav2_st,I,Q,
+                dc_offset_cav2,correction_cav2,error_cav2,integrator_error_cav2,derivative_error_cav2,old_error_cav2,
+                gain_P_qua,gain_I_qua,gain_D_qua,locktime,alpha_qua,target_qua,bitshift_scale_factor_qua,savedata_qua)
+    # Cavity 3
+    fastLock("filter_cavity_3",single_shot_DC_cav3_st,single_shot_AC_cav3_st,I,Q,
+                dc_offset_cav3,correction_cav3,error_cav3,integrator_error_cav3,derivative_error_cav3,old_error_cav3,
+                gain_P_qua,gain_I_qua,gain_D_qua,locktime,alpha_qua,target_qua,bitshift_scale_factor_qua,savedata_qua)
+```
 
 
 ### The Configuration File Elements
@@ -76,7 +178,7 @@ Furthermore, the FFT in the figure below allows assessing the quality of the loc
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
 
 ### The Cavity Monitoring File
-This script can be utilized to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity%20Lock%20Data%20Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
+This script can be utilized to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity Lock Data Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
 
 
 ## References
