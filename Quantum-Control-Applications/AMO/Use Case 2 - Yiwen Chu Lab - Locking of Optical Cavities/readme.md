@@ -27,20 +27,22 @@ Pound-Drever-Hall (PDH) locking is a widely-used technique for stabilizing the f
 ## Setup
 
 The corresponding experimental setup is as follows (cf. figure below):
-* Each cavity necessitates one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 10).
-* Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 8).
+* Each cavity necessitates one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 8).
+* Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 6).
 * One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1). 
 * The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
-* Four additional digital markers are used to control the optical switches rerouting the light in different sections of the full setup (DO 1-4).
+* Four additional digital markers are used to control the optical switches rerouting the light in different sections of the full setup not part of the lock setup (DO 1-4).
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
 
 ![setup](setup.PNG)
 
 ## Results
 
-The figure below shows results of a lock of three cascaded cavities. When switching between enabled and disabled PID lock, the program is able to recapture the drifting error signal. This can be seen both in the AC and DC signal. Furthermore, the FFT in the figure further below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock. 
+The figure below shows results of a lock of three cascaded cavities. When switching between enabled and disabled PID lock, the program is able to recapture the drifting error signal. This can be seen both in the AC and DC signal.
 
 ![lock_characterization](lock_characterization.png)
+
+Furthermore, the FFT in the figure below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock. 
 
 ![FFT](FFT.png)
 
@@ -53,7 +55,8 @@ The figure below shows results of a lock of three cascaded cavities. When switch
 | [Cavity_monitoring_QUA.py](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity_monitoring_QUA.py) | Program repeatedly switches between PID lock 'on' and 'off' to assess the quality of the lock. |
 | [Cavity%20Lock%20Data%20Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb) | Plots the results of [Cavity_monitoring_QUA.py](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity_monitoring_QUA.py) |
 
-## The Filter Cavities Functions Library
+## Detailed Description of Files and Functions
+### The Filter Cavities Functions Library
 * `PID_derivation`: Derives PID/correction signal `corr` based on the `input_signal`, `target` value, and the PID gains.
 * `opticalswitches_control`: Controls an optical switch not part of the optical cavity setup. The switch is controlled by playing digital markers from the OPX.
 * `RFswitch_control`: Selects the photodiode signal routet to the OPX input by sending a digital marker signal to an SP8T RF switch.
@@ -64,14 +67,14 @@ The figure below shows results of a lock of three cascaded cavities. When switch
 * `fullock`: Uses `fastLock` to lock three cavities in series, sequentially locking each cavity to its target value.
 
 
-## The Configuration File Elements
+### The Configuration File Elements
 * `filter_cavity_1`, `filter_cavity_2`, and `filter_cavity_3`: Each cavity necessitates one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 10).
 * `phase_modulator`: Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 8).
 * One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1). 
 * `RFswitch_pin0`, `RFswitch_pin1`, and `RFswitch_pin2`: The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
 
-## The Cavity Monitoring File
+### The Cavity Monitoring File
 This script can be utilized to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity%20Lock%20Data%20Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
 
 
