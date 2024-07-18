@@ -36,16 +36,6 @@ The corresponding experimental setup is as follows (cf. figure below):
 
 ![setup](setup.PNG)
 
-## Results
-
-The figure below shows results of a lock of three cascaded cavities. When switching between enabled and disabled PID lock, the program is able to recapture the drifting error signal. This can be seen both in the AC and DC signal.
-
-![lock_characterization](lock_characterization.png)
-
-Furthermore, the FFT in the figure below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock. 
-
-![FFT](FFT.png)
-
 ## File Structure
 
 |                 File                 | Description                                                                  |
@@ -179,6 +169,16 @@ def fullock(locktime,dc_offset_cav1,dc_offset_cav2,dc_offset_cav3,single_shot_DC
 
 ### The Cavity Monitoring File
 This script can be utilized to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity Lock Data Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
+
+## Results
+
+The figure below shows results of a lock of a single optical cavity using the [Cavity monitoring QUA script](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity_monitoring_QUA.py). When switching between enabled and disabled PID lock, the program is able to recapture the drifting error signal. This can be seen both in the AC and DC signal.
+
+![lock_characterization](lock_characterization.png)
+
+Furthermore, the FFT in the figure below allows assessing the quality of the lock. This is practical when the integrator gain of the PID is being fine-tuned to dampen self-oscillations of the PID lock. 
+
+![FFT](FFT.png)
 
 
 ## References
