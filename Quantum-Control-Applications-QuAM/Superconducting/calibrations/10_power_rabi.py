@@ -92,12 +92,8 @@ with program() as power_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
-                f"I{i + 1}"
-            )
-            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
-                f"Q{i + 1}"
-            )
+            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
 
 
 ###########################
@@ -135,12 +131,8 @@ else:
         for i, qubit in enumerate(qubits):
             if I[i].shape[0] > 1:
                 # Convert into volts
-                I_volts.append(
-                    u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
-                )
-                Q_volts.append(
-                    u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
-                )
+                I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+                Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
                 # Plot
                 plt.suptitle("Power Rabi with error amplification")
                 plt.subplot(3, num_qubits, i + 1)
@@ -191,17 +183,14 @@ else:
     qm.close()
     data = {}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.name}_amplitude"] = (
-            amps * qubit.xy.operations[operation].amplitude
-        )
+        data[f"{qubit.name}_amplitude"] = amps * qubit.xy.operations[operation].amplitude
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])
 
         # Get the optimal pi pulse amplitude when doing error amplification
         try:
             qubit.xy.operations[operation].amplitude = (
-                amps[np.argmax(np.sum(I_volts[i], axis=0))]
-                * qubit.xy.operations[operation].amplitude
+                amps[np.argmax(np.sum(I_volts[i], axis=0))] * qubit.xy.operations[operation].amplitude
             )
 
             data[f"{qubit.name}"] = {

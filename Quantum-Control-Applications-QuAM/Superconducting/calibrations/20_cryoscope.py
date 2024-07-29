@@ -114,18 +114,10 @@ n_avg = 1000  # Number of averages
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
 # fitting the step response with an exponential.
-zeros_before_pulse = (
-    0  # Beginning of the flux pulse (before we put zeros to see the rising time)
-)
-zeros_after_pulse = (
-    0  # End of the flux pulse (after we put zeros to see the falling time)
-)
+zeros_before_pulse = 0  # Beginning of the flux pulse (before we put zeros to see the rising time)
+zeros_after_pulse = 0  # End of the flux pulse (after we put zeros to see the falling time)
 total_zeros = zeros_after_pulse + zeros_before_pulse
-flux_waveform = np.array(
-    [0.0] * zeros_before_pulse
-    + [flux_pulse_amp] * flux_pulse_len
-    + [0.0] * zeros_after_pulse
-)
+flux_waveform = np.array([0.0] * zeros_before_pulse + [flux_pulse_amp] * flux_pulse_len + [0.0] * zeros_after_pulse)
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(qb, flux_waveform, len(flux_waveform))
 step_response = [1.0] * flux_pulse_len
@@ -181,12 +173,8 @@ with program() as cryoscope:
         # for the progress counter
         n_st.save("n")
         # Qubit state
-        state_st[0].boolean_to_int().buffer(2).buffer(
-            flux_pulse_len + total_zeros + 1
-        ).average().save("state1")
-        state_st[1].boolean_to_int().buffer(2).buffer(
-            flux_pulse_len + total_zeros + 1
-        ).average().save("state2")
+        state_st[0].boolean_to_int().buffer(2).buffer(flux_pulse_len + total_zeros + 1).average().save("state1")
+        state_st[1].boolean_to_int().buffer(2).buffer(flux_pulse_len + total_zeros + 1).average().save("state2")
         # I_st[0].buffer(2).buffer(flux_pulse_len + total_zeros + 1).average().save("I1")
         # I_st[1].buffer(2).buffer(flux_pulse_len + total_zeros + 1).average().save("I2")
         # Q_st[0].buffer(2).buffer(flux_pulse_len + total_zeros + 1).average().save("Q1")
@@ -233,17 +221,11 @@ else:
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[-1]
         # Filtering and derivative of the phase to get the averaged frequency
-        coarse_detuning = np.gradient(
-            qubit_phase / 2 / np.pi, (xplot[1] - xplot[0]) / u.s
-        )
-        detuning = signal.savgol_filter(
-            qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001
-        )
+        coarse_detuning = np.gradient(qubit_phase / 2 / np.pi, (xplot[1] - xplot[0]) / u.s)
+        detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
         # Flux line step response in freq domain and voltage domain
         step_response_freq = detuning / np.average(detuning[-int(flux_pulse_len / 2) :])
-        step_response_volt = np.where(
-            step_response_freq < 0, 0, np.sqrt(step_response_freq)
-        )
+        step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
 
@@ -297,9 +279,7 @@ else:
     # Response without filter
     no_filter = exponential_decay(xplot, a=A, t=tau)
     # Response with filters
-    with_filter = no_filter * signal.lfilter(
-        fir, [1, iir[0]], pulse
-    )  # Output filter , DAC Output
+    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], pulse)  # Output filter , DAC Output
 
     # Plot all data
     fig = plt.figure()

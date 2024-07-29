@@ -195,8 +195,6 @@ else:
 
     plt.show()
     # Save data from the node
-    node_save(
-        machine, "resonator_spectroscopy_multiplexed", data, additional_files=True
-    )
+    node_save(machine, "resonator_spectroscopy_multiplexed", data, additional_files=True)
 
 # %%

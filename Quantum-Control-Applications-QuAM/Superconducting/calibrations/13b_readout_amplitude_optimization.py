@@ -127,16 +127,11 @@ else:
         # Fetch results
         iteration = results.fetch_all()
         # Progress bar
-        progress_counter(
-            iteration[0], len(amplitudes), start_time=results.get_start_time()
-        )
+        progress_counter(iteration[0], len(amplitudes), start_time=results.get_start_time())
 
     # Fetch the results at the end
     data_list = sum(
-        [
-            [f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"]
-            for i in range(num_qubits)
-        ],
+        [[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)],
         [],
     )
     results = fetching_tool(job, data_list)
@@ -185,17 +180,12 @@ else:
     # Save data from the node
     data = {}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.resonator.name}_amplitude"] = (
-            amplitudes * qubit.resonator.operations["readout"].amplitude
-        )
+        data[f"{qubit.resonator.name}_amplitude"] = amplitudes * qubit.resonator.operations["readout"].amplitude
         data[f"{qubit.resonator.name}_fidelity"] = fidelity_vec[i]
         data[f"{qubit.resonator.name}_amp_opt"] = (
-            qubit.resonator.operations["readout"].amplitude
-            * amplitudes[np.argmax(fidelity_vec[i])]
+            qubit.resonator.operations["readout"].amplitude * amplitudes[np.argmax(fidelity_vec[i])]
         )
-        qubit.resonator.operations["readout"].amplitude *= amplitudes[
-            np.argmax(fidelity_vec[i])
-        ]
+        qubit.resonator.operations["readout"].amplitude *= amplitudes[np.argmax(fidelity_vec[i])]
 
     data["figure"] = fig
 

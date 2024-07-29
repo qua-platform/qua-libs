@@ -145,10 +145,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(iq_blobs)
     data_list = sum(
-        [
-            [f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"]
-            for i in range(num_qubits)
-        ],
+        [[f"I_g_q{i}", f"Q_g_q{i}", f"I_e_q{i}", f"Q_e_q{i}"] for i in range(num_qubits)],
         [],
     )
     results = fetching_tool(job, data_list)
@@ -169,9 +166,7 @@ else:
 
         hist = np.histogram(I_g, bins=100)
         rus_threshold = hist[1][1:][np.argmax(hist[0])]
-        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
-            I_g, Q_g, I_e, Q_e, True, True
-        )
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, True)
 
         plt.suptitle(f"{qubit.name} - IQ Blobs")
         plt.axvline(rus_threshold, color="k", linestyle="--", label="Threshold")

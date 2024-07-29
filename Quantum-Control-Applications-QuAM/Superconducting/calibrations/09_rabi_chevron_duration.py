@@ -128,12 +128,8 @@ else:
         I_volts, Q_volts = [], []
         for i, qubit in enumerate(qubits):
             # Convert results into Volts
-            I_volts.append(
-                u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
-            )
-            Q_volts.append(
-                u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
-            )
+            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
             # Plot results
             plt.suptitle("Rabi chevron")
             plt.subplot(2, num_qubits, i + 1)

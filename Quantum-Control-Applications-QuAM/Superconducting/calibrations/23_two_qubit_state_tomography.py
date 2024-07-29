@@ -405,9 +405,7 @@ with program() as arb_two_qst:
             # state_st[i].boolean_to_int().buffer(2).buffer(3).buffer(len(lengths)).average().save(f"states{q}")\
             # state_st[i].boolean_to_int().buffer(9).average().save(f"states{q}")
             # state_st[i].boolean_to_int().buffer(3).buffer(len(lengths)).save(f"states_no_avg{q}")
-            state_st[i].boolean_to_int().buffer(9).buffer(n_avg).save(
-                f"state_all_shots{q}"
-            )
+            state_st[i].boolean_to_int().buffer(9).buffer(n_avg).save(f"state_all_shots{q}")
             # state_st[i].boolean_to_int().buffer(len(lengths)).average().save(f"state{q}")
             n_st[i].save(f"iteration{q}")
 
@@ -459,9 +457,7 @@ with JobQueue("Daria", message="2QST"):
             qubit_data["iteration"] = data[-1]
 
             # Progress bar
-            progress_counter(
-                qubit_data["iteration"], n_avg, start_time=my_results.start_time
-            )
+            progress_counter(qubit_data["iteration"], n_avg, start_time=my_results.start_time)
 
         # initiate res_dict[*]=0 for each msrmt round
         for k, v in res_dict.items():

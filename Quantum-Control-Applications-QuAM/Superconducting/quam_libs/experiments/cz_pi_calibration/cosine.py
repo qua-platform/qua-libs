@@ -5,15 +5,14 @@ import matplotlib.pyplot as plt
 
 
 class Cosine(FittingBaseClass):
-
     def __init__(
-            self,
-            x_data: Union[np.ndarray, List[float]],
-            y_data: Union[np.ndarray, List[float]],
-            guess=None,
-            verbose=False,
-            plot=False,
-            save=False
+        self,
+        x_data: Union[np.ndarray, List[float]],
+        y_data: Union[np.ndarray, List[float]],
+        guess=None,
+        verbose=False,
+        plot=False,
+        save=False,
     ):
         """
         Create a fit to cosine
@@ -73,13 +72,11 @@ class Cosine(FittingBaseClass):
         fft = np.fft.fft(self.y)
         f = np.fft.fftfreq(len(self.x))
         # Take the positive part only
-        fft = fft[1: len(f) // 2]
-        f = f[1: len(f) // 2]
+        fft = fft[1 : len(f) // 2]
+        f = f[1 : len(f) // 2]
         # Remove the DC peak if there is one
         if (np.abs(fft)[1:] - np.abs(fft)[:-1] > 0).any():
-            first_read_data_ind = np.where(np.abs(fft)[1:] - np.abs(fft)[:-1] > 0)[0][
-                0
-            ]  # away from the DC peak
+            first_read_data_ind = np.where(np.abs(fft)[1:] - np.abs(fft)[:-1] > 0)[0][0]  # away from the DC peak
             fft = fft[first_read_data_ind:]
             f = f[first_read_data_ind:]
 
@@ -91,9 +88,7 @@ class Cosine(FittingBaseClass):
         self.offset = np.mean(self.y)
 
         # Finding a guess for the phase
-        self.guess_phase = (
-                np.angle(fft[np.argmax(np.abs(fft))]) - self.guess_freq * 2 * np.pi * self.x[0]
-        )
+        self.guess_phase = np.angle(fft[np.argmax(np.abs(fft))]) - self.guess_freq * 2 * np.pi * self.x[0]
 
         self.guess_amp = (np.max(self.y) - np.min(self.y)) / 2
 
@@ -128,7 +123,7 @@ class Cosine(FittingBaseClass):
             "offset": [
                 self.popt[0] * self.offset * self.y_normal,
                 self.perr[0] * self.offset * self.y_normal,
-            ]
+            ],
         }
 
     def print_initial_guesses(self):
@@ -160,5 +155,3 @@ class Cosine(FittingBaseClass):
             ".",
         )
         plt.legend(loc="upper right")
-
-

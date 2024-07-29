@@ -5,6 +5,7 @@ import numpy as np
 import itertools
 import json
 
+
 def find_nearest(array, value):
     """
     finds the index which corresponds to the value in the array closest to the value given
@@ -18,15 +19,14 @@ def find_nearest(array, value):
 
 
 class FittingBaseClass:
-
     def __init__(
-            self,
-            x_data: Union[np.ndarray, List[float]],
-            y_data: Union[np.ndarray, List[float]],
-            guess=None,
-            verbose=None,
-            plot=False,
-            save_file=False
+        self,
+        x_data: Union[np.ndarray, List[float]],
+        y_data: Union[np.ndarray, List[float]],
+        guess=None,
+        verbose=None,
+        plot=False,
+        save_file=False,
     ):
 
         self.x_data = x_data
@@ -85,11 +85,6 @@ class FittingBaseClass:
 
     def fit_data(self, p0):
 
-         self.popt, self.pcov = optimize.curve_fit(
-             self.func,
-             self.x,
-             self.y,
-             p0=p0
-         )
+        self.popt, self.pcov = optimize.curve_fit(self.func, self.x, self.y, p0=p0)
 
-         self.perr = np.sqrt(np.diag(self.pcov))
+        self.perr = np.sqrt(np.diag(self.pcov))

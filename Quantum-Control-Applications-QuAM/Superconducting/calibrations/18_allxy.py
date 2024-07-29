@@ -101,9 +101,7 @@ def allXY(pulses, qubit: Transmon, resonator: ReadoutResonator):
         if pulse != "I":
             qubit.xy.play(pulse)  # Either play the sequence
         else:
-            qubit.xy.wait(
-                qubit.xy.operations["x180"].length * u.ns
-            )  # or wait if sequence is identity
+            qubit.xy.wait(qubit.xy.operations["x180"].length * u.ns)  # or wait if sequence is identity
 
     align()
     # Play the readout on the other resonator to measure in the same condition as when optimizing readout
@@ -181,9 +179,7 @@ else:
         # machine.calibrate_octave_ports(qm)
         all_xy = get_prog(qubit, qubit.resonator)
         job = qm.execute(all_xy)
-        data_list = ["iteration"] + np.concatenate(
-            [[f"I{i + 1}", f"Q{i + 1}"] for i in range(21)]
-        ).tolist()
+        data_list = ["iteration"] + np.concatenate([[f"I{i + 1}", f"Q{i + 1}"] for i in range(21)]).tolist()
         results = fetching_tool(job, data_list, mode="live")
         fig, ax = plt.subplots(2, 1)
 
@@ -200,16 +196,12 @@ else:
             ax[0].plot(-I, "-*")
             ax[0].plot([np.max(-I)] * 5 + [(np.mean(-I))] * 12 + [np.min(-I)] * 4, "-")
             ax[0].set_ylabel("I quadrature [a.u.]")
-            ax[0].set_xticks(
-                ticks=range(21), labels=[str(el) for el in sequence], rotation=45
-            )
+            ax[0].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
             ax[1].cla()
             ax[1].plot(-Q, "-*")
             ax[1].plot([np.max(-Q)] * 5 + [(np.mean(-Q))] * 12 + [np.min(-Q)] * 4, "-")
             ax[1].set_ylabel("Q quadrature [a.u.]")
-            ax[1].set_xticks(
-                ticks=range(21), labels=[str(el) for el in sequence], rotation=45
-            )
+            ax[1].set_xticks(ticks=range(21), labels=[str(el) for el in sequence], rotation=45)
             plt.suptitle(f"All XY {qubit.name}")
             plt.tight_layout()
             plt.pause(0.1)

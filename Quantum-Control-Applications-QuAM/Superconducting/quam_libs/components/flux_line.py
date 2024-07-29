@@ -15,6 +15,7 @@ class FluxLine(SingleChannel):
         joint_offset (float): the flux bias for which the .
         min_offset (float): the flux bias for which the .
     """
+
     # Optimize for DC pulses
     output_mode: str = "amplified"
     upsampling_mode: str = "pulse"

@@ -226,17 +226,19 @@ else:
             I_control_e = I1[:, i, 0]
             try:
                 fit = Cosine(phis, I_control_g, plot=False)
-                phase_g = fit.out.get('phase')[0]
-                ax[int(i // 5), int(i % 5)].plot(fit.x_data, fit.fit_type(fit.x, fit.popt) * fit.y_normal, '-b',
-                                                 alpha=0.5)
+                phase_g = fit.out.get("phase")[0]
+                ax[int(i // 5), int(i % 5)].plot(
+                    fit.x_data, fit.fit_type(fit.x, fit.popt) * fit.y_normal, "-b", alpha=0.5
+                )
                 fit = Cosine(phis, I_control_e, plot=False)
-                phase_e = fit.out.get('phase')[0]
-                ax[int(i // 5), int(i % 5)].plot(fit.x_data, fit.fit_type(fit.x, fit.popt) * fit.y_normal, '-r',
-                                                 alpha=0.5)
+                phase_e = fit.out.get("phase")[0]
+                ax[int(i // 5), int(i % 5)].plot(
+                    fit.x_data, fit.fit_type(fit.x, fit.popt) * fit.y_normal, "-r", alpha=0.5
+                )
                 dphase = (phase_g - phase_e) / np.pi * 180
             except Exception as e:
                 print(e)
-            ax[int(i // 5), int(i % 5)].plot(phis, I_control_e, '.r', phis, I_control_g, '.b')
+            ax[int(i // 5), int(i % 5)].plot(phis, I_control_e, ".r", phis, I_control_g, ".b")
             ax[int(i // 5), int(i % 5)].set_title("%.7f, %.1f" % (amps[i], dphase))
 
             # I10 = I1[:,i,0]

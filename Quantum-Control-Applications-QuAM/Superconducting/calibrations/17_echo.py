@@ -133,14 +133,8 @@ else:
         I_data = fetched_data[1::2]
         Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I_volts = [
-            u.demod2volts(I, qubit.resonator.operations["readout"].length)
-            for I, qubit in zip(I_data, qubits)
-        ]
-        Q_volts = [
-            u.demod2volts(Q, qubit.resonator.operations["readout"].length)
-            for Q, qubit in zip(Q_data, qubits)
-        ]
+        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
+        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results

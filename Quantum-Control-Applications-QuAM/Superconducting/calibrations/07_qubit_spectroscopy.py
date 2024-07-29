@@ -71,9 +71,7 @@ operation = "saturation"  # The qubit operation to play, can be switched to "x18
 n_avg = 600  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 20 * u.us  # In ns
-saturation_amp = (
-    0.01  # pre-factor to the value defined in the config - restricted to [-2; 2)
-)
+saturation_amp = 0.01  # pre-factor to the value defined in the config - restricted to [-2; 2)
 # Qubit detuning sweep with respect to their resonance frequencies
 dfs = np.arange(-50e6, +50e6, 0.1e6)
 
@@ -148,9 +146,7 @@ else:
         plt.suptitle("Qubit spectroscopy")
         s_data = []
         for i, q in enumerate(qubits):
-            s = u.demod2volts(
-                I[i] + 1j * Q[i], q.resonator.operations["readout"].length
-            )
+            s = u.demod2volts(I[i] + 1j * Q[i], q.resonator.operations["readout"].length)
             s_data.append(s)
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
@@ -170,9 +166,7 @@ else:
             plt.grid(True)
             plt.ylabel("Phase [rad]")
             plt.xlabel(f"{q.name} detuning [MHz]")
-            plt.plot(
-                (q.xy.LO_frequency + q.xy.intermediate_frequency) / u.MHz, 0.0, "r*"
-            )
+            plt.plot((q.xy.LO_frequency + q.xy.intermediate_frequency) / u.MHz, 0.0, "r*")
 
         plt.tight_layout()
         plt.pause(0.1)

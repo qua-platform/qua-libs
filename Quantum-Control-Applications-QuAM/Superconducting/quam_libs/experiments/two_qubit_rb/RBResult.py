@@ -4,6 +4,7 @@ import xarray as xr
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
 
+
 @dataclasses.dataclass
 class RBResult:
     circuit_depths: list[int]
@@ -40,12 +41,16 @@ class RBResult:
         fidelity = self.get_fidelity(alpha)
 
         plt.figure()
-        plt.plot(self.circuit_depths, self.get_decay_curve(), 'o', label='Data')
-        plt.plot(self.circuit_depths, rb_decay_curve(np.array(self.circuit_depths), A, alpha, B), '-',
-                 label=f'Fit: Fidelity={fidelity*100:.3f}%')
-        plt.xlabel('Circuit Depth')
-        plt.ylabel('Fidelity')
-        plt.title('2Q Randomized Benchmarking Fidelity')
+        plt.plot(self.circuit_depths, self.get_decay_curve(), "o", label="Data")
+        plt.plot(
+            self.circuit_depths,
+            rb_decay_curve(np.array(self.circuit_depths), A, alpha, B),
+            "-",
+            label=f"Fit: Fidelity={fidelity*100:.3f}%",
+        )
+        plt.xlabel("Circuit Depth")
+        plt.ylabel("Fidelity")
+        plt.title("2Q Randomized Benchmarking Fidelity")
         plt.legend()
         plt.show()
 
@@ -60,7 +65,7 @@ class RBResult:
     def get_fidelity(self, alpha):
         # Calculate the average error rate per Clifford
         n_qubits = 2  # Assuming 2 qubits as per the context
-        d = 2 ** n_qubits
+        d = 2**n_qubits
         r = 1 - alpha - (1 - alpha) / d
         fidelity = 1 - r
 
@@ -71,4 +76,4 @@ class RBResult:
 
 
 def rb_decay_curve(x, A, alpha, B):
-    return A * alpha ** x + B
+    return A * alpha**x + B

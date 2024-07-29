@@ -16,25 +16,25 @@ Before proceeding to the next node:
     - Ensure that the crosstalk matrix is saved in the machine state
     - Save the current state by calling machine.save("quam")
 """
- 
+
 from qm.qua import *
 from qm import SimulationConfig
 from quam.components.ports import LFFEMAnalogOutputPort
- 
+
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close, Fit
 from qualang_tools.loops import from_array
 from qualang_tools.units import unit
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, node_save
- 
+
 import matplotlib.pyplot as plt
 import numpy as np
- 
+
 import matplotlib
- 
+
 matplotlib.use("TKAgg")
- 
+
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
 ###################################################
@@ -47,7 +47,7 @@ config = machine.generate_config()
 octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
- 
+
 # Get the relevant QuAM components
 qubits = machine.active_qubits
 resonators = [qubit.resonator for qubit in machine.active_qubits]
@@ -55,14 +55,14 @@ couplers = [qubit_pair.coupler for qubit_pair in machine.active_qubit_pairs]
 num_qubits = len(qubits)
 num_resonators = len(resonators)
 num_couplers = len(couplers)
- 
- 
+
+
 q4 = machine.qubits["q4"]
 q5 = machine.qubits["q5"]
 coupler = (q4 @ q5).coupler
 target_flux_elements = [q4.z, coupler, q5.z]
 target_qubit = q4
- 
+
 ###################
 # The QUA program #
 ###################
@@ -73,9 +73,9 @@ cooldown_time = machine.thermalization_time
 flux_offsets = np.linspace(-0.1, 0.1, 51)
 compensation_scales = np.linspace(-1, 0, 51)
 n_avg = 200  # Number of averaging loops
-intermediate_frequency = 
+# intermediate_frequency =
 dc_bias = 0.02
- 
+
 with program() as multi_qubit_spec_vs_flux:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
     # For instance, here 'I' is a python list containing two QUA fixed variables.
@@ -86,7 +86,6 @@ with program() as multi_qubit_spec_vs_flux:
     machine.apply_all_flux_to_min()
 
     target_qubit.xy.update_frequency(intermediate_frequency)
-
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -139,9 +138,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_qubit_spec_vs_flux)
     # Get results from QUA program
-    data_list = ["n"] + sum(
-        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(len(target_flux_elements))], []
-    )
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(len(target_flux_elements))], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -166,12 +163,10 @@ else:
             # Plot
             plt.subplot(1, len(target_flux_elements), i + 1)
             plt.cla()
-            plt.title(
-                f"{q.xy.name} (LO: {q.xy.frequency_converter_up.LO_frequency / u.MHz} MHz)"
-            )
+            plt.title(f"{q.xy.name} (LO: {q.xy.frequency_converter_up.LO_frequency / u.MHz} MHz)")
             plt.xlabel("Flux Bias [V]")
             plt.ylabel(f"{q.xy.name} RF [MHz]")
-            plt.pcolormesh(q.xy.RF_frequency + intermediate_frequency  / u.MHz, R)
+            plt.pcolormesh(q.xy.RF_frequency + intermediate_frequency / u.MHz, R)
             # plt.plot(coupler.z.min_offset, rr.intermediate_frequency / u.MHz, "r*")
 
         plt.tight_layout()
@@ -181,6 +176,4 @@ else:
     plt.show()
     qm.close()
 
- 
 node_save(machine, f"resonator_spectroscopy_crosstalk", data, additional_files=True)
- 

@@ -77,7 +77,7 @@ def create_quam_superconducting(
                 name=f"octave{i+1}",
                 ip=machine.network["octave_ips"][i],
                 port=machine.network["octave_ports"][i],
-                calibration_db_path=os.path.dirname(__file__)
+                calibration_db_path=os.path.dirname(__file__),
             )
             machine.octaves[f"octave{i+1}"] = octave
             octave.initialize_frequency_converters()

@@ -112,12 +112,8 @@ with program() as cryoscope:
         # for the progress counter
         n_st.save("n")
         # Qubit state
-        state_st[0].boolean_to_int().buffer(2).buffer(
-            len(flux_amp_array)
-        ).average().save("state1")
-        state_st[1].boolean_to_int().buffer(2).buffer(
-            len(flux_amp_array)
-        ).average().save("state2")
+        state_st[0].boolean_to_int().buffer(2).buffer(len(flux_amp_array)).average().save("state1")
+        state_st[1].boolean_to_int().buffer(2).buffer(len(flux_amp_array)).average().save("state2")
         # I_st[0].buffer(2).buffer(len(flux_amp_array)).average().save("I1")
         # I_st[1].buffer(2).buffer(len(flux_amp_array)).average().save("I2")
         # Q_st[0].buffer(2).buffer(len(flux_amp_array)).average().save("Q1")
@@ -164,9 +160,7 @@ else:
         qubit_phase = np.unwrap(np.angle(qubit_state))
         qubit_phase = qubit_phase - qubit_phase[0]
         # Filtering and derivative of the phase to get the averaged frequency
-        coarse_detuning = qubit_phase / (
-            2 * np.pi * qb.z.operations["const"].length / u.s
-        )
+        coarse_detuning = qubit_phase / (2 * np.pi * qb.z.operations["const"].length / u.s)
         # Quadratic fit of detuning versus flux pulse amplitude
         pol = np.polyfit(xplot, coarse_detuning, deg=2)
 

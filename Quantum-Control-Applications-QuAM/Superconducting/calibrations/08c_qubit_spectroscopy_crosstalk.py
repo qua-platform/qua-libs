@@ -150,9 +150,7 @@ for port_id, flux_element in flux_elements_by_port.items():
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(multi_qubit_spec_vs_flux)
         # Get results from QUA program
-        data_list = ["n"] + sum(
-            [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
-        )
+        data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
         results = fetching_tool(job, data_list, mode="live")
         # Live plotting
         fig = plt.figure()
@@ -177,9 +175,7 @@ for port_id, flux_element in flux_elements_by_port.items():
                 # Plot
                 plt.subplot(1, len(target_qubits), i + 1)
                 plt.cla()
-                plt.title(
-                    f"{q.xy.name} (LO: {q.xy.frequency_converter_up.LO_frequency / u.MHz} MHz)"
-                )
+                plt.title(f"{q.xy.name} (LO: {q.xy.frequency_converter_up.LO_frequency / u.MHz} MHz)")
                 plt.xlabel("Flux Bias [V]")
                 plt.ylabel(f"{q.xy.name} IF [MHz]")
                 plt.plot(q.xy.intermediate_frequency / u.MHz + dfs / u.MHz, R[0])
@@ -221,8 +217,9 @@ for port_id, flux_element in flux_elements_by_port.items():
                     data[f"{q.xy.name}_frequency_at_{flux_element.name}_{dc:.3f}"] = qubit_frequency_shift
 
                 # resonator frequency shift per unit volt
-                qubit_frequency_shift = ((measured_qubit_frequencies[1] - measured_qubit_frequencies[0]) /
-                                         (dc_high - dc_low))
+                qubit_frequency_shift = (measured_qubit_frequencies[1] - measured_qubit_frequencies[0]) / (
+                    dc_high - dc_low
+                )
             except:
                 qubit_frequency_shift = 0
 

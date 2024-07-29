@@ -99,9 +99,7 @@ with program() as multi_res_spec_vs_amp:
                 update_frequency(rr.name, df + rr.intermediate_frequency)
                 rr.wait(machine.depletion_time * u.ns)
 
-                with for_(
-                    *from_array(a, amps)
-                ):  # QUA for_ loop for sweeping the readout amplitude
+                with for_(*from_array(a, amps)):  # QUA for_ loop for sweeping the readout amplitude
                     # readout the resonator
                     rr.measure("readout", qua_vars=(I[i], Q[i]), amplitude_scale=a)
 
@@ -141,9 +139,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)
     # Tool to easily fetch results from the OPX (results_handle used in it)
-    res_list = ["n"] + sum(
-        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
-    )
+    res_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
     results = fetching_tool(job, res_list, mode="live")
     # Live plotting
     while results.is_processing():
@@ -159,9 +155,7 @@ else:
         plt.suptitle("Resonator spectroscopy vs amplitude")
         A_data = []
         for i, rr in enumerate(resonators):
-            s = u.demod2volts(
-                I_data[i] + 1j * Q_data[i], rr.operations["readout"].length
-            )
+            s = u.demod2volts(I_data[i] + 1j * Q_data[i], rr.operations["readout"].length)
             A = np.abs(s)
             # Normalize data
             row_sums = A.sum(axis=0)
@@ -199,8 +193,6 @@ else:
         data[f"{rr.name}_R"] = A_data[i]
         data[f"{rr.name}_readout_amplitude"] = prev_amps[i]
     data["figure"] = fig
-    node_save(
-        machine, "resonator_spectroscopy_vs_amplitude", data, additional_files=True
-    )
+    node_save(machine, "resonator_spectroscopy_vs_amplitude", data, additional_files=True)
 
 # %%

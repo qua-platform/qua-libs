@@ -64,9 +64,7 @@ cooldown_time = max(q.thermalization_time for q in qubits)
 
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
-saturation_amp = (
-    0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
-)
+saturation_amp = 0.5  # pre-factor to the value defined in the config - restricted to [-2; 2)
 
 # Qubit detuning sweep with respect to their resonance frequencies
 dfs = np.arange(-50e6, 100e6, 0.1e6)
@@ -163,9 +161,7 @@ else:
         plt.suptitle("Qubit spectroscopy vs flux")
         s_data = []
         for i, q in enumerate(qubits):
-            s = u.demod2volts(
-                I[i] + 1j * Q[i], q.resonator.operations["readout"].length
-            )
+            s = u.demod2volts(I[i] + 1j * Q[i], q.resonator.operations["readout"].length)
             s_data.append(s)
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
@@ -176,9 +172,7 @@ else:
             # plt.title(f"{q.name} (f_01: {q.f_01 / u.MHz} MHz)")
             plt.subplot(2, num_qubits, num_qubits + i + 1)
             plt.cla()
-            plt.pcolor(
-                dcs, (q.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s))
-            )
+            plt.pcolor(dcs, (q.xy.intermediate_frequency + dfs) / u.MHz, np.unwrap(np.angle(s)))
             # plt.plot(q.z.min_offset, q.xy.intermediate_frequency / u.MHz, "r*")
             plt.xlabel("Coupler Bias [V]")
             plt.ylabel(f"{q.name} IF [MHz]")

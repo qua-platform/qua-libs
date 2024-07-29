@@ -64,12 +64,8 @@ qubits = machine.active_qubits
 num_of_sequences = 50  # Number of random sequences
 n_avg = 2  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = (
-    10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-)
-assert (
-    max_circuit_depth / delta_clifford
-).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 num_depths = max_circuit_depth // delta_clifford + 1
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -210,9 +206,7 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
 def get_rb_interleaved_program(qubit: Transmon):
     with program() as rb:
         depth = declare(int)  # QUA variable for the varying depth
-        depth_target = declare(
-            int
-        )  # QUA variable for the current depth (changes in steps of delta_clifford)
+        depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
         # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
         saved_gate = declare(int)
         m = declare(int)  # QUA variable for the loop over random sequences
@@ -230,13 +224,9 @@ def get_rb_interleaved_program(qubit: Transmon):
         # Bring the active qubits to the minimum frequency point
         machine.apply_all_flux_to_min()
 
-        with for_(
-            m, 0, m < num_of_sequences, m + 1
-        ):  # QUA for_ loop over the random sequences
+        with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
             # Generates the RB sequence with a gate interleaved after each Clifford
-            sequence_list, inv_gate_list = generate_sequence(
-                interleaved_gate_index=interleaved_gate_index
-            )
+            sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
             # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
             assign(depth_target, 0)  # Initialize the current depth to 0
 
@@ -284,26 +274,18 @@ def get_rb_interleaved_program(qubit: Transmon):
             m_st.save("iteration")
             if state_discrimination:
                 # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    num_depths
-                ).buffer(num_of_sequences).save("state")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
+                    num_of_sequences
+                ).save("state")
                 # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    num_depths
-                ).average().save("state_avg")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save(
+                    "state_avg"
+                )
             else:
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
-                    num_of_sequences
-                ).save("I")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(
-                    num_of_sequences
-                ).save("Q")
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    num_depths
-                ).average().save("I_avg")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    num_depths
-                ).average().save("Q_avg")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("I")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save("Q")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("I_avg")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).average().save("Q_avg")
     return rb
 
 
@@ -323,13 +305,9 @@ else:
     for qubit in qubits:
         job = qm.execute(get_rb_interleaved_program(qubit))
         if state_discrimination:
-            results = fetching_tool(
-                job, data_list=["state_avg", "iteration"], mode="live"
-            )
+            results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
         else:
-            results = fetching_tool(
-                job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
-            )
+            results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
         # Live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -346,17 +324,13 @@ else:
                 value_avg = I
 
             # Progress bar
-            progress_counter(
-                iteration, num_of_sequences, start_time=results.get_start_time()
-            )
+            progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
             # Plot averaged values
             plt.cla()
             plt.plot(x, value_avg, marker=".")
             plt.xlabel("Number of Clifford gates")
             plt.ylabel("Sequence Fidelity")
-            plt.title(
-                f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}"
-            )
+            plt.title(f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}")
             plt.pause(0.1)
 
         # At the end of the program, fetch the non-averaged results to get the error-bars
@@ -410,9 +384,7 @@ else:
         plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
         plt.xlabel("Number of Clifford gates")
         plt.ylabel("Sequence Fidelity")
-        plt.title(
-            f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})"
-        )
+        plt.title(f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})")
 
         # Save data from the node
         data[qubit.name] = {

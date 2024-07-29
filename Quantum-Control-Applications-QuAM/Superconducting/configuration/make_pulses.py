@@ -94,5 +94,3 @@ def add_default_transmon_pulses(transmon):
 
 def add_default_transmon_pair_pulses(transmon_pair):
     transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
-
-

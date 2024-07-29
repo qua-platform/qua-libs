@@ -49,15 +49,11 @@ def qua_declaration(num_qubits):
     return I, I_st, Q, Q_st, n, n_st
 
 
-def multiplexed_readout(
-    qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""
-):
+def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.0, weights=""):
     """Perform multiplexed readout on two resonators"""
 
     for ind, q in enumerate(qubits):
-        q.resonator.measure(
-            "readout", qua_vars=(I[ind], Q[ind]), amplitude_scale=amplitude
-        )
+        q.resonator.measure("readout", qua_vars=(I[ind], Q[ind]), amplitude_scale=amplitude)
 
         if I_st is not None:
             save(I[ind], I_st[ind])
@@ -83,9 +79,7 @@ def node_save(
         try:
             files.append(inspect.currentframe().f_back.f_locals["__file__"])
         except Exception:
-            warnings.warn(
-                "Could not find the script file path to save it in the data folder"
-            )
+            warnings.warn("Could not find the script file path to save it in the data folder")
 
         additional_files = {}
         for file in files:

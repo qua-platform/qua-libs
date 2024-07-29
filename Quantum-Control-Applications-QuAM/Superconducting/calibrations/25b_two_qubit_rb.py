@@ -63,8 +63,8 @@ def prep():
 
 
 def meas():
-    threshold1 = 0.  # threshold for state discrimination 0 <-> 1 using the I quadrature
-    threshold2 = 0.  # threshold for state discrimination 0 <-> 1 using the I quadrature
+    threshold1 = 0.0  # threshold for state discrimination 0 <-> 1 using the I quadrature
+    threshold2 = 0.0  # threshold for state discrimination 0 <-> 1 using the I quadrature
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=len([qc, qt]))
     state1 = declare(bool)
     state2 = declare(bool)

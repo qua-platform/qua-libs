@@ -76,9 +76,7 @@ with program() as resonator_spec:
     machine.apply_all_flux_to_min()
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(
-            *from_array(f, frequencies)
-        ):  # QUA for_ loop for sweeping the frequency
+        with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency(rr.name, f + rr.intermediate_frequency)
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
@@ -133,9 +131,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        plt.suptitle(
-            f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz"
-        )
+        plt.suptitle(f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
         ax1 = plt.subplot(211)
         plt.cla()
         plt.plot(
@@ -175,17 +171,11 @@ else:
 
         fit = Fit()
         fig_analysis = plt.figure()
-        res_spec_fit = fit.reflection_resonator_spectroscopy(
-            frequencies / u.MHz, R, plot=True
-        )
-        plt.title(
-            f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz"
-        )
+        res_spec_fit = fit.reflection_resonator_spectroscopy(frequencies / u.MHz, R, plot=True)
+        plt.title(f"{rr.name} spectroscopy - LO = {rr.frequency_converter_up.LO_frequency / u.GHz} GHz")
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-        print(
-            f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz"
-        )
+        print(f"Resonator resonance frequency to update in the config: resonator_IF = {res_spec_fit['f'][0]:.6f} MHz")
 
         # Update QUAM
         rr.intermediate_frequency = int(res_spec_fit["f"][0] * u.MHz)

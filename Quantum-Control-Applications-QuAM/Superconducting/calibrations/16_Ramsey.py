@@ -68,9 +68,7 @@ detuning = 1e6
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     t = declare(int)  # QUA variable for the idle time
-    phi = declare(
-        fixed
-    )  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
+    phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
 
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
@@ -138,14 +136,8 @@ else:
         I_data = fetched_data[1::2]
         Q_data = fetched_data[2::2]
         # Convert the results into Volts
-        I_volts = [
-            u.demod2volts(I, qubit.resonator.operations["readout"].length)
-            for I, qubit in zip(I_data, qubits)
-        ]
-        Q_volts = [
-            u.demod2volts(Q, qubit.resonator.operations["readout"].length)
-            for Q, qubit in zip(Q_data, qubits)
-        ]
+        I_volts = [u.demod2volts(I, qubit.resonator.operations["readout"].length) for I, qubit in zip(I_data, qubits)]
+        Q_volts = [u.demod2volts(Q, qubit.resonator.operations["readout"].length) for Q, qubit in zip(Q_data, qubits)]
         # Progress bar
         progress_counter(n, n_avg, start_time=results.start_time)
         # Plot results
@@ -187,11 +179,7 @@ else:
             plt.xlabel("Idle time [ns]")
             plt.ylabel("I [V]")
             plt.title(f"{qubit.name}")
-            plt.legend(
-                (
-                    f"T2* = {int(fit_I['T2'][0])} ns\n df = {int(fit_I['f'][0] * u.GHz - detuning)/u.kHz} kHz",
-                )
-            )
+            plt.legend((f"T2* = {int(fit_I['T2'][0])} ns\n df = {int(fit_I['f'][0] * u.GHz - detuning)/u.kHz} kHz",))
 
             # Update the state
             qubit_detuning = fit_I["f"][0] * u.GHz - detuning

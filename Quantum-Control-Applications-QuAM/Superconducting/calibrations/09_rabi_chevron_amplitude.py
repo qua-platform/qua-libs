@@ -134,26 +134,18 @@ else:
         I_volts, Q_volts = [], []
         for i, qubit in enumerate(qubits):
             # Convert results into Volts
-            I_volts.append(
-                u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
-            )
-            Q_volts.append(
-                u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
-            )
+            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
-            plt.pcolor(
-                amps * qubit.xy.operations[operation].amplitude, dfs / u.MHz, I_volts[i]
-            )
+            plt.pcolor(amps * qubit.xy.operations[operation].amplitude, dfs / u.MHz, I_volts[i])
             plt.plot(qubit.xy.operations[operation].amplitude, 0, "r*")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Qubit detuning [MHz]")
             # plt.title(f"{qubit.name} (f_01: {int(qubit.f_01 / u.MHz)} MHz)")
             plt.subplot(2, num_qubits, i + num_qubits + 1)
             plt.cla()
-            plt.pcolor(
-                amps * qubit.xy.operations[operation].amplitude, dfs / u.MHz, Q_volts[i]
-            )
+            plt.pcolor(amps * qubit.xy.operations[operation].amplitude, dfs / u.MHz, Q_volts[i])
             plt.plot(qubit.xy.operations[operation].amplitude, 0, "r*")
             plt.xlabel("Qubit pulse amplitude [V]")
             plt.ylabel("Qubit detuning [MHz]")
@@ -166,9 +158,7 @@ else:
     # Save data from the node
     data = {}
     for i, qubit in enumerate(qubits):
-        data[f"{qubit.name}_amplitude"] = (
-            amps * qubit.xy.operations[operation].amplitude
-        )
+        data[f"{qubit.name}_amplitude"] = amps * qubit.xy.operations[operation].amplitude
         data[f"{qubit.name}_frequency"] = dfs + qubit.xy.intermediate_frequency
         data[f"{qubit.name}_I"] = np.abs(I_volts[i])
         data[f"{qubit.name}_Q"] = np.angle(Q_volts[i])

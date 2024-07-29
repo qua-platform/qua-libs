@@ -150,9 +150,7 @@ print(
 )
 
 # Time axis for the plots at the end
-x_plot = np.arange(
-    division_length * 4, readout_len + ringdown_len + 1, division_length * 4
-)
+x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
 
 with program() as opt_weights:
@@ -178,9 +176,7 @@ with program() as opt_weights:
             # Play on the other resonators to be in the same conditions as with multiplexed readout
             measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        rr.measure_sliced(
-            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
-        )
+        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
 
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
@@ -200,9 +196,7 @@ with program() as opt_weights:
             # Play on the other resonators to be in the same conditions as with multiplexed readout
             measure("readout", other_rr.name, None)
         # With demod.sliced, the results are QUA vectors with 1 point for each chunk
-        rr.measure_sliced(
-            "readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ)
-        )
+        rr.measure_sliced("readout", segment_length=division_length, qua_vars=(II, IQ, QI, QQ))
 
         # Save the sliced data (time trace of the demodulated data with a resolution equals to the division length)
         with for_(ind, 0, ind < number_of_divisions, ind + 1):
@@ -265,13 +259,9 @@ else:
     ground_trace = Ig + 1j * Qg
     excited_trace = Ie + 1j * Qe
     subtracted_trace = excited_trace - ground_trace
-    norm_subtracted_trace = normalize_complex_array(
-        subtracted_trace
-    )  # <- these are the optimal weights :)
+    norm_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
     # Plot the results
-    plot_three_complex_arrays(
-        x_plot, ground_trace, excited_trace, norm_subtracted_trace
-    )
+    plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
     weights_real = norm_subtracted_trace.real
     weights_imag = norm_subtracted_trace.imag

@@ -124,12 +124,8 @@ else:
         plt.suptitle("Time Rabi")
         I_volts, Q_volts = [], []
         for i, qubit in enumerate(qubits):
-            I_volts.append(
-                u.demod2volts(I[i], qubit.resonator.operations["readout"].length)
-            )
-            Q_volts.append(
-                u.demod2volts(Q[i], qubit.resonator.operations["readout"].length)
-            )
+            I_volts.append(u.demod2volts(I[i], qubit.resonator.operations["readout"].length))
+            Q_volts.append(u.demod2volts(Q[i], qubit.resonator.operations["readout"].length))
             plt.subplot(2, num_qubits, i + 1)
             plt.cla()
             plt.plot(times * 4, I_volts[i])
@@ -165,9 +161,7 @@ else:
             plt.title(f"{qubit.name}")
             plt.xlabel("Rabi pulse duration [ns]")
             plt.ylabel("I quadrature [V]")
-            qubit.xy.operations[operation].length = int(
-                round(1 / rabi_fit1["f"][0] / 2 / 4) * 4
-            )
+            qubit.xy.operations[operation].length = int(round(1 / rabi_fit1["f"][0] / 2 / 4) * 4)
             data[f"{qubit.name}"] = {
                 "x180_length": qubit.xy.operations[operation].length,
                 "successful_fit": True,

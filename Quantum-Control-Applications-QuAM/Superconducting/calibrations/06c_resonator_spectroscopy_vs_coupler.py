@@ -134,9 +134,7 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(multi_res_spec_vs_flux)
     # Get results from QUA program
-    data_list = ["n"] + sum(
-        [[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], []
-    )
+    data_list = ["n"] + sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_resonators)], [])
     results = fetching_tool(job, data_list, mode="live")
     # Live plotting
     fig = plt.figure()
@@ -161,9 +159,7 @@ else:
             # Plot
             plt.subplot(1, num_resonators, i + 1)
             plt.cla()
-            plt.title(
-                f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)"
-            )
+            plt.title(f"{rr.name} (LO: {rr.frequency_converter_up.LO_frequency / u.MHz} MHz)")
             plt.xlabel("Coupler Bias [V]")
             plt.ylabel(f"{rr.name} IF [MHz]")
             plt.pcolor(dcs, rr.intermediate_frequency / u.MHz + dfs / u.MHz, R.T)
