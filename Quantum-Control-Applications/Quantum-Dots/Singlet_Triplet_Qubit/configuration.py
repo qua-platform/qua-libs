@@ -1,7 +1,8 @@
 import numpy as np
 from qualang_tools.units import unit
-from qm.qua._dsl import _Variable, _Expression
+from qm.qua._dsl import QuaVariable, QuaExpression
 from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_zero
+from typing import Union
 
 #######################
 # AUXILIARY FUNCTIONS #
@@ -82,7 +83,7 @@ class OPX_virtual_gate_sequence:
 
     @staticmethod
     def _check_duration(duration: int):
-        if duration is not None and not isinstance(duration, (_Variable, _Expression)):
+        if duration is not None and not isinstance(duration, (QuaVariable, QuaExpression)):
             assert duration >= 4, "The duration must be a larger than 16 ns."
 
     def _update_averaged_power(self, level, duration, ramp_duration=None, current_level=None):
@@ -91,7 +92,7 @@ class OPX_virtual_gate_sequence:
             assign(self._expression, level)
             new_average = Cast.mul_int_by_fixed(duration, self._expression)
         elif self.is_QUA(duration):
-            new_average = Cast.mul_int_by_fixed(duration, level)
+            new_average = Cast.mul_int_by_fixed(duration, float(level))
         else:
             new_average = int(np.round(level * duration))
 
@@ -116,14 +117,14 @@ class OPX_virtual_gate_sequence:
 
     @staticmethod
     def is_QUA(var):
-        return isinstance(var, (_Variable, _Expression))
+        return isinstance(var, (QuaVariable, QuaExpression))
 
     def add_step(
         self,
-        level: list = None,
-        duration: int = None,
+        level: list[Union[int, QuaExpression, QuaVariable]] = None,
+        duration: Union[int, QuaExpression, QuaVariable] = None,
         voltage_point_name: str = None,
-        ramp_duration: int = None,
+        ramp_duration: Union[int, QuaExpression, QuaVariable] = None,
     ) -> None:
         """Add a voltage level to the pulse sequence.
         The voltage level is either identified by its voltage_point_name if added to the voltage_point dict beforehand, or by its level and duration.
@@ -136,6 +137,11 @@ class OPX_virtual_gate_sequence:
         """
         self._check_duration(duration)
         self._check_duration(ramp_duration)
+        if level is not None:
+            if type(level) is not list or len(level) != len(self._elements):
+                raise TypeError(
+                    "the provided level must be a list of same length as the number of elements involved in the virtual gate."
+                )
 
         if voltage_point_name is not None and duration is None:
             _duration = self._voltage_points[voltage_point_name]["duration"]
@@ -177,7 +183,7 @@ class OPX_virtual_gate_sequence:
                         play(operation * amp((voltage_level - self.current_level[i]) * 4), gate)
 
                 # Fixed amplitude but dynamic duration --> new operation and play(duration=..)
-                elif isinstance(_duration, (_Variable, _Expression)):
+                elif isinstance(_duration, (QuaVariable, QuaExpression)):
                     operation = self._add_op_to_config(
                         gate,
                         voltage_point_name,

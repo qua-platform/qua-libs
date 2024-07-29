@@ -223,10 +223,10 @@ else:
     # Plot the results
     plot_three_complex_arrays(x_plot, ground_trace, excited_trace, norm_subtracted_trace)
     # Reshape the optimal integration weights to match the configuration
-    weights_real = list(norm_subtracted_trace.real)
-    weights_minus_imag = list((-1) * norm_subtracted_trace.imag)
-    weights_imag = list(norm_subtracted_trace.imag)
-    weights_minus_real = list((-1) * norm_subtracted_trace.real)
+    weights_real = norm_subtracted_trace.real
+    weights_minus_imag = -norm_subtracted_trace.imag
+    weights_imag = norm_subtracted_trace.imag
+    weights_minus_real = -norm_subtracted_trace.real
     # Save the weights for later use in the config
     np.savez(
         "optimal_weights",
@@ -234,6 +234,7 @@ else:
         weights_minus_imag=weights_minus_imag,
         weights_imag=weights_imag,
         weights_minus_real=weights_minus_real,
+        division_length=division_length,
     )
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()

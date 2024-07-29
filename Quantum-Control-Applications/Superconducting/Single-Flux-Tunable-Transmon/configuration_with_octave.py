@@ -33,6 +33,11 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
+# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
+# or directly to the Octave (without QM the router), use the local octave IP and port 80.
+# octave_ip = "192.168.88.X"
+# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
+
 # Add the octaves
 octaves = [octave_1]
 # Configure the Octaves
@@ -153,18 +158,16 @@ depletion_time = 2 * u.us
 
 opt_weights = False
 if opt_weights:
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = convert_integration_weights(weights["weights_real"])
-    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
-    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
-    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(1.0, readout_len)]
-    opt_weights_imag = [(1.0, readout_len)]
-    opt_weights_minus_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(0.0, readout_len)]
+    opt_weights_imag = [(0.0, readout_len)]
+    opt_weights_minus_real = [(-1.0, readout_len)]
 
 ##########################################
 #               Flux line                #

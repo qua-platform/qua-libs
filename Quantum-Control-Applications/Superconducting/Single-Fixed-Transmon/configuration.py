@@ -155,18 +155,16 @@ depletion_time = 2 * u.us
 
 opt_weights = False
 if opt_weights:
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
     weights = np.load("optimal_weights.npz")
-    opt_weights_real = convert_integration_weights(weights["weights_real"])
-    opt_weights_minus_imag = convert_integration_weights(weights["weights_minus_imag"])
-    opt_weights_imag = convert_integration_weights(weights["weights_imag"])
-    opt_weights_minus_real = convert_integration_weights(weights["weights_minus_real"])
+    opt_weights_real = [(x, weights["division_length"] * 4) for x in weights["weights_real"]]
+    opt_weights_minus_imag = [(x, weights["division_length"] * 4) for x in weights["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights["division_length"] * 4) for x in weights["weights_imag"]]
+    opt_weights_minus_real = [(x, weights["division_length"] * 4) for x in weights["weights_minus_real"]]
 else:
     opt_weights_real = [(1.0, readout_len)]
-    opt_weights_minus_imag = [(1.0, readout_len)]
-    opt_weights_imag = [(1.0, readout_len)]
-    opt_weights_minus_real = [(1.0, readout_len)]
+    opt_weights_minus_imag = [(0.0, readout_len)]
+    opt_weights_imag = [(0.0, readout_len)]
+    opt_weights_minus_real = [(-1.0, readout_len)]
 
 # IQ Plane
 rotation_angle = (0.0 / 180) * np.pi

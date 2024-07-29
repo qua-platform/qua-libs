@@ -21,6 +21,7 @@ Prerequisites:
 Before proceeding to the next node:
     - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

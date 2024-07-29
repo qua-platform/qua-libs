@@ -38,7 +38,7 @@ import matplotlib.pyplot as plt
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -201,14 +201,14 @@ with program() as rb:
         # Generates the RB sequence with a gate interleaved after each Clifford
         sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
         # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
-        assign(depth_target, 0)
+        assign(depth_target, 2)
         with for_(depth, 1, depth <= 2 * max_circuit_depth, depth + 1):
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
             assign(saved_gate, sequence_list[depth])
             assign(sequence_list[depth], inv_gate_list[depth - 1])
             # Only played the depth corresponding to target_depth
-            with if_((depth == 2) | (depth == depth_target)):
+            with if_(depth == depth_target):
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can be replaced by active reset
                     wait(thermalization_time * u.ns, "resonator")
@@ -242,23 +242,23 @@ with program() as rb:
         if state_discrimination:
             # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
+                max_circuit_depth / delta_clifford
             ).buffer(num_of_sequences).save("state")
             # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
             state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
+                max_circuit_depth / delta_clifford
             ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
                 num_of_sequences
             ).save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
                 num_of_sequences
             ).save("Q")
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
                 "I_avg"
             )
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
                 "Q_avg"
             )
 
@@ -293,8 +293,7 @@ else:
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     # data analysis
-    x = np.arange(0, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
-    x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
+    x = np.arange(2, 2 * max_circuit_depth + 0.1, 2 * delta_clifford)
     while results.is_processing():
         # data analysis
         if state_discrimination:

@@ -2,7 +2,6 @@
 Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
-
 from pathlib import Path
 import numpy as np
 from set_octave import OctaveUnit, octave_declaration
@@ -33,6 +32,11 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
+
+# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
+# or directly to the Octave (without QM the router), use the local octave IP and port 80.
+# octave_ip = "192.168.88.X"
+# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
 
 # Add the octaves
 octaves = [octave_1]
@@ -217,13 +221,13 @@ if opt_weights:
     opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
 else:
     opt_weights_real_q1 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q1 = [(1.0, readout_len)]
-    opt_weights_imag_q1 = [(1.0, readout_len)]
-    opt_weights_minus_real_q1 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q1 = [(0.0, readout_len)]
+    opt_weights_imag_q1 = [(0.0, readout_len)]
+    opt_weights_minus_real_q1 = [(-1.0, readout_len)]
     opt_weights_real_q2 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q2 = [(1.0, readout_len)]
-    opt_weights_imag_q2 = [(1.0, readout_len)]
-    opt_weights_minus_real_q2 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q2 = [(0.0, readout_len)]
+    opt_weights_imag_q2 = [(0.0, readout_len)]
+    opt_weights_minus_real_q2 = [(-1.0, readout_len)]
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi

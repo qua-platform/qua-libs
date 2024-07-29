@@ -205,24 +205,27 @@ if opt_weights:
     from qualang_tools.config.integration_weights_tools import convert_integration_weights
 
     weights_q1 = np.load("optimal_weights_q1.npz")
-    opt_weights_real_q1 = convert_integration_weights(weights_q1["weights_real"])
-    opt_weights_minus_imag_q1 = convert_integration_weights(weights_q1["weights_minus_imag"])
-    opt_weights_imag_q1 = convert_integration_weights(weights_q1["weights_imag"])
-    opt_weights_minus_real_q1 = convert_integration_weights(weights_q1["weights_minus_real"])
+    opt_weights_real = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_real"]]
+    opt_weights_minus_imag = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_imag"]]
+    opt_weights_minus_real = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_real"]]
+
     weights_q2 = np.load("optimal_weights_q2.npz")
-    opt_weights_real_q2 = convert_integration_weights(weights_q2["weights_real"])
-    opt_weights_minus_imag_q2 = convert_integration_weights(weights_q2["weights_minus_imag"])
-    opt_weights_imag_q2 = convert_integration_weights(weights_q2["weights_imag"])
-    opt_weights_minus_real_q2 = convert_integration_weights(weights_q2["weights_minus_real"])
+    opt_weights_real = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_real"]]
+    opt_weights_minus_imag = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_imag"]]
+    opt_weights_imag = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_imag"]]
+    opt_weights_minus_real = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_real"]]
+
 else:
+
     opt_weights_real_q1 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q1 = [(1.0, readout_len)]
-    opt_weights_imag_q1 = [(1.0, readout_len)]
-    opt_weights_minus_real_q1 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q1 = [(0.0, readout_len)]
+    opt_weights_imag_q1 = [(0.0, readout_len)]
+    opt_weights_minus_real_q1 = [(-1.0, readout_len)]
     opt_weights_real_q2 = [(1.0, readout_len)]
-    opt_weights_minus_imag_q2 = [(1.0, readout_len)]
-    opt_weights_imag_q2 = [(1.0, readout_len)]
-    opt_weights_minus_real_q2 = [(1.0, readout_len)]
+    opt_weights_minus_imag_q2 = [(0.0, readout_len)]
+    opt_weights_imag_q2 = [(0.0, readout_len)]
+    opt_weights_minus_real_q2 = [(-1.0, readout_len)]
 
 # state discrimination
 rotation_angle_q1 = (0.0 / 180) * np.pi

@@ -4,7 +4,7 @@ SWAP_spectroscopy.py: program performing a SWAP spectroscopy used to calibrate t
 
 from qm.qua import *
 from configuration import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery import baking

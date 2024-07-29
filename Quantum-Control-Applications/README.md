@@ -7,10 +7,11 @@ Note that for them to work, you would need to download the latest version of the
 
 ## Superconducting Qubits
 ### [Two flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons)
-These files showcase various experiments that can be done on a several flux-tunable transmons using the [standard configuration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Standard%20Configuration#two-flux-tunable-transmons-with-the-standard-configuration) or the [QuAM rapid prototyping](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Rapid%20Prototyping#two-flux-tunable-transmons-with-the-rapid-prototyping).
+These files showcase various experiments that can be done on a several flux-tunable transmons using the [standard configuration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Standard%20Configuration#two-flux-tunable-transmons-with-the-standard-configuration).
 #### <u> Advanced use-cases: </u>
 * [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope#two-qubit-swap-spectroscopy-improved-with-pre-distortion-digital-filters).
 * [Two-qubit randomized benchmarking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%202%20-%20Two-Qubit-Randomized-Benchmarking#two-qubit-randomized-benchmarking).
+* [Two-qubit cross-entropy benchmarking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Use%20Case%203%20-%20Two-Qubit%20Cross-Entropy%20Benchmarking).
 
 ### [Single fixed frequency transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon#single-fixed-transmon-superconducting-qubit)
 These files showcase various experiments that can be done on a single fixed-frequency transmon.

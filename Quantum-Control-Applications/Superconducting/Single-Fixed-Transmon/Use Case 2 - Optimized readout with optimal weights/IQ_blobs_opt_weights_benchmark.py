@@ -3,7 +3,7 @@ Measure the qubit in the ground and excited state to create the IQ blobs. If the
 enough, gives the parameters needed for active reset
 """
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 from TwoStateDiscriminator import TwoStateDiscriminator
 import seaborn as sns

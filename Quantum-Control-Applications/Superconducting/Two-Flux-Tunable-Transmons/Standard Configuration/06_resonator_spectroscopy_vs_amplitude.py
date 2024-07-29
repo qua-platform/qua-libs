@@ -42,8 +42,7 @@ dfs = np.arange(-span, +span + 0.1, df)
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.001
 a_max = 1.99
-da = 0.01
-amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
+amplitudes = np.geomspace(a_min, a_max, 20)
 
 with program() as multi_res_spec_vs_amp:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
@@ -57,7 +56,7 @@ with program() as multi_res_spec_vs_amp:
             update_frequency("rr1", df + resonator_IF_q1)
             update_frequency("rr2", df + resonator_IF_q2)
 
-            with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the readout amplitude
+            with for_each_(a, amplitudes):  # QUA for_ loop for sweeping the readout amplitude
                 # resonator 1
                 wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
                 measure(
@@ -150,22 +149,30 @@ else:
         plt.title(f"Resonator 1 - LO: {resonator_LO / u.GHz} GHz")
         plt.ylabel("Readout IF [MHz]")
         plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, R1)
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp_q1, amplitudes[-1] * readout_amp_q1)
         plt.axhline(resonator_IF_q1 / u.MHz, color="k")
         plt.subplot(222)
         plt.cla()
         plt.title(f"Resonator 2 - LO: {resonator_LO / u.GHz} GHz")
         plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, R2)
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp_q2, amplitudes[-1] * readout_amp_q2)
         plt.axhline(resonator_IF_q2 / u.MHz, color="k")
         plt.subplot(223)
         plt.cla()
         plt.xlabel("Readout amplitude [V]")
         plt.ylabel("Readout IF [MHz]")
         plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, signal.detrend(np.unwrap(phase1)))
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp_q1, amplitudes[-1] * readout_amp_q1)
         plt.axhline(resonator_IF_q1 / u.MHz, color="k")
         plt.subplot(224)
         plt.cla()
         plt.xlabel("Readout amplitude [V]")
         plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, signal.detrend(np.unwrap(phase2)))
+        plt.xscale("log")
+        plt.xlim(amplitudes[0] * readout_amp_q2, amplitudes[-1] * readout_amp_q2)
         plt.axhline(resonator_IF_q2 / u.MHz, color="k")
         plt.tight_layout()
         plt.pause(0.1)

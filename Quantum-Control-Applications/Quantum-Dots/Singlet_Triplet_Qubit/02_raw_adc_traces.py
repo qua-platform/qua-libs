@@ -7,6 +7,7 @@ real-time processing by the pulse processor, such as demodulation, integration, 
 The script is useful for inspecting signals prior to demodulation, ensuring the ADCs are not saturated,
 correcting any non-zero DC offsets, and estimating the SNR.
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
