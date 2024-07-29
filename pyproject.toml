@@ -1,28 +1,36 @@
-[build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "quam-components"
+[tool.poetry]
+name = "qua-libs"
 version = "0.1.0"
-description = "QuAM Components for Quantum Control"
-readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "BSD-3-Clause" }
-authors = [
-    { name = "Dean Poulos", email = "dean.poulos@quantum-machines.co" }
-]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent"
-]
+description = "A collection of examples to be used with QUA language"
+authors = ["Tal Shani <tal@quantum-machines.co>"]
+license = "BSD"
 
-dependencies = [
-    "quam @ git+https://github.com/qua-platform/quam.git",
-    "qm-qua==1.2.0",
-    "qualang-tools"
-]
+[tool.poetry.dependencies]
+python = "^3.8"
+Pillow = "^9.0.1"
+bokeh = "^2.4.2"
+cryptography = "^36.0.1"
+Jinja2 = "^3.0.3"
+lxml = "^4.7.1"
+pikepdf = "^4.2.0"
+websockets = "^10.1"
 
-[tool.setuptools.packages.find]
-where = ["."]
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+poethepoet = "^0.10.0"
+flake8 = "^3.9.1"
+
+[tool.black]
+line-length = 120
+target-version = ['py37']
+#include = '(examples)/.+\.pyi?$'
+#include = '(Quantum Control Applications)/.+\.pyi?$'
+#include = '(Tutorials)/.+\.pyi?$'
+
+[tool.poe.tasks]
+format="black examples"
+check_format="black --check ."
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
