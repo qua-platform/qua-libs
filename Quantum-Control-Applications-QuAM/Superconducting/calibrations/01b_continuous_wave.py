@@ -7,6 +7,7 @@ from qm.qua import *
 from pathlib import Path
 from quam_libs.components import QuAM
 import matplotlib.pyplot as plt
+from time import sleep
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -31,10 +32,9 @@ element = machine.active_qubits[0].resonator
 ###################
 with program() as continuous_wave:
     i = declare(int)
-    # play for 10s
-    with for_(i, 0, i < 300_000, i + 1):
-        # play("x180_Square", element.name, duration=25_000)
-        play("const", element.name, duration=25_000)
+    # play a continuous wave
+    with infinite_loop_():
+        play("const", element.name)
 
 
 ###########################
@@ -56,3 +56,7 @@ else:
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it - Execute does not block python!
     job = qm.execute(continuous_wave)
+    # Play for 30s
+    sleep(30)
+    # Interrupt the program
+    job.halt()
