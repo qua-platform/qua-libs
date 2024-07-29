@@ -156,7 +156,7 @@ else:
         }
         data[f"{qubit.name}_figure"] = figs[i]
 
-        qubit.resonator.operations["readout"].integration_weights_angle += angle
+        qubit.resonator.operations["readout"].integration_weights_angle -= angle
         qubit.resonator.operations["readout"].threshold = threshold
         qubit.resonator.operations["readout"].rus_exit_threshold = rus_threshold
 
