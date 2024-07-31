@@ -198,8 +198,8 @@ config = {
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": (con, 1),
+                "Q": (con, 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
@@ -219,8 +219,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": (con, 3),
+                "Q": (con, 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -230,8 +230,8 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": (con, 1),
+                "out2": (con, 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,

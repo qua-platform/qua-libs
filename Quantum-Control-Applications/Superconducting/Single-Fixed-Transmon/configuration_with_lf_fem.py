@@ -223,6 +223,7 @@ config = {
                             #   unmodulated pulses (optimized for clean step response): "pulse"
                             "upsampling_mode": "mw",
                         },
+                        # Q qubit
                         2: {
                             "offset": 0.0,
                             "output_mode": "direct",
@@ -258,8 +259,8 @@ config = {
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", fem, 1),
-                "Q": ("con1", fem, 2),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
@@ -279,8 +280,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", fem, 3),
-                "Q": ("con1", fem, 4),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -290,8 +291,8 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", fem, 1),
-                "out2": ("con1", fem, 2),
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,

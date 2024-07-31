@@ -359,7 +359,7 @@ config = {
                             "sampling_rate": sampling_rate,
                             "upsampling_mode": "mw",
                         },
-                        # Qubit 1 XY I-quadrature
+                        # Qubit 2 XY I-quadrature
                         5: {
                             "offset": 0.0,
                             "output_mode": "direct",
