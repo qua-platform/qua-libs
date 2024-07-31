@@ -159,15 +159,12 @@ else:
         plt.tight_layout()
         plt.pause(0.1)
 
-    optimal_drag_coef = qb.xy.operations['x180'].alpha * amps[np.argmin(np.sum(I[qb_idx], axis=1))]
+    optimal_drag_coef = qb.xy.operations["x180"].alpha * amps[np.argmin(np.sum(I[qb_idx], axis=1))]
     print(f"Optimal drag_coef = {optimal_drag_coef:.3f}")
 
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
     # Save data from the node
-    data = {
-        "figure": plt.gcf(),
-        "optimal_drag_coef": optimal_drag_coef
-    }
+    data = {"figure": plt.gcf(), "optimal_drag_coef": optimal_drag_coef}
     node_save(machine, "drag_calibration", data, additional_files=True)
     plt.show()
