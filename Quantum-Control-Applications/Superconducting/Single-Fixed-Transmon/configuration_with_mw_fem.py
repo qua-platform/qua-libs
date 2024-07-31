@@ -17,7 +17,7 @@ qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
 con = "con1"
-fem = 1
+fem = 5
 
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"

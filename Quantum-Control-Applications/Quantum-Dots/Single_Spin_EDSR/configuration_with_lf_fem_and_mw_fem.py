@@ -21,7 +21,7 @@ qop_port = None  # Write the QOP port if version < QOP220
 #####################
 con = "con1"
 lf_fem = 1  # Should be the LF-FEM index, e.g., 1
-mw_fem = 2  # Should be the MW-FEM index, e.g., 2
+mw_fem = 5  # Should be the MW-FEM index, e.g., 5
 
 octave_config = None
 
