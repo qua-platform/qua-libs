@@ -45,7 +45,7 @@ df = 1 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
 
-with program() as qubit_spec:
+with program() as qubit_AC_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
@@ -100,14 +100,14 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, qubit_spec, simulation_config)
+    job = qmm.simulate(config, qubit_AC_stark_shift, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(qubit_spec)
+    job = qm.execute(qubit_AC_stark_shift)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting

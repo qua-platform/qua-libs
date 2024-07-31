@@ -1,3 +1,25 @@
+"""
+        SWAPPING
+This sequence involves preparing the storage cavity in Fock state n=1, the playing two detuned pump pulses to the
+storage and the resonator simultaneously, followed by a selective pi-pulse (x180_long) to qubit (with frequency that
+corresponds to cavity is a Fock state n=1) and measure across various off pump pulses durations.
+
+The data is post-processed to determine the swapping operation time.
+
+
+Note that the pi-pulse should be long enough such that it will apply a pi-pulse only when the storage is at Fock state n=1.
+
+Prerequisites:
+    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the resonator drive line (whether it's an external mixer or an Octave port).
+    - Identification of the qubit's resonance frequency (referred to as "qubit_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Having calibrated qubit pi pulse (x180_len) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated qubit's frequency that corresponds to Fock state n=1 by running number_splitting_spectroscopy.
+    - Specification of the expected storage_thermalization_time of the storage in the configuration.
+    - Specification of the expected beta3 pulse amplitude and duration (from "storage_displacement").
+"""
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
@@ -8,7 +30,6 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-import scipy.special as sp
 import scipy.optimize as spo
 
 
@@ -16,18 +37,16 @@ import scipy.optimize as spo
 # The QUA program #
 ###################
 n_avg = 500  # The number of averages
-# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
-# Qubit detuning sweep
+
+# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 t_min = 16 // 4
 t_max = 100000 // 4
 dt = 400 // 4
+# Detuning of the off pump pulses
 durations = np.arange(t_min, t_max, dt)
 
-
-df1 = 178.104 * u.MHz
-
 detuning = 30 * u.MHz
-with program() as qubit_spec:
+with program() as swap:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
@@ -40,32 +59,35 @@ with program() as qubit_spec:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(t, durations)):
-            update_frequency("storage", s_IF)
+            update_frequency("storage", storage_IF)
             update_frequency("qubit", qubit_IF)
             # Prepare the Storage Cavity in Fock state n=1
-            play("beta1" , "storage")
+            play("beta1", "storage")
             align()
             align("qubit", "storage")
             play("x360", "qubit")
             align("qubit", "storage")
-            play("beta2" , "storage")
+            play("beta2", "storage")
             align()
             # Play two off resonance pulses. One to the storage cavity and another one to the resonator
-            update_frequency("storage", s_IF - detuning)
+            update_frequency("storage", storage_IF - detuning)
             update_frequency("resonator", resonator_IF - detuning)
             play("off_pump", "storage", duration=t)
             play("off_pump", "resonator", duration=t)
             align()
-            # Measure
+            # Align the two elements to measure after playing the qubit pulse.
+            # Measure the storage state by applying a selective pi-pulse to the qubit (for storage state Fock state n=1)
+            # and measure the qubit state
             update_frequency("resonator", resonator_IF)
-            update_frequency("qubit", df1)
+            update_frequency("qubit", qubit_IF_n1)
             play("x180_long", "qubit")
             align("qubit", "resonator")
             # Measure the state of the resonator
-            state, I, Q = macros.readout_macro(threshold = ge_threshold, state=state, I=I, Q=Q)
+            state, I, Q = macros.readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
-            # Wait for the qubit to decay to the ground state
-            wait(s_thermalization_time * u.ns, "resonator")
+            # Wait for the storage to decay to the ground state
+            align("storage", "resonator")
+            wait(storage_thermalization_time * u.ns, "storage")
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
             save(Q, Q_st)
@@ -76,10 +98,8 @@ with program() as qubit_spec:
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
         I_st.buffer(len(durations)).average().save("I")
-        I_st.buffer(len(durations)).save_all("I_single")
-        state_st.boolean_to_int().buffer(len(durations)).average().save("state")
         Q_st.buffer(len(durations)).average().save("Q")
-        Q_st.buffer(len(durations)).save_all("Q_single")
+        state_st.boolean_to_int().buffer(len(durations)).average().save("state")
         n_st.save("iteration")
 
 #####################################
@@ -95,23 +115,23 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, qubit_spec, simulation_config)
+    job = qmm.simulate(config, swap, simulation_config)
     job.get_simulated_samples().con1.plot()
 
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(qubit_spec)
+    job = qm.execute(swap)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I","state", "Q", "iteration","I_single","Q_single"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "state", "Q", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I,state, Q, iteration,I_single,Q_single = results.fetch_all()
+        I, Q, state, iteration = results.fetch_all()
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, readout_len)
         R = np.abs(S)  # Amplitude
@@ -133,16 +153,14 @@ else:
         plt.pause(0.1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot(4 * durations, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Swapping duration [ms]")
-        ax2.set_ylim(0,1)
+        ax2.set_ylim(0, 1)
 
 def func(t, A, alpha, kappa,offset, n=0):
     return A*np.exp(-np.abs(alpha)**2*np.exp(-kappa*t))+offset
-
 
 
 
@@ -150,7 +168,7 @@ x0 = [-max(state)+min(state),3, 6, max(state)]
 popt, pcov = spo.curve_fit(func, durations*4/u.ms, state, p0=x0)
 print(popt)
 
-fig3, ax3 = plt.subplots(1,1)
+fig3, ax3 = plt.subplots(1, 1)
 
 x = 4*np.linspace(4e-3, np.max(durations))/u.ms
 ax3.plot(4 * durations/u.ms, state, ".")

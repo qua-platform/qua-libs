@@ -14,6 +14,7 @@ Prerequisites:
     - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
     - Having calibrated qubit pi pulse (x180_len) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Specification of the expected storage_thermalization_time of the storage in the configuration.
+    - Having calibrated the beta1 and beta2 pulses to the qubit(referred to as "storage_displacement"
 
 Before proceeding to the next node:
     - Update the storage T1 time, labeled as "storage_T1".

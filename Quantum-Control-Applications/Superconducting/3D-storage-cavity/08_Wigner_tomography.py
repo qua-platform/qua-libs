@@ -1,3 +1,26 @@
+"""
+        WIGNER TOMOGRAPHY
+This sequence involves two consecutive measurements:
+The first one applies a displacement pulse, then apply x90 - wait time - x90 and measure the resonator while sweeping over the displacement pulse amplitude
+The second one applies a displacement pulse, then apply x90 - wait time - -x90 and measure the resonator while sweeping over the displacement pulse amplitude
+Then we subtract the two measurements in order to get the behaviour of Fock state n=1 (or a different n) in order to find t parity
+(which is the time we need to have between the two pi/2 pulses in order to distinguish between even and odd parity).
+
+
+Prerequisites:
+    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the resonator drive line (whether it's an external mixer or an Octave port).
+    - Identification of the qubit's resonance frequency (referred to as "qubit_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Having calibrated qubit pi pulse (x180_len) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated qubit's frequency that corresponds to Fock state n=1 by running number_splitting_spectroscopy.
+    - Specification of the expected storage_thermalization_time of the storage in the configuration.
+
+Before proceeding to the next node:
+    - Update the time we need to wait in parity measurements, labeled as t_parity.
+"""
+
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
@@ -12,20 +35,12 @@ import macros as macros
 # The QUA program #
 ###################
 n_avg = 1000
-# Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-tau_min = 16 // 4
-tau_max = 1000 // 4
-d_tau = 4 // 4
-taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
-# Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
-detuning = 0 * u.MHz  # in Hz
 
+# Amplitude sweeping
 aIs = np.arange(-2, 2, 0.05)
 aQs = np.arange(-2, 2, 0.05)
 
-df1 = 178.12 * u.MHz
-test = True
-with program() as ramsey:
+with program() as wigner_tomography:
     n = declare(int)  # QUA variable for the averaging loop
     aI = declare(fixed)  # QUA variable for the idle time
     aQ = declare(fixed)
@@ -51,66 +66,47 @@ with program() as ramsey:
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(aI, aIs)):
             with for_(*from_array(aQ, aQs)):
-                # Prepare storage cavity in Fock state n=1
-                play("beta1" , "storage")
+                # Play displacement pulse
+                play("cw"*amp(aI, 0, aQ, 0), "storage")
                 align()
-                play("x360", "qubit")
-                align()
-                play("beta2" , "storage")
-                align()
-
-                play("cw"*amp(aI,0,aQ, 0) , "storage")
-
-                align()
-
+                # Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
                 # Wait a varying idle time
                 wait(t_parity, "qubit")
                 # 2nd x90 gate
                 play("x90", "qubit")
 
-                # update_frequency("qubit", df1)
-
                 align("qubit", "resonator")
-
                 # Measure the state of the resonator
-                state1, I1, Q1 = macros.readout_macro(threshold = ge_threshold, state=state1, I=I1, Q=Q1)
+                state1, I1, Q1 = macros.readout_macro(threshold=ge_threshold, state=state1, I=I1, Q=Q1)
 
-                # Wait for the qubit to decay to the ground state
-                wait(s_thermalization_time * u.ns, "resonator")
+                # Wait for the storage to decay to the ground state
+                align("storage", "resonator")
+                wait(storage_thermalization_time * u.ns, "storage")
                 save(I1, I1_st)
                 save(Q1, Q1_st)
                 save(state1, state1_st)
 
                 align()
 
-                play("beta1" , "storage")
+                # Play displacement pulse
+                play("cw"*amp(aI, 0, aQ, 0), "storage")
                 align()
-                # align("qubit", "storage")
-                play("x360", "qubit")
-                align()
-                play("beta2" , "storage")
-                align()
-
-                play("cw"*amp(aI,0,aQ, 0) , "storage")
-
-                align()
-
+                # Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
                 # Wait a varying idle time
                 wait(t_parity, "qubit")
                 # 2nd x90 gate
                 play("-x90", "qubit")
 
-                # update_frequency("qubit", df1)
-
                 align("qubit", "resonator")
 
                 # Measure the state of the resonator
-                state2, I2, Q2 = macros.readout_macro(threshold = ge_threshold, state=state2, I=I2, Q=Q2)
+                state2, I2, Q2 = macros.readout_macro(threshold=ge_threshold, state=state2, I=I2, Q=Q2)
 
-                # Wait for the qubit to decay to the ground state
-                wait(s_thermalization_time * u.ns, "resonator")
+                # Wait for the storage to decay to the ground state
+                align("storage", "resonator")
+                wait(storage_thermalization_time * u.ns, "storage")
                 # Save the 'I' & 'Q' quadratures to their respective streams
                 save(I2, I2_st)
                 save(Q2, Q2_st)
@@ -141,76 +137,32 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, ramsey, simulation_config)
+    job = qmm.simulate(config, wigner_tomography, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ramsey)
+    job = qm.execute(wigner_tomography)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration", "state"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I, Q, iteration, state = results.fetch_all()
+        I, Q, state, iteration = results.fetch_all()
         # Convert the results into Volts
         I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-
-        ax1[0].clear()
-        ax1[1].clear()
-        try:
-            c10b.remove()
-            c11b.remove()
-        except:
-            pass
-        ax1[0].cla()
-        c10=ax1[0].pcolor(aIs*2, aQs*2,I)
-        ax1[0].set_ylabel("Imag")
-        ax1[1].cla()
-        c11=ax1[1].pcolor(aIs*2, aQs*2,Q)
-        ax1[1].set_xlabel("Real")
-        ax1[1].set_ylabel("Imag")
-        c10b = fig1.colorbar(c10, ax=ax1[0])
-        c11b = fig1.colorbar(c11, ax=ax1[1])
+        wigner = 2 / np.pi * state  # derive the wigner function
+        plt.cla()
+        plt.pcolor(aIs, aQs, wigner, cmap='magma')
+        plt.xlabel('Real')
+        plt.ylabel('Imaginary')
+        plt.title('Wigner tomography for Fock state n=0')
         plt.pause(0.1)
-        plt.tight_layout()
 
-
-        ax2.clear()
-        try:
-            c2b.remove()
-        except:
-            pass
-        c2=ax2.pcolor(aIs*2, aQs*2, state)
-        ax2.set_xlabel("Real")
-        ax2.set_ylabel("Imag")
-        # ax2.set_ylim(0,1)
-        c2b = fig2.colorbar(c2, ax=ax2)
-
-
-
-    # Fit the results to extract the qubit frequency and T2*
-    try:
-        from qualang_tools.plot.fitting import Fit
-
-        fit = Fit()
-        plt.figure()
-        ramsey_fit = fit.ramsey(4 * taus, state, plot=True)
-        qubit_T2 = np.abs(ramsey_fit["T2"][0])
-        qubit_detuning = ramsey_fit["f"][0] * u.GHz - detuning
-        plt.xlabel("Idle time [ns]")
-        plt.ylabel("I quadrature [V]")
-        print(f"Qubit detuning to update in the config: qubit_IF += {-qubit_detuning:.0f} Hz")
-        print(f"T2* = {qubit_T2:.0f} ns")
-        plt.legend((f"detuning = {-qubit_detuning / u.kHz:.3f} kHz", f"T2* = {qubit_T2:.0f} ns"))
-        plt.title("Ramsey measurement with detuned gates")
-        print(f"Detuning to add: {-qubit_detuning / u.kHz:.3f} kHz")
-    except (Exception,):
-        pass

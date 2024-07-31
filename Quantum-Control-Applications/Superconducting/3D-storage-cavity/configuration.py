@@ -60,7 +60,7 @@ storage_thermalization_time = 5 * storage_T1
 
 storage_parity = 332
 
-
+t_parity = 300 #ns
 # Continuous wave
 storage_const_len = 200
 storage_const_amp = 0.02

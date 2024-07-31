@@ -1,3 +1,26 @@
+"""
+        PARITY MEASUREMENT
+This sequence involves two consecutive measurements:
+The first one measures the background, by applying a displacement pulse, then apply x90 - wait time - -x90 and measure the resonator, while sweeping over the idle time.
+The second one starts by applying a displacement pulse, then apply x90 - wait time - -x90 and then measure by applying a selective pi-pulse (x180_long)
+with the frequency that corresponds to Fock state n=1 (this can be changed by changing the IF, while sweeping over the idle time.
+Then we subtract the two measurements in order to get the behaviour of Fock state n=1 (or a different n) in order to find t parity
+(which is the time we need to have between the two pi/2 pulses in order to distinguish between even and odd parity).
+
+
+Prerequisites:
+    - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the resonator drive line (whether it's an external mixer or an Octave port).
+    - Identification of the qubit's resonance frequency (referred to as "qubit_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
+    - Having calibrated qubit pi pulse (x180_len) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - Having calibrated qubit's frequency that corresponds to Fock state n=1 by running number_splitting_spectroscopy.
+    - Specification of the expected storage_thermalization_time of the storage in the configuration.
+
+Before proceeding to the next node:
+    - Update the time we need to wait in parity measurements, labeled as t_parity.
+"""
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
@@ -17,12 +40,9 @@ tau_min = 16 // 4
 tau_max = 1000 // 4
 d_tau = 4 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
-# Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
-detuning = 0 * u.MHz  # in Hz
 
-df1 = (178.12-1.5)* u.MHz
-test = True
-with program() as ramsey:
+
+with program() as parity_meas:
     n = declare(int)  # QUA variable for the averaging loop
     tau = declare(int)  # QUA variable for the idle time
     state1 = declare(bool)
@@ -44,52 +64,48 @@ with program() as ramsey:
 
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
-            play("cw" , "storage")
-
+            # Background measurement
+            # Play the x90 qubit pulses with the frequency that corresponds to Fock state n=0
+            update_frequency("qubit", qubit_IF)
+            # Play a displacement pulse to the cavity
+            play("cw", "storage")
             align()
-
             play("x90", "qubit")
             # Wait a varying idle time
             wait(tau, "qubit")
             # 2nd x90 gate
             play("-x90", "qubit")
-
+            # Align the two elements to measure after playing the qubit pulses.
             align("qubit", "resonator")
-
             # Measure the state of the resonator
             state1, I1, Q1 = macros.readout_macro(threshold = ge_threshold, state=state1, I=I1, Q=Q1)
-
-            # Wait for the qubit to decay to the ground state
-            wait(s_thermalization_time * u.ns, "resonator")    
+            # Wait for the storage to decay to the ground state
+            align("storage", "resonator")
+            wait(storage_thermalization_time * u.ns, "storage")
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I1, I1_st)
             save(Q1, Q1_st)
             save(state1, state1_st)
 
             align()
-
-
-            update_frequency("qubit", qubit_IF)
-            play("cw" , "storage")
-
+            # Play a displacement pulse to the cavity
+            play("cw", "storage")
             align()
-
             play("x90", "qubit")
             # Wait a varying idle time
             wait(tau, "qubit")
             # 2nd x90 gate
             play("-x90", "qubit")
 
-            # measure the parity of n=1
-            update_frequency("qubit", df1)
-
+            # Measure the storage state by applying a selective pi-pulse (n=1) to the qubit and measure the qubit state
+            update_frequency("qubit", qubit_IF_n1)
             play("x180_long", "qubit")
             align("qubit", "resonator")
-
             state2, I2, Q2 = macros.readout_macro(threshold = ge_threshold, state=state2, I=I2, Q=Q2)
 
-            # Wait for the storage cavity to decay to the ground state
-            wait(s_thermalization_time * u.ns, "resonator")    
+            # Wait for the storage to decay to the ground state
+            align("storage", "resonator")
+            wait(storage_thermalization_time * u.ns, "storage")
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I2, I2_st)
             save(Q2, Q2_st)
@@ -119,22 +135,22 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-    job = qmm.simulate(config, ramsey, simulation_config)
+    job = qmm.simulate(config, parity_meas, simulation_config)
     job.get_simulated_samples().con1.plot()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ramsey)
+    job = qm.execute(parity_meas)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration", "state"], mode="live")
+    results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I, Q, iteration, state = results.fetch_all()
+        I, Q, state, iteration = results.fetch_all()
         # Convert the results into Volts
         I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
         # Progress bar
@@ -155,24 +171,5 @@ else:
         ax2.plot(4 * taus, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Idle time [ns]")
-        # ax2.set_ylim(0,1)
 
 
-    # Fit the results to extract the qubit frequency and T2*
-    try:
-        from qualang_tools.plot.fitting import Fit
-
-        fit = Fit()
-        plt.figure()
-        ramsey_fit = fit.ramsey(4 * taus, state, plot=True)
-        qubit_T2 = np.abs(ramsey_fit["T2"][0])
-        qubit_detuning = ramsey_fit["f"][0] * u.GHz - detuning
-        plt.xlabel("Idle time [ns]")
-        plt.ylabel("I quadrature [V]")
-        print(f"Qubit detuning to update in the config: qubit_IF += {-qubit_detuning:.0f} Hz")
-        print(f"T2* = {qubit_T2:.0f} ns")
-        plt.legend((f"detuning = {-qubit_detuning / u.kHz:.3f} kHz", f"T2* = {qubit_T2:.0f} ns"))
-        plt.title("Ramsey measurement with detuned gates")
-        print(f"Detuning to add: {-qubit_detuning / u.kHz:.3f} kHz")
-    except (Exception,):
-        pass
