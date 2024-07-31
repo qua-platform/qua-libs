@@ -247,12 +247,12 @@ if __name__ == "__main__":
     wiring = create_wiring(port_allocation, using_opx_1000=using_opx_1000)
     machine = create_quam_superconducting(quam_class, wiring)
 
-    # machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
+    machine.save(quam_folder, content_mapping={"wiring.json": {"wiring", "network"}})
 
-    # qua_file = folder / "qua_config.json"
-    # qua_config = machine.generate_config()
-    # json.dump(qua_config, qua_file.open("w"), indent=4)
-    #
+    qua_file = folder / "qua_config.json"
+    qua_config = machine.generate_config()
+    json.dump(qua_config, qua_file.open("w"), indent=4)
+
     # quam_loaded = QuAM.load(quam_folder)
     # qua_config_loaded = quam_loaded.generate_config()
     # json.dump(qua_config_loaded, qua_file.open("w"), indent=4)
