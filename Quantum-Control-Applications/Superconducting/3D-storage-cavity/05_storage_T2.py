@@ -29,7 +29,8 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -63,7 +64,7 @@ with program() as qubit_spec:
             play("beta1", "storage")
             align()
             align("qubit", "storage")
-            play("x360", "qubit") # Play a selective pi-pulse for n=0
+            play("x360_long", "qubit") # Play a selective pi-pulse for n=0
             align()
             play("beta2", "storage")
 
@@ -108,14 +109,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, qubit_spec, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

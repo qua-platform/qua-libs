@@ -39,7 +39,8 @@ import macros as macros
 import numpy as np
 import scipy.special as sp
 import scipy.optimize as spo
-
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -101,13 +102,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, storage_displacement, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
 
 else:
     # Open the quantum machine
@@ -151,30 +153,30 @@ else:
         ax2.set_xlabel("displacement pulse duration [ns]")
         ax2.set_ylim(0, 1)
 
-def func(t, A, kappa,offset, n=0):
-    alpha = kappa*t
-    return A*np.exp(-np.abs(alpha)**2)*np.abs(alpha)**(2*n)/sp.factorial(n)+offset
+    def func(t, A, kappa,offset, n=0):
+        alpha = kappa*t
+        return A*np.exp(-np.abs(alpha)**2)*np.abs(alpha)**(2*n)/sp.factorial(n)+offset
 
-def func_n0(t,A,kappa,offset):
-    return func(t, A, kappa, offset, n=0)
+    def func_n0(t,A,kappa,offset):
+        return func(t, A, kappa, offset, n=0)
 
-durations[0]=0
+    durations[0]=0
 
-x0 = [max(state)-min(state), 0.01, min(state)]
-popt, pcov = spo.curve_fit(func_n0, durations*4, state, p0=x0)
-print(popt)
+    x0 = [max(state)-min(state), 0.01, min(state)]
+    popt, pcov = spo.curve_fit(func_n0, durations*4, state, p0=x0)
+    print(popt)
 
-fig3, ax3 = plt.subplots(1, 1)
-ax3.plot(4 * durations, state, ".")
-x = 4*np.linspace(0, np.max(durations))
-ax3.plot(x, func_n0(x,*popt))
-ax3.set_ylabel(r"$P_e$")
-ax3.set_xlabel("Pulse duration [ns]")
+    fig3, ax3 = plt.subplots(1, 1)
+    ax3.plot(4 * durations, state, ".")
+    x = 4*np.linspace(0, np.max(durations))
+    ax3.plot(x, func_n0(x,*popt))
+    ax3.set_ylabel(r"$P_e$")
+    ax3.set_xlabel("Pulse duration [ns]")
 
-fig4, ax4 = plt.subplots(1,1)
-ax4.plot(4 * durations*popt[1], state, ".")
-x = 4*np.linspace(0, np.max(durations))
-ax4.plot(x*popt[1], func_n0(x,*popt))
-ax4.set_ylabel(r"$P_e$")
-ax4.set_xlabel(r"$|\alpha|$")
-plt.show()
+    fig4, ax4 = plt.subplots(1,1)
+    ax4.plot(4 * durations*popt[1], state, ".")
+    x = 4*np.linspace(0, np.max(durations))
+    ax4.plot(x*popt[1], func_n0(x,*popt))
+    ax4.set_ylabel(r"$P_e$")
+    ax4.set_xlabel(r"$|\alpha|$")
+    plt.show()

@@ -30,7 +30,8 @@ import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
 import scipy.optimize as spo
-
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -93,14 +94,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, Cavity_T1, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -143,22 +144,22 @@ else:
         ax2.set_xlabel("Wait time [ns]")
         ax2.set_ylim(0,1)
 
-def func(t, A, alpha, kappa,offset, n=0):
-    return A*np.exp(-np.abs(alpha)**2*np.exp(-kappa*t))+offset
+    def func(t, A, alpha, kappa,offset, n=0):
+        return A*np.exp(-np.abs(alpha)**2*np.exp(-kappa*t))+offset
 
 
 
 
-x0 = [-max(state)+min(state),3, 0.79, max(state)]
-popt, pcov = spo.curve_fit(func, durations*4/u.ms, state, p0=x0)
-print(popt)
+    x0 = [-max(state)+min(state),3, 0.79, max(state)]
+    popt, pcov = spo.curve_fit(func, durations*4/u.ms, state, p0=x0)
+    print(popt)
 
-fig3, ax3 = plt.subplots(1,1)
+    fig3, ax3 = plt.subplots(1,1)
 
-x = 4*np.linspace(4e-3, np.max(durations))/u.ms
-ax3.plot(4 * durations/u.ms, state, ".")
-ax3.plot(x, func(x,*popt))
-ax3.plot(x, func(x, *x0))
-ax3.set_ylabel(r"$P_e$")
-ax3.set_xlabel("Wait time [ns]")
-plt.show()
+    x = 4*np.linspace(4e-3, np.max(durations))/u.ms
+    ax3.plot(4 * durations/u.ms, state, ".")
+    ax3.plot(x, func(x,*popt))
+    ax3.plot(x, func(x, *x0))
+    ax3.set_ylabel(r"$P_e$")
+    ax3.set_xlabel("Wait time [ns]")
+    plt.show()

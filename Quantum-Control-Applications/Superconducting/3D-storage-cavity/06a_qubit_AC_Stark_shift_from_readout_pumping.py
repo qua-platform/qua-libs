@@ -27,6 +27,8 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -77,6 +79,7 @@ with program() as qubit_AC_stark_shift:
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
             save(Q, Q_st)
+            save(state, state_st)
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
@@ -95,14 +98,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, qubit_AC_stark_shift, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

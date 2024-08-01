@@ -28,7 +28,8 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -92,14 +93,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, number_splitting_spectroscopy, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

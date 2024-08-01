@@ -52,50 +52,30 @@ octave_config = octave_declaration(octaves)
 storage_LO = 5 * u.GHz
 storage_IF = 100 * u.MHz # correspond to Fock state n=0
 
+
+storage_T1 = int(1 * u.ms)
+storage_thermalization_time = 5 * storage_T1
+t_parity = 300 * u.ns
+
 off_pump_len = 16 * u.ns
 storage_off_pump_amp = 0.1
-
-storage_T1 = int(1* u.ms)
-storage_thermalization_time = 5 * storage_T1
-
-storage_parity = 332
-
-t_parity = 300 #ns
 # Continuous wave
 storage_const_len = 200
 storage_const_amp = 0.02
 
-fock_state_T1 = True
-if fock_state_T1:
-    # beta1_wave
-    storage_beta1_len = 104
-    storage_beta1_amp = storage_const_amp
+# Fock state n=1 parameters
+# beta1_wave
+storage_beta1_len = 104
+storage_beta1_amp = storage_const_amp
 
-    # beta2_wave
-    storage_beta2_len = 52
-    storage_beta2_amp = -storage_const_amp
-else: #WHY DO WE NEED THIS?
-    # beta1_wave
-    storage_beta1_len = 48
-    storage_beta1_amp = 0.015
+# beta2_wave
+storage_beta2_len = 52
+storage_beta2_amp = -storage_const_amp
 
-    # beta2_wave
-    storage_beta2_len = 20
-    storage_beta2_amp = -0.015
-
-
+# Parameters for storage cavity T2
 # beta3_wave
 storage_beta3_len = 72
 storage_beta3_amp = 0.015
-#############################################
-#                  Qubit Pump                   #
-#############################################
-
-qubit_pump_IF = -270* u.MHz
-qubit_pump_LO = 3.23* u.GHz
-
-qubit_pump_amp = 0.5;
-off_pump_len = 10* u.us;
 
 #############################################
 #                  Qubits                   #
@@ -108,24 +88,23 @@ qubit_T1 = int(40 * u.us)
 thermalization_time = 10 * qubit_T1
 
 # Continuous wave
-const_len = 76
+const_len = 100
 const_amp = 0.1
 # Saturation_pulse
 saturation_len = 10 * u.us
 saturation_amp = 0.1
 # Square pi pulse
-square_pi_len = 136
+square_pi_len = 100
 square_pi_amp = 0.1
 # Drag pulses
 drag_coef = 0
-anharmonicity = -194 * u.MHz
+anharmonicity = -200 * u.MHz
 AC_stark_detuning = 0 * u.MHz
 
-# x180_len = 16
+
 x180_len = 72
 x180_sigma = x180_len / 3
-x180_amp = 0.1 #0.02
-# x180_amp =  0.003652
+x180_amp = 0.1
 x180_wf, x180_der_wf = np.array(
     drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
 )
@@ -133,10 +112,9 @@ x180_I_wf = x180_wf
 x180_Q_wf = x180_der_wf
 # No DRAG when alpha=0, it's just a gaussian.
 
-x180_len_long = 10000 #3000 #2000
+x180_len_long = 5000
 x180_sigma_long = x180_len_long / 3
-x180_amp_long = 0.0006954 #0.0023133333333333335 #0.003463
-# x180_amp =  0.003652
+x180_amp_long = 0.001
 x180_wf_long, x180_der_wf_long = np.array(
     drag_gaussian_pulse_waveforms(x180_amp_long, x180_len_long, x180_sigma_long, drag_coef, anharmonicity, AC_stark_detuning)
 )
@@ -144,29 +122,16 @@ x180_I_wf_long = x180_wf_long
 x180_Q_wf_long = x180_der_wf_long
 # No DRAG when alpha=0, it's just a gaussian.
 
-# # Number-splitting
-# x180_len = 220
-# # x180_len = 1000
-# x180_sigma = x180_len / 3
-# # x180_amp = 0.05
-# x180_amp =0.03
-# x180_wf, x180_der_wf = np.array(
-#     drag_gaussian_pulse_waveforms(x180_amp, x180_len, x180_sigma, drag_coef, anharmonicity, AC_stark_detuning)
-# )
-# x180_I_wf = x180_wf
-# x180_Q_wf = x180_der_wf
 
-# x360_len = 1000
-x360_len = 5000 #3000 #2000
-x360_sigma = x360_len / 3
-# x360_amp = 0.06
-# x360_amp =0.01372
-x360_amp = 0.001378 * 2#0.0023133333333333335 * 2 #0.003463*2
-x360_wf, x360_der_wf = np.array(
-    drag_gaussian_pulse_waveforms(x360_amp, x360_len, x360_sigma, drag_coef, anharmonicity, AC_stark_detuning)
+x360_len_long = x180_len_long
+x360_sigma_long = x360_len_long / 3
+
+x360_amp_long = x180_amp_long * 2
+x360_wf_long, x360_der_wf_long = np.array(
+    drag_gaussian_pulse_waveforms(x360_amp_long, x360_len_long, x360_sigma_long, drag_coef, anharmonicity, AC_stark_detuning)
 )
-x360_I_wf = x360_wf
-x360_Q_wf = x360_der_wf
+x360_I_wf_long = x360_wf_long
+x360_Q_wf_long = x360_der_wf_long
 
 x90_len = x180_len 
 x90_sigma = x90_len / 3
@@ -236,15 +201,14 @@ minus_y90_Q_wf = minus_y90_wf
 #                Resonators                 #
 #############################################
 resonator_LO = 6.9 * u.GHz
-resonator_IF = 142.5 * u.MHz #142.5 * u.MHz
-
+resonator_IF = 150 * u.MHz
 
 resonator_off_pump_amp = 0.45
 
-readout_len = 1300
+readout_len = 1000
 readout_amp = 0.05 
 
-time_of_flight = 24+340
+time_of_flight = 24
 depletion_time = 2 * u.us
 
 opt_weights = False
@@ -260,8 +224,8 @@ else:
     opt_weights_imag = [(0.0, readout_len)]
     opt_weights_minus_real = [(-1.0, readout_len)]
 # IQ Plane
-rotation_angle = (35.4/ 180) * np.pi
-ge_threshold = -1.103e-03 
+rotation_angle = (0 / 180) * np.pi
+ge_threshold = 1.0
 
 #############################################
 #                  Config                   #
@@ -303,25 +267,18 @@ config = {
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
                 "-y90": "-y90_pulse",
-                "x360":"x360_pulse",
-            },
-        },
-        "qubit_pump": {
-            "RF_inputs": {"port": ("octave1", 2)},
-            "intermediate_frequency": qubit_pump_IF,
-            "operations": {
-                "cw": "qubit_pump_const_pulse"
+                "x360_long":"x360_pulse_long",
             },
         },
         "storage": {
             "RF_inputs": {"port": ("octave1", 4)},
             "intermediate_frequency": storage_IF,
             "operations": {
-                "cw": "s_const_pulse",
-                "beta1": "s_beta1_pulse",
-                "beta2": "s_beta2_pulse",
-                "beta3": "s_beta3_pulse",
-                "off_pump":"s_off_pump_pulse"
+                "cw": "storage_const_pulse",
+                "beta1": "storage_beta1_pulse",
+                "beta2": "storage_beta2_pulse",
+                "beta3": "storage_beta3_pulse",
+                "off_pump":"storage_off_pump_pulse"
             },
         },
         "resonator": {
@@ -352,13 +309,6 @@ config = {
                     "output_mode": "always_on",
                     "gain": 0,
                 },
-                2: {
-                    "LO_frequency": qubit_pump_LO,
-                    "LO_source": "external",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-
                 4: {
                     "LO_frequency": storage_LO,
                     "LO_source": "internal",
@@ -432,12 +382,12 @@ config = {
                 "Q": "x180_Q_wf_long",
             },
         },
-        "x360_pulse": {
+        "x360_pulse_long": {
             "operation": "control",
-            "length": x360_len,
+            "length": x360_len_long,
             "waveforms": {
-                "I": "x360_I_wf",
-                "Q": "x360_Q_wf",
+                "I": "x360_I_wf_long",
+                "Q": "x360_Q_wf_long",
             },
         },
         "-x90_pulse": {
@@ -472,7 +422,6 @@ config = {
                 "Q": "minus_y90_Q_wf",
             },
         },
-
         "storage_const_pulse": {
             "operation": "control",
             "length": storage_const_len,
@@ -521,15 +470,6 @@ config = {
                 "Q": "zero_wf",
             },        
         },
-        
-        "qubit_pump_const_pulse": {
-            "operation": "control",
-            "length": off_pump_len,
-            "waveforms": {
-                "I": "qubit_pump_const_pulse_wf",
-                "Q": "zero_wf",
-            },        
-        },
         "readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
@@ -559,7 +499,6 @@ config = {
         "storage_beta3_wf": {"type": "constant", "sample": storage_beta3_amp},
         "storage_off_pump_pulse_wf": {"type": "constant", "sample": storage_off_pump_amp},
         "resonator_off_pump_pulse_wf": {"type": "constant", "sample": resonator_off_pump_amp},
-        "qubit_pump_const_pulse_wf":{"type": "constant", "sample": qubit_pump_amp},
         "saturation_drive_wf": {"type": "constant", "sample": saturation_amp},
         "square_pi_wf": {"type": "constant", "sample": square_pi_amp},
         "square_pi_half_wf": {"type": "constant", "sample": square_pi_amp / 2},
@@ -570,8 +509,8 @@ config = {
         "x180_Q_wf": {"type": "arbitrary", "samples": x180_Q_wf.tolist()},
         "x180_I_wf_long": {"type": "arbitrary", "samples": x180_I_wf_long.tolist()},
         "x180_Q_wf_long": {"type": "arbitrary", "samples": x180_Q_wf_long.tolist()},
-        "x360_I_wf": {"type": "arbitrary", "samples": x360_I_wf.tolist()},
-        "x360_Q_wf": {"type": "arbitrary", "samples": x360_Q_wf.tolist()},
+        "x360_I_wf_long": {"type": "arbitrary", "samples": x360_I_wf_long.tolist()},
+        "x360_Q_wf_long": {"type": "arbitrary", "samples": x360_Q_wf_long.tolist()},
         "minus_x90_I_wf": {"type": "arbitrary", "samples": minus_x90_I_wf.tolist()},
         "minus_x90_Q_wf": {"type": "arbitrary", "samples": minus_x90_Q_wf.tolist()},
         "y90_Q_wf": {"type": "arbitrary", "samples": y90_Q_wf.tolist()},

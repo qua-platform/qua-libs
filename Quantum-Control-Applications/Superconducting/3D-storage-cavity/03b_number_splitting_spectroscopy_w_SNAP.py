@@ -30,8 +30,8 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-import scipy.special as sp
-import scipy.optimize as spo
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 
 ###################
@@ -67,7 +67,7 @@ with program() as number_splitting_spectroscopy:
             play("beta1", "storage")
             align()
             align("qubit", "storage")
-            play("x360", "qubit") # play a selective 2pi pulse at qubit frequency that corresponds to n=0
+            play("x360_long", "qubit") # play a selective 2pi pulse at qubit frequency that corresponds to n=0
             align("qubit", "storage")
             play("beta2" , "storage")
 
@@ -106,14 +106,14 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, number_splitting_spectroscopy, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
