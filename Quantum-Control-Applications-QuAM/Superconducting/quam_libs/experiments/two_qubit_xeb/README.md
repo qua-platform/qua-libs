@@ -100,7 +100,7 @@ def two_qubit_gate_macro(qubit_pair: TransmonPair):
 two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
 
 ```
-- `qubit_pairs_ids`: the qubit pairs indices (or qubit pair names) involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only one qubit pair for now and should therefore be given as `[my_qubit_pair_name]`.
+- `qubit_pairs_ids`: the qubit pairs indices (or qubit pair names) involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only one qubit pair for now and should therefore be given as `[my_qubit_pair_name].
 - `readout_pulse_name`: the name of the readout pulse that will be used to measure the qubits. The name should match the name of the operation defined in the QuAM/configuration for implementing the readout pulse.
 Additional parameters are available in the config such as:
 - `reset_method`: the method used to reset the qubits. The user can choose between `"active"` (active reset) and `"cooldown"` (passive reset).

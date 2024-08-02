@@ -1,5 +1,5 @@
 from qiskit.circuit.library import RYGate
-from qua_gate import QUAGate
+from .qua_gate import QUAGate
 from qm.qua import amp
 import numpy as np
 from typing import Literal, Callable, Optional, List, Dict, Union

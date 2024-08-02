@@ -2,12 +2,12 @@ from dataclasses import asdict
 from typing import Union, List, Optional
 import numpy as np
 from qm.qua import *
-from macros import qua_declaration, reset_qubit, cross_entropy, binary, exponential_decay, fit_exponential_decay
+from .macros import qua_declaration, reset_qubit, cross_entropy, binary, exponential_decay, fit_exponential_decay
 import matplotlib.pyplot as plt
 from qiskit.circuit.library import UnitaryGate
 from qiskit_aer import AerJob
 import pandas as pd
-from xeb_config import XEBConfig
+from .xeb_config import XEBConfig
 from qiskit.circuit import QuantumCircuit
 from qiskit.providers import BackendV2
 from qiskit.quantum_info import Statevector

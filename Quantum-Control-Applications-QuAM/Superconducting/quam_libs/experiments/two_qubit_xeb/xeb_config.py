@@ -1,9 +1,9 @@
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from typing import Literal, List, Union, Optional, Dict
 
 import numpy as np
-from gateset import QUAGateSet
-from qua_gate import QUAGate
+from .gateset import QUAGateSet
+from .qua_gate import QUAGate
 
 
 @dataclass
