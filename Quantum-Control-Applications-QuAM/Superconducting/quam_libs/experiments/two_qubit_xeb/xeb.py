@@ -167,7 +167,7 @@ class XEB:
 
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
-                            for q, qubit in enumerate(self.qubit_elements):  # Play single qubit gates on all qubits
+                            for q, qubit in enumerate(self.qubits):  # Play single qubit gates on all qubits
                                 self._play_random_sq_gate(
                                     qubit,
                                     gate[q][depth_],
@@ -366,9 +366,9 @@ class XEBJob:
 
         """
         circuits = []
-        idx = 0
         if self._simulate:
             assert isinstance(self.job, AerJob), "The job should be an AerJob object"
+            idx = 0
             for s in range(self.xeb_config.seqs):
                 circuits.append([])
                 for _ in range(len(self.xeb_config.depths)):
@@ -383,11 +383,10 @@ class XEBJob:
             g = [self._result_handles.get(f"g{q}").fetch_all()["value"] for q in range(n_qubits)]
 
             for s in range(self.xeb_config.seqs):
-                self._sq_indices[s].append(np.zeros((n_qubits, max_depth), dtype=int))
+                self._sq_indices.append(np.zeros((n_qubits, max_depth), dtype=int))
                 for d in range(max_depth):
                     for q in range(n_qubits):
-                        self._sq_indices[s][q, d] = g[q][idx]
-                    idx += 1
+                        self._sq_indices[s][q, d] = g[q][s, d]
 
             for s in range(self.xeb_config.seqs):
                 circuits.append([])
@@ -583,7 +582,7 @@ class XEBResult:
 
                 else:
                     for q in range(n_qubits):
-                        qc = self.circuits[s][d_]
+                        qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
                         expected_probs[q, s, d_] = np.round(Statevector(qc).probabilities([q]), 5)
                         measured_probs[q, s, d_] = np.array(
                             [1 - states[f"state{q}"][s][d_], states[f"state{q}"][s][d_]]
@@ -658,73 +657,120 @@ class XEBResult:
 
     def plot_fidelities(self, fit_linear: bool = True, fit_log_entropy: bool = True):
         """
-        Plot the state fidelities for the XEB experiment
+        Plot the cross-entropy fidelities for the XEB experiment
         Args:
             fit_linear: Indicate if the linear XEB data should be fitted
             fit_log_entropy: Indicate if the log-entropy XEB data should be fitted
         Returns:
-
         """
         plt.figure()
         plt.rcParams["text.usetex"] = False
-        xx = np.linspace(0, self.linear_fidelities["depth"].max())
 
-        try:  # Fit the data for the linear XEB
+        if self.xeb_config.disjoint_processing:
+            for q in range(len(self.xeb_config.qubits_ids)):
+                xx = np.linspace(0, self.linear_fidelities[q]["depth"].max())
+                try:  # Fit the data for the linear XEB
+                    if fit_linear:
+                        (
+                            a_lin,
+                            layer_fid_lin,
+                            a_std_lin,
+                            layer_fid_std_lin,
+                        ) = fit_exponential_decay(
+                            self.linear_fidelities[q]["depth"], self.linear_fidelities[q]["fidelity"]
+                        )
+                        plt.plot(
+                            xx,
+                            exponential_decay(xx, a_lin, layer_fid_lin),
+                            label=f"Fit (Linear XEB Qubit {q}), layer_fidelity={layer_fid_lin * 100:.1f}%",
+                            color="red",
+                        )
+                except Exception as e:
+                    raise e
+
+                Fxeb = np.nanmean(self.log_fidelities[q], axis=0)
+                try:  # Fit the data for the log-entropy XEB
+                    if fit_log_entropy:
+                        (
+                            a_log,
+                            layer_fid_log,
+                            a_std_log,
+                            layer_fid_std_log,
+                        ) = fit_exponential_decay(self.xeb_config.depths, Fxeb)
+                        plt.plot(
+                            xx,
+                            exponential_decay(xx, a_log, layer_fid_log),
+                            label=f"Fit (Log XEB Qubit {q}), layer_fidelity={layer_fid_log * 100:.1f}%",
+                            color="green",
+                        )
+                except Exception as e:
+                    print("Fit for Log XEB data failed")
+                    raise e
+
+                mask_lin = (self.linear_fidelities[q]["fidelity"] > 0) & (self.linear_fidelities[q]["fidelity"] < 1)
+                masked_linear_depths = self.linear_fidelities[q]["depth"][mask_lin]
+                masked_linear_fids = self.linear_fidelities[q]["fidelity"][mask_lin]
+                if fit_linear:
+                    plt.scatter(
+                        masked_linear_depths, masked_linear_fids, label=f"Linear XEB Data Qubit {q}", color="blue"
+                    )
+
+                mask_log = (Fxeb > 0) & (Fxeb < 1)
+                if fit_log_entropy:
+                    plt.scatter(
+                        self.xeb_config.depths[mask_log],
+                        Fxeb[mask_log],
+                        label=f"Log XEB Data Qubit {q}",
+                        color="orange",
+                    )
+
+        else:
+            xx = np.linspace(0, self.linear_fidelities["depth"].max())
+            try:  # Fit the data for the linear XEB
+                if fit_linear:
+                    (
+                        a_lin,
+                        layer_fid_lin,
+                        a_std_lin,
+                        layer_fid_std_lin,
+                    ) = fit_exponential_decay(self.linear_fidelities["depth"], self.linear_fidelities["fidelity"])
+                    plt.plot(
+                        xx,
+                        exponential_decay(xx, a_lin, layer_fid_lin),
+                        label="Fit (Linear XEB), layer_fidelity={:.1f}%".format(layer_fid_lin * 100),
+                        color="red",
+                    )
+            except Exception as e:
+                raise e
+
+            Fxeb = np.nanmean(self.log_fidelities, axis=0)
+            try:  # Fit the data for the log-entropy XEB
+                if fit_log_entropy:
+                    (
+                        a_log,
+                        layer_fid_log,
+                        a_std_log,
+                        layer_fid_std_log,
+                    ) = fit_exponential_decay(self.xeb_config.depths, Fxeb)
+                    plt.plot(
+                        xx,
+                        exponential_decay(xx, a_log, layer_fid_log),
+                        label="Fit (Log XEB), layer_fidelity={:.1f}%".format(layer_fid_log * 100),
+                        color="green",
+                    )
+            except Exception as e:
+                print("Fit for Log XEB data failed")
+                raise e
+
+            mask_lin = (self.linear_fidelities["fidelity"] > 0) & (self.linear_fidelities["fidelity"] < 1)
+            masked_linear_depths = self.linear_fidelities["depth"][mask_lin]
+            masked_linear_fids = self.linear_fidelities["fidelity"][mask_lin]
             if fit_linear:
-                (
-                    a_lin,
-                    layer_fid_lin,
-                    a_std_lin,
-                    layer_fid_std_lin,
-                ) = fit_exponential_decay(self.linear_fidelities["depth"], self.linear_fidelities["fidelity"])
-                plt.plot(
-                    xx,
-                    exponential_decay(xx, a_lin, layer_fid_lin),
-                    label="Fit (Linear XEB), layer_fidelity={:.1f}%".format(layer_fid_lin * 100),
-                    color="red",
-                )
-        except Exception as e:
-            raise e
-        Fxeb = np.nanmean(self.log_fidelities, axis=0)
+                plt.scatter(masked_linear_depths, masked_linear_fids, label="Linear XEB Data", color="blue")
 
-        try:  # Fit the data for the log-entropy XEB
+            mask_log = (Fxeb > 0) & (Fxeb < 1)
             if fit_log_entropy:
-                (
-                    a_log,
-                    layer_fid_log,
-                    a_std_log,
-                    layer_fid_std_log,
-                ) = fit_exponential_decay(self.xeb_config.depths, Fxeb)
-                plt.plot(
-                    xx,
-                    exponential_decay(xx, a_log, layer_fid_log),
-                    label="Fit (Log XEB), layer_fidelity={:.1f}%".format(layer_fid_log * 100),
-                    color="green",
-                )
-        except Exception as e:
-            print("Fit for Log XEB data failed")
-            raise e
-
-        mask_lin = (self.linear_fidelities["fidelity"] > 0) & (self.linear_fidelities["fidelity"] < 1)
-        masked_linear_depths = self.linear_fidelities["depth"][mask_lin]
-        masked_linear_fids = self.linear_fidelities["fidelity"][mask_lin]
-        if fit_linear:
-            plt.scatter(
-                masked_linear_depths,
-                masked_linear_fids,
-                color="red",
-                label="Linear XEB",
-            )
-
-        mask_log = (Fxeb > 0) & (Fxeb < 1)
-        if fit_log_entropy:
-            plt.scatter(
-                self.xeb_config.depths[mask_log],
-                Fxeb[mask_log],
-                marker="o",
-                color="green",
-                label="Log-XEB",
-            )
+                plt.scatter(self.xeb_config.depths[mask_log], Fxeb[mask_log], label="Log XEB Data", color="orange")
 
         plt.ylabel("Circuit fidelity", fontsize=20)
         plt.xlabel("Cycle Depth $d$", fontsize=20)
@@ -761,7 +807,9 @@ class XEBResult:
             plt.ylabel(r"$m_U - u_U$", fontsize=18)
             _lines = np.asarray(_lines)
             plt.legend(_lines[[0, -1]], depths[[0, -1]], loc="best", title="Cycle depth")
-            plt.title("q-%s: Fxeb_linear = %s" % (self.xeb_config.qubits_ids, [fids["fidelity"][x] for x in [0, 1]]))
+            plt.title(
+                "q-%s: Fxeb_linear = %s" % (self.xeb_config.qubits_ids, [fids["fidelity"][x] for x in range(n_qubits)])
+            )
             plt.tight_layout()
         else:
             fids = []
@@ -777,7 +825,7 @@ class XEBResult:
                     "q-%s: Fxeb_linear = %s"
                     % (
                         self.xeb_config.qubits_ids[i],
-                        [fids[i]["fidelity"][x] for x in [0, 1]],
+                        [fids[i]["fidelity"][x] for x in range(n_qubits)],
                     )
                 )
                 plt.show()

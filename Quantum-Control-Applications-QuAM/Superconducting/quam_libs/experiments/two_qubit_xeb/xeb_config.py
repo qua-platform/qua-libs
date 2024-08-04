@@ -37,8 +37,8 @@ class XEBConfig:
     qubits_ids: List[Union[int, str]] = field(default_factory=lambda: [0, 1])
     baseline_gate_name: str = "sx"
     gate_set_choice: Union[Literal["sw", "t"], Dict[int, QUAGate]] = "sw"
-    two_qb_gate: Optional[QUAGate] = (None,)
-    qubit_pairs_ids: List[Union[int, str]] = field(default_factory=lambda: [])
+    two_qb_gate: Optional[QUAGate] = None
+    qubit_pairs_ids: Optional[List[Union[int, str]]] = field(default_factory=lambda: [])
     readout_pulse_name: str = "readout"
     reset_method: Literal["active", "cooldown"] = "cooldown"
     reset_kwargs: Optional[Dict[str, Union[float, str, int]]] = field(

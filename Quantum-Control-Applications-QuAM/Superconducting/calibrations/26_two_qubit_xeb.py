@@ -13,7 +13,7 @@ machine = QuAM.load()
 qc = machine.qubits["q4"]
 print(machine.qubits)
 qt = machine.qubits["q5"]
-qubit_pair = machine.qubit_pairs["q45"]
+qubit_pair = qc @ qt
 
 
 def cz_gate(qubit_pair: TransmonPair):
