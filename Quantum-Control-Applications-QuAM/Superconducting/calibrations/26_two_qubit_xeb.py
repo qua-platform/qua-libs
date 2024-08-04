@@ -7,9 +7,7 @@ from quam_libs.experiments.two_qubit_xeb import (
     QUAGate,
 )
 
-machine = QuAM.load(
-    "/Users/arthurostrauss/Library/CloudStorage/OneDrive-QMMachinesLTD/GitHub/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
-)
+machine = QuAM.load()
 
 # Get the relevant QuAM components
 qc = machine.qubits["q4"]
