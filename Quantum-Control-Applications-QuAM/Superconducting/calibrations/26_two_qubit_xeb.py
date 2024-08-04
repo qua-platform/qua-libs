@@ -50,9 +50,7 @@ xeb = XEB(xeb_config, quam=machine)
 if simulate:
     job = xeb.simulate(backend=fake_backend)
 else:
-    job = xeb.run(
-        simulate=False
-    )  # If simulate is False, job is run on the QPU, else pulse output is simulated
+    job = xeb.run(simulate=False)  # If simulate is False, job is run on the QPU, else pulse output is simulated
 
 job.circuits[3][5].draw("mpl")
 

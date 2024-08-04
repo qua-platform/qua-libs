@@ -67,25 +67,17 @@ def reset_qubit(method: str, qubit: Transmon, **kwargs):
             raise Exception("'threshold' must be specified for active reset.")
         # Check max_tries
         max_tries = kwargs.get("max_tries", 1)
-        if (
-            (max_tries is None)
-            or (not float(max_tries).is_integer())
-            or (max_tries < 1)
-        ):
+        if (max_tries is None) or (not float(max_tries).is_integer()) or (max_tries < 1):
             raise Exception("'max_tries' must be an integer > 0.")
         # Check Ig
         Ig = kwargs.get("Ig", None)
         pi_pulse_name = kwargs.get("pi_pulse", "x180")
         # Reset qubit state
-        return active_reset(
-            threshold, qubit, max_tries=max_tries, Ig=Ig, pi_pulse=pi_pulse_name
-        )
+        return active_reset(threshold, qubit, max_tries=max_tries, Ig=Ig, pi_pulse=pi_pulse_name)
 
 
 # Macro for performing active reset until successful for a given number of tries.
-def active_reset(
-    threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pulse: str = "x180"
-):
+def active_reset(threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pulse: str = "x180"):
     """Macro for performing active reset until successful for a given number of tries.
 
     :param threshold: threshold for the 'I' quadrature discriminating between ground and excited state.
@@ -178,9 +170,7 @@ def create_subplot(data, subplot_number, title, depths, seqs):
 
 # Define Cirq functions for fitting (redefined here for avoiding additional dependencies)
 # Those functions are slightly adapted to deal with possible singularities and outliers in the data
-def exponential_decay(
-    cycle_depths: np.ndarray, a: float, layer_fid: float
-) -> np.ndarray:
+def exponential_decay(cycle_depths: np.ndarray, a: float, layer_fid: float) -> np.ndarray:
     """An exponential decay for fitting.
 
     This computes `a * layer_fid**cycle_depths`
@@ -194,9 +184,7 @@ def exponential_decay(
     return a * layer_fid**cycle_depths
 
 
-def fit_exponential_decay(
-    cycle_depths: np.ndarray, fidelities: np.ndarray
-) -> tuple[float, float, float, float]:
+def fit_exponential_decay(cycle_depths: np.ndarray, fidelities: np.ndarray) -> tuple[float, float, float, float]:
     """Fit an exponential model fidelity = a * layer_fid**x using nonlinear least squares.
 
     This uses `exponential_decay` as the function to fit with parameters `a` and `layer_fid`.

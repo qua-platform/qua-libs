@@ -6,9 +6,7 @@ from typing import Literal, Callable, Optional, List, Dict, Union
 from quam_libs.components import Transmon
 
 
-def play_sq_gate_macro(
-    baseline_gate_name: str, amp_matrix: Optional[List] = None
-) -> Callable[[Transmon], None]:
+def play_sq_gate_macro(baseline_gate_name: str, amp_matrix: Optional[List] = None) -> Callable[[Transmon], None]:
     """
     Play a single qubit gate on a given qubit element.
 
@@ -63,23 +61,15 @@ class QUAGateSet(dict):
         if isinstance(gate_set, dict):
             for key, value in gate_set.items():
                 if not isinstance(key, int) or key < 0:
-                    raise ValueError(
-                        "Invalid gate set: keys should be positive integers."
-                    )
+                    raise ValueError("Invalid gate set: keys should be positive integers.")
                 if not isinstance(value, QUAGate):
-                    raise ValueError(
-                        "Invalid gate set: values should be QUAGate objects."
-                    )
+                    raise ValueError("Invalid gate set: values should be QUAGate objects.")
             max_key = max(gate_set.keys())
             if max_key != len(gate_set) - 1:
-                raise ValueError(
-                    "Invalid gate set: keys should be consecutive integers starting from 0."
-                )
+                raise ValueError("Invalid gate set: keys should be consecutive integers starting from 0.")
             for key in range(max_key + 1):
                 if key not in gate_set:
-                    raise ValueError(
-                        f"Invalid gate set: missing gate with index {key}."
-                    )
+                    raise ValueError(f"Invalid gate set: missing gate with index {key}.")
             super().__init__(gate_set)
         else:
             super().__init__(generate_gate_set(gate_set, baseline_gate_name))
@@ -96,9 +86,7 @@ class QUAGateSet(dict):
         return all(gate.amp_matrix is not None for gate in self.values())
 
 
-def generate_gate_set(
-    gate_set: Literal["sw", "t"], baseline_gate_name: str
-) -> Dict[int, QUAGate]:
+def generate_gate_set(gate_set: Literal["sw", "t"], baseline_gate_name: str) -> Dict[int, QUAGate]:
     """
     Generate a gate set from a string for random single qubit gates for XEB.
 
@@ -124,9 +112,7 @@ def generate_gate_set(
         ValueError: If an invalid gate set string is provided.
     """
 
-    sx_gate = QUAGate(
-        "sx", play_sq_gate_macro(baseline_gate_name), amp_matrix=[1.0, 0.0, 0.0, 1.0]
-    )
+    sx_gate = QUAGate("sx", play_sq_gate_macro(baseline_gate_name), amp_matrix=[1.0, 0.0, 0.0, 1.0])
     SY = RYGate(np.pi / 2).to_matrix()
     sy_gate = QUAGate(
         ("sy", SY),
@@ -147,8 +133,6 @@ def generate_gate_set(
         t_gate = QUAGate("t", play_virtual_t_gate)
         gate_dict[2] = t_gate
     else:
-        raise ValueError(
-            f"Invalid gate set: {gate_set}. Allowed values are 'sw' or 't'."
-        )
+        raise ValueError(f"Invalid gate set: {gate_set}. Allowed values are 'sw' or 't'.")
 
     return gate_dict
