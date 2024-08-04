@@ -1,4 +1,6 @@
-from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping as gate_map
+from qiskit.circuit.library.standard_gates import (
+    get_standard_gate_name_mapping as gate_map,
+)
 from qiskit.circuit.library import UnitaryGate
 import numpy as np
 from typing import Callable, Union, Optional, Tuple, Any, List
@@ -33,7 +35,9 @@ class QUAGate:
         self.gate_macro = gate_macro
         self.amp_matrix = self._validate_amp_matrix(amp_matrix)
         if gate_macro is None and amp_matrix is None:
-            warnings.warn("No gate macro or amp_matrix provided, the gate will not be implemented in QUA.")
+            warnings.warn(
+                "No gate macro or amp_matrix provided, the gate will not be implemented in QUA."
+            )
 
         if isinstance(gate, str):
             gate = gate.lower()
@@ -43,7 +47,9 @@ class QUAGate:
                 try:
                     self.gate = gate_map()[gate]
                 except KeyError:
-                    raise ValueError(f"Invalid gate: {gate}, please specify it through its matrix definition.")
+                    raise ValueError(
+                        f"Invalid gate: {gate}, please specify it through its matrix definition."
+                    )
         elif isinstance(gate, Tuple):
             self.gate = UnitaryGate(gate[1], label=gate[0])
         else:
@@ -71,7 +77,9 @@ class QUAGate:
             if len(amp_matrix) != 4:
                 raise ValueError("Amplitude matrix must have 4 elements.")
             if not all([isinstance(amp, (float, int)) for amp in amp_matrix]):
-                raise ValueError("Amplitude matrix elements must be of type float or int.")
+                raise ValueError(
+                    "Amplitude matrix elements must be of type float or int."
+                )
         return amp_matrix
 
     @property

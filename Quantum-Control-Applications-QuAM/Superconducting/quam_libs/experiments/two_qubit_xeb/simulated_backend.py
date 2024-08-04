@@ -12,4 +12,8 @@ if num_qubits == 2:
     noise_model.add_all_qubit_quantum_error(depol_error2q, ["cz", "cx"])
 noise_model.add_all_qubit_quantum_error(depol_error1q, sq_gate_set)
 # noise_model.add_all_qubit_quantum_error(depol_error1q, [ 'rx', 'sw', 'ry', 't'])
-backend = AerSimulator(noise_model=noise_model, method="density_matrix", basis_gates=noise_model.basis_gates)
+backend = AerSimulator(
+    noise_model=noise_model,
+    method="density_matrix",
+    basis_gates=noise_model.basis_gates,
+)

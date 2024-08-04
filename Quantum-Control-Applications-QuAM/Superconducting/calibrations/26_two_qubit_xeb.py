@@ -1,14 +1,21 @@
 import numpy as np
 from quam_libs.components import QuAM, TransmonPair
-from quam_libs.experiments.two_qubit_xeb import XEBConfig, XEB, backend as fake_backend, QUAGate
+from quam_libs.experiments.two_qubit_xeb import (
+    XEBConfig,
+    XEB,
+    backend as fake_backend,
+    QUAGate,
+)
 
-machine = QuAM.load()
-config = machine.generate_config()
+machine = QuAM.load(
+    "/Users/arthurostrauss/Library/CloudStorage/OneDrive-QMMachinesLTD/GitHub/qua-libs/Quantum-Control-Applications-QuAM/Superconducting/configuration/quam_state"
+)
 
 # Get the relevant QuAM components
 qc = machine.qubits["q4"]
+print(machine.qubits)
 qt = machine.qubits["q5"]
-qubit_pair = machine.qubit_pairs["q4_q5"]
+qubit_pair = machine.qubit_pairs["q45"]
 
 
 def cz_gate(qubit_pair: TransmonPair):
@@ -43,7 +50,9 @@ xeb = XEB(xeb_config, quam=machine)
 if simulate:
     job = xeb.simulate(backend=fake_backend)
 else:
-    job = xeb.run(simulate=False)  # If simulate is False, job is run on the QPU, else pulse output is simulated
+    job = xeb.run(
+        simulate=False
+    )  # If simulate is False, job is run on the QPU, else pulse output is simulated
 
 job.circuits[3][5].draw("mpl")
 
