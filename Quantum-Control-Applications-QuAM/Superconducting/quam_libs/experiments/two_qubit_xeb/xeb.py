@@ -807,9 +807,8 @@ class XEBResult:
             plt.ylabel(r"$m_U - u_U$", fontsize=18)
             _lines = np.asarray(_lines)
             plt.legend(_lines[[0, -1]], depths[[0, -1]], loc="best", title="Cycle depth")
-            plt.title(
-                "q-%s: Fxeb_linear = %s" % (self.xeb_config.qubits_ids, [fids["fidelity"][x] for x in range(n_qubits)])
-            )
+            title = "Fxeb_linear = %s" % [fids["fidelity"][x] for x in [0, 1]]
+            plt.title(title)
             plt.tight_layout()
         else:
             fids = []
@@ -825,7 +824,7 @@ class XEBResult:
                     "q-%s: Fxeb_linear = %s"
                     % (
                         self.xeb_config.qubits_ids[i],
-                        [fids[i]["fidelity"][x] for x in range(n_qubits)],
+                        [fids[i]["fidelity"][x] for x in [0, 1]],
                     )
                 )
                 plt.show()
