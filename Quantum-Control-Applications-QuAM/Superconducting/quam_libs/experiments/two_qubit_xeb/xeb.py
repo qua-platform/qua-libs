@@ -668,7 +668,8 @@ class XEBResult:
 
         if self.xeb_config.disjoint_processing:
             for q in range(len(self.xeb_config.qubits_ids)):
-                xx = np.linspace(0, self.linear_fidelities[q]["depth"].max())
+                linear_fidelities = self._linear_fidelities[q]
+                xx = np.linspace(0, linear_fidelities["depth"].max())
                 try:  # Fit the data for the linear XEB
                     if fit_linear:
                         (
@@ -676,9 +677,7 @@ class XEBResult:
                             layer_fid_lin,
                             a_std_lin,
                             layer_fid_std_lin,
-                        ) = fit_exponential_decay(
-                            self.linear_fidelities[q]["depth"], self.linear_fidelities[q]["fidelity"]
-                        )
+                        ) = fit_exponential_decay(linear_fidelities[q]["depth"], linear_fidelities["fidelity"])
                         plt.plot(
                             xx,
                             exponential_decay(xx, a_lin, layer_fid_lin),
@@ -707,13 +706,12 @@ class XEBResult:
                     print("Fit for Log XEB data failed")
                     raise e
 
-                mask_lin = (self.linear_fidelities[q]["fidelity"] > 0) & (self.linear_fidelities[q]["fidelity"] < 1)
-                masked_linear_depths = self.linear_fidelities[q]["depth"][mask_lin]
-                masked_linear_fids = self.linear_fidelities[q]["fidelity"][mask_lin]
+                mask_lin = (linear_fidelities["fidelity"] > 0) & (linear_fidelities["fidelity"] < 1)
+                masked_linear_depths = linear_fidelities["depth"][mask_lin]
+                masked_linear_fids = linear_fidelities["fidelity"][mask_lin]
                 if fit_linear:
-                    plt.scatter(
-                        masked_linear_depths, masked_linear_fids, label=f"Linear XEB Data Qubit {q}", color="blue"
-                    )
+                    label = f"Linear XEB Data Qubit {q}"
+                    plt.scatter(masked_linear_depths, masked_linear_fids, label=label, color="blue")
 
                 mask_log = (Fxeb > 0) & (Fxeb < 1)
                 if fit_log_entropy:
