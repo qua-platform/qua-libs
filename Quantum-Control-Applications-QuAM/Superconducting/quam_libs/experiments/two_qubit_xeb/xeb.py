@@ -40,10 +40,16 @@ class XEB:
         """
         self.xeb_config = xeb_config
         self.quam = quam
-        self.qubits = [quam.qubits[qubit_id] for qubit_id in xeb_config.qubits_ids]
-        self.qubit_pairs = [quam.qubit_pairs[qubit_pair_id] for qubit_pair_id in xeb_config.qubit_pairs_ids]
-        self.qubit_elements = [qubit.xy for qubit in self.qubits]
-        self.readout_elements = [qubit.resonator for qubit in self.qubits]
+        self.qubits = xeb_config.qubits
+        self.qubit_pairs = xeb_config.qubit_pairs
+        try:
+            self.qubit_drive_channels = [qubit.xy for qubit in self.qubits]
+            self.readout_channels = [qubit.resonator for qubit in self.qubits]
+        except AttributeError:
+            raise AttributeError(
+                "Qubit objects must have 'xy' and 'resonator' attributes, "
+                "Contact CS Team if your QuAM structure is different."
+            )
         self.data_handler = DataHandler(name="XEB", root_data_folder=xeb_config.save_dir)
 
     def _assign_amplitude_matrix(self, gate_idx, amp_matrix):
@@ -94,12 +100,12 @@ class XEB:
         random_gates = len(self.xeb_config.gate_set)
         ge_thresholds = [
             readout_element.operations[self.xeb_config.readout_pulse_name].threshold
-            for readout_element in self.readout_elements
+            for readout_element in self.readout_channels
         ]
 
         with program() as xeb_prog:
             # Declare QUA variables
-            I, I_st, Q, Q_st = qua_declaration(n_qubits=n_qubits, readout_elements=self.readout_elements)
+            I, I_st, Q, Q_st = qua_declaration(n_qubits=n_qubits, readout_elements=self.readout_channels)
             depth, depth_, n, s, tot_state_ = [declare(int) for _ in range(5)]
             gate = [
                 declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
@@ -126,7 +132,7 @@ class XEB:
             # If simulating, update the frequency to 0 to visualize sequence
             if simulate:
                 amp_st = [[declare_stream() for _ in range(4)] for _ in range(n_qubits)]
-                for qubit in self.qubit_elements:
+                for qubit in self.qubit_drive_channels:
                     update_frequency(qubit.name, 0)
 
             # Generate the random sequences
@@ -163,7 +169,7 @@ class XEB:
                 with for_each_(depth, self.xeb_config.depths):  # Truncate depth to each value in depths
                     with for_(n, 0, n < self.xeb_config.n_shots, n + 1):
                         if simulate:
-                            wait(25, *[qubit.name for qubit in self.qubit_elements])
+                            wait(25, *[qubit.name for qubit in self.qubit_drive_channels])
 
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
@@ -180,14 +186,14 @@ class XEB:
 
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None:
-                                for qubit in self.qubit_elements:
+                                for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z.name, qubit.parent.resonator.name)
                                 self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
-                                for qubit in self.qubit_elements:
+                                for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z, qubit.parent.resonator)
 
                         # Measure the state
-                        for q_idx, readout_element in enumerate(self.readout_elements):
+                        for q_idx, readout_element in enumerate(self.readout_channels):
                             readout_element.measure(
                                 self.xeb_config.readout_pulse_name,
                                 qua_vars=(I[q_idx], Q[q_idx]),
@@ -295,7 +301,7 @@ class XEB:
         from qiskit_aer.backends.aerbackend import AerBackend
 
         assert isinstance(backend, AerBackend), "The backend should be an AerBackend object"
-        num_qubits = len(self.xeb_config.qubits_ids)
+        num_qubits = len(self.qubits)
         random_gates = len(self.xeb_config.gate_set)
         sq_gates, counts_list, states_list, circuits_list = [], [], [], []
         # Generate sequences
@@ -525,8 +531,8 @@ class XEBResult:
             singularities: Singularities
             outliers: Outliers
         """
-        dim = 2 ** len(self.xeb_config.qubits_ids)
-        n_qubits = len(self.xeb_config.qubits_ids)
+        dim = 2 ** len(self.xeb_config.qubits)
+        n_qubits = len(self.xeb_config.qubits)
         seqs = self.xeb_config.seqs
         depths = self.xeb_config.depths
         counts = self.saved_data["counts"]
@@ -667,7 +673,7 @@ class XEBResult:
         plt.rcParams["text.usetex"] = False
 
         if self.xeb_config.disjoint_processing:
-            for q in range(len(self.xeb_config.qubits_ids)):
+            for q in range(len(self.xeb_config.qubits)):
                 linear_fidelities = self._linear_fidelities[q]
                 xx = np.linspace(0, linear_fidelities["depth"].max())
                 try:  # Fit the data for the linear XEB
@@ -853,7 +859,7 @@ class XEBResult:
                 data.append(self.measured_probs[:, :, i])
                 data.append(self.expected_probs[:, :, i])
         else:
-            for i, q in enumerate(self.xeb_config.qubits_ids):
+            for i, q in enumerate(self.xeb_config.qubits):
                 for j in range(2):
                     titles.append(f"q{q}<{j}> Measured")
                     titles.append(f"q{q}<{j}> Expected")

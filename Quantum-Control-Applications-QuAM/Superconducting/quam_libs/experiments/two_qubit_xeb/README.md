@@ -61,8 +61,8 @@ We first provide a class `XEBConfig` that defines the parameters of the experime
 - `seqs`: the number of random circuits to be generated.
 - `depths`: the array of depths for the random circuits. Those depths will be used to generate random circuits of varying depths, and will lead to the determination of a layer fidelity through a fit of the cross-entropy curve.
 - `n_shots`: the number of shots for each circuit.
-- `qubits_ids`: the qubits indices (or qubit names) involved in the experiment. They should match the qubits defined in the QuAM. Note that the script can handle only one or two qubits for now.
-- `baseline_gate_name`: the name of the operation that will be used as a baseline for the random circuits. The name should match the name of the operation defined in the QuAM/configuration for implementing the $SX$ gate (equivalently X/2).
+- `qubits`: the qubits involved in the experiment. For now, those are expected to be of type `quam_libs.components.Transmon` but we will extend this in the future. Note that the script can handle only one or two qubits for now.
+- `baseline_gate_name`: the name of the operation that will be used as a baseline for the random circuits. The name should match the name of the operation defined in the QuAM for implementing the $SX$ gate (equivalently X/2).
 - `gate_set_choice`: it corresponds to the set of single qubit gates that will be used to generate random layers in the circuit. The user can choose two native different gate sets inspired from the literature [1] [2]:
   - `"sw"`: This gate set contains the following gates: $SX$, $SY$, and $SW$, as done in [2]. In this case, the implementation assumes that both $SY$ and $SW$ gates can be obtained from the $SX$ baseline calibration through a suitable amplitude matrix modulation (achieved in real-time).
   - "t"`: This gate set contains the following gates: $SX$, $SY$, and $T$, as done in [1]. In this case, the implementation assumes that $SY$ can be obtained from the $SX$ baseline calibration through a suitable amplitude matrix modulation (achieved in real-time), and that the $T$ gate can be implemented through a simple virtual-Z gate (frame rotation) of an angle $\pi/4$.
@@ -100,7 +100,7 @@ def two_qubit_gate_macro(qubit_pair: TransmonPair):
 two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
 
 ```
-- `qubit_pairs_ids`: the qubit pairs indices (or qubit pair names) involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only one qubit pair for now and should therefore be given as `[my_qubit_pair_name].
+- `qubit_pairs`: the qubit pairs involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only one qubit pair for now and should therefore be given as `[quam_libs.components.TransmonPair]`. We will extend this to other platforms in the future
 - `readout_pulse_name`: the name of the readout pulse that will be used to measure the qubits. The name should match the name of the operation defined in the QuAM/configuration for implementing the readout pulse.
 Additional parameters are available in the config such as:
 - `reset_method`: the method used to reset the qubits. The user can choose between `"active"` (active reset) and `"cooldown"` (passive reset).
