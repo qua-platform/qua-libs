@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict, Tuple
 import numpy as np
 from qm.qua import *
 from .macros import (
@@ -9,6 +9,7 @@ from .macros import (
     binary,
     exponential_decay,
     fit_exponential_decay,
+    get_parallel_gate_combinations as gate_combinations,
 )
 import matplotlib.pyplot as plt
 from qiskit.circuit.library import UnitaryGate
@@ -17,15 +18,17 @@ import pandas as pd
 from .xeb_config import XEBConfig
 from qiskit.circuit import QuantumCircuit
 from qiskit.providers import BackendV2
+from qiskit.transpiler import CouplingMap
 from qiskit.quantum_info import Statevector
 from qualang_tools.results import DataHandler
 
-from quam_libs.components import QuAM, Transmon
+from quam_libs.components import QuAM, Transmon, TransmonPair
 from qm import SimulationConfig
 from qm.jobs.running_qm_job import RunningQmJob
 from qm.jobs.simulated_job import SimulatedJob
 import seaborn as sns
 from copy import deepcopy
+from warnings import warn
 
 SW = UnitaryGate(np.array([[1, -np.sqrt(1j)], [np.sqrt(-1j), 1]]) / np.sqrt(2), label="sw")  # from Supremacy paper
 
@@ -40,8 +43,21 @@ class XEB:
         """
         self.xeb_config = xeb_config
         self.quam = quam
-        self.qubits = xeb_config.qubits
-        self.qubit_pairs = xeb_config.qubit_pairs
+        self.qubits: List[Transmon] = xeb_config.qubits
+        self.qubit_dict: Dict = {i: qubit for i, qubit in enumerate(self.qubits)}
+        self.qubit_dict2: Dict = {qubit: i for i, qubit in enumerate(self.qubits)}
+        self.qubit_pairs: List[TransmonPair] = xeb_config.qubit_pairs
+        if len(self.qubit_pairs) == 0:
+            warn("No qubit pairs provided. The experiment will run with single qubit gates only.")
+
+        # Create CouplingMap from QuAM qubit pairs
+        coupling_map = CouplingMap()
+        for qubit_pair in self.qubit_pairs:
+            if qubit_pair.qubit_control not in self.qubits or qubit_pair.qubit_target not in self.qubits:
+                raise ValueError("Qubit pairs must be formed by qubits present in the qubits list")
+            coupling_map.add_edge(self.qubit_dict2[qubit_pair.qubit_control], self.qubit_dict2[qubit_pair.qubit_target])
+        self.coupling_map = coupling_map
+        self.available_combinations: List[Tuple[Tuple[int, int]]] = gate_combinations(self.coupling_map)
         try:
             self.qubit_drive_channels = [qubit.xy for qubit in self.qubits]
             self.readout_channels = [qubit.resonator for qubit in self.qubits]
@@ -110,6 +126,7 @@ class XEB:
             gate = [
                 declare(int, size=self.xeb_config.depths[-1]) for _ in range(n_qubits)
             ]  # Gate indices list for both qubits
+            two_qubit_gate_pattern = declare(int, value=0)
             if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
                 amp_matrix = [
                     [declare(fixed, size=self.xeb_config.depths[-1]) for _ in range(4)] for _ in range(n_qubits)
@@ -185,12 +202,25 @@ class XEB:
                                 )
 
                             # Insert your two-qubit gate macro here
-                            if self.xeb_config.two_qb_gate is not None:
+                            if self.xeb_config.two_qb_gate is not None and len(self.qubit_pairs) > 0:
                                 for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z.name, qubit.parent.resonator.name)
-                                self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
+                                with switch_(two_qubit_gate_pattern):
+                                    for i, combination in enumerate(self.available_combinations):
+                                        with case_(i):
+                                            for pair in combination:
+                                                for qubit_ctrl, qubit_tgt in pair:
+                                                    self.xeb_config.two_qb_gate.gate_macro(
+                                                        self.qubit_dict[qubit_ctrl] @ self.qubit_dict[qubit_tgt]
+                                                    )
+                                # self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
                                 for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z, qubit.parent.resonator)
+
+                                with if_(two_qubit_gate_pattern == len(self.available_combinations) - 1):
+                                    assign(two_qubit_gate_pattern, 0)
+                                with else_():
+                                    assign(two_qubit_gate_pattern, two_qubit_gate_pattern + 1)
 
                         # Measure the state
                         for q_idx, readout_element in enumerate(self.readout_channels):
@@ -214,6 +244,7 @@ class XEB:
                                 threshold=ge_thresholds[q_idx],
                                 **self.xeb_config.reset_kwargs,
                             )
+                        assign(two_qubit_gate_pattern, 0)
 
                         with switch_(tot_state_):
                             for i in range(dim):  # Bitstring conversion
@@ -270,7 +301,7 @@ class XEB:
         else:
             raise NotImplementedError("Data fetching from previous runs is not yet implemented")
 
-        return XEBJob(job, self.xeb_config, self.data_handler)
+        return XEBJob(job, self.xeb_config, self.data_handler, self.available_combinations, False)
 
     def simulate(self, backend: BackendV2):
         """
@@ -304,6 +335,7 @@ class XEB:
         num_qubits = len(self.qubits)
         random_gates = len(self.xeb_config.gate_set)
         sq_gates, counts_list, states_list, circuits_list = [], [], [], []
+        two_qubit_gate_pattern = 0
         # Generate sequences
         for s in range(self.xeb_config.seqs):  # For each sequence
             circuits_list.append([])
@@ -324,11 +356,25 @@ class XEB:
                 for d_ in range(d):  # Apply layers
                     for q in range(num_qubits):  # For each qubit, append single qubit gates
                         qc.append(self.xeb_config.gate_set[sq_gates[s][q][d_]].gate, [q])
-                    # Apply CZ gate
-                    if num_qubits == 2 and self.xeb_config.two_qb_gate is not None:
-                        qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
-                qc.save_density_matrix()  # Actual state, subject to noise sim
+                    qc.barrier()
+                    # Apply two-qubit gates
+                    if num_qubits > 2 and self.xeb_config.two_qb_gate is not None and len(self.qubit_pairs) > 0:
+                        for i, combination in enumerate(self.available_combinations):
+                            if i == two_qubit_gate_pattern:
+                                for pair in combination:
+                                    qc.append(self.xeb_config.two_qb_gate.gate, pair)
+                                qc.barrier()
+                                break
+                        if two_qubit_gate_pattern == len(self.available_combinations) - 1:
+                            two_qubit_gate_pattern = 0
+                        else:
+                            two_qubit_gate_pattern += 1
+                        # qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
+
+                two_qubit_gate_pattern = 0
+                qc.save_density_matrix()  # Actual state, subject to noise simulation
                 circuits_list[s].append(qc)
+
                 # Simulate the circuit
                 # Execute circuit (transpiled) and store counts
         circ_list = [
@@ -339,7 +385,7 @@ class XEB:
         transpiled_circs = circ_list
         job = backend.run(transpiled_circs, shots=self.xeb_config.n_shots)
 
-        return XEBJob(job, self.xeb_config, self.data_handler, simulate=True)
+        return XEBJob(job, self.xeb_config, self.data_handler, self.available_combinations, True)
 
 
 class XEBJob:
@@ -348,9 +394,11 @@ class XEBJob:
         running_job: Union[SimulatedJob, RunningQmJob, AerJob],
         xeb_config: XEBConfig,
         data_handler: DataHandler,
+        available_combinations: List[Tuple[Tuple[int, int]]],
         simulate=False,
     ):
         self.job = running_job
+        self.available_combinations = available_combinations
         self._simulate = simulate
         self._result_handles = self.job.result() if isinstance(running_job, AerJob) else self.job.result_handles
         if not isinstance(running_job, AerJob):
@@ -387,6 +435,7 @@ class XEBJob:
             max_depth = self.xeb_config.depths[-1]
             n_qubits = self.xeb_config.n_qubits
             g = [self._result_handles.get(f"g{q}").fetch_all()["value"] for q in range(n_qubits)]
+            two_qubit_gate_pattern = 0
 
             for s in range(self.xeb_config.seqs):
                 self._sq_indices.append(np.zeros((n_qubits, max_depth), dtype=int))
@@ -402,10 +451,23 @@ class XEBJob:
                         for q in range(n_qubits):
                             sq_gate = self.xeb_config.gate_set[self._sq_indices[s][q, d]].gate
                             qc.append(sq_gate, [q])
+                        qc.barrier()
                         if self.xeb_config.two_qb_gate is not None:
-                            qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
+                            for i, combination in enumerate(self.available_combinations):
+                                if i == two_qubit_gate_pattern:
+                                    for pair in combination:
+                                        qc.append(self.xeb_config.two_qb_gate.gate, pair)
+                                    qc.barrier()
+                                    break
+                            if two_qubit_gate_pattern == len(self.available_combinations) - 1:
+                                two_qubit_gate_pattern = 0
+                            else:
+                                two_qubit_gate_pattern += 1
+
+                            # qc.append(self.xeb_config.two_qb_gate.gate, [0, 1])
                     qc.measure_all()
                     circuits[s].append(qc)
+                    two_qubit_gate_pattern = 0
         return circuits
 
     def result(self):
@@ -558,7 +620,7 @@ class XEBResult:
             for d_, d in enumerate(depths):
                 if not self.xeb_config.disjoint_processing:
                     qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
-                    expected_probs[s, d_] = np.round(Statevector(qc).probabilities(), 5)  # [1, 0]
+                    expected_probs[s, d_] = np.round(Statevector(qc).probabilities(), 5)
                     measured_probs[s, d_] = (
                         np.array([counts[binary(i, n_qubits)][s][d_] for i in range(dim)]) / self.xeb_config.n_shots
                     )
@@ -840,16 +902,18 @@ class XEBResult:
 
         """
 
-        def create_subplot(data, subplot_number, title):
+        def create_plot(data, title):
+            plt.figure()
             plt.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data))
             ax = plt.gca()
             ax.set_title(title)
-            if subplot_number > 244:
-                ax.set_xlabel("Circuit depth")
+            ax.set_xlabel("Circuit depth")
             ax.set_ylabel("Sequences")
             ax.set_xticks(self.xeb_config.depths)
             ax.set_yticks(np.arange(1, self.xeb_config.seqs + 1))
             plt.colorbar()
+            plt.tight_layout()
+            plt.show()
 
         titles, data = [], []
         if not self.xeb_config.disjoint_processing:
@@ -866,16 +930,8 @@ class XEBResult:
                     data.append(self.measured_probs[i, :, :, j])
                     data.append(self.expected_probs[i, :, :, j])
 
-        plot_number = [241, 242, 243, 244, 245, 246, 247, 248]
-
-        for title, d, n in zip(titles, data, plot_number):
-            plt.suptitle("XEB State Heatmaps")
-
-            create_subplot(d, n, title)
-            plt.subplots_adjust(wspace=0.1, hspace=0.7)
-
-            plt.tight_layout()
-            plt.show()
+        for title, d in zip(titles, data):
+            create_plot(d, title)
 
     def save(self):
         """

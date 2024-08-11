@@ -2,10 +2,11 @@
 This script contains useful QUA macros for the two-qubit cross-entropy benchmarking use case.
 
 Author: Arthur Strauss - Quantum Machines
-Last updated: 2024-04-30
+Last updated: 2024-08-11
 """
 
 from matplotlib import pyplot as plt
+from qiskit.transpiler import CouplingMap
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np
@@ -113,15 +114,63 @@ def active_reset(threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pul
     return Ig, counter
 
 
-def cz_gate(control, target, CZ_operations: dict):
+from qiskit import QuantumCircuit, transpile
+from itertools import combinations
+
+
+def get_parallel_gate_combinations(coupling_map: CouplingMap, direction="forward"):
     """
-    QUA Macro for the CZ gate
-    :param control: Control qubit index
-    :param target: Target qubit index
-    :param CZ_operations: Dictionary of CZ operations (control, target) -> (cz_el, cz_op)
+    Returns all possible combinations of qubit pairs for which a two-qubit gate can be applied in parallel,
+    respecting the specified direction constraint.
+
+    Parameters:
+    - coupling_map: Qiskit CouplingMap object that represents the qubit connectivity.
+    - direction: 'forward' or 'reverse' to indicate which direction of qubit pairs should be selected.
+
+    Returns:
+    - List of combinations where the maximum number of two-qubit gates can be applied in parallel.
     """
-    cz_el, cz_op = CZ_operations[(control, target)]
-    play(cz_op, cz_el)
+    # Get all possible two-qubit gate pairs
+    qubit_pairs = coupling_map.get_edges()
+
+    # Create a set to store unique pairs in the specified direction
+    filtered_pairs = set()
+    for q1, q2 in qubit_pairs:
+        if direction == "forward":
+            # Add the pair if it's in the forward direction
+            if (q2, q1) not in filtered_pairs:
+                filtered_pairs.add((q1, q2))
+        elif direction == "reverse":
+            # Add the reversed pair if the original forward pair exists
+            if (q1, q2) not in filtered_pairs:
+                filtered_pairs.add((q2, q1))
+
+    # Convert the set back to a list for further processing
+    qubit_pairs = list(filtered_pairs)
+
+    max_parallel_combinations = []
+    max_num_parallel_gates = 0
+
+    # Check all possible combinations of the qubit pairs
+    for r in range(1, len(qubit_pairs) + 1):
+        for combo in combinations(qubit_pairs, r):
+            # Check if all pairs in the combination can be applied in parallel
+            used_qubits = set()
+            valid = True
+            for pair in combo:
+                if pair[0] in used_qubits or pair[1] in used_qubits:
+                    valid = False
+                    break
+                used_qubits.update(pair)
+
+            if valid:
+                if len(combo) > max_num_parallel_gates:
+                    max_num_parallel_gates = len(combo)
+                    max_parallel_combinations = [combo]
+                elif len(combo) == max_num_parallel_gates:
+                    max_parallel_combinations.append(combo)
+
+    return max_parallel_combinations
 
 
 def binary(n, length):
