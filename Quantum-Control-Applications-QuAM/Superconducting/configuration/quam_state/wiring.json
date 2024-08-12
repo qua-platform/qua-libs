@@ -1,0 +1,62 @@
+{
+    "wiring": {
+        "qubits": {
+            "q1": {
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/3",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/4",
+                    "digital_port": "#/ports/digital_outputs/con1/3",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/5"
+                },
+                "resonator": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "opx_input_I": "#/analog_inputs/1/1",
+                    "opx_input_Q": "#/analog_inputs/1/2",
+                    "digital_port": "#/ports/digital_outputs/con1/1",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            },
+            "q2": {
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/7",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/8",
+                    "digital_port": "#/ports/digital_outputs/con1/7",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/6"
+                },
+                "resonator": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "opx_input_I": "#/analog_inputs/1/1",
+                    "opx_input_Q": "#/analog_inputs/1/2",
+                    "digital_port": "#/ports/digital_outputs/con1/1",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
+                }
+            }
+        },
+        "qubit_pairs": []
+    },
+    "network": {
+        "host": "192.168.1.52",
+        "cluster_name": "Cluster_Name",
+        "octave_ips": [
+            "192.168.1.52",
+            "192.168.1.52",
+            "192.168.1.52"
+        ],
+        "octave_ports": [
+            11243,
+            11240,
+            11241
+        ],
+        "data_folder": "C:\\data\\path\\to\\folder"
+    }
+}
