@@ -22,6 +22,7 @@ from make_wiring import default_port_allocation, custom_port_allocation, create_
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 
+# TODO: what is this for?
 QuamTypes = TypeVar("QuamTypes", OPXPlusQuAM, FEMQuAM)
 
 
@@ -30,6 +31,7 @@ def create_quam_superconducting(
     wiring: dict = None,
     octaves: Dict[str, Octave] = None,
 ) -> QuamTypes:
+    # TODO: docstring
     """Create a QuAM with a number of qubits.
 
     Args:
@@ -46,17 +48,17 @@ def create_quam_superconducting(
         machine.wiring = wiring
     else:
         raise ValueError("Wiring must be provided.")
-
+    # TODO: this doesn't belong here, put into wiring or architecture
     host_ip = "192.168.1.52"
-
+    # TODO: same here, the number of octaves and their IP/port should be part of the wiring
     octave_ips = [host_ip] * 3
     # or "192.168.88.X" if configured internally
     # octave_ips = ["192.168.88.251", ...]
-
     octave_ports = [11243, 11240, 11241]  # 11XXX where XXX are the last digits of the Octave IP
     # or 80 if configured internally
     # octave_ips = [80] * 3
 
+    # Build this in the witing or network.json
     machine.network = {
         "host": host_ip,
         "cluster_name": "Cluster_Name",
@@ -66,12 +68,14 @@ def create_quam_superconducting(
     }
     print("Please update the default network settings in: quam.network")
 
+    # This function should assume there are octaves, this should be inferred from the wiring because there is also mw fem
     if octaves is not None:
         machine.octaves = octaves
         print("If you haven't configured the octaves, please run: octave.initialize_frequency_converters()")
 
     else:
         # Add the Octave to the quam
+        # TODO: make a utility function to get the octaves from the wiring
         for i in range(len(octave_ips)):
             octave = Octave(
                 name=f"octave{i+1}",
@@ -81,11 +85,14 @@ def create_quam_superconducting(
             )
             machine.octaves[f"octave{i+1}"] = octave
             octave.initialize_frequency_converters()
+            # TODO: what is quam.octave?
             print("Please update the octave settings in: quam.octave")
 
     # Add the transmon components (xy, z and resonator) to the quam
     for qubit_name, qubit_wiring in machine.wiring.qubits.items():
         # Create all necessary ports
+        # TODO: hide it from the customer + what does it do?
+        # TODO: why not adding the port directly  when building the base components?
         machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("digital_port"), create=True)
         machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("opx_output_I"), create=True)
         machine.ports.reference_to_port(qubit_wiring.xy.get_unreferenced_value("opx_output_Q"), create=True)
@@ -133,21 +140,27 @@ def create_quam_superconducting(
                 depletion_time=1 * u.us,
             ),
         )
-
+        # Add the transmon to the machine
         machine.qubits[transmon.name] = transmon
+        # Add the transmon to the active qubits
         machine.active_qubit_names.append(transmon.name)
-
+        # Add the set of default pulses
+        # TODO: improve this function
         add_default_transmon_pulses(transmon)
-
+        # Set the Octave
+        # TODO: why not doing it directly in octave.initialize_frequency_converters(output_mode="always_on", LO_frequency=4.7e9, gain=0)
         RF_output = transmon.xy.frequency_converter_up
         RF_output.channel = transmon.xy.get_reference()
         RF_output.output_mode = "always_on"
         # RF_output.output_mode = "triggered"
         RF_output.LO_frequency = 4.7 * u.GHz
+        # TODO: why? the LO should be in the config and the Octave will automatically be set to it when opening a QM
         print(f"Please set the LO frequency of {RF_output.get_reference()}")
+        # TODO: same as above
         print(f"Please set the output mode of {RF_output.get_reference()} to always_on or triggered")
 
     # Only set resonator RF outputs once
+    # TODO: same as above
     RF_output_resonator = transmon.resonator.frequency_converter_up
     RF_output_resonator.channel = transmon.resonator.get_reference()
     RF_output_resonator.output_mode = "always_on"
@@ -173,8 +186,7 @@ def create_quam_superconducting(
         coupler = TunableCoupler(
             id=coupler_name, opx_output=qubit_pair_wiring.coupler.get_unreferenced_value("opx_output")
         )
-
-        # Note: The Q channel is set to the I channel plus one.
+        # Note: The Q channel is set to the I channel plus one. # TODO: what does it mean? I/Q should be set in the single transmon no?
         qubit_pair = TransmonPair(
             id=qubit_pair_name,
             qubit_control=qubit_pair_wiring.get_unreferenced_value("qubit_control"),
@@ -186,6 +198,7 @@ def create_quam_superconducting(
         add_default_transmon_pair_pulses(qubit_pair)
 
     # Add additional input ports for calibrating the mixers
+    # TODO: what is this for?
     print(qubit_wiring.xy.frequency_converter_up.get_reference())
     machine.ports.get_analog_input("con1", 2, 1, create=True)
     machine.ports.get_analog_input("con1", 2, 2, create=True)
@@ -196,11 +209,11 @@ def create_quam_superconducting(
 if __name__ == "__main__":
     folder = Path(__file__).parent
     quam_folder = folder / "quam_state"
-
+    # TODO: what is this for? WHy not specifying OPX+/Octave/LF/MW in the wiring?
     quam_class = FEMQuAM
-
     using_opx_1000 = quam_class is FEMQuAM
     # module refers to the FEM number (OPX1000) or OPX+ connection index (OPX+)
+    # TODO: need to add chassis & MW fem
     custom_port_wiring = {
         "qubits": {
             "q1": {
@@ -238,12 +251,17 @@ if __name__ == "__main__":
         },
     }
 
+    # TODO: let's first do everything with manual wiring for simplicity
     # port_allocation = default_port_allocation(
     #     num_qubits=2,
     #     using_opx_1000=using_opx_1000,
     #     starting_fem=3
     # )
+    # TODO: why not having this function part of create_wiring, since the user doesn't care about it?
     port_allocation = custom_port_allocation(custom_port_wiring)
+    # TODO: can we re-wire after the QuAM has been created?
+    #  Use-case: I have 5 qubits on my chip but only 1 OPX+Octave so I want to be able to update the wiring based on
+    #  the active qubits.
     wiring = create_wiring(port_allocation, using_opx_1000=using_opx_1000)
     machine = create_quam_superconducting(quam_class, wiring)
 
