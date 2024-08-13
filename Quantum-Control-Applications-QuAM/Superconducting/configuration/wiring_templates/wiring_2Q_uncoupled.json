@@ -14,8 +14,8 @@
                 "resonator": {
                     "opx_output_I": "#/ports/analog_outputs/con1/1",
                     "opx_output_Q": "#/ports/analog_outputs/con1/2",
-                    "opx_input_I": "#/analog_inputs/con1/1/1",
-                    "opx_input_Q": "#/analog_inputs/con1/1/2",
+                    "opx_input_I": "#/analog_inputs/con1/1",
+                    "opx_input_Q": "#/analog_inputs/con1/2",
                     "digital_port": "#/ports/digital_outputs/con1/1",
                     "frequency_converter_up": "#/octaves/octave1/RF_outputs/2",
                     "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
