@@ -6,6 +6,7 @@ u = unit(coerce_to_integer=True)
 
 
 def add_default_transmon_pulses(transmon):
+    # TODO: improve this function
     # TODO: make sigma=length/5
     # TODO: Make gates amplitude a reference to x180 amplitude
     transmon.xy.operations["x180_DragGaussian"] = pulses.DragPulse(
