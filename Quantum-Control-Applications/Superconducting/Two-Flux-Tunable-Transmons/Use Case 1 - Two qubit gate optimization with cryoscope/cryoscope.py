@@ -82,11 +82,9 @@ with program() as cryoscope:
         with for_(segment, 0, segment <= total_len, segment + 1):
             with for_each_(flag, [True, False]):
                 # Cooldown
-                measure("readout", res_name, None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g))
+                measure("readout", res_name, None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
                 with while_(I_g > initialization_threshold):
-                    measure(
-                        "readout", res_name, None, dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I_g)
-                    )
+                    measure("readout", res_name, None, dual_demod.full("rotated_cos", "rotated_sin", I_g))
                 align()
                 wait(500)
                 # Cryoscope protocol
@@ -111,8 +109,8 @@ with program() as cryoscope:
                     "readout",
                     res_name,
                     None,
-                    dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    dual_demod.full("rotated_cos", "rotated_sin", I),
+                    dual_demod.full("rotated_minus_sin", "rotated_cos", Q),
                 )
                 # State discrimination
                 if qubit_under_study == 0:

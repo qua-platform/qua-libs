@@ -55,7 +55,7 @@ with program() as hello_qua:
 ################################
 
 # qmm = QuantumMachinesManager(host=qop_ip, port="80")
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

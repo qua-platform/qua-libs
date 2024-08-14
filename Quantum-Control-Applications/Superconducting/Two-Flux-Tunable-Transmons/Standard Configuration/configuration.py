@@ -43,8 +43,8 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q1 = 3.95 * u.GHz
+qubit_LO_q2 = 3.95 * u.GHz
 # Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
@@ -180,7 +180,7 @@ const_flux_amp = 0.45
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 6.35 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 6.35 * u.GHz
 # Resonators IF
 resonator_IF_q1 = 75 * u.MHz
 resonator_IF_q2 = 133 * u.MHz
@@ -202,19 +202,17 @@ depletion_time = 2 * u.us
 
 opt_weights = False
 if opt_weights:
-    from qualang_tools.config.integration_weights_tools import convert_integration_weights
-
     weights_q1 = np.load("optimal_weights_q1.npz")
-    opt_weights_real = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_real"]]
-    opt_weights_minus_imag = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_imag"]]
-    opt_weights_imag = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_imag"]]
-    opt_weights_minus_real = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_real"]]
+    opt_weights_real_q1 = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_real"]]
+    opt_weights_minus_imag_q1 = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_imag"]]
+    opt_weights_imag_q1 = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_imag"]]
+    opt_weights_minus_real_q1 = [(x, weights_q1["division_length"] * 4) for x in weights_q1["weights_minus_real"]]
 
     weights_q2 = np.load("optimal_weights_q2.npz")
-    opt_weights_real = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_real"]]
-    opt_weights_minus_imag = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_imag"]]
-    opt_weights_imag = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_imag"]]
-    opt_weights_minus_real = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_real"]]
+    opt_weights_real_q2 = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_real"]]
+    opt_weights_minus_imag_q2 = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_imag"]]
+    opt_weights_imag_q2 = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_imag"]]
+    opt_weights_minus_real_q2 = [(x, weights_q2["division_length"] * 4) for x in weights_q2["weights_minus_real"]]
 
 else:
 

@@ -8,11 +8,7 @@ from qm import QuantumMachinesManager
 from configuration import *
 from qm.simulate.credentials import create_credentials
 
-qmm = QuantumMachinesManager(
-    host="faraon-eea6492d.quantum-machines.co",
-    port=443,
-    credentials=create_credentials(),
-)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###################
 # The QUA program #
