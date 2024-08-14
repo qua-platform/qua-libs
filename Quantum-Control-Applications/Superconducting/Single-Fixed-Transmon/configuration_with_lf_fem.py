@@ -50,7 +50,7 @@ fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 #                  Qubits                   #
 #############################################
 sampling_rate = int(1e9)  # or, int(2e9)
-qubit_LO = 7 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
@@ -165,7 +165,7 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 5.5 * u.GHz
 resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0

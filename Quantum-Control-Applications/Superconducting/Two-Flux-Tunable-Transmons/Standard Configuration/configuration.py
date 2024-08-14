@@ -43,8 +43,8 @@ octave_config = None
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO_q1 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
-qubit_LO_q2 = 3.95 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO_q1 = 3.95 * u.GHz
+qubit_LO_q2 = 3.95 * u.GHz
 # Qubits IF
 qubit_IF_q1 = 50 * u.MHz
 qubit_IF_q2 = 75 * u.MHz
@@ -180,7 +180,7 @@ const_flux_amp = 0.45
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 6.35 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 6.35 * u.GHz
 # Resonators IF
 resonator_IF_q1 = 75 * u.MHz
 resonator_IF_q2 = 133 * u.MHz

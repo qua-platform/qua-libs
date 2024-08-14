@@ -134,7 +134,7 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 5.5 * u.GHz
 resonator_IF = 60 * u.MHz
 resonator_power = 1  # power in dBm at waveform amp = 1
 
