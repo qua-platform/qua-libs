@@ -56,7 +56,9 @@ class RBResult:
         Plots the raw recovery probability decay curve as a function of circuit depth.
         The curve is plotted using the averaged probability and without any fitting.
         """
-        recovery_probability = (self.data.state == 0).sum(("repeat", "average")) / (self.num_repeats * self.num_averages)
+        recovery_probability = (self.data.state == 0).sum(("repeat", "average")) / (
+            self.num_repeats * self.num_averages
+        )
         recovery_probability.rename("Recovery Probability").plot.line()
 
     def plot_with_fidelity(self):
