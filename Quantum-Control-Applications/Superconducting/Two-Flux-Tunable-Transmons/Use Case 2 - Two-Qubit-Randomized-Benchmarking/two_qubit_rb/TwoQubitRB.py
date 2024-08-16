@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Callable, List, Literal
+from typing import Callable, List, Literal, Dict, Tuple, Optional, Union
+
 import cirq
+import numpy as np
 from qm import QuantumMachinesManager
 from qm.jobs.running_qm_job import RunningQmJob
 from qm.qua import *
-from qm.qua._dsl import _Expression
 
 from qualang_tools.bakery.bakery import Baking
 from .RBBaker import RBBaker
@@ -29,7 +30,7 @@ class TwoQubitRb:
         single_qubit_gate_generator: Callable[[Baking, int, float, float, float], None],
         two_qubit_gate_generators: Dict[Literal["sqr_iSWAP", "CNOT", "CZ"], Callable[[Baking, int, int], None]],
         prep_func: Callable[[], None],
-        measure_func: Callable[[], Tuple[_Expression, _Expression]],
+        measure_func: Callable[[], Tuple],
         verify_generation: bool = False,
         interleaving_gate: Optional[List[cirq.GateOperation]] = None,
     ):

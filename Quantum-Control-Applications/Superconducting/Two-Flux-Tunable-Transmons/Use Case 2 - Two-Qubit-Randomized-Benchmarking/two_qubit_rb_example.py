@@ -1,3 +1,7 @@
+import random
+from typing import List
+
+import cirq
 import matplotlib.pyplot as plt
 from qm.qua import *
 from qm import QuantumMachinesManager
@@ -95,6 +99,8 @@ def meas():
 ##############################
 ##  Two-qubit RB execution  ##
 ##############################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
+
 # create RB experiment from configuration and defined functions
 rb = TwoQubitRb(
     config=config,
@@ -103,11 +109,12 @@ rb = TwoQubitRb(
     prep_func=prep,
     measure_func=meas,
     interleaving_gate=None,
+    # interleaving_gate=[cirq.CZ(cirq.LineQubit(0), cirq.LineQubit(1))],
     verify_generation=False,
 )
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
-res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=5, num_shots_per_circuit=100)
+res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=2, num_shots_per_circuit=1)
+
 # circuit_depths ~ how many consecutive Clifford gates within one executed circuit
 # (https://qiskit.org/documentation/apidoc/circuit.html)
 # num_circuits_per_depth ~ how many random circuits within one depth
@@ -121,7 +128,16 @@ plt.show()
 
 # verify/save the random sequences created during the experiment
 rb.save_sequences_to_file("sequences.txt")  # saves the gates used in each random sequence
-# rb.save_command_mapping_to_file('commands.txt')  # saves mapping from "command id" to sequence
-# rb.print_sequences()
+rb.save_command_mapping_to_file("commands.txt")  # saves mapping from "command id" to sequence
+# rb.print_sequence()
 # rb.print_command_mapping()
-# rb.verify_sequences() # simulates random sequences to ensure they recover to ground state. takes a while...
+# rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
+
+# # get the interleaved gate fidelity
+# from two_qubit_rb.RBResult import get_interleaved_gate_fidelity
+# interleaved_gate_fidelity = get_interleaved_gate_fidelity(
+#     num_qubits=2,
+#     reference_alpha=0.12345,  # replace with value from prior, non-interleaved experiment
+#     # interleaved_alpha=res.fit_exponential()[1],  # alpha from the interleaved experiment
+# )
+# print(f"Interleaved Gate Fidelity: {interleaved_gate_fidelity*100:.3f}")

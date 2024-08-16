@@ -72,11 +72,13 @@ class RBBaker:
                 self._update_baking_from_cmd_id(b, cmd_id)
                 qes.update(b.get_qe_set())
                 b.update_config = False
-            if self._interleaving_gate is not None:
-                with baking(config) as b:
-                    self._update_baking_from_gates(b, self._interleaving_gate)
-                    qes.update(b.get_qe_set())
-                    b.update_config = False
+        if self._interleaving_gate is not None:
+            if self._command_registry is not None:
+                self._command_registry.set_current_command_id(cmd_id + 1)
+            with baking(config) as b:
+                self._update_baking_from_gates(b, self._interleaving_gate)
+                qes.update(b.get_qe_set())
+                b.update_config = False
         if self._command_registry is not None:
             self._command_registry.finish()
         return qes
@@ -116,7 +118,7 @@ class RBBaker:
         cmd_to_op = {qe: {} for qe in self._all_elements}
         op_to_baking = {qe: [] for qe in self._all_elements}
         num_of_commands = len(gate_db.commands) + (0 if self._interleaving_gate is None else 1)
-        for cmd_id in tqdm(range(num_of_commands), desc="Pre-baking pulses for combinations of gates", unit="command"):
+        for cmd_id in tqdm(range(num_of_commands), desc="Baking pulses which comprise Cliffords", unit="command"):
             with baking(config) as b:
                 self._update_baking_from_cmd_id(b, cmd_id, self._all_elements)
                 any_qe_used = False
