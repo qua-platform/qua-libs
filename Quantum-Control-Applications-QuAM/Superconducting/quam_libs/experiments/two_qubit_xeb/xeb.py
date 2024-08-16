@@ -205,15 +205,18 @@ class XEB:
                             if self.xeb_config.two_qb_gate is not None and len(self.qubit_pairs) > 0:
                                 for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z.name, qubit.parent.resonator.name)
-                                with switch_(two_qubit_gate_pattern):
-                                    for i, combination in enumerate(self.available_combinations):
-                                        with case_(i):
-                                            for pair in combination:
-                                                for qubit_ctrl, qubit_tgt in pair:
-                                                    self.xeb_config.two_qb_gate.gate_macro(
-                                                        self.qubit_dict[qubit_ctrl] @ self.qubit_dict[qubit_tgt]
-                                                    )
-                                # self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
+                                if len(self.qubit_pairs) > 1:  # Multi-qubit XEB case
+                                    with switch_(two_qubit_gate_pattern):
+                                        for i, combination in enumerate(self.available_combinations):
+                                            with case_(i):
+                                                for pair in combination:
+                                                    for qubit_ctrl, qubit_tgt in pair:
+                                                        self.xeb_config.two_qb_gate.gate_macro(
+                                                            self.qubit_dict[qubit_ctrl] @ self.qubit_dict[qubit_tgt]
+                                                        )
+                                else:  # Two-qubit XEB case
+                                    self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
+
                                 for qubit in self.qubit_drive_channels:
                                     qubit.align(qubit.parent.z, qubit.parent.resonator)
 

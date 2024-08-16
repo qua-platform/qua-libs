@@ -14,13 +14,13 @@ This experiment was performed and presented in the use-case [Two-Qubit Gate Opti
 
 ## Prerequisites
 The XEB script is designed to be compatible with QuAM, and therefore requires the user to migrate his original QUA configuration file into a QuAM json file and have access to dedicated QuAM components.
-This script being designed for the use case of flux-tunable superconducting qubits, we provide a dedicated example of template QuAM components for this use case in the `quam_components` folder. The user can use these components as a starting point to build his own QuAM configuration file.
+This script being designed for the use case of flux-tunable superconducting qubits, we provide a dedicated example of template QuAM components for this use case in the `quam_libs/components` folder. The user can use these components as a starting point to build his own QuAM configuration file.
 The user should also have access to the QuAM library, which can be found [here](https://docs.quantum-machines.co/quam/).
 We encourage you to reach out to the Customer Success team to set your QuAM accordingly. Moreover, note that this example might require dedicated adjustments depending on the way the gates are implemented on your platform.
 
-Prior to running the XEB example file `2q_xeb.py`, the user has to run the calibrations that define the gate and measurement parameters:
+Prior to running the XEB example file `26_two_qubit_xeb.py`, the user has to run the calibrations that define the gate and measurement parameters:
 - Single Qubit Gate: Implement a single qubit gate that will be used as a baseline for the random circuits. This gate should be calibrated to produce a $\pi$/2 rotation around the X axis (or equivalently the $SX$ gate as indicated [here](https://docs.quantum.ibm.com/api/qiskit/qiskit.circuit.library.SXGate). On top of this that we will later refer to as the baseline gate, the user can also calibrate the other single qubit gates that will be used in the random circuits (e.g. $SY$, $SW$ or $T$ gates as done in [2] and [1]).
-- a Two-Qubit gate: Implement the two-qubit gate of interest, that will form the entangling layer in the experiment (together with the single qubit gates). For this flux-tunable use case, we will consider the $CZ$ (controlled phase) gate.
+- a Two-Qubit gate: Implement the two-qubit gate of interest, that will form the entangling layer in the experiment (together with the single qubit gates). For this flux-tunable use case, we will consider the $CZ$ (controlled phase) gate. Note that at the moment, we assume that the gate is implemented in a similar fashion for all qubit pairs present in the system (i.e. )
 - Calibrated Measurement Protocol for Qubit State Discrimination: Simultaneously measure the two-qubit system in its computational basis states ∣00⟩, ∣01⟩, ∣10⟩, ∣11⟩. Each qubit should have in its operations a readout operation called `"readout"`.
 
 Additionally, the user should install Qiskit to run the experiment. The installation instructions can be found [here](https://docs.quantum.ibm.com/start/install). 
@@ -35,21 +35,16 @@ The user can choose which gate set to use to generate random unitaries. Usually,
 [![XEB Circuit](images/xeb_circuit.png)](images/xeb_circuit.png)
 
 In this circuit, we have used the $SW$ gate defined in [2] as: 
-$$
-W^{1 / 2} \equiv R_{X+Y}(\pi / 2)=\frac{1}{\sqrt{2}}\left[\begin{array}{cc}
-1 & -\sqrt{i} \\
-\sqrt{-i} & 1
-\end{array}\right]
-$$
+$$W^{1 / 2} \equiv R_{X+Y}(\pi / 2)$$
 The script will generate random circuits with the chosen gate set and run them on the quantum computer. The script will then calculate the cross-entropy between the ideal and actual probability distributions to estimate the layer fidelity (from which the two-qubit gate fidelity can be inferred).
 
 As opposed to Randomized Benchmarking, we do not invert the randomly generated circuit by applying an inverse, but we rather perform a fidelity estimation over the statistics of the outcomes when measuring the system in the computational basis.
 
 There are therefore four steps in the script:
-- Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation. The circuits are randomized through the choice of the single qubit gates that are applied to each qubit at each layer (depth).
-- Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate). Alternatively, it is possible to play dedicated pulses for each of the random gates, through the use of a QUA `switch`statement (at the expense of possible more latency, depending on your gate durations). 
-- Theoretical simulation: The script simulates the random circuits on the classical side to compute the theoretical quantum state, from which we deduce the probabilities of getting all possible measurement outcomes.
-- Cross-entropy calculation: The script computes the cross-entropy between the expected and empirically deduced probability distributions to estimate the layer fidelity.
+1. Random circuits generation: Done within QUA in real-time, the script generates random circuits of different depths with the chosen gate set. At the same time, the gates sampled in real-time are streamed back to the classical side for the theoretical simulation. The circuits are randomized through the choice of the single qubit gates that are applied to each qubit at each layer (depth). 
+2. Execution: For each random sequence of gates of varying depths, the script runs the circuit on the quantum computer while leveraging real-time pulse modulation of the OPX. This is particularly useful for playing all possible random gates through one single gate baseline (usually the $SX$ ($X/2)$ gate). Alternatively, it is possible to play dedicated pulses for each of the random gates, through the use of a QUA `switch`statement (at the expense of possible more latency, depending on your gate durations). 
+3. Theoretical simulation: The script simulates the random circuits on the classical side to compute the theoretical quantum state, from which we deduce the probabilities of getting all possible measurement outcomes. 
+4. Cross-entropy calculation: The script computes the cross-entropy between the expected and empirically deduced probability distributions to estimate the layer fidelity.
 
 This script requires Qiskit [2] (we recommend installing beyond 1.0, see documentation [here](https://qiskit.org/documentation/install.html) or check this [video](https://youtu.be/dZWz4Gs_BuI?si=EOqyeOhZ05YcBlXA)) for the reconstruction of theoretical quantum circuits. This is helpful as it enables the user to leverage all Qiskit visualization tools to debug the experiments.
 For the post-processing, we reproduce tools from Cirq library [3] to compute the cross-entropy between the expected and actual probability distributions.
@@ -100,8 +95,8 @@ def two_qubit_gate_macro(qubit_pair: TransmonPair):
 two_qubit_gate = QUAGate("cz", two_qubit_gate_macro)
 
 ```
-- `qubit_pairs`: the qubit pairs involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only one qubit pair for now and should therefore be given as `[quam_libs.components.TransmonPair]`. We will extend this to other platforms in the future
-- `readout_pulse_name`: the name of the readout pulse that will be used to measure the qubits. The name should match the name of the operation defined in the QuAM/configuration for implementing the readout pulse.
+- `qubit_pairs`: the qubit pairs involved in the experiment. They should match the qubit pairs defined in the QuAM. Note that the script can handle only qubit pairs that are Transmons for now and should therefore be given as `[quam_libs.components.TransmonPair]`. We will extend this to other platforms in the future.
+- `readout_pulse_name`: the name of the readout pulse that will be used to measure the qubits. The name should match the name of the operation defined in the QuAM/configuration for implementing the readout pulse for each qubit.
 Additional parameters are available in the config such as:
 - `reset_method`: the method used to reset the qubits. The user can choose between `"active"` (active reset) and `"cooldown"` (passive reset).
 - `reset_kwargs`: the arguments for the reset method. The user can provide a dictionary of the form `{"cooldown_time": 1000, "max_tries": 1, "pi_pulse":"x180"}`. The first key corresponds to the cooldown time in ns (used if `reset_method` is `"cooldown"`, the second key corresponds to the maximum number of tries before the reset is considered done (used when `reset_method` is `"active"`, and the third key corresponds to the pulse used for the reset (a $\pi$ rotation around the X axis). Note that in the case of an active reset, the threshold is automatically retrieved from the QuAM configuration file (through the `ReadoutPulse`).

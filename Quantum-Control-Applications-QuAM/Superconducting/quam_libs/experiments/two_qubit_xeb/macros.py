@@ -13,6 +13,7 @@ import numpy as np
 from quam.examples.superconducting_qubits import Transmon
 from scipy import optimize
 from scipy.stats import stats
+from itertools import combinations
 
 
 def qua_declaration(n_qubits: int, readout_elements: list):
@@ -112,10 +113,6 @@ def active_reset(threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pul
         # Increment the number of tries
         assign(counter, counter + 1)
     return Ig, counter
-
-
-from qiskit import QuantumCircuit, transpile
-from itertools import combinations
 
 
 def get_parallel_gate_combinations(coupling_map: CouplingMap, direction="forward"):

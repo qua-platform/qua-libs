@@ -21,8 +21,9 @@ target_qubit_pairs = [
 
 def cz_gate(qubit_pair: TransmonPair):
     """
-    CZ gate macro
-    Here, we take inspiration from the macro implemented in QUA-Libs and adapt it to our needs using QuAM components.
+    CZ gate QUA macro: Add your own QUA code here implementing your CZ gate for any given qubit pair
+    :param qubit_pair: TransmonPair instance on which to apply the gate
+    :return: None
     """
     pass
 
