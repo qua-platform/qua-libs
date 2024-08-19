@@ -4,9 +4,10 @@ from quam_libs.wiring.wirer import allocate_wiring
 
 visualize = True
 
+
 def test_5q_allocation(instruments_2lf_2mw):
     qubits = [1, 2, 3, 4, 5]
-    qubit_pairs = [(1, 2), (2,3), (3,4), (4,5)]
+    qubit_pairs = [(1, 2), (2, 3), (3, 4), (4, 5)]
 
     connectivity = Connectivity()
     connectivity.add_resonator_line(qubits=qubits)
@@ -18,6 +19,7 @@ def test_5q_allocation(instruments_2lf_2mw):
 
     if visualize:
         visualize_chassis(connectivity.elements)
+
 
 def test_4rr_allocation(instruments_2lf_2mw):
     connectivity = Connectivity()

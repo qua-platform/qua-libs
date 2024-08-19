@@ -3,7 +3,12 @@ from typing import Dict, List
 from .element import Element, ElementId, QubitReference, QubitPairReference
 from .types import QubitsType, QubitPairsType
 from .wiring_spec import WiringSpec
-from .wiring_spec_enums import WiringFrequency, WiringIOType, WiringLineType, WiringIOSpec
+from .wiring_spec_enums import (
+    WiringFrequency,
+    WiringIOType,
+    WiringLineType,
+    WiringIOSpec,
+)
 
 
 class Connectivity:
@@ -14,40 +19,65 @@ class Connectivity:
     requires input/output or both lines, if it is required on a particular
     module or FEM slot, and what high-level component will be manipulated.
     """
+
     def __init__(self):
         self.elements: Dict[ElementId, Element] = {}
         self.specs: List[WiringSpec] = []
 
-    def add_resonator_line(self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None):
+    def add_resonator_line(
+        self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None
+    ):
         elements = self._make_qubit_elements(qubits)
-        io_spec = WiringIOSpec(type=WiringIOType.INPUT_AND_OUTPUT, con=con, slot=slot, port=port)
+        io_spec = WiringIOSpec(
+            type=WiringIOType.INPUT_AND_OUTPUT, con=con, slot=slot, port=port
+        )
         return self.add_wiring_spec(
-            elements, WiringFrequency.RF, io_spec, WiringLineType.RESONATOR, shared_line=True
+            elements,
+            WiringFrequency.RF,
+            io_spec,
+            WiringLineType.RESONATOR,
+            shared_line=True,
         )
 
-    def add_qubit_drive_lines(self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None):
+    def add_qubit_drive_lines(
+        self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None
+    ):
         elements = self._make_qubit_elements(qubits)
         io_spec = WiringIOSpec(type=WiringIOType.OUTPUT, con=con, slot=slot, port=port)
         return self.add_wiring_spec(
             elements, WiringFrequency.RF, io_spec, WiringLineType.DRIVE
         )
 
-    def add_qubit_flux_lines(self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None):
+    def add_qubit_flux_lines(
+        self, qubits: QubitsType, con: int = None, slot: int = None, port: int = None
+    ):
         elements = self._make_qubit_elements(qubits)
         io_spec = WiringIOSpec(type=WiringIOType.OUTPUT, con=con, slot=slot, port=port)
         return self.add_wiring_spec(
             elements, WiringFrequency.DC, io_spec, WiringLineType.FLUX
         )
 
-    def add_qubit_pair_flux_lines(self, qubit_pairs: QubitPairsType, con: int = None, slot: int = None, port: int = None):
+    def add_qubit_pair_flux_lines(
+        self,
+        qubit_pairs: QubitPairsType,
+        con: int = None,
+        slot: int = None,
+        port: int = None,
+    ):
         elements = self._make_qubit_pair_elements(qubit_pairs)
         io_spec = WiringIOSpec(type=WiringIOType.OUTPUT, con=con, slot=slot, port=port)
         return self.add_wiring_spec(
             elements, WiringFrequency.DC, io_spec, WiringLineType.COUPLER
         )
 
-    def add_wiring_spec(self, elements: List[Element], frequency: WiringFrequency, io_spec: WiringIOSpec,
-                        line_type: WiringLineType, shared_line: bool = False):
+    def add_wiring_spec(
+        self,
+        elements: List[Element],
+        frequency: WiringFrequency,
+        io_spec: WiringIOSpec,
+        line_type: WiringLineType,
+        shared_line: bool = False,
+    ):
         specs = []
         if shared_line:
             spec = WiringSpec(frequency, io_spec, line_type, elements)

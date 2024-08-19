@@ -4,6 +4,7 @@ from quam_libs.wiring.instruments import Instruments
 
 visualize = False
 
+
 def test_opx_plus_and_octave_validation():
     instruments = Instruments()
     instruments.add_opx_plus(cons=1)

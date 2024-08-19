@@ -5,11 +5,17 @@ from quam_libs.wiring.instruments import Instruments
 from quam_libs.wiring.instruments.instrument_channels import InstrumentChannel
 
 
-def assign_channels_to_spec(spec: WiringSpec, instruments: Instruments,
-                            channel_types: List[Type[InstrumentChannel]],
-                            same_con: bool = False, same_slot: bool = False):
+def assign_channels_to_spec(
+    spec: WiringSpec,
+    instruments: Instruments,
+    channel_types: List[Type[InstrumentChannel]],
+    same_con: bool = False,
+    same_slot: bool = False,
+):
 
-    candidate_channels = _assign_channels_to_spec(spec, instruments, channel_types, same_con, same_slot)
+    candidate_channels = _assign_channels_to_spec(
+        spec, instruments, channel_types, same_con, same_slot
+    )
 
     # if candidate channels satisfy all the required channel types
     if len(candidate_channels) == len(channel_types):
@@ -24,10 +30,15 @@ def assign_channels_to_spec(spec: WiringSpec, instruments: Instruments,
 
     return len(candidate_channels) == len(channel_types)
 
-def _assign_channels_to_spec(spec: WiringSpec, instruments: Instruments,
-                             channel_types: List[Type[InstrumentChannel]],
-                             same_con: bool, same_slot: bool,
-                             allocated_channels=None):
+
+def _assign_channels_to_spec(
+    spec: WiringSpec,
+    instruments: Instruments,
+    channel_types: List[Type[InstrumentChannel]],
+    same_con: bool,
+    same_slot: bool,
+    allocated_channels=None,
+):
     """
     Recursive function to find any valid combination of channel allocations
     given a wiring specification, a stack of available channels in the
@@ -40,10 +51,12 @@ def _assign_channels_to_spec(spec: WiringSpec, instruments: Instruments,
     target_channel_type = channel_types[0]
 
     # filter available channels according to the specification
-    available_channels = list(filter(
-        spec.io_spec.make_channel_filter(), # filter function
-        instruments.available_channels.get(target_channel_type, []) # iterable
-    ))
+    available_channels = list(
+        filter(
+            spec.io_spec.make_channel_filter(),  # filter function
+            instruments.available_channels.get(target_channel_type, []),  # iterable
+        )
+    )
 
     candidate_channels = []
     for channel in available_channels:
@@ -66,8 +79,14 @@ def _assign_channels_to_spec(spec: WiringSpec, instruments: Instruments,
                 spec.io_spec.slot = channel.slot
 
             # recursively allocate the remaining channels
-            subsequent_channels = _assign_channels_to_spec(spec, instruments, channel_types[1:], same_con, same_slot,
-                                                           allocated_channels=candidate_channels)
+            subsequent_channels = _assign_channels_to_spec(
+                spec,
+                instruments,
+                channel_types[1:],
+                same_con,
+                same_slot,
+                allocated_channels=candidate_channels,
+            )
 
             candidate_channels.extend(subsequent_channels)
 

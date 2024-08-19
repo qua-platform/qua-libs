@@ -9,6 +9,7 @@ class Instruments:
     in an experimental setup. Upon adding an instrument, its available channels
     will be enumerated and added individually to a stack of free channels.
     """
+
     def __init__(self):
         self.available_channels = InstrumentChannels()
 
@@ -17,11 +18,11 @@ class Instruments:
             indices = [indices]
 
         for index in indices:
-            for port in range(1, NUM_OCTAVE_INPUT_PORTS+1):
+            for port in range(1, NUM_OCTAVE_INPUT_PORTS + 1):
                 channel = InstrumentChannelOctaveInput(con=index, port=port)
                 self.available_channels.add(channel)
 
-            for port in range(1, NUM_OCTAVE_OUTPUT_PORTS+1):
+            for port in range(1, NUM_OCTAVE_OUTPUT_PORTS + 1):
                 channel = InstrumentChannelOctaveOutput(con=index, port=port)
                 self.available_channels.add(channel)
 
@@ -30,11 +31,11 @@ class Instruments:
             slots = [slots]
 
         for slot in slots:
-            for port in range(1, NUM_LF_FEM_INPUT_PORTS+1):
+            for port in range(1, NUM_LF_FEM_INPUT_PORTS + 1):
                 channel = InstrumentChannelLfFemInput(con=con, slot=slot, port=port)
                 self.available_channels.add(channel)
 
-            for port in range(1, NUM_LF_FEM_OUTPUT_PORTS+1):
+            for port in range(1, NUM_LF_FEM_OUTPUT_PORTS + 1):
                 channel = InstrumentChannelLfFemOutput(con=con, slot=slot, port=port)
                 self.available_channels.add(channel)
 
@@ -43,11 +44,11 @@ class Instruments:
             slots = [slots]
 
         for slot in slots:
-            for port in range(1, NUM_MW_FEM_INPUT_PORTS+1):
+            for port in range(1, NUM_MW_FEM_INPUT_PORTS + 1):
                 channel = InstrumentChannelMwFemInput(con=con, slot=slot, port=port)
                 self.available_channels.add(channel)
 
-            for port in range(1, NUM_MW_FEM_OUTPUT_PORTS+1):
+            for port in range(1, NUM_MW_FEM_OUTPUT_PORTS + 1):
                 channel = InstrumentChannelMwFemOutput(con=con, slot=slot, port=port)
                 self.available_channels.add(channel)
 
@@ -56,10 +57,10 @@ class Instruments:
             cons = [cons]
 
         for con in cons:
-            for port in range(1, NUM_OPX_PLUS_INPUT_PORTS+1):
+            for port in range(1, NUM_OPX_PLUS_INPUT_PORTS + 1):
                 channel = InstrumentChannelOpxPlusInput(con=con, port=port)
                 self.available_channels.add(channel)
 
-            for port in range(1, NUM_OPX_PLUS_OUTPUT_PORTS+1):
+            for port in range(1, NUM_OPX_PLUS_OUTPUT_PORTS + 1):
                 channel = InstrumentChannelOpxPlusOutput(con=con, port=port)
                 self.available_channels.add(channel)

@@ -16,7 +16,6 @@ def instruments_1octave(request) -> Instruments:
 @pytest.fixture()
 def instruments_2lf_2mw() -> Instruments:
     instruments = Instruments()
-    instruments.add_lf_fem(con=1, slots=[1,2])
-    instruments.add_mw_fem(con=1, slots=[3,7])
+    instruments.add_lf_fem(con=1, slots=[1, 2])
+    instruments.add_mw_fem(con=1, slots=[3, 7])
     return instruments
-

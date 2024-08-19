@@ -6,6 +6,7 @@ import pytest
 
 visualize = False
 
+
 def test_rf_io_allocation(instruments_1octave):
     qubits = [1]
 
