@@ -36,6 +36,7 @@ class WiringIOSpec:
     port: Optional[int] = None
 
     def make_channel_filter(self) -> Callable[["InstrumentChannel"], bool]:
+        # todo:
         return lambda channel: (
             (self.con is None or self.con == channel.con)
             and (self.slot is None or self.slot == channel.slot)

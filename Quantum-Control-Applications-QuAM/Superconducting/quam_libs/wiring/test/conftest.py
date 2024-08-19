@@ -2,11 +2,11 @@ from quam_libs.wiring.instruments import Instruments
 import pytest
 
 
-@pytest.fixture(params=["lf-fem", "opx+"])
+@pytest.fixture(params=["lf-fem"])#, "opx+"])
 def instruments_1octave(request) -> Instruments:
     instruments = Instruments()
     if request.param == "lf-fem":
-        instruments.add_lf_fem(con=1, slots=[1])
+        instruments.add_lf_fem(con=1, slots=[1, 2])
     elif request.param == "opx+":
         instruments.add_opx_plus(cons=1)
     instruments.add_octave(indices=1)

@@ -1,3 +1,4 @@
+import copy
 from typing import Dict, List
 
 from .element import Element, ElementId, QubitReference, QubitPairReference
@@ -84,6 +85,7 @@ class Connectivity:
             specs.append(spec)
         else:
             for element in elements:
+                io_spec = copy.deepcopy(io_spec)
                 spec = WiringSpec(frequency, io_spec, line_type, element)
                 specs.append(spec)
         self.specs.extend(specs)

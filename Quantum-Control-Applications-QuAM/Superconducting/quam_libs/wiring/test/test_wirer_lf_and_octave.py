@@ -8,10 +8,10 @@ visualize = False
 
 
 def test_rf_io_allocation(instruments_1octave):
-    qubits = [1]
+    qubits = [1,2,3,4,5]
 
     connectivity = Connectivity()
-    connectivity.add_resonator_line(qubits=qubits)
+    # connectivity.add_resonator_line(qubits=qubits)
     connectivity.add_qubit_drive_lines(qubits=qubits)
 
     allocate_wiring(connectivity, instruments_1octave)

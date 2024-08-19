@@ -20,7 +20,7 @@ def assign_channels_to_spec(
     # if candidate channels satisfy all the required channel types
     if len(candidate_channels) == len(channel_types):
         for channel in candidate_channels:
-            # remove candidate chanenl from stack of available channels
+            # remove candidate channel from stack of available channels
             instruments.available_channels[type(channel)].remove(channel)
             for element in spec.elements:
                 # assign channel to the specified element
