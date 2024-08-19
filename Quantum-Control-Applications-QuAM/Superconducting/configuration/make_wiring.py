@@ -88,6 +88,7 @@ def custom_port_allocation(wiring: dict):
 
     num_qubits = len(wiring["qubits"])
     for q_idx in range(1, num_qubits + 1):
+        # TODO: why do you need this?
         q_key = f"q{q_idx}"
         if q_key in wiring["qubits"]:
             res_ports.append(wiring["qubits"][q_key]["res"])
@@ -116,6 +117,9 @@ def create_wiring(port_allocation, using_opx_1000: bool) -> dict:
     res_ports, xy_ports, flux_ports, coupler_ports = port_allocation
 
     num_qubits = len(port_allocation[0])
+    # TODO: open question: isn't it better to have a single function that takes as input the device (OPX+ or OPX1000/LF/MW)
+    #  and do the splitting inside than having one function for each: create_wiring(xy_ports, res_ports, flux_ports, con, )
+    #  so that this files doesn't change?
     for q_idx in range(0, num_qubits):
         if using_opx_1000:
             wiring["qubits"][f"q{q_idx}"] = create_qubit_wiring_opx1000(
@@ -125,7 +129,7 @@ def create_wiring(port_allocation, using_opx_1000: bool) -> dict:
             wiring["qubits"][f"q{q_idx}"] = create_qubit_wiring_opx_plus(
                 xy_ports=xy_ports[q_idx], res_ports=res_ports[q_idx], flux_ports=flux_ports[q_idx]
             )
-
+    # TODO: this seems to assume that you always have (N-1) qubit pairs for N qubits --> not always true
     for q_idx in range(num_qubits - 1):
         if using_opx_1000:
             qubit_pair_wiring = create_qubit_pair_wiring_opx1000(

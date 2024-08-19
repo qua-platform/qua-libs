@@ -11,7 +11,6 @@ __all__ = ["TransmonPair"]
 
 @quam_dataclass
 class TransmonPair(QuamComponent):
-    id: Union[int, str]
     qubit_control: Transmon
     qubit_target: Transmon
     coupler: TunableCoupler = None
@@ -21,5 +20,5 @@ class TransmonPair(QuamComponent):
 
     @property
     def name(self):
-        """The name of the transmon"""
-        return self.id if isinstance(self.id, str) else f"q{self.id}"
+        """Name of the transmon pair"""
+        return f"{self.qubit_control.name}@{self.qubit_target.name}"
