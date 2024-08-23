@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Union
 
+from .wiring_spec_enums import WiringLineType
 from ..instruments.instrument_channels import InstrumentChannel
 
 
@@ -21,7 +22,7 @@ ElementId = Union[QubitReference, QubitPairReference]
 @dataclass
 class Element:
     id: ElementId
-    channels: Dict[str, List[InstrumentChannel]] = field(default_factory=dict)
+    channels: Dict[WiringLineType, List[InstrumentChannel]] = field(default_factory=dict)
 
     def __str__(self):
         return str(self.channels)
