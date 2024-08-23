@@ -127,6 +127,7 @@ def create_quam_superconducting(
                     buffer=15,  # 18ns for QOP222 and above
                 )
             },
+            LO_frequency = 2.5e9
         )
 
         if "z" in qubit_wiring:
@@ -162,17 +163,17 @@ def create_quam_superconducting(
         RF_output = transmon.xy.frequency_converter_up
         RF_output.channel = transmon.xy.get_reference()
         RF_output.output_mode = "always_on"  # default is "triggered"
-        RF_output.LO_frequency = 4.7 * u.GHz
+        RF_output.LO_frequency = "#./channel/LO_frequency"
 
     # Only set resonator RF outputs once
     RF_output_resonator = transmon.resonator.frequency_converter_up
     RF_output_resonator.channel = transmon.resonator.get_reference()
     RF_output_resonator.output_mode = "always_on"  # default is "triggered"
-    RF_output_resonator.LO_frequency = 6.2 * u.GHz
+    RF_output_resonator.LO_frequency = "#./channel/LO_frequency"
 
     RF_input_resonator = transmon.resonator.frequency_converter_down
     RF_input_resonator.channel = transmon.resonator.get_reference()
-    RF_input_resonator.LO_frequency = 6.2 * u.GHz
+    RF_input_resonator.LO_frequency = "#./channel/LO_frequency"
 
     # Add qubit pairs along with couplers
     for qubit_pair_wairing in machine.wiring.get("qubit_pairs", []):

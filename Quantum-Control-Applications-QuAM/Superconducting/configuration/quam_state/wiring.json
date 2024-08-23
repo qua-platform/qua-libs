@@ -3,8 +3,8 @@
         "qubits": {
             "q1": {
                 "xy": {
-                    "opx_output_I": "#/ports/analog_outputs/con1/3",
-                    "opx_output_Q": "#/ports/analog_outputs/con1/4",
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
                     "digital_port": "#/ports/digital_outputs/con1/3",
                     "frequency_converter_up": "#/octaves/octave1/RF_outputs/2"
                 },
@@ -14,35 +14,14 @@
                 "resonator": {
                     "opx_output_I": "#/ports/analog_outputs/con1/1",
                     "opx_output_Q": "#/ports/analog_outputs/con1/2",
-                    "opx_input_I": "#/analog_inputs/con1/1/1",
-                    "opx_input_Q": "#/analog_inputs/con1/1/2",
+                    "opx_input_I": "#/ports/analog_inputs/con1/1",
+                    "opx_input_Q": "#/ports/analog_inputs/con1/2",
                     "digital_port": "#/ports/digital_outputs/con1/1",
-                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2",
-                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
-                }
-            },
-            "q2": {
-                "xy": {
-                    "opx_output_I": "#/ports/analog_outputs/con1/7",
-                    "opx_output_Q": "#/ports/analog_outputs/con1/8",
-                    "digital_port": "#/ports/digital_outputs/con1/7",
-                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4"
-                },
-                "z": {
-                    "opx_output": "#/ports/analog_outputs/con1/6"
-                },
-                "resonator": {
-                    "opx_output_I": "#/ports/analog_outputs/con1/1",
-                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
-                    "opx_input_I": "#/analog_inputs/con1/1/1",
-                    "opx_input_Q": "#/analog_inputs/con1/1/2",
-                    "digital_port": "#/ports/digital_outputs/con1/1",
-                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
                     "frequency_converter_down": "#/octaves/octave1/RF_inputs/1"
                 }
             }
-        },
-        "qubit_pairs": []
+        }
     },
     "network": {
         "host": "192.168.1.52",
@@ -52,14 +31,6 @@
             "octave1": {
                 "ip": "192.168.1.52",
                 "port": 11243
-            },
-            "octave2": {
-                "ip": "192.168.1.52",
-                "port": 11240
-            },
-            "octave3": {
-                "ip": "192.168.1.52",
-                "port": 11241
             }
         }
     }

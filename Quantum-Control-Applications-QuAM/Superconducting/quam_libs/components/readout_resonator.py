@@ -16,5 +16,8 @@ class ReadoutResonator(InOutIQChannel):
     depletion_time: int = 1000
     frequency_bare: float = None
 
+    intermediate_frequency: float = 50e6
+    LO_frequency: float = 5e9
+
     f_01: float = None
     f_12: float = None
