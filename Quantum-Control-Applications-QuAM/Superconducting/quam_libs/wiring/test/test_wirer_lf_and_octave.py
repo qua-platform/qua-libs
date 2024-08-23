@@ -21,7 +21,6 @@ def test_rf_io_allocation(instruments_1octave):
     if visualize:
         visualize_chassis(connectivity.elements)
 
-# todo: This fails but should work
 def test_qw_soprano_allocation(instruments_qw_soprano):
     qubits = [1, 2, 3, 4, 5]
 

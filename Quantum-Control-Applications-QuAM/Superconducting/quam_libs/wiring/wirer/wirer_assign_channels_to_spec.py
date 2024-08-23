@@ -24,9 +24,9 @@ def assign_channels_to_spec(
             instruments.available_channels[type(channel)].remove(channel)
             for element in spec.elements:
                 # assign channel to the specified element
-                if spec.line_type.value not in element.channels:
-                    element.channels[spec.line_type.value] = []
-                element.channels[spec.line_type.value].append(channel)
+                if spec.line_type not in element.channels:
+                    element.channels[spec.line_type] = []
+                element.channels[spec.line_type].append(channel)
 
     return len(candidate_channels) == len(channel_types)
 
