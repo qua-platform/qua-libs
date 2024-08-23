@@ -186,9 +186,9 @@ def create_quam_superconducting(
         add_default_transmon_pair_pulses(qubit_pair)
 
     # Add additional input ports for calibrating the mixers
-    print(qubit_wiring.xy.frequency_converter_up.get_reference())
-    machine.ports.get_analog_input("con1", 2, 1, create=True)
-    machine.ports.get_analog_input("con1", 2, 2, create=True)
+    for i in range(len(octaves)):
+        machine.ports.get_analog_input("con1", i+1, 1, create=True)
+        machine.ports.get_analog_input("con1", i+1, 2, create=True)
 
     return machine
 

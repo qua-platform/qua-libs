@@ -185,6 +185,10 @@ def create_qubit_wiring_opx_plus(xy_ports, res_ports, flux_ports):
     xy_module, xy_i_ch, xy_octave, xy_octave_ch = xy_ports
     z_module, z_ch = flux_ports
 
+    res_module = f"con{res_module}"
+    xy_module = f"con{xy_module}"
+    z_module = f"con{z_module}"
+
     # Note: The Q channel is set to the I channel plus one.
     return {
         "xy": {
@@ -197,8 +201,8 @@ def create_qubit_wiring_opx_plus(xy_ports, res_ports, flux_ports):
         "resonator": {
             "opx_output_I": f"#/ports/analog_outputs/{res_module}/{res_i_ch_out}",
             "opx_output_Q": f"#/ports/analog_outputs/{res_module}/{res_i_ch_out+1}",
-            "opx_input_I": f"#/analog_inputs/{res_module}/1",
-            "opx_input_Q": f"#/analog_inputs/{res_module}/2",
+            "opx_input_I": f"#/ports/analog_inputs/{res_module}/1",
+            "opx_input_Q": f"#/ports/analog_inputs/{res_module}/2",
             "digital_port": f"#/ports/digital_outputs/{res_module}/{res_i_ch_out}",
             "frequency_converter_up": "#/octaves/octave1/RF_outputs/1",
             "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
