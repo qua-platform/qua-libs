@@ -709,11 +709,11 @@ class XEBResult:
                     m_u = np.sum(record["pure_probs"] * record["sampled_probs"])
                     record.update(e_u=e_u, u_u=u_u, m_u=m_u)
                 df_q = pd.DataFrame(records[i])
-                df_q["y"] = df["m_u"] - df["u_u"]
-                df_q["x"] = df["e_u"] - df["u_u"]
+                df_q["y"] = df_q["m_u"] - df_q["u_u"]
+                df_q["x"] = df_q["e_u"] - df_q["u_u"]
 
-                df_q["numerator"] = df["x"] * df["y"]
-                df_q["denominator"] = df["x"] ** 2
+                df_q["numerator"] = df_q["x"] * df_q["y"]
+                df_q["denominator"] = df_q["x"] ** 2
                 linear_fidelities.append(df_q.groupby("depth").apply(per_cycle_depth).reset_index())
                 df.append(df_q)
 
