@@ -611,13 +611,13 @@ class XEBResult:
             singularity = []
             outlier = []
         else:
-            records = [[], []]
+            records = [[] for _ in range(n_qubits)]
             incoherent_distribution = np.ones(2) / 2
             expected_probs = np.zeros((n_qubits, seqs, len(depths), 2))
             measured_probs = np.zeros((n_qubits, seqs, len(depths), 2))
             log_fidelities = np.zeros((n_qubits, seqs, len(depths)))
-            singularity = [[], []]
-            outlier = [[], []]
+            singularity = [[] for _ in range(n_qubits)]
+            outlier = [[] for _ in range(n_qubits)]
 
         for s in range(seqs):
             for d_, d in enumerate(depths):
@@ -701,20 +701,21 @@ class XEBResult:
             linear_fidelities = df.groupby("depth").apply(per_cycle_depth).reset_index()
         else:
             linear_fidelities = []
+            df = []
             for i in range(n_qubits):
                 for record in records[i]:
                     e_u = np.sum(record["pure_probs"] ** 2)
                     u_u = np.sum(record["pure_probs"]) / 2
                     m_u = np.sum(record["pure_probs"] * record["sampled_probs"])
                     record.update(e_u=e_u, u_u=u_u, m_u=m_u)
-            df = [pd.DataFrame(record) for record in records]
-            for i in range(n_qubits):
-                df[i]["y"] = df[i]["m_u"] - df[i]["u_u"]
-                df[i]["x"] = df[i]["e_u"] - df[i]["u_u"]
+                df_q = pd.DataFrame(records[i])
+                df_q["y"] = df["m_u"] - df["u_u"]
+                df_q["x"] = df["e_u"] - df["u_u"]
 
-                df[i]["numerator"] = df[i]["x"] * df[i]["y"]
-                df[i]["denominator"] = df[i]["x"] ** 2
-                linear_fidelities.append(df[i].groupby("depth").apply(per_cycle_depth).reset_index())
+                df_q["numerator"] = df["x"] * df["y"]
+                df_q["denominator"] = df["x"] ** 2
+                linear_fidelities.append(df_q.groupby("depth").apply(per_cycle_depth).reset_index())
+                df.append(df_q)
 
         return (
             measured_probs,
