@@ -226,8 +226,8 @@ class XEB:
                                     assign(two_qubit_gate_pattern, two_qubit_gate_pattern + 1)
 
                         # Measure the state
-                        for q_idx, readout_element in enumerate(self.readout_channels):
-                            readout_element.measure(
+                        for q_idx, qubit in enumerate(self.qubits):
+                            qubit.resonator.measure(
                                 self.xeb_config.readout_pulse_name,
                                 qua_vars=(I[q_idx], Q[q_idx]),
                             )
@@ -702,13 +702,13 @@ class XEBResult:
         else:
             linear_fidelities = []
             df = []
-            for i in range(n_qubits):
-                for record in records[i]:
+            for q in range(n_qubits):
+                for record in records[q]:
                     e_u = np.sum(record["pure_probs"] ** 2)
                     u_u = np.sum(record["pure_probs"]) / 2
                     m_u = np.sum(record["pure_probs"] * record["sampled_probs"])
                     record.update(e_u=e_u, u_u=u_u, m_u=m_u)
-                df_q = pd.DataFrame(records[i])
+                df_q = pd.DataFrame(records[q])
                 df_q["y"] = df_q["m_u"] - df_q["u_u"]
                 df_q["x"] = df_q["e_u"] - df_q["u_u"]
 
@@ -749,7 +749,7 @@ class XEBResult:
                             layer_fid_lin,
                             a_std_lin,
                             layer_fid_std_lin,
-                        ) = fit_exponential_decay(linear_fidelities[q]["depth"], linear_fidelities["fidelity"])
+                        ) = fit_exponential_decay(linear_fidelities["depth"], linear_fidelities["fidelity"])
                         plt.plot(
                             xx,
                             exponential_decay(xx, a_lin, layer_fid_lin),
