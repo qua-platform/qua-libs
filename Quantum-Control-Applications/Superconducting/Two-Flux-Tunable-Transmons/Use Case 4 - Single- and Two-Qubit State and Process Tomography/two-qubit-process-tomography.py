@@ -59,7 +59,7 @@ from helper_functions import P_Pauli2, plot_process_tomography2, map_from_bloch_
 # load PMatrix if pickle file is present
 # note: this takes a while to compute if you do not load the serialised
 # PMatrix file
-file_location = "<path to PMatrix2 file>" # ./PMatrix2.pickle
+file_location = "<path to PMatrix2 file>" # ./PMatrix2.pkl
 
 if os.path.isfile(file_location):
     with open(file_location, "rb") as file:
