@@ -735,7 +735,7 @@ class XEBResult:
             fit_log_entropy: Indicate if the log-entropy XEB data should be fitted
         Returns:
         """
-        plt.figure()
+
         plt.rcParams["text.usetex"] = False
 
         if self.xeb_config.disjoint_processing:
@@ -754,7 +754,6 @@ class XEBResult:
                             xx,
                             exponential_decay(xx, a_lin, layer_fid_lin),
                             label=f"Fit (Linear XEB Qubit {q}), layer_fidelity={layer_fid_lin * 100:.1f}%",
-                            color="red",
                         )
                 except Exception as e:
                     raise e
@@ -772,7 +771,6 @@ class XEBResult:
                             xx,
                             exponential_decay(xx, a_log, layer_fid_log),
                             label=f"Fit (Log XEB Qubit {q}), layer_fidelity={layer_fid_log * 100:.1f}%",
-                            color="green",
                         )
                 except Exception as e:
                     print("Fit for Log XEB data failed")
@@ -783,7 +781,7 @@ class XEBResult:
                 masked_linear_fids = linear_fidelities["fidelity"][mask_lin]
                 if fit_linear:
                     label = f"Linear XEB Data Qubit {q}"
-                    plt.scatter(masked_linear_depths, masked_linear_fids, label=label, color="blue")
+                    plt.scatter(masked_linear_depths, masked_linear_fids, label=label)
 
                 mask_log = (Fxeb > 0) & (Fxeb < 1)
                 if fit_log_entropy:
@@ -791,7 +789,6 @@ class XEBResult:
                         self.xeb_config.depths[mask_log],
                         Fxeb[mask_log],
                         label=f"Log XEB Data Qubit {q}",
-                        color="orange",
                     )
 
         else:
