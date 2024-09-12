@@ -57,7 +57,7 @@ frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 
 # Get the list of intermediate frequencies at which the correction matrix will be updated in QUA and the corresponding
 # correction matrix elements
-IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_LO_and_IF(
+corrected_IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_LO_and_IF(
     path_to_database="",
     config=config,
     element="resonator",
@@ -96,7 +96,7 @@ with program() as resonator_spec:
                 update_frequency("resonator", f)
                 # Update the correction matrix only at a pre-defined set of intermediate IFs
                 with switch_(f):
-                    for idx, current_if in enumerate(IFs):
+                    for idx, current_if in enumerate(corrected_IFs):
                         with case_(int(current_if)):
                             update_correction(
                                 "resonator",
