@@ -1,5 +1,5 @@
 """
-        POWER RABI
+        SELECTIVE PULSE POWER RABI
 The sequence consists in playing the qubit pulse (x180_long) and measuring the state of the resonator
 for different qubit pulse amplitudes.
 The experimental results are then analyzed to find the qubit pulse amplitude for the chosen duration.
@@ -23,8 +23,6 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #

@@ -1,10 +1,9 @@
 """
         NUMBER SPLITTING SPECTROSCOPY WITH DISPLACEMENT
-This sequence involves sending a cw pulse to the storage cavity, displacing the storage,
+This sequence involves sending a cw pulse to the storage cavity (displacing the storage)
 followed by a selective pi-pulse (x180_long) to qubit and measure across various qubit drive intermediate dfs.
 
 The data is post-processed to determine the distance between different Fock states in the frequency domain.
-
 
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
@@ -28,8 +27,7 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-import matplotlib
-matplotlib.use('Qt5Agg')
+
 
 ###################
 # The QUA program #

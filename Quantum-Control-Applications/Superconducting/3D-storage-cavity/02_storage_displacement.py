@@ -1,12 +1,12 @@
 """
         STORAGE DISPLACEMENT
-This sequence involves sending a cw pulse to the storage cavity, displacing the storage,
+This sequence involves sending a cw pulse to the storage cavity (displacing the storage),
 followed by a selective pi-pulse (x180_long) to qubit and measure across various storage cw pulse durations.
 
 The data is post-processed to determine the $|\alpha|$ parameter, which can then be used to adjust
 the duration and amplitude parameters of the beta pulses in SNAP.
 The parameters are:
-1. Amplitude: s
+1. Amplitude:
     storage_beta1_amp = storage_const_amp
     storage_beta2_amp = storage_const_amp
 2. Duration:
@@ -39,8 +39,6 @@ import macros as macros
 import numpy as np
 import scipy.special as sp
 import scipy.optimize as spo
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -152,7 +150,8 @@ else:
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("displacement pulse duration [ns]")
         ax2.set_ylim(0, 1)
-
+        
+    # fitting and extracting $|\alpha|$ #
     def func(t, A, kappa,offset, n=0):
         alpha = kappa*t
         return A*np.exp(-np.abs(alpha)**2)*np.abs(alpha)**(2*n)/sp.factorial(n)+offset

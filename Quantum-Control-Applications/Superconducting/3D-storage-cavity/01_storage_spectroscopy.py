@@ -14,7 +14,7 @@ Prerequisites:
     - Calibration of the IQ mixer connected to the resonator drive line (whether it's an external mixer or an Octave port).
     - Identification of the qubit's resonance frequency (referred to as "qubit_spectroscopy").
     - Calibration of the IQ mixer connected to the qubit drive line (whether it's an external mixer or an Octave port).
-    - Configuration of the x180_long pulse amplitude and duration to apply a pi-pulse on the qubit when the storage is at Fock state n=0.
+    - Configuration of the x180_long pulse amplitude and duration to apply a selective pi-pulse on the qubit (n=0).
     - Specification of the expected storage_thermalization_time of the storage in the configuration.
 
 Before proceeding to the next node:
@@ -30,8 +30,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
-import matplotlib
-matplotlib.use('Qt5Agg')
+
 
 ###################
 # The QUA program #

@@ -1,10 +1,9 @@
 """
-        NUMBER SPLITTING SPECTROSCOPY WITH DISPLACEMENT
+        NUMBER SPLITTING SPECTROSCOPY WITH SNAP
 This sequence involves initiating the storage in the Fock state n=1 using SNAP,
 followed by a selective pi-pulse (x180_long) to qubit and measure across various qubit drive intermediate dfs.
 
 The data is post-processed to determine the distance between different Fock states in the frequency domain.
-
 
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
@@ -30,8 +29,6 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 
 ###################
@@ -65,7 +62,6 @@ with program() as number_splitting_spectroscopy:
 
             # Prepare the storage cavity in Fock state n=1
             play("beta1", "storage")
-            align()
             align("qubit", "storage")
             play("x360_long", "qubit") # play a selective 2pi pulse at qubit frequency that corresponds to n=0
             align("qubit", "storage")
@@ -135,7 +131,7 @@ else:
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Plot results
-        fig1.suptitle(f"Number Splitting Spectroscopy at Fock state n=1 - LO = {s_LO / u.GHz} GHz")
+        fig1.suptitle(f"Number Splitting Spectroscopy at Fock state n=1 - LO = {storage_LO / u.GHz} GHz")
         ax1[0].clear()
         ax1[1].clear()
         ax1[0].cla()

@@ -1,11 +1,10 @@
 """
         STORAGE COHERENT STATE DECAY
-This sequence involves sending a cw pulse to the storage cavity, displacing the storage,
+This sequence involves sending a cw pulse to the storage cavity (displacing the storage)
 and measure after a varying time by applying a selective pi-pulse (x180_long) to qubit and measure the resonator.
 
 The data is post-processed to determine the storage_T1 parameter, which can then be used to adjust
 the storage_thermalization_time.
-
 
 Prerequisites:
     - Identification of the resonator's resonance frequency when coupled to the qubit in question (referred to as "resonator_spectroscopy").
@@ -30,8 +29,6 @@ import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
 import scipy.optimize as spo
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -147,9 +144,7 @@ else:
     def func(t, A, alpha, kappa,offset, n=0):
         return A*np.exp(-np.abs(alpha)**2*np.exp(-kappa*t))+offset
 
-
-
-
+    # fitting and extracting T1 #
     x0 = [-max(state)+min(state),3, 0.79, max(state)]
     popt, pcov = spo.curve_fit(func, durations*4/u.ms, state, p0=x0)
     print(popt)
