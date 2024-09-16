@@ -1,6 +1,7 @@
 """
 Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from scipy.optimize import curve_fit

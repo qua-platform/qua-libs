@@ -2,6 +2,7 @@
 A script that changes the duration of the pulses send to the ensemble to determine
 which pulse duration maximizes the echo amplitude
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface

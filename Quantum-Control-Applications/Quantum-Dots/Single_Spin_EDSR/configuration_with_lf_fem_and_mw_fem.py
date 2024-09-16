@@ -1,6 +1,7 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
+
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit

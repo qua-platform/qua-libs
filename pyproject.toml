@@ -11,13 +11,12 @@ python = ">=3.8,<3.12"
 qm-qua = {version = ">=1.2.0", allow-prereleases = true}
 
 [tool.poetry.dev-dependencies]
-black = "^22.3.0"
+black = "^24.3.0"
 poethepoet = "^0.10.0"
 flake8 = "^3.9.1"
 
 [tool.black]
 line-length = 120
-target-version = ['py37']
 #include = '(examples)/.+\.pyi?$'
 #include = '(Quantum Control Applications)/.+\.pyi?$'
 #include = '(Tutorials)/.+\.pyi?$'

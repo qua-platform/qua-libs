@@ -1,6 +1,7 @@
 """
 hahn_echo.py: Measures T2.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig

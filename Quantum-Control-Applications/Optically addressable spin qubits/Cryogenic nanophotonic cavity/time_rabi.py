@@ -1,6 +1,7 @@
 """
 A Rabi experiment sweeping the duration of the MW pulse.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
