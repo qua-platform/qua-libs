@@ -61,6 +61,7 @@ with program() as qubit_spec:
         with for_(*from_array(t, durations)):
             assign(phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
             # Prepare the storage cavity in Fock state n=1
+            update_frequency("qubit", qubit_IF)
             play("beta1", "storage")
             align()
             align("qubit", "storage")
