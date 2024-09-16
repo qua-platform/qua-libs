@@ -1,6 +1,7 @@
 """
 cryoscope.py: template for performing the cryoscope protocol.
 """
+
 import scipy.io
 from qm.qua import *
 from qm import QuantumMachinesManager

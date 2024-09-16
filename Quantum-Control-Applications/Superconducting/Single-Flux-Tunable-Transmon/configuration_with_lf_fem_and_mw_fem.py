@@ -203,7 +203,11 @@ config = {
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"full_scale_power_dbm": resonator_power, "band": 2, "upconverter_frequency": resonator_LO},  # resonator
+                        1: {
+                            "full_scale_power_dbm": resonator_power,
+                            "band": 2,
+                            "upconverter_frequency": resonator_LO,
+                        },  # resonator
                         2: {"full_scale_power_dbm": qubit_power, "band": 2, "upconverter_frequency": qubit_LO},  # qubit
                     },
                     "digital_outputs": {},
