@@ -1,7 +1,5 @@
 # %%
-from pathlib import Path
-
-from qualang_tools.wirer.wirer.channel_specs import mw_fem_spec, lf_fem_spec, opx_spec, octave_spec
+from qualang_tools.wirer.wirer.channel_specs import opx_spec, octave_spec
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_libs.quam_builder.machine import build_quam_wiring
 

@@ -1,6 +1,4 @@
 # %%
-from pathlib import Path
-
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_libs.quam_builder.machine import build_quam_wiring
