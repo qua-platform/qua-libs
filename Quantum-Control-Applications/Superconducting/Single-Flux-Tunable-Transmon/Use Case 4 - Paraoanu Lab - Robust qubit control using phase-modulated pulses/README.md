@@ -40,6 +40,7 @@ The second part of the code defines a QUA program that performs a Rabi amplitude
   - `detuning_span`: Total span of detuning values.
   - `n_a`: Number of amplitude points.
   - `a_array`: Array of amplitude values.
+  - `n_avg`: number of averages.
 
 - **QUA Program:**
   - A QUA program named `rabi_amp_freq` is created to perform the sweep.

@@ -7,8 +7,7 @@ from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
+
 def supergaussian(length, order, cutoff):
    """
     Generate a super-Gaussian envelope.
@@ -53,7 +52,6 @@ pulse_flag = 2 # 0 for rectangular, 1 for super-Gaussian, 2 for robust pulse
 
 # Generate the pulse based on the selected flag
 
-
 if pulse_flag == 0:
         pulse = robust_wf(robust_amp,robust_len,mod=0,order=4,cutoff=1)  # rectangular pulse
 elif pulse_flag == 1:
@@ -70,7 +68,6 @@ config['waveforms'].update({"Q_wf": {"type": "arbitrary", "samples": np.imag(pul
 # Plot the real and imaginary parts of the generated pulse
 plt.plot(np.real(pulse))
 plt.plot(np.imag(pulse))
-plt.show()
 
 # Define parameters for frequency detuning and amplitude sweeps
 n_detuning = 321  # Number of detuning points
@@ -79,7 +76,7 @@ detuning_array = np.linspace(-detuning_span / 2, detuning_span / 2, n_detuning).
     int)  # Array of detuning values centered around zero
 
 
-n_avg = 1000
+n_avg = 1000 # Number of averages
 n_a = 101  # Number of amplitude points
 a_array = np.linspace(0, 2 - 2 ** -16, n_a)  # Array of amplitude values ranging from 0 to just below 2
 
