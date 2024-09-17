@@ -1,158 +1,74 @@
 # %%
 import json
-# from pathlib import Path
-
-# from qualang_tools.units import unit
+from qualang_tools.units import unit
 from quam_libs.components import QuAM
 from quam_libs.quam_builder.machine import save_machine
+import numpy as np
 
-path = r"C:\Users\daveh\Documents\Cloned Repos\CS_installations\configuration\quam_state"
+def get_band(freq):
+    if 50e6 <= freq < 5.5e9:
+        return 1
+    elif 4.5e9 <= freq < 7.5e9:
+        return 2
+    elif 6.5e9 <= freq <= 10.5e9:
+        return 3
+    else:
+        raise ValueError(f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]")
+
+path = "./quam_state"
 
 machine = QuAM.load(path)
 
-# u = unit(coerce_to_integer=True)
+u = unit(coerce_to_integer=True)
 
 # Change active qubits
 # machine.active_qubit_names = ["q0"]
 
-# %%
-# FLux-Line sampling_rate, upsampling_mode, output_mode
+# Update frequencies
+rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * u.GHz
+rr_LO = 4.75 * u.GHz
+rr_if = rr_freq - rr_LO
+rr_max_power_dBm = -8
 
-qubits = machine.active_qubits
-
-qubit_fluxes_dict = {
-    1: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0},
-    2: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0},
-    3: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0},
-    4: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0},
-    5: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0},
-    6: {"sampling_rate": 1e9, "upsampling_mode": "pulse", "output_mode": "direct", "delay": 0}
-}
-
-for qb_flux in qubit_fluxes_dict.keys():
-    fem_id = qubits[qb_flux - 1].z.opx_output.fem_id
-    port_id = qubits[qb_flux - 1].z.opx_output.port_id
-
-    machine.ports.analog_outputs.con1[fem_id][port_id].sampling_rate = qubit_fluxes_dict[qb_flux]["sampling_rate"]
-    machine.ports.analog_outputs.con1[fem_id][port_id].upsampling_mode = qubit_fluxes_dict[qb_flux]["upsampling_mode"]
-    machine.ports.analog_outputs.con1[fem_id][port_id].output_mode = qubit_fluxes_dict[qb_flux]["output_mode"]
-    machine.ports.analog_outputs.con1[fem_id][port_id].delay = qubit_fluxes_dict[qb_flux]["delay"]
-
-
-# %%
-# XY-drive full_scale_power_dbm, upconverter_frequency, band
+xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.254, 5.978]) * u.GHz
+xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 6.0]) * u.GHz
+xy_if = rr_freq - rr_LO
+xy_max_power_dBm = 1
 
 # NOTE: be aware of coupled ports for bands
+for i, q in enumerate(machine.qubits):
+    ## Update qubit rr freq and power
+    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
+    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+    machine.qubits[q].resonator.opx_input.band = get_band(rr_LO)
+    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
 
-qubits = machine.active_qubits
+    ## Update qubit xy freq and power
+    machine.qubits[q].xy.opx_output.full_scale_power_dbm = xy_max_power_dBm
+    machine.qubits[q].xy.opx_output.upconverter_frequency = xy_LO[i]
+    machine.qubits[q].xy.opx_output.band = get_band(xy_LO[i])
+    machine.qubits[q].xy.intermediate_frequency = xy_if[i]
 
-qubits_dict = {
-    1: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0},
-    2: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0},
-    3: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0},
-    4: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0},
-    5: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0},
-    6: {"power_dbm": 1, "up_freq": 5700000000.0, "band": 2, "delay": 0}
-}
+    # Update flux channels
+    machine.qubits[q].z.opx_output.output_mode = "amplified"
+    machine.qubits[q].z.opx_output.upsampling_mode = "pulse"
 
-
-for qb in qubits_dict.keys():
-        
-    fem_id = qubits[qb - 1].xy.opx_output.fem_id
-    port_id = qubits[qb - 1].xy.opx_output.port_id
-    machine.ports.mw_outputs.con1[fem_id][port_id].full_scale_power_dbm = qubits_dict[qb]["power_dbm"]
-    machine.ports.mw_outputs.con1[fem_id][port_id].upconverter_frequency = qubits_dict[qb]["up_freq"]
-    machine.ports.mw_outputs.con1[fem_id][port_id].band = qubits_dict[qb]["band"]
-    machine.ports.mw_outputs.con1[fem_id][port_id].delay = qubits_dict[qb]["delay"]
-
-
-# %%
-# Resonator-drive full_scale_power_dbm, upconverter_frequency, band
-
-# NOTE: be aware of coupled ports for bands
-
-resonators_dict = {
-    1: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": -260e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    },
-    2: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": -170e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    },
-    3: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": -80e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    },
-    4: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": +20e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    },
-    5: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": 110e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    },
-    6: {
-        "output_full_scale_power_dbm": 10,
-        "output_upconverter_frequency": 6.2e9,
-        "intermediate_frequency": 220e6,
-        "output_band": 2,
-        "input_band": 2,
-        "input_downconverter_frequency": 6.2e9,
-        "delay": 0
-    }
-}
-
-resonators_to_change = [1, 2, 3, 4, 5, 6]
-
-for rr in resonators_to_change:
-
-    opx_output_fem_id = qubits[rr - 1].resonator.opx_output.fem_id
-    opx_output_port_id = qubits[rr - 1].resonator.opx_output.port_id
-    opx_input_fem_id = qubits[rr - 1].resonator.opx_input.fem_id
-    opx_input_port_id = qubits[rr - 1].resonator.opx_input.port_id
-
-    machine.active_qubits[rr - 1].resonator.intermediate_frequency = resonators_dict[rr]["intermediate_frequency"]
-
-    machine.ports.mw_outputs.con1[opx_output_fem_id][opx_output_port_id].full_scale_power_dbm = resonators_dict[rr]["output_full_scale_power_dbm"]
-    machine.ports.mw_outputs.con1[opx_output_fem_id][opx_output_port_id].upconverter_frequency = resonators_dict[rr]["output_upconverter_frequency"]
-    machine.ports.mw_outputs.con1[opx_output_fem_id][opx_output_port_id].band = resonators_dict[rr]["output_band"]
-    machine.ports.mw_outputs.con1[opx_output_fem_id][opx_output_port_id].delay = resonators_dict[rr]["delay"]
-
-    machine.ports.mw_inputs.con1[opx_input_fem_id][opx_input_port_id].band = resonators_dict[rr]["input_band"]
-    machine.ports.mw_inputs.con1[opx_input_fem_id][opx_input_port_id].downconverter_frequency = resonators_dict[rr]["input_downconverter_frequency"]
-
-# %%
-# Resonator Operations amplitude
-for qubit in machine.active_qubits:
-    # NOTE: in MW-FEM it scales from [-1, 1] with respect to the full_scale_power_dbm of the corresponding output
-    qubit.resonator.operations['readout'].amplitude = 0.5
-    qubit.resonator.operations['const'].amplitude = 0.5
+    ## Update pulses
+    # readout
+    machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
+    machine.qubits[q].resonator.operations["readout"].amplitude = 1e-3
+    # Qubit saturation
+    machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
+    machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
+    # Single qubit gates - DragCosine
+    machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
+    machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
+    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
+    # Single qubit gates - Square
+    machine.qubits[q].xy.operations["x180_Square"].length = 40
+    machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
+    machine.qubits[q].xy.operations["x90_Square"].amplitude = machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
 
 # %%
 # save into state.json
