@@ -118,7 +118,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -355000000.0,
+                "intermediate_frequency": -336558772.7098138,
                 "opx_output": "#/wiring/qubits/q1/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -147,9 +147,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -355000000.0,
+                "intermediate_frequency": -357754882.0,
                 "opx_input": "#/wiring/qubits/q1/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q1/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -272,7 +272,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -338000000.0,
+                "intermediate_frequency": -353122568.2153939,
                 "opx_output": "#/wiring/qubits/q2/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -301,9 +301,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -338000000.0,
+                "intermediate_frequency": -333973837.0,
                 "opx_input": "#/wiring/qubits/q2/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q2/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -426,7 +426,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -229000000.0,
+                "intermediate_frequency": -215434121.77866626,
                 "opx_output": "#/wiring/qubits/q3/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -455,9 +455,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -229000000.0,
+                "intermediate_frequency": -235531549.0,
                 "opx_input": "#/wiring/qubits/q3/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q3/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -580,7 +580,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -22000000.0,
+                "intermediate_frequency": -10895014.46788786,
                 "opx_output": "#/wiring/qubits/q4/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -609,9 +609,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": -22000000.0,
+                "intermediate_frequency": -27863227.0,
                 "opx_input": "#/wiring/qubits/q4/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q4/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -734,7 +734,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": 165000000.0,
+                "intermediate_frequency": 182011143.02986312,
                 "opx_output": "#/wiring/qubits/q5/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -763,9 +763,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": 165000000.0,
+                "intermediate_frequency": 169475542.0,
                 "opx_input": "#/wiring/qubits/q5/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q5/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -888,7 +888,7 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": 397000000.0,
+                "intermediate_frequency": 418728133.36902887,
                 "opx_output": "#/wiring/qubits/q6/xy/opx_output",
                 "__class__": "quam.components.channels.MWChannel"
             },
@@ -917,9 +917,9 @@
                         "__class__": "quam.components.pulses.SquarePulse"
                     }
                 },
-                "intermediate_frequency": 397000000.0,
+                "intermediate_frequency": 385714246.0,
                 "opx_input": "#/wiring/qubits/q6/rr/opx_input",
-                "time_of_flight": 28,
+                "time_of_flight": 304,
                 "opx_output": "#/wiring/qubits/q6/rr/opx_output",
                 "__class__": "quam_libs.components.readout_resonator.ReadoutResonatorMW"
             }
@@ -997,7 +997,7 @@
                         "port_id": 1,
                         "band": 1,
                         "upconverter_frequency": 4750000000,
-                        "full_scale_power_dbm": -8,
+                        "full_scale_power_dbm": 4,
                         "__class__": "quam.components.ports.analog_outputs.MWFEMAnalogOutputPort"
                     },
                     "2": {

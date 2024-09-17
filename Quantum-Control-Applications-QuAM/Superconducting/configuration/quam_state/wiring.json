@@ -1,8 +1,10 @@
 {
     "network": {
-        "host": "172.16.33.101",
+        "host": "172.16.33.116",
         "port": 9510,
-        "cluster_name": "Cluster_1"
+        "cluster_name": "Beta_8",
+        "octave_ips": [],
+        "octave_ports": []
     },
     "wiring": {
         "qubits": {

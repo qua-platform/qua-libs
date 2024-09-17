@@ -70,6 +70,53 @@ A class is provided to create a "default" wiring. The default wiring assigns por
 
 This extends over multiple LF-FEMs, OPX+ and Octaves when needed.
 
+## Folder structure
+
+The typical QUAM/QUalibrate folder structure is as follows:
+````
+├───calibration_data
+│   └───2024-09-17
+│       └───#1_01_Time_of_Flight_152438
+│           └───quam_state
+|
+├───calibration_graph
+│ 
+├───configuration
+│   └───quam_state
+|
+└───quam_libs
+    ├───components
+    ├───lib
+    └───quam_builder
+        ├───transmons
+        └───wiring
+````
+### calibration_data
+This folder contains the data that will be saved after the execution of each calibration node.
+The [data handler](https://github.com/qua-platform/py-qua-tools/tree/main/qualang_tools/results#data-handler) is used to save data into an automatically generated folder with folder structure: 
+`{root_data_folder}/%Y-%m-%d/#{idx}_{name}_%H%M%S`.
+
+The saved data can have a different format depending on its type:
+* The figures are saved as .png.
+* The arrays are saved as .npz.
+* The node parameters, state and wiring are saved as .json.
+
+### calibration_graph
+This folder contains all the calibration scripts that can compose a qualibrate graph.
+The structure of the nodes is described below.
+
+### configuration
+The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
+It contains three files whose working principles are explained in more details below:
+* [make_wiring.py](./configuration/make_wiring.py): create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...). 
+* [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration. 
+* [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
+
+### quam_libs
+This folder contains all the utility functions necessary to create the wiring or build the QUAM, as well as QUA macros and data processing tools:
+* [components](./quam_libs/components): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
+* [lib](./quam_libs/lib): contains several utility functions for saving, fitting and post-processing data.
+* [quam_builder](./quam_libs/quam_builder): contains the main functions called in [machine.py](./quam_libs/quam_builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_libs/components) folder. It also contains the [pulses.py](./quam_libs/quam_builder/pulses.py) file where the default qubits pulses are defined.
 
 ## How to generate the QuAM
 Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QuAM](https://github.com/qua-platform/quam)) for the desired 

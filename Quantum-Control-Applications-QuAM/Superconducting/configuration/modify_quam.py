@@ -28,7 +28,7 @@ u = unit(coerce_to_integer=True)
 rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * u.GHz
 rr_LO = 4.75 * u.GHz
 rr_if = rr_freq - rr_LO
-rr_max_power_dBm = -8
+rr_max_power_dBm = 4
 
 xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.254, 5.978]) * u.GHz
 xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 6.0]) * u.GHz

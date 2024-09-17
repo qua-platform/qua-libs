@@ -83,7 +83,7 @@ with program() as raw_trace_prog:
 
     with for_(n, 0, n < node.parameters.num_averages, n + 1):
         # Reset the phase of the digital oscillator associated to the resonator element. Needed to average the cosine signal.
-        reset_phase(resonator.name)
+        reset_if_phase(resonator.name)
         # Measure the resonator (send a readout pulse and record the raw ADC trace)
         resonator.measure("readout", stream=adc_st)
         # Wait for the resonator to deplete
@@ -167,7 +167,7 @@ else:
             if node.parameters.time_of_flight_in_ns is not None:
                 resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(delay)
             else:
-                resonator.time_of_flight = resonator.time_of_flight + int(delay)
+                resonator.time_of_flight += int(delay)
 
 
     node.results = {
