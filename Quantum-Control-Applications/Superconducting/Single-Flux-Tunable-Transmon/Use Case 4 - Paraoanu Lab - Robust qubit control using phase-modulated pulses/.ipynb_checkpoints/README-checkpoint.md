@@ -13,7 +13,7 @@ You can find more information about this technique in:
 
 The code is organized into two main sections:
 
-1. **Waveform Generation:** This section updates the configuration dictionary with various types of waveforms, including rectangular, super-Gaussian, and robust phase-modulated pulses.
+1. **Waveform Generation:** This section defines a configuration dictionary and functions to generate various types of waveforms, including rectangular, super-Gaussian, and robust phase-modulated pulses. The generated waveforms are stored in the configuration file.
 
 2. **QUA Program:** This section defines a QUA program to perform a Rabi amplitude and frequency sweep. The program sweeps over different amplitude and detuning values, measures the resulting I (in-phase) and Q (quadrature) components of the signal, and processes the data to obtain averaged results.
 
@@ -48,12 +48,6 @@ The second part of the code defines a QUA program that performs a Rabi amplitude
   - The program iterates over different amplitude and detuning values, applies the corresponding pulse to the qubit, and measures the resulting I and Q components.
   - The data is streamed, buffered, averaged, and saved for analysis.
 
-Performing Rabi experiments with the three different pulse types on a transmon qubit, yields the following measurement results:
-
-<img src="Rabi.png" alt="Logo" width="500"/>
-
-
-In this case using a rectangular pulse shows high sensitivity to detuning and amplitude variations with narrow bands of optimal performance. Using a super-Gaussian envelope reduces the pulse bandwidth, and at the same time increases the sensitivity to frequency errors. Utilizing the phase modulated pulse with a super-Gaussian envelope demonstrates the highest resilience, maintaining high fidelity across wide detuning and amplitude variations.
 
 
 ## References
