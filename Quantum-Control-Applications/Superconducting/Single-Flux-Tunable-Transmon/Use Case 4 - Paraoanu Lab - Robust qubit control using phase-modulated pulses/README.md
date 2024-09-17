@@ -21,9 +21,7 @@ The code is organized into two main sections:
 
 ### 1. **Waveform Generation**
 
-The first part of the code is responsible for generating and configuring waveforms for the quantum experiment.
-
-- **`config` Dictionary:** A configuration dictionary is defined to store the pulse and waveform configurations, which will be updated based on the specific waveforms generated.
+The first part of the code is responsible for generating the waveforms for the quantum experiment.
 
 - **Waveform Functions:**
   - `supergaussian(length, order, cutoff)`: Generates a super-Gaussian envelope.
