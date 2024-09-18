@@ -1,5 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
 from configuration import *
 from qm.qua import *
 from qm import QuantumMachinesManager
@@ -8,6 +6,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 
+# Section 1: Waveform generation
 def supergaussian(length, order, cutoff):
    """
     Generate a super-Gaussian envelope.
@@ -45,7 +44,7 @@ def robust_wf(amp,length,mod=40e6,order=4,cutoff=1e-2):
 
 # Parameters for the robust waveform
 robust_len=200
-robust_amp=0.1
+robust_amp=0.2
 
 # Select the type of pulse to generate using the match-case structure
 pulse_flag = 2 # 0 for rectangular, 1 for super-Gaussian, 2 for robust pulse
@@ -59,24 +58,25 @@ elif pulse_flag == 1:
 elif pulse_flag == 2:
         pulse = robust_wf(robust_amp,robust_len,mod=40e6,order=4,cutoff=1e-2) # robust pulse
 
-# Update the pulse waveforms in the co: I = real(pulse)   and Q=imag(pulse)!!!
+# Update the pulse waveforms in the config: I=real(pulse) and Q=imag(pulse)
 config['elements']['qubit']['operations'].update({'robust_op':'robust_pulse'})
-config['pulses'].update({"robust_pulse": {"operation": "control","length": robust_len,"waveforms": {"I":"I_wf","Q":"Q_wf",},}})
-config['waveforms'].update({"I_wf": {"type": "arbitrary", "samples": np.real(pulse).tolist()}})
-config['waveforms'].update({"Q_wf": {"type": "arbitrary", "samples": np.imag(pulse).tolist()}})
+config['pulses'].update({"robust_pulse": {"operation": "control","length": robust_len,"waveforms": {"I":"robust_I_wf","Q":"robust_Q_wf",},}})
+config['waveforms'].update({"robust_I_wf": {"type": "arbitrary", "samples": np.real(pulse).tolist()}})
+config['waveforms'].update({"robust_Q_wf": {"type": "arbitrary", "samples": np.imag(pulse).tolist()}})
 
 # Plot the real and imaginary parts of the generated pulse
 plt.plot(np.real(pulse))
 plt.plot(np.imag(pulse))
 
-# Define parameters for frequency detuning and amplitude sweeps
+# Section 2: QUA program
+n_avg = 1000 # Number of averages
+# Define parameters for frequency detuning sweeps
 n_detuning = 321  # Number of detuning points
 detuning_span = 160e6  # Total span of detuning in Hz
 detuning_array = np.linspace(-detuning_span / 2, detuning_span / 2, n_detuning).astype(
     int)  # Array of detuning values centered around zero
 
-
-n_avg = 1000 # Number of averages
+# Define parameters for amplitude sweeps
 n_a = 101  # Number of amplitude points
 a_array = np.linspace(0, 2 - 2 ** -16, n_a)  # Array of amplitude values ranging from 0 to just below 2
 
@@ -149,18 +149,4 @@ else:
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rabi_amp_freq)
-    # Get results from QUA program
-    results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
-    # Live plotting
-    fig = plt.figure()
-    interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-    while results.is_processing():
-        # Fetch results
-        I, Q, iteration = results.fetch_all()
-        # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, readout_len)
-        R = np.abs(S)  # Amplitude
-        phase = np.angle(S)  # Phase
-        # Progress bar
-        progress_counter(iteration, n_avg, start_time=results.get_start_time())
-        # Plot results
+    
