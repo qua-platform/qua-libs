@@ -344,3 +344,14 @@ with open("qua_config.json", "w+") as f:
 
 Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be
 updated at the end of each calibration node.
+
+## How to run Qualibrate nodes
+
+
+### Node structure
+
+### Execution
+
+#### As standalone python scripts
+
+#### Within Qualibrate
