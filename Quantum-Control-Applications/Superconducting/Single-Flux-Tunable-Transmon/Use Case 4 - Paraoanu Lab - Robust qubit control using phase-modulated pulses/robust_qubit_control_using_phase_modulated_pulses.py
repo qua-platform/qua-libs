@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 # Section 1: Waveform generation
 def supergaussian(length, order, cutoff):
-   """
+    """
     Generate a super-Gaussian envelope.
 
     Parameters:
@@ -19,10 +19,11 @@ def supergaussian(length, order, cutoff):
     Returns:
     - numpy array: The super-Gaussian envelope.
     """
-   x = np.linspace(-1, 1, length)
-   return np.exp(x ** order * np.log(cutoff))
+    x = np.linspace(-1, 1, length)
+    return np.exp(x ** order * np.log(cutoff))
 
-def robust_wf(amp,length,mod=40e6,order=4,cutoff=1e-2):
+
+def robust_wf(amp, length, mod=40e6, order=4, cutoff=1e-2):
     """
     Generate a robust waveform with phase modulation.
 
@@ -40,41 +41,51 @@ def robust_wf(amp,length,mod=40e6,order=4,cutoff=1e-2):
     robust_freq = np.linspace(-1, 1, length) * mod
     robust_envelope = supergaussian(length, order, cutoff)
     robust_rescaling = length / robust_envelope.sum()
-    return  robust_amp * robust_rescaling * robust_envelope * np.exp(1j * 2 * np.pi * robust_time * robust_freq)
+    return robust_amp * robust_rescaling * robust_envelope * np.exp(1j * 2 * np.pi * robust_time * robust_freq)
+
 
 # Parameters for the robust waveform
-robust_len=200
-robust_amp=0.2
+robust_len = 200
+robust_amp = 0.2
 
 # Select the type of pulse to generate using the match-case structure
-pulse_flag = 2 # 0 for rectangular, 1 for super-Gaussian, 2 for robust pulse
+pulse_flag = 2  # 0 for rectangular, 1 for super-Gaussian, 2 for robust pulse
 
 # Generate the pulse based on the selected flag
 
 if pulse_flag == 0:
-        pulse = robust_wf(robust_amp,robust_len,mod=0,order=4,cutoff=1)  # rectangular pulse
+    pulse = robust_wf(robust_amp, robust_len, mod=0, order=4, cutoff=1)  # rectangular pulse
 elif pulse_flag == 1:
-        pulse = robust_wf(robust_amp,robust_len,mod=0,order=4,cutoff=1e-2) # super-Gaussian pulse
+    pulse = robust_wf(robust_amp, robust_len, mod=0, order=4, cutoff=1e-2)  # super-Gaussian pulse
 elif pulse_flag == 2:
-        pulse = robust_wf(robust_amp,robust_len,mod=40e6,order=4,cutoff=1e-2) # robust pulse
+    pulse = robust_wf(robust_amp, robust_len, mod=40e6, order=4, cutoff=1e-2)  # robust pulse
 
 # Update the pulse waveforms in the config: I=real(pulse) and Q=imag(pulse)
-config['elements']['qubit']['operations'].update({'robust_op':'robust_pulse'})
-config['pulses'].update({"robust_pulse": {"operation": "control","length": robust_len,"waveforms": {"I":"robust_I_wf","Q":"robust_Q_wf",},}})
-config['waveforms'].update({"robust_I_wf": {"type": "arbitrary", "samples": np.real(pulse).tolist()}})
-config['waveforms'].update({"robust_Q_wf": {"type": "arbitrary", "samples": np.imag(pulse).tolist()}})
+config["elements"]["qubit"]["operations"].update({"robust_op": "robust_pulse"})
+config["pulses"].update(
+    {
+        "robust_pulse": {
+            "operation": "control",
+            "length": robust_len,
+            "waveforms": {"I": "robust_I_wf", "Q": "robust_Q_wf",},
+        }
+    }
+)
+config["waveforms"].update({"robust_I_wf": {"type": "arbitrary", "samples": np.real(pulse).tolist()}})
+config["waveforms"].update({"robust_Q_wf": {"type": "arbitrary", "samples": np.imag(pulse).tolist()}})
 
 # Plot the real and imaginary parts of the generated pulse
 plt.plot(np.real(pulse))
 plt.plot(np.imag(pulse))
 
 # Section 2: QUA program
-n_avg = 1000 # Number of averages
+n_avg = 1000  # Number of averages
 # Define parameters for frequency detuning sweeps
 n_detuning = 321  # Number of detuning points
 detuning_span = 160e6  # Total span of detuning in Hz
 detuning_array = np.linspace(-detuning_span / 2, detuning_span / 2, n_detuning).astype(
-    int)  # Array of detuning values centered around zero
+    int
+)  # Array of detuning values centered around zero
 
 # Define parameters for amplitude sweeps
 n_a = 101  # Number of amplitude points
@@ -99,13 +110,13 @@ with program() as rabi_amp_freq:
             # Loop over each detuning value
             with for_each_(detuning, detuning_array.tolist()):
                 # Update the qubit frequency with the current detuning value
-                update_frequency('qubit', detuning + qubit_IF)
+                update_frequency("qubit", detuning + qubit_IF)
 
                 # Play the pulse with the current amplitude on the qubit
-                play('robust_op' * amp(a), 'qubit')
+                play("robust_op" * amp(a), "qubit")
 
                 # Align the qubit and resonator operations
-                align('qubit', 'resonator')
+                align("qubit", "resonator")
 
                 # Perform dual demodulation measurement on the qubit signal
                 measure(
@@ -122,8 +133,8 @@ with program() as rabi_amp_freq:
 
     # Stream processing block to buffer and average the measurement results
     with stream_processing():
-        I_st.buffer(n_a, n_detuning).average().save('I')  # Buffer and average I data, then save
-        Q_st.buffer(n_a, n_detuning).average().save('Q')  # Buffer and average Q data, then save
+        I_st.buffer(n_a, n_detuning).average().save("I")  # Buffer and average I data, then save
+        Q_st.buffer(n_a, n_detuning).average().save("Q")  # Buffer and average Q data, then save
 
 
 #####################################
