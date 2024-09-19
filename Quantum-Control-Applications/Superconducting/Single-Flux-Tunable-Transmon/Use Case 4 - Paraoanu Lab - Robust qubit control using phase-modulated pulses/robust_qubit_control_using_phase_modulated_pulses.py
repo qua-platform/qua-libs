@@ -6,6 +6,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 
+
 # Section 1: Waveform generation
 def supergaussian(length, order, cutoff):
     """
@@ -20,7 +21,7 @@ def supergaussian(length, order, cutoff):
     - numpy array: The super-Gaussian envelope.
     """
     x = np.linspace(-1, 1, length)
-    return np.exp(x ** order * np.log(cutoff))
+    return np.exp(x**order * np.log(cutoff))
 
 
 def robust_wf(amp, length, mod=40e6, order=4, cutoff=1e-2):
@@ -67,7 +68,10 @@ config["pulses"].update(
         "robust_pulse": {
             "operation": "control",
             "length": robust_len,
-            "waveforms": {"I": "robust_I_wf", "Q": "robust_Q_wf",},
+            "waveforms": {
+                "I": "robust_I_wf",
+                "Q": "robust_Q_wf",
+            },
         }
     }
 )
@@ -89,7 +93,7 @@ detuning_array = np.linspace(-detuning_span / 2, detuning_span / 2, n_detuning).
 
 # Define parameters for amplitude sweeps
 n_a = 101  # Number of amplitude points
-a_array = np.linspace(0, 2 - 2 ** -16, n_a)  # Array of amplitude values ranging from 0 to just below 2
+a_array = np.linspace(0, 2 - 2**-16, n_a)  # Array of amplitude values ranging from 0 to just below 2
 
 # Define the QUA program for a Rabi amplitude and frequency sweep experiment
 with program() as rabi_amp_freq:

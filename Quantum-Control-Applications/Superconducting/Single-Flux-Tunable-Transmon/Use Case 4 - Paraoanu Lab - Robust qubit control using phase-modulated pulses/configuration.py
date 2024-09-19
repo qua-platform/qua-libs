@@ -21,7 +21,7 @@ def IQ_imbalance(g, phi):
     """
     c = np.cos(phi)
     s = np.sin(phi)
-    N = 1 / ((1 - g ** 2) * (2 * c ** 2 - 1))
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
@@ -91,7 +91,12 @@ minus_x90_sigma = minus_x90_len / 5
 minus_x90_amp = -x90_amp
 minus_x90_wf, minus_x90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(
-        minus_x90_amp, minus_x90_len, minus_x90_sigma, drag_coef, anharmonicity, AC_stark_detuning,
+        minus_x90_amp,
+        minus_x90_len,
+        minus_x90_sigma,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
     )
 )
 minus_x90_I_wf = minus_x90_wf
@@ -123,7 +128,12 @@ minus_y90_sigma = minus_y90_len / 5
 minus_y90_amp = -y90_amp
 minus_y90_wf, minus_y90_der_wf = np.array(
     drag_gaussian_pulse_waveforms(
-        minus_y90_amp, minus_y90_len, minus_y90_sigma, drag_coef, anharmonicity, AC_stark_detuning,
+        minus_y90_amp,
+        minus_y90_len,
+        minus_y90_sigma,
+        drag_coef,
+        anharmonicity,
+        AC_stark_detuning,
     )
 )
 minus_y90_I_wf = (-1) * minus_y90_der_wf
@@ -190,7 +200,9 @@ config = {
                 4: {"offset": 0.0},  # Q resonator
                 5: {"offset": max_frequency_point},  # flux line
             },
-            "digital_outputs": {1: {},},
+            "digital_outputs": {
+                1: {},
+            },
             "analog_inputs": {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
@@ -199,7 +211,12 @@ config = {
     },
     "elements": {
         "qubit": {
-            "mixInputs": {"I": ("con1", 1), "Q": ("con1", 2), "lo_frequency": qubit_LO, "mixer": "mixer_qubit",},
+            "mixInputs": {
+                "I": ("con1", 1),
+                "Q": ("con1", 2),
+                "lo_frequency": qubit_LO,
+                "mixer": "mixer_qubit",
+            },
             "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "const_pulse",
@@ -222,55 +239,134 @@ config = {
                 "mixer": "mixer_resonator",
             },
             "intermediate_frequency": resonator_IF,
-            "operations": {"cw": "const_pulse", "readout": "readout_pulse",},
-            "outputs": {"out1": ("con1", 1), "out2": ("con1", 2),},
+            "operations": {
+                "cw": "const_pulse",
+                "readout": "readout_pulse",
+            },
+            "outputs": {
+                "out1": ("con1", 1),
+                "out2": ("con1", 2),
+            },
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
-        "flux_line": {"singleInput": {"port": ("con1", 5),}, "operations": {"const": "const_flux_pulse",},},
+        "flux_line": {
+            "singleInput": {
+                "port": ("con1", 5),
+            },
+            "operations": {
+                "const": "const_flux_pulse",
+            },
+        },
         "flux_line_sticky": {
-            "singleInput": {"port": ("con1", 5),},
+            "singleInput": {
+                "port": ("con1", 5),
+            },
             "sticky": {"analog": True, "duration": 20},
-            "operations": {"const": "const_flux_pulse",},
+            "operations": {
+                "const": "const_flux_pulse",
+            },
         },
     },
     "pulses": {
-        "const_single_pulse": {"operation": "control", "length": const_len, "waveforms": {"single": "const_wf",},},
+        "const_single_pulse": {
+            "operation": "control",
+            "length": const_len,
+            "waveforms": {
+                "single": "const_wf",
+            },
+        },
         "const_flux_pulse": {
             "operation": "control",
             "length": const_flux_len,
-            "waveforms": {"single": "const_flux_wf",},
+            "waveforms": {
+                "single": "const_flux_wf",
+            },
         },
-        "const_pulse": {"operation": "control", "length": const_len, "waveforms": {"I": "const_wf", "Q": "zero_wf",},},
+        "const_pulse": {
+            "operation": "control",
+            "length": const_len,
+            "waveforms": {
+                "I": "const_wf",
+                "Q": "zero_wf",
+            },
+        },
         "saturation_pulse": {
             "operation": "control",
             "length": saturation_len,
             "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
         },
-        "pi_pulse": {"operation": "control", "length": square_pi_len, "waveforms": {"I": "pi_wf", "Q": "zero_wf",},},
+        "pi_pulse": {
+            "operation": "control",
+            "length": square_pi_len,
+            "waveforms": {
+                "I": "pi_wf",
+                "Q": "zero_wf",
+            },
+        },
         "pi_half_pulse": {
             "operation": "control",
             "length": square_pi_len,
-            "waveforms": {"I": "pi_half_wf", "Q": "zero_wf",},
+            "waveforms": {
+                "I": "pi_half_wf",
+                "Q": "zero_wf",
+            },
         },
-        "x90_pulse": {"operation": "control", "length": x90_len, "waveforms": {"I": "x90_I_wf", "Q": "x90_Q_wf",},},
-        "x180_pulse": {"operation": "control", "length": x180_len, "waveforms": {"I": "x180_I_wf", "Q": "x180_Q_wf",},},
+        "x90_pulse": {
+            "operation": "control",
+            "length": x90_len,
+            "waveforms": {
+                "I": "x90_I_wf",
+                "Q": "x90_Q_wf",
+            },
+        },
+        "x180_pulse": {
+            "operation": "control",
+            "length": x180_len,
+            "waveforms": {
+                "I": "x180_I_wf",
+                "Q": "x180_Q_wf",
+            },
+        },
         "-x90_pulse": {
             "operation": "control",
             "length": minus_x90_len,
-            "waveforms": {"I": "minus_x90_I_wf", "Q": "minus_x90_Q_wf",},
+            "waveforms": {
+                "I": "minus_x90_I_wf",
+                "Q": "minus_x90_Q_wf",
+            },
         },
-        "y90_pulse": {"operation": "control", "length": y90_len, "waveforms": {"I": "y90_I_wf", "Q": "y90_Q_wf",},},
-        "y180_pulse": {"operation": "control", "length": y180_len, "waveforms": {"I": "y180_I_wf", "Q": "y180_Q_wf",},},
+        "y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "y90_I_wf",
+                "Q": "y90_Q_wf",
+            },
+        },
+        "y180_pulse": {
+            "operation": "control",
+            "length": y180_len,
+            "waveforms": {
+                "I": "y180_I_wf",
+                "Q": "y180_Q_wf",
+            },
+        },
         "-y90_pulse": {
             "operation": "control",
             "length": minus_y90_len,
-            "waveforms": {"I": "minus_y90_I_wf", "Q": "minus_y90_Q_wf",},
+            "waveforms": {
+                "I": "minus_y90_I_wf",
+                "Q": "minus_y90_Q_wf",
+            },
         },
         "readout_pulse": {
             "operation": "measurement",
             "length": readout_len,
-            "waveforms": {"I": "readout_wf", "Q": "zero_wf",},
+            "waveforms": {
+                "I": "readout_wf",
+                "Q": "zero_wf",
+            },
             "integration_weights": {
                 "cos": "cosine_weights",
                 "sin": "sine_weights",
@@ -306,14 +402,34 @@ config = {
         "minus_y90_I_wf": {"type": "arbitrary", "samples": minus_y90_I_wf.tolist()},
         "readout_wf": {"type": "constant", "sample": readout_amp},
     },
-    "digital_waveforms": {"ON": {"samples": [(1, 0)]},},
+    "digital_waveforms": {
+        "ON": {"samples": [(1, 0)]},
+    },
     "integration_weights": {
-        "cosine_weights": {"cosine": [(1.0, readout_len)], "sine": [(0.0, readout_len)],},
-        "sine_weights": {"cosine": [(0.0, readout_len)], "sine": [(1.0, readout_len)],},
-        "minus_sine_weights": {"cosine": [(0.0, readout_len)], "sine": [(-1.0, readout_len)],},
-        "opt_cosine_weights": {"cosine": opt_weights_real, "sine": opt_weights_minus_imag,},
-        "opt_sine_weights": {"cosine": opt_weights_imag, "sine": opt_weights_real,},
-        "opt_minus_sine_weights": {"cosine": opt_weights_minus_imag, "sine": opt_weights_minus_real,},
+        "cosine_weights": {
+            "cosine": [(1.0, readout_len)],
+            "sine": [(0.0, readout_len)],
+        },
+        "sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(1.0, readout_len)],
+        },
+        "minus_sine_weights": {
+            "cosine": [(0.0, readout_len)],
+            "sine": [(-1.0, readout_len)],
+        },
+        "opt_cosine_weights": {
+            "cosine": opt_weights_real,
+            "sine": opt_weights_minus_imag,
+        },
+        "opt_sine_weights": {
+            "cosine": opt_weights_imag,
+            "sine": opt_weights_real,
+        },
+        "opt_minus_sine_weights": {
+            "cosine": opt_weights_minus_imag,
+            "sine": opt_weights_minus_real,
+        },
         "rotated_cosine_weights": {
             "cosine": [(np.cos(rotation_angle), readout_len)],
             "sine": [(np.sin(rotation_angle), readout_len)],
