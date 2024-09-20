@@ -158,7 +158,7 @@ class XEB:
                 for q in range(n_qubits):
                     assign(gate[q][0], r.rand_int(random_gates))
                     save(gate[q][0], gate_st[q])
-                with for_(depth_, 1, depth_ < self.xeb_config.depths[-1], depth_ + 1):
+                with for_(depth_, 0, depth_ < self.xeb_config.depths[-1], depth_ + 1):
                     for q in range(n_qubits):
                         assign(gate[q][depth_], r.rand_int(random_gates))
                         with while_(
@@ -204,7 +204,7 @@ class XEB:
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None and len(self.qubit_pairs) > 0:
                                 for qubit in self.qubit_drive_channels:
-                                    qubit.align(qubit.parent.z.name, qubit.parent.resonator.name)
+                                    qubit.align(qubit.z.name, qubit.resonator.name)
                                 if len(self.qubit_pairs) > 1:  # Multi-qubit XEB case
                                     with switch_(two_qubit_gate_pattern):
                                         for i, combination in enumerate(self.available_combinations):
@@ -227,6 +227,7 @@ class XEB:
 
                         # Measure the state
                         for q_idx, qubit in enumerate(self.qubits):
+                            qubit.xy.align(qubit.parent.z.name, qubit.parent.resonator.name)
                             qubit.resonator.measure(
                                 self.xeb_config.readout_pulse_name,
                                 qua_vars=(I[q_idx], Q[q_idx]),
@@ -243,7 +244,7 @@ class XEB:
 
                             reset_qubit(
                                 self.xeb_config.reset_method,
-                                self.qubits[q_idx],
+                                qubit,
                                 threshold=ge_thresholds[q_idx],
                                 **self.xeb_config.reset_kwargs,
                             )
@@ -512,7 +513,7 @@ class XEBJob:
             saved_data = {"counts": counts, "states": states, "density_matrices": dms}
         else:
             quadratures = {
-                f"{i}{q}": self._result_handles.get(f"{i}{q}").fetch_all()["value"]
+                f"{i}_{q}": self._result_handles.get(f"{i}_{q}").fetch_all()["value"]
                 for i in ["I", "Q"]
                 for q in range(self.xeb_config.n_qubits)
             }
@@ -857,7 +858,6 @@ class XEBResult:
         colors = sns.cubehelix_palette(n_colors=len(depths))
         colors = {k: colors[i] for i, k in enumerate(depths)}
         _lines = []
-        plt.figure()
 
         def per_cycle_depth(df, _lines=None):
             fid_lsq = df["numerator"].sum() / df["denominator"].sum()
@@ -869,6 +869,7 @@ class XEBResult:
             return pd.Series({"fidelity": fid_lsq})
 
         if not self.xeb_config.disjoint_processing:
+            plt.figure()
             fids = self.records.groupby("depth").apply(per_cycle_depth, _lines).reset_index()
             plt.xlabel(r"$e_U - u_U$", fontsize=18)
             plt.ylabel(r"$m_U - u_U$", fontsize=18)
@@ -898,24 +899,16 @@ class XEBResult:
 
     def plot_state_heatmap(self):
         """
-        Plot the state heatmap for the XEB experiment
+        Plot a comparison between expected and actual probability distributions for all sequences.
+
+        This method creates subplots within a single figure to display the state heatmaps. If the number of plots exceeds
+        the subplot capacity, it generates a new figure containing the remaining subplots.
+
+        The method handles both disjoint and non-disjoint processing cases.
+
         Returns:
-
+            None
         """
-
-        def create_plot(data, title):
-            plt.figure()
-            plt.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data))
-            ax = plt.gca()
-            ax.set_title(title)
-            ax.set_xlabel("Circuit depth")
-            ax.set_ylabel("Sequences")
-            ax.set_xticks(self.xeb_config.depths)
-            ax.set_yticks(np.arange(1, self.xeb_config.seqs + 1))
-            plt.colorbar()
-            plt.tight_layout()
-            plt.show()
-
         titles, data = [], []
         if not self.xeb_config.disjoint_processing:
             for i in range(self.xeb_config.dim):
@@ -931,8 +924,30 @@ class XEBResult:
                     data.append(self.measured_probs[i, :, :, j])
                     data.append(self.expected_probs[i, :, :, j])
 
-        for title, d in zip(titles, data):
-            create_plot(d, title)
+        num_plots = len(titles)
+        plots_per_fig = 4  # Adjust this value based on the desired grid size (e.g., 2x2 grid)
+        num_figs = (num_plots + plots_per_fig - 1) // plots_per_fig
+
+        for fig_idx in range(num_figs):
+            fig, axs = plt.subplots(2, 2, figsize=(10, 8))  # Adjust the grid size as needed
+            axs = axs.flatten()
+            start_idx = fig_idx * plots_per_fig
+            end_idx = min(start_idx + plots_per_fig, num_plots)
+
+            for plot_idx in range(start_idx, end_idx):
+                ax = axs[plot_idx - start_idx]
+                ax.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data[plot_idx]))
+                ax.set_title(titles[plot_idx])
+                ax.set_xlabel("Circuit depth")
+                ax.set_ylabel("Sequences")
+                ax.set_xticks(self.xeb_config.depths)
+                ax.set_yticks(np.arange(1, self.xeb_config.seqs + 1))
+                fig.colorbar(
+                    ax.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data[plot_idx])), ax=ax
+                )
+
+            plt.tight_layout()
+            plt.show()
 
     def save(self):
         """
