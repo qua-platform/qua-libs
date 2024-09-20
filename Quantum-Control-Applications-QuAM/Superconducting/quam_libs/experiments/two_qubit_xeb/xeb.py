@@ -158,7 +158,7 @@ class XEB:
                 for q in range(n_qubits):
                     assign(gate[q][0], r.rand_int(random_gates))
                     save(gate[q][0], gate_st[q])
-                with for_(depth_, 0, depth_ < self.xeb_config.depths[-1], depth_ + 1):
+                with for_(depth_, 1, depth_ < self.xeb_config.depths[-1], depth_ + 1):
                     for q in range(n_qubits):
                         assign(gate[q][depth_], r.rand_int(random_gates))
                         with while_(
