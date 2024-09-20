@@ -1,3 +1,4 @@
+# %%
 """
         CRYOSCOPE
 The goal of this protocol is to measure the step response of the flux line and design proper FIR and IIR filters
@@ -26,13 +27,17 @@ This version sweeps the flux pulse duration using the baking tool, which means t
 a 1ns resolution, but must be shorter than ~260ns. If you want to measure longer flux pulse, you can either reduce the
 resolution (do 2ns steps instead of 1ns) or use the 4ns version (cryoscope_4ns.py).
 
+NOTE:
+    - A prerequisite to obtain a good trace out from the code written below is to have the X and Y vectors to oscillate at
+    around 200 MHz, and do the experiment for a pulse length of 200 ns. Other parameters will work but you may need to
+    pay a close look at the normalization for the step response, and the removal of offsets in the X and Y vector.
+
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit gates (x90 and y90) by running qubit spectroscopy, rabi_chevron, power_rabi, Ramsey and updated the configuration.
 
 Next steps before going to the next node:
     - Update the FIR and IIR filter taps in the configuration (config/controllers/con1/analog_outputs/"filter": {"feedforward": fir, "feedback": iir}).
-    - WARNING: the digital filters will add a global delay --> need to recalibrate IQ blobs (rotation_angle & ge_threshold).
 """
 
 from qm.qua import *
@@ -45,12 +50,13 @@ from qualang_tools.bakery import baking
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
+from scipy.integrate import simps
 
 
 ####################
 # Helper functions #
 ####################
-def exponential_decay(x, a, t):
+def exponential_decay(x, a, t, s):
     """Exponential decay defined as 1 + a * np.exp(-x / t).
 
     :param x: numpy array for the time vector in ns
@@ -58,28 +64,64 @@ def exponential_decay(x, a, t):
     :param t: float for the exponential decay time in ns
     :return: numpy array for the exponential decay
     """
-    return 1 + a * np.exp(-x / t)
+    return s * (1 + a * np.exp(-x / t))
 
 
-def exponential_correction(A, tau, Ts=1e-9):
+def dual_exponential_decay(x, a1, t1, a2, t2, s):
+    """
+    Dual exponential decay defined as s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2)).
+    :param x: numpy array for the time vector in ns
+    :param a1: float for the first exponential amplitude
+    :param t1: float for the first exponential decay time in ns
+    :param a2: float for the second exponential amplitude
+    :param t2: float for the second exponential decay time in ns
+    :param s: scale factor, default is 1
+    :return: numpy array for the dual exponential decay
+    """
+    return s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2))
+
+
+def three_exponential_decay(x, a1, t1, a2, t2, a3, t3, s=1):
+    """
+    Three exponential decay defined as s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2) + a3 * np.exp(-x / t3)).
+    :param x: numpy array for the time vector in ns
+    :param a1: float for the first exponential amplitude
+    :param t1: float for the first exponential decay time in ns
+    :param a2: float for the second exponential amplitude
+    :param t2: float for the second exponential decay time in ns
+    :param a3: float for the third exponential amplitude
+    :param t3: float for the third exponential decay time in ns
+    :param s: scale factor, default is 1
+    :return: numpy array for the three exponential decay
+    """
+    return s * (1 + a1 * np.exp(-x / t1) + a2 * np.exp(-x / t2) + a3 * np.exp(-x / t3))
+
+
+def exponential_correction(A, tau, method, Ts=1e-9, t_s=1):
     """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
     :param A: amplitude of the exponential decay.
-    :param tau: decay time of the exponential decay
-    :param Ts: sampling period. Default is 1e-9
-    :return: FIR and IIR taps
+    :param tau: decay time of the exponential decay.
+    :param Ts: sampling period. Default is 1e-9.
+    :return: FIR and IIR taps.
     """
-    tau = tau * Ts
-    k1 = Ts + 2 * tau * (A + 1)
-    k2 = Ts - 2 * tau * (A + 1)
-    c1 = Ts + 2 * tau
-    c2 = Ts - 2 * tau
-    feedback_tap = k2 / k1
-    feedforward_taps = np.array([c1, c2]) / k1
+    if method == "bilinear_transform":
+        tau = tau * Ts
+        k1 = Ts + 2 * tau * (A + 1)
+        k2 = Ts - 2 * tau * (A + 1)
+        c1 = Ts + 2 * tau
+        c2 = Ts - 2 * tau
+        feedback_tap = k2 / k1
+        feedforward_taps = np.array([c1, c2]) / k1
+    elif method == "z_transform":
+        alpha = np.exp(-t_s / tau)
+        feedback_tap = (A + alpha) / (1 + A)
+        feedforward_taps = np.array([1 / (1 + A), -alpha / (1 + A)])
+
     return feedforward_taps, feedback_tap
 
 
-def filter_calc(exponential):
+def filter_calc(exponential, method):
     """Derive FIR and IIR filter taps based on a list of exponential coefficients.
 
     :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
@@ -90,7 +132,7 @@ def filter_calc(exponential):
     feedback_taps = np.zeros(len(exponential))
     # Derive feedback tap for each set of exponential coefficients
     for i, (A, tau) in enumerate(exponential):
-        b[:, i], feedback_taps[i] = exponential_correction(A, tau)
+        b[:, i], feedback_taps[i] = exponential_correction(A, tau, method=method)
     # Derive feedback tap for each set of exponential coefficients
     feedforward_taps = b[:, 0]
     for i in range(len(exponential) - 1):
@@ -105,12 +147,9 @@ def filter_calc(exponential):
 def baked_waveform(waveform, pulse_duration):
     pulse_segments = []  # Stores the baking objects
     # Create the different baked sequences, each one corresponding to a different truncated duration
-    for i in range(0, pulse_duration + 1):
+    for i in range(1, pulse_duration + 1):
         with baking(config, padding_method="right") as b:
-            if i == 0:  # Otherwise, the baking will be empty and will not be created
-                wf = [0.0] * 16
-            else:
-                wf = waveform[:i].tolist()
+            wf = waveform[:i].tolist()
             b.add_op("flux_pulse", "flux_line", wf)
             b.play("flux_pulse", "flux_line")
         # Append the baking object in the list to call it from the QUA program
@@ -121,7 +160,7 @@ def baked_waveform(waveform, pulse_duration):
 ###################
 # The QUA program #
 ###################
-n_avg = 10_000  # Number of averages
+n_avg = 1_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
 state_discrimination = False
@@ -136,10 +175,11 @@ flux_waveform = np.array([0.0] * zeros_before_pulse + [const_flux_amp] * const_f
 # Baked flux pulse segments with 1ns resolution
 square_pulse_segments = baked_waveform(flux_waveform, len(flux_waveform))
 step_response_th = (
-    [0.0] * zeros_before_pulse + [1.0] * (const_flux_len + 1) + [0.0] * zeros_after_pulse
+    [0.0] * zeros_before_pulse + [1.0] * const_flux_len + [0.0] * zeros_after_pulse
 )  # Perfect step response (square)
-xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
+xplot = np.arange(1, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
+# %%
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index
@@ -163,7 +203,7 @@ with program() as cryoscope:
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
         # Loop over the truncated flux pulse
-        with for_(segment, 0, segment <= const_flux_len + total_zeros, segment + 1):
+        with for_(segment, 0, segment < const_flux_len + total_zeros, segment + 1):
             # Alternate between X/2 and Y/2 pulses
             with for_each_(flag, [True, False]):
                 # Play first X/2
@@ -173,7 +213,7 @@ with program() as cryoscope:
                 # Wait some time to ensure that the flux pulse will arrive after the x90 pulse
                 wait(20 * u.ns)
                 with switch_(segment):
-                    for j in range(0, len(flux_waveform) + 1):
+                    for j in range(0, len(flux_waveform)):
                         with case_(j):
                             square_pulse_segments[j].run()
                 # Wait for the idle time set slightly above the maximum flux pulse duration to ensure that the 2nd x90
@@ -207,11 +247,11 @@ with program() as cryoscope:
     with stream_processing():
         # Cast the data into a 2D matrix (x90/y90, flux pulse length), average the 2D matrices together and store the
         # results on the OPX processor
-        I_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("I")
-        Q_st.buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("Q")
+        I_st.buffer(2).buffer(const_flux_len + total_zeros).average().save("I")
+        Q_st.buffer(2).buffer(const_flux_len + total_zeros).average().save("Q")
         if state_discrimination:
             # Also save the qubit state
-            state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros + 1).average().save("state")
+            state_st.boolean_to_int().buffer(2).buffer(const_flux_len + total_zeros).average().save("state")
         else:
             # Also save the averaged I/Q values for the qubit in |g> and |e>
             Ig_st.average().save("Ig")
@@ -257,7 +297,13 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
+            Sx = (state[:, 0] * 2 - 1) - np.mean(
+                (state[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Sy = (state[:, 1] * 2 - 1) - np.mean(
+                (state[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            qubit_state = Sx + 1j * Sy
         else:
             I, Q, Ie, Qe, Ig, Qg, iteration = results.fetch_all()
             # Phase of ground and excited states
@@ -270,79 +316,110 @@ else:
             # Convert the results into Volts
             I, Q = u.demod2volts(I, readout_len), u.demod2volts(Q, readout_len)
             # Bloch vector Sx + iSy
-            qubit_state = (state[:, 0] * 2 - 1) + 1j * (state[:, 1] * 2 - 1)
+            Sx = (state[:, 0] * 2 - 1) - np.mean(
+                (state[:, 0] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            Sy = (state[:, 1] * 2 - 1) - np.mean(
+                (state[:, 1] * 2 - 1)[zeros_before_pulse + 10 : len(flux_waveform) - zeros_after_pulse - 10]
+            )
+            qubit_state = Sx + 1j * Sy
 
         # Progress bar
         progress_counter(iteration, n_avg, start_time=results.get_start_time())
         # Accumulated phase: angle between Sx and Sy
         qubit_phase = np.unwrap(np.angle(qubit_state))
-        qubit_phase = qubit_phase - qubit_phase[-1]
         # Filtering and derivative of the phase to get the averaged frequency
-        detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
+        detuning = signal.savgol_filter(qubit_phase / 2 / np.pi, 3, 2, deriv=1, delta=1)
         # Flux line step response in freq domain and voltage domain
-        step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 2) :])
-        step_response_volt = np.sqrt(step_response_freq)
+        step_response_freq = detuning / np.average(
+            detuning[zeros_before_pulse + 20 : zeros_before_pulse + const_flux_len - 20]
+        )
+        step_response_volt = np.where(step_response_freq < 0, 0, np.sqrt(step_response_freq))
         # Qubit coherence: |Sx+iSy|
         qubit_coherence = np.abs(qubit_state)
 
         # Plots
         plt.suptitle("Cryoscope with 1ns resolution")
-        plt.subplot(221)
+        plt.subplot(231)
         plt.cla()
         plt.plot(xplot, I)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("I quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(222)
+        plt.subplot(232)
         plt.cla()
         plt.plot(xplot, Q)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Q quadrature [V]")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(223)
+        plt.subplot(233)
         plt.cla()
         plt.plot(xplot, state)
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Excited state population")
         plt.legend(("X", "Y"), loc="lower right")
 
-        plt.subplot(224)
+        plt.subplot(234)
         plt.cla()
         plt.plot(xplot, step_response_freq, label="Frequency")
         plt.plot(xplot, step_response_volt, label=r"Voltage ($\sqrt{freq}$)")
         plt.xlabel("Pulse duration [ns]")
         plt.ylabel("Step response")
         plt.legend()
+
+        plt.subplot(235)
+        plt.cla()
+        plt.plot(
+            xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+            signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len]),
+            label="delta_phase",
+        )
+        plt.xlabel("Pulse duration [ns]")
+        plt.ylabel("delta_phase [rad]")
         plt.tight_layout()
         plt.pause(0.1)
 
     ## Fit step response with exponential
     [A, tau], _ = optimize.curve_fit(
         exponential_decay,
-        xplot,
-        step_response_volt,
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+        step_response_volt[zeros_before_pulse : zeros_before_pulse + const_flux_len],
     )
     print(f"A: {A}\ntau: {tau}")
 
     ## Derive IIR and FIR corrections
-    fir, iir = filter_calc(exponential=[(A, tau)])
+    fir, iir = filter_calc(exponential=[(A, tau)], method="bilinear_transform")
     print(f"FIR: {fir}\nIIR: {iir}")
 
     ## Derive responses and plots
     # Response without filter
-    no_filter = exponential_decay(xplot, A, tau)
+    no_filter = exponential_decay(xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len], A, tau)
     # Response with filters
-    with_filter = no_filter * signal.lfilter(fir, [1, iir[0]], step_response_th)  # Output filter , DAC Output
+    with_filter = no_filter * signal.lfilter(
+        fir, [1, iir[0]], step_response_th[zeros_before_pulse : zeros_before_pulse + const_flux_len]
+    )  # Output filter , DAC Output
 
+    print(
+        f"Accumulated Radians over the Z-pulse duration {len(flux_waveform)} ns",
+        simps(signal.detrend(qubit_phase[zeros_before_pulse : zeros_before_pulse + const_flux_len])),
+    )
     # Plot all data
     plt.rcParams.update({"font.size": 13})
     plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.plot(xplot, step_response_volt, "o-", label="Experimental data")
-    plt.plot(xplot, no_filter, label="Fitted response without filter")
-    plt.plot(xplot, with_filter, label="Fitted response with filter")
+    plt.plot(
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+        no_filter,
+        label="Fitted response without filter",
+    )
+    plt.plot(
+        xplot[zeros_before_pulse : zeros_before_pulse + const_flux_len],
+        with_filter,
+        label="Fitted response with filter",
+    )
     plt.plot(xplot, step_response_th, label="Ideal WF")  # pulse
     plt.text(
         max(xplot) // 2,
@@ -362,3 +439,5 @@ else:
     plt.tight_layout()
     # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
     qm.close()
+
+# %%
