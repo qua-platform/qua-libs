@@ -10,6 +10,8 @@ from .macros import (
     exponential_decay,
     fit_exponential_decay,
     get_parallel_gate_combinations as gate_combinations,
+    align_transmon,
+    align_transmon_pair,
 )
 import matplotlib.pyplot as plt
 from qiskit.circuit.library import UnitaryGate
@@ -86,7 +88,7 @@ class XEB:
         """
         Play a random single qubit gate on a given qubit element.
 
-        This function plays a random single qubit gate on a given qubit element, by modulating
+        This macro plays a random single qubit gate on a given qubit element, by modulating
         the amplitude matrix of a baseline calibrated X/2 (SX) pulse if the gate set
         is set up to run through amplitude matrix modulation.
         Otherwise, it plays the gate through a switch case over the gate index.
@@ -97,8 +99,10 @@ class XEB:
             amp_matrix (List): Amplitude matrix of the gate.
         """
         if self.xeb_config.gate_set.run_through_amp_matrix_modulation and amp_matrix is not None:
+            # Play all gates through real-time amplitude matrix modulation
             qubit.xy.play(self.xeb_config.baseline_gate_name, amplitude_scale=amp(*amp_matrix))
         else:
+            # Play all gates through switch case over the gate index
             with switch_(gate_idx, unsafe=True):
                 for i in range(len(self.xeb_config.gate_set)):
                     with case_(i):
@@ -203,22 +207,23 @@ class XEB:
 
                             # Insert your two-qubit gate macro here
                             if self.xeb_config.two_qb_gate is not None and len(self.qubit_pairs) > 0:
-                                for qubit in self.qubit_drive_channels:
-                                    qubit.align(qubit.z.name, qubit.resonator.name)
                                 if len(self.qubit_pairs) > 1:  # Multi-qubit XEB case
                                     with switch_(two_qubit_gate_pattern):
                                         for i, combination in enumerate(self.available_combinations):
                                             with case_(i):
                                                 for pair in combination:
-                                                    for qubit_ctrl, qubit_tgt in pair:
-                                                        self.xeb_config.two_qb_gate.gate_macro(
-                                                            self.qubit_dict[qubit_ctrl] @ self.qubit_dict[qubit_tgt]
-                                                        )
-                                else:  # Two-qubit XEB case
-                                    self.xeb_config.two_qb_gate.gate_macro(self.qubit_pairs[0])
-
-                                for qubit in self.qubit_drive_channels:
-                                    qubit.align(qubit.parent.z, qubit.parent.resonator)
+                                                    for ctrl_idx, tgt_idx in pair:
+                                                        qubit_ctrl = self.qubit_dict[ctrl_idx]
+                                                        qubit_tgt = self.qubit_dict[tgt_idx]
+                                                        align_transmon_pair(qubit_ctrl @ qubit_tgt)
+                                                        # Two qubit gate macro
+                                                        self.xeb_config.two_qb_gate.gate_macro(qubit_ctrl @ qubit_tgt)
+                                                        align_transmon_pair(qubit_ctrl @ qubit_tgt)
+                                else:  # Two-qubit XEB case (no need for switch case)
+                                    qubit_pair = self.qubit_pairs[0]
+                                    align_transmon_pair(qubit_pair)
+                                    self.xeb_config.two_qb_gate.gate_macro(qubit_pair)
+                                    align_transmon_pair(qubit_pair)
 
                                 with if_(two_qubit_gate_pattern == len(self.available_combinations) - 1):
                                     assign(two_qubit_gate_pattern, 0)
@@ -227,7 +232,7 @@ class XEB:
 
                         # Measure the state
                         for q_idx, qubit in enumerate(self.qubits):
-                            qubit.xy.align(qubit.parent.z.name, qubit.parent.resonator.name)
+                            align_transmon(qubit)
                             qubit.resonator.measure(
                                 self.xeb_config.readout_pulse_name,
                                 qua_vars=(I[q_idx], Q[q_idx]),

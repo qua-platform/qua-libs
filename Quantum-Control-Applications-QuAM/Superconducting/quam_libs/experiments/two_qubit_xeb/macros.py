@@ -10,7 +10,7 @@ from qiskit.transpiler import CouplingMap
 from qm.qua import *
 from qualang_tools.addons.variables import assign_variables_to_element
 import numpy as np
-from quam.examples.superconducting_qubits import Transmon
+from quam_libs.components import TransmonPair, Transmon
 from scipy import optimize
 from scipy.stats import stats
 from itertools import combinations
@@ -113,6 +113,25 @@ def active_reset(threshold: float, qubit: Transmon, max_tries=1, Ig=None, pi_pul
         # Increment the number of tries
         assign(counter, counter + 1)
     return Ig, counter
+
+
+def align_transmon(qubit: Transmon):
+    """
+    Macro to align all qubit drives with the associated resonator
+    """
+    qubit.xy.align(qubit.resonator.name, qubit.z.name)
+
+
+def align_transmon_pair(qubit_pair: TransmonPair):
+    """
+    Macro to align all qubit drives with the associated resonators for a given qubit pair
+    """
+    all_channels = ["xy", "z", "resonator"]
+    all_elements = []
+    for qubit in [qubit_pair.qubit_control, qubit_pair.qubit_target]:
+        for channel in all_channels:
+            all_elements.append(getattr(qubit, channel).name)
+    align(*all_elements)
 
 
 def get_parallel_gate_combinations(coupling_map: CouplingMap, direction="forward"):
