@@ -1,3 +1,4 @@
+# %%
 """
 Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
@@ -17,8 +18,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.116"  # Write the QM router IP address
-cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -56,6 +57,9 @@ qubit_LO_q2 = 7.50 * u.GHz
 # Qubits IF
 qubit_IF_q1 = -100 * u.MHz
 qubit_IF_q2 = -200 * u.MHz
+# Qubits_delay
+qubit_delay_q1 = 0
+qubit_delay_q2 = 0
 
 # Relaxation time
 qubit1_T1 = int(30 * u.us)
@@ -219,21 +223,26 @@ cr_cancel_square_phase_c2t1 = 0.0 # in units of 2pi
 #############################################
 #                Resonators                 #
 #############################################
+# Qubits full scale power
+resonator_full_scale_power_dbm = -20
+# Qubits bands
+# The keyword "band" refers to the following frequency bands:
+#   1: (50 MHz - 5.5 GHz)
+#   2: (4.5 GHz - 7.5 GHz)
+#   3: (6.5 GHz - 10.5 GHz)
+resonator_band = 3
+# Resonators LO
 resonator_LO = 10.0 * u.GHz
 # Resonators IF
 resonator_IF_q1 = int(100 * u.MHz)
 resonator_IF_q2 = int(200 * u.MHz)
-
-# Mixer parameters
-mixer_resonator_g_q1 = 0.0
-mixer_resonator_g_q2 = 0.0
-mixer_resonator_phi_q1 = -0.00
-mixer_resonator_phi_q2 = -0.00
+# resontor_delay
+resonator_delay = 0
 
 # Readout pulse parameters
-readout_len = 4000
-readout_amp_q1 = 0.07
-readout_amp_q2 = 0.07
+readout_len = 1000
+readout_amp_q1 = 0.1
+readout_amp_q2 = 0.1
 
 # TOF and depletion time
 time_of_flight = 24  # must be a multiple of 4
@@ -276,51 +285,104 @@ config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "analog_outputs": {
-                1: {"offset": 0.0},  # I readout line
-                2: {"offset": 0.0},  # Q readout line
-                3: {"offset": 0.0},  # I qubit1 XY
-                4: {"offset": 0.0},  # Q qubit1 XY
-                5: {"offset": 0.0},  # I qubit2 XY
-                6: {"offset": 0.0},  # Q qubit2 XY
-                7: {"offset": max_frequency_point1},  # qubit1 Z
-                8: {"offset": max_frequency_point2},  # qubit2 Z
-            },
-            "digital_outputs": {
-                1: {},
-            },
-            "analog_inputs": {
-                1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
-                2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
+            "type": "opx1000",
+            "fems": {
+                1: {
+                    # The keyword "band" refers to the following frequency bands:
+                    #   1: (50 MHz - 5.5 GHz)
+                    #   2: (4.5 GHz - 7.5 GHz)
+                    #   3: (6.5 GHz - 10.5 GHz)
+                    # The keyword "full_scale_power_dbm" is the maximum power of
+                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
+                    #   power_mw = 10**(full_scale_power_dbm / 10)
+                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
+                    #   amp_in_volts = waveform * max_voltage_amp
+                    #   ^ equivalent to OPX+ amp
+                    # Its range is -41dBm to +10dBm with 3dBm steps.
+                    "type": "MW",
+                    "analog_outputs": {
+                        1: {
+                            "sampling_rate": 1e9,
+                            "full_scale_power_dbm": resonator_full_scale_power_dbm,
+                            "band": resonator_band,
+                            "delay": resonator_delay,
+                            "upconverters": {1: {"frequency": resonator_LO}},
+                        }, # RL1  0.5V => 4dbm +[+6, -45] 3db spacing
+                        2: {
+                            "sampling_rate": 1e9,
+                            "full_scale_power_dbm": qubit_full_scale_power_dbm_q1,
+                            "band": qubit_band_q1,
+                            "delay": qubit_delay_q1,
+                            "upconverters": {
+                                1: {"frequency": qubit_LO_q1}, # cr_cancel_LO_c2t1 = qubit_LO_q1
+                                2: {"frequency": cr_drive_LO_c1t2},
+                            },
+                        }, # q1 XY
+                        3: {
+                            "sampling_rate": 1e9,
+                            "full_scale_power_dbm": qubit_full_scale_power_dbm_q2,
+                            "band": qubit_band_q2,
+                            "delay": qubit_delay_q2,
+                            "upconverters": {
+                                1: {"frequency": qubit_LO_q2}, # cr_cancel_LO_c1t2 = qubit_LO_q2
+                                2: {"frequency": cr_drive_LO_c2t1},
+                            },
+                        }, # q2 XY
+
+                    },
+                    "analog_inputs": {
+                        1: {
+                            "sampling_rate": 1e9,
+                            "band": resonator_band,
+                            "gain_db": 0,
+                            "downconverter_frequency": resonator_LO,
+                        },  # RL1, gain_db resolution is 1
+                    },
+                },
             },
         },
     },
     "elements": {
         "rr1": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
-            "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
+            "MWInput": {
+                "port": (1, 1, 1),
+                "upconverter": 1,
+            },
+            "intermediate_frequency": resonator_IF_q1,  # in Hz [-350e6, +350e6]
+            "MWOutput": {
+                "port": (1, 1, 1),
+            },
+			'time_of_flight': time_of_flight,
+            'smearing': 0,
             "operations": {
                 "cw": "const_pulse",
-                "readout": "readout_pulse_q1",
+                "readout": f"readout_pulse_rr1",
+                "midcircuit_readout": f"midcircuit_readout_pulse_rr1",
             },
-            "time_of_flight": time_of_flight,
-            "smearing": 0,
         },
         "rr2": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
-            "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
+            "MWInput": {
+                "port": (1, 1, 1),
+                "upconverter": 1,
+            },
+            "intermediate_frequency": resonator_IF_q2,  # in Hz [-350e6, +350e6]
+            "MWOutput": {
+                "port": (1, 1, 1),
+            },
+			'time_of_flight': time_of_flight,
+            'smearing': 0,
             "operations": {
                 "cw": "const_pulse",
-                "readout": "readout_pulse_q2",
+                "readout": f"readout_pulse_rr2",
+                "midcircuit_readout": f"midcircuit_readout_pulse_rr2",
             },
-            "time_of_flight": time_of_flight,
-            "smearing": 0,
         },
         "q1_xy": {
-            "RF_inputs": {"port": ("octave1", 2)},
-            "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
+            "MWInput": {
+                "port": (1, 1, 2),
+                "upconverter": 1,
+            },
+            "intermediate_frequency": qubit_IF_q1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "x180": "x180_pulse_q1",
@@ -332,8 +394,11 @@ config = {
             },
         },
         "q2_xy": {
-            "RF_inputs": {"port": ("octave1", 3)},
-            "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
+            "MWInput": {
+                "port": (1, 1, 3),
+                "upconverter": 1,
+            },
+            "intermediate_frequency": qubit_IF_q2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "x180": "x180_pulse_q2",
@@ -344,55 +409,56 @@ config = {
                 "-y90": "-y90_pulse_q2",
             },
         },
-        "q1_z": {
-            "singleInput": {
-                "port": ("con1", 7),
+        "cr_drive_c1t2": {
+            "MWInput": {
+                "port": (1, 1, 2),
+                "upconverter": 2,
             },
+            "intermediate_frequency": cr_drive_IF_c1t2, # in Hz
             "operations": {
-                "const": "const_flux_pulse",
+                "cw": "const_pulse",
+                "square_positive": f"square_positive_pulse_cr_drive_c1t2",
+                "square_negative": f"square_negative_pulse_cr_drive_c1t2",
             },
         },
-        "q2_z": {
-            "singleInput": {
-                "port": ("con1", 8),
+        "cr_drive_c2t1": {
+            "MWInput": {
+                "port": (1, 1, 3),
+                "upconverter": 2,
             },
+            "intermediate_frequency": cr_drive_IF_c2t1, # in Hz
             "operations": {
-                "const": "const_flux_pulse",
+                "cw": "const_pulse",
+                "square_positive": f"square_positive_pulse_cr_drive_c2t1",
+                "square_negative": f"square_negative_pulse_cr_drive_c2t1",
+            },
+        },
+        "cr_cancel_c1t2": {
+            "MWInput": {
+                "port": (1, 1, 2),
+                "upconverter": 2,
+            },
+            "intermediate_frequency": cr_cancel_IF_c1t2, # in Hz
+            "operations": {
+                "cw": "const_pulse",
+                "square_positive": f"square_positive_pulse_cr_cancel_c1t2",
+                "square_negative": f"square_negative_pulse_cr_cancel_c1t2",
+            },
+        },
+        "cr_cancel_c2t1": {
+            "MWInput": {
+                "port": (1, 1, 3),
+                "upconverter": 2,
+            },
+            "intermediate_frequency": cr_cancel_IF_c2t1, # in Hz
+            "operations": {
+                "cw": "const_pulse",
+                "square_positive": f"square_positive_pulse_cr_cancel_c2t1",
+                "square_negative": f"square_negative_pulse_cr_cancel_c2t1",
             },
         },
     },
-    "octaves": {
-        "octave1": {
-            "RF_outputs": {
-                1: {
-                    "LO_frequency": resonator_LO,
-                    "LO_source": "internal",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-                2: {
-                    "LO_frequency": qubit_LO_q1,
-                    "LO_source": "internal",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-                3: {
-                    "LO_frequency": qubit_LO_q2,
-                    "LO_source": "internal",
-                    "output_mode": "always_on",
-                    "gain": 0,
-                },
-            },
-            "RF_inputs": {
-                1: {
-                    "LO_frequency": resonator_LO,
-                    "LO_source": "internal",
-                },
-            },
-            "connectivity": "con1",
-        }
-    },
-    "pulses":
+    "pulses": {
         "const_pulse": {
             "operation": "control",
             "length": const_len,
@@ -537,10 +603,73 @@ config = {
             },
             "digital_marker": "ON",
         },
+        "square_positive_pulse_cr_drive_c1t2": {
+            "operation": "control",
+            "length": cr_drive_square_len_c1t2,
+            "waveforms": {
+                "I": "square_positive_wf_cr_drive_c1t2",
+                "Q": "zero_wf"
+            },
+        },
+        "square_positive_pulse_cr_drive_c2t1": {
+            "operation": "control",
+            "length": cr_drive_square_len_c2t1,
+            "waveforms": {
+                "I": "square_positive_wf_cr_drive_c2t1",
+                "Q": "zero_wf"
+            },
+        },
+        "square_negative_pulse_cr_drive_c1t2": {
+            "operation": "control",
+            "length": cr_drive_square_len_c1t2,
+            "waveforms": {
+                "I": "square_negative_wf_cr_drive_c1t2",
+                "Q": "zero_wf"
+            },
+        },
+        "square_negative_pulse_cr_drive_c2t1": {
+            "operation": "control",
+            "length": cr_drive_square_len_c2t1,
+            "waveforms": {
+                "I": "square_negative_wf_cr_drive_c2t1",
+                "Q": "zero_wf"
+            },
+        },
+        "square_positive_pulse_cr_cancel_c1t2": {
+            "operation": "control",
+            "length": cr_cancel_square_len_c1t2,
+            "waveforms": {
+                "I": "square_positive_wf_cr_cancel_c1t2",
+                "Q": "zero_wf"
+            },
+        },
+        "square_positive_pulse_cr_cancel_c2t1": {
+            "operation": "control",
+            "length": cr_cancel_square_len_c2t1,
+            "waveforms": {
+                "I": "square_positive_wf_cr_cancel_c2t1",
+                "Q": "zero_wf"
+            },
+        },
+        "square_negative_pulse_cr_cancel_c1t2": {
+            "operation": "control",
+            "length": cr_cancel_square_len_c1t2,
+            "waveforms": {
+                "I": "square_negative_wf_cr_cancel_c1t2",
+                "Q": "zero_wf"
+            },
+        },
+        "square_negative_pulse_cr_cancel_c2t1": {
+            "operation": "control",
+            "length": cr_cancel_square_len_c2t1,
+            "waveforms": {
+                "I": "square_negative_wf_cr_cancel_c2t1",
+                "Q": "zero_wf"
+            },
+        },
     },
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
-        "const_flux_wf": {"type": "constant", "sample": const_flux_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
         "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
@@ -568,6 +697,14 @@ config = {
         "minus_y90_I_wf_q2": {"type": "arbitrary", "samples": minus_y90_I_wf_q2.tolist()},
         "minus_y90_Q_wf_q2": {"type": "arbitrary", "samples": minus_y90_Q_wf_q2.tolist()},
         "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
+        "square_positive_wf_cr_drive_c1t2": {"type": "constant", "sample": cr_drive_square_amp_c1t2},
+        "square_positive_wf_cr_drive_c1t2": {"type": "constant", "sample": cr_drive_square_amp_c1t2},
+        "square_negative_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
+        "square_negative_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
+        "square_positive_wf_cr_drive_c2t1": {"type": "constant", "sample": cr_drive_square_amp_c2t1},
+        "square_positive_wf_cr_drive_c2t1": {"type": "constant", "sample": cr_drive_square_amp_c2t1},
+        "square_negative_wf_cr_cancel_c2t1": {"type": "constant", "sample": cr_cancel_square_amp_c2t1},
+        "square_negative_wf_cr_cancel_c2t1": {"type": "constant", "sample": cr_cancel_square_amp_c2t1},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
@@ -635,3 +772,5 @@ config = {
         },
     },
 }
+
+# %%
