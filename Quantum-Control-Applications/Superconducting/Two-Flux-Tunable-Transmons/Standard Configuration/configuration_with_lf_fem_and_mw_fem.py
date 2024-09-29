@@ -310,15 +310,15 @@ config = {
                     "type": "MW",
                     "analog_outputs": {
                         # Resonator XY
-                        1: {"band": 2, "full_scale_power_dbm": resonator_power},
+                        1: {"band": 2, "full_scale_power_dbm": resonator_power, "upconverters": { 1: {"frequency": resonator_LO} } },
                         # Qubit 1 XY
-                        2: {"band": 1, "full_scale_power_dbm": qubit_power},
+                        2: {"band": 1, "full_scale_power_dbm": qubit_power, "upconverters": { 1: {"frequency": qubit_LO_q1}}},
                         # Qubit 2 XY
-                        3: {"band": 1, "full_scale_power_dbm": qubit_power},
+                        3: {"band": 1, "full_scale_power_dbm": qubit_power, "upconverters": { 1: {"frequency": qubit_LO_q2}}},
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
                 },
                 lf_fem: {
@@ -362,10 +362,7 @@ config = {
         "rr1": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": resonator_LO,
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
@@ -374,9 +371,6 @@ config = {
             },
             "MWOutput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'downconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                "oscillator_frequency": resonator_LO,
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -384,10 +378,7 @@ config = {
         "rr2": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": resonator_LO,
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
@@ -396,9 +387,6 @@ config = {
             },
             "MWOutput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'downconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                "oscillator_frequency": resonator_LO,
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -406,10 +394,7 @@ config = {
         "q1_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 2),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": qubit_LO_q1,
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
@@ -426,10 +411,7 @@ config = {
         "q2_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 3),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": qubit_LO_q2,
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
