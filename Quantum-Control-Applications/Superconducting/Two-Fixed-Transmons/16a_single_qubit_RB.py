@@ -1,4 +1,3 @@
-# %%
 """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
 """
@@ -24,11 +23,6 @@ matplotlib.use('TkAgg')
 ##################
 #   Parameters   #
 ##################
-
-# Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
-
 # Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 10  # Number of averaging loops for each random sequence
@@ -38,36 +32,17 @@ seed = 345324  # Pseudo-random number generator seed
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-# Readout Parameters
-weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
-
-# Derived parameters
-qc_xy = f"q{qc}_xy"
-qt_xy = f"q{qt}_xy"
-# qubits = [f"q{i}_xy" for i in [qc, qt]]
-# resonators = [f"q{i}_rr" for i in [qc, qt]]
-qubits = [qb for qb in QUBIT_CONSTANTS.keys()]
-qubits_to_play = ['q4_xy']
-resonators = [key for key in RR_CONSTANTS.keys()]
-
 # Assertion
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
 # Data to save
 save_data_dict = {
-    "qubits": qubits,
-    "resonators": resonators,
     "n_avg": n_avg,
     "config": config,
     "num_of_sequences": num_of_sequences,
     "delta_clifford": delta_clifford,
     "max_circuit_depth": max_circuit_depth,
-    "weights": weights,
-    "reset_method": reset_method,
 }
-
 
 ###################################
 # Helper functions and QUA macros #
@@ -100,7 +75,7 @@ def play_sequence(sequence_list, depth, qb):
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
-                wait(PI_LEN // 4, qb)
+                wait(pi_len // 4, qb)
             with case_(1):
                 play("x180", qb)
             with case_(2):
@@ -170,7 +145,6 @@ def play_sequence(sequence_list, depth, qb):
                 play("-x90", qb)
 
 
-
 ###################
 #   QUA Program   #
 ###################
@@ -182,9 +156,9 @@ with program() as PROGRAM:
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
     m_st = declare_stream()
-    I, I_st, Q, Q_st, n, _ = qua_declaration(resonators)
-    state = [declare(bool) for _ in range(len(resonators))]
-    state_st = [declare_stream() for _ in range(len(resonators))]
+    I, I_st, Q, Q_st, n, _ = qua_declaration(nb_of_qubits=2)
+    state = [declare(bool) for _ in range(2)]
+    state_st = [declare_stream() for _ in range(2)]
 
     with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
         # Save the counter for the progress bar
@@ -203,20 +177,16 @@ with program() as PROGRAM:
             with if_((depth == 1) | (depth == depth_target)):
 
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
-                    if reset_method == "wait":
-                        wait(qb_reset_time >> 2)
-                    elif reset_method == "active":
-                        global_state = active_reset(I, None, Q, None, state, None, resonators, qubits, state_to="ground", weights=weights,delay=187)
+                    wait(thermalization_time * u.ns)
                     # Align the two elements to play the sequence after qubit initialization
                     align()
                     # The strict_timing ensures that the sequence will be played without gaps
-                    for qb in qubits_to_play:
-                        # with strict_timing_():
-                        # Play the random sequence of desired depth
-                        play_sequence(sequence_list, depth, qb)
+                    # Play the random sequence of desired depth
+                    play_sequence(sequence_list, depth, 'q1_xy')
+                    play_sequence(sequence_list, depth, 'q2_xy')
                     # Align the two elements to measure after playing the circuit.
                     align()
-                    multiplexed_readout(I, I_st, Q, Q_st, state, state_st, resonators=resonators, weights=weights)
+                    multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
 
                 # Go to the next depth
                 assign(depth_target, depth_target + delta_clifford)
@@ -227,157 +197,83 @@ with program() as PROGRAM:
 
     with stream_processing():
         m_st.save("iteration")
-        # NOTE: need to discuss if we do qubit by qubit or multiplexed
-        for ind, rr in enumerate(resonators):
-            # I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-            #     num_of_sequences
-            # ).save(f"I_{rr}")
-            # Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).buffer(
-            #     num_of_sequences
-            # ).save(f"Q_{rr}")
-            # state_st[ind].boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            #     max_circuit_depth / delta_clifford + 1
-            # ).buffer(num_of_sequences).save(f"state_{rr}")
-            
+        for ind in range(2):
             I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                f"I_avg_{rr}"
+                f"I{ind}"
             )
             Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                f"Q_avg_{rr}"
-            )
-            state_st[ind].boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford + 1
-            ).average().save(f"state_avg_{rr}")
-
-
-if __name__ == "__main__":
-    #####################################
-    #  Open Communication with the QOP  #
-    #####################################
-    qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-
-    ###########################
-    # Run or Simulate Program #
-    ###########################
-
-    simulate = False
-
-    if simulate:
-        # Simulates the QUA program for the specified duration
-        simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-        job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot()
-        plt.plot(block=False)
-    else:
-        try:
-            # Open the quantum machine
-            qm = qmm.open_qm(config)
-            
-            # Send the QUA program to the OPX, which compiles and executes it
-            job = qm.execute(PROGRAM, flags=['not-strict-timing'])
-
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                # fetch_names.append(f"I_{rr}")
-                # fetch_names.append(f"Q_{rr}")
-                # fetch_names.append(f"state_{rr}")
-                fetch_names.append(f"I_avg_{rr}")
-                fetch_names.append(f"Q_avg_{rr}")
-                fetch_names.append(f"state_avg_{rr}")
-            # Tool to easily fetch results from the OPX (results_handle used in it)
-            results = fetching_tool(job, fetch_names, mode="live")
-            # Prepare the figure for live plotting
-            fig = plt.figure()
-            interrupt_on_close(fig, job)
-            # Data analysis and plotting
-            num_resonators = len(resonators)
-            num_rows = math.ceil(math.sqrt(num_resonators))
-            num_cols = math.ceil(num_resonators / num_rows)
-            # Live plotting
-
-            x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
-            x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
-
-            while results.is_processing():
-
-                # Fetch results
-                res = results.fetch_all()
-                # Progress bar
-                progress_counter(res[0], num_of_sequences, start_time=results.start_time)
-
-                plt.suptitle("RB")
-                for ind, (qb, rr) in enumerate(zip(qubits, resonators)):
-
-                    S = res[3*ind + 3]
-                    # Plot
-                    plt.subplot(num_rows, num_cols, ind + 1)
-                    plt.cla()
-                    plt.plot(x, S, marker=".", color='r')
-                    plt.xlabel("Number of Clifford gates")
-                    plt.ylabel("Sequence Fidelity")
-                    plt.title(f"Qb - {qb}")
-
-                plt.tight_layout()
-                plt.pause(2)
-
-            # data analysis
-            ind = 3
-            value_avg = res[3*ind + 3]
-            pars, cov = curve_fit(
-                f=power_law,
-                xdata=x,
-                ydata=value_avg,
-                p0=[0.5, 0.5, 0.9],
-                bounds=(-np.inf, np.inf),
-                maxfev=2000,
-            )
-            stdevs = np.sqrt(np.diag(cov))
-
-            one_minus_p = 1 - pars[2]
-            r_c = one_minus_p * (1 - 1 / 2**1)
-            r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-            r_c_std = stdevs[2] * (1 - 1 / 2**1)
-            r_g_std = r_c_std / 1.875
-
-            print("#########################")
-            print("### Useful Parameters ###")
-            print("#########################")
-            print(
-                f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-                f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-                f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})\n"
-                f"Gate fidelity: = {np.format_float_scientific((1-r_g)*100, precision=3)}  ({r_g_std:.1})"
+                f"Q{ind}"
             )
 
-            for ind, rr in enumerate(resonators):
-                # save_data_dict[rr+"_I"] = res[6*ind + 1]
-                # save_data_dict[rr+"_Q"] = res[6*ind + 2]
-                # save_data_dict[rr+"_state"] = res[6*ind + 3]
-                save_data_dict[rr+"_I_avg"] = res[3*ind + 1]
-                save_data_dict[rr+"_Q_avg"] = res[3*ind + 2]
-                save_data_dict[rr+"_state_avg"] = res[3*ind + 3]
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-            elapsed_time = time.time() - results.start_time
-            save_data_dict["elapsed_time"] = elapsed_time
-            save_data_dict["error_rate"] = one_minus_p
-            save_data_dict['clifford_infidelity'] = r_c
-            save_data_dict['gate_infidelity'] = r_g
-            save_data_dict['gate_fidelity'] = (1-r_g)*100
-            save_data_dict['index_to_fit'] = ind
+###########################
+# Run or Simulate Program #
+###########################
 
-            # Save results
-            script_name = Path(__file__).name
-            data_handler = DataHandler(root_data_folder=save_dir)
-            save_data_dict.update({"fig_live": fig})
-            data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="rb")
+simulate = False
 
-        except Exception as e:
-            print(f"An exception occurred: {e}")
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job.get_simulated_samples().con1.plot()
+    plt.plot(block=False)
+else:
+    try:
+        # Open the quantum machine
+        qm = qmm.open_qm(config)
+        
+        # Send the QUA program to the OPX, which compiles and executes it
+        job = qm.execute(PROGRAM, flags=['not-strict-timing'])
 
-        finally:
-            qm.close()
-            print("Experiment QM is now closed")
-            plt.show(block=True)
+        # Prepare the figure for live plotting
+        fig = plt.figure()
+        interrupt_on_close(fig, job)
+        # Tool to easily fetch results from the OPX (results_handle used in it)
+        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        # Live plotting
 
-# %%
+        x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+        x[0] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
+
+        while results.is_processing():
+
+            # Fetch results
+            res = results.fetch_all()
+            # Progress bar
+            progress_counter(res[0], num_of_sequences, start_time=results.start_time)
+
+            plt.suptitle("RB")
+
+            for ind in range(2):
+
+                S = res[2*ind + 1]
+                # Plot
+                plt.subplot(1, 2, ind + 1)
+                plt.cla()
+                plt.plot(x, S, marker=".", color='r')
+                plt.xlabel("Number of Clifford gates")
+                plt.ylabel("Sequence Fidelity")
+                plt.title(f"Qb - {ind}")
+
+            plt.tight_layout()
+            plt.pause(2)
+
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name, **default_additional_files}
+        data_handler.save_data(data=save_data_dict, name="rb")
+
+    except Exception as e:
+        print(f"An exception occurred: {e}")
+
+    finally:
+        qm.close()
+        print("Experiment QM is now closed")
+        plt.show(block=True)
