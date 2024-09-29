@@ -67,7 +67,6 @@ with program() as PROGRAM:
             # Reset both qubits to ground
             wait(thermalization_time * u.ns)
             # Measure the ground IQ blobs
-            # Measure the ground IQ blobs
             multiplexed_readout(Ig, I_g_st, Qg, Q_g_st, resonators=[1, 2], weights="rotated_")
 
             align()
@@ -201,7 +200,7 @@ else:
             plt.xlabel("Readout frequency detuning [MHz]")
             plt.grid("on")
             plt.pause(1)
-            
+
         print(f"The optimal readout frequency is {dfs[np.argmax(SNR1)] + resonator_IF_q1} Hz (SNR={max(SNR1)})")
         print(f"The optimal readout frequency is {dfs[np.argmax(SNR2)] + resonator_IF_q2} Hz (SNR={max(SNR2)})")
 
