@@ -267,7 +267,6 @@ if __name__ == "__main__":
             for fname, r in zip(fetch_names[1:], res[1:]):
                 save_data_dict[fname] = r
 
-            
             # Perform CR Hamiltonian tomography
             coeffs = []
             fig_analyses = []

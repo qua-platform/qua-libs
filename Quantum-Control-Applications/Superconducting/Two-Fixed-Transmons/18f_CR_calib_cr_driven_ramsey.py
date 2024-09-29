@@ -30,7 +30,7 @@ Next steps before going to the next node:
     - Measure the phase shift between the |0⟩ and |1⟩ states, which will provide the correction phase.
       The shift is equal to -2 times the phase required to correct the Stark shift.
       Update:
-        - cr_drive_square_phase_ZI_correct
+        - cr_drive_square_phase_ZI_correct = -0.5 * phase shift
 
 Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
 """
