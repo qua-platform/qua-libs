@@ -21,8 +21,8 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 # OPX configuration #
 #####################
 con = "con1"
-lf_fem = 1
-mw_fem = 5
+lf_fem = 5
+mw_fem = 1
 
 # Set octave_config to None if no octave are present
 octave_config = None
