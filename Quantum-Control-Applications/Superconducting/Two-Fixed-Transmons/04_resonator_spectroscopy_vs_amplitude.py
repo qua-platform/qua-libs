@@ -1,4 +1,3 @@
-# %%
 """
         RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -30,21 +29,11 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 import math
 from qualang_tools.results.data_handler import DataHandler
-import matplotlib
 from scipy import signal
-import time
-
-matplotlib.use('TkAgg')
-
 
 ##################
 #   Parameters   #
 ##################
-
-# Qubits and resonators 
-rl = "rl1"
-resonators = [key for key in RR_CONSTANTS.keys()]
-resonators_LO = RL_CONSTANTS[rl]["LO"]
 
 # Parameters Definition
 n_avg = 20  # The number of averages
@@ -56,32 +45,15 @@ dfs = np.arange(-span, span, step)
 a_min = 0.01
 a_max = 1.00
 da = 0.01
-# amplitudes = np .arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
 amplitudes = np.geomspace(a_min, a_max, 100)  # The amplitude vector +da/2 to add a_max to the scan
-
-# Readout Parameters
-weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
-
-# Assertion
-# assert len(qubits) == len(resonators), "qubits and resonators under study don't have the same length"
-# assert all([qb.replace("_xy", "") == rr.replace("_rr", "") for qb, rr in zip(qubits, resonators)]), "qubits and resonators don't correspond"
-# assert len(dfs) <= 32, "check your frequencies"
-# assert len(amplitudes) <= 40, "check you amps vals"
-for rr in resonators:
-    assert a_max * RR_CONSTANTS[rr]["amp"] <= 0.499, f"{rr} max amp scan exceeded 0.499"
 
 # Data to save
 save_data_dict = {
-    "resonators": resonators,
-    "resonators_LO": resonators_LO,
     "n_avg": n_avg,
     "dfs": dfs,
     "amplitudes": amplitudes,
     "config": config,
 }
-
 
 ###################
 #   QUA Program   #
@@ -89,124 +61,151 @@ save_data_dict = {
 
 with program() as PROGRAM:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(resonators)
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for sweeping the readout frequency detuning around the resonance
     a = declare(fixed)  # QUA variable for sweeping the readout amplitude pre-factor
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
         with for_(*from_array(df, dfs)):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the two resonator elements
-            for rr in resonators:
-                update_frequency(rr, df + RR_CONSTANTS[rr]["IF"])
+            update_frequency("rr1", df + resonator_IF_q1)
+            update_frequency("rr2", df + resonator_IF_q2)
 
-            # with for_(*from_array(a, amplitudes)):  # QUA for_ loop for sweeping the readout amplitude
-            with for_each_(a, amplitudes.tolist()):  # QUA for_ loop for sweeping the readout amplitude
+            with for_each_(a, amplitudes):  # QUA for_ loop for sweeping the readout amplitude
+                # resonator 1
+                wait(depletion_time * u.ns, "rr1")  # wait for the resonator to relax
+                measure(
+                    "readout" * amp(a),
+                    "rr1",
+                    None,
+                    dual_demod.full("cos", "sin", I[0]),
+                    dual_demod.full("minus_sin", "cos", Q[0]),
+                )
+                # Save the 'I' & 'Q' quadratures for rr1 to their respective streams
+                save(I[0], I_st[0])
+                save(Q[0], Q_st[0])
 
-                multiplexed_readout(I, I_st, Q, Q_st, None, None, resonators, amplitude=a)
+                # align("rr1", "rr2")  # Uncomment to measure sequentially
 
-                # wait for the resonators to empty
-                wait(rr_reset_time >> 2)
-
+                # resonator 2
+                wait(depletion_time * u.ns, "rr2")  # wait for the resonator to relax
+                measure(
+                    "readout" * amp(a),
+                    "rr2",
+                    None,
+                    dual_demod.full("cos", "sin", I[1]),
+                    dual_demod.full("minus_sin", "cos", Q[1]),
+                )
+                # Save the 'I' & 'Q' quadratures for rr2 to their respective streams
+                save(I[1], I_st[1])
+                save(Q[1], Q_st[1])
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
     with stream_processing():
-        n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_st[ind].buffer(len(dfs), len(amplitudes)).average().save(f"I_{rr}")
-            Q_st[ind].buffer(len(dfs), len(amplitudes)).average().save(f"Q_{rr}")
+        n_st.save("n")
+        # Cast the data into a 2D matrix, average the 2D matrices together and store the results on the OPX processor
+        # Note that the buffering goes from the most inner loop (left) to the most outer one (right)
+        # resonator 1
+        I_st[0].buffer(len(amplitudes)).buffer(len(dfs)).average().save("I1")
+        Q_st[0].buffer(len(amplitudes)).buffer(len(dfs)).average().save("Q1")
+        # resonator 2
+        I_st[1].buffer(len(amplitudes)).buffer(len(dfs)).average().save("I2")
+        Q_st[1].buffer(len(amplitudes)).buffer(len(dfs)).average().save("Q2")
 
 
-if __name__ == "__main__":
-    #####################################
-    #  Open Communication with the QOP  #
-    #####################################
-    qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-    #######################
-    # Simulate or execute #
-    #######################
-    simulate = False
+#######################
+# Simulate or execute #
+#######################
+simulate = False
 
-    if simulate:
-        # Simulates the QUA program for the specified duration
-        simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
-        job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot()
-        plt.show(block=False)
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job.get_simulated_samples().con1.plot()
+    plt.show(block=False)
 
-    else:
-        try:
-            # Open a quantum machine to execute the QUA program
-            qm = qmm.open_qm(config)
-            # Send the QUA program to the OPX, which compiles and executes it
-            job = qm.execute(PROGRAM)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_{rr}")
-                fetch_names.append(f"Q_{rr}")
-            # Tool to easily fetch results from the OPX (results_handle used in it)
-            results = fetching_tool(job, fetch_names, mode="live")
-            # Prepare the figure for live plotting
-            fig = plt.figure()
-            interrupt_on_close(fig, job)
-            # Data analysis and plotting
-            num_resonators = len(resonators)
-            num_rows = math.ceil(math.sqrt(num_resonators))
-            num_cols = math.ceil(num_resonators / num_rows)
-            # Live plotting
-            while results.is_processing():
-                # Fetch results
-                res = results.fetch_all()
-                # Progress bar
-                progress_counter(res[0], n_avg, start_time=results.start_time)
+else:
+    try:
+        # Open a quantum machine to execute the QUA program
+        qm = qmm.open_qm(config)
+        # Send the QUA program to the OPX, which compiles and executes it
+        job = qm.execute(PROGRAM)
+        # Prepare the figure for live plotting
+        fig = plt.figure()
+        interrupt_on_close(fig, job)
+        # Tool to easily fetch results from the OPX (results_handle used in it)
+        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        # Live plotting
+        while results.is_processing():
+            # Fetch results
+            n, I1, Q1, I2, Q2 = results.fetch_all()
+            # Progress bar
+            progress_counter(n, n_avg, start_time=results.start_time)
+            # Data analysis
+            S1 = u.demod2volts(I1 + 1j * Q1, readout_len)
+            S2 = u.demod2volts(I2 + 1j * Q2, readout_len)
+            R1 = np.abs(S1)
+            phase1 = np.angle(S1)
+            R2 = np.abs(S2)
+            phase2 = np.angle(S2)
+            # Normalize data
+            row_sums = R1.sum(axis=0)
+            R1 /= row_sums[np.newaxis, :]
+            row_sums = R2.sum(axis=0)
+            R2 /= row_sums[np.newaxis, :]
+            # Plot
+            plt.suptitle("Resonator spectroscopy")
+            plt.subplot(221)
+            plt.cla()
+            plt.title(f"Resonator 1 - LO: {resonator_LO / u.GHz} GHz")
+            plt.ylabel("Readout IF [MHz]")
+            plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, R1)
+            plt.xscale("log")
+            plt.xlim(amplitudes[0] * readout_amp_q1, amplitudes[-1] * readout_amp_q1)
+            plt.axhline(resonator_IF_q1 / u.MHz, color="k")
+            plt.subplot(222)
+            plt.cla()
+            plt.title(f"Resonator 2 - LO: {resonator_LO / u.GHz} GHz")
+            plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, R2)
+            plt.xscale("log")
+            plt.xlim(amplitudes[0] * readout_amp_q2, amplitudes[-1] * readout_amp_q2)
+            plt.axhline(resonator_IF_q2 / u.MHz, color="k")
+            plt.subplot(223)
+            plt.cla()
+            plt.xlabel("Readout amplitude [V]")
+            plt.ylabel("Readout IF [MHz]")
+            plt.pcolor(amplitudes * readout_amp_q1, (dfs + resonator_IF_q1) / u.MHz, signal.detrend(np.unwrap(phase1)))
+            plt.xscale("log")
+            plt.xlim(amplitudes[0] * readout_amp_q1, amplitudes[-1] * readout_amp_q1)
+            plt.axhline(resonator_IF_q1 / u.MHz, color="k")
+            plt.subplot(224)
+            plt.cla()
+            plt.xlabel("Readout amplitude [V]")
+            plt.pcolor(amplitudes * readout_amp_q2, (dfs + resonator_IF_q2) / u.MHz, signal.detrend(np.unwrap(phase2)))
+            plt.xscale("log")
+            plt.xlim(amplitudes[0] * readout_amp_q2, amplitudes[-1] * readout_amp_q2)
+            plt.axhline(resonator_IF_q2 / u.MHz, color="k")
+            plt.tight_layout()
+            plt.pause(0.1)
 
-                plt.suptitle("Multiplexed res spec vs amp")
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name, **default_additional_files}
+        data_handler.save_data(data=save_data_dict, name="resonator_spectroscopy_amplitude")
 
-                for ind, rr in enumerate(resonators):
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
-                    S = res[2*ind+1] + 1j * res[2*ind+2]
-                    R = np.abs(S) 
-                    # phase = np.unwrap(np.angle(S))
-                    phase = signal.detrend(np.unwrap(np.angle(S)))
-                    row_sums = R.sum(axis=0)
-                    R /= row_sums[np.newaxis, :]
-
-                    save_data_dict[f"I_{rr}"] = res[2*ind + 1]
-                    save_data_dict[f"Q_{rr}"] = res[2*ind + 2]
-
-                    # Plot
-                    plt.subplot(num_rows, num_cols, ind + 1)
-                    plt.cla()
-                    plt.pcolor(amplitudes * RR_CONSTANTS[rr]["amp"],(RR_CONSTANTS[rr]["IF"] + dfs) / u.MHz, R, cmap='magma')
-                    # plt.pcolor(amplitudes * RR_CONSTANTS[rr]["amp"],(RR_CONSTANTS[rr]["IF"] + dfs) / u.MHz, phase, cmap='magma')
-                    plt.xscale('log')
-                    plt.xlim(amplitudes[0]*RR_CONSTANTS[rr]["amp"], amplitudes[-1]*RR_CONSTANTS[rr]["amp"])
-                    # plt.axvline(x=RR_CONSTANTS[rr]["amp"])
-                    # plt.axhline(y=RR_CONSTANTS[rr]["IF"] / u.MHz, linestyle='--', color="k")
-                    lo_val = resonators_LO / u.GHz
-                    plt.title(f"{rr} - LO: {lo_val} GHz")
-                    plt.ylabel("Freqs [MHz]")
-
-                plt.tight_layout()
-                plt.pause(5)
-
-            elapsed_time = time.time() - results.start_time
-            save_data_dict["elapsed_time"] = elapsed_time
-
-            # Save results
-            script_name = Path(__file__).name
-            data_handler = DataHandler(root_data_folder=save_dir)
-            save_data_dict.update({"fig_live": fig})
-            data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="resonator_spectroscopy_amplitude")
-
-        except Exception as e:
-            print(f"An exception occurred: {e}")
-
-        finally:
-            qm.close()
-            print("Experiment QM is now closed")
-            plt.show(block=True)
-
-# %%
+    finally:
+        qm.close()
+        print("Experiment QM is now closed")
+        plt.show(block=True)
