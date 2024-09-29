@@ -1,14 +1,15 @@
-# %%
 """
                                  CNOT
 
+This script measures two-qubit states by preparing the states |00⟩, |01⟩, |10⟩, and |11⟩, then applying a CNOT gate.
+The CNOT gate is constructed using a calibrated CR (cross-resonance) gate, which serves as the ZX interaction, along with single-qubit gates Z_{-90}I and IX_{-90}.
+
 Prerequisites:
-    - 
+    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
+    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
+    - Having calibrated cr drive and cr cancel by running Hamiltonian Tomography
 
-Next steps before going to the next node:
-    - 
-
-Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
 """
 
 from qm.qua import *
@@ -22,29 +23,23 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout, active_reset
 from qualang_tools.results.data_handler import DataHandler
-import time
-import warnings
-import matplotlib
 from macros import qua_declaration, multiplexed_readout
+import pandas as pd
 
-matplotlib.use('TkAgg')
 
 ##################
 #   Parameters   #
 ##################
 
 # Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
+qc = 1 # index of control qubit
+qt = 2 # index of target qubit
 
 # Parameters Definition
 n_shots = 10_000
-cr_type = "direct+cancel+echo" # "direct+cancel", "direct+cancel+echo"
 
 # Readout Parameters
 weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -54,15 +49,11 @@ cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"q{i}_rr" for i in [qc, qt]]
 
-cr_drive_amp = CR_DRIVE_CONSTANTS[cr_drive]["square_positive_amp"]
-cr_drive_phase = CR_DRIVE_CONSTANTS[cr_drive]["square_positive_phase"]
-cr_cancel_amp = CR_CANCEL_CONSTANTS[cr_cancel]["square_positive_amp"] # ratio
-cr_cancel_phase = CR_CANCEL_CONSTANTS[cr_cancel]["square_positive_phase"] # in units of 2pi
-cr_drive_len = CR_DRIVE_CONSTANTS[cr_drive]["square_positive_len"]
-cr_cancel_len = CR_CANCEL_CONSTANTS[cr_cancel]["square_positive_len"]
-
-# Assertion
-# assert n_shots <= 10_000, "revise your number of shots"
+cr_drive_amp = cr_drive_square_amp_c1t2
+cr_drive_phase = cr_drive_square_phase_c1t2
+cr_cancel_amp = cr_cancel_square_amp_c1t2
+cr_cancel_phase = cr_cancel_square_phase_c1t2
+cr_drive_phase_ZI_correct = cr_drive_square_phase_ZI_correct_c1t2
 
 # Data to save
 save_data_dict = {
@@ -76,6 +67,7 @@ save_data_dict = {
     "cr_drive_amp": cr_drive_amp,
     "cr_cancel_phase": cr_cancel_phase,
     "cr_drive_phase": cr_drive_phase,
+    "cr_drive_phase_ZI_correct": cr_drive_phase_ZI_correct,
     "n_shots": n_shots,
     "config": config,
 }
@@ -101,7 +93,7 @@ with program() as PROGRAM:
                 # QST on Target
                 with switch_(c):
                     with case_(0):  # projection along X
-                        wait(PI_LEN * u.ns)
+                        wait(pi_len * u.ns)
                     with case_(1):  # projection along Y
                         play("x180", qt_xy)
                         align()
@@ -134,30 +126,29 @@ with program() as PROGRAM:
                     play("square_negative", cr_cancel)
                     align(qc_xy, cr_drive, cr_cancel)
                     play("x180", qc_xy)
-        
+
+                    # Shift frames to the calibrated phases
+                    frame_rotation_2pi(cr_drive_phase + cr_drive_phase_ZI_correct, cr_drive)
+                    frame_rotation_2pi(cr_cancel_phase, cr_cancel)
+
                     align(qc_xy, qt_xy, *resonators)
 
                 # Measure the state of the resonators
                 multiplexed_readout(I, I_st, Q, Q_st, state, state_st, resonators=resonators, weights=weights)
 
-                # reset phase shift for cancel drive
-                reset_frame(cr_drive)
-                reset_frame(cr_cancel)
-
-                align()
-
                 # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-                if reset_method == "wait":
-                    wait(qb_reset_time >> 2)
-                elif reset_method == "active":
-                    global_state = active_reset(I, None, Q, None, state, None, resonators, qubits, state_to="ground", weights=weights)
+                wait(thermalization_time * u.ns)
 
     with stream_processing():
         n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_st[ind].buffer(2).buffer(4).save_all(f"I_{rr}")
-            Q_st[ind].buffer(2).buffer(4).save_all(f"Q_{rr}")
-            state_st[ind].boolean_to_int().buffer(2).buffer(4).save_all(f"state_{rr}")
+        # control qubit
+        I_st[0].buffer(2).buffer(4).save_all("I1")
+        Q_st[0].buffer(2).buffer(4).save_all("Q1")
+        state_st[0].boolean_to_int().buffer(2).buffer(4).save_all("state1")
+        # target qubit
+        I_st[1].buffer(2).buffer(4).save_all("I2")
+        Q_st[1].buffer(2).buffer(4).save_all("Q2")
+        state_st[1].boolean_to_int().buffer(2).buffer(4).save_all("state2")
 
 
 if __name__ == "__main__":
@@ -188,44 +179,23 @@ if __name__ == "__main__":
             fig = plt.figure()
             interrupt_on_close(fig, job)
             # Tool to easily fetch results from the OPX (results_handle used in it)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_{rr}")
-                fetch_names.append(f"Q_{rr}")
-                fetch_names.append(f"state_{rr}")
+            fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
             results = fetching_tool(job, fetch_names, mode="live")
             # Live plotting
             while results.is_processing():
-                start_time = results.get_start_time()
                 # Fetch results
                 res = results.fetch_all()
-                for ind, rr in enumerate(resonators):
-                    save_data_dict[f"I_{rr}"] = res[3*ind + 1]
-                    save_data_dict[f"Q_{rr}"] = res[3*ind + 2]
-                    save_data_dict[f"state_{rr}"] = res[3*ind + 3]
                 iterations, I1, Q1, state_c, I2, Q2, state_t = res
                 # Progress bar
                 progress_counter(iterations, n_shots, start_time=results.start_time)
-                # # Plot
-                # plt.suptitle("CNOT calib")
-                # plt.subplot(1, 2, 1)
-                # plt.cla()
-                # plt.imshow(state_c, interpolation='nearest', cmap='Blues')
-                # plt.xlabel("prepared target state")
-                # plt.ylabel("prepared control state")
-                # plt.title(f"measured control state")
-                # plt.colorbar()
-                # plt.subplot(1, 2, 2)
-                # plt.cla()
-                # plt.imshow(state_t, interpolation='nearest', cmap='Blues')
-                # plt.xlabel("prepared target state")
-                # plt.ylabel("prepared control state")
-                # plt.title(f"measured target state")
-                # plt.colorbar()
-                plt.tight_layout()
-                plt.pause(2)
+                # Convert the results into Volts
+                I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+                I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
 
-            import pandas as pd
+            # Save data
+            save_data_dict.update({"fig_live": fig})
+            for fname, r in zip(fetch_names[1:], res[1:]):
+                save_data_dict[fname] = r
 
             data = []
             for i in range(2):
@@ -246,7 +216,6 @@ if __name__ == "__main__":
                 # Group by "cnot" and "res" and count occurrences
                 grouped = case_data.groupby(["cnot", "res"]).size().unstack(fill_value=0)
 
-                
                 # Generate side-by-side bar plot
                 width = 0.35  # Width of bars
                 index = np.arange(len(grouped.columns))  # The x locations for the groups
@@ -264,6 +233,7 @@ if __name__ == "__main__":
                 ax.set_xticks(index)
                 ax.set_xticklabels(grouped.columns)
                 ax.legend()
+
             plt.tight_layout()
             save_data_dict.update({"fig_analysis": fig_analysis})
 
@@ -271,14 +241,12 @@ if __name__ == "__main__":
             script_name = Path(__file__).name
             data_handler = DataHandler(root_data_folder=save_dir)
             data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="cnot_calib")
+            data_handler.save_data(data=save_data_dict, name="cnot")
 
         except Exception as e:
             print(f"An exception occurred: {e}")
 
         finally:
-            # qm.close()
+            qm.close()
             print("Experiment QM is now closed")
             plt.show(block=True)
-
-# %%
