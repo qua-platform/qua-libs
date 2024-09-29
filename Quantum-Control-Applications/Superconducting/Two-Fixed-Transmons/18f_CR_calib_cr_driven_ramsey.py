@@ -1,40 +1,36 @@
-# %%
 """
-        CZ CALIB CZ PULSE VS LOCAL PHASE
-The CZ calibration scripts are designed to calibrate the CZ gate by compenstating the phases for ZI and IZ.
-CZ = exp(- i/2 * pi/2 * (- ZI - IZ + ZZ)) and CZ pulse = exp(- i/2 * (a * ZI + b * IZ + pi/2 * ZZ)) without phase compensations.
-By adding phases phi_ZI and phi_IZ to ZI and IZ, CZ <- exp(- i/2 * ((a + phi_ZI) * ZI + (b + phi_IZ) * IZ + pi/2 * ZZ)) 
-Namely, we want to compensate the phases such that it forms CZ.
+                                 CR_CALIB_CR_DRIVEN_RAMSEY
 
-    a + phi_ZI = -pi/2
-    b + phi_IZ = -pi/2
+The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
+with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
+which is represented as:
+    H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
 
 The pulse sequences are as follow:
-                                   _____                    ______
-                Control(fC): _____| y90 |__________________| -y90 |___________
-                                          ______  ________                    
-   ZZ_control (fT-detuning): ____________|  ZZ  || phi_ZI |___________________
-                                  ______  ______  ________ 
-    ZZ_target (fT-detuning): ____| x180 ||  ZZ  || phi_IZ |___________________
-                                                                     ______
-                Readout(fR): _______________________________________|  RR  |___
+                                   _____           ______
+                Control(fC): _____| y90 |_________| -y90 |___________
+                                           ______                    
+                     CR(fT): _____________|      |___________________
+                                  ______  |  CR  |
+                 Target(fT): ____| x180 |_|______|___________________
+                                                   ______
+                Readout(fR): _____________________|  RR  |___
 
-This script measures entanglement as a function of phi_ZI (by flipping the role of qc and qz: phi_IZ), replicating Fig. S2(b) of the referenced paper.
-The pulse sequence is repeated with the control qubit in both the |0⟩ and |1⟩ states.
-The optimal phi_ZI and phi_IZ are selected where a + phi_ZI = -pi/2 and b + phi_IZ = -pi/2.
+This script performs a Ramsey experiment as a function of phase, where the idle time corresponds to the duration of the CR (cross-resonance) gate.
+The CR gate induces a Stark shift in the control qubit due to the off-resonant drive, which we aim to correct.
+The pulse sequence is repeated with the control qubit in both the |0⟩ and |1⟩ states to measure this effect.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Having found the frequency, amplitudes and relative phase shift of zz_control and zz_target.
+    - Having found the amplitudes and phases for cr drive and cr cancel.
 
 Next steps before going to the next node:
-    - Pick phi_ZI and phi_IZ such that (a + phi_ZI) = -pi/2 and (b + phi_IZ) = -pi/2 and update the config for
-        - ZZ_CONTROL_CONSTANTS["zz_control_c{qc}t{qt}"]["square_phi_ZI"]
-        - ZZ_TARGET_CONSTANTS["zz_target_c{qc}t{qt}"]["square_phi_IZ"]
+    - Measure the phase shift between the |0⟩ and |1⟩ states, which will provide the correction phase.
+      The shift is equal to -2 times the phase required to correct the Stark shift.
 
-Reference: Bradley K. Mitchell, et al, Phys. Rev. Lett. 127, 200502 (2021)
+Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
 """
 
 from qm.qua import *
@@ -48,9 +44,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout, active_reset
 from qualang_tools.results.data_handler import DataHandler
-import time
-import warnings
-import matplotlib
 from macros import qua_declaration, multiplexed_readout
 
 
@@ -59,20 +52,21 @@ from macros import qua_declaration, multiplexed_readout
 ##################
 
 # Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
+qc = 1 # index of control qubit
+qt = 2 # index of target qubit
 
 # Parameters Definition
 n_avg = 100
-cr_type = "direct+cancel+echo" # "direct+cancel", "direct+cancel+echo"
-phases = np.arange(0, 2, 0.25) # ratio relative to 2 * pi
-cr_drive_phase = 0.0
-cr_cancel_phase = 0.0
+cr_type = "direct+cancel+echo" # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
+cr_drive_amp = 1.0 # ratio
+cr_drive_phase = 0.0 # in units of 2pi
+cr_cancel_amp =  0.5 # ratio
+cr_cancel_phase = 0.0 # in units of 2pi
+ts_cycles = np.arange(4, 100, 1) # in clock cylcle = 4ns
+phases = np.arange(0.0, 1.01, 0.05) # ratio relative to 2 * pi
 
 # Readout Parameters
 weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -81,9 +75,7 @@ cr_drive = f"cr_drive_c{qc}t{qt}"
 cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"q{i}_rr" for i in [qc, qt]]
-
-# Assertion
-assert n_avg <= 10_000, "revise your number of shots"
+ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
 
 # Data to save
 save_data_dict = {
@@ -93,6 +85,11 @@ save_data_dict = {
     "qt_xy": qt_xy,
     "cr_drive": cr_drive,
     "cr_cancel": cr_cancel,
+    "cr_drive_amp": cr_drive_amp,
+    "cr_drive_phase": cr_drive_phase,
+    "cr_cancel_amp": cr_cancel_amp,
+    "cr_cancel_phase": cr_cancel_phase,
+    "ts_ns": ts_ns,
     "phases": phases,
     "n_avg": n_avg,
     "config": config,
@@ -122,7 +119,7 @@ with program() as prog:
                 with if_(s == 1):
                     play("x180", qc_xy)
                 with else_():
-                    wait(PI_LEN >> 2, qc_xy)
+                    wait(pi_len // 4, qc_xy)
 
                 # Bring Qc to x axis
                 play("y90", qc_xy)
@@ -133,6 +130,23 @@ with program() as prog:
                     align(qc_xy, cr_drive)
                     play("square_positive", cr_drive, duration=ph)
                     align(qt_xy, cr_drive)
+                
+                elif cr_type == "direct+echo":
+                    # phase shift for cancel drive
+                    frame_rotation_2pi(cr_drive_phase, cr_drive)
+                    # direct + cancel
+                    align(qc_xy, cr_drive)
+                    play("square_positive", cr_drive)
+                    # pi pulse on control
+                    align(qc_xy, cr_drive)
+                    play("x180", qc_xy)
+                    # echoed direct + cancel
+                    align(qc_xy, cr_drive)
+                    play("square_negative", cr_drive)
+                    # pi pulse on control
+                    align(qc_xy, cr_drive)
+                    play("x180", qc_xy)
+                    reset_frame(cr_drive)
                 
                 elif cr_type == "direct+cancel":
                     # phase shift for cancel drive
@@ -168,6 +182,8 @@ with program() as prog:
                     reset_frame(cr_drive)
                     reset_frame(cr_cancel)
 
+                align()
+
                 # phase shift
                 frame_rotation(ph, qc_xy)
 
@@ -180,19 +196,19 @@ with program() as prog:
                 # Measure the state of the resonators
                 multiplexed_readout(I, I_st, Q, Q_st, state, state_st, resonators=resonators, weights=weights)
 
-                # Wait for the qubit to decay to the ground state
-                if reset_method == "wait":
-                    wait(qb_reset_time >> 2)
-                elif reset_method == "active":
-                    global_state = active_reset(I, None, Q, None, state, None, resonators, qubits, state_to="ground", weights=weights)
-
+                # Wait for the qubit to decay to the ground state - Can be replaced by active reset
+                wait(thermalization_time * u.ns)
 
     with stream_processing():
-        n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_st[ind].buffer(2).buffer(len(phases)).average().save(f"I_{rr}")
-            Q_st[ind].buffer(2).buffer(len(phases)).average().save(f"Q_{rr}")
-            state_st[ind].boolean_to_int().buffer(2).buffer(len(phases)).average().save(f"state_{rr}")
+        n_st.save("n")
+        # control qubit
+        I_st[0].buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save("I1")
+        Q_st[0].buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save("Q1")
+        state_st[0].boolean_to_int().buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save(f"state1")
+        # target qubit
+        I_st[1].buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save("I2")
+        Q_st[1].buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save("Q2")
+        state_st[1].boolean_to_int().buffer(2).buffer(len(ts_cycles)).buffer(len(phases)).average().save(f"state2")
 
 
 if __name__ == "__main__":
@@ -219,35 +235,31 @@ if __name__ == "__main__":
             qm = qmm.open_qm(config)
             # Send the QUA program to the OPX, which compiles and executes it
             job = qm.execute(prog)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_{rr}")
-                fetch_names.append(f"Q_{rr}")
-                fetch_names.append(f"state_{rr}")
             # Tool to easily fetch results from the OPX (results_handle used in it)
+            fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
             results = fetching_tool(job, fetch_names, mode="live")
             # Prepare the figure for live plotting
-            fig, axss = plt.subplots(2, 1, figsize=(8, 6))
+            fig, axss = plt.subplots(2, 3, figsize=(8, 6))
             interrupt_on_close(fig, job)
             # Live plotting
             while results.is_processing():
                 # Fetch results
                 res = results.fetch_all()
-                iteration, Ic, Qc, Sc, It, Qt, St = res
-                Ic, Qc = u.demod2volts(Ic, READOUT_LEN), u.demod2volts(Qc, READOUT_LEN)
-                Vnames = ["Ic", "Qc"]
-                Vs = [Ic, Qc]
-
+                iterations, I1, Q1, state_c, I2, Q2, state_t = res
                 # Progress bar
-                progress_counter(iteration, n_avg, start_time=results.start_time)
-
+                progress_counter(iterations, n_avg, start_time=results.start_time)
+                # Convert the results into Volts
+                I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+                I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
+                # Progress bar
+                progress_counter(iterations, n_avg, start_time=results.start_time)
                 # Live plot data
                 fig.suptitle(f"Phase calibration for {qc_xy}")
-                for ax, Vname, V, fname in zip(axss.ravel(), Vnames, Vs, fetch_names[1:3]):
+                for ax, fname, V in zip(axss.ravel(), fetch_names[1:], res[1:]):
                     ax.plot(phases, V[:, 0])
                     ax.plot(phases, V[:, 1])
                     ax.set_xlabel("Phase [2pi rad.]")
-                    ax.set_ylabel(f"{Vname} [V]")
+                    ax.set_ylabel(fname.replace("1","c").replace("2","t"))
                     ax.set_title(fname)
                     ax.legend(["qc=|0>", "qc=|1>"])
                 fig.tight_layout()
@@ -271,5 +283,3 @@ if __name__ == "__main__":
             qm.close()
             print("Experiment QM is now closed")
             plt.show(block=True)
-
-# %%
