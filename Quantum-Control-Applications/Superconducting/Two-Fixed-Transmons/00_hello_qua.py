@@ -12,9 +12,8 @@ from configuration_mw_fem import *
 
 with program() as PROGRAM:
     
-    play("cw", "q1_rr")
+    play("cw", "rr1")
     play("cw", "q2_xy")
-    play("cw", "q3_xy")
     
 #####################################
 #  Open Communication with the QOP  #

@@ -1,4 +1,3 @@
-# %%
 """
         TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
@@ -58,9 +57,9 @@ with program() as PROGRAM:
 
     with stream_processing():
         # Will save average:
-        adc_st.input2().average().save("adc2")
+        adc_st.input1().average().save("adc1")
         # # Will save only last run:
-        adc_st.input2().save("adc2_single_run")
+        adc_st.input1().save("adc1_single_run")
 
 
 #####################################
@@ -93,16 +92,16 @@ else:
         # Waits (blocks the Python console) until all results have been acquired
         res_handles.wait_for_all_values()
         # Fetch the raw ADC traces and convert them into Volts
-        adc2 = u.raw2volts(res_handles.get("adc2").fetch_all())
-        adc2_single_run = u.raw2volts(res_handles.get("adc2_single_run").fetch_all())
+        adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
+        adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
 
-        save_data_dict["adc2"] = adc2
-        save_data_dict["adc2_single"] = adc2_single_run
+        save_data_dict["adc1"] = adc1
+        save_data_dict["adc1_single"] = adc1_single_run
 
         # Derive the average values
-        adc1_mean = np.mean(adc2)
+        adc1_mean = np.mean(adc1)
         # Remove the average values
-        adc1_unbiased = adc2 - np.mean(adc2)
+        adc1_unbiased = adc1 - np.mean(adc1)
         # Filter the data to get the pulse arrival time
         signal = savgol_filter(np.abs(adc1_unbiased), 11, 3)
         # Detect the arrival of the readout signal
@@ -115,8 +114,8 @@ else:
         # Plot for single run
         plt.subplot(121)
         plt.title("Single run")
-        plt.plot(adc2_single_run.real, label="Input 2 real")
-        plt.plot(adc2_single_run.imag, label="Input 2 image")
+        plt.plot(adc1_single_run.real, label="Input 1 real")
+        plt.plot(adc1_single_run.imag, label="Input 1 image")
         plt.axhline(y=0)
         plt.xlabel("Time [ns]")
         plt.ylabel("Signal amplitude [V]")
@@ -125,8 +124,8 @@ else:
         # Plot for averaged run
         plt.subplot(122)
         plt.title("Averaged run")
-        plt.plot(adc2.real, label="Input 1 real")
-        plt.plot(adc2.imag, label="Input 1 imag")
+        plt.plot(adc1.real, label="Input 1 real")
+        plt.plot(adc1.imag, label="Input 1 imag")
         plt.axhline(y=0)
         plt.xlabel("Time [ns]")
         plt.legend()
@@ -146,6 +145,3 @@ else:
         qm.close()
         print("Experiment QM is now closed")
         plt.show()
-
-# %%
-

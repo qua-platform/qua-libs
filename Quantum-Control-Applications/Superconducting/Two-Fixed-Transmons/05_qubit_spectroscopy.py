@@ -32,7 +32,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
-import math
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
@@ -75,10 +74,10 @@ with program() as PROGRAM:
             update_frequency("q2_xy", df + qubit_IF_q2)
             # Play the saturation pulse to put the qubit in a mixed state - Can adjust the amplitude on the fly [-2; 2)
             # qubit 1
-            play("saturation" * amp(saturation_scaling), "q1_xy", duration=saturation_len * u.ns)
+            play("cw" * amp(saturation_scaling), "q1_xy", duration=saturation_len * u.ns)
             align("q1_xy", "rr1")
             # qubit 2
-            play("saturation" * amp(saturation_scaling), "q2_xy", duration=saturation_len * u.ns)
+            play("cw" * amp(saturation_scaling), "q2_xy", duration=saturation_len * u.ns)
             align("q2_xy", "rr2")
 
             # Multiplexed readout, also saves the measurement outcomes

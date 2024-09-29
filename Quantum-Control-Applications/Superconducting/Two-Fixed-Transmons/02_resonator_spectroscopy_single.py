@@ -59,7 +59,7 @@ with program() as PROGRAM:
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(*from_array(f, frequencies)):  # QUA for_ loop for sweeping the frequency
+        with for_(*from_array(f, frequencies[resonator])):  # QUA for_ loop for sweeping the frequency
             # Update the frequency of the digital oscillator linked to the resonator element
             update_frequency(resonator, f)
             # Measure the resonator (send a readout pulse and demodulate the signals to get the 'I' & 'Q' quadratures)
@@ -78,9 +78,8 @@ with program() as PROGRAM:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        I_st.buffer(len(frequencies)).average().save("I")
-        Q_st.buffer(len(frequencies)).average().save("Q")
-
+        I_st.buffer(len(frequencies[resonator])).average().save("I")
+        Q_st.buffer(len(frequencies[resonator])).average().save("Q")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -117,10 +116,10 @@ else:
         phase = np.angle(S)  # Phase
         plt.suptitle(f"Resonator spectroscopy for {resonator} - LO = {resonator_LO / u.GHz} GHz")
         ax1 = plt.subplot(211)
-        plt.plot((frequencies)/ u.MHz, R, ".")
+        plt.plot((frequencies[resonator])/ u.MHz, R, ".")
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212, sharex=ax1)
-        plt.plot((frequencies)/ u.MHz, signal.detrend(np.unwrap(phase)), ".")
+        plt.plot((frequencies[resonator])/ u.MHz, signal.detrend(np.unwrap(phase)), ".")
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.tight_layout()

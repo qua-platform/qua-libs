@@ -1,4 +1,3 @@
-# %%
 """
         READOUT OPTIMISATION: DURATION
 """
@@ -8,7 +7,6 @@ from qm.qua import *
 from configuration_mw_fem import *
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool, progress_counter
-from macros import iq_blobs_analysis
 import math
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
@@ -166,6 +164,7 @@ else:
             "Qg_var",
             "Ie_var",
             "Qe_var",
+            "iteration"
         ]
         results = fetching_tool(
             job,
@@ -196,7 +195,7 @@ else:
             var = (Ie_var + Qe_var + Ig_var + Qg_var) / 4
             SNR = (np.abs(excited_trace - ground_trace) ** 2) / (2 * var)
             # Plot results
-            plt.subplot(231)
+            plt.subplot(131)
             plt.cla()
             plt.plot(ground_trace.real, label="ground")
             plt.plot(excited_trace.real, label="excited")
@@ -204,14 +203,14 @@ else:
             plt.ylabel("demodulated traces [V]")
             plt.title("Real part qubit 1")
             plt.legend()
-            plt.subplot(232)
+            plt.subplot(132)
             plt.cla()
             plt.plot(ground_trace.imag, label="ground")
             plt.plot(excited_trace.imag, label="excited")
             plt.xlabel("Clock cycles [4ns]")
             plt.title("Imaginary part qubit 1")
             plt.legend()
-            plt.subplot(233)
+            plt.subplot(133)
             plt.cla()
             plt.plot(SNR, ".-")
             plt.xlabel("Clock cycles [4ns]")

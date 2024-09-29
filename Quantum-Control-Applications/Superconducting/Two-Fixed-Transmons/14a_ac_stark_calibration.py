@@ -91,8 +91,8 @@ with program() as PROGRAM:
     with stream_processing():
         n_st.save("iteration")
         for ind in range(2):
-            I_st[ind].buffer(len(detunings)).buffer(len(nb_of_pulses)).average().save(f"I{ind}")
-            Q_st[ind].buffer(len(detunings)).buffer(len(nb_of_pulses)).average().save(f"Q{ind}")
+            I_st[ind].buffer(len(detunings)).buffer(len(nb_of_pulses)).average().save(f"I{ind+1}")
+            Q_st[ind].buffer(len(detunings)).buffer(len(nb_of_pulses)).average().save(f"Q{ind+1}")
 
 
 #####################################
@@ -122,7 +122,7 @@ else:
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        results = fetching_tool(job, ["iteration", "I1", "Q1", "I2", "Q2"], mode="live")
         # Live plotting
         while results.is_processing():
             # Fetch results
@@ -154,6 +154,7 @@ else:
             plt.pcolor(detunings, nb_of_pulses, Q2)
             plt.title("Q2")
             plt.xlabel("Qubit pulse amplitude [V]")
+            plt.tight_layout()
             plt.pause(1)
 
         # Save results

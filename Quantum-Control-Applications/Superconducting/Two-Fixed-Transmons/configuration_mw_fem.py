@@ -18,8 +18,8 @@ u = unit(coerce_to_integer=True)
 ######################
 # Network parameters #
 ######################
-qop_ip = "127.0.0.1"  # Write the QM router IP address
-cluster_name = None  # Write your cluster_name if version >= QOP220
+qop_ip = "172.16.33.116"  # Write the QM router IP address
+cluster_name = 'Beta_8'  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -349,41 +349,39 @@ config = {
     "elements": {
         "rr1": {
             "MWInput": {
-                "port": (1, 1, 1),
+                "port": ("con1", 1, 1),
                 "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q1,  # in Hz [-350e6, +350e6]
             "MWOutput": {
-                "port": (1, 1, 1),
+                "port": ("con1", 1, 1),
             },
 			'time_of_flight': time_of_flight,
             'smearing': 0,
             "operations": {
                 "cw": "const_pulse",
-                "readout": f"readout_pulse_rr1",
-                "midcircuit_readout": f"midcircuit_readout_pulse_rr1",
+                "readout": "readout_pulse_q1",
             },
         },
         "rr2": {
             "MWInput": {
-                "port": (1, 1, 1),
+                "port": ("con1", 1, 1),
                 "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q2,  # in Hz [-350e6, +350e6]
             "MWOutput": {
-                "port": (1, 1, 1),
+                "port": ("con1", 1, 1),
             },
 			'time_of_flight': time_of_flight,
             'smearing': 0,
             "operations": {
                 "cw": "const_pulse",
-                "readout": f"readout_pulse_rr2",
-                "midcircuit_readout": f"midcircuit_readout_pulse_rr2",
+                "readout": "readout_pulse_q2",
             },
         },
         "q1_xy": {
             "MWInput": {
-                "port": (1, 1, 2),
+                "port": ("con1", 1, 2),
                 "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q1,  # in Hz
@@ -399,7 +397,7 @@ config = {
         },
         "q2_xy": {
             "MWInput": {
-                "port": (1, 1, 3),
+                "port": ("con1", 1, 3),
                 "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q2,  # in Hz
@@ -415,50 +413,50 @@ config = {
         },
         "cr_drive_c1t2": {
             "MWInput": {
-                "port": (1, 1, 2),
+                "port": ("con1", 1, 2),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_drive_IF_c1t2, # in Hz
             "operations": {
                 "cw": "const_pulse",
-                "square_positive": f"square_positive_pulse_cr_drive_c1t2",
-                "square_negative": f"square_negative_pulse_cr_drive_c1t2",
+                "square_positive": "square_positive_pulse_cr_drive_c1t2",
+                "square_negative": "square_negative_pulse_cr_drive_c1t2",
             },
         },
         "cr_drive_c2t1": {
             "MWInput": {
-                "port": (1, 1, 3),
+                "port": ("con1", 1, 3),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_drive_IF_c2t1, # in Hz
             "operations": {
                 "cw": "const_pulse",
-                "square_positive": f"square_positive_pulse_cr_drive_c2t1",
-                "square_negative": f"square_negative_pulse_cr_drive_c2t1",
+                "square_positive": "square_positive_pulse_cr_drive_c2t1",
+                "square_negative": "square_negative_pulse_cr_drive_c2t1",
             },
         },
         "cr_cancel_c1t2": {
             "MWInput": {
-                "port": (1, 1, 2),
+                "port": ("con1", 1, 2),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_cancel_IF_c1t2, # in Hz
             "operations": {
                 "cw": "const_pulse",
-                "square_positive": f"square_positive_pulse_cr_cancel_c1t2",
-                "square_negative": f"square_negative_pulse_cr_cancel_c1t2",
+                "square_positive": "square_positive_pulse_cr_cancel_c1t2",
+                "square_negative": "square_negative_pulse_cr_cancel_c1t2",
             },
         },
         "cr_cancel_c2t1": {
             "MWInput": {
-                "port": (1, 1, 3),
+                "port": ("con1", 1, 3),
                 "upconverter": 2,
             },
             "intermediate_frequency": cr_cancel_IF_c2t1, # in Hz
             "operations": {
                 "cw": "const_pulse",
-                "square_positive": f"square_positive_pulse_cr_cancel_c2t1",
-                "square_negative": f"square_negative_pulse_cr_cancel_c2t1",
+                "square_positive": "square_positive_pulse_cr_cancel_c2t1",
+                "square_negative": "square_negative_pulse_cr_cancel_c2t1",
             },
         },
     },
@@ -702,13 +700,13 @@ config = {
         "minus_y90_Q_wf_q2": {"type": "arbitrary", "samples": minus_y90_Q_wf_q2.tolist()},
         "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
         "square_positive_wf_cr_drive_c1t2": {"type": "constant", "sample": cr_drive_square_amp_c1t2},
-        "square_positive_wf_cr_drive_c1t2": {"type": "constant", "sample": cr_drive_square_amp_c1t2},
-        "square_negative_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
-        "square_negative_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
+        "square_negative_wf_cr_drive_c1t2": {"type": "constant", "sample": -cr_drive_square_amp_c1t2},
+        "square_positive_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
+        "square_negative_wf_cr_cancel_c1t2": {"type": "constant", "sample": -cr_cancel_square_amp_c1t2},
         "square_positive_wf_cr_drive_c2t1": {"type": "constant", "sample": cr_drive_square_amp_c2t1},
-        "square_positive_wf_cr_drive_c2t1": {"type": "constant", "sample": cr_drive_square_amp_c2t1},
-        "square_negative_wf_cr_cancel_c2t1": {"type": "constant", "sample": cr_cancel_square_amp_c2t1},
-        "square_negative_wf_cr_cancel_c2t1": {"type": "constant", "sample": cr_cancel_square_amp_c2t1},
+        "square_negative_wf_cr_drive_c2t1": {"type": "constant", "sample": -cr_drive_square_amp_c2t1},
+        "square_positive_wf_cr_cancel_c2t1": {"type": "constant", "sample": cr_cancel_square_amp_c2t1},
+        "square_negative_wf_cr_cancel_c2t1": {"type": "constant", "sample": -cr_cancel_square_amp_c2t1},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
