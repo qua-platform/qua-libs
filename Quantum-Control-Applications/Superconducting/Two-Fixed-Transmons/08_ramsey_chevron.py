@@ -1,4 +1,3 @@
-# %%
 """
         RAMSEY CHEVRON (IDLE TIME VS FREQUENCY)
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different qubit intermediate
@@ -23,22 +22,12 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
-from macros import qua_declaration, multiplexed_readout, active_reset
-import math
+from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
-import matplotlib
-import time
-
-matplotlib.use('TkAgg')
 
 ##################
 #   Parameters   #
 ##################
-
-# Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
-
 # Parameters Definition
 n_avg = 10  # The number of averages
 # Qubit detuning sweep with respect to qubit_IF
@@ -46,167 +35,136 @@ freq_span = 10e6
 freq_step = 0.2e6
 dfs = np.arange(-freq_span, +freq_span, freq_step)
 
-t_max = 200#1_500
+t_max = 200
 t_min = 4
 t_step = 6
-t_delays = np.arange(t_min, t_max, t_step)  # Idle time sweep in clock cycles (Needs to be a list of integers)
-
-# Readout Parameters
-weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
-
-# Derived parameters
-qc_xy = f"q{qc}_xy"
-qt_xy = f"q{qt}_xy"
-# qubits = [f"q{i}_xy" for i in [qc, qt]]
-# resonators = [f"q{i}_rr" for i in [qc, qt]]
-qubits = [qb for qb in QUBIT_CONSTANTS.keys()]
-qubits_to_play = [qb for qb in QUBIT_CONSTANTS.keys()]
-resonators = [key for key in RR_CONSTANTS.keys()]
-
-
-# Assertion
-assert len(t_delays) <= 76_000, "check your delays"
+t_delay = np.arange(t_min, t_max, t_step)  # Idle time sweep in clock cycles (Needs to be a list of integers)
 
 # Data to save
 save_data_dict = {
-    "qubits": qubits,
-    "resonators": resonators,
     "n_avg": n_avg,
     "dfs": dfs,
-    "t_delays": t_delays,
+    "t_delay": t_delay,
     "config": config,
 }
-
 
 ###################
 #   QUA Program   #
 ###################
 
 with program() as PROGRAM:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(resonators)
-    state = [declare(bool) for _ in range(len(resonators))]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the idle time
     df = declare(int)  # QUA variable for the qubit frequency
 
     with for_(n, 0, n < n_avg, n + 1):
-        # Save the averaging iteration to get the progress bar
-        save(n, n_st)
         with for_(*from_array(df, dfs)):
             # Update the frequency of the two qubit elements
-            for qb in qubits:
-                update_frequency(qb, df + QUBIT_CONSTANTS[qb]["IF"])
+            update_frequency("q1_xy", df + qubit_IF_q1)
+            update_frequency("q2_xy", df + qubit_IF_q2)
 
-            with for_(*from_array(t, t_delays)):
-                # with strict_timing_():
-                for qb in qubits_to_play:
-                    play('x90', qb)
-                    wait(t, qb)
-                    play('x90', qb)
+            with for_(*from_array(t, t_delay)):
+                # qubit 1
+                play("x90", "q1_xy")
+                wait(t, "q1_xy")
+                play("x90", "q1_xy")
+
+                # qubit 2
+                play("x90", "q2_xy")
+                wait(t, "q2_xy")
+                play("x90", "q2_xy")
 
                 # Align the elements to measure after having waited a time "tau" after the qubit pulses.
                 align()
-
                 # Measure the state of the resonators
-                multiplexed_readout(I, I_st, Q, Q_st, None, None, resonators=resonators, weights=weights)
-                
+                multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
                 # Wait for the qubit to decay to the ground state
-                if reset_method == "wait":
-                    wait(qb_reset_time >> 2)
-                elif reset_method == "active":
-                    global_state = active_reset(I, None, Q, None, state, None, resonators, qubits, state_to="ground", weights=weights)
-    
+                wait(thermalization_time * u.ns)
+        # Save the averaging iteration to get the progress bar
+        save(n, n_st)
 
     with stream_processing():
-        n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_st[ind].buffer(len(dfs), len(t_delays)).average().save(f"I_{rr}")
-            Q_st[ind].buffer(len(dfs), len(t_delays)).average().save(f"Q_{rr}")
+        n_st.save("n")
+        # resonator 1
+        I_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("I1")
+        Q_st[0].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q1")
+        # resonator 2
+        I_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("I2")
+        Q_st[1].buffer(len(t_delay)).buffer(len(dfs)).average().save("Q2")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-if __name__ == "__main__":
-    #####################################
-    #  Open Communication with the QOP  #
-    #####################################
-    qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+###########################
+# Run or Simulate Program #
+###########################
 
-    ###########################
-    # Run or Simulate Program #
-    ###########################
+simulate = False
 
-    simulate = False
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job.get_simulated_samples().con1.plot()
+    plt.show(block=False)
+else:
+    try:
+        # Open the quantum machine
+        qm = qmm.open_qm(config)
+        # Send the QUA program to the OPX, which compiles and executes it
+        job = qm.execute(PROGRAM)
+        # Prepare the figure for live plotting
+        fig = plt.figure()
+        interrupt_on_close(fig, job)
+        # Tool to easily fetch results from the OPX (results_handle used in it)
+        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        # Live plotting
+        while results.is_processing():
+            # Fetch results
+            n, I1, Q1, I2, Q2 = results.fetch_all()
+            # Convert the results into Volts
+            I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+            I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
+            # Progress bar
+            progress_counter(n, n_avg, start_time=results.start_time)
+            # Plot
+            plt.suptitle("Ramsey chevron")
+            plt.subplot(221)
+            plt.cla()
+            plt.pcolor(4 * t_delay, dfs / u.MHz, I1)
+            plt.title(f"qubit 1 I, fcent={(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz")
+            plt.ylabel("Frequency detuning [MHz]")
+            plt.subplot(223)
+            plt.cla()
+            plt.pcolor(4 * t_delay, dfs / u.MHz, Q1)
+            plt.title("qubit 1 Q")
+            plt.xlabel("Idle time [ns]")
+            plt.ylabel("Frequency detuning [MHz]")
+            plt.subplot(222)
+            plt.cla()
+            plt.pcolor(4 * t_delay, dfs / u.MHz, I2)
+            plt.title(f"qubit 2 I, fcent={(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz")
+            plt.subplot(224)
+            plt.cla()
+            plt.pcolor(4 * t_delay, dfs / u.MHz, Q2)
+            plt.title("qubit 2 Q")
+            plt.xlabel("Idle time [ns]")
+            plt.tight_layout()
+            plt.pause(1)
 
-    if simulate:
-        # Simulates the QUA program for the specified duration
-        simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
-        job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot()
-        plt.show(block=False)
-    else:
-        try:
-            # Open the quantum machine
-            qm = qmm.open_qm(config)
-            # Send the QUA program to the OPX, which compiles and executes it
-            job = qm.execute(PROGRAM)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_{rr}")
-                fetch_names.append(f"Q_{rr}")
-            # Tool to easily fetch results from the OPX (results_handle used in it)
-            results = fetching_tool(job, fetch_names, mode="live")
-            # Prepare the figure for live plotting
-            fig = plt.figure()
-            interrupt_on_close(fig, job)
-            # Data analysis and plotting
-            num_resonators = len(resonators)
-            num_rows = math.ceil(math.sqrt(num_resonators))
-            num_cols = math.ceil(num_resonators / num_rows)
-            # Live plotting
-            while results.is_processing():
-                # Fetch results
-                res = results.fetch_all()
-                # Progress bar
-                progress_counter(res[0], n_avg, start_time=results.start_time)
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name, **default_additional_files}
+        data_handler.save_data(data=save_data_dict, name="ramsey_chevron")
 
-                plt.suptitle("Multiplexed ramsey chevron - I")
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
-                for ind, (qb, rr) in enumerate(zip(qubits, resonators)):
-                    # Data analysis
-                    S = res[2*ind+1] + 1j * res[2*ind+2]
-
-                    save_data_dict[f"I_{rr}"] = res[2*ind + 1]
-                    save_data_dict[f"Q_{rr}"] = res[2*ind + 2]
-
-                    # Plot
-                    plt.subplot(num_rows, num_cols, ind + 1)
-                    plt.cla()
-                    plt.pcolor(t_delays * 4, (dfs + QUBIT_CONSTANTS[qb]["IF"] + QUBIT_CONSTANTS[qb]["LO"]) / u.GHz, np.real(S), cmap='magma')
-                    # plt.axhline(y=QUBIT_CONSTANTS[qb]["IF"] / u.MHz)
-                    lo_val = QUBIT_CONSTANTS[qb]["LO"] / u.GHz
-                    plt.title(f"Qb - {qb}, LO {lo_val}")
-                    plt.ylabel("Freqs [GHz]")
-                    plt.xlabel("Idle time [nsec]")
-
-                plt.tight_layout()
-                plt.pause(2)
-
-            elapsed_time = time.time() - results.start_time
-            save_data_dict["elapsed_time"] = elapsed_time
-
-            # Save results
-            script_name = Path(__file__).name
-            data_handler = DataHandler(root_data_folder=save_dir)
-            save_data_dict.update({"fig_live": fig})
-            data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="ramsey_chevron")
-
-        except Exception as e:
-            print(f"An exception occurred: {e}")
-
-        finally:
-            qm.close()
-            print("Experiment QM is now closed")
-            plt.show(block=True)
-
-# %%
+    finally:
+        qm.close()
+        print("Experiment QM is now closed")
+        plt.show(block=True)

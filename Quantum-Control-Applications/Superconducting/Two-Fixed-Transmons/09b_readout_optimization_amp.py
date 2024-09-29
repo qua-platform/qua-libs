@@ -1,4 +1,3 @@
-# %%
 """
         READOUT OPTIMISATION: FREQUENCY & AMP
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
@@ -22,59 +21,27 @@ from configuration_mw_fem import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
-from macros import multiplexed_readout, qua_declaration, iq_blobs_analysis
-import math
-from qualang_tools.plot import interrupt_on_close
+from macros import multiplexed_readout, qua_declaration
 from qualang_tools.results.data_handler import DataHandler
-import matplotlib
-
-matplotlib.use('TkAgg')
+from qualang_tools.analysis import two_state_discriminator
 
 ##################
 #   Parameters   #
 ##################
-
-# Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
-
 # Parameters Definition
 n_avg = 1000  # Number of runs
-a_max = 1.99
-a_min = 0.0
-a_step = 0.025
-amps = np.arange(a_min, a_max, a_step)
+scaling_max = 1.99
+scaling_min = 0.0
+scaling_step = 0.025
+scalings = np.arange(scaling_min, scaling_max, scaling_step)
 iq_blobs_analysis_method = "snr" # "snr" "fidelity" or "overlap"
-
-# Readout Parameters
-weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
-
-# Derived parameters
-qc_xy = f"q{qc}_xy"
-qt_xy = f"q{qt}_xy"
-# qubits = [f"q{i}_xy" for i in [qc, qt]]
-# resonators = [f"q{i}_rr" for i in [qc, qt]]
-qubits = [qb for qb in QUBIT_CONSTANTS.keys()]
-qubits_to_play = ["q4_xy"]
-resonators = [key for key in RR_CONSTANTS.keys()]
-
-# Assertion
-assert len(amps) <= 38_000, "check your amplitudes"
-for rr in resonators:
-    assert a_max * RR_CONSTANTS[rr]["amp"] < 0.5, f"{rr} a_max times amplitude exceeded 0.499"
 
 # Data to save
 save_data_dict = {
-    "qubits": qubits,
-    "qubits_to_play": qubits_to_play,
-    "resonators": resonators,
     "n_avg": n_avg,
-    "amps": amps,
+    "scalings": scalings,
     "config": config,
 }
-
 
 ###################
 #   QUA Program   #
@@ -82,8 +49,8 @@ save_data_dict = {
 
 with program() as PROGRAM:
 
-    Ig, I_g_st, Qg, Q_g_st, n, n_st = qua_declaration(resonators)
-    Ie, I_e_st, Qe, Q_e_st, _, _ = qua_declaration(resonators)
+    Ig, I_g_st, Qg, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    Ie, I_e_st, Qe, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency
     a = declare(fixed)
 
@@ -91,112 +58,110 @@ with program() as PROGRAM:
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
-        with for_(*from_array(a, amps)):
+        with for_(*from_array(a, scalings)):
 
             # Reset both qubits to ground
-            wait(qb_reset_time >> 2)
+            wait(thermalization_time * u.ns)
             # Measure the ground IQ blobs
-            multiplexed_readout(Ig, I_g_st, Qg, Q_g_st, None, None, resonators, amplitude=a, weights="")
+            multiplexed_readout(Ig, I_g_st, Qg, Q_g_st, resonators=[1, 2], amplitude=a, weights="rotated_")
 
             align()
-
             # Reset both qubits to ground
-            wait(qb_reset_time >> 2)
+            wait(thermalization_time * u.ns)
             # Measure the excited IQ blobs
-            for qb in qubits_to_play:
-                play("x180", qb)
+            play("x180", "q1_xy")
+            play("x180", "q2_xy")
             align()
             # Measure the state of the resonators
-            multiplexed_readout(Ie, I_e_st, Qe, Q_e_st, None, None, resonators, amplitude=a, weights="")
+            multiplexed_readout(Ie, I_e_st, Qe, Q_e_st, resonators=[1, 2], amplitude=a, weights="rotated_")
 
     with stream_processing():
         n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_g_st[ind].buffer(len(amps)).save_all(f"I_g_{rr}")
-            Q_g_st[ind].buffer(len(amps)).save_all(f"Q_g_{rr}")
-            I_e_st[ind].buffer(len(amps)).save_all(f"I_e_{rr}")
-            Q_e_st[ind].buffer(len(amps)).save_all(f"Q_e_{rr}")
+        for i in range(2):
+            I_g_st[i].buffer(n_avg).buffer(len(scalings)).save(f"I_g_q{i}")
+            Q_g_st[i].buffer(n_avg).buffer(len(scalings)).save(f"Q_g_q{i}")
+            I_e_st[i].buffer(n_avg).buffer(len(scalings)).save(f"I_e_q{i}")
+            Q_e_st[i].buffer(n_avg).buffer(len(scalings)).save(f"Q_e_q{i}")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-if __name__ == "__main__":
-    #####################################
-    #  Open Communication with the QOP  #
-    #####################################
-    qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+###########################
+# Run or Simulate Program #
+###########################
 
-    ###########################
-    # Run or Simulate Program #
-    ###########################
+simulate = False
 
-    simulate = False
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job.get_simulated_samples().con1.plot()
+    plt.show(block=False)
+else:
+    try:
+        # Open the quantum machine
+        qm = qmm.open_qm(config)
+        # Send the QUA program to the OPX, which compiles and executes it
+        job = qm.execute(PROGRAM)
+        results = fetching_tool(job, data_list=["iteration"], mode="live")
+        # Get progress counter to monitor runtime of the program
+        while results.is_processing():
+            # Fetch results
+            iteration = results.fetch_all()
+            # Progress bar
+            progress_counter(iteration[0], len(scalings), start_time=results.get_start_time())
 
-    if simulate:
-        # Simulates the QUA program for the specified duration
-        simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
-        job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot()
-        plt.show(block=False)
-    else:
-        try:
-            # Open the quantum machine
-            qm = qmm.open_qm(config)
-            # Send the QUA program to the OPX, which compiles and executes it
-            job = qm.execute(PROGRAM)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_g_{rr}")
-                fetch_names.append(f"Q_g_{rr}")
-                fetch_names.append(f"I_e_{rr}")
-                fetch_names.append(f"Q_e_{rr}")
-            # Tool to easily fetch results from the OPX (results_handle used in it)
-            results = fetching_tool(job, fetch_names, mode="live")
-            # Prepare the figure for live plotting
-            fig = plt.figure()
-            interrupt_on_close(fig, job)
-            # Data analysis and plotting
-            num_resonators = len(resonators)
-            num_rows = math.ceil(math.sqrt(num_resonators))
-            num_cols = math.ceil(num_resonators / num_rows)
-            # Live plotting
-            while results.is_processing():
-                # Fetch results
-                res = results.fetch_all()
-                # Progress bar
-                progress_counter(res[0], n_avg, start_time=results.start_time)
+        # Fetch the results at the end
+        results = fetching_tool(job, ["I_g_q0", "Q_g_q0", "I_e_q0", "Q_e_q0", "I_g_q1", "Q_g_q1", "I_e_q1", "Q_e_q1"])
+        I_g_q1, Q_g_q1, I_e_q1, Q_e_q1, I_g_q2, Q_g_q2, I_e_q2, Q_e_q2 = results.fetch_all()
+        # Process the data
+        fidelity_vec = [[], []]
+        ground_fidelity_vec = [[], []]
+        for i in range(len(scalings)):
+            _, _, fidelity_q1, gg_q1, _, _, _ = two_state_discriminator(
+                I_g_q1[i], Q_g_q1[i], I_e_q1[i], Q_e_q1[i], b_print=False, b_plot=False
+            )
+            _, _, fidelity_q2, gg_q2, _, _, _ = two_state_discriminator(
+                I_g_q2[i], Q_g_q2[i], I_e_q2[i], Q_e_q2[i], b_print=False, b_plot=False
+            )
+            fidelity_vec[0].append(fidelity_q1)
+            fidelity_vec[1].append(fidelity_q2)
+            ground_fidelity_vec[0].append(gg_q1)
+            ground_fidelity_vec[1].append(gg_q2)
 
-                plt.suptitle("Readout Opt freq-amp")
+        # Plot the data
+        fig = plt.figure()
+        plt.suptitle("Readout amplitude optimization")
+        plt.subplot(121)
+        plt.plot(scalings * readout_amp_q1, fidelity_vec[0], "b.-", label="averaged fidelity")
+        plt.plot(scalings * readout_amp_q1, ground_fidelity_vec[0], "r.-", label="ground fidelity")
+        plt.title("Qubit 1")
+        plt.xlabel("Readout amplitude [V]")
+        plt.ylabel("Fidelity [%]")
+        plt.legend()
+        plt.subplot(122)
+        plt.title("Qubit 2")
+        plt.plot(scalings * readout_amp_q2, fidelity_vec[1], "b.-", label="averaged fidelity")
+        plt.plot(scalings * readout_amp_q2, ground_fidelity_vec[1], "r.-", label="ground fidelity")
+        plt.xlabel("Readout amplitude [V]")
+        plt.ylabel("Fidelity [%]")
+        plt.legend()
+        plt.tight_layout()
 
-                for ind, (qb, rr) in enumerate(zip(qubits, resonators)):
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name, **default_additional_files}
+        data_handler.save_data(data=save_data_dict, name="ro_opt_amp")
 
-                    max_len = len(res[4*ind + 1])
-                    _, _, iq_blobs_result = iq_blobs_analysis(res[4*ind + 1][:max_len], res[4*ind + 2][:max_len], res[4*ind + 3][:max_len], res[4*ind + 4][:max_len], method=iq_blobs_analysis_method)
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
-                    save_data_dict[rr+"_I_g"] = res[4*ind + 1]
-                    save_data_dict[rr+"_Q_g"] = res[4*ind + 2]
-                    save_data_dict[rr+"_I_e"] = res[4*ind + 3]
-                    save_data_dict[rr+"_Q_e"] = res[4*ind + 4]
-
-                    plt.subplot(num_rows, num_cols, ind + 1)
-                    plt.cla()
-                    plt.plot(amps * RR_CONSTANTS[rr]["amp"], iq_blobs_result)
-                    plt.xlabel("Pulse amp [V]")
-                    plt.title(f"Qb - {qb}")
-
-                plt.tight_layout()
-                plt.pause(2)
-
-            # Save results
-            script_name = Path(__file__).name
-            data_handler = DataHandler(root_data_folder=save_dir)
-            save_data_dict.update({"fig_live": fig})
-            data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="ro_opt_amp")
-
-        except Exception as e:
-            print(f"An exception occurred: {e}")
-
-        finally:
-            qm.close()
-            print("Experiment QM is now closed")
-            plt.show(block=True)
-# %%
+    finally:
+        qm.close()
+        print("Experiment QM is now closed")
+        plt.show(block=True)
