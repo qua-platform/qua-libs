@@ -188,7 +188,7 @@ config = {
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
                 }
             },
@@ -198,6 +198,7 @@ config = {
         "resonator": {
             "MWInput": {
                 "port": (con, fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -213,6 +214,7 @@ config = {
         "qubit": {
             "MWInput": {
                 "port": (con, fem, 2),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF,
             "operations": {

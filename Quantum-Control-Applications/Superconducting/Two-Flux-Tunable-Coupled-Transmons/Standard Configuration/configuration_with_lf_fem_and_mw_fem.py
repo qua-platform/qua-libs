@@ -319,7 +319,7 @@ config = {
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
                 },
                 lf_fem: {
@@ -363,6 +363,7 @@ config = {
         "rr1": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
@@ -378,6 +379,7 @@ config = {
         "rr2": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
@@ -393,6 +395,7 @@ config = {
         "q1_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 2),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
@@ -409,6 +412,7 @@ config = {
         "q2_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 3),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
