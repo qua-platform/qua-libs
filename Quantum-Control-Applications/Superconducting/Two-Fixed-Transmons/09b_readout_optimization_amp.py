@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from macros import multiplexed_readout, qua_declaration
-from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 from qualang_tools.analysis import two_state_discriminator
 
