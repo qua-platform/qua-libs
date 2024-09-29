@@ -28,7 +28,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout, active_reset
 from qualang_tools.results.data_handler import DataHandler
-import time
 
 
 ##################
@@ -36,19 +35,19 @@ import time
 ##################
 
 # Qubits and resonators 
-qc = 4 # index of control qubit
-qt = 3 # index of target qubit
+qc = 1 # index of control qubit
+qt = 2 # index of target qubit
 
 # Parameters Definition
 n_avg = 100
+cr_drive_amp = 0.8 # ratio
+cr_drive_phase = 0.5 # in units of 2pi
 cr_cancel_amp = 0.8 # ratio
 cr_cancel_phase = 0.5 # in units of 2pi
 ts_cycles = np.arange(4, 400, 4) # in clock cylcle = 4ns
 
 # Readout Parameters
 weights = "rotated_" # ["", "rotated_", "opt_"]
-reset_method = "wait" # ["wait", "active"]
-readout_operation = "readout" # ["readout", "midcircuit_readout"]
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -59,9 +58,6 @@ qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"q{i}_rr" for i in [qc, qt]]
 ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
 
-# Assertion
-assert n_avg <= 10_000, "revise your number of shots"
-
 # Data to save        
 save_data_dict = {
     "qubits": qubits,
@@ -70,6 +66,8 @@ save_data_dict = {
     "qt_xy": qt_xy,
     "cr_drive": cr_drive,
     "cr_cancel": cr_cancel,
+    "cr_drive_amp": cr_drive_amp,
+    "cr_drive_phase": cr_drive_phase,
     "cr_cancel_amp": cr_cancel_amp,
     "cr_cancel_phase": cr_cancel_phase,
     "ts_ns": ts_ns,
@@ -100,6 +98,7 @@ with program() as PROGRAM:
                         align(qc_xy, cr_drive)
 
                     # phase shift for cancel drive
+                    frame_rotation_2pi(cr_drive_phase, cr_drive)
                     frame_rotation_2pi(cr_cancel_phase, cr_cancel)
 
                     # direct + cancel
@@ -113,7 +112,7 @@ with program() as PROGRAM:
 
                     # echoed direct + cancel
                     align(qc_xy, cr_drive, cr_cancel)
-                    play("square_negative", cr_drive, duration=t)
+                    play("square_negative" * amp(cr_drive_amp), cr_drive, duration=t)
                     play("square_negative" * amp(cr_cancel_amp), cr_cancel, duration=t)
 
                     # pi pulse on control
@@ -128,7 +127,7 @@ with program() as PROGRAM:
                         with case_(1):  # projection along Y
                             play("x90", qt_xy)
                         with case_(2):  # projection along Z
-                            wait(PI_LEN * u.ns, qt_xy)
+                            wait(pi_len * u.ns, qt_xy)
 
                     align(qt_xy, *resonators)
 
@@ -136,20 +135,22 @@ with program() as PROGRAM:
                     multiplexed_readout(I, I_st, Q, Q_st, state, state_st, resonators=resonators, weights=weights)
 
                     # reset phase shift for cancel drive
+                    reset_frame(cr_drive)
                     reset_frame(cr_cancel)
 
                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
-                    if reset_method == "wait":
-                        wait(qb_reset_time >> 2)
-                    elif reset_method == "active":
-                        global_state = active_reset(I, None, Q, None, state, None, resonators, qubits, state_to="ground", weights=weights)
+                    wait(thermalization_time * u.ns)
 
     with stream_processing():
-        n_st.save("iteration")
-        for ind, rr in enumerate(resonators):
-            I_st[ind].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"I_{rr}")
-            Q_st[ind].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"Q_{rr}")
-            state_st[ind].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state_{rr}")
+        n_st.save("n")
+        # control qubit
+        I_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I1")
+        Q_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q1")
+        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state1")
+        # target qubit
+        I_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I2")
+        Q_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q2")
+        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state2")
 
 
 if __name__ == "__main__":
@@ -167,7 +168,7 @@ if __name__ == "__main__":
         # Simulates the QUA program for the specified duration
         simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
         job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot(analog_ports=['1', '2', '3', '4', '5', '6'])
+        job.get_simulated_samples().con1.plot()
         plt.show()
 
     else:
@@ -180,30 +181,17 @@ if __name__ == "__main__":
             fig, axss = plt.subplots(3, 2, figsize=(8, 8), sharex=True)
             interrupt_on_close(fig, job)
             # Tool to easily fetch results from the OPX (results_handle used in it)
-            fetch_names = ["iteration"]
-            for rr in resonators:
-                fetch_names.append(f"I_{rr}")
-                fetch_names.append(f"Q_{rr}")
-                fetch_names.append(f"state_{rr}")
+            fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
             results = fetching_tool(job, fetch_names, mode="live")
             # Live plotting
             while results.is_processing():
-                start_time = results.get_start_time()
                 # Fetch results
-                res = results.fetch_all()
-                for ind, rr in enumerate(resonators):
-                    save_data_dict[f"I_{rr}"] = res[3*ind + 1]
-                    save_data_dict[f"Q_{rr}"] = res[3*ind + 2]
-                    save_data_dict[rr+"_state"] = res[3*ind + 3]
-                iterations, I1, Q1, state1, I2, Q2, state2 = res
-
+                iterations, I1, Q1, state1, I2, Q2, state2 = results.fetch_all()
                 # Progress bar
                 progress_counter(iterations, n_avg, start_time=results.start_time)
-                # calculate the elapsed time
-                elapsed_time = time.time() - start_time
                 # Convert the results into Volts
-                I1, Q1 = u.demod2volts(I1, READOUT_LEN), u.demod2volts(Q1, READOUT_LEN)
-                I2, Q2 = u.demod2volts(I2, READOUT_LEN), u.demod2volts(Q2, READOUT_LEN)
+                I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+                I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
                 # Plots
                 plt.suptitle("echo CR Time Rabi")
                 for i, (axs, bss) in enumerate(zip(axss, ["X", "y", "z"])):
@@ -217,7 +205,10 @@ if __name__ == "__main__":
                         ax.set_xlabel("cr durations [ns]") if i == 2 else None
                         ax.set_ylabel(f"I quadrature of <{bss}> [V]") if q == "c" else None
                 plt.tight_layout()
-                plt.pause(2)
+                plt.pause(1)
+
+            # Save live plot
+            save_data_dict.update({"fig_live": fig})
 
             # Save results
             script_name = Path(__file__).name

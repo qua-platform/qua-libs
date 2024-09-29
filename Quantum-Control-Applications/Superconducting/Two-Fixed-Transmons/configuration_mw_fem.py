@@ -219,6 +219,10 @@ cr_drive_square_phase_c2t1 = 0.0 # in units of 2pi
 cr_cancel_square_phase_c1t2 = 0.0 # in units of 2pi
 cr_cancel_square_phase_c2t1 = 0.0 # in units of 2pi
 
+# CR Drive pulse phase
+cr_drive_square_phase_ZI_correct_c1t2 = 0.0 # in units of 2pi
+cr_drive_square_phase_ZI_correct_c2t1 = 0.0 # in units of 2pi
+
 
 #############################################
 #                Resonators                 #
