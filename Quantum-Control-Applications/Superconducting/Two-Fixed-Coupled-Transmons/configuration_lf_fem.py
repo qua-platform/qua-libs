@@ -1,4 +1,3 @@
-# %%
 """
 Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
@@ -14,6 +13,19 @@ from qualang_tools.units import unit
 #######################
 u = unit(coerce_to_integer=True)
 
+# IQ imbalance matrix
+def IQ_imbalance(g, phi):
+    """
+    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
+    be seen here:
+    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
+    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
+    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
+    """
+    c = np.cos(phi)
+    s = np.sin(phi)
+    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
+    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 ######################
 # Network parameters #
@@ -23,6 +35,17 @@ cluster_name = 'Beta_8'  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
+#####################
+# OPX configuration #
+#####################
+con = "con1"
+fem = 5  # Should be the LF-FEM index, e.g., 1
+
+# Set octave_config to None if no octave are present
+octave_config = None
+
+
+sampling_rate = int(1e9)  # or, int(2e9)
 
 #############
 # Save Path #
@@ -41,16 +64,6 @@ default_additional_files = {
 #############################################
 #                  Qubits                   #
 #############################################
-# Qubits full scale power
-qubit_full_scale_power_dbm_q1 = -8
-qubit_full_scale_power_dbm_q2 = -8 
-# Qubits bands
-# The keyword "band" refers to the following frequency bands:
-#   1: (50 MHz - 5.5 GHz)
-#   2: (4.5 GHz - 7.5 GHz)
-#   3: (6.5 GHz - 10.5 GHz)
-qubit_band_q1 = 3
-qubit_band_q2 = 3
 # Qubits LO
 qubit_LO_q1 = 8.00 * u.GHz
 qubit_LO_q2 = 7.50 * u.GHz
@@ -60,6 +73,12 @@ qubit_IF_q2 = -200 * u.MHz
 # Qubits_delay
 qubit_delay_q1 = 0
 qubit_delay_q2 = 0
+
+# Mixer parameters
+mixer_qubit_g_q1 = 0.00
+mixer_qubit_g_q2 = 0.00
+mixer_qubit_phi_q1 = 0.0
+mixer_qubit_phi_q2 = 0.0
 
 # Relaxation time
 qubit1_T1 = int(30 * u.us)
@@ -169,27 +188,18 @@ minus_y90_Q_wf_q2 = minus_y90_wf_q2
 #############################################
 #              Cross Resonance              #
 #############################################
-
-# CR Drive full scale power
-cr_drive_full_scale_power_dbm_c1t2 = -2
-cr_drive_full_scale_power_dbm_c2t1 = -2
-# CR Cancel full scale power
-cr_cancel_full_scale_power_dbm_c1t2 = -8
-cr_cancel_full_scale_power_dbm_c2t1 = -8
-
-# CR Drive bands
-cr_drive_band_c1t2 = qubit_band_q2
-cr_drive_band_c2t1 = qubit_band_q1
-# CR Cancel bands
-cr_cancel_band_c1t2 = qubit_band_q2
-cr_cancel_band_c2t1 = qubit_band_q1
-
 # CR Drive LO
 cr_drive_LO_c1t2 = qubit_LO_q2
 cr_drive_LO_c2t1 = qubit_LO_q1
 # CR Cancel LO
 cr_cancel_LO_c1t2 = qubit_LO_q2
 cr_cancel_LO_c2t1 = qubit_LO_q1
+
+# mixer parameters
+mixer_cr_drive_c1t2_g = 0.0
+mixer_cr_drive_c1t2_phi = 0.0
+mixer_cr_drive_c2t1_g = 0.0
+mixer_cr_drive_c2t1_phi = 0.0
 
 # CR Drive IF
 cr_drive_IF_c1t2 = qubit_IF_q2
@@ -252,6 +262,12 @@ readout_amp_q2 = 0.1
 time_of_flight = 24  # must be a multiple of 4
 depletion_time = 2 * u.us
 
+# Mixer parameters
+mixer_resonator_g_q1 = 0.0
+mixer_resonator_g_q2 = 0.0
+mixer_resonator_phi_q1 = -0.00
+mixer_resonator_phi_q2 = -0.00
+
 opt_weights = False
 if opt_weights:
     from qualang_tools.config.integration_weights_tools import convert_integration_weights
@@ -288,73 +304,90 @@ ge_threshold_q2 = 0.0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
+        con: {
             "type": "opx1000",
             "fems": {
-                1: {
-                    # The keyword "band" refers to the following frequency bands:
-                    #   1: (50 MHz - 5.5 GHz)
-                    #   2: (4.5 GHz - 7.5 GHz)
-                    #   3: (6.5 GHz - 10.5 GHz)
-                    # The keyword "full_scale_power_dbm" is the maximum power of
-                    # normalized pulse waveforms in [-1,1]. To convert to voltage,
-                    #   power_mw = 10**(full_scale_power_dbm / 10)
-                    #   max_voltage_amp = np.sqrt(2 * power_mw * 50 / 1000)
-                    #   amp_in_volts = waveform * max_voltage_amp
-                    #   ^ equivalent to OPX+ amp
-                    # Its range is -41dBm to +10dBm with 3dBm steps.
-                    "type": "MW",
+                fem: {
+                    "type": "LF",
                     "analog_outputs": {
+                        # Qubit 1 XY I-quadrature
                         1: {
-                            "sampling_rate": 1e9,
-                            "full_scale_power_dbm": resonator_full_scale_power_dbm,
-                            "band": resonator_band,
-                            "delay": resonator_delay,
-                            "upconverters": {1: {"frequency": resonator_LO}},
-                        }, # RL1  0.5V => 4dbm +[+6, -45] 3db spacing
+                            "offset": 0.0,
+                            # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
+                            #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
+                            #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
+                            "output_mode": "direct",
+                            # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
+                            #   1 GS/s: uses one core per output (default)
+                            #   2 GS/s: uses two cores per output
+                            # NOTE: duration parameterization of arb. waveforms, sticky elements and chirping
+                            #       aren't yet supported in 2 GS/s.
+                            "sampling_rate": sampling_rate,
+                            # At 1 GS/s, use the "upsampling_mode" to optimize output for
+                            #   modulated pulses (optimized for modulated pulses):      "mw"    (default)
+                            #   unmodulated pulses (optimized for clean step response): "pulse"
+                            "upsampling_mode": "mw",
+                        },
+                        # Qubit 1 XY Q-quadrature
                         2: {
-                            "sampling_rate": 1e9,
-                            "full_scale_power_dbm": qubit_full_scale_power_dbm_q1,
-                            "band": qubit_band_q1,
-                            "delay": qubit_delay_q1,
-                            "upconverters": {
-                                1: {"frequency": qubit_LO_q1}, # cr_cancel_LO_c2t1 = qubit_LO_q1
-                                2: {"frequency": cr_drive_LO_c1t2},
-                            },
-                        }, # q1 XY
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # Qubit 2 XY I-quadrature
                         3: {
-                            "sampling_rate": 1e9,
-                            "full_scale_power_dbm": qubit_full_scale_power_dbm_q2,
-                            "band": qubit_band_q2,
-                            "delay": qubit_delay_q2,
-                            "upconverters": {
-                                1: {"frequency": qubit_LO_q2}, # cr_cancel_LO_c1t2 = qubit_LO_q2
-                                2: {"frequency": cr_drive_LO_c2t1},
-                            },
-                        }, # q2 XY
-
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # Qubit 2 XY Q-quadrature
+                        4: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # Resonator I-quadrature
+                        5: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
+                        # Resonator Q-quadrature
+                        6: {
+                            "offset": 0.0,
+                            "output_mode": "direct",
+                            "sampling_rate": sampling_rate,
+                            "upsampling_mode": "mw",
+                        },
                     },
+                    "digital_outputs": {},
                     "analog_inputs": {
-                        1: {
-                            "sampling_rate": 1e9,
-                            "band": resonator_band,
-                            "gain_db": 0,
-                            "downconverter_frequency": resonator_LO,
-                        },  # RL1, gain_db resolution is 1
+                        # I from down-conversion
+                        1: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
+                        # Q from down-conversion
+                        2: {"offset": 0.0, "gain_db": 0, "sampling_rate": sampling_rate},
                     },
-                },
+                }
             },
-        },
+        }
     },
     "elements": {
         "rr1": {
-            "MWInput": {
-                "port": ("con1", 1, 1),
-                "upconverter": 1,
+            "mixInputs": {
+                "I": (con, fem, 5),
+                "Q": (con, fem, 6),
+                "lo_frequency": resonator_LO,
+                "mixer": "mixer_resonator",
             },
             "intermediate_frequency": resonator_IF_q1,  # in Hz [-350e6, +350e6]
-            "MWOutput": {
-                "port": ("con1", 1, 1),
+            "outputs": {
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
 			'time_of_flight': time_of_flight,
             'smearing': 0,
@@ -364,13 +397,16 @@ config = {
             },
         },
         "rr2": {
-            "MWInput": {
-                "port": ("con1", 1, 1),
-                "upconverter": 1,
+            "mixInputs": {
+                "I": (con, fem, 5),
+                "Q": (con, fem, 6),
+                "lo_frequency": resonator_LO,
+                "mixer": "mixer_resonator",
             },
             "intermediate_frequency": resonator_IF_q2,  # in Hz [-350e6, +350e6]
-            "MWOutput": {
-                "port": ("con1", 1, 1),
+            "outputs": {
+                "out1": (con, fem, 1),
+                "out2": (con, fem, 2),
             },
 			'time_of_flight': time_of_flight,
             'smearing': 0,
@@ -380,9 +416,11 @@ config = {
             },
         },
         "q1_xy": {
-            "MWInput": {
-                "port": ("con1", 1, 2),
-                "upconverter": 1,
+            "mixInputs": {
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
+                "lo_frequency": qubit_LO_q1,
+                "mixer": "mixer_qubit_q1",
             },
             "intermediate_frequency": qubit_IF_q1,  # in Hz
             "operations": {
@@ -396,9 +434,11 @@ config = {
             },
         },
         "q2_xy": {
-            "MWInput": {
-                "port": ("con1", 1, 3),
-                "upconverter": 1,
+            "mixInputs": {
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
+                "lo_frequency": qubit_LO_q2,
+                "mixer": "mixer_qubit_q2",
             },
             "intermediate_frequency": qubit_IF_q2,  # in Hz
             "operations": {
@@ -412,9 +452,11 @@ config = {
             },
         },
         "cr_drive_c1t2": {
-            "MWInput": {
-                "port": ("con1", 1, 2),
-                "upconverter": 2,
+            "mixInputs": {
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
+                "lo_frequency": qubit_LO_q1,
+                "mixer": "mixer_qubit_q1",
             },
             "intermediate_frequency": cr_drive_IF_c1t2, # in Hz
             "operations": {
@@ -424,9 +466,11 @@ config = {
             },
         },
         "cr_drive_c2t1": {
-            "MWInput": {
-                "port": ("con1", 1, 3),
-                "upconverter": 2,
+            "mixInputs": {
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
+                "lo_frequency": qubit_LO_q2,
+                "mixer": "mixer_qubit_q2",
             },
             "intermediate_frequency": cr_drive_IF_c2t1, # in Hz
             "operations": {
@@ -436,9 +480,11 @@ config = {
             },
         },
         "cr_cancel_c1t2": {
-            "MWInput": {
-                "port": ("con1", 1, 2),
-                "upconverter": 2,
+            "mixInputs": {
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
+                "lo_frequency": qubit_LO_q1,
+                "mixer": "mixer_qubit_q1",
             },
             "intermediate_frequency": cr_cancel_IF_c1t2, # in Hz
             "operations": {
@@ -448,9 +494,11 @@ config = {
             },
         },
         "cr_cancel_c2t1": {
-            "MWInput": {
-                "port": ("con1", 1, 3),
-                "upconverter": 2,
+            "mixInputs": {
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
+                "lo_frequency": qubit_LO_q2,
+                "mixer": "mixer_qubit_q2",
             },
             "intermediate_frequency": cr_cancel_IF_c2t1, # in Hz
             "operations": {
@@ -772,6 +820,44 @@ config = {
             "cosine": opt_weights_minus_imag_q2,
             "sine": opt_weights_minus_real_q2,
         },
+    },
+    "mixers": {
+        "mixer_qubit_q1": [
+            {
+                "intermediate_frequency": qubit_IF_q1,
+                "lo_frequency": qubit_LO_q1,
+                "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
+            },
+            {
+                "intermediate_frequency": cr_drive_IF_c1t2,
+                "lo_frequency": qubit_LO_q1,
+                "correction": IQ_imbalance(mixer_cr_drive_c1t2_g, mixer_cr_drive_c1t2_phi),
+            }
+        ],
+        "mixer_qubit_q2": [
+            {
+                "intermediate_frequency": qubit_IF_q2,
+                "lo_frequency": qubit_LO_q2,
+                "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
+            },
+            {
+                "intermediate_frequency": cr_drive_IF_c2t1,
+                "lo_frequency": qubit_LO_q2,
+                "correction": IQ_imbalance(mixer_cr_drive_c2t1_g, mixer_cr_drive_c2t1_phi),
+            }
+        ],
+        "mixer_resonator": [
+            {
+                "intermediate_frequency": resonator_IF_q1,
+                "lo_frequency": resonator_LO,
+                "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1),
+            },
+            {
+                "intermediate_frequency": resonator_IF_q2,
+                "lo_frequency": resonator_LO,
+                "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2),
+            },
+        ],
     },
 }
 
