@@ -4,7 +4,7 @@ A simple sandbox to showcase different QUA functionalities during the installati
 
 from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig
-from configuration_lf_fem import *
+from configuration_lf_fem_and_octave import *
 
 ###################
 #   QUA Program   #
