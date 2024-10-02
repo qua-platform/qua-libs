@@ -203,12 +203,16 @@ config = {
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 2, "full_scale_power_dbm": resonator_power},  # resonator
-                        2: {"band": 2, "full_scale_power_dbm": qubit_power},  # qubit
+                        1: {
+                            "full_scale_power_dbm": resonator_power,
+                            "band": 2,
+                            "upconverter_frequency": resonator_LO,
+                        },  # resonator
+                        2: {"full_scale_power_dbm": qubit_power, "band": 2, "upconverter_frequency": qubit_LO},  # qubit
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # I from down-conversion
                     },
                 },
                 lf_fem: {
@@ -220,6 +224,7 @@ config = {
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "output_mode": "amplified",
                             # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
                             #   1 GS/s: uses one core per output (default)
@@ -244,10 +249,6 @@ config = {
         "qubit": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": qubit_LO,
             },
             "intermediate_frequency": qubit_IF,
             "operations": {
@@ -266,10 +267,6 @@ config = {
         "resonator": {
             "MWInput": {
                 "port": (con, mw_fem, 2),
-                # Note the 'oscillator_frequency' field will be renamed 'upconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                # The ability to use multiple upconverters in the same output will also be added.
-                "oscillator_frequency": resonator_LO,
             },
             "intermediate_frequency": resonator_IF,
             "operations": {
@@ -278,9 +275,6 @@ config = {
             },
             "MWOutput": {
                 "port": (con, mw_fem, 1),
-                # Note the 'oscillator_frequency' field will be renamed 'downconverter_frequency'
-                # and will be moved to the port definition in QOP 3.2.
-                "oscillator_frequency": resonator_LO,
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,

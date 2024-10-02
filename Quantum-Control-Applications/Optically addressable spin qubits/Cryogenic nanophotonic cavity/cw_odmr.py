@@ -1,6 +1,7 @@
 """
 cw_odmr.py: Counts photons while sweeping the frequency of the applied MW.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig

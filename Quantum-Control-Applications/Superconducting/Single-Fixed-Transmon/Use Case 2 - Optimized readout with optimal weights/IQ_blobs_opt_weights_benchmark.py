@@ -2,6 +2,7 @@
 Measure the qubit in the ground and excited state to create the IQ blobs. If the separation and the fidelity are good
 enough, gives the parameters needed for active reset
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from configuration import *
