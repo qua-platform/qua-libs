@@ -10,14 +10,14 @@ from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
-from macros import qua_declaration, multiplexed_readout, active_reset
+from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
 ##################
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 10_000
+n_avg = 10
 qubit = 'q1_xy'
 
 # Data to save
@@ -63,12 +63,12 @@ def allXY(pulses, qb):
     if pulses[0] != "I":
         play(pulses[0], qb)  # Either play the sequence
     else:
-        wait(pi_len >> 2, qb)  # or wait if sequence is identity
+        wait(pi_len // 4, qb)  # or wait if sequence is identity
     # Play the 2nd gate or wait if the gate is identity
     if pulses[1] != "I":
         play(pulses[1], qb)  # Either play the sequence
     else:
-        wait(pi_len >> 2, qb)  # or wait if sequence is identity
+        wait(pi_len // 4, qb)  # or wait if sequence is identity
 
 ###################
 #   QUA Program   #
@@ -97,8 +97,8 @@ with program() as PROGRAM:
     with stream_processing():
         n_st.save("iteration")
         for ind in range(2):
-            I_st[ind].buffer(21).average().save(f"I{ind}")
-            Q_st[ind].buffer(21).average().save(f"Q{ind}")
+            I_st[ind].buffer(21).average().save(f"I{ind+1}")
+            Q_st[ind].buffer(21).average().save(f"Q{ind+1}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -122,11 +122,11 @@ else:
         qm = qmm.open_qm(config)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-            # Prepare the figure for live plotting
+        # Prepare the figure for live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
-        results = fetching_tool(job, ["n", "I1", "Q1", "I2", "Q2"], mode="live")
+        results = fetching_tool(job, ["iteration", "I1", "Q1", "I2", "Q2"], mode="live")
         while results.is_processing():
             # Fetch results
             res = results.fetch_all()

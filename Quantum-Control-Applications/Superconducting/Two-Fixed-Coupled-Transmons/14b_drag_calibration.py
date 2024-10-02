@@ -39,6 +39,9 @@ amps = np.arange(amp_min, amp_max, amp_step)
 max_nb_of_pulses = 40  # Maximum number of qubit pulses
 nb_of_pulses = np.arange(0, max_nb_of_pulses + 0.1, 1)  # Always play an odd/even number of pulses to end up in the same state
 
+assert drag_coef_q1 != 0, "DRAG coef needs to be different from zero"
+assert drag_coef_q2 != 0, "DRAG coef needs to be different from zero"
+
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,

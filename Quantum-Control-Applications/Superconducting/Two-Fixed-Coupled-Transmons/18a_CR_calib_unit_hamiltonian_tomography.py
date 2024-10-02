@@ -44,7 +44,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
-from macros import qua_declaration, multiplexed_readout, active_reset
+from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 from macros import qua_declaration, multiplexed_readout
 from cr_hamiltonian_tomography import (
@@ -69,15 +69,13 @@ cr_cancel_amp =  0.5 # ratio
 cr_cancel_phase = 0.0 # in units of 2pi
 ts_cycles = np.arange(4, 400, 4) # in clock cylcle = 4ns
 
-weights = "rotated_" # ["", "rotated_", "opt_"]
-
 # Derived parameters
 qc_xy = f"q{qc}_xy"
 qt_xy = f"q{qt}_xy"
 cr_drive = f"cr_drive_c{qc}t{qt}"
 cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
-resonators = [f"q{i}_rr" for i in [qc, qt]]
+resonators = [f"rr{i}" for i in [qc, qt]]
 ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
 
 # Data to save
@@ -103,9 +101,9 @@ save_data_dict = {
 ###################
 
 with program() as PROGRAM:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(resonators)
-    state = [declare(bool) for _ in range(len(resonators))]
-    state_st = [declare_stream() for _ in range(len(resonators))]
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
+    state = [declare(bool) for _ in range(2)]
+    state_st = [declare_stream() for _ in range(2)]
     t = declare(int)
     s = declare(int)  # QUA variable for the control state
     c = declare(int)  # QUA variable for the projection index in QST
@@ -172,7 +170,12 @@ with program() as PROGRAM:
                     align(qt_xy, *resonators)
 
                     # Measure the state of the resonators
-                    multiplexed_readout(I, I_st, Q, Q_st, state, state_st, resonators=resonators, weights=weights)
+                    multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
+                    assign(state[0], I[0] > ge_threshold_q1)
+                    save(state[0], state_st[0])
+                    assign(state[1], I[1] > ge_threshold_q2)
+                    save(state[1], state_st[1])
+
 
                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                     wait(thermalization_time * u.ns)
@@ -182,83 +185,82 @@ with program() as PROGRAM:
         # control qubit
         I_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I1")
         Q_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q1")
-        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state1")
+        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("state1")
         # target qubit
         I_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I2")
         Q_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q2")
-        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state2")
+        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("state2")
 
 
-if __name__ == "__main__":
-    #####################################
-    #  Open Communication with the QOP  #
-    #####################################
-    qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
-    ###########################
-    # Run or Simulate Program #
-    ###########################
-    simulate = False
+###########################
+# Run or Simulate Program #
+###########################
+simulate = False
 
-    if simulate:
-        # Simulates the QUA program for the specified duration
-        simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
-        job = qmm.simulate(config, PROGRAM, simulation_config)
-        job.get_simulated_samples().con1.plot()
-        plt.show()
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
+    job = qmm.simulate(config, PROGRAM, simulation_config)
+    job.get_simulated_samples().con1.plot()
+    plt.show()
 
-    else:
-        try:
-            # Open the quantum machine
-            qm = qmm.open_qm(config)
-            # Send the QUA program to the OPX, which compiles and executes it
-            job = qm.execute(PROGRAM)
-            # Prepare the figure for live plotting
-            fig, axss = plt.subplots(4, 2, figsize=(10, 10))
-            interrupt_on_close(fig, job)
-            # Tool to easily fetch results from the OPX (results_handle used in it)
-            fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
-            results = fetching_tool(job, fetch_names, mode="live")
-            # Live plotting
-            while results.is_processing():
-                # Fetch results
-                res = results.fetch_all()
-                iterations, I1, Q1, state_c, I2, Q2, state_t = res
-                # Progress bar
-                progress_counter(iterations, n_avg, start_time=results.start_time)
-                # Convert the results into Volts
-                I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
-                I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
-                bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1 # convert |0> -> 1, |1> -> -1
-                # Progress bar
-                progress_counter(iterations, n_avg, start_time=results.start_time)
-                # plotting data
-                fig = plot_crqst_result_2D(ts_ns, bloch_c, bloch_t, fig, axss)
-                plt.tight_layout()
-                plt.pause(1)
+else:
+    try:
+        # Open the quantum machine
+        qm = qmm.open_qm(config)
+        # Send the QUA program to the OPX, which compiles and executes it
+        job = qm.execute(PROGRAM)
+        # Prepare the figure for live plotting
+        fig, axss = plt.subplots(4, 2, figsize=(10, 10))
+        interrupt_on_close(fig, job)
+        # Tool to easily fetch results from the OPX (results_handle used in it)
+        fetch_names = ["n", "I1", "Q1", "state1", "I2", "Q2", "state2"]
+        results = fetching_tool(job, fetch_names, mode="live")
+        # Live plotting
+        while results.is_processing():
+            # Fetch results
+            res = results.fetch_all()
+            iterations, I1, Q1, state_c, I2, Q2, state_t = res
+            # Progress bar
+            progress_counter(iterations, n_avg, start_time=results.start_time)
+            # Convert the results into Volts
+            I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
+            I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
+            bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1 # convert |0> -> 1, |1> -> -1
+            # Progress bar
+            progress_counter(iterations, n_avg, start_time=results.start_time)
+            # plotting data
+            fig = plot_crqst_result_2D(ts_ns, bloch_c, bloch_t, fig, axss)
+            plt.tight_layout()
+            plt.pause(1)
 
-            # cross resonance Hamiltonian tomography analysis
-            crht = CRHamiltonianTomographyAnalysis(
-                ts=ts_ns,
-                data=bloch_t,  # target data
-            )
-            crht.fit_params()
-            fig_analysis = crht.plot_fit_result(do_show=False)
-            save_data_dict["fig_live"] = fig
-            save_data_dict["fig_analysis"] = fig_analysis
-            save_data_dict["ham_tomo_params_fitted"] = crht.params_fitted_dict
-            save_data_dict["ham_tomo_interaction_coeffs_MHz"] = crht.interaction_coeffs_MHz
+        # cross resonance Hamiltonian tomography analysis
+        crht = CRHamiltonianTomographyAnalysis(
+            ts=ts_ns,
+            data=bloch_t,  # target data
+        )
+        crht.fit_params()
+        fig_analysis = crht.plot_fit_result(do_show=False)
+        save_data_dict["fig_live"] = fig
+        save_data_dict["fig_analysis"] = fig_analysis
+        save_data_dict["ham_tomo_params_fitted"] = crht.params_fitted_dict
+        save_data_dict["ham_tomo_interaction_coeffs_MHz"] = crht.interaction_coeffs_MHz
 
-            # Save results
-            script_name = Path(__file__).name
-            data_handler = DataHandler(root_data_folder=save_dir)
-            data_handler.additional_files = {script_name: script_name, **default_additional_files}
-            data_handler.save_data(data=save_data_dict, name="cr_calib_ham_tomo")
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        data_handler.additional_files = {script_name: script_name, **default_additional_files}
+        data_handler.save_data(data=save_data_dict, name="cr_calib_ham_tomo")
 
-        except Exception as e:
-            print(f"An exception occurred: {e}")
+    except Exception as e:
+        print(f"An exception occurred: {e}")
 
-        finally:
-            qm.close()
-            print("Experiment QM is now closed")
-            plt.show(block=True)
+    finally:
+        qm.close()
+        print("Experiment QM is now closed")
+        plt.show(block=True)

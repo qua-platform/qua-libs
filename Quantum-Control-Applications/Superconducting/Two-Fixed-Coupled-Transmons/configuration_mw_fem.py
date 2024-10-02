@@ -77,8 +77,8 @@ pi_amp_q1 = 0.22
 pi_amp_q2 = 0.22
 
 # DRAG coefficients
-drag_coef_q1 = 0
-drag_coef_q2 = 0
+drag_coef_q1 = 1.0
+drag_coef_q2 = 1.0
 anharmonicity_q1 = -200 * u.MHz
 anharmonicity_q2 = -180 * u.MHz
 AC_stark_detuning_q1 = 0 * u.MHz
