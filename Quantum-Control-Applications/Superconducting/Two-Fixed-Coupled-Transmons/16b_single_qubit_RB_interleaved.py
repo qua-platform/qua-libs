@@ -65,6 +65,7 @@ def get_interleaved_gate(gate_index):
     elif gate_index == 15:
         return "-y90"
 
+
 def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
@@ -164,6 +165,7 @@ def play_sequence(sequence_list, depth, qb):
                 play("y90", qb)
                 play("-x90", qb)
 
+
 ###################
 #   QUA Program   #
 ###################
@@ -195,15 +197,15 @@ with program() as PROGRAM:
             # Only played the depth corresponding to target_depth
 
             with if_((depth == 2) | (depth == depth_target)):
-                
+
                 with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                     # Can replace by active reset
                     wait(thermalization_time * u.ns)
                     # Align the two elements to play the sequence after qubit initialization
                     align()
                     # The strict_timing ensures that the sequence will be played without gaps
-                    play_sequence(sequence_list, depth, 'q1_xy')
-                    play_sequence(sequence_list, depth, 'q2_xy')
+                    play_sequence(sequence_list, depth, "q1_xy")
+                    play_sequence(sequence_list, depth, "q2_xy")
                     # Align the two elements to measure after playing the circuit.
                     align()
                     multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
@@ -217,8 +219,12 @@ with program() as PROGRAM:
     with stream_processing():
         m_st.save("iteration")
         for ind in range(2):
-            I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(f"I{ind+1}")
-            Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(f"Q{ind+1}")
+            I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save(f"I{ind+1}")
+            Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save(f"Q{ind+1}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -238,11 +244,11 @@ if simulate:
     job.get_simulated_samples().con1.plot()
     plt.plot(block=False)
 else:
-    try:# Open the quantum machine
+    try:  # Open the quantum machine
         qm = qmm.open_qm(config)
-        
+
         # Send the QUA program to the OPX, which compiles and executes it
-        job = qm.execute(PROGRAM, flags=['not-strict-timing'])
+        job = qm.execute(PROGRAM, flags=["not-strict-timing"])
 
         # Prepare the figure for live plotting
         fig = plt.figure()
@@ -264,11 +270,11 @@ else:
             plt.suptitle("interleaved-RB")
             for ind in range(2):
 
-                S = res[2*ind + 1]
+                S = res[2 * ind + 1]
                 # Plot
                 plt.subplot(1, 2, ind + 1)
                 plt.cla()
-                plt.plot(x, S, marker=".", color='r')
+                plt.plot(x, S, marker=".", color="r")
                 plt.xlabel("Number of Clifford gates")
                 plt.ylabel("Sequence Fidelity")
                 plt.title(f"Qb - {ind}")
@@ -277,8 +283,8 @@ else:
             plt.pause(2)
 
         for ind in range(2):
-            save_data_dict[f"I{ind}"] = res[2*ind + 1]
-            save_data_dict[f"Q{ind}"] = res[2*ind + 2]
+            save_data_dict[f"I{ind}"] = res[2 * ind + 1]
+            save_data_dict[f"Q{ind}"] = res[2 * ind + 2]
 
         # Save results
         script_name = Path(__file__).name

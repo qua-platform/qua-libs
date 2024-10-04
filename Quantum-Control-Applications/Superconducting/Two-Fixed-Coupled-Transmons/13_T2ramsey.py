@@ -27,12 +27,12 @@ import math
 from qualang_tools.results.data_handler import DataHandler
 import matplotlib
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 
 ###################
 # The QUA program #
 ##################
-n_avg = 8*60  # The number of averages
+n_avg = 8 * 60  # The number of averages
 t_max = 8_000
 t_min = 4
 t_step = 120
@@ -68,13 +68,13 @@ with program() as PROGRAM:
 
             assign(phase, phase + delta_phase)
 
-            play('x90', 'q1_xy')
-            play('x90', 'q2_xy')
+            play("x90", "q1_xy")
+            play("x90", "q2_xy")
             wait(t)
-            frame_rotation_2pi(phase, 'q1_xy')
-            frame_rotation_2pi(phase, 'q2_xy')
-            play('x90', 'q1_xy')
-            play('x90', 'q2_xy')
+            frame_rotation_2pi(phase, "q1_xy")
+            frame_rotation_2pi(phase, "q2_xy")
+            play("x90", "q1_xy")
+            play("x90", "q2_xy")
 
             # Align the elements to measure after having waited a time "tau" after the qubit pulses.
             align()
@@ -84,8 +84,8 @@ with program() as PROGRAM:
 
             wait(thermalization_time * u.ns)
 
-            reset_frame('q1_xy')
-            reset_frame('q2_xy')
+            reset_frame("q1_xy")
+            reset_frame("q2_xy")
 
     with stream_processing():
         n_st.save("iteration")

@@ -54,7 +54,7 @@ with program() as PROGRAM:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
     n = declare(int)
-    n_st = declare_stream()    
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         # Save the averaging iteration to get the progress bar
@@ -155,17 +155,7 @@ else:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Get results from QUA program
-        data_list = [
-            "Ig_avg",
-            "Qg_avg",
-            "Ie_avg",
-            "Qe_avg",
-            "Ig_var",
-            "Qg_var",
-            "Ie_var",
-            "Qe_var",
-            "iteration"
-        ]
+        data_list = ["Ig_avg", "Qg_avg", "Ie_avg", "Qe_avg", "Ig_var", "Qg_var", "Ie_var", "Qe_var", "iteration"]
         results = fetching_tool(
             job,
             data_list=data_list,
@@ -220,7 +210,9 @@ else:
             plt.pause(1)
             # Get the optimal readout length in ns
             opt_readout_length = int(np.round(np.argmax(SNR) * division_length / 4) * 4 * 4)
-        print(f"The optimal readout length for qubit associated with {resonator} is {opt_readout_length} ns (SNR={max(SNR)})")
+        print(
+            f"The optimal readout length for qubit associated with {resonator} is {opt_readout_length} ns (SNR={max(SNR)})"
+        )
 
         # Save results
         script_name = Path(__file__).name

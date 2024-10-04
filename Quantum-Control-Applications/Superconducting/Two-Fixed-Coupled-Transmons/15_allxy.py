@@ -18,14 +18,10 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 # Parameters Definition
 n_avg = 10
-qubit = 'q1_xy'
+qubit = "q1_xy"
 
 # Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-    "qubit": qubit
-}
+save_data_dict = {"n_avg": n_avg, "config": config, "qubit": qubit}
 
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
@@ -52,6 +48,7 @@ sequence = [
     ("y90", "y90"),
 ]
 
+
 def allXY(pulses, qb):
     """
     Generate a QUA sequence based on the two operations written in pulses. Used to generate the all XY program.
@@ -69,6 +66,7 @@ def allXY(pulses, qb):
         play(pulses[1], qb)  # Either play the sequence
     else:
         wait(pi_len // 4, qb)  # or wait if sequence is identity
+
 
 ###################
 #   QUA Program   #
@@ -135,16 +133,16 @@ else:
 
             plt.suptitle("AllXY")
 
-            if qubit == 'q1_xy':
+            if qubit == "q1_xy":
                 ind = 0
             else:
                 ind = 1
-                
-            I = res[2*ind + 1]
-            Q = res[2*ind + 2]
 
-            save_data_dict[f"I{ind}"] = res[2*ind + 1]
-            save_data_dict[f"Q{ind}"] = res[2*ind + 2]
+            I = res[2 * ind + 1]
+            Q = res[2 * ind + 2]
+
+            save_data_dict[f"I{ind}"] = res[2 * ind + 1]
+            save_data_dict[f"Q{ind}"] = res[2 * ind + 2]
 
             # Plot
             plt.suptitle(f"All XY for qubit {ind}")

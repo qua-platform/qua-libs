@@ -34,7 +34,7 @@ scaling_max = 1.99
 scaling_min = 0.0
 scaling_step = 0.025
 scalings = np.arange(scaling_min, scaling_max, scaling_step)
-iq_blobs_analysis_method = "snr" # "snr" "fidelity" or "overlap"
+iq_blobs_analysis_method = "snr"  # "snr" "fidelity" or "overlap"
 
 # Data to save
 save_data_dict = {

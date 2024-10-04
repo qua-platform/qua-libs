@@ -19,7 +19,7 @@ from qualang_tools.results.data_handler import DataHandler
 n_avg = 1000
 t_max = 40_000
 t_min = 4
-t_delays = np.geomspace(t_min, t_max, 100).astype(int) # np.arange(t_min, t_max, t_step)
+t_delays = np.geomspace(t_min, t_max, 100).astype(int)  # np.arange(t_min, t_max, t_step)
 
 # Data to save
 save_data_dict = {
@@ -45,20 +45,20 @@ with program() as PROGRAM:
 
         with for_each_(t, t_delays.tolist()):
 
-            play("x90", 'q1_xy')
-            play("x90", 'q2_xy')
+            play("x90", "q1_xy")
+            play("x90", "q2_xy")
             wait(t)
-            play("x180", 'q1_xy')
-            play("x180", 'q2_xy')
+            play("x180", "q1_xy")
+            play("x180", "q2_xy")
             wait(t)
-            play("x90", 'q1_xy')  # 2nd x90 gate
-            play("x90", 'q2_xy')  # 2nd x90 gate
+            play("x90", "q1_xy")  # 2nd x90 gate
+            play("x90", "q2_xy")  # 2nd x90 gate
 
             # Align the elements to measure after having waited a time "tau" after the qubit pulses.
             align()
 
             # Measure the state of the resonators
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")            
+            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
 
             wait(thermalization_time * u.ns)
 

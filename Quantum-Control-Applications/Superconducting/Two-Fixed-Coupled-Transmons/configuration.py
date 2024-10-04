@@ -14,6 +14,7 @@ from qualang_tools.units import unit
 #######################
 u = unit(coerce_to_integer=True)
 
+
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -28,11 +29,12 @@ def IQ_imbalance(g, phi):
     N = 1 / ((1 - g**2) * (2 * c**2 - 1))
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
+
 ######################
 # Network parameters #
 ######################
 qop_ip = "172.16.33.101"  # Write the QM router IP address
-cluster_name = 'Cluster_83'  # Write your cluster_name if version >= QOP220
+cluster_name = "Cluster_83"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -213,15 +215,15 @@ cr_cancel_square_amp_c1t2 = 0.5
 cr_cancel_square_amp_c2t1 = 0.5
 
 # CR Drive pulse phase
-cr_drive_square_phase_c1t2 = 0.0 # in units of 2pi
-cr_drive_square_phase_c2t1 = 0.0 # in units of 2pi
+cr_drive_square_phase_c1t2 = 0.0  # in units of 2pi
+cr_drive_square_phase_c2t1 = 0.0  # in units of 2pi
 # CR Cancel pulse phase
-cr_cancel_square_phase_c1t2 = 0.0 # in units of 2pi
-cr_cancel_square_phase_c2t1 = 0.0 # in units of 2pi
+cr_cancel_square_phase_c1t2 = 0.0  # in units of 2pi
+cr_cancel_square_phase_c2t1 = 0.0  # in units of 2pi
 
 # CR Drive pulse phase
-cr_drive_square_phase_ZI_correct_c1t2 = 0.0 # in units of 2pi
-cr_drive_square_phase_ZI_correct_c2t1 = 0.0 # in units of 2pi
+cr_drive_square_phase_ZI_correct_c1t2 = 0.0  # in units of 2pi
+cr_drive_square_phase_ZI_correct_c2t1 = 0.0  # in units of 2pi
 
 
 #############################################
@@ -325,8 +327,8 @@ config = {
                 "out1": ("con1", 1),
                 "out2": ("con1", 2),
             },
-			'time_of_flight': time_of_flight,
-            'smearing': 0,
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q1",
@@ -344,8 +346,8 @@ config = {
                 "out1": ("con1", 1),
                 "out2": ("con1", 2),
             },
-			'time_of_flight': time_of_flight,
-            'smearing': 0,
+            "time_of_flight": time_of_flight,
+            "smearing": 0,
             "operations": {
                 "cw": "const_pulse",
                 "readout": "readout_pulse_q2",
@@ -394,7 +396,7 @@ config = {
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
-            "intermediate_frequency": cr_drive_IF_c1t2, # in Hz
+            "intermediate_frequency": cr_drive_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "square_positive": "square_positive_pulse_cr_drive_c1t2",
@@ -408,7 +410,7 @@ config = {
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": cr_drive_IF_c2t1, # in Hz
+            "intermediate_frequency": cr_drive_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "square_positive": "square_positive_pulse_cr_drive_c2t1",
@@ -422,7 +424,7 @@ config = {
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
-            "intermediate_frequency": cr_cancel_IF_c1t2, # in Hz
+            "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "square_positive": "square_positive_pulse_cr_cancel_c1t2",
@@ -436,7 +438,7 @@ config = {
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },
-            "intermediate_frequency": cr_cancel_IF_c2t1, # in Hz
+            "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
                 "square_positive": "square_positive_pulse_cr_cancel_c2t1",
@@ -592,66 +594,42 @@ config = {
         "square_positive_pulse_cr_drive_c1t2": {
             "operation": "control",
             "length": cr_drive_square_len_c1t2,
-            "waveforms": {
-                "I": "square_positive_wf_cr_drive_c1t2",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_positive_wf_cr_drive_c1t2", "Q": "zero_wf"},
         },
         "square_positive_pulse_cr_drive_c2t1": {
             "operation": "control",
             "length": cr_drive_square_len_c2t1,
-            "waveforms": {
-                "I": "square_positive_wf_cr_drive_c2t1",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_positive_wf_cr_drive_c2t1", "Q": "zero_wf"},
         },
         "square_negative_pulse_cr_drive_c1t2": {
             "operation": "control",
             "length": cr_drive_square_len_c1t2,
-            "waveforms": {
-                "I": "square_negative_wf_cr_drive_c1t2",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_negative_wf_cr_drive_c1t2", "Q": "zero_wf"},
         },
         "square_negative_pulse_cr_drive_c2t1": {
             "operation": "control",
             "length": cr_drive_square_len_c2t1,
-            "waveforms": {
-                "I": "square_negative_wf_cr_drive_c2t1",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_negative_wf_cr_drive_c2t1", "Q": "zero_wf"},
         },
         "square_positive_pulse_cr_cancel_c1t2": {
             "operation": "control",
             "length": cr_cancel_square_len_c1t2,
-            "waveforms": {
-                "I": "square_positive_wf_cr_cancel_c1t2",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_positive_wf_cr_cancel_c1t2", "Q": "zero_wf"},
         },
         "square_positive_pulse_cr_cancel_c2t1": {
             "operation": "control",
             "length": cr_cancel_square_len_c2t1,
-            "waveforms": {
-                "I": "square_positive_wf_cr_cancel_c2t1",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_positive_wf_cr_cancel_c2t1", "Q": "zero_wf"},
         },
         "square_negative_pulse_cr_cancel_c1t2": {
             "operation": "control",
             "length": cr_cancel_square_len_c1t2,
-            "waveforms": {
-                "I": "square_negative_wf_cr_cancel_c1t2",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_negative_wf_cr_cancel_c1t2", "Q": "zero_wf"},
         },
         "square_negative_pulse_cr_cancel_c2t1": {
             "operation": "control",
             "length": cr_cancel_square_len_c2t1,
-            "waveforms": {
-                "I": "square_negative_wf_cr_cancel_c2t1",
-                "Q": "zero_wf"
-            },
+            "waveforms": {"I": "square_negative_wf_cr_cancel_c2t1", "Q": "zero_wf"},
         },
     },
     "waveforms": {
@@ -768,7 +746,7 @@ config = {
                 "intermediate_frequency": cr_drive_IF_c1t2,
                 "lo_frequency": qubit_LO_q1,
                 "correction": IQ_imbalance(mixer_cr_drive_c1t2_g, mixer_cr_drive_c1t2_phi),
-            }
+            },
         ],
         "mixer_qubit_q2": [
             {
@@ -780,7 +758,7 @@ config = {
                 "intermediate_frequency": cr_drive_IF_c2t1,
                 "lo_frequency": qubit_LO_q2,
                 "correction": IQ_imbalance(mixer_cr_drive_c2t1_g, mixer_cr_drive_c2t1_phi),
-            }
+            },
         ],
         "mixer_resonator": [
             {

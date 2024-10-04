@@ -31,9 +31,9 @@ import pandas as pd
 #   Parameters   #
 ##################
 
-# Qubits and resonators 
-qc = 1 # index of control qubit
-qt = 2 # index of target qubit
+# Qubits and resonators
+qc = 1  # index of control qubit
+qt = 2  # index of target qubit
 
 # Parameters Definition
 n_shots = 10_000
@@ -79,7 +79,7 @@ with program() as PROGRAM:
     state_st = [declare_stream() for _ in range(2)]
     c = declare(int)
     with_cnot = declare(int)
-    
+
     with for_(n, 0, n < n_shots, n + 1):
         save(n, n_st)
         # to allow time to save the data
@@ -103,7 +103,7 @@ with program() as PROGRAM:
 
                 with if_(with_cnot == 1):
                     # Play ZI(-pi/2) and IX(-pi/2)
-                    frame_rotation_2pi(+0.25, qc_xy) # +0.25 for Z(-pi/2)
+                    frame_rotation_2pi(+0.25, qc_xy)  # +0.25 for Z(-pi/2)
                     play("-x90", qt_xy)
 
                     # Shift frames to the calibrated phases
@@ -165,7 +165,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, PROGRAM, simulation_config)
-    job.get_simulated_samples().con1.plot(analog_ports=['1', '2', '3', '4', '5', '6'])
+    job.get_simulated_samples().con1.plot(analog_ports=["1", "2", "3", "4", "5", "6"])
     plt.show()
 
 else:
@@ -211,24 +211,24 @@ else:
         cases = ["00", "01", "10", "11"]
         for ax, case in zip(axss.ravel(), cases):
             case_data = df[df["case"] == case]  # Filter data for the current "case"
-            
+
             # Group by "cnot" and "res" and count occurrences
             grouped = case_data.groupby(["cnot", "res"]).size().unstack(fill_value=0)
 
             # Generate side-by-side bar plot
             width = 0.35  # Width of bars
             index = np.arange(len(grouped.columns))  # The x locations for the groups
-            
+
             # Bar plot for cnot=True
-            ax.bar(index - width/2, grouped.loc["N"], width, label='cnot=No')
-            
+            ax.bar(index - width / 2, grouped.loc["N"], width, label="cnot=No")
+
             # Bar plot for cnot=False
-            ax.bar(index + width/2, grouped.loc["Y"], width, label='cnot=Yes')
+            ax.bar(index + width / 2, grouped.loc["Y"], width, label="cnot=Yes")
 
             # Add some text for labels, title, and axes ticks
-            ax.set_xlabel('res')
-            ax.set_ylabel('Count')
-            ax.set_title(f'Counts of states in case of preparing {case}')
+            ax.set_xlabel("res")
+            ax.set_ylabel("Count")
+            ax.set_title(f"Counts of states in case of preparing {case}")
             ax.set_xticks(index)
             ax.set_xticklabels(grouped.columns)
             ax.legend()
