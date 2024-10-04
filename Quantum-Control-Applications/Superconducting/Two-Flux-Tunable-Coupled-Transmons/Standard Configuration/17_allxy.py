@@ -57,6 +57,7 @@ sequence = [
     ("y90", "y90"),
 ]
 
+
 # All XY macro generating the pulse sequences from a python list.
 def allXY(pulses, qubit, resonator):
     """
