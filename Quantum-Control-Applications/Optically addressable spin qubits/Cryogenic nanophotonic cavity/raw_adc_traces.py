@@ -3,6 +3,7 @@ raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2
 this allows checking that the ADC is not saturated, correct for DC offsets and define the time of flight and
 threshold for time-tagging.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt

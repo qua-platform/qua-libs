@@ -3,6 +3,7 @@ Having calibrated roughly a pi pulse, this script allows you to fix the pi pulse
 first pulse to obtain Rabi oscillations throughout the sequence.
 This allows measuring all the delays in the system, as well as the NV initialization duration
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface

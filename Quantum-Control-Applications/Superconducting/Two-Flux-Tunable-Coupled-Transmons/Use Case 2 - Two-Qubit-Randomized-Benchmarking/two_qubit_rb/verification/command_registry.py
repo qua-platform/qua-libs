@@ -100,7 +100,6 @@ TwoQubitGateGenerator = dict[Literal["CZ", "CNOT"], TwoQubitGateGeneratorFunc]
 def decorate_two_qubit_gate_generator_with_command_recording(
     two_qubit_gate_generator: TwoQubitGateGenerator, command_registry: CommandRegistry
 ) -> TwoQubitGateGenerator:
-
     """
     Decorates the `single_qubit_gate_generator` function so that it
     records every call to itself and registers the corresponding input parameters.
