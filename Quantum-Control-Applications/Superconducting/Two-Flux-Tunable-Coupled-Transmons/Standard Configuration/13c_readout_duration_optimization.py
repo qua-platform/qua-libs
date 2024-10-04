@@ -229,7 +229,7 @@ else:
         plt.legend()
         plt.subplot(232)
         plt.cla()
-        plt.plot(ground_trace_q2.imag, label="ground")
+        plt.plot(ground_trace_q1.imag, label="ground")
         plt.plot(excited_trace_q1.imag, label="excited")
         plt.xlabel("Clock cycles [4ns]")
         plt.title("Imaginary part qubit 1")

@@ -25,7 +25,6 @@ from qualang_tools.results import fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 
-
 ##############################
 # Program-specific variables #
 ##############################
@@ -57,7 +56,6 @@ sequence = [
     ("x90", "x90"),
     ("y90", "y90"),
 ]
-
 
 # All XY macro generating the pulse sequences from a python list.
 def allXY(pulses, qubit, resonator):
