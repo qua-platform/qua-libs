@@ -50,8 +50,10 @@ from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 from macros import qua_declaration, multiplexed_readout
 from cr_hamiltonian_tomography import (
-    CRHamiltonianTomographyAnalysis, plot_cr_duration_vs_scan_param, 
-    plot_interaction_coeffs, PAULI_2Q
+    CRHamiltonianTomographyAnalysis,
+    plot_cr_duration_vs_scan_param,
+    plot_interaction_coeffs,
+    PAULI_2Q,
 )
 
 
@@ -59,19 +61,19 @@ from cr_hamiltonian_tomography import (
 #   Parameters   #
 ##################
 
-# Qubits and resonators 
-qc = 1 # index of control qubit
-qt = 2 # index of target qubit
+# Qubits and resonators
+qc = 1  # index of control qubit
+qt = 2  # index of target qubit
 
 # Parameters Definition
 n_avg = 10
-cr_type = "direct+cancel+echo" # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
-cr_drive_amp = 1.0 # ratio
-cr_drive_phase = 0.0 # in units of 2pi
-cr_cancel_amp =  0.5 # ratio
-cr_cancel_phase = 0.0 # in units of 2pi
-ts_cycles = np.arange(4, 100, 1) # in clock cylcle = 4ns
-phases = np.arange(0.0, 1.01, 0.05) # ratio relative to 2 * pi
+cr_type = "direct+cancel+echo"  # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
+cr_drive_amp = 1.0  # ratio
+cr_drive_phase = 0.0  # in units of 2pi
+cr_cancel_amp = 0.5  # ratio
+cr_cancel_phase = 0.0  # in units of 2pi
+ts_cycles = np.arange(4, 100, 1)  # in clock cylcle = 4ns
+phases = np.arange(0.0, 1.01, 0.05)  # ratio relative to 2 * pi
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -80,7 +82,7 @@ cr_drive = f"cr_drive_c{qc}t{qt}"
 cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"rr{i}" for i in [qc, qt]]
-ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
+ts_ns = 4 * ts_cycles  # in clock cylcle = 4ns
 
 # Data to save
 save_data_dict = {
@@ -118,8 +120,8 @@ with program() as PROGRAM:
         save(n, n_st)
         with for_(*from_array(ph, phases)):
             with for_(*from_array(t, ts_cycles)):
-                with for_(c, 0, c < 3, c + 1): # bases 
-                    with for_(s, 0, s < 2, s + 1): # states
+                with for_(c, 0, c < 3, c + 1):  # bases
+                    with for_(s, 0, s < 2, s + 1):  # states
                         with if_(s == 1):
                             play("x180", qc_xy)
                             align(qc_xy, cr_drive)
@@ -208,11 +210,15 @@ with program() as PROGRAM:
         # control qubit
         I_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("I1")
         Q_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("Q1")
-        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("state1")
+        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save(
+            "state1"
+        )
         # target qubit
         I_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("I2")
         Q_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("Q2")
-        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save("state2")
+        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).buffer(len(phases)).average().save(
+            "state2"
+        )
 
 
 #####################################
@@ -255,7 +261,7 @@ else:
             # Convert the results into Volts
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
-            bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1 # convert |0> -> 1, |1> -> -1
+            bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1  # convert |0> -> 1, |1> -> -1
             # Progress bar
             progress_counter(iterations, n_avg, start_time=results.start_time)
             # plotting data
@@ -277,12 +283,12 @@ else:
             try:
                 crht = CRHamiltonianTomographyAnalysis(
                     ts=ts_ns,
-                    data=bloch_t[idx, ...], # target data: len(phases) x len(t_vec_cycle) x 3 x 2
+                    data=bloch_t[idx, ...],  # target data: len(phases) x len(t_vec_cycle) x 3 x 2
                 )
                 crht.fit_params()
                 coeffs.append(crht.interaction_coeffs_MHz)
                 fig_analysis = crht.plot_fit_result(do_show=False)
-                save_data_dict[f"fig_analysis_phase={ph:5.4f}".replace(".","-")] = fig_analysis
+                save_data_dict[f"fig_analysis_phase={ph:5.4f}".replace(".", "-")] = fig_analysis
             except:
                 print(f"fitting failed at phase = {ph}")
                 crht.interaction_coeffs_MHz = {k: None for k, v in crht.interaction_coeffs_MHz.items()}

@@ -14,6 +14,7 @@ from qualang_tools.results.data_handler import DataHandler
 # Helpers #
 ###########
 
+
 def normalize_complex_array(arr):
     # Calculate the simple norm of the complex array
     norm = np.sqrt(np.sum(np.abs(arr) ** 2))
@@ -63,8 +64,8 @@ x_plot = np.arange(division_length * 4, readout_len + 1, division_length * 4)
 print("Integration weights chunk-size length in clock cycles:", division_length)
 print("The readout has been sliced in the following number of divisions", number_of_divisions)
 
-qubit = 'q1_xy'
-resonator = 'rr1'
+qubit = "q1_xy"
+resonator = "rr1"
 
 # Data to save
 save_data_dict = {
@@ -96,7 +97,7 @@ with program() as PROGRAM:
     Ie_st = declare_stream()
     Qe_st = declare_stream()
     n = declare(int)
-    n_st = declare_stream()   
+    n_st = declare_stream()
 
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
@@ -198,10 +199,12 @@ else:
             save_data_dict["I_e"] = res[3]
             save_data_dict["Q_e"] = res[4]
 
-            ground_trace = res[1] + 1j*res[2]
-            excited_trace = res[3] + 1j*res[4]
+            ground_trace = res[1] + 1j * res[2]
+            excited_trace = res[3] + 1j * res[4]
             subtracted_trace = excited_trace - ground_trace
-            normalized_subtracted_trace = normalize_complex_array(subtracted_trace)  # <- these are the optimal weights :)
+            normalized_subtracted_trace = normalize_complex_array(
+                subtracted_trace
+            )  # <- these are the optimal weights :)
 
             # Plot the results
             plt.cla()
@@ -220,9 +223,9 @@ else:
 
         # Reshape the optimal integration weights to match the configuration
         weights_real = normalized_subtracted_trace.real
-        weights_minus_imag = - normalized_subtracted_trace.imag
+        weights_minus_imag = -normalized_subtracted_trace.imag
         weights_imag = normalized_subtracted_trace.imag
-        weights_minus_real = - normalized_subtracted_trace.real
+        weights_minus_real = -normalized_subtracted_trace.real
 
         # Save the weights for later use in the config
         np.savez(
@@ -231,7 +234,7 @@ else:
             weights_minus_imag=weights_minus_imag,
             weights_imag=weights_imag,
             weights_minus_real=weights_minus_real,
-            division_length=division_length
+            division_length=division_length,
         )
 
     except Exception as e:

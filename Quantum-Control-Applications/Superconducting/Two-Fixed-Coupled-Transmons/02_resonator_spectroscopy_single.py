@@ -106,7 +106,7 @@ else:
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
         # Get results from QUA program
-        results = fetching_tool(job, data_list=["I", "Q"]) # this one already waits for all values
+        results = fetching_tool(job, data_list=["I", "Q"])  # this one already waits for all values
         # plotting
         fig = plt.figure()
         I, Q = results.fetch_all()
@@ -116,16 +116,16 @@ else:
         phase = np.angle(S)  # Phase
         plt.suptitle(f"Resonator spectroscopy for {resonator} - LO = {resonator_LO / u.GHz} GHz")
         ax1 = plt.subplot(211)
-        plt.plot((frequencies[resonator])/ u.MHz, R, ".")
+        plt.plot((frequencies[resonator]) / u.MHz, R, ".")
         plt.ylabel(r"$R=\sqrt{I^2 + Q^2}$ [V]")
         plt.subplot(212, sharex=ax1)
-        plt.plot((frequencies[resonator])/ u.MHz, signal.detrend(np.unwrap(phase)), ".")
+        plt.plot((frequencies[resonator]) / u.MHz, signal.detrend(np.unwrap(phase)), ".")
         plt.xlabel("Intermediate frequency [MHz]")
         plt.ylabel("Phase [rad]")
         plt.tight_layout()
 
-        save_data_dict[resonator+"_I"] = I
-        save_data_dict[resonator+"_Q"] = Q
+        save_data_dict[resonator + "_I"] = I
+        save_data_dict[resonator + "_Q"] = Q
 
         # Save results
         script_name = Path(__file__).name

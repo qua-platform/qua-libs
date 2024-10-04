@@ -36,7 +36,7 @@ n_avg = 400  # Number of runs
 freq_span = 30e6
 freq_step = 0.5e6
 dfs = np.arange(-freq_span, freq_span, freq_step)
-iq_blobs_analysis_method = "snr" # "snr" "fidelity" or "overlap"
+iq_blobs_analysis_method = "snr"  # "snr" "fidelity" or "overlap"
 
 # Data to save
 save_data_dict = {

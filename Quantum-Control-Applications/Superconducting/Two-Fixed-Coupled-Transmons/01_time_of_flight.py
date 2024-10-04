@@ -52,8 +52,8 @@ with program() as PROGRAM:
         measure("readout", "rr1", adc_st)
         measure("readout", "rr2", None)
         # Wait for the resonators to empty
-        wait(depletion_time * u.ns, 'rr1')
-        wait(depletion_time * u.ns, 'rr2')
+        wait(depletion_time * u.ns, "rr1")
+        wait(depletion_time * u.ns, "rr2")
 
     with stream_processing():
         # Will save average:

@@ -59,8 +59,8 @@ with program() as PROGRAM:
 
         with for_each_(t, t_delays.tolist()):
 
-            play('x180', 'q1_xy')
-            play('x180', 'q2_xy')
+            play("x180", "q1_xy")
+            play("x180", "q2_xy")
 
             wait(t)
 
@@ -68,7 +68,7 @@ with program() as PROGRAM:
             align()
 
             # Measure the state of the resonators
-            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")            
+            multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
 
             wait(thermalization_time * u.ns)
 

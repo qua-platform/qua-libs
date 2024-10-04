@@ -53,19 +53,19 @@ from macros import qua_declaration, multiplexed_readout
 #   Parameters   #
 ##################
 
-# Qubits and resonators 
-qc = 1 # index of control qubit
-qt = 2 # index of target qubit
+# Qubits and resonators
+qc = 1  # index of control qubit
+qt = 2  # index of target qubit
 
 # Parameters Definition
 n_avg = 100
-cr_type = "direct+cancel+echo" # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
-cr_drive_amp = 1.0 # ratio
-cr_drive_phase = 0.0 # in units of 2pi
-cr_cancel_amp =  0.5 # ratio
-cr_cancel_phase = 0.0 # in units of 2pi
-ts_cycles = np.arange(4, 100, 1) # in clock cylcle = 4ns
-phases = np.arange(0.0, 1.01, 0.05) # ratio relative to 2 * pi
+cr_type = "direct+cancel+echo"  # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
+cr_drive_amp = 1.0  # ratio
+cr_drive_phase = 0.0  # in units of 2pi
+cr_cancel_amp = 0.5  # ratio
+cr_cancel_phase = 0.0  # in units of 2pi
+ts_cycles = np.arange(4, 100, 1)  # in clock cylcle = 4ns
+phases = np.arange(0.0, 1.01, 0.05)  # ratio relative to 2 * pi
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -74,7 +74,7 @@ cr_drive = f"cr_drive_c{qc}t{qt}"
 cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"rr{i}" for i in [qc, qt]]
-ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
+ts_ns = 4 * ts_cycles  # in clock cylcle = 4ns
 
 # Data to save
 save_data_dict = {
@@ -103,7 +103,7 @@ with program() as prog:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     state = [declare(bool) for _ in range(2)]
     state_st = [declare_stream() for _ in range(2)]
-    s = declare(int) # 0:s, 1:e for control state
+    s = declare(int)  # 0:s, 1:e for control state
     ph = declare(fixed)
 
     with for_(n, 0, n < n_avg, n + 1):
@@ -112,7 +112,7 @@ with program() as prog:
 
         with for_(*from_array(ph, phases)):
 
-            with for_(s, 0, s < 2, s + 1): # states
+            with for_(s, 0, s < 2, s + 1):  # states
 
                 # Prepare Qt to |1>
                 with if_(s == 1):
@@ -129,7 +129,7 @@ with program() as prog:
                     align(qc_xy, cr_drive)
                     play("square_positive", cr_drive, duration=ph)
                     align(qt_xy, cr_drive)
-                
+
                 elif cr_type == "direct+echo":
                     # phase shift for cancel drive
                     frame_rotation_2pi(cr_drive_phase, cr_drive)
@@ -146,7 +146,7 @@ with program() as prog:
                     align(qc_xy, cr_drive)
                     play("x180", qc_xy)
                     reset_frame(cr_drive)
-                
+
                 elif cr_type == "direct+cancel":
                     # phase shift for cancel drive
                     frame_rotation_2pi(cr_drive_phase, cr_drive)
@@ -186,7 +186,7 @@ with program() as prog:
                 # phase shift
                 frame_rotation(ph, qc_xy)
 
-                # Bring Qc back to z axis                
+                # Bring Qc back to z axis
                 play("-y90", qc_xy)
 
                 # Align the elements to measure after having waited a time "tau" after the qubit pulses.
@@ -261,7 +261,7 @@ else:
                 ax.plot(phases, V[:, 0])
                 ax.plot(phases, V[:, 1])
                 ax.set_xlabel("Phase [2pi rad.]")
-                ax.set_ylabel(fname.replace("1","c").replace("2","t"))
+                ax.set_ylabel(fname.replace("1", "c").replace("2", "t"))
                 ax.set_title(fname)
                 ax.legend(["qc=|0>", "qc=|1>"])
             fig.tight_layout()

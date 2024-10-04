@@ -53,7 +53,7 @@ save_data_dict = {
     "dfs": dfs,
     "config": config,
     "saturation_scaling": saturation_scaling,
-    "saturation_len": saturation_len
+    "saturation_len": saturation_len,
 }
 
 ###################

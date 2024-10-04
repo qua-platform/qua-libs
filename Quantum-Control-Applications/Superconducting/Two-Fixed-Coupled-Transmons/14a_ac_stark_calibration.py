@@ -37,8 +37,10 @@ from qualang_tools.results.data_handler import DataHandler
 n_avg = 10  # The number of averages
 # repeated rabi
 max_nb_of_pulses = 80  # Maximum number of qubit pulses
-nb_of_pulses = np.arange(0, max_nb_of_pulses + 0.1, 1)  # Always play an odd/even number of pulses to end up in the same state
-detunings = np.arange(-5e6, 5e6, 0.1e6) # Detuning to compensate for the AC STark-shift
+nb_of_pulses = np.arange(
+    0, max_nb_of_pulses + 0.1, 1
+)  # Always play an odd/even number of pulses to end up in the same state
+detunings = np.arange(-5e6, 5e6, 0.1e6)  # Detuning to compensate for the AC STark-shift
 
 # Data to save
 save_data_dict = {
@@ -70,22 +72,22 @@ with program() as PROGRAM:
             with for_(*from_array(df, detunings)):
                 # Update the frequency of the two qubit elements
 
-                update_frequency('q1_xy', df + qubit_IF_q1)
-                update_frequency('q2_xy', df + qubit_IF_q2)
+                update_frequency("q1_xy", df + qubit_IF_q1)
+                update_frequency("q2_xy", df + qubit_IF_q2)
 
                 # Loop for error amplification (perform many qubit pulses)
 
                 with for_(count, 0, count < npi, count + 1):
-                    play("x180" * amp(1), 'q1_xy')
-                    play("x180" * amp(1), 'q2_xy')
-                    play("x180" * amp(-1), 'q1_xy')
-                    play("x180" * amp(-1), 'q2_xy')
+                    play("x180" * amp(1), "q1_xy")
+                    play("x180" * amp(1), "q2_xy")
+                    play("x180" * amp(-1), "q1_xy")
+                    play("x180" * amp(-1), "q2_xy")
 
                 # Align the elements to measure after playing the qubit pulses.
                 align()
                 # Multiplexed readout, also saves the measurement outcomes
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
-                
+
                 wait(thermalization_time * u.ns)
 
     with stream_processing():

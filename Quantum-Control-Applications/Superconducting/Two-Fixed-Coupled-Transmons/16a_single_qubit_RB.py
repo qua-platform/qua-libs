@@ -18,7 +18,7 @@ from scipy.optimize import curve_fit
 import matplotlib
 import time
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 
 ##################
 #   Parameters   #
@@ -44,11 +44,13 @@ save_data_dict = {
     "max_circuit_depth": max_circuit_depth,
 }
 
+
 ###################################
 # Helper functions and QUA macros #
 ###################################
 def power_law(power, a, b, p):
     return a * (p**power) + b
+
 
 def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -182,8 +184,8 @@ with program() as PROGRAM:
                     align()
                     # The strict_timing ensures that the sequence will be played without gaps
                     # Play the random sequence of desired depth
-                    play_sequence(sequence_list, depth, 'q1_xy')
-                    play_sequence(sequence_list, depth, 'q2_xy')
+                    play_sequence(sequence_list, depth, "q1_xy")
+                    play_sequence(sequence_list, depth, "q2_xy")
                     # Align the two elements to measure after playing the circuit.
                     align()
                     multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
@@ -198,12 +200,12 @@ with program() as PROGRAM:
     with stream_processing():
         m_st.save("iteration")
         for ind in range(2):
-            I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                f"I{ind+1}"
-            )
-            Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford + 1).average().save(
-                f"Q{ind+1}"
-            )
+            I_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save(f"I{ind+1}")
+            Q_st[ind].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                max_circuit_depth / delta_clifford + 1
+            ).average().save(f"Q{ind+1}")
 
 #####################################
 #  Open Communication with the QOP  #
@@ -226,9 +228,9 @@ else:
     try:
         # Open the quantum machine
         qm = qmm.open_qm(config)
-        
+
         # Send the QUA program to the OPX, which compiles and executes it
-        job = qm.execute(PROGRAM, flags=['not-strict-timing'])
+        job = qm.execute(PROGRAM, flags=["not-strict-timing"])
 
         # Prepare the figure for live plotting
         fig = plt.figure()
@@ -251,11 +253,11 @@ else:
 
             for ind in range(2):
 
-                S = res[2*ind + 1]
+                S = res[2 * ind + 1]
                 # Plot
                 plt.subplot(1, 2, ind + 1)
                 plt.cla()
-                plt.plot(x, S, marker=".", color='r')
+                plt.plot(x, S, marker=".", color="r")
                 plt.xlabel("Number of Clifford gates")
                 plt.ylabel("Sequence Fidelity")
                 plt.title(f"Qb - {ind}")

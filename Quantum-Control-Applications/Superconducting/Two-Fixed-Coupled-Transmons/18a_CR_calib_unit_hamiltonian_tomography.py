@@ -49,25 +49,26 @@ from qualang_tools.results.data_handler import DataHandler
 from macros import qua_declaration, multiplexed_readout
 from cr_hamiltonian_tomography import (
     CRHamiltonianTomographyAnalysis,
-    plot_crqst_result_2D, plot_crqst_result_3D,
+    plot_crqst_result_2D,
+    plot_crqst_result_3D,
 )
 
 ##################
 #   Parameters   #
 ##################
 
-# Qubits and resonators 
-qc = 1 # index of control qubit
-qt = 2 # index of target qubit
+# Qubits and resonators
+qc = 1  # index of control qubit
+qt = 2  # index of target qubit
 
 # Parameters Definition
 n_avg = 200
-cr_type = "direct+cancel+echo" # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
-cr_drive_amp = 1.0 # ratio
-cr_drive_phase = 0.0 # in units of 2pi
-cr_cancel_amp =  0.5 # ratio
-cr_cancel_phase = 0.0 # in units of 2pi
-ts_cycles = np.arange(4, 400, 4) # in clock cylcle = 4ns
+cr_type = "direct+cancel+echo"  # "direct", "direct+echo", "direct+cancel", "direct+cancel+echo"
+cr_drive_amp = 1.0  # ratio
+cr_drive_phase = 0.0  # in units of 2pi
+cr_cancel_amp = 0.5  # ratio
+cr_cancel_phase = 0.0  # in units of 2pi
+ts_cycles = np.arange(4, 400, 4)  # in clock cylcle = 4ns
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -76,7 +77,7 @@ cr_drive = f"cr_drive_c{qc}t{qt}"
 cr_cancel = f"cr_cancel_c{qc}t{qt}"
 qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"rr{i}" for i in [qc, qt]]
-ts_ns = 4 * ts_cycles # in clock cylcle = 4ns
+ts_ns = 4 * ts_cycles  # in clock cylcle = 4ns
 
 # Data to save
 save_data_dict = {
@@ -111,8 +112,8 @@ with program() as PROGRAM:
     with for_(n, 0, n < n_avg, n + 1):
         save(n, n_st)
         with for_(*from_array(t, ts_cycles)):
-            with for_(c, 0, c < 3, c + 1): # bases 
-                with for_(s, 0, s < 2, s + 1): # states
+            with for_(c, 0, c < 3, c + 1):  # bases
+                with for_(s, 0, s < 2, s + 1):  # states
                     with if_(s == 1):
                         play("x180", qc_xy)
                         align(qc_xy, cr_drive)
@@ -121,15 +122,15 @@ with program() as PROGRAM:
                         align(qc_xy, cr_drive)
                         play("square_positive", cr_drive, duration=t)
                         align(qt_xy, cr_drive)
-                    
+
                     elif cr_type == "direct+cancel":
                         # phase shift for cancel drive
                         frame_rotation_2pi(cr_drive_phase, cr_drive)
                         frame_rotation_2pi(cr_cancel_phase, cr_cancel)
                         # direct + cancel
                         align(qc_xy, cr_drive, cr_cancel)
-                        play("square_positive"*amp(cr_drive_amp), cr_drive, duration=t)
-                        play("square_positive"*amp(cr_cancel_amp), cr_cancel, duration=t)
+                        play("square_positive" * amp(cr_drive_amp), cr_drive, duration=t)
+                        play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=t)
                         # align for the next step and clear the phase shift
                         align(qt_xy, cr_drive, cr_cancel)
                         reset_frame(cr_drive)
@@ -175,7 +176,6 @@ with program() as PROGRAM:
                     save(state[0], state_st[0])
                     assign(state[1], I[1] > ge_threshold_q2)
                     save(state[1], state_st[1])
-
 
                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                     wait(thermalization_time * u.ns)
@@ -231,7 +231,7 @@ else:
             # Convert the results into Volts
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
-            bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1 # convert |0> -> 1, |1> -> -1
+            bloch_c, bloch_t = -2 * state_c + 1, -2 * state_t + 1  # convert |0> -> 1, |1> -> -1
             # Progress bar
             progress_counter(iterations, n_avg, start_time=results.start_time)
             # plotting data

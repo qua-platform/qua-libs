@@ -32,7 +32,7 @@ from qualang_tools.analysis import two_state_discriminator
 ##################
 # Parameters Definition
 n_runs = 10_000  # Number of runs
-qubits = ['q1_xy', 'q2_xy']
+qubits = ["q1_xy", "q2_xy"]
 
 # Data to save
 save_data_dict = {
@@ -70,7 +70,7 @@ with program() as PROGRAM:
         multiplexed_readout(I_e, I_e_st, Q_e, Q_e_st, resonators=[1, 2], weights="rotated_")
 
     with stream_processing():
-        n_st.save('iteration')
+        n_st.save("iteration")
         # Save all streamed points for plotting the IQ blobs
         for i in range(2):
             I_g_st[i].save_all(f"I_g_q{i}")
@@ -100,7 +100,7 @@ else:
         qm = qmm.open_qm(config)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-        results = fetching_tool(job, ["iteration"], mode='live')
+        results = fetching_tool(job, ["iteration"], mode="live")
 
         while results.is_processing():
             iteration = results.fetch_all()

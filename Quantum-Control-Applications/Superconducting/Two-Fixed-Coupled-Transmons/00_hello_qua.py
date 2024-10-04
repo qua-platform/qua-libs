@@ -11,10 +11,10 @@ from configuration_lf_fem_and_octave import *
 ###################
 
 with program() as PROGRAM:
-    
+
     play("cw", "rr1")
     play("cw", "q2_xy")
-    
+
 #####################################
 #  Open Communication with the QOP  #
 #####################################
@@ -30,7 +30,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    
+
     job = qmm.simulate(config, PROGRAM, simulation_config)
     # Plot the simulated samples
     job.get_simulated_samples().con1.plot()
