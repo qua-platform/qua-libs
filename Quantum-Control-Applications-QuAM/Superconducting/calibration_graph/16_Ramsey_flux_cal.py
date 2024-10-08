@@ -20,9 +20,9 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from typing import Optional, Literal, List
 
-
+# %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[str] = None
+    qubits: Optional[List[str]] = None
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 4.0
     min_wait_time_in_ns: int = 16
@@ -32,14 +32,15 @@ class Parameters(NodeParameters):
     flux_step : float = 0.002
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
+    timeout: int = 100
     flux_mode_dc_or_pulsed: Literal['dc', 'pulsed'] = 'pulsed'
 
 node = QualibrationNode(
     name="08a_Ramsey_flux_cal",
-    parameters_class=Parameters
+    parameters=Parameters()
 )
 
-node.parameters = Parameters()
+
 
 
 from qm.qua import *
@@ -47,6 +48,7 @@ from qm import SimulationConfig
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array, get_equivalent_log_array
+from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, multiplexed_readout, node_save, active_reset, readout_state
@@ -62,9 +64,7 @@ from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 # %%
 
 
-###################################################
-#  Load QuAM and open Communication with the QOP  #
-###################################################
+
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
@@ -79,13 +79,12 @@ qmm = machine.connect()
 if node.parameters.qubits is None or node.parameters.qubits == '':
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(' ', '').split(',')]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
 # %%
-###################
-# The QUA program #
-###################
+
+# %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
@@ -121,6 +120,7 @@ with program() as ramsey:
         else:
             machine.apply_all_flux_to_zero()
 
+        # Wait for the flux bias to settle
         for qb in qubits:
             wait(1000, qb.z.name)
         
@@ -187,12 +187,9 @@ with program() as ramsey:
             state_st[i].buffer(len(idle_times)).buffer(len(fluxes)).average().save(f"state{i + 1}")
 
 
-###########################
-# Run or Simulate Program #
-###########################
-simulate = node.parameters.simulate
 
-if simulate:
+# %% {Simulate_or_execute}
+if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
@@ -200,38 +197,30 @@ if simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
-    quit()
+
 else:
-    # Open the quantum machine
-    qm = qmm.open_qm(config,keep_dc_offsets_when_closing=False)
-    # Calibrate the active qubits
-    # machine.calibrate_octave_ports(qm)
-    # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(ramsey, flags=['auto-element-thread'])
-    # Get results from QUA program
-    for i in range(num_qubits):
-        print(f"Fetching results for qubit {qubits[i].name}")
-        data_list = ["n"] + sum([[f"state{i + 1}"] for i in range(num_qubits)], [])
-        results = fetching_tool(job, data_list, mode="live")
-    # Live plotting
-    # fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
-    # interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-        while results.is_processing():
-        # Fetch results
-            fetched_data = results.fetch_all()
-            n = fetched_data[0]
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        job = qm.execute(ramsey)
+        # Get results from QUA program
+        for i in range(num_qubits):
+            print(f"Fetching results for qubit {qubits[i].name}")
+            data_list = ["n"] + sum([[f"state{i + 1}"] for i in range(num_qubits)], [])
+            results = fetching_tool(job, data_list, mode="live")
+        # Live plotting
+        # fig, axes = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 8))
+        # interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+            while results.is_processing():
+            # Fetch results
+                fetched_data = results.fetch_all()
+                n = fetched_data[0]
 
-            progress_counter(n, n_avg, start_time=results.start_time)
-            
-    qm.close()
+                progress_counter(n, n_avg, start_time=results.start_time)
 
 # %%
-# %%
-handles = job.result_handles
-ds = fetch_results_as_xarray(handles, qubits, {"idle_time": idle_times, "flux": fluxes})
 
-node.results = {}
-node.results['ds'] = ds
+ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
+
+node.results = {"ds": ds}
 # %%
 ds = ds.assign_coords(idle_time=4*ds.idle_time/1e3)  # convert to usec
 ds.flux.attrs = {'long_name': 'flux', 'units': 'V'}
@@ -312,7 +301,7 @@ for q in qubits:
     node.results['fit_results'][q.name]['flux_offset'] = flux_offset[q.name]
     node.results['fit_results'][q.name]['freq_offset'] = freq_offset[q.name]
     node.results['fit_results'][q.name]['quad_term'] = a[q.name]
-# %%
+# %% {Update_state}
 with node.record_state_updates():
     for qubit in qubits:
         qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
@@ -323,8 +312,7 @@ with node.record_state_updates():
         else:
             raise RuntimeError(f"unknown flux_point")
         qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
-# %%
-
+# %% {Save_results}
 node.outcomes = {q.name: "successful" for q in qubits}
 node.results['initial_parameters'] = node.parameters.model_dump()
 node.machine = machine

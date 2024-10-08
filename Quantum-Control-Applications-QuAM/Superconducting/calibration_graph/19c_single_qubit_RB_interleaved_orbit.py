@@ -40,8 +40,9 @@ from typing import Optional, Literal, List, Union
 from qm import logger
 
 
+# %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[str] = None
+    qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     interleaved_gate_index: int = 2
@@ -61,13 +62,14 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
     simulate: bool = False
+    timeout: int = 100
 
 node = QualibrationNode(
     name="11c_Randomized_Benchmarking_Interleaved_ORBIT",
-    parameters_class=Parameters
+    parameters=Parameters()
 )
 
-node.parameters = Parameters()
+
 
 
 from qm.qua import *
@@ -82,9 +84,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-###################################################
-#  Load QuAM and open Communication with the QOP  #
-###################################################
+
+# %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
@@ -129,6 +130,7 @@ orbit_variable_sweeps = dict(zip(orbit_variables, [dfs, amps, drag_coefficient_f
 
 # RB Parameters
 num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
+# %% {QUA_program}
 n_avg = node.parameters.num_averages  # Number of averaging loops for each random sequence
 circuit_depth = node.parameters.circuit_depth  # Maximum circuit depth
 flux_point = node.parameters.flux_point_joint_or_independent
@@ -349,7 +351,7 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
                 if reset_type == "active":
                     active_reset(machine, qubit.name)
                 else:
-                    wait(5*machine.thermalization_time * u.ns)
+                    wait(qubit.thermalization_time * u.ns)
                 # Align the two elements to play the sequence after qubit initialization
                 qubit.resonator.align(qubit.xy.name)
                 # The strict_timing ensures that the sequence will be played without gaps
@@ -393,9 +395,8 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
     return rb
 
 
-simulate = node.parameters.simulate
-
-if simulate:
+# %% {Simulate_or_execute}
+if node.parameters.simulate:
     simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
     config = machine.generate_config()
     job = qmm.simulate(config, get_rb_interleaved_program(qubits[0]), simulation_config)

@@ -10,6 +10,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
+from qualang_tools.multi_user import qm_session
 from quam_libs.macros import qua_declaration, multiplexed_readout, node_save, active_reset
 import numpy as np
 from qualang_tools.units import unit
@@ -23,33 +24,34 @@ import xarray as xr
 from scipy.optimize import curve_fit, minimize
 from scipy.signal import deconvolve, lfilter, convolve
 
-# matplotlib.use("TKAgg")
+
 
 from qualibrate import QualibrationNode, NodeParameters
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coefficients, two_expdecay, expdecay, savgol
 
 
+# %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[str] = 'q4'
-    num_averages: int = 1000
+    qubits: Optional[List[str]] = ['q2']    
+    num_averages: int = 10000
     amplitude_factor: float = 0.5
-    cryoscope_len: int = 160
+    cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
-    reset_filters: bool = True
+    timeout: int = 100
+    reset_filters: bool = False
 
 node = QualibrationNode(
     name="12_Cryoscope",
-    parameters_class=Parameters
+    parameters=Parameters()
 )
 
-node.parameters = Parameters()
 
-###################################################
-#  Load QuAM and open Communication with the QOP  #
-###################################################
+
+
+# %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
@@ -59,7 +61,7 @@ machine = QuAM.load()
 if node.parameters.qubits is None:
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.split(', ')]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits]
     
 if node.parameters.reset_filters:
     for qubit in qubits:
@@ -100,9 +102,8 @@ def baked_waveform(waveform_amp, qubit):
 
     return pulse_segments
 
-###################
-# The QUA program #
-###################
+
+# %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 
 cryoscope_len = node.parameters.cryoscope_len  # The length of the cryoscope in nanoseconds
@@ -128,7 +129,9 @@ with program() as cryoscope:
     idx = declare(int)
     idx2 = declare(int)
     flag = declare(bool)
-
+    qubit = qubits[0]
+    i = 0
+    
     # Bring the active qubits to the minimum frequency point
     if flux_point == "independent":
         machine.apply_all_flux_to_min()
@@ -153,7 +156,7 @@ with program() as cryoscope:
                     for qubit in qubits:
                         active_reset(machine, qubit.name)
                 else:
-                    wait(5*machine.thermalization_time * u.ns)
+                    wait(qubit.thermalization_time * u.ns)
                 align()
                 
                 # Play first X/2
@@ -188,11 +191,9 @@ with program() as cryoscope:
                 # Measure resonator state after the sequence
                 align()
 
-                multiplexed_readout(qubits, I, I_st, Q, Q_st)
-
-                for i in range(num_qubits):
-                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                    save(state[i], state_st[i])
+                qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
+                save(state[i], state_st[i])
 
         with for_(t, 4, t < cryoscope_len // 4, t + 4):
 
@@ -201,11 +202,12 @@ with program() as cryoscope:
                 # Alternate between X/2 and Y/2 pulses
                 # for tomo in ['x90', 'y90']:
                 with for_each_(flag, [True, False]):
+                    # Initialize the qubits
                     if reset_type == "active":
                         for qubit in qubits:
                             active_reset(machine, qubit.name)
                     else:
-                        wait(5*machine.thermalization_time * u.ns)
+                        wait(qubit.thermalization_time * u.ns)
                     align()
                     # Play first X/2
                     for qubit in qubits:
@@ -236,28 +238,23 @@ with program() as cryoscope:
 
                     # Measure resonator state after the sequence
                     align()
-                    multiplexed_readout(qubits, I, I_st, Q, Q_st)
+                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
+                    save(state[i], state_st[i])
 
-                    for i in range(num_qubits):
-                        assign(state[i], Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold))
-                        save(state[i], state_st[i])
 
     with stream_processing():
         # for the progress counter
         n_st.save("iteration")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(2).buffer(cryoscope_len).average().save(f"I{i + 1}")
-            Q_st[i].buffer(2).buffer(cryoscope_len).average().save(f"Q{i + 1}")
             state_st[i].buffer(2).buffer(cryoscope_len).average().save(f"state{i + 1}")
 
 
 # %%
-###########################
-# Run or Simulate Program #
-###########################
+
 simulate =  node.parameters.simulate
 
-if simulate:
+if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=50000)  # In clock cycles = 4ns
     job = qmm.simulate(config, cryoscope, simulation_config)
@@ -288,37 +285,29 @@ if simulate:
     #     print(f"Subtracted value {i + 1}: {value}")
     # plt.show(block=False)
 else:
-    try:
-        # Open the quantum machine
-        qm = qmm.open_qm(config, close_other_machines=True)
-        print("Open QMs: ", qmm.list_open_quantum_machines())
-        # Send the QUA program to the OPX, which compiles and executes it
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(cryoscope)
-        
-        # print(f"Fetching results for qubit {qubits[i].name}")
-        # data_list = sum([[f"I{i + 1}", f"Q{i + 1}",f"state{i + 1}"] ], ["n"])
-        # results = fetching_tool(job, data_list, mode="live")
-        # while results.is_processing():
-        #     fetched_data = results.fetch_all()
-        #     n = fetched_data[0]
-        #     progress_counter(n, n_avg, start_time=results.start_time)
-        while not job.status == 'completed':
-            pass
-    finally:
-        qm.close()
-        print("Experiment QM is now closed")
-        # plt.show(block=True)
+        data_list = ["iteration"]
+        results = fetching_tool(job, data_list, mode="live")
+        # Live plotting
+
+        while results.is_processing():
+            fetched_data = results.fetch_all()
+            n = fetched_data[0]
+            progress_counter(n, n_avg, start_time=results.start_time)
+
 
 # %%
 
 # %%
-if not simulate:
-    handles = job.result_handles
-    ds = fetch_results_as_xarray(handles, [qubit], {"axis": ["x","y"], "time": cryoscope_time})
+if not node.parameters.simulate:
+    # %% {Data_fetching_and_dataset_creation}
+    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+    ds = fetch_results_as_xarray(job.result_handles, [qubit], {"axis": ["x","y"], "time": cryoscope_time})
     plot_process = True
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
     if plot_process:
         ds.state.sel(qubit= qubits[0].name).plot(hue = 'axis')
         plt.show()
@@ -336,7 +325,7 @@ if not simulate:
     plt.show()
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
         # extract the rising part of the data for analysis
     threshold = flux_cryoscope_q.max().values*0.6 # Set the threshold value
     rise_index = np.argmax(flux_cryoscope_q.values > threshold) + 1
@@ -353,7 +342,7 @@ if not simulate:
     flux_cryoscope_tp.plot(ax = axs[1])
     plt.show()
 # %%
-if not simulate:
+if not node.parameters.simulate:
     # Fit two exponents
     # Filtering the data might improve the fit at the first few nS, play with range to achieve this
     filtered_flux_cryoscope_q = savgol(flux_cryoscope_tp, 'time', range = 3, order = 2)
@@ -452,7 +441,7 @@ if not simulate:
         plt.show()
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
     ####  FIR filter for the response
     flux_q = flux_cryoscope_q.copy()
     flux_q.values = filtered_response_long
@@ -482,7 +471,7 @@ if not simulate:
 
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
     def find_diff(x, y, y0, plot = False):
         filterd_y  = lfilter(x,[1,0], y)
         diffs = np.sum(np.abs(filterd_y - y0))
@@ -506,7 +495,7 @@ if not simulate:
         plt.show()
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
     # plotting the results
     fig,ax = plt.subplots()
     ax.plot(flux_cryoscope_q.time,flux_cryoscope_q,label = 'data')
@@ -519,7 +508,7 @@ if not simulate:
     node.results['figure'] = fig
 
 # %%
-if not simulate:
+if not node.parameters.simulate:
     node.results['fit_results'] = {}
     for q in qubits:
         node.results['fit_results'][q.name] = {}
@@ -529,7 +518,7 @@ if not simulate:
 
 # %%
 
-if not simulate:
+if not node.parameters.simulate:
     with node.record_state_updates():
         for qubit in qubits:
             qubit.z.filter_fir_taps = convolved_fir.tolist()
