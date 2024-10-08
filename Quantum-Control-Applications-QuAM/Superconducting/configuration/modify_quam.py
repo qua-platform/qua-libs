@@ -5,6 +5,7 @@ from quam_libs.components import QuAM
 from quam_libs.quam_builder.machine import save_machine
 import numpy as np
 
+
 def get_band(freq):
     if 50e6 <= freq < 5.5e9:
         return 1
@@ -14,6 +15,7 @@ def get_band(freq):
         return 3
     else:
         raise ValueError(f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]")
+
 
 path = "./quam_state"
 
@@ -64,11 +66,15 @@ for i, q in enumerate(machine.qubits):
     # Single qubit gates - DragCosine
     machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
     machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
-    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
+    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = (
+        machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
+    )
     # Single qubit gates - Square
     machine.qubits[q].xy.operations["x180_Square"].length = 40
     machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
-    machine.qubits[q].xy.operations["x90_Square"].amplitude = machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
+    machine.qubits[q].xy.operations["x90_Square"].amplitude = (
+        machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
+    )
 
 # %%
 # save into state.json
