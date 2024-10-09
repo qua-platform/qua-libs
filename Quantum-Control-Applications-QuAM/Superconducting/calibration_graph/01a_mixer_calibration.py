@@ -21,10 +21,6 @@ node = QualibrationNode(
     parameters=Parameters()
 )
 
-
-
-
-
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
 
