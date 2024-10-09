@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = r"C:\Users\KevinAVillegasRosale\OneDrive - QM Machines LTD\Documents\GitKraken\CS_installations\configuration\quam_state"
 machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
