@@ -75,68 +75,65 @@ def rotated_multiplexed_state_discrimination(
 def func_F1(n: int):
     # one of the six gates to create one of the six cardinal Bloch sphere
     # states
-    match n:
-        case 0:  # identity
-            return np.array([[1,0],[0,1]])
-        case 1:  # X180/Y180
-            return np.array([[0,1],[1,0]])
-        case 2:  # Y90
-            return (1/np.sqrt(2)) * np.array([[1,-1],[1,1]])
-        case 3:  # Y-90
-            return (1/np.sqrt(2)) * np.array([[1,1],[-1,1]])
-        case 4:  # X-90
-            return (1/np.sqrt(2)) * np.array([[1,1j],[1j,1]])
-        case 5:  # X90
-            return (1/np.sqrt(2)) * np.array([[1,-1j],[-1j,1]])
-        case _:  # Error
-            raise ValueError("Input integer should be between 0 and 5, inclusive")
+    if n == 0:  # identity
+        return np.array([[1,0],[0,1]])
+    elif n == 1:  # X180/Y180
+        return np.array([[0,1],[1,0]])
+    elif n == 2:  # Y90
+        return (1/np.sqrt(2)) * np.array([[1,-1],[1,1]])
+    elif n == 3:  # Y-90
+        return (1/np.sqrt(2)) * np.array([[1,1],[-1,1]])
+    elif n == 4:  # X-90
+        return (1/np.sqrt(2)) * np.array([[1,1j],[1j,1]])
+    elif n == 5:  # X90
+        return (1/np.sqrt(2)) * np.array([[1,-1j],[-1j,1]])
+    else:  # Error
+        raise ValueError("Input integer should be between 0 and 5, inclusive")
 
 
 @functools.lru_cache()
 def func_E1(n: int):
     # four Pauli operators
-    match n:
-        case 0:  # identity
-            return np.array([[1,0],[0,1]])
-        case 1:  # X
-            return np.array([[0,1],[1,0]])
-        case 2:  # Y
-            return np.array([[0,-1j],[1j,0]])
-        case 3:  # Z
-            return np.array([[1,0],[0,-1]])
-        case _:
-            raise ValueError("Input integer should be between 0 and 3, inclusive")
+    if n == 0:  # identity
+        return np.array([[1,0],[0,1]])
+    elif n == 1:  # X
+        return np.array([[0,1],[1,0]])
+    elif n == 2:  # Y
+        return np.array([[0,-1j],[1j,0]])
+    elif n == 3:  # Z
+        return np.array([[1,0],[0,-1]])
+    else:  # Error
+        raise ValueError("Input integer should be between 0 and 3, inclusive")
 
 
 @functools.lru_cache()
 def func_c1(i: int, j: int):
     # Constants c1[i,j] such that
     # func_E1[i] = sum_j c1[i,j]func_F1[j]|0><0|func_F1[j]^{\dagger}
-    match (i, j):
-        case (0,0):
-            return 1
-        case (0,1):
-            return 1
-        case (1,0):
-            return -(1 + 1j)
-        case (1,1):
-            return -(1 + 1j)
-        case (1,2):
-            return 2
-        case (1,4):
-            return 1j
-        case (1,5):
-            return 1j
-        case (2,4):
-            return 1
-        case (2,5):
-            return -1
-        case (3,0):
-            return 1
-        case (3,1):
-            return -1
-        case _:
-            return 0
+    if (i, j) == (0,0):
+        return 1
+    elif (i, j) == (0,1):
+        return 1
+    elif (i, j) == (1,0):
+        return -(1 + 1j)
+    elif (i, j) == (1,1):
+        return -(1 + 1j)
+    elif (i, j) == (1,2):
+        return 2
+    elif (i, j) == (1,4):
+        return 1j
+    elif (i, j) == (1,5):
+        return 1j
+    elif (i, j) == (2,4):
+        return 1
+    elif (i, j) == (2,5):
+        return -1
+    elif (i, j) == (3,0):
+        return 1
+    elif (i, j) == (3,1):
+        return -1
+    else:
+        return 0
 
 
 def B_Bloch1(i, j, m, n):
@@ -235,21 +232,20 @@ def plot_process_tomography1(chi_vector, save_file: str = None):
 def func_F2(n: int):
     # one of the six gates to create one of the six cardinal Bloch sphere
     # states
-    match n:
-        case 0:  # identity
-            return np.array([[1, 0], [0, 1]])
-        case 1:  # X180/Y180
-            return np.array([[0, 1], [1, 0]])
-        case 2:  # Y90
-            return (1/np.sqrt(2)) * np.array([[1, -1], [1, 1]])
-        case 3:  # Y-90
-            return (1/np.sqrt(2)) * np.array([[1, 1], [-1, 1]])
-        case 4:  # X-90
-            return (1/np.sqrt(2)) * np.array([[1, 1j], [1j, 1]])
-        case 5:  # X90
-            return (1/np.sqrt(2)) * np.array([[1, -1j], [-1j, 1]])
-        case _:  # Error
-            raise ValueError("Input integer should be between 0 and 5, inclusive")
+    if n == 0:  # identity
+        return np.array([[1, 0], [0, 1]])
+    elif n == 1:  # X180/Y180
+        return np.array([[0, 1], [1, 0]])
+    elif n == 2:  # Y90
+        return (1/np.sqrt(2)) * np.array([[1, -1], [1, 1]])
+    elif n == 3:  # Y-90
+        return (1/np.sqrt(2)) * np.array([[1, 1], [-1, 1]])
+    elif n == 4:  # X-90
+        return (1/np.sqrt(2)) * np.array([[1, 1j], [1j, 1]])
+    elif n == 5:  # X90
+        return (1/np.sqrt(2)) * np.array([[1, -1j], [-1j, 1]])
+    else:  # Error
+        raise ValueError("Input integer should be between 0 and 5, inclusive")
 
 
 @functools.lru_cache()
@@ -261,292 +257,290 @@ def func_E2(n: int):
     y = np.array([[0, -1j], [1j, 0]])
     z = np.array([[1, 0], [0, -1]])
 
-    match n:
-        case 0:  # I x I
-            return np.kron(i, i)
-        case 1:  # I x X
-            return np.kron(i, x)
-        case 2:  # I x Y
-            return np.kron(i, y)
-        case 3:  # I x Z
-            return np.kron(i, z)
-        case 4:  # X x I
-            return np.kron(x, i)
-        case 5:  # X x X
-            return np.kron(x, x)
-        case 6:  # X x Y
-            return np.kron(x, y)
-        case 7:  # X x Z
-            return np.kron(x, z)
-        case 8:  # Y x I
-            return np.kron(y, i)
-        case 9:  # Y x X
-            return np.kron(y, x)
-        case 10:  # Y x Y
-            return np.kron(y, y)
-        case 11:  # Y x Z
-            return np.kron(y, z)
-        case 12:  # Z x I
-            return np.kron(z, i)
-        case 13:  # Z x X
-            return np.kron(z, x)
-        case 14:  # Z x Y
-            return np.kron(z, y)
-        case 15:  # Z x Z
-            return np.kron(z, z)
-        case _:
-            raise ValueError("Input integer should be between 0 and 15, inclusive")
+    if n == 0:  # I x I
+        return np.kron(i, i)
+    elif n == 1:  # I x X
+        return np.kron(i, x)
+    elif n == 2:  # I x Y
+        return np.kron(i, y)
+    elif n == 3:  # I x Z
+        return np.kron(i, z)
+    elif n == 4:  # X x I
+        return np.kron(x, i)
+    elif n == 5:  # X x X
+        return np.kron(x, x)
+    elif n == 6:  # X x Y
+        return np.kron(x, y)
+    elif n == 7:  # X x Z
+        return np.kron(x, z)
+    elif n == 8:  # Y x I
+        return np.kron(y, i)
+    elif n == 9:  # Y x X
+        return np.kron(y, x)
+    elif n == 10:  # Y x Y
+        return np.kron(y, y)
+    elif n == 11:  # Y x Z
+        return np.kron(y, z)
+    elif n == 12:  # Z x I
+        return np.kron(z, i)
+    elif n == 13:  # Z x X
+        return np.kron(z, x)
+    elif n == 14:  # Z x Y
+        return np.kron(z, y)
+    elif n == 15:  # Z x Z
+        return np.kron(z, z)
+    else:
+        raise ValueError("Input integer should be between 0 and 15, inclusive")
 
 
 @functools.lru_cache()
 def func_c2(i: int, j: int, k: int):
     # Constants c2[i, j, k] such that
     # func_E2[i] = sum_{j,k} func_c2[i,j,k] (func_F2[j] x func_F2[k]) |0>|0><0|<0| (func_F2[j]^{\dagger} x func_F2[k]^{\dagger})
-    match (i, j, k):
-        case (0,0,0):
-            return 1
-        case (0,0,1):
-            return 1
-        case (0,1,0):
-            return 1
-        case (0,1,1):
-            return 1
-        case (1,0,0):
-            return -(1 + 1j)
-        case (1,0,1):
-            return -(1 + 1j)
-        case (1,0,2):
-            return 2
-        case (1,0,4):
-            return 1j
-        case (1,0,5):
-            return 1j
-        case (1,1,0):
-            return -(1 + 1j)
-        case (1,1,1):
-            return -(1 + 1j)
-        case (1,1,2):
-            return 2
-        case (1,1,4):
-            return 1j
-        case (1,1,5):
-            return 1j
-        case (2,0,4):
-            return 1
-        case (2,0,5):
-            return -1
-        case (2,1,4):
-            return 1
-        case (2,1,5):
-            return -1
-        case (3,0,0):
-            return 1
-        case (3,0,1):
-            return -1
-        case (3,1,0):
-            return 1
-        case (3,1,1):
-            return -1
-        case (4,0,0):
-            return -(1 + 1j)
-        case (4,0,1):
-            return -(1 + 1j)
-        case (4,1,0):
-            return -(1 + 1j)
-        case (4,1,1):
-            return -(1 + 1j)
-        case (4,2,0):
-            return 2
-        case (4,2,1):
-            return 2
-        case (4,4,0):
-            return 1j
-        case (4,4,1):
-            return 1j
-        case (4,5,0):
-            return 1j
-        case (4,5,1):
-            return 1j
-        case (5,0,0):
-            return (1 + 1j)**2
-        case (5,0,1):
-            return (1 + 1j)**2
-        case (5,1,0):
-            return (1 + 1j)**2
-        case (5,1,1):
-            return (1 + 1j)**2
-        case (5,0,2):
-            return -2 * (1 + 1j)
-        case (5,1,2):
-            return -2 * (1 + 1j)
-        case (5,2,0):
-            return -2 * (1 + 1j)
-        case (5,2,1): 
-            return -2 * (1 + 1j)
-        case (5,0,4):
-            return -1j * (1 + 1j)
-        case (5,0,5):
-            return -1j * (1 + 1j)
-        case (5,1,4):
-            return -1j * (1 + 1j)
-        case (5,1,5):
-            return -1j * (1 + 1j)
-        case (5,4,0):
-            return -1j * (1 + 1j)
-        case (5,4,1):
-            return -1j * (1 + 1j)
-        case (5,5,0):
-            return -1j * (1 + 1j)
-        case (5,5,1):
-            return -1j * (1 + 1j)
-        case (5,2,2):
-            return 4
-        case (5,2,4):
-            return 2*1j
-        case (5,2,5):
-            return 2*1j
-        case (5,4,2):
-            return 2*1j
-        case (5,5,2):
-            return 2*1j
-        case (5,4,4):
-            return -1
-        case (5,4,5):
-            return -1
-        case (5,5,4):
-            return -1
-        case (5,5,5):
-            return -1
-        case (6,0,4):
-            return -(1 + 1j)
-        case (6,1,4):
-            return -(1 + 1j)
-        case (6,0,5):
-            return (1 + 1j)
-        case (6,1,5):
-            return (1 + 1j)
-        case (6,2,4):
-            return 2
-        case (6,2,5):
-            return -2
-        case (6,4,4):
-            return 1j
-        case (6,5,4):
-            return 1j
-        case (6,4,5):
-            return -1j
-        case (6,5,5):
-            return -1j
-        case (7,0,0):
-            return -(1 + 1j)
-        case (7,1,0):
-            return -(1 + 1j)
-        case (7,0,1):
-            return (1 + 1j)
-        case (7,1,1):
-            return (1 + 1j)
-        case (7,2,0):
-            return 2
-        case (7,2,1):
-            return -2
-        case (7,4,0):
-            return 1j
-        case (7,5,0):
-            return 1j
-        case (7,4,1):
-            return -1j
-        case (7,5,1):
-            return -1j
-        case (8,4,0):
-            return 1
-        case (8,4,1):
-            return 1
-        case (8,5,0):
-            return -1
-        case (8,5,1):
-            return -1
-        case (9,4,0):
-            return -(1 + 1j)
-        case (9,4,1):
-            return -(1 + 1j)
-        case (9,5,0):
-            return (1 + 1j)
-        case (9,5,1):
-            return (1 + 1j)
-        case (9,4,4):
-            return 1j
-        case (9,4,5):
-            return 1j
-        case (9,5,4):
-            return -1j
-        case (9,5,5):
-            return -1j
-        case (9,4,2):
-            return 2
-        case (9,5,2):
-            return -2
-        case (10,4,4):
-            return 1
-        case (10,5,5):
-            return 1
-        case (10,4,5):
-            return -1
-        case (10,5,4):
-            return -1
-        case (11,4,0):
-            return 1
-        case (11,5,1):
-            return 1
-        case (11,4,1):
-            return -1
-        case (11,5,0):
-            return -1
-        case (12,0,0):
-            return 1
-        case (12,0,1):
-            return 1
-        case (12,1,0):
-            return -1
-        case (12,1,1):
-            return -1
-        case (13,0,0):
-            return -(1 + 1j)
-        case (13,0,1):
-            return -(1 + 1j)
-        case (13,1,0):
-            return (1 + 1j)
-        case (13,1,1):
-            return (1 + 1j)
-        case (13,0,2):
-            return 2
-        case (13,1,2):
-            return -2
-        case (13,0,4):
-            return 1j
-        case (13,0,5):
-            return 1j
-        case (13,1,4):
-            return -1j
-        case (13,1,5):
-            return -1j
-        case (14,0,4):
-            return 1
-        case (14,1,5):
-            return 1
-        case (14,0,5):
-            return -1
-        case (14,1,4):
-            return -1
-        case (15,0,0):
-            return 1
-        case (15,1,1):
-            return 1
-        case (15,0,1):
-            return -1
-        case (15,1,0):
-            return -1
-        case _:
-            return 0
+    if (i, j, k) == (0,0,0):
+        return 1
+    elif (i, j, k) == (0,0,1):
+        return 1
+    elif (i, j, k) == (0,1,0):
+        return 1
+    elif (i, j, k) == (0,1,1):
+        return 1
+    elif (i, j, k) == (1,0,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (1,0,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (1,0,2):
+        return 2
+    elif (i, j, k) == (1,0,4):
+        return 1j
+    elif (i, j, k) == (1,0,5):
+        return 1j
+    elif (i, j, k) == (1,1,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (1,1,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (1,1,2):
+        return 2
+    elif (i, j, k) == (1,1,4):
+        return 1j
+    elif (i, j, k) == (1,1,5):
+        return 1j
+    elif (i, j, k) == (2,0,4):
+        return 1
+    elif (i, j, k) == (2,0,5):
+        return -1
+    elif (i, j, k) == (2,1,4):
+        return 1
+    elif (i, j, k) == (2,1,5):
+        return -1
+    elif (i, j, k) == (3,0,0):
+        return 1
+    elif (i, j, k) == (3,0,1):
+        return -1
+    elif (i, j, k) == (3,1,0):
+        return 1
+    elif (i, j, k) == (3,1,1):
+        return -1
+    elif (i, j, k) == (4,0,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (4,0,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (4,1,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (4,1,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (4,2,0):
+        return 2
+    elif (i, j, k) == (4,2,1):
+        return 2
+    elif (i, j, k) == (4,4,0):
+        return 1j
+    elif (i, j, k) == (4,4,1):
+        return 1j
+    elif (i, j, k) == (4,5,0):
+        return 1j
+    elif (i, j, k) == (4,5,1):
+        return 1j
+    elif (i, j, k) == (5,0,0):
+        return (1 + 1j)**2
+    elif (i, j, k) == (5,0,1):
+        return (1 + 1j)**2
+    elif (i, j, k) == (5,1,0):
+        return (1 + 1j)**2
+    elif (i, j, k) == (5,1,1):
+        return (1 + 1j)**2
+    elif (i, j, k) == (5,0,2):
+        return -2 * (1 + 1j)
+    elif (i, j, k) == (5,1,2):
+        return -2 * (1 + 1j)
+    elif (i, j, k) == (5,2,0):
+        return -2 * (1 + 1j)
+    elif (i, j, k) == (5,2,1): 
+        return -2 * (1 + 1j)
+    elif (i, j, k) == (5,0,4):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,0,5):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,1,4):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,1,5):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,4,0):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,4,1):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,5,0):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,5,1):
+        return -1j * (1 + 1j)
+    elif (i, j, k) == (5,2,2):
+        return 4
+    elif (i, j, k) == (5,2,4):
+        return 2*1j
+    elif (i, j, k) == (5,2,5):
+        return 2*1j
+    elif (i, j, k) == (5,4,2):
+        return 2*1j
+    elif (i, j, k) == (5,5,2):
+        return 2*1j
+    elif (i, j, k) == (5,4,4):
+        return -1
+    elif (i, j, k) == (5,4,5):
+        return -1
+    elif (i, j, k) == (5,5,4):
+        return -1
+    elif (i, j, k) == (5,5,5):
+        return -1
+    elif (i, j, k) == (6,0,4):
+        return -(1 + 1j)
+    elif (i, j, k) == (6,1,4):
+        return -(1 + 1j)
+    elif (i, j, k) == (6,0,5):
+        return (1 + 1j)
+    elif (i, j, k) == (6,1,5):
+        return (1 + 1j)
+    elif (i, j, k) == (6,2,4):
+        return 2
+    elif (i, j, k) == (6,2,5):
+        return -2
+    elif (i, j, k) == (6,4,4):
+        return 1j
+    elif (i, j, k) == (6,5,4):
+        return 1j
+    elif (i, j, k) == (6,4,5):
+        return -1j
+    elif (i, j, k) == (6,5,5):
+        return -1j
+    elif (i, j, k) == (7,0,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (7,1,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (7,0,1):
+        return (1 + 1j)
+    elif (i, j, k) == (7,1,1):
+        return (1 + 1j)
+    elif (i, j, k) == (7,2,0):
+        return 2
+    elif (i, j, k) == (7,2,1):
+        return -2
+    elif (i, j, k) == (7,4,0):
+        return 1j
+    elif (i, j, k) == (7,5,0):
+        return 1j
+    elif (i, j, k) == (7,4,1):
+        return -1j
+    elif (i, j, k) == (7,5,1):
+        return -1j
+    elif (i, j, k) == (8,4,0):
+        return 1
+    elif (i, j, k) == (8,4,1):
+        return 1
+    elif (i, j, k) == (8,5,0):
+        return -1
+    elif (i, j, k) == (8,5,1):
+        return -1
+    elif (i, j, k) == (9,4,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (9,4,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (9,5,0):
+        return (1 + 1j)
+    elif (i, j, k) == (9,5,1):
+        return (1 + 1j)
+    elif (i, j, k) == (9,4,4):
+        return 1j
+    elif (i, j, k) == (9,4,5):
+        return 1j
+    elif (i, j, k) == (9,5,4):
+        return -1j
+    elif (i, j, k) == (9,5,5):
+        return -1j
+    elif (i, j, k) == (9,4,2):
+        return 2
+    elif (i, j, k) == (9,5,2):
+        return -2
+    elif (i, j, k) == (10,4,4):
+        return 1
+    elif (i, j, k) == (10,5,5):
+        return 1
+    elif (i, j, k) == (10,4,5):
+        return -1
+    elif (i, j, k) == (10,5,4):
+        return -1
+    elif (i, j, k) == (11,4,0):
+        return 1
+    elif (i, j, k) == (11,5,1):
+        return 1
+    elif (i, j, k) == (11,4,1):
+        return -1
+    elif (i, j, k) == (11,5,0):
+        return -1
+    elif (i, j, k) == (12,0,0):
+        return 1
+    elif (i, j, k) == (12,0,1):
+        return 1
+    elif (i, j, k) == (12,1,0):
+        return -1
+    elif (i, j, k) == (12,1,1):
+        return -1
+    elif (i, j, k) == (13,0,0):
+        return -(1 + 1j)
+    elif (i, j, k) == (13,0,1):
+        return -(1 + 1j)
+    elif (i, j, k) == (13,1,0):
+        return (1 + 1j)
+    elif (i, j, k) == (13,1,1):
+        return (1 + 1j)
+    elif (i, j, k) == (13,0,2):
+        return 2
+    elif (i, j, k) == (13,1,2):
+        return -2
+    elif (i, j, k) == (13,0,4):
+        return 1j
+    elif (i, j, k) == (13,0,5):
+        return 1j
+    elif (i, j, k) == (13,1,4):
+        return -1j
+    elif (i, j, k) == (13,1,5):
+        return -1j
+    elif (i, j, k) == (14,0,4):
+        return 1
+    elif (i, j, k) == (14,1,5):
+        return 1
+    elif (i, j, k) == (14,0,5):
+        return -1
+    elif (i, j, k) == (14,1,4):
+        return -1
+    elif (i, j, k) == (15,0,0):
+        return 1
+    elif (i, j, k) == (15,1,1):
+        return 1
+    elif (i, j, k) == (15,0,1):
+        return -1
+    elif (i, j, k) == (15,1,0):
+        return -1
+    else:
+        return 0
 
 
 def B_Bloch2(i, j, k, l, m, n):
