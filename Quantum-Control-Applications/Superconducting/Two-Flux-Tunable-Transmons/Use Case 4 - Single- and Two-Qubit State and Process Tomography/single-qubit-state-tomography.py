@@ -101,8 +101,6 @@ with program() as single_qubit_state_tomography:
 
                 with case_(2):  # basis Z
 
-                    # TODO: SHOULD WE ADD A wait STATEMENT
-                    # WITH TIME EQUAL TO THE TIME OF AN X90 OR -Y90 PULSE?
                     align(f"q{qubit}_xy", f"rr{qubit}")
 
                 measure(
