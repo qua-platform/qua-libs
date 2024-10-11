@@ -49,7 +49,12 @@ from scipy.linalg import solve
 import os
 import pickle
 
-from helper_functions import P_Pauli2, plot_process_tomography2, map_from_bloch_state_to_pauli_basis2, func_F2
+from helper_functions import (
+    P_Pauli2,
+    plot_process_tomography2,
+    map_from_bloch_state_to_pauli_basis2,
+    func_F2,
+)
 
 
 ###################
@@ -59,14 +64,27 @@ from helper_functions import P_Pauli2, plot_process_tomography2, map_from_bloch_
 # load PMatrix if pickle file is present
 # note: this takes a while to compute if you do not load the serialised
 # PMatrix file
-file_location = "<path to PMatrix2 file>" # ./PMatrix2.pkl
+file_location = "<path to PMatrix2 file>"  # ./PMatrix2.pkl
 
 if os.path.isfile(file_location):
     with open(file_location, "rb") as file:
         PMatrix = pickle.load(file)
 else:
     # computing this takes a while
-    PMatrix = np.array([[P_Pauli2(np.floor(v/16).astype(int), v % 16, np.floor(w/16).astype(int), w % 16) for w in range(16**2)] for v in range(16**2)])
+    PMatrix = np.array(
+        [
+            [
+                P_Pauli2(
+                    np.floor(v / 16).astype(int),
+                    v % 16,
+                    np.floor(w / 16).astype(int),
+                    w % 16,
+                )
+                for w in range(16**2)
+            ]
+            for v in range(16**2)
+        ]
+    )
 
 # qubits under test, assuming there are multiple qubits
 # with XY line elements "q<qubit>_xy", flux lines
@@ -115,7 +133,7 @@ def prepare_states(i, j, qubit1, qubit2):
     # Prepare Bloch state i on qubit1
     with switch_(i):
         with case_(0):
-            wait(pi_len//4, f"q{qubit1}_xy")
+            wait(pi_len // 4, f"q{qubit1}_xy")
         with case_(1):
             play("x180", f"q{qubit1}_xy")
         with case_(2):
@@ -130,7 +148,7 @@ def prepare_states(i, j, qubit1, qubit2):
     # Prepare Bloch state j on qubit2
     with switch_(j):
         with case_(0):
-            wait(pi_len//4, f"q{qubit2}_xy")
+            wait(pi_len // 4, f"q{qubit2}_xy")
         with case_(1):
             play("x180", f"q{qubit2}_xy")
         with case_(2):
@@ -150,7 +168,7 @@ def measurement_basis_change(k, l, qubit1, qubit2):
     # Change basis with operation k on qubit1
     with switch_(k):
         with case_(0):
-            wait(pi_len//4, f"q{qubit2}_xy")
+            wait(pi_len // 4, f"q{qubit2}_xy")
         with case_(1):
             play("x180", f"q{qubit1}_xy")
         with case_(2):
@@ -165,7 +183,7 @@ def measurement_basis_change(k, l, qubit1, qubit2):
     # Change basis with operation l on qubit2
     with switch_(l):
         with case_(0):
-            wait(pi_len//4, f"q{qubit2}_xy")
+            wait(pi_len // 4, f"q{qubit2}_xy")
         with case_(1):
             play("x180", f"q{qubit2}_xy")
         with case_(2):
@@ -191,16 +209,32 @@ with program() as two_qubit_process_tomography:
     state = declare(bool)  # QUA variable for the measured qubits state
     state_st = declare_stream()  # Stream for the qubits state
 
-    c1 = declare(int)  # QUA variable for switching between state preparation/creations on qubit 1
-    c2 = declare(int)  # QUA variable for switching between state preparation/creations on qubit 2
-    m1 = declare(int)  # QUA variable for switching between Bloch basis projections/measurements on qubit 1
-    m2 = declare(int)  # QUA variable for switching between Bloch basis projections/measurements on qubit 2
+    c1 = declare(
+        int
+    )  # QUA variable for switching between state preparation/creations on qubit 1
+    c2 = declare(
+        int
+    )  # QUA variable for switching between state preparation/creations on qubit 2
+    m1 = declare(
+        int
+    )  # QUA variable for switching between Bloch basis projections/measurements on qubit 1
+    m2 = declare(
+        int
+    )  # QUA variable for switching between Bloch basis projections/measurements on qubit 2
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(c1, 0, c1 <= 5, c1 + 1):  # QUA for_ loop for switching between state preparations on qubit 1
-            with for_(c2, 0, c2 <= 5, c2 + 1):  # QUA for_ loop for switching between state preparations on qubit 2
-                with for_(m1, 0, m1 <= 5, m1 + 1):  # QUA for_ loop for switching between Bloch basis projections/measurements on qubit 1
-                    with for_(m2, 0, m2 <= 5, m2 + 1):  # QUA for_ loop for switching between Bloch basis projections/measurements on qubit 2
+        with for_(
+            c1, 0, c1 <= 5, c1 + 1
+        ):  # QUA for_ loop for switching between state preparations on qubit 1
+            with for_(
+                c2, 0, c2 <= 5, c2 + 1
+            ):  # QUA for_ loop for switching between state preparations on qubit 2
+                with for_(
+                    m1, 0, m1 <= 5, m1 + 1
+                ):  # QUA for_ loop for switching between Bloch basis projections/measurements on qubit 1
+                    with for_(
+                        m2, 0, m2 <= 5, m2 + 1
+                    ):  # QUA for_ loop for switching between Bloch basis projections/measurements on qubit 2
 
                         reset_frame(f"q{qubit1}_xy")
                         reset_frame(f"q{qubit2}_xy")
@@ -227,16 +261,24 @@ with program() as two_qubit_process_tomography:
                             "readout",
                             f"rr{qubit1}",
                             None,
-                            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I1),
-                            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q1),
+                            dual_demod.full(
+                                "rotated_cos", "out1", "rotated_sin", "out2", I1
+                            ),
+                            dual_demod.full(
+                                "rotated_minus_sin", "out1", "rotated_cos", "out2", Q1
+                            ),
                         )
 
                         measure(
                             "readout",
                             f"rr{qubit2}",
                             None,
-                            dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I2),
-                            dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q2),
+                            dual_demod.full(
+                                "rotated_cos", "out1", "rotated_sin", "out2", I2
+                            ),
+                            dual_demod.full(
+                                "rotated_minus_sin", "out1", "rotated_cos", "out2", Q2
+                            ),
                         )
 
                         align()
@@ -256,7 +298,9 @@ with program() as two_qubit_process_tomography:
 
     with stream_processing():
         n_st.save("iteration")
-        state_st.boolean_to_int().buffer(6).buffer(6).buffer(6).buffer(6).average().save("probs")
+        state_st.boolean_to_int().buffer(6).buffer(6).buffer(6).buffer(
+            6
+        ).average().save("probs")
 
 
 #####################################
@@ -264,10 +308,7 @@ with program() as two_qubit_process_tomography:
 #####################################
 
 qmm = QuantumMachinesManager(
-    host=qop_ip,
-    port=qop_port,
-    cluster_name=cluster_name,
-    octave=octave_config
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config
 )
 
 ###########################
@@ -302,9 +343,16 @@ else:
     qm.close()
 
     # post-processing
-    pauli_basis_measurements = lambda q, n: map_from_bloch_state_to_pauli_basis2(q, n, probs)
+    pauli_basis_measurements = lambda q, n: map_from_bloch_state_to_pauli_basis2(
+        q, n, probs
+    )
 
-    measurement_vector = np.array([pauli_basis_measurements(np.floor(v/16).astype(int), v % 16) for v in range(16**2)])
+    measurement_vector = np.array(
+        [
+            pauli_basis_measurements(np.floor(v / 16).astype(int), v % 16)
+            for v in range(16**2)
+        ]
+    )
 
     chi_vector = solve(PMatrix, measurement_vector)
     chi_matrix = chi_vector.reshape(16, 16)
