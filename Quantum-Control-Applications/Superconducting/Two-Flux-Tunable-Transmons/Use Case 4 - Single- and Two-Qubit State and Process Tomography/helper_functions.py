@@ -8,23 +8,16 @@ from matplotlib.colors import Normalize
 from matplotlib import cm, colormaps
 
 
-titlefont = {'color':  'black', 'weight': 'normal', 'size': 10}
-axisfont = {'color':  'black', 'weight': 'normal', 'size': 8}
-ticksfont = {'color':  'black', 'weight': 'normal', 'size': 8}
+titlefont = {"color": "black", "weight": "normal", "size": 10}
+axisfont = {"color": "black", "weight": "normal", "size": 8}
+ticksfont = {"color": "black", "weight": "normal", "size": 8}
 
 
 from qm.qua import *
 
 
 def rotated_multiplexed_state_discrimination(
-    I,
-    I_st,
-    Q,
-    Q_st,
-    states,
-    states_st,
-    resonators,
-    thresholds
+    I, I_st, Q, Q_st, states, states_st, resonators, thresholds
 ):
     """
     Perform multiplexed state discrimination on two qubits
@@ -76,17 +69,17 @@ def func_F1(n: int):
     # one of the six gates to create one of the six cardinal Bloch sphere
     # states
     if n == 0:  # identity
-        return np.array([[1,0],[0,1]])
+        return np.array([[1, 0], [0, 1]])
     elif n == 1:  # X180/Y180
-        return np.array([[0,1],[1,0]])
+        return np.array([[0, 1], [1, 0]])
     elif n == 2:  # Y90
-        return (1/np.sqrt(2)) * np.array([[1,-1],[1,1]])
+        return (1 / np.sqrt(2)) * np.array([[1, -1], [1, 1]])
     elif n == 3:  # Y-90
-        return (1/np.sqrt(2)) * np.array([[1,1],[-1,1]])
+        return (1 / np.sqrt(2)) * np.array([[1, 1], [-1, 1]])
     elif n == 4:  # X-90
-        return (1/np.sqrt(2)) * np.array([[1,1j],[1j,1]])
+        return (1 / np.sqrt(2)) * np.array([[1, 1j], [1j, 1]])
     elif n == 5:  # X90
-        return (1/np.sqrt(2)) * np.array([[1,-1j],[-1j,1]])
+        return (1 / np.sqrt(2)) * np.array([[1, -1j], [-1j, 1]])
     else:  # Error
         raise ValueError("Input integer should be between 0 and 5, inclusive")
 
@@ -95,13 +88,13 @@ def func_F1(n: int):
 def func_E1(n: int):
     # four Pauli operators
     if n == 0:  # identity
-        return np.array([[1,0],[0,1]])
+        return np.array([[1, 0], [0, 1]])
     elif n == 1:  # X
-        return np.array([[0,1],[1,0]])
+        return np.array([[0, 1], [1, 0]])
     elif n == 2:  # Y
-        return np.array([[0,-1j],[1j,0]])
+        return np.array([[0, -1j], [1j, 0]])
     elif n == 3:  # Z
-        return np.array([[1,0],[0,-1]])
+        return np.array([[1, 0], [0, -1]])
     else:  # Error
         raise ValueError("Input integer should be between 0 and 3, inclusive")
 
@@ -110,27 +103,27 @@ def func_E1(n: int):
 def func_c1(i: int, j: int):
     # Constants c1[i,j] such that
     # func_E1[i] = sum_j c1[i,j]func_F1[j]|0><0|func_F1[j]^{\dagger}
-    if (i, j) == (0,0):
+    if (i, j) == (0, 0):
         return 1
-    elif (i, j) == (0,1):
+    elif (i, j) == (0, 1):
         return 1
-    elif (i, j) == (1,0):
+    elif (i, j) == (1, 0):
         return -(1 + 1j)
-    elif (i, j) == (1,1):
+    elif (i, j) == (1, 1):
         return -(1 + 1j)
-    elif (i, j) == (1,2):
+    elif (i, j) == (1, 2):
         return 2
-    elif (i, j) == (1,4):
+    elif (i, j) == (1, 4):
         return 1j
-    elif (i, j) == (1,5):
+    elif (i, j) == (1, 5):
         return 1j
-    elif (i, j) == (2,4):
+    elif (i, j) == (2, 4):
         return 1
-    elif (i, j) == (2,5):
+    elif (i, j) == (2, 5):
         return -1
-    elif (i, j) == (3,0):
+    elif (i, j) == (3, 0):
         return 1
-    elif (i, j) == (3,1):
+    elif (i, j) == (3, 1):
         return -1
     else:
         return 0
@@ -148,7 +141,9 @@ def B_Bloch1(i, j, m, n):
     starting_state = np.array([[1, 0], [0, 0]])
     bloch_state = func_F1(i) @ starting_state @ (func_F1(i).conj().T)
     add_paulis = func_E1(m) @ bloch_state @ (func_E1(n).conj().T)
-    measure_bloch_state = (func_F1(j).conj().T) @ starting_state @ func_F1(j) @ add_paulis
+    measure_bloch_state = (
+        (func_F1(j).conj().T) @ starting_state @ func_F1(j) @ add_paulis
+    )
 
     return measure_bloch_state.trace()
 
@@ -183,13 +178,13 @@ def map_from_bloch_state_to_pauli_basis1(l, k, arr):
 
 def plot_process_tomography1(chi_vector, save_file: str = None):
 
-    plt.rcParams['text.usetex'] = True
+    plt.rcParams["text.usetex"] = True
 
-    cmap = colormaps.get_cmap('viridis')
+    cmap = colormaps.get_cmap("viridis")
 
     # set up figure
     fig = plt.figure(figsize=(9, 3), dpi=250, facecolor="white")
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
     # coordinates
     r = np.arange(4)
@@ -212,18 +207,21 @@ def plot_process_tomography1(chi_vector, save_file: str = None):
     ax.bar3d(x, y, bottom, width, depth, top, shade=True, color=colors)
     ax.set_xticks(r + 0.5, labels=xy_ticks_labels)
     ax.set_yticks(r + 0.5, labels=xy_ticks_labels)
-    ax.set_zticks([0, (max(top)/2).round(2), max(top).round(2)])
+    ax.set_zticks([0, (max(top) / 2).round(2), max(top).round(2)])
     ax.set_xlabel("Prepared", fontdict=axisfont)
     ax.set_ylabel("Measured", fontdict=axisfont)
-    ax.set_title(r'$\chi$ matrix', fontdict=titlefont)
+    ax.set_title(r"$\chi$ matrix", fontdict=titlefont)
     ax.view_init(20, -60, 0)
 
     sc = cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = plt.colorbar(sc, ax=ax, pad=0.1, shrink=0.7)
-    cbar.set_ticks(ticks=[-np.pi, -np.pi/2, 0, np.pi/2, np.pi], labels=[r"$-\pi$", r"$-\pi/2$", r"0", r"$\pi/2$", r"$\pi$"])
+    cbar.set_ticks(
+        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+        labels=[r"$-\pi$", r"$-\pi/2$", r"0", r"$\pi/2$", r"$\pi$"],
+    )
 
     if save_file:
-        plt.savefig(save_file, bbox_inches='tight')
+        plt.savefig(save_file, bbox_inches="tight")
 
     plt.show()
 
@@ -237,13 +235,13 @@ def func_F2(n: int):
     elif n == 1:  # X180/Y180
         return np.array([[0, 1], [1, 0]])
     elif n == 2:  # Y90
-        return (1/np.sqrt(2)) * np.array([[1, -1], [1, 1]])
+        return (1 / np.sqrt(2)) * np.array([[1, -1], [1, 1]])
     elif n == 3:  # Y-90
-        return (1/np.sqrt(2)) * np.array([[1, 1], [-1, 1]])
+        return (1 / np.sqrt(2)) * np.array([[1, 1], [-1, 1]])
     elif n == 4:  # X-90
-        return (1/np.sqrt(2)) * np.array([[1, 1j], [1j, 1]])
+        return (1 / np.sqrt(2)) * np.array([[1, 1j], [1j, 1]])
     elif n == 5:  # X90
-        return (1/np.sqrt(2)) * np.array([[1, -1j], [-1j, 1]])
+        return (1 / np.sqrt(2)) * np.array([[1, -1j], [-1j, 1]])
     else:  # Error
         raise ValueError("Input integer should be between 0 and 5, inclusive")
 
@@ -297,247 +295,247 @@ def func_E2(n: int):
 def func_c2(i: int, j: int, k: int):
     # Constants c2[i, j, k] such that
     # func_E2[i] = sum_{j,k} func_c2[i,j,k] (func_F2[j] x func_F2[k]) |0>|0><0|<0| (func_F2[j]^{\dagger} x func_F2[k]^{\dagger})
-    if (i, j, k) == (0,0,0):
+    if (i, j, k) == (0, 0, 0):
         return 1
-    elif (i, j, k) == (0,0,1):
+    elif (i, j, k) == (0, 0, 1):
         return 1
-    elif (i, j, k) == (0,1,0):
+    elif (i, j, k) == (0, 1, 0):
         return 1
-    elif (i, j, k) == (0,1,1):
+    elif (i, j, k) == (0, 1, 1):
         return 1
-    elif (i, j, k) == (1,0,0):
+    elif (i, j, k) == (1, 0, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (1,0,1):
+    elif (i, j, k) == (1, 0, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (1,0,2):
+    elif (i, j, k) == (1, 0, 2):
         return 2
-    elif (i, j, k) == (1,0,4):
+    elif (i, j, k) == (1, 0, 4):
         return 1j
-    elif (i, j, k) == (1,0,5):
+    elif (i, j, k) == (1, 0, 5):
         return 1j
-    elif (i, j, k) == (1,1,0):
+    elif (i, j, k) == (1, 1, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (1,1,1):
+    elif (i, j, k) == (1, 1, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (1,1,2):
+    elif (i, j, k) == (1, 1, 2):
         return 2
-    elif (i, j, k) == (1,1,4):
+    elif (i, j, k) == (1, 1, 4):
         return 1j
-    elif (i, j, k) == (1,1,5):
+    elif (i, j, k) == (1, 1, 5):
         return 1j
-    elif (i, j, k) == (2,0,4):
+    elif (i, j, k) == (2, 0, 4):
         return 1
-    elif (i, j, k) == (2,0,5):
+    elif (i, j, k) == (2, 0, 5):
         return -1
-    elif (i, j, k) == (2,1,4):
+    elif (i, j, k) == (2, 1, 4):
         return 1
-    elif (i, j, k) == (2,1,5):
+    elif (i, j, k) == (2, 1, 5):
         return -1
-    elif (i, j, k) == (3,0,0):
+    elif (i, j, k) == (3, 0, 0):
         return 1
-    elif (i, j, k) == (3,0,1):
+    elif (i, j, k) == (3, 0, 1):
         return -1
-    elif (i, j, k) == (3,1,0):
+    elif (i, j, k) == (3, 1, 0):
         return 1
-    elif (i, j, k) == (3,1,1):
+    elif (i, j, k) == (3, 1, 1):
         return -1
-    elif (i, j, k) == (4,0,0):
+    elif (i, j, k) == (4, 0, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (4,0,1):
+    elif (i, j, k) == (4, 0, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (4,1,0):
+    elif (i, j, k) == (4, 1, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (4,1,1):
+    elif (i, j, k) == (4, 1, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (4,2,0):
+    elif (i, j, k) == (4, 2, 0):
         return 2
-    elif (i, j, k) == (4,2,1):
+    elif (i, j, k) == (4, 2, 1):
         return 2
-    elif (i, j, k) == (4,4,0):
+    elif (i, j, k) == (4, 4, 0):
         return 1j
-    elif (i, j, k) == (4,4,1):
+    elif (i, j, k) == (4, 4, 1):
         return 1j
-    elif (i, j, k) == (4,5,0):
+    elif (i, j, k) == (4, 5, 0):
         return 1j
-    elif (i, j, k) == (4,5,1):
+    elif (i, j, k) == (4, 5, 1):
         return 1j
-    elif (i, j, k) == (5,0,0):
-        return (1 + 1j)**2
-    elif (i, j, k) == (5,0,1):
-        return (1 + 1j)**2
-    elif (i, j, k) == (5,1,0):
-        return (1 + 1j)**2
-    elif (i, j, k) == (5,1,1):
-        return (1 + 1j)**2
-    elif (i, j, k) == (5,0,2):
+    elif (i, j, k) == (5, 0, 0):
+        return (1 + 1j) ** 2
+    elif (i, j, k) == (5, 0, 1):
+        return (1 + 1j) ** 2
+    elif (i, j, k) == (5, 1, 0):
+        return (1 + 1j) ** 2
+    elif (i, j, k) == (5, 1, 1):
+        return (1 + 1j) ** 2
+    elif (i, j, k) == (5, 0, 2):
         return -2 * (1 + 1j)
-    elif (i, j, k) == (5,1,2):
+    elif (i, j, k) == (5, 1, 2):
         return -2 * (1 + 1j)
-    elif (i, j, k) == (5,2,0):
+    elif (i, j, k) == (5, 2, 0):
         return -2 * (1 + 1j)
-    elif (i, j, k) == (5,2,1): 
+    elif (i, j, k) == (5, 2, 1):
         return -2 * (1 + 1j)
-    elif (i, j, k) == (5,0,4):
+    elif (i, j, k) == (5, 0, 4):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,0,5):
+    elif (i, j, k) == (5, 0, 5):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,1,4):
+    elif (i, j, k) == (5, 1, 4):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,1,5):
+    elif (i, j, k) == (5, 1, 5):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,4,0):
+    elif (i, j, k) == (5, 4, 0):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,4,1):
+    elif (i, j, k) == (5, 4, 1):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,5,0):
+    elif (i, j, k) == (5, 5, 0):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,5,1):
+    elif (i, j, k) == (5, 5, 1):
         return -1j * (1 + 1j)
-    elif (i, j, k) == (5,2,2):
+    elif (i, j, k) == (5, 2, 2):
         return 4
-    elif (i, j, k) == (5,2,4):
-        return 2*1j
-    elif (i, j, k) == (5,2,5):
-        return 2*1j
-    elif (i, j, k) == (5,4,2):
-        return 2*1j
-    elif (i, j, k) == (5,5,2):
-        return 2*1j
-    elif (i, j, k) == (5,4,4):
+    elif (i, j, k) == (5, 2, 4):
+        return 2 * 1j
+    elif (i, j, k) == (5, 2, 5):
+        return 2 * 1j
+    elif (i, j, k) == (5, 4, 2):
+        return 2 * 1j
+    elif (i, j, k) == (5, 5, 2):
+        return 2 * 1j
+    elif (i, j, k) == (5, 4, 4):
         return -1
-    elif (i, j, k) == (5,4,5):
+    elif (i, j, k) == (5, 4, 5):
         return -1
-    elif (i, j, k) == (5,5,4):
+    elif (i, j, k) == (5, 5, 4):
         return -1
-    elif (i, j, k) == (5,5,5):
+    elif (i, j, k) == (5, 5, 5):
         return -1
-    elif (i, j, k) == (6,0,4):
+    elif (i, j, k) == (6, 0, 4):
         return -(1 + 1j)
-    elif (i, j, k) == (6,1,4):
+    elif (i, j, k) == (6, 1, 4):
         return -(1 + 1j)
-    elif (i, j, k) == (6,0,5):
-        return (1 + 1j)
-    elif (i, j, k) == (6,1,5):
-        return (1 + 1j)
-    elif (i, j, k) == (6,2,4):
+    elif (i, j, k) == (6, 0, 5):
+        return 1 + 1j
+    elif (i, j, k) == (6, 1, 5):
+        return 1 + 1j
+    elif (i, j, k) == (6, 2, 4):
         return 2
-    elif (i, j, k) == (6,2,5):
+    elif (i, j, k) == (6, 2, 5):
         return -2
-    elif (i, j, k) == (6,4,4):
+    elif (i, j, k) == (6, 4, 4):
         return 1j
-    elif (i, j, k) == (6,5,4):
+    elif (i, j, k) == (6, 5, 4):
         return 1j
-    elif (i, j, k) == (6,4,5):
+    elif (i, j, k) == (6, 4, 5):
         return -1j
-    elif (i, j, k) == (6,5,5):
+    elif (i, j, k) == (6, 5, 5):
         return -1j
-    elif (i, j, k) == (7,0,0):
+    elif (i, j, k) == (7, 0, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (7,1,0):
+    elif (i, j, k) == (7, 1, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (7,0,1):
-        return (1 + 1j)
-    elif (i, j, k) == (7,1,1):
-        return (1 + 1j)
-    elif (i, j, k) == (7,2,0):
+    elif (i, j, k) == (7, 0, 1):
+        return 1 + 1j
+    elif (i, j, k) == (7, 1, 1):
+        return 1 + 1j
+    elif (i, j, k) == (7, 2, 0):
         return 2
-    elif (i, j, k) == (7,2,1):
+    elif (i, j, k) == (7, 2, 1):
         return -2
-    elif (i, j, k) == (7,4,0):
+    elif (i, j, k) == (7, 4, 0):
         return 1j
-    elif (i, j, k) == (7,5,0):
+    elif (i, j, k) == (7, 5, 0):
         return 1j
-    elif (i, j, k) == (7,4,1):
+    elif (i, j, k) == (7, 4, 1):
         return -1j
-    elif (i, j, k) == (7,5,1):
+    elif (i, j, k) == (7, 5, 1):
         return -1j
-    elif (i, j, k) == (8,4,0):
+    elif (i, j, k) == (8, 4, 0):
         return 1
-    elif (i, j, k) == (8,4,1):
+    elif (i, j, k) == (8, 4, 1):
         return 1
-    elif (i, j, k) == (8,5,0):
+    elif (i, j, k) == (8, 5, 0):
         return -1
-    elif (i, j, k) == (8,5,1):
+    elif (i, j, k) == (8, 5, 1):
         return -1
-    elif (i, j, k) == (9,4,0):
+    elif (i, j, k) == (9, 4, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (9,4,1):
+    elif (i, j, k) == (9, 4, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (9,5,0):
-        return (1 + 1j)
-    elif (i, j, k) == (9,5,1):
-        return (1 + 1j)
-    elif (i, j, k) == (9,4,4):
+    elif (i, j, k) == (9, 5, 0):
+        return 1 + 1j
+    elif (i, j, k) == (9, 5, 1):
+        return 1 + 1j
+    elif (i, j, k) == (9, 4, 4):
         return 1j
-    elif (i, j, k) == (9,4,5):
+    elif (i, j, k) == (9, 4, 5):
         return 1j
-    elif (i, j, k) == (9,5,4):
+    elif (i, j, k) == (9, 5, 4):
         return -1j
-    elif (i, j, k) == (9,5,5):
+    elif (i, j, k) == (9, 5, 5):
         return -1j
-    elif (i, j, k) == (9,4,2):
+    elif (i, j, k) == (9, 4, 2):
         return 2
-    elif (i, j, k) == (9,5,2):
+    elif (i, j, k) == (9, 5, 2):
         return -2
-    elif (i, j, k) == (10,4,4):
+    elif (i, j, k) == (10, 4, 4):
         return 1
-    elif (i, j, k) == (10,5,5):
+    elif (i, j, k) == (10, 5, 5):
         return 1
-    elif (i, j, k) == (10,4,5):
+    elif (i, j, k) == (10, 4, 5):
         return -1
-    elif (i, j, k) == (10,5,4):
+    elif (i, j, k) == (10, 5, 4):
         return -1
-    elif (i, j, k) == (11,4,0):
+    elif (i, j, k) == (11, 4, 0):
         return 1
-    elif (i, j, k) == (11,5,1):
+    elif (i, j, k) == (11, 5, 1):
         return 1
-    elif (i, j, k) == (11,4,1):
+    elif (i, j, k) == (11, 4, 1):
         return -1
-    elif (i, j, k) == (11,5,0):
+    elif (i, j, k) == (11, 5, 0):
         return -1
-    elif (i, j, k) == (12,0,0):
+    elif (i, j, k) == (12, 0, 0):
         return 1
-    elif (i, j, k) == (12,0,1):
+    elif (i, j, k) == (12, 0, 1):
         return 1
-    elif (i, j, k) == (12,1,0):
+    elif (i, j, k) == (12, 1, 0):
         return -1
-    elif (i, j, k) == (12,1,1):
+    elif (i, j, k) == (12, 1, 1):
         return -1
-    elif (i, j, k) == (13,0,0):
+    elif (i, j, k) == (13, 0, 0):
         return -(1 + 1j)
-    elif (i, j, k) == (13,0,1):
+    elif (i, j, k) == (13, 0, 1):
         return -(1 + 1j)
-    elif (i, j, k) == (13,1,0):
-        return (1 + 1j)
-    elif (i, j, k) == (13,1,1):
-        return (1 + 1j)
-    elif (i, j, k) == (13,0,2):
+    elif (i, j, k) == (13, 1, 0):
+        return 1 + 1j
+    elif (i, j, k) == (13, 1, 1):
+        return 1 + 1j
+    elif (i, j, k) == (13, 0, 2):
         return 2
-    elif (i, j, k) == (13,1,2):
+    elif (i, j, k) == (13, 1, 2):
         return -2
-    elif (i, j, k) == (13,0,4):
+    elif (i, j, k) == (13, 0, 4):
         return 1j
-    elif (i, j, k) == (13,0,5):
+    elif (i, j, k) == (13, 0, 5):
         return 1j
-    elif (i, j, k) == (13,1,4):
+    elif (i, j, k) == (13, 1, 4):
         return -1j
-    elif (i, j, k) == (13,1,5):
+    elif (i, j, k) == (13, 1, 5):
         return -1j
-    elif (i, j, k) == (14,0,4):
+    elif (i, j, k) == (14, 0, 4):
         return 1
-    elif (i, j, k) == (14,1,5):
+    elif (i, j, k) == (14, 1, 5):
         return 1
-    elif (i, j, k) == (14,0,5):
+    elif (i, j, k) == (14, 0, 5):
         return -1
-    elif (i, j, k) == (14,1,4):
+    elif (i, j, k) == (14, 1, 4):
         return -1
-    elif (i, j, k) == (15,0,0):
+    elif (i, j, k) == (15, 0, 0):
         return 1
-    elif (i, j, k) == (15,1,1):
+    elif (i, j, k) == (15, 1, 1):
         return 1
-    elif (i, j, k) == (15,0,1):
+    elif (i, j, k) == (15, 0, 1):
         return -1
-    elif (i, j, k) == (15,1,0):
+    elif (i, j, k) == (15, 1, 0):
         return -1
     else:
         return 0
@@ -554,16 +552,20 @@ def B_Bloch2(i, j, k, l, m, n):
     # in terms of combinations of Bloch sphere states, assuming you
     # start from the qubits' ground states
 
-    starting_state = np.array([
-        [1, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0]
-        ])
+    starting_state = np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
-    bloch_state = np.kron(func_F2(i), func_F2(j)) @ starting_state @ np.kron(func_F2(i).conj().T, func_F2(j).conj().T)
+    bloch_state = (
+        np.kron(func_F2(i), func_F2(j))
+        @ starting_state
+        @ np.kron(func_F2(i).conj().T, func_F2(j).conj().T)
+    )
     add_paulis = func_E2(m) @ bloch_state @ (func_E2(n).conj().T)
-    measure_bloch_state = np.kron(func_F2(k).conj().T, func_F2(l).conj().T) @ starting_state @ np.kron(func_F2(k), func_F2(l)) @ add_paulis
+    measure_bloch_state = (
+        np.kron(func_F2(k).conj().T, func_F2(l).conj().T)
+        @ starting_state
+        @ np.kron(func_F2(k), func_F2(l))
+        @ add_paulis
+    )
 
     return measure_bloch_state.trace()
 
@@ -576,7 +578,11 @@ def P_Pauli2(s, t, m, n):
         for j in range(0, 6):
             for k in range(0, 6):
                 for l in range(0, 6):
-                    result += func_c2(s, i, j) * np.conj(func_c2(t, k, l)) * B_Bloch2(i, j, k, l, m, n)
+                    result += (
+                        func_c2(s, i, j)
+                        * np.conj(func_c2(t, k, l))
+                        * B_Bloch2(i, j, k, l, m, n)
+                    )
 
     return result
 
@@ -595,22 +601,24 @@ def map_from_bloch_state_to_pauli2(q, n, arr):
         for j in range(0, 6):  # second qubit prepare
             for k in range(0, 6):  # first qubit measure
                 for l in range(0, 6):  # second qubit measure
-                    result += func_c2(q, i, j) * np.conj(func_c2(n, k, l)) * arr[i][j][k][l]
+                    result += (
+                        func_c2(q, i, j) * np.conj(func_c2(n, k, l)) * arr[i][j][k][l]
+                    )
 
     return result
 
 
 def plot_process_tomography2(chi_vector, save_file: str = None):
 
-    plt.rcParams['text.usetex'] = True
+    plt.rcParams["text.usetex"] = True
 
-    ticksfont = {'color':  'black', 'weight': 'normal','size': 4}
+    ticksfont = {"color": "black", "weight": "normal", "size": 4}
 
-    cmap = colormaps.get_cmap('viridis')
+    cmap = colormaps.get_cmap("viridis")
 
     # set up figure
     fig = plt.figure(figsize=(9, 3), dpi=250, facecolor="white")
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
     # coordinates
     r = np.arange(16)
@@ -628,22 +636,42 @@ def plot_process_tomography2(chi_vector, save_file: str = None):
     norm = Normalize(vmin=-np.pi, vmax=np.pi)
     colors = cmap(norm(values1))
 
-    xy_ticks_labels = [r"$II$", r"$IX$", r"$IY$", r"$IZ$", r"$XI$", r"$XX$", r"$XY$", r"$XZ$", r"$YI$", r"$YX$", r"$YY$", r"$YZ$", r"$ZI$", r"$ZX$", r"$ZY$", r"$ZZ$"]
+    xy_ticks_labels = [
+        r"$II$",
+        r"$IX$",
+        r"$IY$",
+        r"$IZ$",
+        r"$XI$",
+        r"$XX$",
+        r"$XY$",
+        r"$XZ$",
+        r"$YI$",
+        r"$YX$",
+        r"$YY$",
+        r"$YZ$",
+        r"$ZI$",
+        r"$ZX$",
+        r"$ZY$",
+        r"$ZZ$",
+    ]
 
     ax.bar3d(x, y, bottom, width, depth, top, shade=True, color=colors)
     ax.set_xticks(r + 0.5, labels=xy_ticks_labels, fontdict=ticksfont)
     ax.set_yticks(r + 0.5, labels=xy_ticks_labels, fontdict=ticksfont)
-    ax.set_zticks([0, (max(top)/2).round(2), max(top).round(2)])
+    ax.set_zticks([0, (max(top) / 2).round(2), max(top).round(2)])
     ax.set_xlabel("Prepared", fontdict=axisfont)
     ax.set_ylabel("Measured", fontdict=axisfont)
-    ax.set_title(r'$\chi$ matrix', fontdict=titlefont)
+    ax.set_title(r"$\chi$ matrix", fontdict=titlefont)
     ax.view_init(20, -60, 0)
 
     sc = cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = plt.colorbar(sc, ax=ax, pad=0.1, shrink=0.7)
-    cbar.set_ticks(ticks=[-np.pi, -np.pi/2, 0, np.pi/2, np.pi], labels=[r"$-\pi$", r"$-\pi/2$", r"0", r"$\pi/2$", r"$\pi$"])
+    cbar.set_ticks(
+        ticks=[-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+        labels=[r"$-\pi$", r"$-\pi/2$", r"0", r"$\pi/2$", r"$\pi$"],
+    )
 
     if save_file:
-        plt.savefig(save_file, bbox_inches='tight')
+        plt.savefig(save_file, bbox_inches="tight")
 
     plt.show()
