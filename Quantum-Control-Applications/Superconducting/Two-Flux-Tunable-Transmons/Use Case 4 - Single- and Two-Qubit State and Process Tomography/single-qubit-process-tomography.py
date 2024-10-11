@@ -46,7 +46,12 @@ from qualang_tools.results import progress_counter, fetching_tool
 import numpy as np
 from scipy.linalg import solve
 
-from helper_functions import P_Pauli1, plot_process_tomography1, map_from_bloch_state_to_pauli_basis1, func_E1
+from helper_functions import (
+    P_Pauli1,
+    plot_process_tomography1,
+    map_from_bloch_state_to_pauli_basis1,
+    func_E1,
+)
 
 
 ###################
@@ -85,7 +90,7 @@ ideal_gate = func_E1(2)
 def prepare_state(i):
     with switch_(i):
         with case_(0):
-            wait(pi_len//4, f"q{qubit}_xy")
+            wait(pi_len // 4, f"q{qubit}_xy")
         with case_(1):
             play("x180", f"q{qubit}_xy")
         with case_(2):
@@ -103,7 +108,7 @@ def prepare_state(i):
 def measurement_basis_change(j):
     with switch_(j):
         with case_(0):
-            wait(pi_len//4, f"q{qubit}_xy")
+            wait(pi_len // 4, f"q{qubit}_xy")
         with case_(1):
             play("x180", f"q{qubit}_xy")
         with case_(2):
@@ -128,11 +133,17 @@ with program() as single_qubit_process_tomography:
     state_st = declare_stream()  # Stream for the qubit state
 
     c = declare(int)  # QUA variable for switching between state preparation/creations
-    m = declare(int)  # QUA variable for switching between basis projections/measurements
+    m = declare(
+        int
+    )  # QUA variable for switching between basis projections/measurements
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(c, 0, c <= 5, c + 1):  # QUA for_ loop for switching between state preparations
-            with for_(m, 0, m <= 5, m + 1):  # QUA for_ loop for switching between basis projections/measurements
+        with for_(
+            c, 0, c <= 5, c + 1
+        ):  # QUA for_ loop for switching between state preparations
+            with for_(
+                m, 0, m <= 5, m + 1
+            ):  # QUA for_ loop for switching between basis projections/measurements
 
                 reset_frame(f"q{qubit}_xy")
                 reset_phase(f"q{qubit}_xy")
@@ -157,7 +168,9 @@ with program() as single_qubit_process_tomography:
                     f"rr{qubit}",
                     None,
                     dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
+                    dual_demod.full(
+                        "rotated_minus_sin", "out1", "rotated_cos", "out2", Q
+                    ),
                 )
 
                 align()
@@ -182,10 +195,7 @@ with program() as single_qubit_process_tomography:
 #####################################
 
 qmm = QuantumMachinesManager(
-    host=qop_ip,
-    port=qop_port,
-    cluster_name=cluster_name,
-    octave=octave_config
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config
 )
 
 ###########################
@@ -220,11 +230,31 @@ else:
     qm.close()
 
     # post-processing
-    PMatrix = np.array([[P_Pauli1(np.floor(v/4).astype(int), v % 4, np.floor(w/4).astype(int), w % 4) for w in range(16)] for v in range(16)])
+    PMatrix = np.array(
+        [
+            [
+                P_Pauli1(
+                    np.floor(v / 4).astype(int),
+                    v % 4,
+                    np.floor(w / 4).astype(int),
+                    w % 4,
+                )
+                for w in range(16)
+            ]
+            for v in range(16)
+        ]
+    )
 
-    pauli_basis_measurements = lambda l, k: map_from_bloch_state_to_pauli_basis1(l, k, probs)
+    pauli_basis_measurements = lambda l, k: map_from_bloch_state_to_pauli_basis1(
+        l, k, probs
+    )
 
-    measurement_vector = np.array([pauli_basis_measurements(np.floor(v/4).astype(int), v % 4) for v in range(16)])
+    measurement_vector = np.array(
+        [
+            pauli_basis_measurements(np.floor(v / 4).astype(int), v % 4)
+            for v in range(16)
+        ]
+    )
 
     chi_vector = solve(PMatrix, measurement_vector)
     chi_matrix = chi_vector.reshape(4, 4)
