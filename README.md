@@ -24,6 +24,10 @@ It includes:
   Note that several codes there make use of the [py-qua-tools](https://github.com/qua-platform/py-qua-tools) that make QUA program more efficient and easy to write.
   It is thus advised to download the last version.
 
+* The ["Quantum Control Applications (QuAM)"](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications-QuAM)
+  folder contains scripts and examples for different qubits types, making use of the QuAM framework, but with tailored components (e.g. Transmon, Resonator) for popular 
+  qubit architectures. *Note: this is a work in progress!*
+
 ## Support and Contribution
 This is a beta version of the repo, and thus, if you see quirks and inaccuracies please tell us! 
 Love to see some example that's not yet included? tell us! Have a request for a general purpose procedure? tell us! 

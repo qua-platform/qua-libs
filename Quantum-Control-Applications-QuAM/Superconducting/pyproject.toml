@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "quam_libs"
+version = "0.1.0"
+description = "QuAM Components for Quantum Control"
+readme = "README.md"
+authors = ["Dean Poulos <dean.poulos@quantum-machines.co>"]
+license = "BSD-3-Clause"
+keywords = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+quam = { git = "https://github.com/qua-platform/quam.git" }
+qualang-tools = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
