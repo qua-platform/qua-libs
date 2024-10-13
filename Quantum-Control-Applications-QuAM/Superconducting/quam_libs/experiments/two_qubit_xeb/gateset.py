@@ -113,9 +113,9 @@ def generate_gate_set(gate_set: Literal["sw", "t"], baseline_gate_name: str) -> 
     """
 
     sx_gate = QUAGate("sx", play_sq_gate_macro(baseline_gate_name), amp_matrix=[1.0, 0.0, 0.0, 1.0])
-    SY = RYGate(np.pi / 2).to_matrix()
+    sy = RYGate(np.pi / 2).to_matrix()
     sy_gate = QUAGate(
-        ("sy", SY),
+        ("sy", sy),
         play_sq_gate_macro(baseline_gate_name, [0.0, -1.0, 1.0, 0.0]),
         amp_matrix=[0.0, -1.0, 1.0, 0.0],
     )

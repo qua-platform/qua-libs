@@ -14,7 +14,6 @@ from .macros import (
     align_transmon_pair,
 )
 import matplotlib.pyplot as plt
-from qiskit.circuit.library import UnitaryGate
 from qiskit_aer import AerJob
 import pandas as pd
 from .xeb_config import XEBConfig
@@ -31,8 +30,6 @@ from qm.jobs.simulated_job import SimulatedJob
 import seaborn as sns
 from copy import deepcopy
 from warnings import warn
-
-SW = UnitaryGate(np.array([[1, -np.sqrt(1j)], [np.sqrt(-1j), 1]]) / np.sqrt(2), label="sw")  # from Supremacy paper
 
 
 class XEB:
@@ -189,9 +186,6 @@ class XEB:
                 # Run the XEB sequence
                 with for_each_(depth, self.xeb_config.depths):  # Truncate depth to each value in depths
                     with for_(n, 0, n < self.xeb_config.n_shots, n + 1):
-                        if simulate:
-                            wait(25, *[qubit.name for qubit in self.qubit_drive_channels])
-
                         # Play all cycles generated for sequence s of depth d
                         with for_(depth_, 0, depth_ < depth, depth_ + 1):
                             for q, qubit in enumerate(self.qubits):  # Play single qubit gates on all qubits
@@ -219,16 +213,16 @@ class XEB:
                                                         # Two qubit gate macro
                                                         self.xeb_config.two_qb_gate.gate_macro(qubit_ctrl @ qubit_tgt)
                                                         align_transmon_pair(qubit_ctrl @ qubit_tgt)
+
+                                    with if_(two_qubit_gate_pattern == len(self.available_combinations) - 1):
+                                        assign(two_qubit_gate_pattern, 0)
+                                    with else_():
+                                        assign(two_qubit_gate_pattern, two_qubit_gate_pattern + 1)
                                 else:  # Two-qubit XEB case (no need for switch case)
                                     qubit_pair = self.qubit_pairs[0]
                                     align_transmon_pair(qubit_pair)
                                     self.xeb_config.two_qb_gate.gate_macro(qubit_pair)
                                     align_transmon_pair(qubit_pair)
-
-                                with if_(two_qubit_gate_pattern == len(self.available_combinations) - 1):
-                                    assign(two_qubit_gate_pattern, 0)
-                                with else_():
-                                    assign(two_qubit_gate_pattern, two_qubit_gate_pattern + 1)
 
                         # Measure the state
                         for q_idx, qubit in enumerate(self.qubits):
@@ -253,7 +247,8 @@ class XEB:
                                 threshold=ge_thresholds[q_idx],
                                 **self.xeb_config.reset_kwargs,
                             )
-                        assign(two_qubit_gate_pattern, 0)
+                        if len(self.qubit_pairs) > 1:  # Multi-qubit XEB case (Reset pattern)
+                            assign(two_qubit_gate_pattern, 0)
 
                         with switch_(tot_state_):
                             for i in range(dim):  # Bitstring conversion
@@ -489,7 +484,7 @@ class XEBJob:
             result = self.job.result()
             counts = result.get_counts()
             dms = np.array([result.data(i)["density_matrix"].data for i in range(len(counts))])
-            for count in counts:
+            for count in counts:  # Fill in missing bit-strings with 0 counts
                 for key in [binary(i, self.xeb_config.n_qubits) for i in range(self.xeb_config.dim)]:
                     if key not in count.keys():
                         count[key] = 0
@@ -609,31 +604,32 @@ class XEBResult:
         counts = self.saved_data["counts"]
         states = self.saved_data["states"]
         if not self.xeb_config.disjoint_processing:
-            records = []
+            records, singularity, outlier = [], [], []
             incoherent_distribution = np.ones(dim) / dim
             expected_probs = np.zeros((seqs, len(depths), dim))
             measured_probs = np.zeros((seqs, len(depths), dim))
             log_fidelities = np.zeros((seqs, len(depths)))
-            singularity = []
-            outlier = []
+
         else:
             records = [[] for _ in range(n_qubits)]
+            singularity = [[] for _ in range(n_qubits)]
+            outlier = [[] for _ in range(n_qubits)]
             incoherent_distribution = np.ones(2) / 2
             expected_probs = np.zeros((n_qubits, seqs, len(depths), 2))
             measured_probs = np.zeros((n_qubits, seqs, len(depths), 2))
             log_fidelities = np.zeros((n_qubits, seqs, len(depths)))
-            singularity = [[] for _ in range(n_qubits)]
-            outlier = [[] for _ in range(n_qubits)]
 
         for s in range(seqs):
             for d_, d in enumerate(depths):
+                qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
+
                 if not self.xeb_config.disjoint_processing:
-                    qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
                     expected_probs[s, d_] = np.round(Statevector(qc).probabilities(), 5)
                     measured_probs[s, d_] = (
                         np.array([counts[binary(i, n_qubits)][s][d_] for i in range(dim)]) / self.xeb_config.n_shots
                     )
 
+                    # Calculate the cross-entropy fidelities (logarithmic)
                     xe_incoherent = cross_entropy(incoherent_distribution, expected_probs[s, d_])
                     xe_measured = cross_entropy(measured_probs[s, d_], expected_probs[s, d_])
                     xe_expected = cross_entropy(expected_probs[s, d_], expected_probs[s, d_])
@@ -648,6 +644,7 @@ class XEBResult:
                     else:
                         log_fidelities[s, d_] = f_xeb
 
+                        # Store records for linear XEB post-processing
                         records += [
                             {
                                 "sequence": s,
@@ -659,12 +656,12 @@ class XEBResult:
 
                 else:
                     for q in range(n_qubits):
-                        qc = self.circuits[s][d_].remove_final_measurements(inplace=False)
                         expected_probs[q, s, d_] = np.round(Statevector(qc).probabilities([q]), 5)
                         measured_probs[q, s, d_] = np.array(
                             [1 - states[f"state{q}"][s][d_], states[f"state{q}"][s][d_]]
                         )
 
+                        # Calculate the cross-entropy fidelities (logarithmic)
                         xe_incoherent = cross_entropy(incoherent_distribution, expected_probs[q, s, d_])
                         xe_measured = cross_entropy(measured_probs[q, s, d_], expected_probs[q, s, d_])
                         xe_expected = cross_entropy(expected_probs[q, s, d_], expected_probs[q, s, d_])
@@ -678,7 +675,7 @@ class XEBResult:
                             log_fidelities[q, s, d_] = np.nan
                         else:
                             log_fidelities[q, s, d_] = f_xeb
-
+                            # Store records for linear XEB post-processing
                             records[q] += [
                                 {
                                     "sequence": s,
