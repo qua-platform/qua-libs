@@ -17,7 +17,7 @@ one can continue to the following files:
 2. [Storage Displacement](./02_storage_displacement.py) - Performs a displacement pulse to the storage cavity to find the $|\alpha|$ parameter.
 3. **Number Splitting Spectroscopy** - Resolves the state of the storage cavity in the Fock state basis, for different cavity states:
   * [Number Splitting Spectroscopy with general displacement](./03a_number_splitting_spectroscopy_w_displacement) - Resolves the state of the storage cavity in the Fock state basis after applying a general displacement pulse to the cavity.
-  * [Number Splitting Spectroscopy with SNAP](./03b_number_splitting_spectroscopy_w_sNAP.py) - Resolves the state of the storage cavity in the Fock state basis after using SNAP to create n=1 Fock state in the cavity (can be generalized).
+  * [Number Splitting Spectroscopy with SNAP](./03b_number_splitting_spectroscopy_w_SNAP.py) - Resolves the state of the storage cavity in the Fock state basis after using SNAP to create n=1 Fock state in the cavity (can be generalized).
 4. **Cavity T1** - Resolves the time it takes for the cavity to decay, for different cavity states:
   * [Storage coherent state decay](./04a_storage_coherent_state_decay.py) - Resolves the time it takes for the cavity to decay from a general coherent state.
   * [Storage Fock state n=1 decay](./04b_storage_Fock_state_number_1_decay.py) - Resolves the time it takes for the cavity to decay from a Fock state n=1 (can be generalized).
