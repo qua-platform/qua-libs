@@ -4,6 +4,7 @@ This file is used to configure the Octave's clock and do the automatic calibrati
 from qm import QuantumMachinesManager
 from qm.octave import ClockMode
 from configuration import *
+
 # from configuration_with_octave import *
 
 

@@ -35,7 +35,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 import numpy as np
 import scipy.special as sp
 import scipy.optimize as spo
@@ -117,8 +117,8 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
@@ -144,38 +144,37 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot(4 * durations, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("displacement pulse duration [ns]")
         ax2.set_ylim(0, 1)
-        
-    # fitting and extracting $|\alpha|$ #
-    def func(t, A, kappa,offset, n=0):
-        alpha = kappa*t
-        return A*np.exp(-np.abs(alpha)**2)*np.abs(alpha)**(2*n)/sp.factorial(n)+offset
 
-    def func_n0(t,A,kappa,offset):
+    # fitting and extracting $|\alpha|$ #
+    def func(t, A, kappa, offset, n=0):
+        alpha = kappa * t
+        return A * np.exp(-np.abs(alpha) ** 2) * np.abs(alpha) ** (2 * n) / sp.factorial(n) + offset
+
+    def func_n0(t, A, kappa, offset):
         return func(t, A, kappa, offset, n=0)
 
-    durations[0]=0
+    durations[0] = 0
 
-    x0 = [max(state)-min(state), 0.01, min(state)]
-    popt, pcov = spo.curve_fit(func_n0, durations*4, state, p0=x0)
+    x0 = [max(state) - min(state), 0.01, min(state)]
+    popt, pcov = spo.curve_fit(func_n0, durations * 4, state, p0=x0)
     print(popt)
 
     fig3, ax3 = plt.subplots(1, 1)
     ax3.plot(4 * durations, state, ".")
-    x = 4*np.linspace(0, np.max(durations))
-    ax3.plot(x, func_n0(x,*popt))
+    x = 4 * np.linspace(0, np.max(durations))
+    ax3.plot(x, func_n0(x, *popt))
     ax3.set_ylabel(r"$P_e$")
     ax3.set_xlabel("Pulse duration [ns]")
 
-    fig4, ax4 = plt.subplots(1,1)
-    ax4.plot(4 * durations*popt[1], state, ".")
-    x = 4*np.linspace(0, np.max(durations))
-    ax4.plot(x*popt[1], func_n0(x,*popt))
+    fig4, ax4 = plt.subplots(1, 1)
+    ax4.plot(4 * durations * popt[1], state, ".")
+    x = 4 * np.linspace(0, np.max(durations))
+    ax4.plot(x * popt[1], func_n0(x, *popt))
     ax4.set_ylabel(r"$P_e$")
     ax4.set_xlabel(r"$|\alpha|$")
     plt.show()

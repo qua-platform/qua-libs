@@ -61,15 +61,15 @@ with program() as wigner_tomography:
         with for_(*from_array(aI, aIs)):
             with for_(*from_array(aQ, aQs)):
                 # Prepare the cavity in the desired state, for example Fock state=1 using SNAP
-                play("beta1" , "storage")
+                play("beta1", "storage")
                 align()
                 play("x360", "qubit")
                 align()
-                play("beta2" , "storage")
+                play("beta2", "storage")
                 align()
 
                 # Play displacement pulse
-                play("cw"*amp(aI, 0, aQ, 0), "storage")
+                play("cw" * amp(aI, 0, aQ, 0), "storage")
                 align()
                 # Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
@@ -99,7 +99,7 @@ with program() as wigner_tomography:
                 align()
 
                 # Play displacement pulse
-                play("cw"*amp(aI, 0, aQ, 0), "storage")
+                play("cw" * amp(aI, 0, aQ, 0), "storage")
                 align()
                 # Ramsey sequence with idle time set to pi / chi
                 play("x90", "qubit")
@@ -170,9 +170,8 @@ else:
         # Plot results
         wigner = 2 / np.pi * state  # derive the wigner function
         plt.cla()
-        plt.pcolor(aIs, aQs, wigner, cmap='magma')
-        plt.xlabel('Real')
-        plt.ylabel('Imaginary')
-        plt.title('Wigner tomography for Fock state n=0')
+        plt.pcolor(aIs, aQs, wigner, cmap="magma")
+        plt.xlabel("Real")
+        plt.ylabel("Imaginary")
+        plt.title("Wigner tomography for Fock state n=0")
         plt.pause(1)
-

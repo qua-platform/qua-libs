@@ -27,7 +27,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 import numpy as np
 
 ###################
@@ -63,7 +63,7 @@ with program() as qubit_spec:
             play("beta1", "storage")
             align()
             align("qubit", "storage")
-            play("x360_long", "qubit") # Play a selective pi-pulse for n=0
+            play("x360_long", "qubit")  # Play a selective pi-pulse for n=0
             align()
             play("beta2", "storage")
 
@@ -129,7 +129,7 @@ else:
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I,state, Q, iteration = results.fetch_all()
+        I, state, Q, iteration = results.fetch_all()
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, readout_len)
         R = np.abs(S)  # Amplitude
@@ -151,14 +151,13 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot(4 * durations, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Idle time [ns]")
-        ax2.set_ylim(0,1)
+        ax2.set_ylim(0, 1)
 
-   # Fit the results to extract the qubit frequency and T2*
+    # Fit the results to extract the qubit frequency and T2*
     try:
         from qualang_tools.plot.fitting import Fit
 

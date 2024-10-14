@@ -26,7 +26,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 import numpy as np
 import scipy.optimize as spo
 
@@ -107,8 +107,8 @@ else:
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "state", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
@@ -134,26 +134,25 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot(4 * durations, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Wait time [ns]")
-        ax2.set_ylim(0,1)
+        ax2.set_ylim(0, 1)
 
-    def func(t, A, alpha, kappa,offset, n=0):
-        return A*np.exp(-np.abs(alpha)**2*np.exp(-kappa*t))+offset
+    def func(t, A, alpha, kappa, offset, n=0):
+        return A * np.exp(-np.abs(alpha) ** 2 * np.exp(-kappa * t)) + offset
 
     # fitting and extracting T1 #
-    x0 = [-max(state)+min(state),3, 0.79, max(state)]
-    popt, pcov = spo.curve_fit(func, durations*4/u.ms, state, p0=x0)
+    x0 = [-max(state) + min(state), 3, 0.79, max(state)]
+    popt, pcov = spo.curve_fit(func, durations * 4 / u.ms, state, p0=x0)
     print(popt)
 
-    fig3, ax3 = plt.subplots(1,1)
+    fig3, ax3 = plt.subplots(1, 1)
 
-    x = 4*np.linspace(4e-3, np.max(durations))/u.ms
-    ax3.plot(4 * durations/u.ms, state, ".")
-    ax3.plot(x, func(x,*popt))
+    x = 4 * np.linspace(4e-3, np.max(durations)) / u.ms
+    ax3.plot(4 * durations / u.ms, state, ".")
+    ax3.plot(x, func(x, *popt))
     ax3.plot(x, func(x, *x0))
     ax3.set_ylabel(r"$P_e$")
     ax3.set_xlabel("Wait time [ns]")

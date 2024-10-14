@@ -50,7 +50,7 @@ octave_config = octave_declaration(octaves)
 #                  Storage                  #
 #############################################
 storage_LO = 5 * u.GHz
-storage_IF = 100 * u.MHz # correspond to Fock state n=0
+storage_IF = 100 * u.MHz  # correspond to Fock state n=0
 
 
 storage_T1 = int(1 * u.ms)
@@ -116,7 +116,9 @@ x180_len_long = 5000
 x180_sigma_long = x180_len_long / 3
 x180_amp_long = 0.001
 x180_wf_long, x180_der_wf_long = np.array(
-    drag_gaussian_pulse_waveforms(x180_amp_long, x180_len_long, x180_sigma_long, drag_coef, anharmonicity, AC_stark_detuning)
+    drag_gaussian_pulse_waveforms(
+        x180_amp_long, x180_len_long, x180_sigma_long, drag_coef, anharmonicity, AC_stark_detuning
+    )
 )
 x180_I_wf_long = x180_wf_long
 x180_Q_wf_long = x180_der_wf_long
@@ -128,12 +130,14 @@ x360_sigma_long = x360_len_long / 3
 
 x360_amp_long = x180_amp_long * 2
 x360_wf_long, x360_der_wf_long = np.array(
-    drag_gaussian_pulse_waveforms(x360_amp_long, x360_len_long, x360_sigma_long, drag_coef, anharmonicity, AC_stark_detuning)
+    drag_gaussian_pulse_waveforms(
+        x360_amp_long, x360_len_long, x360_sigma_long, drag_coef, anharmonicity, AC_stark_detuning
+    )
 )
 x360_I_wf_long = x360_wf_long
 x360_Q_wf_long = x360_der_wf_long
 
-x90_len = x180_len 
+x90_len = x180_len
 x90_sigma = x90_len / 3
 x90_amp = x180_amp / 2
 x90_wf, x90_der_wf = np.array(
@@ -206,7 +210,7 @@ resonator_IF = 150 * u.MHz
 resonator_off_pump_amp = 0.45
 
 readout_len = 1000
-readout_amp = 0.05 
+readout_amp = 0.05
 
 time_of_flight = 24
 depletion_time = 2 * u.us
@@ -247,8 +251,8 @@ config = {
             "digital_outputs": {},
             "analog_inputs": {
                 1: {"offset": 0.00835, "gain_db": 0},  # I from down-conversion
-                2: {"offset": 0.017176 , "gain_db": 0},  # Q from down-conversion
-           },
+                2: {"offset": 0.017176, "gain_db": 0},  # Q from down-conversion
+            },
         },
     },
     "elements": {
@@ -267,7 +271,7 @@ config = {
                 "y90": "y90_pulse",
                 "y180": "y180_pulse",
                 "-y90": "-y90_pulse",
-                "x360_long":"x360_pulse_long",
+                "x360_long": "x360_pulse_long",
             },
         },
         "storage": {
@@ -278,18 +282,14 @@ config = {
                 "beta1": "storage_beta1_pulse",
                 "beta2": "storage_beta2_pulse",
                 "beta3": "storage_beta3_pulse",
-                "off_pump":"storage_off_pump_pulse"
+                "off_pump": "storage_off_pump_pulse",
             },
         },
         "resonator": {
             "RF_inputs": {"port": ("octave1", 1)},
             "RF_outputs": {"port": ("octave1", 1)},
             "intermediate_frequency": resonator_IF,
-            "operations": {
-                "cw": "const_pulse",
-                "readout": "readout_pulse",
-                "off_pump": "resonator_off_pump_pulse"
-            },
+            "operations": {"cw": "const_pulse", "readout": "readout_pulse", "off_pump": "resonator_off_pump_pulse"},
             "time_of_flight": time_of_flight,
             "smearing": 0,
         },
@@ -353,10 +353,7 @@ config = {
         "saturation_pulse": {
             "operation": "control",
             "length": saturation_len,
-            "waveforms": {
-                "I": "saturation_drive_wf", 
-                "Q": "zero_wf"
-                },
+            "waveforms": {"I": "saturation_drive_wf", "Q": "zero_wf"},
         },
         "x90_pulse": {
             "operation": "control",
@@ -468,7 +465,7 @@ config = {
             "waveforms": {
                 "I": "resonator_off_pump_pulse_wf",
                 "Q": "zero_wf",
-            },        
+            },
         },
         "readout_pulse": {
             "operation": "measurement",

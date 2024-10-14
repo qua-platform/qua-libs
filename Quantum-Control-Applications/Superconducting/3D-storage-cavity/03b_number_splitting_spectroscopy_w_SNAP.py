@@ -27,7 +27,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 import numpy as np
 
 
@@ -63,18 +63,18 @@ with program() as number_splitting_spectroscopy:
             # Prepare the storage cavity in Fock state n=1
             play("beta1", "storage")
             align("qubit", "storage")
-            play("x360_long", "qubit") # play a selective 2pi pulse at qubit frequency that corresponds to n=0
+            play("x360_long", "qubit")  # play a selective 2pi pulse at qubit frequency that corresponds to n=0
             align("qubit", "storage")
-            play("beta2" , "storage")
+            play("beta2", "storage")
 
             # Update the qubit frequency
             update_frequency("qubit", df + center)
             align("qubit", "storage")
 
-            play("x180_long", "qubit") # play a selective pi-pulse
+            play("x180_long", "qubit")  # play a selective pi-pulse
             align("qubit", "resonator")
             # Measure the state of the resonator
-            state, I, Q = macros.readout_macro(threshold = ge_threshold, state=state, I=I, Q=Q)
+            state, I, Q = macros.readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
             # Wait for the qubit to decay to the ground state
             wait(storage_thermalization_time * u.ns, "resonator")
@@ -116,14 +116,14 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(number_splitting_spectroscopy)
     # Get results from QUA program
-    results = fetching_tool(job, data_list=["I","state", "Q", "iteration"], mode="live")
+    results = fetching_tool(job, data_list=["I", "state", "Q", "iteration"], mode="live")
     # Live plotting
-    fig1, ax1 = plt.subplots(2,1)
-    fig2, ax2 = plt.subplots(1,1)
+    fig1, ax1 = plt.subplots(2, 1)
+    fig2, ax2 = plt.subplots(1, 1)
     interrupt_on_close(fig1, job)  # Interrupts the job when closing the figure
     while results.is_processing():
         # Fetch results
-        I,state, Q, iteration = results.fetch_all()
+        I, state, Q, iteration = results.fetch_all()
         # Convert results into Volts
         S = u.demod2volts(I + 1j * Q, readout_len)
         R = np.abs(S)  # Amplitude
@@ -145,10 +145,8 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot((dfs + center) / u.MHz, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Qubit intermediate frequency [MHz]")
-        ax2.set_ylim(0,1)
-
+        ax2.set_ylim(0, 1)

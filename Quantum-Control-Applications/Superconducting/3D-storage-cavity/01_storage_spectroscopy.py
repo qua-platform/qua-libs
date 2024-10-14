@@ -29,7 +29,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 
 
 ###################
@@ -136,9 +136,8 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
-        ax2.plot((dfs + center)/ u.MHz, state, ".")
+        ax2.plot((dfs + center) / u.MHz, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Storage intermediate frequency [MHz]")
         ax2.set_ylim(0, 1)

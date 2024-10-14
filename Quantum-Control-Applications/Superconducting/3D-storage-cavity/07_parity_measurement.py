@@ -75,7 +75,7 @@ with program() as parity_meas:
             # Align the two elements to measure after playing the qubit pulses.
             align("qubit", "resonator")
             # Measure the state of the resonator
-            state1, I1, Q1 = macros.readout_macro(threshold = ge_threshold, state=state1, I=I1, Q=Q1)
+            state1, I1, Q1 = macros.readout_macro(threshold=ge_threshold, state=state1, I=I1, Q=Q1)
             # Wait for the storage to decay to the ground state
             align("storage", "resonator")
             wait(storage_thermalization_time * u.ns, "storage")
@@ -99,7 +99,7 @@ with program() as parity_meas:
             update_frequency("qubit", qubit_IF_n1)
             play("x180_long", "qubit")
             align("qubit", "resonator")
-            state2, I2, Q2 = macros.readout_macro(threshold = ge_threshold, state=state2, I=I2, Q=Q2)
+            state2, I2, Q2 = macros.readout_macro(threshold=ge_threshold, state=state2, I=I2, Q=Q2)
 
             # Wait for the storage to decay to the ground state
             align("storage", "resonator")
@@ -114,9 +114,11 @@ with program() as parity_meas:
 
     with stream_processing():
         # Cast the data into a 1D vector, average the 1D vectors together and store the results on the OPX processor
-        (I1_st.buffer(len(taus))-I2_st.buffer(len(taus))).average().save("I")
-        (Q1_st.buffer(len(taus))-Q2_st.buffer(len(taus))).average().save("Q")
-        (state1_st.boolean_to_int().buffer(len(taus))-state2_st.boolean_to_int().buffer(len(taus))).average().save("state")
+        (I1_st.buffer(len(taus)) - I2_st.buffer(len(taus))).average().save("I")
+        (Q1_st.buffer(len(taus)) - Q2_st.buffer(len(taus))).average().save("Q")
+        (state1_st.boolean_to_int().buffer(len(taus)) - state2_st.boolean_to_int().buffer(len(taus))).average().save(
+            "state"
+        )
         n_st.save("iteration")
 
 #####################################
@@ -169,5 +171,3 @@ else:
         ax2.plot(4 * taus, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Idle time [ns]")
-
-

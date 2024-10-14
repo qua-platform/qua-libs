@@ -28,7 +28,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
-import macros as macros 
+import macros as macros
 import numpy as np
 
 ###################
@@ -144,12 +144,11 @@ else:
         plt.pause(1)
         plt.tight_layout()
 
-
         ax2.clear()
         ax2.plot(4 * durations, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Wait time [ns]")
-        ax2.set_ylim(0,1)
+        ax2.set_ylim(0, 1)
 
     # Fit the results to extract the qubit decay time T1
     try:

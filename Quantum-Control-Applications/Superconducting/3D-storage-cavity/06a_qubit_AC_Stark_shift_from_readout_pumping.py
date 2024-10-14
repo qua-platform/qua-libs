@@ -40,7 +40,7 @@ off_saturation_amp = 1  # Pre-factor to the value defined in the config - restri
 detuning = 20 * u.MHz  # Detuning frequency of the storage off pump pulse
 # Qubit detuning sweep
 center = 100 * u.MHz
-span =2 * u.MHz
+span = 2 * u.MHz
 df = 1 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
@@ -140,7 +140,7 @@ else:
         plt.tight_layout()
 
         ax2.clear()
-        ax2.plot((dfs + center)/ u.MHz, state, ".")
+        ax2.plot((dfs + center) / u.MHz, state, ".")
         ax2.set_ylabel(r"$P_e$")
         ax2.set_xlabel("Qubit intermediate frequency [MHz]")
         ax2.set_ylim(0, 1)
