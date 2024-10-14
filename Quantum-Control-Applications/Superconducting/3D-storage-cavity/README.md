@@ -19,15 +19,15 @@ one can continue to the following files:
   * [Number Splitting Spectroscopy with general displacement](./03a_number_splitting_spectroscopy_w_displacement) - Resolves the state of the storage cavity in the Fock state basis after applying a general displacement pulse to the cavity.
   * [Number Splitting Spectroscopy with SNAP](./03b_number_splitting_spectroscopy_w_SNAP.py) - Resolves the state of the storage cavity in the Fock state basis after using SNAP to create n=1 Fock state in the cavity (can be generalized).
 4. **Cavity T1** - Resolves the time it takes for the cavity to decay, for different cavity states:
-  * [Storage coherent state decay](./04a_storage_coherent_state_decay.py) - Resolves the time it takes for the cavity to decay from a general coherent state.
-  * [Storage Fock state n=1 decay](./04b_storage_Fock_state_number_1_decay.py) - Resolves the time it takes for the cavity to decay from a Fock state n=1 (can be generalized).
-5. [Storage T2](./06_storage_T2.py) - Resolves the decoherence time of the cavity after preparing it in Fock state n=1.
+  * [Storage coherent state decay](./04a_storage_coherent_state_decay.py) - Resolves the time it takes for the storage cavity to decay from a general coherent state.
+  * [Storage Fock state n=1 decay](./04b_storage_Fock_state_number_1_decay.py) - Resolves the time it takes for the storage cavity to decay from a Fock state n=1 (can be generalized).
+5. [Storage T2](./06_storage_T2.py) - Resolves the decoherence time of the storage cavity after preparing it in Fock state n=1.
 6. **AC Stark shift** - Finds the AC stark shift of the qubit/cavity due to readout pumping.
   * [Qubit AC Stark shift from readout pumping](./06a_qubit_AC_Stark_shift_from_readout_pumping.py) - Finds the AC stark shift of the qubit due to readout pumping.
-  * [Storage AC Stark shift from readout pumping](./06b_storage_AC_Stark_shift_from_readout_pumping.py) -  Finds the AC stark shift of the cavity due to readout pumping.
+  * [Storage AC Stark shift from readout pumping](./06b_storage_AC_Stark_shift_from_readout_pumping.py) -  Finds the AC stark shift of the storage cavity due to readout pumping.
 7. [Parity measurement](./08_parity_measurement.py) - Resolves the behaviour of the different Fock states in order to find the exact delay time for parity measurements. 
-8. [Wigner Tomography](./09_Wigner_tomography.py) - Wigner Tomography for the cavity's Fock state.
-9. [Swapping operation](./10_Swapping_operation.py) - Swaps the readout and the storage cavity states. 
+8. [Wigner Tomography](./09_Wigner_tomography.py) - Wigner Tomography for the storage cavity's Fock state.
+9. [Swapping operation](./10_Swapping_operation.py) - Swaps the resonator cavity and the storage cavity states. 
 
 
 
