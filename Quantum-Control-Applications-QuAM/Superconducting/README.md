@@ -29,7 +29,15 @@
 This folder contains an installable module called `quam_libs`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QuAM, making it easier to design and execute calibration nodes.
 
 ### Requirements
-To run the calibration nodes in this folder, you need to install `quam_libs`. First, ensure you have Python ≥ 3.8 installed on your system.
+To run the calibration nodes in this folder, you need to install `quam_libs`. During this installation, *all relevant* requirements for running QUA code
+and calibrations through the front-end will also be installed.
+
+First, ensure you have Python ≥ 3.8 installed on your system. Preferably, use Pyhon 3.10 within a new conda environment, which you can create using e.g.,
+```sh
+conda create -n qm python==3.10
+conda activate qm
+```
+
 Then run the following command:
 
 ```sh
@@ -78,7 +86,26 @@ The QuAM framework stores a database of calibration values in a collection of .j
 The `QUAM_STATE_PATH` environment variable is now set up globally on your system.
 
 ## Setting up the browser frontend (Qualibrate)
+> **_NOTE:_**  For more detailed and up-to-date documentation about Qualibrate, see the [documentation](https://qua-platform.github.io/qualibrate/).
+ 
+While the calibration nodes are runnable as individual scripts, they can also be run through a browser. The frontend 
+also allows for the execution of calibration graphs.
 
+During the installation of `quam_libs`, the requirement `qualibrate` was installed. We can use the command-line to 
+generate a config for `qualibrate` which points the frontend application to our calibration nodes directory as follows:
+```sh
+# change into the folder containing the `calibration_graph`
+cd path/that/contains/calibration_graph
+
+# replace the values in this command with ones suitable for your project.
+qualibrate config --app-project <name_of_your_project> --app-user-storage <path_to_your_data_folder>
+```
+To verify that `qualibrate` installed correctly, you can launch the web interface:
+```shell
+qualibrate start
+```
+Then, open a browser to http://127.0.0.1:8001, where you should see the list of calibration nodes stored in the 
+`calibration_graph` directory.
 
 ## Folder structure
 
@@ -104,7 +131,7 @@ The typical QUAM/QUalibrate folder structure is as follows:
 ### calibration_data
 This folder contains the data that will be saved after the execution of each calibration node.
 The [data handler](https://github.com/qua-platform/py-qua-tools/tree/main/qualang_tools/results#data-handler) is used to save data into an automatically generated folder with folder structure:
-`{root_data_folder}/%Y-%m-%d/#{idx}_{name}_%H%M%S`.
+```<path_to_your_data_folder>/%Y-%m-%d/#{idx}_{name}_%H%M%S```
 
 The saved data can have a different format depending on its type:
 * The figures are saved as .png.
@@ -195,7 +222,7 @@ build_quam_wiring(connectivity, host_ip, cluster_name, path)
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)
 ```
-![opx1000_wiring](./opx1000_wiring.PNG)
+![opx1000_wiring](./.img/opx1000_wiring.PNG)
 
 ### [2. The QuAM components](./quam_libs/components)
 Describe the structure of the QuAM components and how they can be customized, what to pay attention to...
@@ -356,11 +383,66 @@ Note that these parameters serve as a starting point before starting to calibrat
 updated at the end of each calibration node.
 
 ## How to run Qualibrate nodes
-
 ### Node structure
+> **_NOTE:_**  For the most detailed and up-to-date documentation on calibration nodes, visit the QUAlibrate [documentation](https://qua-platform.github.io/qualibrate/calibration_nodes/).
+> 
+Qualibrate provides a framework to convert any old calibration script into a calibration **node** to be used within
+a calibration graph, whilst maintaining its ability to be run standalone. The core elements of this framework are as
+follows:
+
+#### Core features
+```python
+from qualibrate import NodeParameters, QualibrationNode
+
+# 1. Define the set of input parameters relevant for calibration
+class Parameters(NodeParameters):
+    span: float = 20
+    num_points: int = 101
+
+# 2. Instantiate a QualibrationNode with a unique name
+node = QualibrationNode(name="my_calibration_node")
+
+# Run your regular calibration code here
+...
+
+# 3. Record any relevant output from the calibration
+node.results = {...}  # a dictionary with any result data you like (including figures)!
+
+# 4. Save the results
+node.save()
+```
+After executing the node, results will be saved at the `<path_to_your_data_folder>`, as well as being viewable on the 
+web app.
+
+#### Additional Feature: Interactive calibration
+Naturally as part of a calibration node, one would like to *update their QuAM parameters* according to calibration
+results. When using QUAlibrate, you can define **interactive** state-updates to a QuAM as follows:
+```python
+with node.record_state_updates():
+    # Modify the resonance frequency of a qubit
+    machine.qubits["q0"].f_01 = 5.1e9
+```
+This will simply update the values if the script is executed normally. However, if the node is executed through the 
+QUAlibrate Web App, any changes will be presented as a proposed state update to the user, allowing them to interactively accept or decline the changes based on the measurement outcomes.
 
 ### Execution
-
 #### As standalone python scripts
+Simply run the script in your favourite IDE!
 
 #### Within Qualibrate
+1. Activate your conda environment if you haven't already:
+```shell
+conda activate qm
+```
+2. Start the QUAlibrate web-app in the command-line within your conda environment, e.g.,
+```shell
+qualibrate start
+```
+3. Open http://localhost:8001/ on your browser:
+   ![browser window](./.img/qualibrate_1.png)
+4. Select the node you would like to run:
+   ![select node](./.img/qualibrate_2.png)
+5. Change the input parameters to your liking:
+   ![change parameters](./.img/qualibrate_3.png)
+6. Press "Run":
+   ![change parameters](./.img/qualibrate_4.png)
