@@ -1,0 +1,5320 @@
+Command 0:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 1:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 2:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 3:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 4:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 5:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 6:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 7:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 8:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 9:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 10:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 11:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 12:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 13:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 14:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 15:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 16:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 17:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 18:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 19:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 20:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 21:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 22:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 23:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 24:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 25:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 26:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 27:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 28:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 29:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 30:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 31:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+
+Command 32:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+
+Command 33:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 34:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 35:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+
+Command 36:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 37:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 38:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 39:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 40:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 41:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 42:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 43:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 44:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 45:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 46:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 47:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 48:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 49:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 50:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 51:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 52:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 53:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 54:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 55:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 56:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 57:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 58:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 59:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 60:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 61:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 62:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 63:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 64:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 65:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 66:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 67:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 68:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 69:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 70:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 71:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 72:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 73:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 74:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 75:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 76:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 77:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 78:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 79:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 80:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 81:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 82:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 83:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 84:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 85:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 86:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 87:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 88:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 89:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 90:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 91:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 92:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 93:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 94:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 95:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 96:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 97:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 98:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 99:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 100:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 101:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 102:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 103:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 104:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 105:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 106:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 107:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 108:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 109:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 110:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 111:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 112:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 113:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 114:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 115:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 116:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 117:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 118:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 119:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 120:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 121:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 122:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 123:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 124:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 125:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 126:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 127:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 128:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 129:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 130:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 131:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 132:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 133:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 134:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 135:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 136:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 137:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 138:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 139:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 140:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 141:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 142:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 143:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 144:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 145:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 146:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 147:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 148:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 149:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 150:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 151:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 152:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 153:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 154:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 155:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 156:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 157:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 158:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 159:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 160:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 161:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 162:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 163:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 164:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 165:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 166:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 167:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 168:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 169:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 170:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 171:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 172:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 173:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 174:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 175:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 176:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 177:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 178:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 179:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 180:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 181:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 182:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 183:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 184:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 185:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 186:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 187:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 188:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 189:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 190:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 191:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 192:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 193:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 194:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 195:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 196:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 197:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 198:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 199:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 200:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 201:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 202:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 203:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 204:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 205:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 206:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 207:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 208:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 209:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 210:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 211:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 212:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 213:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 214:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 215:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 216:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 217:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 218:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 219:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 220:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 221:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 222:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 223:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 224:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 225:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 226:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 227:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 228:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 229:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 230:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 231:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 232:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 233:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 234:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 235:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 236:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 237:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 238:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 239:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 240:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 241:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 242:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 243:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 244:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 245:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 246:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 247:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 248:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 249:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 250:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 251:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 252:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 253:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 254:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 255:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 256:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 257:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 258:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 259:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 260:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 261:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 262:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 263:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 264:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 265:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 266:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 267:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 268:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 269:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 270:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 271:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 272:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 273:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 274:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 275:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 276:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 277:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 278:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 279:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 280:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 281:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 282:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 283:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 284:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 285:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 286:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 287:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 288:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 289:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 290:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 291:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 292:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 293:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 294:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 295:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 296:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 297:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 298:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 299:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 300:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 301:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 302:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 303:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 304:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 305:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 306:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 307:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 308:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 309:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 310:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 311:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 312:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 313:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 314:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 315:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 316:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 317:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 318:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 319:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 320:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 321:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 322:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 323:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 324:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 325:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 326:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 327:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 328:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 329:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 330:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 331:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 332:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 333:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 334:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 335:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 336:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 337:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 338:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 339:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 340:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 341:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 342:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 343:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 344:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 345:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 346:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 347:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 348:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 349:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 350:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 351:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 352:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 353:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0, z=0, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 354:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 355:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 356:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=0.5, z=0.5, a=0)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 357:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0, z=0, a=0)
+
+Command 358:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=0.5, z=0.5, a=0)
+
+Command 359:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(1, 2)
+	3: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	4: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+
+Command 360:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 361:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 362:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 363:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 364:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 365:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 366:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 367:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 368:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 369:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 370:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 371:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 372:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 373:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 374:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 375:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 376:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 377:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 378:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 379:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 380:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 381:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 382:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 383:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 384:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 385:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 386:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 387:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 388:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 389:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 390:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 391:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 392:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 393:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 394:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 395:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 396:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 397:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 398:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 399:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 400:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 401:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 402:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 403:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 404:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 405:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 406:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 407:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 408:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 409:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 410:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 411:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 412:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 413:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 414:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 415:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 416:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 417:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 418:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 419:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 420:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 421:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 422:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 423:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 424:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 425:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 426:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 427:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 428:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 429:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 430:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 431:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 432:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 433:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 434:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 435:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 436:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 437:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 438:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 439:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 440:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 441:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 442:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 443:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 444:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 445:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 446:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 447:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 448:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 449:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 450:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 451:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 452:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 453:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 454:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 455:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 456:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 457:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 458:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 459:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 460:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 461:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 462:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 463:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 464:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 465:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 466:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 467:
+	0: PXZ(1, amp=1.0, z=0.0, a=-0.25)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 468:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 469:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 470:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 471:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 472:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 473:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 474:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 475:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 476:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 477:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 478:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 479:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 480:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 481:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 482:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 483:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 484:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 485:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 486:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 487:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 488:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 489:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 490:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 491:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 492:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 493:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 494:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 495:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 496:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 497:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 498:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 499:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 500:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 501:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 502:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 503:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 504:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 505:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 506:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 507:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 508:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 509:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 510:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 511:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 512:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 513:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 514:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 515:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 516:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 517:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 518:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 519:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 520:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 521:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 522:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 523:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 524:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 525:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 526:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 527:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 528:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 529:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 530:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 531:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 532:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 533:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 534:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 535:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 536:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 537:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 538:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 539:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 540:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 541:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 542:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 543:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 544:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 545:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 546:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 547:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 548:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 549:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 550:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 551:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 552:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 553:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 554:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 555:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 556:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 557:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 558:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 559:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 560:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 561:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 562:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 563:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 564:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 565:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 566:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 567:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 568:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 569:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 570:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 571:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 572:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 573:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 574:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 575:
+	0: PXZ(1, amp=1.0, z=0.0, a=0.0)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 576:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 577:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 578:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 579:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 580:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 581:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 582:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 583:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 584:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 585:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 586:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 587:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 588:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 589:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 590:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 591:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 592:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 593:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 594:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 595:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 596:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 597:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 598:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 599:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 600:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 601:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 602:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 603:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 604:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 605:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 606:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 607:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 608:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 609:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 610:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 611:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 612:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 613:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 614:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 615:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 616:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 617:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 618:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 619:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 620:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 621:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 622:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 623:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 624:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 625:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 626:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 627:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 628:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 629:
+	0: PXZ(1, amp=0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 630:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 631:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 632:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 633:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 634:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 635:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 636:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 637:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 638:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 639:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 640:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 641:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 642:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 643:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 644:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 645:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 646:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 647:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.5, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 648:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 649:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 650:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 651:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 652:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 653:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 654:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 655:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 656:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 657:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 658:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 659:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 660:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 661:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 662:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 663:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 664:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 665:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0.0, a=0.5)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 666:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 667:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 668:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 669:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 670:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 671:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 672:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 673:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 674:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.5, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 675:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 676:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 677:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.0, z=0.0, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 678:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 679:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 680:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=0.5, z=0.5, a=0.0)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 681:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=1.0, a=0.5)
+
+Command 682:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=-0.5, z=0.0, a=0.0)
+
+Command 683:
+	0: PXZ(1, amp=0.5, z=0.0, a=0.5)
+	1: PXZ(2, amp=0.0, z=1.0, a=0.0)
+	2: CNOT(1, 2)
+	3: CNOT(2, 1)
+	4: PXZ(1, amp=-0.5, z=-0.4999999999999998, a=0.4999999999999998)
+	5: PXZ(2, amp=0.0, z=0.5, a=0.0)
+
+Command 684:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 685:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 686:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 687:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 688:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 689:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 690:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 691:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 692:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 693:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 694:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 695:
+	0: PXZ(1, amp=-0.5, z=0, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 696:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 697:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 698:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 699:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 700:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 701:
+	0: PXZ(1, amp=-0.5, z=1, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 702:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 703:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 704:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 705:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 706:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 707:
+	0: PXZ(1, amp=-0.5, z=-0.5, a=0.5)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 708:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 709:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 710:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 711:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 712:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 713:
+	0: PXZ(1, amp=0.5, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 714:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 715:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=0, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 716:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=1, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 717:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=-0.5, z=-0.5, a=0.5)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 718:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0.5, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 719:
+	0: PXZ(1, amp=0, z=0.5, a=0)
+	1: PXZ(2, amp=0, z=0.5, a=0)
+	2: CNOT(2, 1)
+	3: CNOT(1, 2)
+	4: CNOT(2, 1)
+
+Command 720:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 721:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0)
+
+Command 722:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0.5)
+
+Command 723:
+	0: PXZ(1, amp=0, z=0, a=0)
+	1: PXZ(2, amp=0, z=1.0, a=0)
+
+Command 724:
+	0: PXZ(1, amp=1.0, z=0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 725:
+	0: PXZ(1, amp=1.0, z=0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0)
+
+Command 726:
+	0: PXZ(1, amp=1.0, z=0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0.5)
+
+Command 727:
+	0: PXZ(1, amp=1.0, z=0, a=0)
+	1: PXZ(2, amp=0, z=1.0, a=0)
+
+Command 728:
+	0: PXZ(1, amp=1.0, z=0, a=0.5)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 729:
+	0: PXZ(1, amp=1.0, z=0, a=0.5)
+	1: PXZ(2, amp=1.0, z=0, a=0)
+
+Command 730:
+	0: PXZ(1, amp=1.0, z=0, a=0.5)
+	1: PXZ(2, amp=1.0, z=0, a=0.5)
+
+Command 731:
+	0: PXZ(1, amp=1.0, z=0, a=0.5)
+	1: PXZ(2, amp=0, z=1.0, a=0)
+
+Command 732:
+	0: PXZ(1, amp=0, z=1.0, a=0)
+	1: PXZ(2, amp=0, z=0, a=0)
+
+Command 733:
+	0: PXZ(1, amp=0, z=1.0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0)
+
+Command 734:
+	0: PXZ(1, amp=0, z=1.0, a=0)
+	1: PXZ(2, amp=1.0, z=0, a=0.5)
+
+Command 735:
+	0: PXZ(1, amp=0, z=1.0, a=0)
+	1: PXZ(2, amp=0, z=1.0, a=0)
+
