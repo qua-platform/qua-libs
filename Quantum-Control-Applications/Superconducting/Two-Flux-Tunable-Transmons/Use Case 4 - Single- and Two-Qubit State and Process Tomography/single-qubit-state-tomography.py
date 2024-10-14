@@ -77,9 +77,7 @@ with program() as single_qubit_state_tomography:
     Q = declare(fixed)
 
     with for_(n, 0, n < n_avg, n + 1):  # QUA for_ loop for averaging
-        with for_(
-            p, 0, p <= 2, p + 1
-        ):  # QUA for_ loop for switching between basis changes
+        with for_(p, 0, p <= 2, p + 1):  # QUA for_ loop for switching between basis changes
 
             prepare_state(qubit)
             align()
@@ -110,9 +108,7 @@ with program() as single_qubit_state_tomography:
                     f"rr{qubit}",
                     None,
                     dual_demod.full("rotated_cos", "out1", "rotated_sin", "out2", I),
-                    dual_demod.full(
-                        "rotated_minus_sin", "out1", "rotated_cos", "out2", Q
-                    ),
+                    dual_demod.full("rotated_minus_sin", "out1", "rotated_cos", "out2", Q),
                 )
 
             # True if qubit state is |1>, False if |0>
@@ -133,9 +129,7 @@ with program() as single_qubit_state_tomography:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(
-    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config
-)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #

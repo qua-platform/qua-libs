@@ -16,9 +16,7 @@ ticksfont = {"color": "black", "weight": "normal", "size": 8}
 from qm.qua import *
 
 
-def rotated_multiplexed_state_discrimination(
-    I, I_st, Q, Q_st, states, states_st, resonators, thresholds
-):
+def rotated_multiplexed_state_discrimination(I, I_st, Q, Q_st, states, states_st, resonators, thresholds):
     """
     Perform multiplexed state discrimination on two qubits
 
@@ -141,9 +139,7 @@ def B_Bloch1(i, j, m, n):
     starting_state = np.array([[1, 0], [0, 0]])
     bloch_state = func_F1(i) @ starting_state @ (func_F1(i).conj().T)
     add_paulis = func_E1(m) @ bloch_state @ (func_E1(n).conj().T)
-    measure_bloch_state = (
-        (func_F1(j).conj().T) @ starting_state @ func_F1(j) @ add_paulis
-    )
+    measure_bloch_state = (func_F1(j).conj().T) @ starting_state @ func_F1(j) @ add_paulis
 
     return measure_bloch_state.trace()
 
@@ -554,11 +550,7 @@ def B_Bloch2(i, j, k, l, m, n):
 
     starting_state = np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
 
-    bloch_state = (
-        np.kron(func_F2(i), func_F2(j))
-        @ starting_state
-        @ np.kron(func_F2(i).conj().T, func_F2(j).conj().T)
-    )
+    bloch_state = np.kron(func_F2(i), func_F2(j)) @ starting_state @ np.kron(func_F2(i).conj().T, func_F2(j).conj().T)
     add_paulis = func_E2(m) @ bloch_state @ (func_E2(n).conj().T)
     measure_bloch_state = (
         np.kron(func_F2(k).conj().T, func_F2(l).conj().T)
@@ -578,11 +570,7 @@ def P_Pauli2(s, t, m, n):
         for j in range(0, 6):
             for k in range(0, 6):
                 for l in range(0, 6):
-                    result += (
-                        func_c2(s, i, j)
-                        * np.conj(func_c2(t, k, l))
-                        * B_Bloch2(i, j, k, l, m, n)
-                    )
+                    result += func_c2(s, i, j) * np.conj(func_c2(t, k, l)) * B_Bloch2(i, j, k, l, m, n)
 
     return result
 
@@ -601,9 +589,7 @@ def map_from_bloch_state_to_pauli2(q, n, arr):
         for j in range(0, 6):  # second qubit prepare
             for k in range(0, 6):  # first qubit measure
                 for l in range(0, 6):  # second qubit measure
-                    result += (
-                        func_c2(q, i, j) * np.conj(func_c2(n, k, l)) * arr[i][j][k][l]
-                    )
+                    result += func_c2(q, i, j) * np.conj(func_c2(n, k, l)) * arr[i][j][k][l]
 
     return result
 
