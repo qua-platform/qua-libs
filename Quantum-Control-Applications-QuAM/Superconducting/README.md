@@ -1,4 +1,30 @@
 # N Flux-Tunable Transmon Qubits
+## Table of Contents
+1. [Installation](#installation)
+   1. [Requirements](#requirements)
+   2. [Setup](#setup)
+      1. [Setting up the QUAM_STATE_PATH environment variable](#setting-up-the-quam_state_path-environment-variable)
+         1. [Linux](#linux)
+         2. [Mac](#mac)
+         3. [Windows](#windows)
+      2. [(Optional) Setting up the browser frontend (Qualibrate)](#setting-up-the-browser-frontend-qualibrate)
+3. [Folder structure](#folder-structure)
+   1. [calibration_data](#calibration_data)
+   2. [calibration_graph](#calibration_graph)
+   3. [configuration](#configuration)
+   4. [quam_libs](#quam_libs)
+4. [How to generate the QuAM](#how-to-generate-the-quam)
+   1. [1. Define the wiring](#1-define-the-wiring)
+   2. [2. The QuAM components](#2-the-quam-components)
+   3. [3. Generating the QuAM and state.json](#3-generating-the-quam-and-statejson)
+   4. [4. Updating the parameters of state.json](#4-updating-the-parameters-of-statejson)
+5. [How to run Qualibrate nodes](#how-to-run-qualibrate-nodes)
+   1. [Node structure](#node-structure)
+   2. [Execution](#execution)
+      1. [As standalone python scripts](#as-standalone-python-scripts)
+      2. [Within Qualibrate](#within-qualibrate)
+
+
 ## Installation
 This folder contains an installable module called `quam_libs`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QuAM, making it easier to design and execute calibration nodes.
 
@@ -7,19 +33,9 @@ To run the calibration nodes in this folder, you need to install `quam_libs`. Fi
 Then run the following command:
 
 ```sh
-# Install quam_libs (locally, from this directory)
-pip install .  
-# The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_libs`!
-# pip install -e .
-
-# Install qualibrate for Node structuring and front-end
-pip install qualibrate-0.1.0.tar.gz
-
-# Install pyqua-tools with wiring feature (if not in main yet)
-pip install git+http://github.com/qua-platform/py-qua-tools.git@feature/auto_wiring
-
-# Install qm-qua for the QUA SDK
-pip install qm-qua==1.2.1rc3
+# Install `quam_libs` (locally, from this directory)
+pip install -e .
+# or, simply `pip install .`
 ```
 > **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_libs`!
 
@@ -61,14 +77,8 @@ The QuAM framework stores a database of calibration values in a collection of .j
 
 The `QUAM_STATE_PATH` environment variable is now set up globally on your system.
 
-### Connectivity
-A class is provided to create a "default" wiring. The default wiring assigns ports in the following physical order:
-1. All resonator I/Q channels are allocated to the first FEM/OPX+ for all qubits.
-2. All qubit I/Q channels are allocated to the first FEM/OPX+ for all qubits.
-3. All qubit flux channels are allocated to the first FEM/OPX+ for all qubits (if any).
-4. All tunable coupler channels are allocated to the first FEM/OPX+ for all qubits (if any).
+## Setting up the browser frontend (Qualibrate)
 
-This extends over multiple LF-FEMs, OPX+ and Octaves when needed.
 
 ## Folder structure
 
@@ -93,7 +103,7 @@ The typical QUAM/QUalibrate folder structure is as follows:
 ````
 ### calibration_data
 This folder contains the data that will be saved after the execution of each calibration node.
-The [data handler](https://github.com/qua-platform/py-qua-tools/tree/main/qualang_tools/results#data-handler) is used to save data into an automatically generated folder with folder structure: 
+The [data handler](https://github.com/qua-platform/py-qua-tools/tree/main/qualang_tools/results#data-handler) is used to save data into an automatically generated folder with folder structure:
 `{root_data_folder}/%Y-%m-%d/#{idx}_{name}_%H%M%S`.
 
 The saved data can have a different format depending on its type:
@@ -108,8 +118,8 @@ The structure of the nodes is described below.
 ### configuration
 The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
 It contains three files whose working principles are explained in more details below:
-* [make_wiring.py](./configuration/make_wiring.py): create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...). 
-* [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration. 
+* [make_wiring.py](./configuration/make_wiring.py): create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
+* [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
 * [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
 
 ### quam_libs
@@ -119,22 +129,22 @@ This folder contains all the utility functions necessary to create the wiring or
 * [quam_builder](./quam_libs/quam_builder): contains the main functions called in [machine.py](./quam_libs/quam_builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_libs/components) folder. It also contains the [pulses.py](./quam_libs/quam_builder/pulses.py) file where the default qubits pulses are defined.
 
 ## How to generate the QuAM
-Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QuAM](https://github.com/qua-platform/quam)) for the desired 
+Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QuAM](https://github.com/qua-platform/quam)) for the desired
 qubit chip architecture. More details about QUAM itself can be found in the [QuAM documentation](https://qua-platform.github.io/quam/).
 
 The process can be divided into three sections:
-1. First one needs to create the wiring specifying which quantum element (qubit, resonator, flux line...) is connected to 
-which OPX channel. 
-2. Then, the QuAM components can be derived from the resulting wiring.json file. 
-The attributes (methods or parameters) of these components can be customized at will. 
-3. Finally, a file called state.json, containing all the desired parameters that describe the full state of the system 
-will be created.
+1. First one needs to create the wiring specifying which quantum element (qubit, resonator, flux line...) is connected to
+   which OPX channel.
+2. Then, the QuAM components can be derived from the resulting wiring.json file.
+   The attributes (methods or parameters) of these components can be customized at will.
+3. Finally, a file called state.json, containing all the desired parameters that describe the full state of the system
+   will be created.
 
 ### [1. Define the wiring](./configuration/make_wiring.py)
 The wiring is generated from a python script called [make_wiring.py](./configuration/make_wiring.py).
 It uses a tool called [wirer](https://github.com/qua-platform/py-qua-tools/tree/feature/auto_wiring/qualang_tools/wirer)
-which  helps to define the connectivity between the quantum elements (qubits, resonators, flux lines...) and the 
-channels of the control hardware (OPX+, Octave, MW-fem, LF-fem). It will create a json file called wiring.json which 
+which  helps to define the connectivity between the quantum elements (qubits, resonators, flux lines...) and the
+channels of the control hardware (OPX+, Octave, MW-fem, LF-fem). It will create a json file called wiring.json which
 contains the port mapping in a format requested by the QuAM builder, as well as the network settings.
 
 1. First one needs to set up the instruments available in the QOP cluster
@@ -146,7 +156,7 @@ host_ip = "127.0.0.1"  # QOP IP address
 cluster_name = "Cluster_1"  # Name of the cluster
 # Desired location of wiring.json and state.json 
 # The folder must not contain other json files.
-path = "./quam_state"  
+path = "./quam_state"
 
 instruments = Instruments()
 # instruments.add_opx_plus(controllers = [1])
@@ -155,9 +165,9 @@ instruments.add_mw_fem(controller=1, slots=[1, 2])
 instruments.add_lf_fem(controller=1, slots=[3, 4])
 ```
 
-2. Then the port mapping between the different quantum elements and the available channels can be generated automatically 
-based on the following hierarchy: resonators > qubit xy drive lines > qubit flux lines > qubit charge lines > tunable couplers.
-Some constrains can also be added in order to force all the resonators to be on the same line for instance.
+2. Then the port mapping between the different quantum elements and the available channels can be generated automatically
+   based on the following hierarchy: resonators > qubit xy drive lines > qubit flux lines > qubit charge lines > tunable couplers.
+   Some constrains can also be added in order to force all the resonators to be on the same line for instance.
 ```python
 from qualang_tools.wirer import Connectivity, allocate_wiring
 from qualang_tools.wirer.wirer.channel_specs import mw_fem_spec
@@ -174,7 +184,7 @@ connectivity.add_qubit_drive_lines(qubits=qubits)
 allocate_wiring(connectivity, instruments)
 ```
 3. Finally, the wiring and network information is serialized and store in wiring.json and the QUAM state is initiated in state.json.
-The wiring and port mapping can also be visualized in a matplotlib figure. 
+   The wiring and port mapping can also be visualized in a matplotlib figure.
 
 ```python
 from quam_libs.quam_builder.machine import build_quam_wiring
@@ -191,31 +201,31 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 Describe the structure of the QuAM components and how they can be customized, what to pay attention to...
 Also, how to create a new one and update the wiring and build_quam accordingly.
 
-The hierarchy and structure of QUAM can be detailed as follows: 
+The hierarchy and structure of QUAM can be detailed as follows:
 1. [quam_root.py](./quam_libs/components/quam_root.py) represents the highest level in terms of hierarchy.
-It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves. 
-Its methods are usually applied to all qubits or active qubits. 
+   It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
+   Its methods are usually applied to all qubits or active qubits.
 2. The definition of a QuAM transmon is defined in [transmon.py](./quam_libs/components/transmon.py). It contains the
-genral transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and 
-`z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in 
-[transmon_pair.py](./quam_libs/components/transmon_pair.py).
+   genral transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
+   `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
+   [transmon_pair.py](./quam_libs/components/transmon_pair.py).
 3. The sub-QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
-directly defined as an `IQChannel`, or from user-defined components such as 
-[readout_resonator](./quam_libs/components/readout_resonator.py) or [flux_line](./quam_libs/components/flux_line.py), 
-which allows the customization of their attributes.
+   directly defined as an `IQChannel`, or from user-defined components such as
+   [readout_resonator](./quam_libs/components/readout_resonator.py) or [flux_line](./quam_libs/components/flux_line.py),
+   which allows the customization of their attributes.
 
 
 ### [3. Generating the QuAM and state.json](./configuration/make_quam.py)
-Once the QuAM root is implemented with the subsequent components, the QuAM state can be generated automatically and each 
-parameter of the QUAM components is initialized to its arbitrary default value. 
-All of these parameters can be updated programmatically based on the specs from the chip manufacturer for instance and 
+Once the QuAM root is implemented with the subsequent components, the QuAM state can be generated automatically and each
+parameter of the QUAM components is initialized to its arbitrary default value.
+All of these parameters can be updated programmatically based on the specs from the chip manufacturer for instance and
 the process is described in the next section.
 
-The script called [make_quam.py](./configuration/make_quam.py) takes care of generating the QUAM and filling the state 
+The script called [make_quam.py](./configuration/make_quam.py) takes care of generating the QUAM and filling the state
 according to the wiring file. The Octaves connection parameters can also be edited here if relevant.
 
 Everything happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
-according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found 
+according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
 ```python
@@ -256,38 +266,38 @@ machine.wiring = QuamDict({})
 # ^^^
 
 mw_out = MWChannel(
-    id = "mw_out",
-    operations = {
-        "cw": SquarePulse(amplitude=1, length=100),
-        "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
-    opx_output = MWFEMAnalogOutputPort(
-        controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-    ),
-    upconverter=1,
-    intermediate_frequency=20e6
+   id = "mw_out",
+   operations = {
+      "cw": SquarePulse(amplitude=1, length=100),
+      "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
+   opx_output = MWFEMAnalogOutputPort(
+      controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+   ),
+   upconverter=1,
+   intermediate_frequency=20e6
 )
 mw_in = InOutMWChannel(
-    id = "mw_in",
-    operations = {
-        "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
-    opx_output = MWFEMAnalogOutputPort(
-        controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-    ),
-    opx_input = MWFEMAnalogInputPort(
-        controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
-    ),
-    upconverter=1,
-    time_of_flight=28,
-    intermediate_frequency=10e6
+   id = "mw_in",
+   operations = {
+      "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
+   opx_output = MWFEMAnalogOutputPort(
+      controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+   ),
+   opx_input = MWFEMAnalogInputPort(
+      controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
+   ),
+   upconverter=1,
+   time_of_flight=28,
+   intermediate_frequency=10e6
 )
 
 machine.qubits["dummy_out"] = mw_out
 machine.qubits["dummy_in"] = mw_in
 
 with program() as prog:
-    mw_out.play("cw")
-    mw_in.align()
-    mw_in.play("readout")
+   mw_out.play("cw")
+   mw_in.align()
+   mw_in.play("readout")
 
 config = machine.generate_config()
 qmm = machine.connect()
@@ -302,10 +312,10 @@ machine.save("dummy_state.json")
 # %%
 # View the corresponding "raw-QUA" config
 with open("dummy_qua_config.json", "w+") as f:
-    json.dump(machine.generate_config(), f, indent=4)
+   json.dump(machine.generate_config(), f, indent=4)
 ```
 ### [4. Updating the parameters of state.json](./configuration/modify_quam.py)
-Once the state is created, each parameter can be updated based on the desired initial values using 
+Once the state is created, each parameter can be updated based on the desired initial values using
 [modify_quam.py](./configuration/modify_quam.py).
 
 ````python
@@ -327,11 +337,11 @@ rr_if = rr_freq - rr_LO
 rr_max_power_dBm = -8
 
 for i, q in enumerate(machine.qubits):
-    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
-    
+   machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+   machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
+   machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+   machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
+
 # %%
 # save into state.json
 save_machine(machine, path)
@@ -339,14 +349,13 @@ save_machine(machine, path)
 # %%
 # View the corresponding "raw-QUA" config
 with open("qua_config.json", "w+") as f:
-    json.dump(machine.generate_config(), f, indent=4)
+   json.dump(machine.generate_config(), f, indent=4)
 ````
 
 Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be
 updated at the end of each calibration node.
 
 ## How to run Qualibrate nodes
-
 
 ### Node structure
 
