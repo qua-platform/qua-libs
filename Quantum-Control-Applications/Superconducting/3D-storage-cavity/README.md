@@ -1,6 +1,6 @@
 # 3D storage cavity coupled to a fixed transmon
 
-<img align="right" src="Single Fixed Frequency Transmon Setup.PNG" alt="drawing" width="400"/>
+<img align="right" src="3D_cavity_coupled_to_Transmon.PNG" alt="drawing" width="400"/>
 
 ## Basic Files
 These files showcase various experiments that can be done on a 3D Storage Cavity coupled to a Single Fixed Transmon Superconducting Qubit.

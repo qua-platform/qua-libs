@@ -3,9 +3,9 @@
 This sequence involves two consecutive measurements:
 The first one measures the background, by applying a displacement pulse, then apply x90 - wait time - -x90 and measure the resonator, while sweeping over the idle time.
 The second one starts by applying a displacement pulse, then apply x90 - wait time - -x90 and then measure by applying a selective pi-pulse (x180_long)
-with the frequency that corresponds to Fock state n=1 (this can be changed by changing the IF, while sweeping over the idle time.
+with the frequency that corresponds to Fock state n=1 (this can be changed by changing the IF, while sweeping over the idle time).
 Then we subtract the two measurements in order to get the behaviour of Fock state n=1 (or a different n) in order to find t parity
-(which is the time we need to have between the two pi/2 pulses in order to distinguish between even and odd parity).
+(which is the time we need to wait between the two pi/2 pulses in order to distinguish between even and odd parity).
 
 
 Prerequisites:
@@ -30,8 +30,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -61,9 +59,6 @@ with program() as parity_meas:
     state1_st = declare_stream()
     state2_st = declare_stream()
 
-    # Shift the qubit drive frequency to observe Ramsey oscillations
-    # update_frequency("qubit", qubit_IF + detuning)
-
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(tau, taus)):
             # Background measurement
@@ -89,6 +84,7 @@ with program() as parity_meas:
             save(Q1, Q1_st)
             save(state1, state1_st)
 
+            # Fock state parity measurement
             align()
             # Play a displacement pulse to the cavity
             play("cw", "storage")
@@ -121,7 +117,6 @@ with program() as parity_meas:
         (I1_st.buffer(len(taus))-I2_st.buffer(len(taus))).average().save("I")
         (Q1_st.buffer(len(taus))-Q2_st.buffer(len(taus))).average().save("Q")
         (state1_st.boolean_to_int().buffer(len(taus))-state2_st.boolean_to_int().buffer(len(taus))).average().save("state")
-
         n_st.save("iteration")
 
 #####################################
@@ -167,7 +162,7 @@ else:
         ax1[1].plot(4 * taus, Q, ".")
         ax1[1].set_xlabel("Idle time [ns]")
         ax1[1].set_ylabel("Q quadrature [V]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
         ax2.clear()

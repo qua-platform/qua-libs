@@ -1,10 +1,9 @@
 """
         WIGNER TOMOGRAPHY
 This sequence involves two consecutive measurements:
-The first one applies a displacement pulse, then apply x90 - wait time - x90 and measure the resonator while sweeping over the displacement pulse amplitude
-The second one applies a displacement pulse, then apply x90 - wait time - -x90 and measure the resonator while sweeping over the displacement pulse amplitude
-Then we subtract the two measurements in order to get the behaviour of Fock state n=1 (or a different n) in order to find t parity
-(which is the time we need to have between the two pi/2 pulses in order to distinguish between even and odd parity).
+The first one applies a displacement pulse, then apply x90 - wait time - x90 and measure the resonator while sweeping over the displacement pulse amplitude matrix
+The second one applies a displacement pulse, then apply x90 - wait time - -x90 and measure the resonator while sweeping over the displacement pulse amplitude matrix
+Then we subtract the two measurements in order to get the behaviour of Fock state n=1 (or a different n).
 
 
 Prerequisites:
@@ -15,9 +14,8 @@ Prerequisites:
     - Having calibrated qubit pi pulse (x180_len) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Having calibrated qubit's frequency that corresponds to Fock state n=1 by running number_splitting_spectroscopy.
     - Specification of the expected storage_thermalization_time of the storage in the configuration.
+    - Having calibrated t_parity by running parity_measurement.
 
-Before proceeding to the next node:
-    - Update the time we need to wait in parity measurements, labeled as t_parity.
 """
 
 from qm.qua import *
@@ -29,8 +27,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -38,8 +34,8 @@ matplotlib.use('Qt5Agg')
 n_avg = 1000
 
 # Amplitude sweeping
-aIs = np.arange(-2, 2, 0.05)
-aQs = np.arange(-2, 2, 0.05)
+aIs = np.arange(-1.99, 1.99, 0.05)
+aQs = np.arange(-1.99, 1.99, 0.05)
 
 with program() as wigner_tomography:
     n = declare(int)  # QUA variable for the averaging loop
@@ -61,12 +57,17 @@ with program() as wigner_tomography:
     state2_st = declare_stream()
     n_st = declare_stream()
 
-    # Shift the qubit drive frequency to observe Ramsey oscillations
-    # update_frequency("qubit", qubit_IF + detuning)
-
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(aI, aIs)):
             with for_(*from_array(aQ, aQs)):
+                # Prepare the cavity in the desired state, for example Fock state=1 using SNAP
+                play("beta1" , "storage")
+                align()
+                play("x360", "qubit")
+                align()
+                play("beta2" , "storage")
+                align()
+
                 # Play displacement pulse
                 play("cw"*amp(aI, 0, aQ, 0), "storage")
                 align()
@@ -88,6 +89,13 @@ with program() as wigner_tomography:
                 save(Q1, Q1_st)
                 save(state1, state1_st)
 
+                align()
+                # Prepare the cavity in the desired state, for example Fock state=1 using SNAP
+                play("beta1", "storage")
+                align()
+                play("x360", "qubit")
+                align()
+                play("beta2", "storage")
                 align()
 
                 # Play displacement pulse
@@ -166,5 +174,5 @@ else:
         plt.xlabel('Real')
         plt.ylabel('Imaginary')
         plt.title('Wigner tomography for Fock state n=0')
-        plt.pause(0.1)
+        plt.pause(1)
 

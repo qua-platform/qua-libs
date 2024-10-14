@@ -142,7 +142,7 @@ else:
         ax1[1].plot((dfs + center) / u.MHz, Q, ".")
         ax1[1].set_xlabel("Qubit intermediate frequency [MHz]")
         ax1[1].set_ylabel("Q [V]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
 

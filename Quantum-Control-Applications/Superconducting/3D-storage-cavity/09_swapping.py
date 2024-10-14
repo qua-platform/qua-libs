@@ -1,11 +1,10 @@
 """
         SWAPPING
-This sequence involves preparing the storage cavity in Fock state n=1, the playing two detuned pump pulses to the
-storage and the resonator simultaneously, followed by a selective pi-pulse (x180_long) to qubit (with frequency that
+This sequence involves preparing the storage cavity in Fock state n=1, then playing two detuned pump pulses to the
+storage and the resonator simultaneously, followed by a selective pi-pulse (x180_long) to the qubit (with frequency that
 corresponds to cavity is a Fock state n=1) and measure across various off pump pulses durations.
 
 The data is post-processed to determine the swapping operation time.
-
 
 Note that the pi-pulse should be long enough such that it will apply a pi-pulse only when the storage is at Fock state n=1.
 
@@ -31,8 +30,7 @@ import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
 import scipy.optimize as spo
-import matplotlib
-matplotlib.use('Qt5Agg')
+
 
 ###################
 # The QUA program #
@@ -65,29 +63,29 @@ with program() as swap:
             # Prepare the Storage Cavity in Fock state n=1
             play("beta1", "storage")
             align()
-            align("qubit", "storage")
             play("x360_long", "qubit")
-            align("qubit", "storage")
-            play("beta2", "storage")
             align()
-            # Play two off resonance pulses. One to the storage cavity and another one to the resonator
+            play("beta2", "storage")
+
+            align()
+            # Play two off resonance pulses. One pulse to the storage cavity and another pulse to the resonator
             update_frequency("storage", storage_IF - detuning)
             update_frequency("resonator", resonator_IF - detuning)
             play("off_pump", "storage", duration=t)
             play("off_pump", "resonator", duration=t)
+
             align()
-            # Align the two elements to measure after playing the qubit pulse.
             # Measure the storage state by applying a selective pi-pulse to the qubit (for storage state Fock state n=1)
             # and measure the qubit state
             update_frequency("resonator", resonator_IF)
             update_frequency("qubit", qubit_IF_n1)
             play("x180_long", "qubit")
-            align("qubit", "resonator")
+            align()
             # Measure the state of the resonator
             state, I, Q = macros.readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
 
             # Wait for the storage to decay to the ground state
-            align("storage", "resonator")
+            align()
             wait(storage_thermalization_time * u.ns, "storage")
             # Save the 'I' & 'Q' quadratures to their respective streams
             save(I, I_st)
@@ -151,7 +149,7 @@ else:
         ax1[1].plot(4 * durations, phase, ".")
         ax1[1].set_xlabel("Swapping duration [ms]")
         ax1[1].set_ylabel("Phase [rad]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
         ax2.clear()

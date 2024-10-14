@@ -29,8 +29,6 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
 import numpy as np
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -150,7 +148,7 @@ else:
         ax1[1].plot(4 * durations, Q, ".")
         ax1[1].set_xlabel("Idle time [ns]")
         ax1[1].set_ylabel("Q [V]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
 

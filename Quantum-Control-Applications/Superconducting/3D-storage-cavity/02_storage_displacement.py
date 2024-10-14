@@ -141,7 +141,7 @@ else:
         ax1[1].plot(4 * durations, phase, ".")
         ax1[1].set_xlabel("displacement pulse duration [ns]")
         ax1[1].set_ylabel("Phase [rad]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
 

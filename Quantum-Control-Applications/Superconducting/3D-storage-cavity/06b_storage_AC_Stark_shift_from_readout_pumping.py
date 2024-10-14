@@ -26,8 +26,6 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros 
-import matplotlib
-matplotlib.use('Qt5Agg')
 
 ###################
 # The QUA program #
@@ -135,7 +133,7 @@ else:
         ax1[1].plot((dfs + center) / u.MHz, phase, ".")
         ax1[1].set_xlabel("Storage intermediate frequency [MHz]")
         ax1[1].set_ylabel("Phase [rad]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
 

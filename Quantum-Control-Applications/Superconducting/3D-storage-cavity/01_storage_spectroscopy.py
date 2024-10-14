@@ -133,7 +133,7 @@ else:
         ax1[1].plot((dfs + center) / u.MHz, phase, ".")
         ax1[1].set_xlabel("Storage intermediate frequency [MHz]")
         ax1[1].set_ylabel("Phase [rad]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
 
 

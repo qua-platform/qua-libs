@@ -118,5 +118,5 @@ else:
         plt.plot(amplitudes * x180_amp_long, Q, ".")
         plt.xlabel("Rabi pulse amplitude [V]")
         plt.ylabel("Q quadrature [V]")
-        plt.pause(0.1)
+        plt.pause(1)
         plt.tight_layout()
