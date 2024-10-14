@@ -604,7 +604,7 @@ with program() as atom_sorting:
 #####################################
 Simulation = False
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 if not Simulation:
     # Open a quantum machine
@@ -674,6 +674,8 @@ else:
     job = qmm.simulate(
         config,
         atom_sorting,
-        SimulationConfig(simulation_duration),
-        simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)]),
+        SimulationConfig(
+            simulation_duration,
+            simulation_interface=LoopbackInterface([("con1", 1, "con1", 1), ("con1", 2, "con1", 2)]),
+        ),
     )

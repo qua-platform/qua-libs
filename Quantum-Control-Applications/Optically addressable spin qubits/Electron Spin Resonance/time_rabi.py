@@ -3,6 +3,7 @@ Having calibrated roughly a pi pulse, this script allows you to fix the pi pulse
 first pulse to obtain Rabi oscillations throughout the sequence.
 This allows measuring all the delays in the system, as well as the NV initialization duration
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
@@ -98,7 +99,7 @@ with program() as time_rabi:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

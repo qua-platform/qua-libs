@@ -2,6 +2,7 @@
 A script that mimics a pi/2 - pi pulse sequence but with arbitrary pulse duration.
 Helps you check if signal is being generated from your setup
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
@@ -79,7 +80,7 @@ with program() as signal_test:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

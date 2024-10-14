@@ -22,6 +22,9 @@ def IQ_imbalance(g, phi):
 u = unit()
 # IP address of the Quantum Orchestration Platform
 qop_ip = "127.0.0.1"
+cluster_name = None
+qop_port = None
+octave_config = None
 
 # Frequencies
 resonator_IF = -30 * u.MHz  # in Hz

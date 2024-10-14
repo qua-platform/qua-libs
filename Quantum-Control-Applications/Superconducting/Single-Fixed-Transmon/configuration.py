@@ -1,3 +1,7 @@
+"""
+QUA-Config supporting OPX+ & External Mixers
+"""
+
 from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
@@ -39,11 +43,12 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 #####################
 # Set octave_config to None if no octave are present
 octave_config = None
+con = "con1"
 
 #############################################
 #                  Qubits                   #
 #############################################
-qubit_LO = 7 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+qubit_LO = 7 * u.GHz
 qubit_IF = 50 * u.MHz
 mixer_qubit_g = 0.0
 mixer_qubit_phi = 0.0
@@ -142,7 +147,7 @@ minus_y90_Q_wf = minus_y90_wf
 #############################################
 #                Resonators                 #
 #############################################
-resonator_LO = 5.5 * u.GHz  # Used only for mixer correction and frequency rescaling for plots or computation
+resonator_LO = 5.5 * u.GHz
 resonator_IF = 60 * u.MHz
 mixer_resonator_g = 0.0
 mixer_resonator_phi = 0.0
@@ -176,7 +181,7 @@ ge_threshold = 0.0
 config = {
     "version": 1,
     "controllers": {
-        "con1": {
+        con: {
             "analog_outputs": {
                 1: {"offset": 0.0},  # I qubit
                 2: {"offset": 0.0},  # Q qubit
@@ -188,13 +193,13 @@ config = {
                 1: {"offset": 0.0, "gain_db": 0},  # I from down-conversion
                 2: {"offset": 0.0, "gain_db": 0},  # Q from down-conversion
             },
-        },
+        }
     },
     "elements": {
         "qubit": {
             "mixInputs": {
-                "I": ("con1", 1),
-                "Q": ("con1", 2),
+                "I": (con, 1),
+                "Q": (con, 2),
                 "lo_frequency": qubit_LO,
                 "mixer": "mixer_qubit",
             },
@@ -214,8 +219,8 @@ config = {
         },
         "resonator": {
             "mixInputs": {
-                "I": ("con1", 3),
-                "Q": ("con1", 4),
+                "I": (con, 3),
+                "Q": (con, 4),
                 "lo_frequency": resonator_LO,
                 "mixer": "mixer_resonator",
             },
@@ -225,8 +230,8 @@ config = {
                 "readout": "readout_pulse",
             },
             "outputs": {
-                "out1": ("con1", 1),
-                "out2": ("con1", 2),
+                "out1": (con, 1),
+                "out2": (con, 2),
             },
             "time_of_flight": time_of_flight,
             "smearing": 0,
