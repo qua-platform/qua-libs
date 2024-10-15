@@ -9,7 +9,7 @@ These files were tested on real qubits, but are given as-is with no guarantee.
 While these can serve as a template for new labs or for new experiments, certain adaptations will probably have to be made.
 Use with care.
 
-After characterizing the Single Fixed Transmon Superconducting Qubit using the files in [this folder](./Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon), 
+After characterizing the Single Fixed Transmon Superconducting Qubit using the files in [this folder](.main/Quantum-Control-Applications/Superconducting/Single-Fixed-Transmon), 
 one can continue to the following files:
 
 0. [Selective Pulse Power Rabi](./00_selective_pulse_power_rabi.py) - A Rabi experiment sweeping the amplitude of the MW pulse, in order to get a selective pi-pulse. 
