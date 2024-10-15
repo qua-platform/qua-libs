@@ -18,7 +18,6 @@ Before proceeding to the next node:
     - Update the resonance frequency of the qubit when the storage cavity is at Fock state n=1, labeled as "qubit_IF_n1"
 """
 
-
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig

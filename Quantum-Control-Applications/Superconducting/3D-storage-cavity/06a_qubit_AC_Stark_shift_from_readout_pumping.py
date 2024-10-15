@@ -17,7 +17,6 @@ Prerequisites:
 
 """
 
-
 from qm.qua import *
 from qm import QuantumMachinesManager
 from qm import SimulationConfig
