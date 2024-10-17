@@ -92,7 +92,7 @@ with program() as resonator_spec:
         pause()  # This waits until it is resumed from python
         with for_(n, 0, n < n_avg, n + 1):
             with for_(*from_array(f, IFs)):
-                # Update the frequency of the digital oscillator linked to the qubit element
+                # Update the frequency of the digital oscillator linked to the resonator element
                 update_frequency("resonator", f)
                 # Update the correction matrix only at a pre-defined set of intermediate IFs
                 with switch_(f):
