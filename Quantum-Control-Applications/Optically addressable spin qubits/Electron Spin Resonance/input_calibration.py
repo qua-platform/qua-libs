@@ -1,6 +1,7 @@
 """
 A script to measure the analog signal when no drive is applied. Allows you to correct for offsets
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
@@ -35,7 +36,7 @@ with program() as input_cal:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

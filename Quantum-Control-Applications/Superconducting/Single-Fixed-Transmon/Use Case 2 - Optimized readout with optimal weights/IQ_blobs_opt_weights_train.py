@@ -2,8 +2,9 @@
 Measure the qubit in the ground and excited state to create the IQ blobs. If the separation and the fidelity are good
 enough, gives the parameters needed for active reset
 """
+
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from configuration import *
 from TwoStateDiscriminator import TwoStateDiscriminator
 import seaborn as sns
@@ -40,8 +41,8 @@ with program() as training:
             "readout",
             "resonator",
             adc_st,
-            dual_demod.full("cos", "out1", "sin", "out2", I),
-            dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            dual_demod.full("cos", "sin", I),
+            dual_demod.full("minus_sin", "cos", Q),
         )
         save(I, I_st)
         save(Q, Q_st)
@@ -55,8 +56,8 @@ with program() as training:
             "readout",
             "resonator",
             adc_st,
-            dual_demod.full("cos", "out1", "sin", "out2", I),
-            dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+            dual_demod.full("cos", "sin", I),
+            dual_demod.full("minus_sin", "cos", Q),
         )
         save(I, I_st)
         save(Q, Q_st)

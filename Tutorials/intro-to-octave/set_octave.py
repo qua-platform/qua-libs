@@ -1,6 +1,7 @@
 """
 set_octave.py: script for initializing the octave
 """
+
 import os
 from qm.octave import QmOctaveConfig
 

@@ -1,6 +1,7 @@
 """
 Measures T1 either from |0> or |1> to the thermal state, i.e., prior to initialization
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
@@ -98,7 +99,7 @@ with program() as T1:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 
 #######################

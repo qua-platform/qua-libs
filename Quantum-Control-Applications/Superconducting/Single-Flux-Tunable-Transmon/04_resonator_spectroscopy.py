@@ -54,8 +54,8 @@ with program() as resonator_spec:
                 "readout",
                 "resonator",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
+                dual_demod.full("cos", "sin", I),
+                dual_demod.full("minus_sin", "cos", Q),
             )
             # Wait for the resonator to deplete
             wait(depletion_time * u.ns, "resonator")

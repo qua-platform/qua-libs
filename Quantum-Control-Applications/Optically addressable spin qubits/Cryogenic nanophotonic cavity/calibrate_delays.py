@@ -4,6 +4,7 @@ This allows measuring all the delays in the system, as well as the NV initializa
 If the counts are too high, the program might hang. In this case reduce the resolution or use
 calibrate_delays_python_histogram.py if high resolution is needed.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig
@@ -54,7 +55,7 @@ with program() as calib_delays:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = True
 if simulate:

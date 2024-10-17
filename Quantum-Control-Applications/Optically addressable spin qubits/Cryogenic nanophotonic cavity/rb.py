@@ -1,6 +1,7 @@
 """
 Performs a 1 qubit randomized benchmarking to measure the 1 qubit gate fidelity
 """
+
 from qm.qua import *
 from qm import QuantumMachinesManager
 from scipy.optimize import curve_fit
@@ -17,7 +18,7 @@ num_of_sequences = 50
 n_avg = 1
 seed = 345324
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 
 def generate_sequence():

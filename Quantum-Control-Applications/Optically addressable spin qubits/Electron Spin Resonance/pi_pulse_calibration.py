@@ -2,6 +2,7 @@
 A script that changes the duration of the pulses send to the ensemble to determine
 which pulse duration maximizes the echo amplitude
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface
@@ -112,7 +113,7 @@ with program() as pi_pulse_cal:
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 #######################
 # Simulate or execute #

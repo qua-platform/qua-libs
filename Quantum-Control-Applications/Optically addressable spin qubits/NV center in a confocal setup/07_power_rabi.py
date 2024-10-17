@@ -15,6 +15,7 @@ Prerequisites:
 Next steps before going to the next node:
     - Update the pi pulse amplitude, labeled as "mw_amp_NV", in the configuration.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig

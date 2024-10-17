@@ -3,6 +3,7 @@ raw_adc_traces.py: a script used to look at the raw ADC data from inputs 1 and 2
 this allows checking that the ADC is not saturated, correct for DC offsets and define the time of flight and
 threshold for time-tagging.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ with program() as TimeTagging_calibration:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 # Open Quantum Machine
 qm = qmm.open_qm(config)
 # Execute program
