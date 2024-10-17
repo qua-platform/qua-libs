@@ -147,7 +147,7 @@ Q_tot = []
 # Live plotting
 fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-for i in range(len(LOs)):  # Loop over the LO IFs
+for i, LO in enumerate(LOs):  # Loop over the LO IFs
     # Set the frequency and gain of the LO source
     qm.octave.set_lo_frequency("qubit", LOs[i])
     qm.octave.set_rf_output_gain("qubit", 0)
