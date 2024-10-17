@@ -17,7 +17,7 @@ The single-qubit cases follow trivially from them.
 
 ## 1. Experimental set-up
 
-<img align="right" src="setup.PNG" alt="setup" width="400"/>
+<img align="right" src="setup.png" alt="setup" width="400"/>
 
 
 ### 1.1 Experimental set-up
