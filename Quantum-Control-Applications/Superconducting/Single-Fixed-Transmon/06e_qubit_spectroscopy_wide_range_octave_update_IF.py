@@ -149,7 +149,7 @@ fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 for i, LO in enumerate(LOs):  # Loop over the LO IFs
     # Set the frequency and gain of the LO source
-    qm.octave.set_lo_frequency("qubit", LOs[i])
+    qm.octave.set_lo_frequency("qubit", LO)
     qm.octave.set_rf_output_gain("qubit", 0)
     # Update the correction parameters
     # qm.octave.set_element_parameters_from_calibration_db("qubit", job)
