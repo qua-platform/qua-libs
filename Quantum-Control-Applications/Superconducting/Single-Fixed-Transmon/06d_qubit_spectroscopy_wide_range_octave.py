@@ -119,7 +119,7 @@ interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
 
 for i, LO in enumerate(LOs):  # Loop over the LO frequencies
     # Set the frequency of the LO source
-    qm.octave.set_lo_frequency("qubit", LOs[i])
+    qm.octave.set_lo_frequency("qubit", LO)
     qm.octave.set_element_parameters_from_calibration_db("qubit", job)
 
     # Resume the QUA program (escape the 'pause' statement)
