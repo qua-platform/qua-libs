@@ -7,7 +7,7 @@ The correction parameters are updated in Python after setting the LO frequency.
 
 Prerequisites:
     -Identification of the resonator's resonance frequency when coupled to the qubit being studied (referred to as "resonator_spectroscopy").
-    -Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
+    -Calibration of the Octave port connected to the qubit drive line.
     -Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
 
 Before proceeding to the next node:
