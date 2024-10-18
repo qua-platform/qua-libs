@@ -41,7 +41,7 @@ For each resonator and qubit:
 
 * The first calibration is to find the readout resonator frequency and readout pulse amplitude using 2D resonator spectroscopy for each resonator.
 * With the frequencies and readout amplitudes set, perform spectroscopy on each resonator while sweeping the flux bias of the corresponding coupled qubit. The resulting 2D "cosine" plots show the resonators' frequencies as functions of the flux biases. From this, the fluxes at the qubits' sweet spots, at which point the qubits are most insensitive to flux noise, can be set. We want to set the flux lines to the qubits' flux insensitive points by default.
-* Next, we calibrate the qubits' $\pi/2$ and $\pi$ pulses. This can generally be done by first performing qubit spectroscopy to get a rough idea of the qubits' frequencies. Next, simple Rabi measurements can be carried out, where both the $pi$ pulse amplitudes and frequencies are scanned while the flux bias is set to the qubit flux insensitive point found previously. The qubits' frequencies can be fine-tuned using Ramsey measurements, and the $\pi$ pulses calibrated further by performing Rabi error amplification experiments.
+* Next, we calibrate the qubits' $\pi/2$ and $\pi$ pulses. This can generally be done by first performing qubit spectroscopy to get a rough idea of the qubits' frequencies. Next, simple Rabi chevron measurements can be carried out, where both the $pi$ pulse amplitudes and frequencies are scanned while the flux bias is set to the qubit flux insensitive point found previously. The qubits' frequencies can be fine-tuned using Ramsey measurements, and the $\pi$ pulses calibrated further by performing Rabi error amplification experiments.
 * (optional) If the qubit pulses are relatively short (< 100ns), then the use of optimal DRAG waveforms can enhance the fidelity of the gates.
 * A two-state readout discriminator, one for each qubit, needs to be calibrated by performing readout fidelity "IQ blob" measurements, and the discriminator thresholds as well as the discriminator rotation angles, set.
 * Find the DC flux offset value of the tunable coupler such that the coupling between the two qubits in question, is off. We want the coupling between the qubits to be off, by default.
@@ -66,9 +66,9 @@ The readout resonators `rr1` and `rr2` each have a 'readout' operation, each of 
 
 The qubits elements `q1_xy` and `q2_xy` have several operations defined that correspond to X/2, Y/2, -X/2, -Y/2, X and Y gates. The envelopes are Gaussian (although this can be changed by the user), with optional Gaussian DRAG corrections, parameters (amplitudes, lengths, Gaussian sigmas, etc.), that need to be calibrated.
 
-The qubits' flux elements, `q1_z` and `q2_z`, have a single "zero_flux" operation that is not used. Instead, the constant DC offsets, which set the qubits at their flux sweet spots throughout an entire QUA program, need to be calibrated and the values assigned to 'max_frequency_point_q1' and 'max_frequency_point_q2'.
+The qubits' flux elements, `q1_z` and `q2_z`, have a single "zero_flux" operation that is not used. Instead, the constant DC offsets (which are configured in the controllers section) which set the qubits at their flux sweet spots throughout an entire QUA program, need to be calibrated and the values assigned to 'max_frequency_point_q1' and 'max_frequency_point_q2'.
 
-The tunable coupler `tc12`, similarly, has a single "zero_flux" operation that is not used, but rather the constant DC offset value for the corresponding flux line needs to be calibrated such that the coupling between qubits 1 and 2 is turned off, and the value of this offset assigned to 't12_coupling_off_flux_value'.
+The tunable coupler `tc12`, similarly, has a single "zero_flux" operation that is not used, but rather the constant DC offset value for the corresponding flux line needs to be calibrated such that the coupling between qubits 1 and 2 is turned off, and the value of this offset assigned is to 't12_coupling_off_flux_value'.
 
 
 
