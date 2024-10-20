@@ -1,13 +1,17 @@
 """
-                                 CR_calib_unit_hamiltonian_tomography
+        CR_calib_unit_hamiltonian_tomography
 
-    The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
+The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
         H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
 
+The sequence extracts the six coefficients from a set of CR time Rabi traces:
+two traces from the prepared control states (|g⟩ and |e⟩) and three traces from
+quantum state tomography (QST) on the target qubit.
 
-For the calibration sequences, we employ echoed CR drive.
+For the calibration sequences, we use one of the following CR drive configurations:
+"direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
                                    ____      ____ 
             Control(fC): _________| pi |____| pi |________________
                              ____                     

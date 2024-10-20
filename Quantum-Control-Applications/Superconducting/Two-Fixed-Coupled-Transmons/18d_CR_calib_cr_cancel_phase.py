@@ -1,13 +1,17 @@
 """
-                                 CR_calib_cancel_drive_phase
+        CR_calib_cancel_drive_phase
 
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
     H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
 
+The sequence extracts the six coefficients as a function of CR cancel drive phase,
+providing complementary data to Fig. 3(a) of the referenced paper.
 
-For the calibration sequences, we employ echoed CR drive.
+For the calibration sequences, we use one of the following CR drive configurations:
+"direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
+
                                    ____      ____ 
             Control(fC): _________| pi |____| pi |________________
                              ____                     

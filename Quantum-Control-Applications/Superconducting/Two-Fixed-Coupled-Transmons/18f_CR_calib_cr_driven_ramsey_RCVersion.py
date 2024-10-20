@@ -1,12 +1,18 @@
 """
-                                 CR_CALIB_CR_DRIVEN_RAMSEY
+        CR_CALIB_CR_DRIVEN_RAMSEY
 
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
     H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
 
-The pulse sequences are as follow:
+The sequence extracts the phase shift due to b_I  Z ⊗ I to enable its correction.
+When incorporating the CR gate into a sequence of gates (and not at the end),
+it is necessary to correct for this phase shift.
+
+For the calibration sequences, we use one of the following CR drive configurations:
+"direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
+
                                    _____           ______
                 Control(fC): _____| y90 |_________| -y90 |___________
                                            ______                    
