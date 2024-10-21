@@ -67,7 +67,7 @@ class XEB:
             )
         self.data_handler = DataHandler(name="XEB", root_data_folder=xeb_config.save_dir)
 
-    def _assign_amplitude_matrix(self, gate_idx, amp_matrix):
+    def _assign_amplitude_matrix(self, gate_idx, amp_matrix, amp_stream=None):
         """
         Assign the amplitude matrix of a gate based on the gate index
 
@@ -80,6 +80,12 @@ class XEB:
                 with case_(i):
                     for j in range(4):
                         assign(amp_matrix[j], self.xeb_config.gate_set[i].amp_matrix[j])
+        if amp_stream is not None:  # Save the amplitude matrix to a stream
+            for j in range(4):
+                save(
+                    amp_matrix[j],
+                    amp_stream,
+                )
 
     def _play_random_sq_gate(self, qubit: Transmon, gate_idx, amp_matrix: Optional[List] = None):
         """
@@ -149,7 +155,7 @@ class XEB:
 
             # If simulating, update the frequency to 0 to visualize sequence
             if simulate:
-                amp_st = [[declare_stream() for _ in range(4)] for _ in range(n_qubits)]
+                amp_st = [declare_stream() for _ in range(n_qubits)]
                 for qubit in self.qubit_drive_channels:
                     update_frequency(qubit.name, 0)
 
@@ -157,8 +163,20 @@ class XEB:
             with for_(s, 0, s < self.xeb_config.seqs, s + 1):
                 # Generate random gate sequence for each qubit
                 for q in range(n_qubits):
+                    # Iteration 0: Start the sequence with a random gate
                     assign(gate[q][0], r.rand_int(random_gates))
                     save(gate[q][0], gate_st[q])
+
+                    # Map indices into amplitude matrix arguments
+                    # (each index corresponds to a random gate)
+
+                    if self.xeb_config.gate_set.run_through_amp_matrix_modulation:
+                        self._assign_amplitude_matrix(
+                            gate[q][0],
+                            [amp_matrix[q][i][0] for i in range(4)],
+                            amp_st[q] if simulate else None,
+                        )
+
                 with for_(depth_, 1, depth_ < self.xeb_config.depths[-1], depth_ + 1):
                     for q in range(n_qubits):
                         assign(gate[q][depth_], r.rand_int(random_gates))
@@ -175,13 +193,8 @@ class XEB:
                             self._assign_amplitude_matrix(
                                 gate[q][depth_],
                                 [amp_matrix[q][i][depth_] for i in range(4)],
+                                amp_st[q] if simulate else None,
                             )
-                            if simulate:
-                                for amp_matrix_element in range(4):
-                                    save(
-                                        amp_matrix[q][amp_matrix_element][depth_],
-                                        amp_st[q][amp_matrix_element],
-                                    )
 
                 # Run the XEB sequence
                 with for_each_(depth, self.xeb_config.depths):  # Truncate depth to each value in depths
@@ -278,8 +291,7 @@ class XEB:
 
                 if simulate:
                     for q in range(n_qubits):
-                        for d_ in range(4):
-                            amp_st[q][d_].save_all(f"a{q + 1}_{binary(d_, 2)}")
+                        amp_st[q].buffer(self.xeb_config.depths[-1], 4).save_all(f"amp_matrix_q{q + 1}")
 
         return xeb_prog
 
@@ -512,8 +524,11 @@ class XEBJob:
 
             saved_data = {"counts": counts, "states": states, "density_matrices": dms}
         else:
+            gate_indices = {
+                f"g{q}": self._result_handles.get(f"g{q}").fetch_all()["value"] for q in range(self.xeb_config.n_qubits)
+            }
             quadratures = {
-                f"{i}_{q}": self._result_handles.get(f"{i}_{q}").fetch_all()["value"]
+                f"{i}_{q}": self._result_handles.get(f"{i}{q}").fetch_all()["value"]
                 for i in ["I", "Q"]
                 for q in range(self.xeb_config.n_qubits)
             }
@@ -527,12 +542,21 @@ class XEBJob:
                 ).fetch_all()["value"]
                 for i in range(self.xeb_config.dim)
             }
-
             saved_data = {
                 "quadratures": quadratures,
                 "states": states,
                 "counts": counts,
+                "gate_indices": gate_indices,
             }
+            try:
+                amp_st = {
+                    f"amp_matrix_q{q + 1}": self._result_handles.get(f"amp_matrix_q{q + 1}").fetch_all()["value"]
+                    for q in range(self.xeb_config.n_qubits)
+                }
+                saved_data["amp_st"] = (amp_st,)
+
+            except KeyError:
+                pass
 
         if self.xeb_config.should_save_data:
             xeb_config = asdict(self.xeb_config)
@@ -644,15 +668,15 @@ class XEBResult:
                     else:
                         log_fidelities[s, d_] = f_xeb
 
-                        # Store records for linear XEB post-processing
-                        records += [
-                            {
-                                "sequence": s,
-                                "depth": depths[d_],
-                                "pure_probs": expected_probs[s, d_],
-                                "sampled_probs": measured_probs[s, d_],
-                            }
-                        ]
+                    # Store records for linear XEB post-processing
+                    records += [
+                        {
+                            "sequence": s,
+                            "depth": depths[d_],
+                            "pure_probs": expected_probs[s, d_],
+                            "sampled_probs": measured_probs[s, d_],
+                        }
+                    ]
 
                 else:
                     for q in range(n_qubits):
@@ -676,14 +700,14 @@ class XEBResult:
                         else:
                             log_fidelities[q, s, d_] = f_xeb
                             # Store records for linear XEB post-processing
-                            records[q] += [
-                                {
-                                    "sequence": s,
-                                    "depth": depths[d_],
-                                    "pure_probs": expected_probs[q, s, d_],
-                                    "sampled_probs": measured_probs[q, s, d_],
-                                }
-                            ]
+                        records[q] += [
+                            {
+                                "sequence": s,
+                                "depth": depths[d_],
+                                "pure_probs": expected_probs[q, s, d_],
+                                "sampled_probs": measured_probs[q, s, d_],
+                            }
+                        ]
 
         def per_cycle_depth(df):
             fid_lsq = df["numerator"].sum() / df["denominator"].sum()
@@ -938,14 +962,24 @@ class XEBResult:
 
             for plot_idx in range(start_idx, end_idx):
                 ax = axs[plot_idx - start_idx]
-                ax.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data[plot_idx]))
+                ax.pcolor(
+                    self.xeb_config.depths,
+                    range(self.xeb_config.seqs),
+                    np.abs(data[plot_idx]),
+                    vmin=0,
+                    vmax=1,
+                    cmap="viridis",
+                )
                 ax.set_title(titles[plot_idx])
                 ax.set_xlabel("Circuit depth")
                 ax.set_ylabel("Sequences")
                 ax.set_xticks(self.xeb_config.depths)
                 ax.set_yticks(np.arange(1, self.xeb_config.seqs + 1))
                 fig.colorbar(
-                    ax.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data[plot_idx])), ax=ax
+                    ax.pcolor(self.xeb_config.depths, range(self.xeb_config.seqs), np.abs(data[plot_idx])),
+                    ax=ax,
+                    vmin=0,
+                    vmax=1,
                 )
 
             plt.tight_layout()
