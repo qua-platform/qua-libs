@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import asdict
 from typing import Union, List, Optional, Dict, Tuple
 import numpy as np
@@ -152,6 +153,9 @@ class XEB:
             # Setting seed for reproducibility
             r = Random()
             r.set_seed(12321)
+
+            # Bring active qubits to the idle points:
+            self.quam.apply_all_flux_to_min()
 
             # If simulating, update the frequency to 0 to visualize sequence
             if simulate:
@@ -720,8 +724,11 @@ class XEBResult:
                 m_u = np.sum(record["pure_probs"] * record["sampled_probs"])
                 record.update(e_u=e_u, u_u=u_u, m_u=m_u)
             df = pd.DataFrame(records)
-            df["y"] = df["m_u"] - df["u_u"]
-            df["x"] = df["e_u"] - df["u_u"]
+            try:
+                df["y"] = df["m_u"] - df["u_u"]
+                df["x"] = df["e_u"] - df["u_u"]
+            except KeyError:
+                raise ValueError("The records for linear XEB are empty. Please rerun the experiment.")
 
             df["numerator"] = df["x"] * df["y"]
             df["denominator"] = df["x"] ** 2
@@ -743,6 +750,9 @@ class XEBResult:
                 df_q["denominator"] = df_q["x"] ** 2
                 linear_fidelities.append(df_q.groupby("depth").apply(per_cycle_depth).reset_index())
                 df.append(df_q)
+
+        if np.isnan(log_fidelities).all():
+            warnings.warn("All fidelities computed from log-entropies are singularities.")
 
         return (
             measured_probs,
@@ -783,7 +793,7 @@ class XEBResult:
                             label=f"Fit (Linear XEB Qubit {q}), layer_fidelity={layer_fid_lin * 100:.1f}%",
                         )
                 except Exception as e:
-                    raise e
+                    warnings.warn("Fit for Linear XEB data failed")
 
                 Fxeb = np.nanmean(self.log_fidelities[q], axis=0)
                 try:  # Fit the data for the log-entropy XEB
@@ -800,8 +810,7 @@ class XEBResult:
                             label=f"Fit (Log XEB Qubit {q}), layer_fidelity={layer_fid_log * 100:.1f}%",
                         )
                 except Exception as e:
-                    print("Fit for Log XEB data failed")
-                    raise e
+                    warnings.warn("Fit for Log XEB data failed")
 
                 mask_lin = (linear_fidelities["fidelity"] > 0) & (linear_fidelities["fidelity"] < 1)
                 masked_linear_depths = linear_fidelities["depth"][mask_lin]
@@ -811,12 +820,15 @@ class XEBResult:
                     plt.scatter(masked_linear_depths, masked_linear_fids, label=label)
 
                 mask_log = (Fxeb > 0) & (Fxeb < 1)
-                if fit_log_entropy:
+
+                if fit_log_entropy and not np.isnan(Fxeb).all():
                     plt.scatter(
                         self.xeb_config.depths[mask_log],
                         Fxeb[mask_log],
                         label=f"Log XEB Data Qubit {q}",
                     )
+                else:
+                    warnings.warn(f"Log XEB data for qubit {q} is a singularity.")
 
         else:
             xx = np.linspace(0, self.linear_fidelities["depth"].max())
@@ -835,7 +847,7 @@ class XEBResult:
                         color="red",
                     )
             except Exception as e:
-                raise e
+                warnings.warn("Fit for Linear XEB data failed")
 
             Fxeb = np.nanmean(self.log_fidelities, axis=0)
             try:  # Fit the data for the log-entropy XEB
@@ -853,8 +865,7 @@ class XEBResult:
                         color="green",
                     )
             except Exception as e:
-                print("Fit for Log XEB data failed")
-                raise e
+                warnings.warn("Fit for Log XEB data failed")
 
             mask_lin = (self.linear_fidelities["fidelity"] > 0) & (self.linear_fidelities["fidelity"] < 1)
             masked_linear_depths = self.linear_fidelities["depth"][mask_lin]
@@ -863,8 +874,10 @@ class XEBResult:
                 plt.scatter(masked_linear_depths, masked_linear_fids, label="Linear XEB Data", color="blue")
 
             mask_log = (Fxeb > 0) & (Fxeb < 1)
-            if fit_log_entropy:
+            if fit_log_entropy and not np.isnan(Fxeb).all():
                 plt.scatter(self.xeb_config.depths[mask_log], Fxeb[mask_log], label="Log XEB Data", color="orange")
+            else:
+                warnings.warn("Log XEB data does not contain any physical values.")
 
         plt.ylabel("Circuit fidelity", fontsize=20)
         plt.xlabel("Cycle Depth $d$", fontsize=20)
