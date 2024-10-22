@@ -139,9 +139,6 @@ with program() as single_qubit_process_tomography:
         with for_(c, 0, c <= 5, c + 1):  # QUA for_ loop for switching between state preparations
             with for_(m, 0, m <= 5, m + 1):  # QUA for_ loop for switching between basis projections/measurements
 
-                reset_frame(f"q{qubit}_xy")
-                reset_phase(f"q{qubit}_xy")
-
                 # prepare qubit in one of six cardinal Bloch sphere states
                 prepare_state(c)
 
