@@ -2,9 +2,9 @@
         Cross-Resonance Time Rabi with 1Q QST
 The experiment involves two consecutive pulse sequences, with qubit thermal relaxation in between.
 In the first sequence, the control qubit is initialized in the ground state (|g⟩), and a rectangular
-cross-resonance pulse with variable duration is applied to the control qubit. In the second sequence,
+cross-resonance pulse with variable duration is applied to the control qubit at the frequency of the target qubit. In the second sequence,
 the control qubit is initialized in the excited state (|e⟩), and the same variable-duration
-cross-resonance pulse is applied. In both sequences, the target qubit starts in the ground state (|g⟩).
+cross-resonance pulse at the frequency of the target qubit is applied. In both sequences, the target qubit starts in the ground state (|g⟩).
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

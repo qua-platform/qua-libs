@@ -2,7 +2,7 @@
         Cross-Resonance (with Cancel Drive) Time Rabi with 1Q QST
 The experiment involves two consecutive pulse sequences, with qubit thermal relaxation occurring in between.
 In the first sequence, the control qubit is initialized in the ground state (|g⟩), followed by the application
-of a rectangular cross-resonance pulse to the control qubit while simultaneously applying a cancellation drive
+of a rectangular cross-resonance pulse to the control qubit (at the frequency of the target qubit) while simultaneously applying a cancellation drive
 to the target qubit. The duration of the cross-resonance pulse is varied. In the second sequence, the control
 qubit is initialized in the excited state (|e⟩), and the same sequence is applied. Throughout both sequences,
 the target qubit remains in the ground state (|g⟩) at the start.

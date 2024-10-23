@@ -6,7 +6,7 @@
 
 This repository includes a collection of scripts for performing various experiments on two fixed-frequency transmons,
 encompassing qubit calibration, cross-resonance (CR) gate tuning, and CNOT gate formation.
-Each transmon is equipped with individual qubit drive lines and a shared readout transmission line.
+Each transmon is equipped with individual qubit drive line and a shared readout transmission line.
 
 These scripts have been tested in a real experimental setup, but they are provided as-is without any guarantees.
 
@@ -65,12 +65,12 @@ While they can serve as a foundation for new labs or experiments, users should b
 18. **Hamiltonian Tomography:**
     - [Unit Hamiltonian Tomography](18a_CR_calib_unit_hamiltonian_tomography.py) - Calibrates CR gates by estimating Hamiltonian parameters through state tomography.
     - [CR Drive Amplitude Calibration](18b_CR_calib_cr_drive_amplitude.py) - Calibrates the amplitude of the CR drive.
-    - [CR Drive Phase Calibration](18c_CR_calib_cr_drive_phase.py) - Calibrates the phase of the CR drive.
+    - [CR Drive Phase Calibration](18c_CR_calib_cr_drive_phase.py) - Calibrates the phase of the CR drive and CR cancel drive.
     - [CR Cancel Phase Calibration](18d_CR_calib_cr_cancel_phase.py) - Calibrates the phase of the CR cancel drive.
     - [CR Cancel Amplitude Calibration](18e_CR_calib_cr_cancel_amplitude.py) - Calibrates the amplitude of the CR cancel drive.
-    - [CR Driven Ramsey Measurement](18f_CR_calib_cr_driven_ramsey_RCVersion.py) - Measures the phase shift due to the interaction 
+    - [CR Driven Ramsey Measurement](18f_CR_calib_cr_driven_ramsey_RCVersion.py) - Measures the phase shift due to the AC Stark shift.
 
-19. [CNOT Gate Experiment](19_CNOT.py) - Demonstrates a controlled-NOT operation between qubits.
+19. [CNOT Gate Experiment](19_CNOT.py) - Demonstrates a controlled-NOT operation between two fixed frequency transmons.
 
 ## Miscellaneous
 

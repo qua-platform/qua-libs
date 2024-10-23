@@ -1,6 +1,9 @@
 """
         CR_calib_unit_hamiltonian_tomography
 
+This script is to try Hamiltonian tomography for a set of specified parameters for CR drive and cancellation pulse.
+This (unit) protocol will be repeated as a function of amplitude and phase of CR drive and cancellation pulse in the subsequent scripts.
+
 The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
 with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
 which is represented as:
@@ -8,9 +11,9 @@ which is represented as:
 
 The sequence extracts the six coefficients from a set of CR time Rabi traces:
 two traces from the prepared control states (|g⟩ and |e⟩) and three traces from
-quantum state tomography (QST) on the target qubit.
+applying quantum state tomography (QST) on the target qubit.
 
-For the calibration sequences, we use one of the following CR drive configurations:
+For the calibration sequences, one need to choose one of the following CR drive configurations:
 "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
                                    ____      ____ 
             Control(fC): _________| pi |____| pi |________________

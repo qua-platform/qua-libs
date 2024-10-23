@@ -1,33 +1,18 @@
 """
         CR_calib_cr_drive_phase
-
-The CR_calib scripts are designed for calibrating cross-resonance (CR) gates involving a system
-with a control qubit and a target qubit. These scripts help estimate the parameters of a Hamiltonian,
-which is represented as:
-    H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
-
-The sequence extracts the six coefficients as a function of CR drive phase,
-corresponding to Fig. 3(a) of the referenced paper.
-
-For the calibration sequences, we use one of the following CR drive configurations:
-"direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
-
-                                   ____      ____ 
-            Control(fC): _________| pi |____| pi |________________
-                             ____                     
-                 CR(fT): ___|    |_____      _____________________
-                                       |____|     _____
-             Target(fT): ________________________| QST |__________
-                                                         ______
-            Readout(fR): _____________________ _________|  RR  |__
-
-This script is to calibrate the phase of CR drive.
+        
+This script is to calibrate the phase of CR drive, corresponding to Fig. 3(a) of the referenced paper.
+CR drive (cancellation) pulse is applied to the control(target) qubit at the target qubit frequency.
 Each sequence, which varies in the duration and phase of the CR drive, ends with
 state tomography of the target state (across X, Y, and Z bases).
 This process is repeated with the control state in both |0> and |1> states.
 We fit the two sets of CR duration versus tomography data to a theoretical model,
 yielding two sets of three parameters: delta, omega_x, and omega_y.
 Using these parameters, we estimate the interaction coefficients of the Hamiltonian.
+(a_X, a_Y, a_Z, b_X, b_Y, b_Z described in the 18a_CR_calib_unit_hamiltonian_tomography.py)
+
+For the calibration sequences, one needs to choose one of the following CR drive configurations:
+cr_type = "direct," "direct + echo," "direct + cancel," or "direct + cancel + echo."
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -35,8 +20,9 @@ Prerequisites:
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
 
 Next steps before going to the next node:
-    - Find the phase where b_Y (coeff of Z_Y) is zero. We call it phi0.
-      Set cr_drive_phase = phi0 in the configuration file.
+    - Identify the phase where b_Y (the coefficient of ZY) is zero; we'll refer to this as phi_0.
+      Set cr_drive_square_phase_c1t2 = phi_0 in the configuration file. Similarly, determine the phase where a_Y (the coefficient of IY)) is zero,
+      denoted as phi_1. Set cr_cancel_square_phase_c1t2 = phi_1 in the configuration file.
       Note that the phase is in units of 2 * pi as it is used with `frame_rotation_2pi`.
 
 Reference: Sarah Sheldon, Easwar Magesan, Jerry M. Chow, and Jay M. Gambetta Phys. Rev. A 93, 060302(R) (2016)
