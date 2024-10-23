@@ -5,9 +5,10 @@ from .flux_line import FluxLine
 from .readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
-from typing import Union
+from typing import Dict, Any, Union
 from qm.qua import align
 import numpy as np
+from dataclasses import field
 
 
 __all__ = ["Transmon"]
@@ -24,11 +25,19 @@ class Transmon(QuamComponent):
         xy (IQChannel): The xy drive component.
         z (FluxLine): The z drive component.
         resonator (ReadoutResonator): The readout resonator component.
-        T1 (int): The transmon T1 in ns.
-        T2ramsey (int): The transmon T2* in ns.
-        T2echo (int): The transmon T2 in ns.
+        T1 (float): The transmon T1 in ns.
+        T2ramsey (float): The transmon T2* in ns.
+        T2echo (float): The transmon T2 in ns.
         thermalization_time_factor (int): thermalization time in units of T1.
         anharmonicity (int, float): the transmon anharmonicity in Hz.
+        freq_vs_flux_01_quad_term (float):
+        arbitrary_intermediate_frequency (float):
+        sigma_time_factor:
+        phi0_current (float):
+        phi0_voltage (float):
+        GEF_frequency_shift (int):
+        chi (float):
+        grid_location (str): qubit location in the plot grid as "(column, row)"
     """
 
     id: Union[int, str]
@@ -43,9 +52,9 @@ class Transmon(QuamComponent):
     freq_vs_flux_01_quad_term : float = 0.0
     arbitrary_intermediate_frequency : float = 0.0
 
-    T1: int = 10_000
-    T2ramsey: int = 10_000
-    T2echo: int = 10_000
+    T1: float = 10_000
+    T2ramsey: float = 10_000
+    T2echo: float = 10_000
     thermalization_time_factor: int = 5
     sigma_time_factor: int = 5
     phi0_current: float = 0.0
@@ -53,6 +62,8 @@ class Transmon(QuamComponent):
     
     GEF_frequency_shift : int = 10
     chi : float = 0.0
+    grid_location : str = None
+    extras: Dict[str, Any] = field(default_factory=dict)
 
     def get_output_power(self, operation, Z=50) -> float:
         power = self.xy.opx_output.full_scale_power_dbm
@@ -96,6 +107,8 @@ class Transmon(QuamComponent):
 
         Args:
             QM (QuantumMachine): the running quantum machine.
+            calibrate_drive (bool): flag to calibrate xy line.
+            calibrate_resonator (bool): flag to calibrate the resonator line.
         """
         if calibrate_resonator and self.resonator is not None:
             logger.info(f"Calibrating {self.resonator.name}")
