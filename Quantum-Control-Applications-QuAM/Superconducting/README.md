@@ -32,13 +32,8 @@ This folder contains an installable module called `quam_libs`, which provides a 
 To run the calibration nodes in this folder, you need to install `quam_libs`. During this installation, *all relevant* requirements for running QUA code
 and calibrations through the front-end will also be installed.
 
-First, ensure you have Python ≥ 3.8 installed on your system. Preferably, use Pyhon 3.10 within a new conda environment, which you can create using e.g.,
-```sh
-conda create -n qm python==3.10
-conda activate qm
-```
-
-Then run the following command:
+To do so, first activate the desired Python environment and navigate to the `quam_libs` directory.
+Then run the following command to install the package:
 
 ```sh
 # Install `quam_libs` (locally, from this directory)
@@ -246,7 +241,7 @@ The hierarchy and structure of QUAM can be detailed as follows:
 
 
 ### [3. Generating the QuAM and state.json](./configuration/make_quam.py)
-Once the QuAM root is implemented with the subsequent components, the QuAM state can be generated automatically and each
+Once the QuAM root and the corresponding QuAM components are implemented, the QuAM state can be generated automatically and each
 parameter of the QUAM components is initialized to its arbitrary default value.
 All of these parameters can be updated programmatically based on the specs from the chip manufacturer for instance and
 the process is described in the next section.
