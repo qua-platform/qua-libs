@@ -39,7 +39,6 @@ save_data_dict = {
 ###################
 
 with program() as PROGRAM:
-
     II = declare(fixed, size=number_of_divisions)
     IQ = declare(fixed, size=number_of_divisions)
     QI = declare(fixed, size=number_of_divisions)

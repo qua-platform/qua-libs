@@ -1,11 +1,11 @@
 """
-                                    Cross-Resonance Time Rabi
-The sequence consists two consecutive pulse sequences with the qubit's thermal decay in between.
-In the first sequence, we set the control qubit in |g> and play a rectangular cross-resonance pulse to
-the target qubit; the cross-resonance pulse has a variable duration. In the second sequence, we initialize the control
-qubit in |e> and play the variable duration cross-resonance pulse to the target qubit. Note that in
-the second sequence after the cross-resonance pulse we send a x180_c pulse. With it, the target qubit starts
-in |g> in both sequences when CR lenght -> zero.
+        Cross-Resonance (with Cancel Drive) Time Rabi with 1Q QST
+The experiment involves two consecutive pulse sequences, with qubit thermal relaxation occurring in between.
+In the first sequence, the control qubit is initialized in the ground state (|g⟩), followed by the application
+of a rectangular cross-resonance pulse to the control qubit (at the frequency of the target qubit) while simultaneously applying a cancellation drive
+to the target qubit. The duration of the cross-resonance pulse is varied. In the second sequence, the control
+qubit is initialized in the excited state (|e⟩), and the same sequence is applied. Throughout both sequences,
+the target qubit remains in the ground state (|g⟩) at the start.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).

@@ -1,5 +1,5 @@
 """
-                                 CNOT
+        CNOT
 
 This script measures two-qubit states by preparing the states |00⟩, |01⟩, |10⟩, and |11⟩, then applying a CNOT gate.
 The CNOT gate is constructed using a calibrated CR (cross-resonance) gate, which serves as the ZX interaction, along with single-qubit gates Z_{-90}I and IX_{-90}.

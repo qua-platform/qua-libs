@@ -467,7 +467,7 @@ config = {
             },
         },
         "cr_cancel_c1t2": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("octave1", 3)},
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -476,7 +476,7 @@ config = {
             },
         },
         "cr_cancel_c2t1": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("octave1", 2)},
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
