@@ -239,7 +239,7 @@ The hierarchy and structure of QUAM can be detailed as follows:
    general transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
    `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
    [transmon_pair.py](./quam_libs/components/transmon_pair.py).
-3. The sub-QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
+3. The QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
    directly defined as an `IQChannel`, or from user-defined components such as
    [readout_resonator](./quam_libs/components/readout_resonator.py) or [flux_line](./quam_libs/components/flux_line.py),
    which allows the customization of their attributes.
@@ -254,7 +254,7 @@ the process is described in the next section.
 The script called [make_quam.py](./configuration/make_quam.py) takes care of generating the QUAM and filling the state
 according to the wiring file. The Octaves connection parameters can also be edited here if relevant.
 
-Everything happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
+The QuAM generation happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
 according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
@@ -274,7 +274,7 @@ octave_settings = {}
 quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_settings)
 ```
 
-Note that the set of default pulses can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
+Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
 ```python
