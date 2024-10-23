@@ -50,7 +50,6 @@ save_data_dict = {
 ###################
 
 with program() as PROGRAM:
-
     Ig, I_g_st, Qg, Q_g_st, n, n_st = qua_declaration(nb_of_qubits=2)
     Ie, I_e_st, Qe, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency
@@ -59,7 +58,6 @@ with program() as PROGRAM:
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
         with for_(*from_array(df, dfs)):
-
             # Update the frequency of the two resonator elements
             update_frequency("rr1", df + resonator_IF_q1)
             update_frequency("rr2", df + resonator_IF_q2)
@@ -155,7 +153,6 @@ else:
         results = fetching_tool(job, data_list=data_list, mode="live")
 
         while results.is_processing():
-
             (
                 Ig1_avg,
                 Qg1_avg,

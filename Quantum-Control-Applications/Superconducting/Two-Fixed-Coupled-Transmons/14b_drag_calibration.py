@@ -63,7 +63,6 @@ with program() as PROGRAM:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     with for_(n, 0, n < n_avg, n + 1):
-
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 

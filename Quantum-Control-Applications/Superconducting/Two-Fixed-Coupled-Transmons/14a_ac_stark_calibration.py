@@ -63,12 +63,10 @@ with program() as PROGRAM:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     with for_(n, 0, n < n_avg, n + 1):
-
         # Save the averaging iteration to get the progress bar
         save(n, n_st)
 
         with for_(*from_array(npi, nb_of_pulses)):
-
             with for_(*from_array(df, detunings)):
                 # Update the frequency of the two qubit elements
 

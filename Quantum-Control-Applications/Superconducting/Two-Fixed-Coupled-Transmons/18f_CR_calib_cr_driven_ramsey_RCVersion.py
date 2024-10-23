@@ -117,9 +117,7 @@ with program() as prog:
         save(n, n_st)
 
         with for_(*from_array(ph, phases)):
-
             with for_(s, 0, s < 2, s + 1):  # states
-
                 # Prepare Qt to |1>
                 with if_(s == 1):
                     play("x180", qc_xy)

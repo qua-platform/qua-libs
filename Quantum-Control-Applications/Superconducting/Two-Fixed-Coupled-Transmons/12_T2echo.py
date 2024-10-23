@@ -44,7 +44,6 @@ with program() as PROGRAM:
         save(n, n_st)
 
         with for_each_(t, t_delays.tolist()):
-
             play("x90", "q1_xy")
             play("x90", "q2_xy")
             wait(t)

@@ -27,8 +27,10 @@ calibration = True
 
 if calibration:
     elements = [
-        "rr1", "rr2",
-        "q1_xy", "q2_xy",
+        "rr1",
+        "rr2",
+        "q1_xy",
+        "q2_xy",
         "cr_drive_c1t2",
         "cr_drive_c2t1",
         "cr_cancel_c1t2",
