@@ -145,7 +145,10 @@ The structure of the nodes is described below.
 ### configuration
 The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
 It contains three files whose working principles are explained in more details below:
-* [make_wiring.py](./configuration/make_wiring.py): create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
+* __make_wiring__: create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
+  * [make_wiring_lffem_mwfem.py](./configuration/make_wiring_lffem_mwfem.py) for a cluster made of LF and MW FEMs (OPX1000).
+  * [make_wiring_lffem_octave.py](./configuration/make_wiring_lffem_octave.py) for a cluster made of LF-FEMs and Octaves (OPX1000).
+  * [make_wiring_opxp_octave.py](./configuration/make_wiring_opxp_octave.py) for a cluster made of OPX+ and Octaves.
 * [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
 * [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
 
@@ -233,7 +236,7 @@ The hierarchy and structure of QUAM can be detailed as follows:
    It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
    Its methods are usually applied to all qubits or active qubits.
 2. The definition of a QuAM transmon is defined in [transmon.py](./quam_libs/components/transmon.py). It contains the
-   genral transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
+   general transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
    `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
    [transmon_pair.py](./quam_libs/components/transmon_pair.py).
 3. The sub-QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
