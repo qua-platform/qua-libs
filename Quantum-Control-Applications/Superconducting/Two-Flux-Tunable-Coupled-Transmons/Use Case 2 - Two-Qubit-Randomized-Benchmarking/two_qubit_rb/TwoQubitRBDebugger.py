@@ -4,7 +4,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from qm import Program, QuantumMachinesManager
 from qm.qua import *
-from scipy.stats import entropy
 from tqdm import tqdm
 
 from CS_installations.quam_libs.experiments.two_qubit_rb.util import run_in_thread

@@ -1,13 +1,13 @@
 """
-        QUBIT SPECTROSCOPY OVER A WIDE RANGE (OUTER LOOP)
-This procedure conducts a broad 1D frequency sweep of the qubit, measuring the resonator while sweeping an
-external LO source simultaneously. The external LO source is swept in the outer loop to optimize run time.
-Users should update the LO source frequency using the provided API at the end of the script
-(lo_source.set_freq(freqs_external[i])).
+        QUBIT SPECTROSCOPY OVER A WIDE RANGE with the Octave and updating the correction matrix in QUA
+This procedure conducts a broad 1D frequency sweep of the qubit, measuring the resonator while sweeping the Octave
+LO frequency simultaneously. The Octave LO frequency is swept in the outer loop to optimize run time.
+The Octave port can be calibrated at all the involved LO frequencies and at the several intermediate frequencies.
+The correction parameters are updated in QUA after having preloaded the data in QUA arrays.
 
 Prerequisites:
     -Identification of the resonator's resonance frequency when coupled to the qubit being studied (referred to as "resonator_spectroscopy").
-    -Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
+    -Calibration of the Octave port connected to the qubit drive line.
     -Configuration of the saturation pulse amplitude and duration to transition the qubit into a mixed state.
 
 Before proceeding to the next node:
@@ -15,13 +15,21 @@ Before proceeding to the next node:
 """
 
 from qm.qua import *
-from qm import QuantumMachinesManager
+from qm.QuantumMachinesManager import QuantumMachinesManager
 from configuration import *
 from qualang_tools.results import progress_counter, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
+from qualang_tools.octave_tools import get_correction_for_each_LO_and_IF
 import matplotlib.pyplot as plt
-from time import sleep
+
+
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+# Open the quantum machine
+qm = qmm.open_qm(config)
 
 
 ###################
@@ -30,17 +38,32 @@ from time import sleep
 
 n_avg = 100  # The number of averages
 # The intermediate frequency sweep parameters
-f_min = 50 * u.MHz
-f_max = 300 * u.MHz
-df = 1000 * u.kHz
-frequencies = np.arange(f_min, f_max + 0.1, df)  # The intermediate frequency vector (+ 0.1 to add f_max to frequencies)
+f_min = 1 * u.MHz
+f_max = 251 * u.MHz
+df = 2000 * u.kHz
+IFs = np.arange(f_min, f_max + 0.1, df)
 
 # The LO frequency sweep parameters
-f_min_external = 3e9 - f_min
-f_max_external = 4e9 - f_max
+f_min_external = 5.001e9 - f_min
+f_max_external = 5.5e9 - f_max
 df_external = f_max - f_min
-freqs_external = np.arange(f_min_external, f_max_external + 0.1, df_external)
-frequency = np.array(np.concatenate([frequencies + freqs_external[i] for i in range(len(freqs_external))]))
+LOs = np.arange(f_min_external, f_max_external + df_external / 2, df_external)
+# The total frequency vector (LOs + IFs)
+frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
+
+# Get the list of intermediate IFs at which the correction matrix will be updated in QUA and the corresponding
+# correction matrix elements
+corrected_IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_LO_and_IF(
+    path_to_database="",
+    config=config,
+    element="qubit",
+    gain=0,
+    LO_list=LOs,
+    IF_list=IFs,
+    nb_of_updates=5,
+    calibrate=True,
+    qm=qm,
+)
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -52,12 +75,32 @@ with program() as qubit_spec:
     Q_st = declare_stream()  # Stream for the 'Q' quadrature
     n_st = declare_stream()  # Stream for the averaging iteration 'n'
 
-    with for_(i, 0, i < len(freqs_external) + 1, i + 1):
+    c00_qua = declare(fixed, value=c00)  # QUA variable for c00
+    c01_qua = declare(fixed, value=c01)  # QUA variable for c01
+    c10_qua = declare(fixed, value=c10)  # QUA variable for c10
+    c11_qua = declare(fixed, value=c11)  # QUA variable for c11
+    offset_I_qua = declare(fixed, value=offset_I)
+    offset_Q_qua = declare(fixed, value=offset_Q)
+
+    with for_(i, 0, i < len(LOs) + 1, i + 1):
+        set_dc_offset("qubit", "I", offset_I_qua)
+        set_dc_offset("qubit", "Q", offset_Q_qua)
         pause()  # This waits until it is resumed from python
         with for_(n, 0, n < n_avg, n + 1):
-            with for_(*from_array(f, frequencies)):
+            with for_(*from_array(f, IFs)):
                 # Update the frequency of the digital oscillator linked to the qubit element
                 update_frequency("qubit", f)
+                # Update the correction matrix only at a pre-defined set of intermediate IFs
+                with switch_(f):
+                    for idx, current_if in enumerate(corrected_IFs):
+                        with case_(int(current_if)):
+                            update_correction(
+                                "qubit",
+                                c00_qua[len(IFs) * i + idx],
+                                c01_qua[len(IFs) * i + idx],
+                                c10_qua[len(IFs) * i + idx],
+                                c11_qua[len(IFs) * i + idx],
+                            )
                 # Play the saturation pulse to put the qubit in a mixed state
                 play("saturation", "qubit")
                 # Align the two elements to measure after playing the qubit pulse.
@@ -68,8 +111,8 @@ with program() as qubit_spec:
                     "readout",
                     "resonator",
                     None,
-                    dual_demod.full("cos", "sin", I),
-                    dual_demod.full("minus_sin", "cos", Q),
+                    dual_demod.full("cos", "out1", "sin", "out2", I),
+                    dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
                 )
                 # Wait for the qubit to decay to the ground state
                 wait(thermalization_time * u.ns, "resonator")
@@ -82,21 +125,15 @@ with program() as qubit_spec:
     with stream_processing():
         # Cast the data into a 2D matrix, average the matrix along its second dimension (of size 'n_avg') and store the results
         # (1D vector) on the OPX processor
-        I_st.buffer(len(frequencies)).buffer(n_avg).map(FUNCTIONS.average()).save_all("I")
-        Q_st.buffer(len(frequencies)).buffer(n_avg).map(FUNCTIONS.average()).save_all("Q")
+        I_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).save_all("I")
+        Q_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).save_all("Q")
         n_st.save_all("iteration")
-
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 
 ###############
 # Run Program #
 ###############
-# Open the quantum machine
-qm = qmm.open_qm(config)
+
 # Send the QUA program to the OPX, which compiles and executes it. It will stop at the 'pause' statement.
 job = qm.execute(qubit_spec)
 # Creates results handles to fetch the data
@@ -110,9 +147,13 @@ Q_tot = []
 # Live plotting
 fig = plt.figure()
 interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-for i in range(len(freqs_external)):  # Loop over the LO frequencies
-    # Set the frequency of the LO source
-    lo_source.set_freq(freqs_external[i])  # Replace by your own function and add time.sleep() if needed
+for i, LO in enumerate(LOs):  # Loop over the LO IFs
+    # Set the frequency and gain of the LO source
+    qm.octave.set_lo_frequency("qubit", LO)
+    qm.octave.set_rf_output_gain("qubit", 0)
+    # Update the correction parameters
+    # qm.octave.set_element_parameters_from_calibration_db("qubit", job)
+
     # Resume the QUA program (escape the 'pause' statement)
     job.resume()
     # Wait until the program reaches the 'pause' statement again, indicating that the QUA program is done
@@ -129,7 +170,7 @@ for i in range(len(freqs_external)):  # Loop over the LO frequencies
     I_tot.append(I)
     Q_tot.append(Q)
     # Progress bar
-    progress_counter(iteration, len(freqs_external))
+    progress_counter(iteration, len(LOs))
     # Convert results into Volts
     S = u.demod2volts(I + 1j * Q, readout_len)
     R = np.abs(S)  # Amplitude
@@ -137,11 +178,11 @@ for i in range(len(freqs_external)):  # Loop over the LO frequencies
     # Plot results
     plt.suptitle("Qubit spectroscopy")
     ax1 = plt.subplot(211)
-    plt.plot((frequencies + freqs_external[i]) / u.MHz, R, ".")
+    plt.plot((IFs + LOs[i]) / u.MHz, R, ".")
     plt.xlabel("qubit frequency [MHz]")
     plt.ylabel(r"$\sqrt{I^2 + Q^2}$ [V]")
     plt.subplot(212, sharex=ax1)
-    plt.plot((frequencies + freqs_external[i]) / u.MHz, phase, ".")
+    plt.plot((IFs + LOs[i]) / u.MHz, phase, ".")
     plt.xlabel("qubit frequency [MHz]")
     plt.ylabel("Phase [rad]")
     plt.pause(0.1)
