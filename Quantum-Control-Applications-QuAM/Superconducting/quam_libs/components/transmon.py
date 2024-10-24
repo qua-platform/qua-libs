@@ -34,7 +34,6 @@ class Transmon(QuamComponent):
     id: Union[int, str]
 
     xy: IQChannel = None
-    z: FluxLine = None
     resonator: ReadoutResonator = None
 
     f_01: float = None

@@ -3,7 +3,7 @@ from dataclasses import field
 
 from quam.core import QuamComponent, quam_dataclass
 from .transmon import Transmon
-from .tunable_coupler import TunableCoupler
+from .cross_drive import CrossDrive
 
 
 __all__ = ["TransmonPair"]
@@ -14,7 +14,7 @@ class TransmonPair(QuamComponent):
     id: Union[int, str]
     qubit_control: Transmon = None
     qubit_target: Transmon = None
-    coupler: Optional[TunableCoupler] = None
+    cross_drive: Optional[CrossDrive] = None
 
     extras: Dict[str, Any] = field(default_factory=dict)
 
