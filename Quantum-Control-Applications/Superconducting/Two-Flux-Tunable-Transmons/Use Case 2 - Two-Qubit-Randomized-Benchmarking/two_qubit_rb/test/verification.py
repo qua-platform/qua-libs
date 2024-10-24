@@ -13,31 +13,30 @@ def test_all_verification():
     command-id to gate is also properly saved to file.
     """
 
-    for i in range(3):
+    def bake_phased_xz(baker: Baking, q, x, z, a):
+        pass
 
-        def bake_phased_xz(baker: Baking, q, x, z, a):
-            pass
+    def bake_cz(baker: Baking, q1, q2):
+        pass
 
-        def bake_cz(baker: Baking, q1, q2):
-            pass
+    def bake_cnot(baker: Baking, q1, q2):
+        pass
 
-        def bake_cnot(baker: Baking, q1, q2):
-            pass
+    def prep():
+        pass
 
-        def prep():
-            pass
+    def meas():
+        pass
 
-        def meas():
-            pass
+    cz_generator = {"CZ": bake_cz}
+    cnot_generator = {"CNOT": bake_cnot}
+    cz_cnot_generator = {"CZ": bake_cz, "CNOT": bake_cnot}
 
-        cz_generator = {"CZ": bake_cz}
-        cnot_generator = {"CNOT": bake_cnot}
-        cz_cnot_generator = {"CZ": bake_cz, "CNOT": bake_cnot}
+    bake_2q_gate_generators = [cz_cnot_generator, cz_generator, cnot_generator]
 
-        bake_2q_gate_generator = [cz_generator, cnot_generator, cz_cnot_generator][i]
-
+    for generator in bake_2q_gate_generators:
         rb = TwoQubitRb(
-            config, bake_phased_xz, bake_2q_gate_generator, prep, meas, verify_generation=False, interleaving_gate=None
+            config, bake_phased_xz, generator, prep, meas, verify_generation=False, interleaving_gate=None
         )
         repeats = 10
         depth = 10

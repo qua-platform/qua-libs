@@ -114,6 +114,12 @@ rb = TwoQubitRb(
     verify_generation=False,
 )
 
+# run simpler experiment to verify `bake_phased_xz`, `prep` and `meas`
+# rb_debugger = TwoQubitRbDebugger(rb)
+# rb_debugger.run_phased_xz_commands(qmm, 20)
+# plt.show()
+
+# run 2Q-RB experiment
 res = rb.run(qmm, circuit_depths=[1, 2, 3, 4, 5], num_circuits_per_depth=2, num_shots_per_circuit=1)
 
 # circuit_depths ~ how many consecutive Clifford gates within one executed circuit
