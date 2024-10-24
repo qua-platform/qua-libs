@@ -1,8 +1,9 @@
+from functools import lru_cache
+
 import numpy as np
 from dataclasses import dataclass
 
 import cirq
-from torch.fx.experimental.symbolic_shapes import lru_cache
 
 
 I = cirq.unitary(cirq.I)
