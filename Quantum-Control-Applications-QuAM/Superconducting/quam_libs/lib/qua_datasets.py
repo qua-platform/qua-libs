@@ -20,23 +20,25 @@ def extract_dict(ds: xr.Dataset, data_var) -> dict:
     return ds[[data_var]].to_dataframe().to_dict()[data_var]
 
 
-def convert_IQ_to_V(da: xr.DataArray, qubits: list[Transmon]) -> xr.DataArray:
+def convert_IQ_to_V(da: xr.DataArray, qubits: list[Transmon], IQ_list: list[str] = ("I", "Q")) -> xr.DataArray:
     """
     return data array with the 'I' and 'Q' quadratures converted to Volts.
 
     :param da: the array on which to calculate angle. Assumed to have complex data
     :type da: xr.DataArray
     :param qubits: the list of qubits components.
-    :type qubits: str
+    :type qubits: list[Transmon]
+    :param IQ_list: the list of data to convert to V e.g. ["I", "Q"].
+    :type IQ_list: list[str]
     :return: a data array with the same dimensions and coordinates, with a 'I' and 'Q' in Volts
     :type: xr.DataArray
     """
-    # Create an xarray with a coordinate 'qubit' and the value is q.resonator.operations["readout"].length
+    # Create a xarray with a coordinate 'qubit' and the value is q.resonator.operations["readout"].length
     readout_lengths = xr.DataArray(
         [q.resonator.operations["readout"].length for q in qubits],
         coords=[("qubit", [q.name for q in qubits])]
     )
-    return da.assign({"I": da.I * 2 ** 12 / readout_lengths, "Q": da.Q * 2 ** 12 / readout_lengths})
+    return da.assign({key: da[key] * 2 ** 12 / readout_lengths for key in IQ_list})
 
 
 def apply_angle(da: xr.DataArray, dim: str, unwrap=True) -> xr.DataArray:
@@ -96,7 +98,7 @@ def unrotate_phase(da: xr.DataArray, dim: str) -> xr.DataArray:
     :type da: xr.DataArray
     :param dim: the dimesnsion along which to unrotate
     :type dim: str
-    :return: a dataarray with the same dimensions and coordinates, with phase unrotated along dim  
+    :return: a dataarray with the same dimensions and coordinates, with phase unrotated along dim
     :rtype: xr.DataArray
     """
     x = da[dim]
