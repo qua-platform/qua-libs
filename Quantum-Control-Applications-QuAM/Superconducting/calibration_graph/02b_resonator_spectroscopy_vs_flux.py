@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     min_flux_offset_in_v: float = -0.5
     max_flux_offset_in_v: float = 0.5
     num_flux_points: int = 201
-    frequency_span_in_mhz: float = 30
+    frequency_span_in_mhz: float = 15
     frequency_step_in_mhz: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     input_line_impedance_in_ohm: float = 50
@@ -131,6 +131,7 @@ with program() as multi_res_spec_vs_flux:
                 # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
                 qubit.z.set_dc_offset(dc)
                 qubit.z.settle()
+                qubit.align()
                 with for_(*from_array(df, dfs)):
                     # Update the resonator frequencies for resonator
                     update_frequency(rr.name, df + rr.intermediate_frequency)
