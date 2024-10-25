@@ -1,5 +1,5 @@
 from typing import Optional
-
+from quam_libs.components.transmon import Transmon
 import numpy as np
 import xarray as xr
 
@@ -20,6 +20,25 @@ def extract_dict(ds: xr.Dataset, data_var) -> dict:
     return ds[[data_var]].to_dataframe().to_dict()[data_var]
 
 
+def convert_IQ_to_V(da: xr.DataArray, qubits: list[Transmon]) -> xr.DataArray:
+    """
+    return data array with the 'I' and 'Q' quadratures converted to Volts.
+
+    :param da: the array on which to calculate angle. Assumed to have complex data
+    :type da: xr.DataArray
+    :param qubits: the list of qubits components.
+    :type qubits: str
+    :return: a data array with the same dimensions and coordinates, with a 'I' and 'Q' in Volts
+    :type: xr.DataArray
+    """
+    # Create an xarray with a coordinate 'qubit' and the value is q.resonator.operations["readout"].length
+    readout_lengths = xr.DataArray(
+        [q.resonator.operations["readout"].length for q in qubits],
+        coords=[("qubit", [q.name for q in qubits])]
+    )
+    return da.assign({"I": da.I * 2 ** 12 / readout_lengths, "Q": da.Q * 2 ** 12 / readout_lengths})
+
+
 def apply_angle(da: xr.DataArray, dim: str, unwrap=True) -> xr.DataArray:
     """
     return data array with the angle of complex data calculated along dimension `dim`.
@@ -29,10 +48,10 @@ def apply_angle(da: xr.DataArray, dim: str, unwrap=True) -> xr.DataArray:
     :type da: xr.DataArray
     :param dim: the dimesnsion along which to subtract
     :type dim: str
-    :param unwrap: whether to unwrap the phase 
+    :param unwrap: whether to unwrap the phase
     :type unwrap: bool, optional
     :return: a dataarray with the same dimensions and coordinates, with a linear slope subtrcated along dim
-    :rtype: xr.DataArray
+    :type: xr.DataArray
     """
     if unwrap:
         def f(x): return np.unwrap(np.angle(x))
@@ -115,9 +134,3 @@ def integer_histogram(da: xr.DataArray, dim: str, minlength: Optional[int] = Non
     da2 = xr.apply_ufunc(count_bins, da, input_core_dims=[
                          [dim]], output_core_dims=[[da.name]], vectorize=True)
     return da2.assign_coords({da.name: np.arange(len(da2[da.name]))})
-
-
-
-
-
-
