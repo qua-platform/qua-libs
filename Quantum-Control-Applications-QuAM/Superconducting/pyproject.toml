@@ -15,14 +15,11 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.8"
 quam = { git = "https://github.com/qua-platform/quam.git" }
-qualang-tools = ">=0.18.0"
+qualang-tools = "*"
 xarray = "*"
 lmfit = "*"
 qiskit-experiments = "*"
 tqdm = "*"
-qualibrate = "*"
-qm-qua = "1.2.1rc3"
-cirq = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
