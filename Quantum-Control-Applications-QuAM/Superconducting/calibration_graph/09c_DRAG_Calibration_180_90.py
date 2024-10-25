@@ -76,7 +76,6 @@ for q in qubits:
         tracked_qubits.append(q)
 
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
