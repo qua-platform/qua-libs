@@ -5,11 +5,10 @@ from .flux_line import FluxLine
 from .readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
-from typing import Dict, Any, Union
-from qm.qua import align
+from typing import Dict, Any, Optional, Union, List, Tuple
+from qm.qua import align, wait
 import numpy as np
 from dataclasses import field
-
 
 __all__ = ["Transmon"]
 
@@ -25,9 +24,9 @@ class Transmon(QuamComponent):
         xy (IQChannel): The xy drive component.
         z (FluxLine): The z drive component.
         resonator (ReadoutResonator): The readout resonator component.
-        T1 (float): The transmon T1 in ns.
-        T2ramsey (float): The transmon T2* in ns.
-        T2echo (float): The transmon T2 in ns.
+        T1 (float): The transmon T1 in s.
+        T2ramsey (float): The transmon T2* in s.
+        T2echo (float): The transmon T2 in s.
         thermalization_time_factor (int): thermalization time in units of T1.
         anharmonicity (int, float): the transmon anharmonicity in Hz.
         freq_vs_flux_01_quad_term (float):
@@ -49,20 +48,20 @@ class Transmon(QuamComponent):
     f_01: float = None
     f_12: float = None
     anharmonicity: int = 150e6
-    freq_vs_flux_01_quad_term : float = 0.0
-    arbitrary_intermediate_frequency : float = 0.0
+    freq_vs_flux_01_quad_term: float = 0.0
+    arbitrary_intermediate_frequency: float = 0.0
 
     T1: float = 10_000
-    T2ramsey: float = 10_000
-    T2echo: float = 10_000
+    T2ramsey: float = None
+    T2echo: float = None
     thermalization_time_factor: int = 5
     sigma_time_factor: int = 5
     phi0_current: float = 0.0
     phi0_voltage: float = 0.0
-    
-    GEF_frequency_shift : int = 10
-    chi : float = 0.0
-    grid_location : str = None
+
+    GEF_frequency_shift: int = 10
+    chi: float = 0.0
+    grid_location: str = None
     extras: Dict[str, Any] = field(default_factory=dict)
 
     def get_output_power(self, operation, Z=50) -> float:
@@ -128,7 +127,6 @@ class Transmon(QuamComponent):
                 intermediate_frequencies=self.xy.intermediate_frequency,
             )
 
-
     def set_gate_shape(self, gate_shape: str) -> None:
         """Set the shape fo the single qubit gates defined as ["x180", "x90" "-x90", "y180", "y90", "-y90"]"""
         for gate in ["x180", "x90", "-x90", "y180", "y90", "-y90"]:
@@ -153,6 +151,9 @@ class Transmon(QuamComponent):
                 return qubit_pair
         else:
             raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
-        
+
     def align(self):
         align(self.xy.name, self.z.name, self.resonator.name)
+
+    def wait(self, duration):
+        wait(duration, self.xy.name, self.z.name, self.resonator.name)
