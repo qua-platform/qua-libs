@@ -10,17 +10,18 @@ optimal choice.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
     - Set the desired flux bias
 
 Next steps before going to the next node:
-    - Update the readout frequency  in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the readout frequency and dispersive shift chi in the state.
+    - Save the current state
 """
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.results import progress_counter, fetching_tool
@@ -41,7 +42,7 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
@@ -71,11 +72,11 @@ num_qubits = len(qubits)
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
-# The frequency sweep around the resonator resonance frequency 
+# The frequency sweep around the resonator resonance frequency
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span / 2, +span / 2, step)
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+flux_point = node.parameters.flux_point_joint_or_independent
 
 with program() as ro_freq_opt:
     n = declare(int)
@@ -92,7 +93,7 @@ with program() as ro_freq_opt:
 
     for i, qubit in enumerate(qubits):
 
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
@@ -100,12 +101,6 @@ with program() as ro_freq_opt:
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -135,7 +130,7 @@ with program() as ro_freq_opt:
                 save(Q_g[i], Q_g_st[i])
                 save(I_e[i], I_e_st[i])
                 save(Q_e[i], Q_e_st[i])
-
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -160,8 +155,6 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ro_freq_opt)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             n = results.fetch_all()[0]
@@ -170,6 +163,8 @@ else:
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
     # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2) for |g> and |e> as well as the distance between the two blobs D
     ds = ds.assign(
         {
@@ -197,7 +192,7 @@ else:
     detuning = ds.D.rolling({"freq": 5}).mean("freq").idxmax("freq")
     # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
     chi = (ds.IQ_abs_e.idxmin(dim="freq") - ds.IQ_abs_g.idxmin(dim="freq")) / 2
-    
+
     # Save fitting results
     fit_results = {
         q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values}
@@ -212,22 +207,25 @@ else:
         print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(
-            ax=ax, x="freq_MHz"
+            ax=ax, x="freq_MHz", label=None
         )
         ax.axvline(
-            fit_results[qubit["qubit"]]["detuning"] / 1e6, color="red", linestyle="--"
+            fit_results[qubit["qubit"]]["detuning"] / 1e6,
+            color="red",
+            linestyle="--",
+            label="applied detuning",
         )
-        ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel("Distance between IQ blobs [m.v.]")
+        ax.set_xlabel("Detuning [MHz]")
+        ax.set_ylabel("Distance between IQ blobs [mv]")
+        ax.legend(loc="upper left")
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
 
-    grid = QubitGrid(ds, [f"q-{i}_0" for i in range(num_qubits)])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(
             ax=ax, x="freq_MHz", label="g.s"
@@ -236,11 +234,14 @@ else:
             ax=ax, x="freq_MHz", label="e.s"
         )
         ax.axvline(
-            fit_results[qubit["qubit"]]["detuning"] / 1e6, color="red", linestyle="--"
+            fit_results[qubit["qubit"]]["detuning"] / 1e6,
+            color="red",
+            linestyle="--",
+            label="applied detuning",
         )
-        ax.set_xlabel("Frequency [MHz]")
+        ax.set_xlabel("Detuning [MHz]")
         ax.set_ylabel("Resonator response [mV]")
-        ax.legend()
+        ax.legend(loc="upper left")
     plt.tight_layout()
     plt.show()
     node.results["figure2"] = grid.fig
@@ -256,3 +257,5 @@ else:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%
