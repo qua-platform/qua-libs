@@ -27,7 +27,7 @@ u = unit(coerce_to_integer=True)
 # machine.active_qubit_names = ["q0"]
 
 for i in range(len(machine.qubits.items())):
-    machine.qubits[f"q{i+1}"].grid_location = f"({i},0)"
+    machine.qubits[f"q{i+1}"].grid_location = f"{i},0"
 
 # Update frequencies
 rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * u.GHz
