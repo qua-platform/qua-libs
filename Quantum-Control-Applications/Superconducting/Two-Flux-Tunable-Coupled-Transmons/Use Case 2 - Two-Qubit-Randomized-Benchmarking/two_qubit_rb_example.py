@@ -7,7 +7,7 @@ from qm.qua import *
 from qm import QuantumMachinesManager
 from qualang_tools.bakery.bakery import Baking
 from configuration import *
-from two_qubit_rb import TwoQubitRb
+from two_qubit_rb import TwoQubitRb, TwoQubitRbDebugger
 
 
 ##############################

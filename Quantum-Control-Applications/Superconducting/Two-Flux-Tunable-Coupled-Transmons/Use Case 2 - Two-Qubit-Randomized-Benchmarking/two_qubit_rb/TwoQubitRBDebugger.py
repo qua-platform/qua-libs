@@ -6,7 +6,7 @@ from qm import Program, QuantumMachinesManager
 from qm.qua import *
 from tqdm import tqdm
 
-from CS_installations.quam_libs.experiments.two_qubit_rb.util import run_in_thread
+from .util import run_in_thread
 from .TwoQubitRB import TwoQubitRb
 from .verification import SequenceTracker
 
