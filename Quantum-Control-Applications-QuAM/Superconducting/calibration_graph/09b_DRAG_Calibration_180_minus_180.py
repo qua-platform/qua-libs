@@ -1,21 +1,21 @@
 # %%
 """
-POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+        DRAG PULSE CALIBRATION (GOOGLE METHOD)
+The sequence consists in applying an increasing number of x180 and -x180 pulses successively while varying the DRAG
+coefficient alpha. After such a sequence, the qubit is expected to always be in the ground state if the DRAG
+coefficient has the correct value. Note that the idea is very similar to what is done in power_rabi_error_amplification.
+
+This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
-    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the state.
-    - Set the desired flux bias
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = -1
+    - Set the desired flux bias.
 
 Next steps before going to the next node:
-    - Update the qubit pulse amplitude (pi_amp) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the DRAG coefficient (alpha) in the state.
 """
 
 
@@ -23,6 +23,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
@@ -46,7 +47,7 @@ class Parameters(NodeParameters):
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.02
     max_number_pulses_per_sweep: int = 40
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     timeout: int = 100
@@ -82,24 +83,17 @@ config = machine.generate_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
-if node.parameters.qubits is None or node.parameters.qubits == '':
+if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-# %%
-# Print intermediate frequencies of all qubits
-print("Intermediate frequencies of qubits:")
-for qubit in qubits:
-    print(f"{qubit.name}: {qubit.xy.intermediate_frequency / 1e6:.3f} MHz")
-
-# %%
 
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
+flux_point = node.parameters.flux_point_joint_or_independent
+reset_type = node.parameters.reset_type_thermal_or_active
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(
     node.parameters.min_amp_factor,
@@ -119,7 +113,7 @@ with program() as drag_calibration:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
@@ -128,19 +122,13 @@ with program() as drag_calibration:
         else:
             machine.apply_all_flux_to_zero()
 
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit)
                     else:
                         qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()
@@ -161,7 +149,7 @@ with program() as drag_calibration:
                         state[i], I[i] > qubit.resonator.operations["readout"].threshold
                     )
                     save(state[i], state_stream[i])
-
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -185,19 +173,26 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(drag_calibration)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
+            # Fetch results
             n = results.fetch_all()[0]
+            # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+    ds = fetch_results_as_xarray(
+        job.result_handles, qubits, {"amp": amps, "N": N_pi_vec}
+    )
     # Add the qubit pulse absolute alpha coefficient to the dataset
     ds = ds.assign_coords(
-        {"alpha": (["qubit", "amp"], np.array([q.xy.operations[operation].alpha * amps for q in qubits]))}
+        {
+            "alpha": (
+                ["qubit", "amp"],
+                np.array([q.xy.operations[operation].alpha * amps for q in qubits]),
+            )
+        }
     )
     # Add the dataset to the node
     node.results = {"ds": ds}
@@ -207,12 +202,12 @@ else:
     state_n = ds.state.mean(dim="N")
     data_max_idx = state_n.argmin(dim="amp")
     alphas = ds.amp[data_max_idx]
-
     # Save fitting results
     fit_results = {
         qubit.name: {
             "alpha": float(
-                alphas.sel(qubit=qubit.name).values * qubit.xy.operations[operation].alpha
+                alphas.sel(qubit=qubit.name).values
+                * qubit.xy.operations[operation].alpha
             )
         }
         for qubit in qubits
@@ -222,15 +217,12 @@ else:
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    ds.state.plot(col="qubit", x="alpha", y="N", col_wrap=2)
-    plt.show()
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds.loc[qubit].state.plot(ax=ax, x="alpha", y="N")
         ax.axvline(fit_results[qubit["qubit"]]["alpha"], color="r")
         ax.set_ylabel("num. of pulses")
-        ax.set_xlabel("DRAG coeff")
+        ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle("DRAG calibration")
     plt.tight_layout()
@@ -251,3 +243,5 @@ else:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%
