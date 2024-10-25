@@ -314,13 +314,14 @@ else:
             ].integration_weights_angle -= float(
                 node.results["results"][qubit.name]["angle"]
             )
+            # Convert the thresholds back in demod units
             qubit.resonator.operations[operation_name].threshold = float(
                 node.results["results"][qubit.name]["threshold"]
-            )
+            ) * qubit.resonator.operations[operation_name].length / 2**12
             # todo: add conf matrix to the readout operation rather than the resonator
             qubit.resonator.operations[operation_name].rus_exit_threshold = float(
                 node.results["results"][qubit.name]["rus_threshold"]
-            )
+            ) * qubit.resonator.operations[operation_name].length / 2**12
             if operation_name == "readout":
                 qubit.resonator.confusion_matrix = node.results["results"][qubit.name][
                     "confusion_matrix"
