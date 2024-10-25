@@ -1,21 +1,22 @@
 # %%
 """
-POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+        DRAG PULSE CALIBRATION (YALE METHOD)
+The sequence consists in applying successively x180-y90 and y180-x90 to the qubit while varying the DRAG
+coefficient alpha. The qubit is reset to the ground state between each sequence and its state is measured and stored.
+Each sequence will bring the qubit to the same state only when the DRAG coefficient is set to its correct value.
+
+This protocol is described in Reed's thesis (Fig. 5.8) https://rsl.yale.edu/sites/default/files/files/RSL_Theses/reed.pdf
+This protocol was also cited in: https://doi.org/10.1103/PRXQuantum.2.040202
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
-    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the state.
-    - Set the desired flux bias
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi, ramsey and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Set the DRAG coefficient to a non-zero value in the config: such as drag_coef = 1
+    - Set the desired flux bias.
 
 Next steps before going to the next node:
-    - Update the qubit pulse amplitude (pi_amp) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the DRAG coefficient (alpha) in the state.
 """
 
 
@@ -47,8 +48,8 @@ class Parameters(NodeParameters):
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.05
     max_number_pulses_per_sweep: int = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     timeout: int = 100
 
@@ -101,7 +102,7 @@ with program() as drag_calibration:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
@@ -110,22 +111,16 @@ with program() as drag_calibration:
         else:
             machine.apply_all_flux_to_zero()
 
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             for option in [0, 1]:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit)
                     else:
-                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                    qubit.align()
+                        qubit.wait(qubit.thermalization_time * u.ns)
+
                     if option == 0:
                         play("x180" * amp(1, 0, 0, a), qubit.xy.name)
                         play("y90" * amp(a, 0, 0, 1), qubit.xy.name)
@@ -139,7 +134,7 @@ with program() as drag_calibration:
                         state[i], I[i] > qubit.resonator.operations["readout"].threshold
                     )
                     save(state[i], state_stream[i])
-
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -161,12 +156,13 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(drag_calibration)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
+            # Fetch results
             n = results.fetch_all()[0]
+            # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
+
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -179,6 +175,7 @@ else:
     )
     # Add the dataset to the node
     node.results = {"ds": ds}
+
 
     # %% {Data_analysis}
     # Perform a linear fit of the qubit state vs DRAG coefficient scaling factor
@@ -208,13 +205,12 @@ else:
 
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds.loc[qubit].state.plot(ax=ax, x="alpha", hue="sequence")
         ax.axvline(fit_results[qubit["qubit"]]["alpha"], color="r")
         ax.set_ylabel("num. of pulses")
-        ax.set_xlabel("DRAG coeff")
+        ax.set_xlabel(r"DRAG coeff $\alpha$")
         ax.set_title(qubit["qubit"])
     grid.fig.suptitle("DRAG calibration")
     plt.tight_layout()
