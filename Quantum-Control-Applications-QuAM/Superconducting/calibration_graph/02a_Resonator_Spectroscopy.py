@@ -9,7 +9,7 @@ This frequency can be used to update the readout frequency in the state.
 Prerequisites:
     - Ensure calibration of the time of flight, offsets, and gains (referenced as "time_of_flight").
     - Calibrate the IQ mixer connected to the readout line (whether it's an external mixer or an Octave port).
-    - Define the readout pulse amplitude and duration in the state.
+    - Define the desired readout pulse amplitude and duration in the state.
     - Specify the expected resonator depletion time in the state.
 
 Before proceeding to the next node:
