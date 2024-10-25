@@ -14,11 +14,19 @@ class FluxLine(SingleChannel):
         independent_offset (float): the flux bias corresponding to the resonator maximum frequency when the active qubits are not interacting (min offset) in V.
         joint_offset (float): the flux bias corresponding to the resonator maximum frequency when the active qubits are interacting (joint offset) in V.
         min_offset (float): the flux bias corresponding to the resonator minimum frequency in V.
+        arbitrary_offset (float): arbitrary flux bias in V.
+        settle_time (float): the flux line settle time in ns.
     """
     independent_offset: float = 0.0
     joint_offset: float = 0.0
     min_offset: float = 0.0
     arbitrary_offset: float = 0.0
+    settle_time: float = None
+
+    def settle(self):
+        """Wait for the flux bias to settle"""
+        if self.settle_time is not None:
+            self.wait(int(self.settle_time) // 4 * 4)
 
     def to_independent_idle(self):
         """Set the flux bias to the independent offset"""

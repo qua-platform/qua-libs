@@ -123,14 +123,14 @@ with program() as multi_res_spec_vs_flux:
 
         for qb in qubits:
             # Wait for the flux to settle
-            wait(1000, qb.z.name)
+            qb.z.settle()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(dc, dcs)):
                 # Flux sweeping by tuning the OPX dc offset associated with the flux_line element
                 qubit.z.set_dc_offset(dc)
-                wait(100)  # Wait for the flux to settle
+                qubit.z.settle()
                 with for_(*from_array(df, dfs)):
                     # Update the resonator frequencies for resonator
                     update_frequency(rr.name, df + rr.intermediate_frequency)
