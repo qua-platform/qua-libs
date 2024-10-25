@@ -72,7 +72,6 @@ else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 resonators = [qubit.resonator for qubit in qubits]
 num_qubits = len(qubits)
-num_resonators = len(resonators)
 
 
 # %% {QUA_program}
@@ -139,8 +138,7 @@ elif node.parameters.load_data_id is None:
             progress_counter(n, n_avg, start_time=results.start_time)
 
 
-# %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
+    # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     if node.parameters.load_data_id is not None:
         ds = load_dataset(node.parameters.load_data_id)
@@ -166,9 +164,7 @@ if not node.parameters.simulate:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-# %% {Data_analysis}
-if node.parameters.simulate is False:
-
+    # %% {Data_analysis}
     fits = {}
     fit_evals = {}
     fit_results = {}
@@ -194,8 +190,7 @@ if node.parameters.simulate is False:
         print(f"Qe for {q.name} is {Qe:,.0f}")
         print(f"Qi for {q.name} is {Qi:,.0f} \n")
 
-# %% {Plotting}
-if node.parameters.simulate is False:
+    # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         (ds.assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].IQ_abs * 1e3).plot(
@@ -238,16 +233,15 @@ if node.parameters.simulate is False:
     plt.tight_layout()
     plt.show()
 
-# %% {Update_state}
-if node.parameters.load_data_id is None and node.parameters.simulate is False:
-    with node.record_state_updates():
-        for index, q in enumerate(qubits):
-            q.resonator.intermediate_frequency += int(
-                fits[q.name].params["omega_r"].value
-            )
+    # %% {Update_state}
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for index, q in enumerate(qubits):
+                q.resonator.intermediate_frequency += int(
+                    fits[q.name].params["omega_r"].value
+                )
 
-# %% {Save_results}
-if node.parameters.simulate is False:
+    # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine

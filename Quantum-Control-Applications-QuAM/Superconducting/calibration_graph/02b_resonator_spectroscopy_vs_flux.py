@@ -121,10 +121,6 @@ with program() as multi_res_spec_vs_flux:
         else:
             machine.apply_all_flux_to_zero()
 
-        for qb in qubits:
-            # Wait for the flux to settle
-            qb.z.settle()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(dc, dcs)):
@@ -171,8 +167,7 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-# %% {Data_fetching_and_dataset_creation}
-if not node.parameters.simulate:
+    # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "flux": dcs})
     # Convert IQ data into volts
@@ -202,8 +197,7 @@ if not node.parameters.simulate:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-# %% {Data_analysis}
-if not node.parameters.simulate:
+    # %% {Data_analysis}
     # Find the minimum of each frequency line to follow the resonance vs flux
     peak_freq = ds.IQ_abs.idxmin(dim="freq")
     # Fit to a cosine using the qiskit function: a * np.cos(2 * np.pi * f * t + phi) + offset
@@ -252,8 +246,7 @@ if not node.parameters.simulate:
 
     node.results["fit_results"] = fit_results
 
-# %% {Plotting}
-if not node.parameters.simulate:
+    # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ax2 = ax.twiny()
@@ -308,8 +301,7 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-# %% {Update_state}
-if not node.parameters.simulate:
+    # %% {Update_state}
     with node.record_state_updates():
         for q in qubits:
             if not (np.isnan(float(idle_offset.sel(qubit=q.name).data))):
@@ -330,8 +322,7 @@ if not node.parameters.simulate:
                 * attenuation_factor
             )
 
-# %% {Save_results}
-if not node.parameters.simulate:
+    # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine

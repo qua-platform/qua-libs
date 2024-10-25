@@ -35,7 +35,6 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
-from qualang_tools.plot import interrupt_on_close
 from qm import SimulationConfig
 from qm.qua import *
 from typing import Literal, Optional, List
@@ -87,10 +86,8 @@ num_qubits = len(qubits)
 # %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play
 n_avg = node.parameters.num_averages  # The number of averages
-# Adjust the pulse duration and amplitude to drive the qubit into a mixed state
-operation_len = (
-    node.parameters.operation_len_in_ns
-)  # can be None - will just be ignored
+# Adjust the pulse duration and amplitude to drive the qubit into a mixed state - can be None
+operation_len = node.parameters.operation_len_in_ns
 if node.parameters.operation_amplitude_factor:
     # pre-factor to the value defined in the config - restricted to [-2; 2)
     operation_amp = node.parameters.operation_amplitude_factor
@@ -164,10 +161,6 @@ with program() as qubit_spec:
         else:
             machine.apply_all_flux_to_zero()
             dc_offset = 0.0
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            qb.z.settle()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -259,8 +252,7 @@ else:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-# %% {Data_analysis}
-if not node.parameters.simulate:
+    # %% {Data_analysis}
     # search for frequency for which the amplitude the farthest from the mean to indicate the approximate location of the peak
     shifts = np.abs((ds.IQ_abs - ds.IQ_abs.mean(dim="freq"))).idxmax(dim="freq")
     # Find the rotation angle to align the separation along the 'I' axis
@@ -328,8 +320,7 @@ if not node.parameters.simulate:
             print()
     node.results["fit_results"] = fit_results
 
-# %% {Plotting}
-if not node.parameters.simulate:
+    # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     approx_peak = result.base_line + result.amplitude * (
         1 / (1 + ((ds.freq - result.position) / result.width) ** 2)
@@ -360,8 +351,7 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure"] = grid.fig
 
-# %% {Update_state}
-if not node.parameters.simulate:
+    # %% {Update_state}
     with node.record_state_updates():
         for q in qubits:
             if not np.isnan(result.sel(qubit=q.name).position.values):
@@ -410,8 +400,7 @@ if not node.parameters.simulate:
                         q.xy.operations["x180"].amplitude = 0.3
     node.results["ds"] = ds
 
-# %% {Save_results}
-if not node.parameters.simulate:
+    # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
