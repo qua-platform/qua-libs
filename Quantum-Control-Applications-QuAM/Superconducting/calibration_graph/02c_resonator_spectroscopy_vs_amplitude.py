@@ -68,42 +68,42 @@ node = QualibrationNode(
 
 
 # %% {Utility functions}
-def set_output_power(
-    quam_object,
-    operation,
-    power_dBm,
-    amplitude=None,
-    gain_or_full_scale_power_dbm=None,
-    Z=50,
-):
-    if amplitude is not None:
-        quam_object.operations[operation].amplitude = amplitude
-        # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
-        #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-        quam_object.frequency_converter_up.gain = (
-            round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2
-        )
-        print(
-            f"Setting the Octave gain to {round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2} dB"
-        )
-        # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
-        #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
-    elif gain_or_full_scale_power_dbm is not None:
-        quam_object.frequency_converter_up.gain = gain_or_full_scale_power_dbm
-        # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
-        #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
-        quam_object.operations[operation].amplitude = u.dBm2volts(
-            power_dBm - quam_object.frequency_converter_up.gain
-        )
-        print(
-            f"Setting the {operation} amplitude to {u.dBm2volts(power_dBm - quam_object.frequency_converter_up.gain)} V"
-        )
-        # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
-        #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-    else:
-        raise RuntimeError(
-            "Either amplitude or gain_or_full_scale_power_dbm must be specified."
-        )
+# def set_output_power(
+#     quam_object,
+#     operation,
+#     power_dBm,
+#     amplitude=None,
+#     gain_or_full_scale_power_dbm=None,
+#     Z=50,
+# ):
+#     if amplitude is not None:
+#         quam_object.operations[operation].amplitude = amplitude
+#         # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
+#         #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
+#         quam_object.frequency_converter_up.gain = (
+#             round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2
+#         )
+#         print(
+#             f"Setting the Octave gain to {round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2} dB"
+#         )
+#         # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
+#         #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
+#     elif gain_or_full_scale_power_dbm is not None:
+#         quam_object.frequency_converter_up.gain = gain_or_full_scale_power_dbm
+#         # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
+#         #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
+#         quam_object.operations[operation].amplitude = u.dBm2volts(
+#             power_dBm - quam_object.frequency_converter_up.gain
+#         )
+#         print(
+#             f"Setting the {operation} amplitude to {u.dBm2volts(power_dBm - quam_object.frequency_converter_up.gain)} V"
+#         )
+#         # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
+#         #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
+#     else:
+#         raise RuntimeError(
+#             "Either amplitude or gain_or_full_scale_power_dbm must be specified."
+#         )
 
 
 # %% {Initialize_QuAM_and_QOP}
