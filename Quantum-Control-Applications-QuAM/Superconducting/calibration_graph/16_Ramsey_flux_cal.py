@@ -264,8 +264,7 @@ for q in qubits:
 
 
 # %%
-grid_names = [f'{q.name}_0' for q in qubits]
-grid = QubitGrid(ds, grid_names)
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
 for ax, qubit in grid_iter(grid):
     ds.sel(qubit = qubit['qubit']).state.plot(ax = ax)
     ax.set_title(qubit['qubit'])
@@ -276,8 +275,7 @@ plt.tight_layout()
 plt.show()
 node.results['figure_raw'] = grid.fig
 
-
-grid = QubitGrid(ds, grid_names)
+grid = QubitGrid(ds, [q.grid_location for q in qubits])
 for ax, qubit in grid_iter(grid):
     fitted_freq = fitvals.sel(qubit = qubit['qubit'],degree = 2).polyfit_coefficients * flux**2 + fitvals.sel(qubit = qubit['qubit'],degree = 1).polyfit_coefficients * flux + fitvals.sel(qubit = qubit['qubit'],degree = 0).polyfit_coefficients
     frequency.sel(qubit = qubit['qubit']).plot( marker = '.',linewidth = 0,ax=ax)

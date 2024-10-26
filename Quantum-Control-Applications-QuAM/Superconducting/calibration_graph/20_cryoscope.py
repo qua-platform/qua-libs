@@ -153,7 +153,7 @@ with program() as cryoscope:
             with for_each_(flag, [True, False]):
                 if reset_type == "active":
                     for qubit in qubits:
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit)
                 else:
                     wait(qubit.thermalization_time * u.ns)
                 align()
@@ -204,7 +204,7 @@ with program() as cryoscope:
                     # Initialize the qubits
                     if reset_type == "active":
                         for qubit in qubits:
-                            active_reset(machine, qubit.name)
+                            active_reset(qubit)
                     else:
                         wait(qubit.thermalization_time * u.ns)
                     align()

@@ -360,8 +360,7 @@ if not node.parameters.simulate:
 # %%
 if not node.parameters.simulate:
 
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         fit_res.loc[qubit].plot(ax = ax,x = 'readout_amp', hue='result', add_legend=False)
         ax.axvline(best_amp[qubit['qubit']], color = 'k', linestyle = 'dashed')
@@ -377,8 +376,7 @@ if not node.parameters.simulate:
 # %%
 if not node.parameters.simulate:
 
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds_q = best_data[qubit['qubit']]
         qn = qubit['qubit']
@@ -397,7 +395,7 @@ if not node.parameters.simulate:
     node.results['figure_IQ_blobs'] = grid.fig
 
 
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         confusion = node.results["results"][qubit['qubit']]["confusion_matrix"]
         ax.imshow(confusion)

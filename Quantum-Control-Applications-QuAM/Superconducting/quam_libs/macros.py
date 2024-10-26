@@ -160,7 +160,7 @@ def active_reset(
         qubit: Transmon,
         save_qua_var: Optional[StreamType] = None,
         pi_pulse_name: str = "x180",
-        readout_pulse_name: str = "readout_QND",
+        readout_pulse_name: str = "readout",
         max_attempts: int = 15):
     pulse = qubit.resonator.operations[readout_pulse_name]
 

@@ -116,7 +116,7 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit)
             elif reset_type == "thermal":
                 wait(qubit.thermalization_time * u.ns)
             else:
@@ -130,7 +130,7 @@ with program() as iq_blobs:
             save(Q_g[i], Q_g_st[i])
 
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit)
             elif reset_type == "thermal":
                 wait(qubit.thermalization_time * u.ns)
             else:
@@ -258,8 +258,7 @@ else:
         node.results["results"][q.name]["confusion_matrix"] = confusion
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     # TODO: maybe wrap it up in a function plot_IQ_blobs?
     for ax, qubit in grid_iter(grid):
         qn = qubit["qubit"]
@@ -321,7 +320,7 @@ else:
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         confusion = node.results["results"][qubit["qubit"]]["confusion_matrix"]
         ax.imshow(confusion)

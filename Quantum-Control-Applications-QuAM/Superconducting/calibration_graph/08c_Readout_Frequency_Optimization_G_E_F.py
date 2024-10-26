@@ -243,8 +243,7 @@ else:
         )
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dge.loc[qubit]).plot(
             ax=ax, x="freq_MHz", label="GE"
@@ -270,7 +269,7 @@ else:
     plt.show()
     node.results["figure"] = grid.fig
 
-    grid = QubitGrid(ds, [f"q-{i}_0" for i in range(num_qubits)])
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(
             ax=ax, x="freq_MHz", label="g.s."

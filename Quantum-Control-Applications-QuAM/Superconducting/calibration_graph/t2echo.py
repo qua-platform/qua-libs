@@ -108,7 +108,7 @@ with program() as t1:
             save(n, n_st)
             with for_(*from_array(t, idle_times)):
                 if node.parameters.reset_type == "active":
-                    active_reset(machine, qubit.name)
+                    active_reset(qubit)
                 else:
                     qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()
@@ -219,8 +219,7 @@ if not node.parameters.simulate:
 node.results = {"ds": ds}
 # %%
 if not node.parameters.simulate:
-    grid_names = [f'{q.name}_0' for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             ds.sel(qubit = qubit['qubit']).state.plot(ax = ax)
