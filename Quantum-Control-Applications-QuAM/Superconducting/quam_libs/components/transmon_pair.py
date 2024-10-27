@@ -4,6 +4,7 @@ from dataclasses import field
 from quam.core import QuamComponent, quam_dataclass
 from .transmon import Transmon
 from .tunable_coupler import TunableCoupler
+from .cross_resonance import CrossResonance
 
 
 __all__ = ["TransmonPair"]
@@ -15,6 +16,7 @@ class TransmonPair(QuamComponent):
     qubit_control: Transmon = None
     qubit_target: Transmon = None
     coupler: Optional[TunableCoupler] = None
+    cross_resonance: Optional[CrossResonance] = None
 
     extras: Dict[str, Any] = field(default_factory=dict)
 

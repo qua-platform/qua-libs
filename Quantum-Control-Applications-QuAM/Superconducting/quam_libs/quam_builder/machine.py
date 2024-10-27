@@ -8,7 +8,7 @@ from qualang_tools.wirer import Connectivity
 from quam_libs.quam_builder.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from quam_libs.quam_builder.transmons.add_transmon_drive_component import add_transmon_drive_component
 from quam_libs.quam_builder.transmons.add_transmon_flux_component import add_transmon_flux_component
-from quam_libs.quam_builder.transmons.add_transmon_pair_component import add_transmon_pair_component
+from quam_libs.quam_builder.transmons.add_transmon_pair_component import add_transmon_pair_tunable_coupler_component, add_transmon_pair_cross_resonance_component
 from quam_libs.quam_builder.transmons.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
 from quam_libs.components import OPXPlusQuAM, FEMQuAM, QuAM, Transmon
@@ -104,7 +104,11 @@ def add_transmons(machine: QuAM):
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_pair_id}/{line_type}"
                     if line_type == WiringLineType.COUPLER.value:
-                        transmon_pair = add_transmon_pair_component(machine, wiring_path, ports)
+                        transmon_pair = add_transmon_pair_tunable_coupler_component(machine, wiring_path, ports)
+                    if line_type == WiringLineType.CROSS_DRIVE.value:
+                        # add cross resonance
+                        transmon_pair = add_transmon_pair_cross_resonance_component(machine, wiring_path, ports)
+                        # TODO: potentially add zz-inducing drive as well here
                     else:
                         raise ValueError(f'Unknown line type: {line_type}')
                     machine.qubit_pairs.append(transmon_pair)
