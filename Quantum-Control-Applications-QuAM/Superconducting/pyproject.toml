@@ -20,6 +20,9 @@ xarray = "*"
 lmfit = "*"
 qiskit-experiments = "*"
 tqdm = "*"
+qualibrate = "*"
+qm-qua = "1.2.1rc3"
+cirq = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
