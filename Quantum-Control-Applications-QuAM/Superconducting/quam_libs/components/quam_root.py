@@ -23,7 +23,6 @@ from qualang_tools.results.data_handler import DataHandler
 from dataclasses import field
 from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
 
-
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
 
@@ -34,7 +33,7 @@ class QuAM(QuamRoot):
     octaves: Dict[str, Octave] = field(default_factory=dict)
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
-    qubit_pairs: List[TransmonPair] = field(default_factory=list)
+    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
     network: dict = field(default_factory=dict)
 
@@ -87,7 +86,7 @@ class QuAM(QuamRoot):
     @property
     def active_qubit_pairs(self) -> List[TransmonPair]:
         """Return the list of active qubits."""
-        return self.qubit_pairs
+        return [self.qubit_pairs[q] for q in self.active_qubit_pair_names]
 
     @property
     def depletion_time(self) -> int:
@@ -103,7 +102,8 @@ class QuAM(QuamRoot):
         """Apply the offsets that bring all the active qubit pairs to a decoupled point."""
         align()
         for qp in self.active_qubit_pairs:
-            qp.coupler.to_decouple_idle()
+            if qp.coupler is not None:
+                qp.coupler.to_decouple_idle()
         align()
 
     def apply_all_flux_to_joint_idle(self) -> None:
@@ -112,18 +112,28 @@ class QuAM(QuamRoot):
         for q in self.active_qubits:
             if q.z is not None:
                 q.z.to_joint_idle()
+                q.z.settle()
             else:
                 warnings.warn(f"Didn't find z-element on qubit {q.name}, didn't set to joint-idle")
+        for q in self.qubits:
+            if self.qubits[q] not in self.active_qubits:
+                if self.qubits[q].z is not None:
+                    self.qubits[q].z.to_min()
+                    self.qubits[q].z.settle()
+                else:
+                    warnings.warn(f"Didn't find z-element on qubit {q}, didn't set to min")
         align()
 
     def apply_all_flux_to_min(self) -> None:
         """Apply the offsets that bring all the active qubits to the minimum frequency point."""
         align()
-        for q in self.active_qubits:
-            if q.z is not None:
-                q.z.to_min()
+        for q in self.qubits:
+            if self.qubits[q].z is not None:
+                self.qubits[q].z.to_min()
+                self.qubits[q].z.settle()
             else:
-                warnings.warn(f"Didn't find z-element on qubit {q.name}, didn't set to min")
+                warnings.warn(f"Didn't find z-element on qubit {q}, didn't set to min")
+        self.apply_all_couplers_to_min()
         align()
 
     def apply_all_flux_to_zero(self) -> None:
@@ -131,6 +141,7 @@ class QuAM(QuamRoot):
         align()
         for q in self.active_qubits:
             q.z.to_zero()
+            q.z.settle()
         align()
 
     def connect(self) -> QuantumMachinesManager:

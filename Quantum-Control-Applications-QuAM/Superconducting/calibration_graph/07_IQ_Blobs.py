@@ -11,13 +11,14 @@ The resulting IQ blobs are displayed, and the data is processed to determine:
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - Having calibrated qubit pi pulse (x180) by running qubit.wait(qubit.thermalization_time * u.ns) spectroscopy, power_rabi and updated the state.
     - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the rotation angle (rotation_angle) in the state.
-    - Update the g -> e threshold (ge_threshold) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the g -> e thresholds (threshold & rus_threshold) in the state.
+    - Update the confusion matrices in the state.
+    - Save the current state
 """
 
 
@@ -25,6 +26,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.analysis.discriminator import two_state_discriminator
@@ -45,7 +47,8 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    operation_name: str = "readout"  # or "readout_QND"
     simulate: bool = False
     timeout: int = 100
 
@@ -60,7 +63,6 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -76,40 +78,35 @@ num_qubits = len(qubits)
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
-
+operation_name = node.parameters.operation_name
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
 
     for i, qubit in enumerate(qubits):
 
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
-        elif flux_point == "joint":
+        elif flux_point == "joint" or "arbitrary":
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit)
             elif reset_type == "thermal":
-                wait(qubit.thermalization_time * u.ns)
+                qubit.wait(qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
             qubit.align()
-            qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]))
+            qubit.resonator.measure(operation_name, qua_vars=(I_g[i], Q_g[i]))
+            qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_g[i], I_g_st[i])
             save(Q_g[i], Q_g_st[i])
@@ -117,19 +114,20 @@ with program() as iq_blobs:
             qubit.align()
             # excited iq blobs for all qubits
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit)
             elif reset_type == "thermal":
-                wait(qubit.thermalization_time * u.ns)
+                qubit.wait(qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
-            qubit.align()
+            align()
             qubit.xy.play("x180")
-            qubit.align()
-            qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]))
+            align()
+            qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
+            qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_e[i], I_e_st[i])
             save(Q_e[i], Q_e_st[i])
-
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -154,8 +152,6 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
-
-        # %% {Live_plot}
         for i in range(num_qubits):
             results = fetching_tool(job, ["n"], mode="live")
             while results.is_processing():
@@ -181,7 +177,8 @@ else:
         dask="parallelized",  # This allows for parallel processing
         output_dtypes=[float],  # Specify the output data type
     )
-
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     plot_individual = False
@@ -219,8 +216,7 @@ else:
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         n_avg = n_runs // 2
         qn = qubit["qubit"]
@@ -237,7 +233,7 @@ else:
                 + ds.Q_g.sel(qubit=qn) * np.cos(node.results["results"][qn]["angle"])
             ),
             ".",
-            alpha=0.1,
+            alpha=0.2,
             label="Ground",
             markersize=1,
         )
@@ -253,7 +249,7 @@ else:
                 + ds.Q_e.sel(qubit=qn) * np.cos(node.results["results"][qn]["angle"])
             ),
             ".",
-            alpha=0.1,
+            alpha=0.2,
             label="Excited",
             markersize=1,
         )
@@ -281,7 +277,7 @@ else:
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         confusion = node.results["results"][qubit["qubit"]]["confusion_matrix"]
         ax.imshow(confusion)
@@ -313,22 +309,28 @@ else:
     # %% {Update_state}
     with node.record_state_updates():
         for qubit in qubits:
-            qubit.resonator.operations["readout"].integration_weights_angle -= float(
+            qubit.resonator.operations[
+                operation_name
+            ].integration_weights_angle -= float(
                 node.results["results"][qubit.name]["angle"]
             )
-            qubit.resonator.operations["readout"].threshold = float(
+            # Convert the thresholds back in demod units
+            qubit.resonator.operations[operation_name].threshold = float(
                 node.results["results"][qubit.name]["threshold"]
-            )
-            # to add conf matrix  to the readout operation rather than the resonator
-            qubit.resonator.operations["readout"].rus_exit_threshold = float(
+            ) * qubit.resonator.operations[operation_name].length / 2**12
+            # todo: add conf matrix to the readout operation rather than the resonator
+            qubit.resonator.operations[operation_name].rus_exit_threshold = float(
                 node.results["results"][qubit.name]["rus_threshold"]
-            )
-            qubit.resonator.confusion_matrix = node.results["results"][qubit.name][
-                "confusion_matrix"
-            ].tolist()
+            ) * qubit.resonator.operations[operation_name].length / 2**12
+            if operation_name == "readout":
+                qubit.resonator.confusion_matrix = node.results["results"][qubit.name][
+                    "confusion_matrix"
+                ].tolist()
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

@@ -32,13 +32,8 @@ This folder contains an installable module called `quam_libs`, which provides a 
 To run the calibration nodes in this folder, you need to install `quam_libs`. During this installation, *all relevant* requirements for running QUA code
 and calibrations through the front-end will also be installed.
 
-First, ensure you have Python ≥ 3.8 installed on your system. Preferably, use Pyhon 3.10 within a new conda environment, which you can create using e.g.,
-```sh
-conda create -n qm python==3.10
-conda activate qm
-```
-
-Then run the following command:
+To do so, first activate the desired Python environment and navigate to the `quam_libs` directory.
+Then run the following command to install the package:
 
 ```sh
 # Install `quam_libs` (locally, from this directory)
@@ -145,7 +140,10 @@ The structure of the nodes is described below.
 ### configuration
 The configuration folder contains the python scripts used to build the QUAM before starting the experiments.
 It contains three files whose working principles are explained in more details below:
-* [make_wiring.py](./configuration/make_wiring.py): create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
+* __make_wiring__: create the port mapping between the control hardware (OPX+, Octave, OPX1000 LF fem, MW fem) and the quantum elements (qubits, resonators, flux lines...).
+  * [make_wiring_lffem_mwfem.py](./configuration/make_wiring_lffem_mwfem.py) for a cluster made of LF and MW FEMs (OPX1000).
+  * [make_wiring_lffem_octave.py](./configuration/make_wiring_lffem_octave.py) for a cluster made of LF-FEMs and Octaves (OPX1000).
+  * [make_wiring_opxp_octave.py](./configuration/make_wiring_opxp_octave.py) for a cluster made of OPX+ and Octaves.
 * [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
 * [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
 
@@ -233,17 +231,17 @@ The hierarchy and structure of QUAM can be detailed as follows:
    It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
    Its methods are usually applied to all qubits or active qubits.
 2. The definition of a QuAM transmon is defined in [transmon.py](./quam_libs/components/transmon.py). It contains the
-   genral transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
+   general transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
    `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
    [transmon_pair.py](./quam_libs/components/transmon_pair.py).
-3. The sub-QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
+3. The QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
    directly defined as an `IQChannel`, or from user-defined components such as
    [readout_resonator](./quam_libs/components/readout_resonator.py) or [flux_line](./quam_libs/components/flux_line.py),
    which allows the customization of their attributes.
 
 
 ### [3. Generating the QuAM and state.json](./configuration/make_quam.py)
-Once the QuAM root is implemented with the subsequent components, the QuAM state can be generated automatically and each
+Once the QuAM root and the corresponding QuAM components are implemented, the QuAM state can be generated automatically and each
 parameter of the QUAM components is initialized to its arbitrary default value.
 All of these parameters can be updated programmatically based on the specs from the chip manufacturer for instance and
 the process is described in the next section.
@@ -251,7 +249,7 @@ the process is described in the next section.
 The script called [make_quam.py](./configuration/make_quam.py) takes care of generating the QUAM and filling the state
 according to the wiring file. The Octaves connection parameters can also be edited here if relevant.
 
-Everything happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
+The QuAM generation happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
 according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
@@ -271,7 +269,7 @@ octave_settings = {}
 quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_settings)
 ```
 
-Note that the set of default pulses can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
+Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
 ```python

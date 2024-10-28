@@ -1,7 +1,7 @@
 # %%
 """
-POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
+        POWER RABI WITH ERROR AMPLIFICATION
+This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
 measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
 By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
 amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
@@ -9,13 +9,12 @@ amplitude. The results are then analyzed to determine the qubit pulse amplitude 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
-    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the state.
+    - Having found the rough qubit frequency and set the desired pi pulse duration (qubit spectroscopy).
     - Set the desired flux bias
 
 Next steps before going to the next node:
-    - Update the qubit pulse amplitude (pi_amp) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the qubit pulse amplitude in the state.
+    - Save the current state
 """
 
 
@@ -23,6 +22,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation, oscillation
@@ -47,12 +47,12 @@ class Parameters(NodeParameters):
     max_amp_factor: float = 2.0
     amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
-node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 
+node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -62,7 +62,6 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -104,12 +103,6 @@ with program() as power_rabi:
         else:
             machine.apply_all_flux_to_zero()
 
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
@@ -148,19 +141,18 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
-            fetched_data = results.fetch_all()
-            n = fetched_data[0]
+            # Fetch results
+            n = results.fetch_all()[0]
+            # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"amp": amps, "N": N_pi_vec}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, qubits)
     # Add the qubit pulse absolute amplitude to the dataset
     ds = ds.assign_coords(
         {
@@ -185,8 +177,8 @@ else:
             fit.sel(fit_vals="phi"),
             fit.sel(fit_vals="offset"),
         )
-        
-    # Save fitting results
+
+        # Save fitting results
         for q in qubits:
             fit_results[q.name] = {}
             f_fit = fit.loc[q.name].sel(fit_vals="f")
@@ -210,8 +202,8 @@ else:
             data_max_idx = I_n.argmin(dim="amp")
         else:
             data_max_idx = I_n.argmax(dim="amp")
-        
-    # Save fitting results
+
+        # Save fitting results
         for q in qubits:
             new_pi_amp = float(
                 ds.abs_amp.sel(qubit=q.name)[data_max_idx.sel(qubit=q.name)].data
@@ -230,8 +222,7 @@ else:
                 fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if N_pi == 1:
             (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].I * 1e3).plot(
@@ -266,3 +257,5 @@ else:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

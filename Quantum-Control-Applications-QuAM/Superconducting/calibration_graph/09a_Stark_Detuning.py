@@ -1,21 +1,23 @@
 # %%
 """
-POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+        AC STARK-SHIFT CALIBRATION WITH DRAG PULSES (GOOGLE METHOD)
+The sequence consists in applying an increasing number of x180 and -x180 pulses successively for different DRAG
+detunings.
+After such a sequence, the qubit is expected to always be in the ground state if the AC Stark shift is
+properly compensated by the DRAG detuning.
+One can then take a line cut for a given number of pulse and fit the 1D trace with a parabola to get the optimum
+detuning and update its value in the configuration.
+
+This protocol is described in more details in https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.117.190503
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
-    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the state.
-    - Set the desired flux bias
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - Set the desired flux bias.
 
 Next steps before going to the next node:
-    - Update the qubit pulse amplitude (pi_amp) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the DRAG detuning and set-point (alpha) in the state.
 """
 
 
@@ -23,6 +25,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.trackable_object import tracked_updates
@@ -42,14 +45,14 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_averages: int = 20
     operation: str = "x180"
-    frequency_span_in_mhz: float = 10
+    frequency_span_in_mhz: float = 20
     frequency_step_in_mhz: float = 0.02
     max_number_pulses_per_sweep: int = 20
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    DRAG_setpoint: Optional[float] = -1.0
     simulate: bool = False
     timeout: int = 100
-    DRAG_setpoint: Optional[float] = -1.0
 
 
 node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
@@ -60,7 +63,6 @@ node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
-
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -81,7 +83,6 @@ for q in qubits:
 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -107,7 +108,7 @@ with program() as stark_detuning:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
@@ -116,22 +117,15 @@ with program() as stark_detuning:
         else:
             machine.apply_all_flux_to_zero()
 
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
                 with for_(*from_array(df, dfs)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit)
                     else:
-                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        qubit.align()
+                        qubit.wait(qubit.thermalization_time * u.ns)
 
                     # Update the qubit frequency after initialization for active reset
                     update_frequency(
@@ -151,20 +145,22 @@ with program() as stark_detuning:
                     update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    # State discrimination
                     assign(
                         state[i], I[i] > qubit.resonator.operations["readout"].threshold
                     )
                     save(state[i], state_stream[i])
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
+        # Measure sequentially
         align()
 
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(
-                f"state{i + 1}"
-            )
+            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(
+                N_pi
+            ).average().save(f"state{i + 1}")
             I_stream = I_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"I{i + 1}")
             Q_stream = Q_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"Q{i + 1}")
 
@@ -182,11 +178,11 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(stark_detuning)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
+            # Fetch results
             n = results.fetch_all()[0]
+            # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
@@ -194,6 +190,8 @@ else:
     ds = fetch_results_as_xarray(
         job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec}
     )
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, qubits)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -203,7 +201,6 @@ else:
     data_max_idx = state_n.argmin(dim="freq")
     detuning = ds.freq[data_max_idx]
 
-    
     # Save fitting results
     fit_results = {
         qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)}
@@ -214,8 +211,7 @@ else:
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(
             ax=ax, x="freq_MHz", y="N"
@@ -246,3 +242,5 @@ else:
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

@@ -1,21 +1,21 @@
 # %%
 """
-RAMSEY WITH VIRTUAL Z ROTATIONS
+        RAMSEY WITH VIRTUAL Z ROTATIONS
 The program consists in playing a Ramsey sequence (x90 - idle_time - x90 - measurement) for different idle times.
 Instead of detuning the qubit gates, the frame of the second x90 pulse is rotated (de-phased) to mimic an accumulated
 phase acquired for a given detuning after the idle time.
-This method has the advantage of playing resonant gates.
+This method has the advantage of playing gates on resonance as opposed to the detuned Ramsey.
 
 From the results, one can fit the Ramsey oscillations and precisely measure the qubit resonance frequency and T2*.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
+    - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, power_rabi and updated the state.
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
 
 Next steps before going to the next node:
-    - Update the qubits frequency (f_01) in the state.
-    - Save the current state by calling machine.save("quam")
+    - Update the qubits frequency and T2_ramsey in the state.
+    - Save the current state
 """
 
 
@@ -23,6 +23,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
+from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
@@ -44,14 +45,13 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 3000
-    wait_time_step_in_ns: int = 16
-    flux_point_joint_or_independent_or_arbitrary: Literal[
-        "joint", "independent", "arbitrary"
-    ] = "joint"
+    max_wait_time_in_ns: int = 30000
+    num_time_points: int = 500
+    log_or_linear_sweep: Literal["log", "linear"] = "log"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    use_state_discrimination: bool = False
     simulate: bool = False
     timeout: int = 100
-    use_state_discrimination: bool = False
 
 
 node = QualibrationNode(name="05_Ramsey", parameters=Parameters())
@@ -63,7 +63,6 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -78,33 +77,28 @@ num_qubits = len(qubits)
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-idle_times = np.arange(
-    node.parameters.min_wait_time_in_ns // 4,
-    node.parameters.max_wait_time_in_ns // 4,
-    node.parameters.wait_time_step_in_ns // 4,
-)
-
-idle_times = np.unique(
-    np.geomspace(
-        node.parameters.min_wait_time_in_ns, node.parameters.max_wait_time_in_ns, 500
-    )
-    // 4
-).astype(int)
+if node.parameters.log_or_linear_sweep == "linear":
+    idle_times = (
+        np.linspace(
+            node.parameters.min_wait_time_in_ns,
+            node.parameters.max_wait_time_in_ns,
+            node.parameters.num_time_points,
+        )
+        // 4
+    ).astype(int)
+else:
+    idle_times = np.unique(
+        np.geomspace(
+            node.parameters.min_wait_time_in_ns,
+            node.parameters.max_wait_time_in_ns,
+            node.parameters.num_time_points,
+        )
+        // 4
+    ).astype(int)
 
 # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
-flux_point = (
-    node.parameters.flux_point_joint_or_independent_or_arbitrary
-)  # 'independent' or 'joint'
-if flux_point == "arbitrary":
-    arb_detunings = {
-        q.name: q.xy.intermediate_frequency - q.arbitrary_intermediate_frequency
-        for q in qubits
-    }
-    arb_flux_bias_offset = {q.name: q.z.arbitrary_offset for q in qubits}
-else:
-    arb_flux_bias_offset = {q.name: 0.0 for q in qubits}
-    arb_detunings = {q.name: 0.0 for q in qubits}
+flux_point = node.parameters.flux_point_joint_or_independent
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -118,20 +112,14 @@ with program() as ramsey:
 
     for i, qubit in enumerate(qubits):
 
-        # Bring the active qubits to the minimum frequency point
+        # Bring the active qubits to the desired frequency point
         if flux_point == "independent":
             machine.apply_all_flux_to_min()
             qubit.z.to_independent_idle()
-        elif flux_point == "joint" or "arbitrary":
+        elif flux_point == "joint":
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -139,45 +127,21 @@ with program() as ramsey:
                 #  with for_(*from_array(t, idle_times)):
                 with for_(*from_array(sign, [-1, 1])):
                     # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
-                    # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-                    # assign(phi, Cast.mul_fixed_by_int(arb_detunings[qubit.name] + detuning * 1e-9, 4 * t ))
-                    # assign(phi, Cast.mul_fixed_by_int(phi, sign))
                     with if_(sign == 1):
-                        assign(
-                            phi,
-                            Cast.mul_fixed_by_int(
-                                (-arb_detunings[qubit.name] + detuning) * 1e-9, 4 * t
-                            ),
-                        )
+                        assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                     with else_():
-                        assign(
-                            phi,
-                            Cast.mul_fixed_by_int(
-                                (-arb_detunings[qubit.name] - detuning) * 1e-9, 4 * t
-                            ),
-                        )
+                        assign(phi, Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * t))
                     align()
                     # # Strict_timing ensures that the sequence will be played without gaps
-                    # with strict_timing_():
-                    qubit.xy.play("x180", amplitude_scale=0.5)
-                    qubit.xy.frame_rotation_2pi(phi)
-                    qubit.align()
-                    qubit.z.wait(20)
-                    qubit.z.play(
-                        "const",
-                        amplitude_scale=arb_flux_bias_offset[qubit.name]
-                        / qubit.z.operations["const"].amplitude,
-                        duration=t,
-                    )
-                    qubit.z.wait(20)
-                    qubit.align()
-                    qubit.xy.play("x180", amplitude_scale=0.5)
+                    with strict_timing_():
+                        qubit.xy.play("x90")
+                        qubit.xy.wait(t)
+                        qubit.xy.frame_rotation_2pi(phi)
+                        qubit.xy.play("x90")
 
                     # Align the elements to measure after playing the qubit pulse.
                     align()
-                    # Measure the state of the resonators
-
-                    # save data
+                    # Measure the state of the resonators and save data
                     if node.parameters.use_state_discrimination:
                         readout_state(qubit, state[i])
                         save(state[i], state_st[i])
@@ -188,10 +152,9 @@ with program() as ramsey:
 
                     # Wait for the qubits to decay to the ground state
                     qubit.resonator.wait(qubit.thermalization_time * u.ns)
-
                     # Reset the frame of the qubits in order not to accumulate rotations
                     reset_frame(qubit.xy.name)
-
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -219,8 +182,6 @@ if node.parameters.simulate:
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             # Fetch results
@@ -233,6 +194,8 @@ else:
     ds = fetch_results_as_xarray(
         job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times}
     )
+    # Convert IQ data into volts
+    ds = convert_IQ_to_V(ds, qubits)
     # Add the absolute time to the dataset
     ds = ds.assign_coords({"time": (["time"], 4 * idle_times)})
     ds.time.attrs["long_name"] = "idle_time"
@@ -255,7 +218,7 @@ else:
         fit.sel(fit_vals="offset"),
         fit.sel(fit_vals="decay"),
     )
-
+    # TODO: add meaningful comments
     frequency = fit.sel(fit_vals="f")
     frequency.attrs = {"long_name": "frequency", "units": "MHz"}
 
@@ -285,7 +248,7 @@ else:
     )
     decay = 1e-9 * tau.mean(dim="sign")
     decay_error = 1e-9 * tau_error.mean(dim="sign")
-    
+
     # Save fitting results
     fit_results = {
         q.name: {
@@ -303,8 +266,7 @@ else:
         print(f"T2* for qubit {q.name} : {1e6*fit_results[q.name]['decay']:.2f} us")
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             ds.sel(sign=1).loc[qubit].state.plot(
@@ -332,7 +294,7 @@ else:
         ax.text(
             0.1,
             0.9,
-            f'T2* = {1e6*fit_results[qubit["qubit"]]["decay"]:.1f} + {1e6*fit_results[qubit["qubit"]]["decay_error"]:.1f} µs',
+            f'T2* = {1e6*fit_results[qubit["qubit"]]["decay"]:.1f} ± {1e6*fit_results[qubit["qubit"]]["decay_error"]:.1f} µs',
             transform=ax.transAxes,
             fontsize=10,
             verticalalignment="top",
@@ -347,18 +309,13 @@ else:
     # %% {Update_state}
     with node.record_state_updates():
         for q in qubits:
-            if (
-                not node.parameters.flux_point_joint_or_independent_or_arbitrary
-                == "arbitrary"
-            ):
-                q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
-            else:
-                q.arbitrary_intermediate_frequency -= float(
-                    fit_results[q.name]["freq_offset"]
-                )
+            q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
+            q.T2ramsey = float(fit_results[qubit["qubit"]]["decay"])
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
+# %%

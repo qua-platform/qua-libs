@@ -27,7 +27,6 @@ class ReadoutResonatorBase:
 
 @quam_dataclass
 class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
-    time_of_flight = 28  # smallest deviation from default (24ns) to work with Qualibrate
 
     @property
     def upconverter_frequency(self):
@@ -42,7 +41,6 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
 
 @quam_dataclass
 class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
-    time_of_flight = 28
 
     @property
     def upconverter_frequency(self):
