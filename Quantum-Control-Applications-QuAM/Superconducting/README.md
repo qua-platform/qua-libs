@@ -93,7 +93,12 @@ generate a config for `qualibrate` which points the frontend application to our 
 cd path/that/contains/calibration_graph
 
 # replace the values in this command with ones suitable for your project.
-qualibrate config --app-project <name_of_your_project> --app-user-storage <path_to_your_data_folder>
+qualibrate config \
+  --app-project <name_of_your_project> \
+  --app-user-storage <path_to_your_data_folder> \
+  --runner-calibration-library-folder <path_to_your_calibration_nodes> \
+  --active-machine-path <path_to_your_quam_state>
+
 ```
 To verify that `qualibrate` installed correctly, you can launch the web interface:
 ```shell
