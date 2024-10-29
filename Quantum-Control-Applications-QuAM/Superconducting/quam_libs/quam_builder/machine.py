@@ -27,14 +27,14 @@ def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_setting
 
 
 def build_quam_wiring(connectivity: Connectivity, host_ip: str, cluster_name: str,
-                      quam_state_path: Union[Path, str]) -> QuAM:
+                      quam_state_path: Union[Path, str], port: int = None) -> QuAM:
     if os.path.exists(quam_state_path) and 'state.json' in os.listdir(quam_state_path):
         # if there is a non-empty QuAM state already
         machine = QuAM.load(quam_state_path)
     else:
         machine = create_base_machine(connectivity)
 
-    add_name_and_ip(machine, host_ip, cluster_name)
+    add_name_and_ip(machine, host_ip, cluster_name, port)
     machine.wiring = create_wiring(connectivity)
     save_machine(machine, quam_state_path)
 
@@ -57,11 +57,11 @@ def create_base_machine(connectivity: Connectivity):
                     "Are channels were allocated for the connectivity?")
 
 
-def add_name_and_ip(machine: QuAM, host_ip: str, cluster_name: str):
+def add_name_and_ip(machine: QuAM, host_ip: str, cluster_name: str, port: Union[int, None]):
     """ Stores the minimal information to connect to a QuantumMachinesManager. """
     machine.network = {
         "host": host_ip,
-        "port": 9510,
+        "port": port,
         "cluster_name": cluster_name
     }
 
@@ -151,5 +151,3 @@ def save_machine(machine: QuAM, quam_state_path: Union[Path, str]):
             "wiring.json": ["network", "wiring"],
         }
     )
-
-
