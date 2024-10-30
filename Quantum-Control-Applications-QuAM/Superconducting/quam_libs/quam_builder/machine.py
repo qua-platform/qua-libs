@@ -107,7 +107,7 @@ def add_transmons(machine: QuAM):
                         transmon_pair = add_transmon_pair_component(machine, wiring_path, ports)
                     else:
                         raise ValueError(f'Unknown line type: {line_type}')
-                    machine.qubit_pairs.append(transmon_pair)
+                    machine.qubit_pairs[transmon_pair.name] = transmon_pair
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
 
@@ -117,7 +117,7 @@ def add_pulses(machine: QuAM):
             add_default_transmon_pulses(transmon)
 
     if hasattr(machine, 'qubit_pairs'):
-        for qubit_pair in machine.qubit_pairs:
+        for qubit_pair in machine.qubit_pairs.values():
             add_default_transmon_pair_pulses(qubit_pair)
 
 def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):
