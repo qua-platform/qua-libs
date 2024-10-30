@@ -127,7 +127,7 @@ with program() as power_rabi:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit, "readout")
                     else:
                         wait(qubit.thermalization_time * u.ns)
 
