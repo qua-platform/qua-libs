@@ -21,7 +21,7 @@ lmfit = "*"
 qiskit-experiments = "*"
 tqdm = "*"
 qualibrate = "*"
-qm-qua = "1.2.1rc3"
+qm-qua = "1.2.1a2"
 cirq = "*"
 
 [build-system]

@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.5
     amp_factor_step: float = 0.005
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
@@ -218,7 +218,7 @@ else:
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
         (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].IQ_abs * 1e3).plot(

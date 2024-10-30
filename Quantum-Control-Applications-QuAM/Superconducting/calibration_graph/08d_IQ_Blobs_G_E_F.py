@@ -44,7 +44,7 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
@@ -116,7 +116,7 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit, "readout")
             elif reset_type == "thermal":
                 wait(qubit.thermalization_time * u.ns)
             else:
@@ -130,7 +130,7 @@ with program() as iq_blobs:
             save(Q_g[i], Q_g_st[i])
 
             if reset_type == "active":
-                active_reset(machine, qubit.name)
+                active_reset(qubit, "readout")
             elif reset_type == "thermal":
                 wait(qubit.thermalization_time * u.ns)
             else:
@@ -258,7 +258,7 @@ else:
         node.results["results"][q.name]["confusion_matrix"] = confusion
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     # TODO: maybe wrap it up in a function plot_IQ_blobs?
     for ax, qubit in grid_iter(grid):

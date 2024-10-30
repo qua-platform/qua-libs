@@ -243,7 +243,7 @@ else:
         )
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
         (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dge.loc[qubit]).plot(

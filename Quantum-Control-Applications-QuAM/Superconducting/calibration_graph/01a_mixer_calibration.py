@@ -40,4 +40,5 @@ for qubit in qubits:
                            calibrate_drive=node.parameters.calibrate_drive,
                            calibrate_resonator=node.parameters.calibrate_resonator)
 
+qm.close()
 # %%

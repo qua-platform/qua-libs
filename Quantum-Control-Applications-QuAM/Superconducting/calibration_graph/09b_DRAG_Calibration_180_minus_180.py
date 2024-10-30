@@ -127,7 +127,7 @@ with program() as drag_calibration:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit)
+                        active_reset(qubit, "readout")
                     else:
                         qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()

@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     max_amp_factor: float = 1.2
     amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 100
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     timeout: int = 100
@@ -127,7 +127,7 @@ with program() as power_rabi:
                 with for_(*from_array(a, amps)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit, "readout")
                     else:
                         wait(qubit.thermalization_time * u.ns)
 
@@ -249,7 +249,7 @@ else:
         node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
         if N_pi == 1:

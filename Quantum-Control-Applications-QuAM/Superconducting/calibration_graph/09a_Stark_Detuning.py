@@ -123,7 +123,7 @@ with program() as stark_detuning:
                 with for_(*from_array(df, dfs)):
                     # Initialize the qubits
                     if reset_type == "active":
-                        active_reset(qubit)
+                        active_reset(qubit, "readout")
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
 

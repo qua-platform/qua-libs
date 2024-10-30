@@ -111,7 +111,7 @@ with program() as t1:
             save(n, n_st)
             with for_(*from_array(t, idle_times)):
                 if node.parameters.reset_type == "active":
-                    active_reset(qubit)
+                    active_reset(qubit, "readout")
                 else:
                     qubit.resonator.wait(qubit.thermalization_time * u.ns)
                     qubit.align()

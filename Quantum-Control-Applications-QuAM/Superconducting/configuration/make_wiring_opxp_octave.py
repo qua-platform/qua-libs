@@ -5,6 +5,7 @@ from quam_libs.quam_builder.machine import build_quam_wiring
 
 # Define static parameters
 host_ip = "127.0.0.1"  # QOP IP address
+port = None  # QOP Port
 cluster_name = "Cluster_1"  # Name of the cluster
 # Desired location of wiring.json and state.json
 # The folder must not contain other json files.

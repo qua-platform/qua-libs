@@ -56,7 +56,7 @@ class Parameters(NodeParameters):
     operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 500
     frequency_step_in_mhz: float = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
@@ -230,7 +230,7 @@ else:
     node.results["fit_results"] = fit_results
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
 
     for ax, qubit in grid_iter(grid):

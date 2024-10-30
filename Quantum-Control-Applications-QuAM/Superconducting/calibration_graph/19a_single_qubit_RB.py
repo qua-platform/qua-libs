@@ -248,7 +248,7 @@ with program() as randomized_benchmarking:
                             align()
                         # Initialize the qubits
                         if reset_type == "active":
-                            active_reset(qubit)
+                            active_reset(qubit, "readout")
                         else:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
@@ -352,7 +352,7 @@ else:
 
 # %% {Plotting}
 if not node.parameters.simulate:
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])

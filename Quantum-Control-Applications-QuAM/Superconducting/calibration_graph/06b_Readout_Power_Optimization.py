@@ -112,7 +112,7 @@ with program() as iq_blobs:
             save(n, n_st)
             with for_(*from_array(a, amps)):
                 if reset_type == "active":
-                    active_reset(machine, qubit.name)
+                    active_reset(qubit, "readout")
                 elif reset_type == "thermal":
                     wait(qubit.thermalization_time * u.ns)
                 else:
@@ -126,7 +126,7 @@ with program() as iq_blobs:
                 save(Q_g[i], Q_g_st[i])
                 
                 if reset_type == "active":
-                    active_reset(machine, qubit.name)
+                    active_reset(qubit, "readout")
                 elif reset_type == "thermal":
                     wait(qubit.thermalization_time * u.ns)
                 else:

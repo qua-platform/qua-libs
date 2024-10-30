@@ -59,7 +59,7 @@ class Parameters(NodeParameters):
     max_drag_coefficient_factor: float = 1.2
     drag_coefficient_factor_step: float = 0.099  #0.02
 
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
+    flux_point_joint_or_independent: Literal['joint', 'independent'] = "independent"
     reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
     simulate: bool = False
     timeout: int = 100
@@ -348,7 +348,7 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
             # Only played the depth corresponding to target_depth
             with for_(n, 0, n < n_avg, n + 1):
                 if reset_type == "active":
-                    active_reset(machine, qubit.name)
+                    active_reset(qubit, "readout")
                 else:
                     wait(qubit.thermalization_time * u.ns)
                 # Align the two elements to play the sequence after qubit initialization
