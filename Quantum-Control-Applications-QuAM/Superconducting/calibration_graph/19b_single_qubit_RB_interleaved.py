@@ -51,7 +51,7 @@ class Parameters(NodeParameters):
     max_circuit_depth: int = 1000  # Maximum circuit depth
     delta_clifford: int = 10
     seed: int = 345324
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     timeout: int = 100

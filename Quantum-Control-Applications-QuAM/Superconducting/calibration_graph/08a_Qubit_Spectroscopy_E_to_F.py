@@ -56,7 +56,7 @@ class Parameters(NodeParameters):
     operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 500
     frequency_step_in_mhz: float = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 

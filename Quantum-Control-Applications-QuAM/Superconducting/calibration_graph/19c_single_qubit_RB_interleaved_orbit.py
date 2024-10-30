@@ -59,7 +59,7 @@ class Parameters(NodeParameters):
     max_drag_coefficient_factor: float = 1.2
     drag_coefficient_factor_step: float = 0.099  #0.02
 
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
+    flux_point_joint_or_independent: Literal['joint', 'independent'] = "independent"
     reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
     simulate: bool = False
     timeout: int = 100

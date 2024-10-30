@@ -38,7 +38,7 @@ class Parameters(NodeParameters):
     amplitude_factor: float = 0.5
     cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
+    flux_point_joint_or_independent: Literal['joint', 'independent'] = "independent"
     simulate: bool = False
     timeout: int = 100
     reset_filters: bool = False

@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.5
     amp_factor_step: float = 0.005
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     timeout: int = 100
 
