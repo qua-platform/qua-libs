@@ -264,7 +264,7 @@ for q in qubits:
 
 
 # %%
-grid_names = [f'{q.name}_0' for q in qubits]
+grid_names = [q.grid_location for q in qubits]
 grid = QubitGrid(ds, grid_names)
 for ax, qubit in grid_iter(grid):
     ds.sel(qubit = qubit['qubit']).state.plot(ax = ax)

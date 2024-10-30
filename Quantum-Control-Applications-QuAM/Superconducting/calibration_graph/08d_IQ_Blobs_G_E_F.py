@@ -258,7 +258,7 @@ else:
         node.results["results"][q.name]["confusion_matrix"] = confusion
 
     # %% {Plotting}
-    grid_names = [f"{q.name}_0" for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     # TODO: maybe wrap it up in a function plot_IQ_blobs?
     for ax, qubit in grid_iter(grid):

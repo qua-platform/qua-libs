@@ -219,7 +219,7 @@ if not node.parameters.simulate:
 node.results = {"ds": ds}
 # %%
 if not node.parameters.simulate:
-    grid_names = [f'{q.name}_0' for q in qubits]
+    grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
         if node.parameters.use_state_discrimination:
