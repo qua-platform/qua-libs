@@ -33,7 +33,7 @@ class QuAM(QuamRoot):
     octaves: Dict[str, Octave] = field(default_factory=dict)
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
-    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
+    qubit_pairs: List[TransmonPair] = field(default_factory=list)
     wiring: dict = field(default_factory=dict)
     network: dict = field(default_factory=dict)
 
