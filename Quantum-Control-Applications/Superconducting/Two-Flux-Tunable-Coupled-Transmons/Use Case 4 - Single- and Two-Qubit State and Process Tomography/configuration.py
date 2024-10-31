@@ -55,7 +55,7 @@ qubit_LO_q1 = 4.75 * u.GHz
 qubit_LO_q2 = qubit_LO_q1
 
 # Qubits IF
-qubit_IF_q1 = (-90) * u.MHz 
+qubit_IF_q1 = (-90) * u.MHz
 qubit_IF_q2 = (-158) * u.MHz
 
 # Relaxation time
@@ -271,7 +271,6 @@ ge_threshold_q2 = 0.0
 
 config = {
     "version": 1,
-
     "controllers": {
         "con1": {
             "analog_outputs": {
@@ -299,7 +298,6 @@ config = {
             },
         },
     },
-
     "elements": {
         "rr1": {
             "RF_inputs": {"port": ("octave1", 1)},
@@ -379,17 +377,13 @@ config = {
             "singleInput": {
                 "port": ("con1", 3),
             },
-            "operations": {
-                "zero": "zero_flux"
-            },
+            "operations": {"zero": "zero_flux"},
         },
         "q2_z": {
             "singleInput": {
                 "port": ("con1", 4),
             },
-            "operations": {
-                "zero": "zero_flux"
-            },
+            "operations": {"zero": "zero_flux"},
         },
         "tc12": {
             "singleInput": {
@@ -400,7 +394,6 @@ config = {
             },
         },
     },
-
     "octaves": {
         "octave1": {
             "RF_outputs": {
@@ -432,7 +425,6 @@ config = {
             "connectivity": "con1",
         }
     },
-
     "pulses": {
         "const_pulse": {
             "operation": "control",
@@ -537,7 +529,6 @@ config = {
                 "Q": "minus_y90_Q_wf_q1",
             },
         },
-
         "x90_pulse_q2": {
             "operation": "control",
             "length": pi_len,
@@ -585,13 +576,11 @@ config = {
                 "I": "minus_y90_I_wf_q2",
                 "Q": "minus_y90_Q_wf_q2",
             },
-        }
+        },
     },
-
     "waveforms": {
         "const_wf": {"type": "constant", "sample": const_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
-
         "x90_I_wf_q1": {"type": "arbitrary", "samples": x90_I_wf_q1.tolist()},
         "x90_Q_wf_q1": {"type": "arbitrary", "samples": x90_Q_wf_q1.tolist()},
         "x180_I_wf_q1": {"type": "arbitrary", "samples": x180_I_wf_q1.tolist()},
@@ -604,9 +593,7 @@ config = {
         "y180_Q_wf_q1": {"type": "arbitrary", "samples": y180_Q_wf_q1.tolist()},
         "minus_y90_I_wf_q1": {"type": "arbitrary", "samples": minus_y90_I_wf_q1.tolist()},
         "minus_y90_Q_wf_q1": {"type": "arbitrary", "samples": minus_y90_Q_wf_q1.tolist()},
-
         "readout_wf_q1": {"type": "constant", "sample": readout_amp_q1},
-
         "x90_I_wf_q2": {"type": "arbitrary", "samples": x90_I_wf_q2.tolist()},
         "x90_Q_wf_q2": {"type": "arbitrary", "samples": x90_Q_wf_q2.tolist()},
         "x180_I_wf_q2": {"type": "arbitrary", "samples": x180_I_wf_q2.tolist()},
@@ -619,14 +606,11 @@ config = {
         "y180_Q_wf_q2": {"type": "arbitrary", "samples": y180_Q_wf_q2.tolist()},
         "minus_y90_I_wf_q2": {"type": "arbitrary", "samples": minus_y90_I_wf_q2.tolist()},
         "minus_y90_Q_wf_q2": {"type": "arbitrary", "samples": minus_y90_Q_wf_q2.tolist()},
-
         "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
     },
-
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
     },
-
     "integration_weights": {
         "cosine_weights": {
             "cosine": [(1.0, readout_len)],
@@ -687,6 +671,6 @@ config = {
         "opt_minus_sine_weights_q1": {
             "cosine": opt_weights_minus_imag_q1,
             "sine": opt_weights_minus_real_q1,
-        }
+        },
     },
 }

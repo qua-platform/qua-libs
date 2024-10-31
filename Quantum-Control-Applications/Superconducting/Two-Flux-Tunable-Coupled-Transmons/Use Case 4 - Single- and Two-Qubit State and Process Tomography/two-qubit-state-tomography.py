@@ -134,7 +134,7 @@ with program() as two_qubit_state_tomography:
 
                 with case_(3):  # projection along Z1, Z2
 
-                    wait(pi_len//4, f"q{qubit1}_xy", f"q{qubit2}_xy")
+                    wait(pi_len // 4, f"q{qubit1}_xy", f"q{qubit2}_xy")
                     # Stokes parameter for this case: P00 + P10 - P01 - P11
 
                 with case_(4):  # projection along X1, Z2
@@ -183,7 +183,7 @@ with program() as two_qubit_state_tomography:
 
                 with case_(12):  # projection along Z1, Z2
 
-                    wait(pi_len//4, f"q{qubit1}_xy", f"q{qubit2}_xy")
+                    wait(pi_len // 4, f"q{qubit1}_xy", f"q{qubit2}_xy")
                     # Stokes parameter for this case: P00 + P01 - P10 - P11
 
                 with case_(13):  # projection along Z1, X2
@@ -198,7 +198,7 @@ with program() as two_qubit_state_tomography:
 
                 with case_(15):  # projection along Z1, Z2
 
-                    wait(pi_len//4, f"q{qubit1}_xy", f"q{qubit2}_xy")
+                    wait(pi_len // 4, f"q{qubit1}_xy", f"q{qubit2}_xy")
                     # Stokes parameter for this case: P00 + P11 - P10 - P01
 
                 align()
