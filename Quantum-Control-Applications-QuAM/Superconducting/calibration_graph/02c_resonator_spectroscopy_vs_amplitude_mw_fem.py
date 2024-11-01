@@ -81,9 +81,12 @@ machine = QuAM.load()
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+# qmm = machine.connect()
 
 # Get the relevant QuAM components
+if node.parameters.max_amp < -20:
+    raise ValueError(f"The maximum amplitude needs to be >= -20 dBm, got {node.parameters.max_amp}")
+
 if node.parameters.qubits is None or node.parameters.qubits == '':
     qubits = machine.active_qubits
 else:
@@ -123,6 +126,7 @@ config = machine.generate_config()
 amp_max = 10**(-(node.parameters.max_power_dbm - node.parameters.max_power_dbm) / 20)
 amp_min = 10**(-(node.parameters.max_power_dbm - node.parameters.min_power_dbm) / 20)
 
+# %%
 amps = np.geomspace(amp_min, amp_max, 100)  # 100 points from 0.01 to 1.0, logarithmically spaced
 
 # The frequency sweep around the resonator resonance frequencies f_opt
@@ -277,15 +281,16 @@ def abs_amp(q):
         return amp * max_amp
     return foo
 
-ds = ds.assign_coords({'freq_full' : (['qubit','freq'],np.array([abs_freq(q)(dfs) for q in qubits]))})
-ds = ds.assign_coords({'abs_amp' : (['qubit','amp'],np.array([abs_amp(q)(amps) for q in qubits]))})
-# Convert absolute amplitude in volts to dBm
-def volts_to_dbm(voltage, impedance=50):
-    power_watts = (voltage ** 2) / impedance
-    power_dbm = 10 * np.log10(power_watts * 1000)
-    return power_dbm
+ds = ds.assign_coords(
+    {'freq_full' : (['qubit','freq'],np.array([abs_freq(q)(dfs) for q in qubits]))}
+)
+ds = ds.assign_coords(
+    {'abs_amp' : (['qubit','amp'],np.array([abs_amp(q)(amps) for q in qubits]))}
+)
+ds = ds.assign_coords(
+    {'power_dbm': (['qubit', 'amp'], np.array([node.parameters.max_amp * abs_amp -node.parameters.ro_line_attenuation_dB for abs_amp in ds.abs_amp.values]))}
+)
 
-ds = ds.assign_coords({'power_dbm': (['qubit', 'amp'], np.array([volts_to_dbm(q)-node.parameters.ro_line_attenuation_dB for q in ds.abs_amp.values]))})
 ds.power_dbm.attrs['long_name'] = 'Power'
 ds.power_dbm.attrs['units'] = 'dBm'
 
