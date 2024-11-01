@@ -30,17 +30,24 @@ def add_transmon_pair_cross_resonance_component(machine: QuAM, wiring_path: str,
     qubit_pair_name = f"{qubit_control_name}_{qubit_target_name}"
     cross_resonance_name = f"cross_resonance_{qubit_pair_name}"
 
-    if all(key in ports for key in iq_in_out_channel_ports):
+    if all(key in iq_in_out_channel_ports for key in ports):
         transmon_pair = TransmonPair(
             id=cross_resonance_name,
             qubit_control=f"{wiring_path}/control_qubit",
             qubit_target=f"{wiring_path}/target_qubit",
             cross_resonance=CrossResonance(
-                id=cross_resonance_name, opx_output=f"{wiring_path}/opx_output",
-                LO_frequency=f"{wiring_path}/target_qubit/downorup converter........", )
+                id=cross_resonance_name,
+                opx_output_I=f"{wiring_path}/opx_output_I",
+                opx_output_Q=f"{wiring_path}/opx_output_Q",
+                intermediate_frequency="#./inferred_intermediate_frequency",
+                # todo: change this to be upconverter frequency
+                frequency_converter_up=ports.data["control_qubit"] + "/xy/frequency_converter_up",
+                target_qubit_LO_frequency=ports.data["target_qubit"] + "/xy/LO_frequency",
+                target_qubit_IF_frequency=ports.data["target_qubit"] + "/xy/intermediate_frequency"
+            )
         )
 
-    elif all(key in ports for key in mw_in_out_channel_ports):
+    elif all(key in mw_in_out_channel_ports for key in ports):
         transmon_pair = TransmonPair(
             id=cross_resonance_name,
             qubit_control=f"{wiring_path}/control_qubit",

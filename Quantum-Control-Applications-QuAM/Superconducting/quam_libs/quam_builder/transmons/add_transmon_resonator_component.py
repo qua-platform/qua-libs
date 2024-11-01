@@ -14,7 +14,7 @@ def add_transmon_resonator_component(transmon: Transmon, wiring_path: str, ports
     depletion_time = 1 * u.us
     time_of_flight = 28  # 4ns above default so that it appears in state.json
 
-    if all(key in ports for key in iq_in_out_channel_ports):
+    if all(key in iq_in_out_channel_ports for key in ports):
         transmon.resonator = ReadoutResonatorIQ(
             opx_output_I=f"{wiring_path}/opx_output_I",
             opx_output_Q=f"{wiring_path}/opx_output_Q",
@@ -39,7 +39,7 @@ def add_transmon_resonator_component(transmon: Transmon, wiring_path: str, ports
         RF_input_resonator.channel = transmon.resonator.get_reference()
         RF_input_resonator.LO_frequency = 6.2 * u.GHz
 
-    elif all(key in ports for key in mw_in_out_channel_ports):
+    elif all(key in mw_in_out_channel_ports for key in ports):
         transmon.resonator = ReadoutResonatorMW(
             opx_output=f"{wiring_path}/opx_output",
             opx_input=f"{wiring_path}/opx_input",

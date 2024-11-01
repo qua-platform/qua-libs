@@ -7,13 +7,21 @@ import numpy as np
 
 __all__ = ["CrossResonance", "CrossResonanceIQ", "CrossResonanceMW"]
 
+@quam_dataclass
+class CrossResonanceBase:
+    target_qubit_LO_frequency: int
+    target_qubit_IF_frequency: int
 
 @quam_dataclass
-class CrossResonanceIQ(IQChannel):
+class CrossResonanceIQ(IQChannel, CrossResonanceBase):
 
     @property
     def upconverter_frequency(self):
         return self.LO_frequency
+
+    @property
+    def inferred_intermediate_frequency(self):
+        return self.target_qubit_LO_frequency + self.target_qubit_IF_frequency - self.LO_frequency
 
     # def get_output_power(self, operation, Z=50) -> float:
     #     power = self.frequency_converter_up.power
@@ -23,7 +31,10 @@ class CrossResonanceIQ(IQChannel):
     #     return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
 
 @quam_dataclass
-class CrossResonanceMW(MWChannel):
+class CrossResonanceMW(MWChannel, CrossResonanceBase):
+    @property
+    def inferred_intermediate_frequency(self):
+        return self.target_qubit_LO_frequency + self.target_qubit_IF_frequency - self.LO_frequency
 
     @property
     def upconverter_frequency(self):

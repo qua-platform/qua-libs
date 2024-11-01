@@ -105,13 +105,13 @@ def add_transmons(machine: QuAM):
                     wiring_path = f"#/wiring/{element_type}/{qubit_pair_id}/{line_type}"
                     if line_type == WiringLineType.COUPLER.value:
                         transmon_pair = add_transmon_pair_tunable_coupler_component(machine, wiring_path, ports)
-                    if line_type == WiringLineType.CROSS_DRIVE.value:
+                    elif line_type == WiringLineType.CROSS_RESONANCE.value:
                         # add cross resonance
                         transmon_pair = add_transmon_pair_cross_resonance_component(machine, wiring_path, ports)
                         # TODO: potentially add zz-inducing drive as well here
                     else:
                         raise ValueError(f'Unknown line type: {line_type}')
-                    machine.qubit_pairs.append(transmon_pair)
+                    machine.qubit_pairs[transmon_pair.name] = transmon_pair
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
 
@@ -121,7 +121,7 @@ def add_pulses(machine: QuAM):
             add_default_transmon_pulses(transmon)
 
     if hasattr(machine, 'qubit_pairs'):
-        for qubit_pair in machine.qubit_pairs:
+        for qubit_pair in machine.qubit_pairs.values():
             add_default_transmon_pair_pulses(qubit_pair)
 
 def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):

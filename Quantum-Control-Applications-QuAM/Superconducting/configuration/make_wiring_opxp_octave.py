@@ -32,7 +32,7 @@ allocate_wiring(connectivity, instruments)
 connectivity.add_qubit_drive_lines(qubits=[1,2])
 allocate_wiring(connectivity, instruments, block_used_channels=False)
 
-connectivity.add_qubit_pair_cross_resonance_lines(qubit_pairs=[(2,1)], constraints=q2_xy_ch)  # Cross Drive
+connectivity.add_qubit_pair_cross_resonance_lines(qubit_pairs=[(1,2)], constraints=q2_xy_ch)  # Cross Drive
 allocate_wiring(connectivity, instruments)
 
 # connectivity.add_qubit_pair_zz_drive_lines(qubit_pairs=[(2,1)], constraints=q2_xy_ch)  # Cross Drive
@@ -45,6 +45,6 @@ allocate_wiring(connectivity, instruments)
 build_quam_wiring(connectivity, host_ip, cluster_name, path)
 
 # View wiring schematic
-visualize(connectivity.elements, available_channels=instruments.available_channels)
+# visualize(connectivity.elements, available_channels=instruments.available_channels)
 
 # %%
