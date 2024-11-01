@@ -81,7 +81,7 @@ machine = QuAM.load()
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
 # Open Communication with the QOP
-# qmm = machine.connect()
+qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.max_amp < -20:
