@@ -102,7 +102,7 @@ def add_default_transmon_pair_pulses(transmon_pair):
         transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
     if transmon_pair.cross_resonance:
-        # TODO: add proper references to the attributes of target qubits
-        transmon_pair.cross_resonance.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
+        transmon_pair.cross_resonance.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
-    # TODO: add zz. likewise for references.
+    if transmon_pair.zz_drive:
+        transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)

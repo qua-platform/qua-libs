@@ -6,20 +6,9 @@ from quam_libs.quam_builder.machine import save_machine
 import numpy as np
 
 
-def get_band(freq):
-    if 50e6 <= freq < 5.5e9:
-        return 1
-    elif 4.5e9 <= freq < 7.5e9:
-        return 2
-    elif 6.5e9 <= freq <= 10.5e9:
-        return 3
-    else:
-        raise ValueError(f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]")
-
-
 path = "./quam_state"
 
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 u = unit(coerce_to_integer=True)
 
@@ -27,54 +16,69 @@ u = unit(coerce_to_integer=True)
 # machine.active_qubit_names = ["q0"]
 
 # Update frequencies
-rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * u.GHz
-rr_LO = 4.75 * u.GHz
+rr_freq = np.array([8.55, 8.60, 8.65, 8.70]) * u.GHz
+rr_LO = 8.75 * u.GHz
 rr_if = rr_freq - rr_LO
-rr_max_power_dBm = 4
 
-xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.254, 5.978]) * u.GHz
-xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 6.0]) * u.GHz
+xy_freq = np.array([6.20, 6.25, 6.30, 6.35]) * u.GHz
+xy_LO = np.array([6.40, 6.40, 6.60, 6.60]) * u.GHz
+xy_if_detuning = np.array([-10, -15, -20, -25]) * u.MHz
 xy_if = rr_freq - rr_LO
-xy_max_power_dBm = 1
+xy_if_detuned = xy_if + xy_if_detuning
 
 # NOTE: be aware of coupled ports for bands
 for i, q in enumerate(machine.qubits):
     ## Update qubit rr freq and power
-    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-    machine.qubits[q].resonator.opx_input.band = get_band(rr_LO)
-    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
+    qb = machine.qubits[q]
+    qb.resonator.frequency_converter_up.LO_frequency = round(rr_LO)
+    qb.resonator.frequency_converter_down.LO_frequency = round(rr_LO)
+    qb.resonator.intermediate_frequency = round(rr_if[i])
 
     ## Update qubit xy freq and power
-    machine.qubits[q].xy.opx_output.full_scale_power_dbm = xy_max_power_dBm
-    machine.qubits[q].xy.opx_output.upconverter_frequency = xy_LO[i]
-    machine.qubits[q].xy.opx_output.band = get_band(xy_LO[i])
-    machine.qubits[q].xy.intermediate_frequency = xy_if[i]
+    qb.xy.frequency_converter_up.LO_frequency = round(xy_LO[i])
+    qb.xy.intermediate_frequency = round(xy_if[i])
 
-    # Update flux channels
-    machine.qubits[q].z.opx_output.output_mode = "amplified"
-    machine.qubits[q].z.opx_output.upsampling_mode = "pulse"
+    ## Update qubit xy detuned freq and power
+    qb.xy_detuned.frequency_converter_up.LO_frequency = round(xy_LO[i])
+    qb.xy_detuned.intermediate_frequency = round(xy_if_detuned[i])
 
     ## Update pulses
     # readout
-    machine.qubits[q].resonator.operations["readout"].length = 2.5 * u.us
-    machine.qubits[q].resonator.operations["readout"].amplitude = 1e-3
+    qb.resonator.operations["readout"].length = 2.5 * u.us
+    qb.resonator.operations["readout"].amplitude = 1e-3
     # Qubit saturation
-    machine.qubits[q].xy.operations["saturation"].length = 20 * u.us
-    machine.qubits[q].xy.operations["saturation"].amplitude = 0.25
+    qb.xy.operations["saturation"].length = 20 * u.us
+    qb.xy.operations["saturation"].amplitude = 0.25
     # Single qubit gates - DragCosine
-    machine.qubits[q].xy.operations["x180_DragCosine"].length = 48
-    machine.qubits[q].xy.operations["x180_DragCosine"].amplitude = 0.2
-    machine.qubits[q].xy.operations["x90_DragCosine"].amplitude = (
-        machine.qubits[q].xy.operations["x180_DragCosine"].amplitude / 2
-    )
+    qb.xy.operations["x180_DragCosine"].length = 48
+    qb.xy.operations["x180_DragCosine"].amplitude = 0.2
+    qb.xy.operations["x90_DragCosine"].amplitude = qb.xy.operations["x180_DragCosine"].amplitude / 2
     # Single qubit gates - Square
-    machine.qubits[q].xy.operations["x180_Square"].length = 40
-    machine.qubits[q].xy.operations["x180_Square"].amplitude = 0.1
-    machine.qubits[q].xy.operations["x90_Square"].amplitude = (
-        machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
-    )
+    qb.xy.operations["x180_Square"].length = 40
+    qb.xy.operations["x180_Square"].amplitude = 0.1
+    qb.xy.operations["x90_Square"].amplitude = qb.xy.operations["x180_Square"].amplitude / 2
+
+from quam.components import pulses
+
+for i, qp in enumerate(machine.qubit_pairs):
+    qb_pair = machine.qubit_pairs[qp]
+    qbc = qb_pair.qubit_control
+    qbt = qb_pair.qubit_target
+    cr = qb_pair.cross_resonance
+    zz = qb_pair.zz_drive
+
+    # CR gates - Square
+    qbt.xy.operations[f"{cr.name}_Square"] = pulses.SquarePulse(amplitude=-0.25, length=100, axis_angle=0, digital_marker="ON")
+    qbt.xy.operations[f"{cr.name}_Square"].amplitude = 0.1
+    qbt.xy.operations[f"{cr.name}_Square"].length = f"#/qubit_pairs/{qb_pair.name}/cross_resonance/operations/square/length"
+    qbt.xy.operations[f"{cr.name}_Square"].axis_angle = 0  
+
+    # ZZ gates - Square
+    qbt.xy_detuned.operations[f"{zz.name}_Square"] = pulses.SquarePulse(amplitude=-0.25, length=100, axis_angle=0, digital_marker="ON")
+    qbt.xy_detuned.operations[f"{zz.name}_Square"].amplitude = 0.1
+    qbt.xy_detuned.operations[f"{zz.name}_Square"].length = f"#/qubit_pairs/{qb_pair.name}/zz_drive/operations/square/length"
+    qbt.xy_detuned.operations[f"{zz.name}_Square"].axis_angle = 0
+        
 
 # %%
 # save into state.json
