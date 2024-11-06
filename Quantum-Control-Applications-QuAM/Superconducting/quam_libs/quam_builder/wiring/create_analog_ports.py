@@ -17,7 +17,7 @@ def create_octave_port(channel: AnyInstrumentChannel) -> (str, str):
 
     # todo: handle "octave" in OPX+ vs "oct" in new QOP?
     reference = OCTAVES_BASE_JSON_PATH
-    reference += f"/octave{channel.con}"
+    reference += f"/oct{channel.con}"
     reference += f"/RF_{channel.io_type}s"
     reference += f"/{channel.port}"
 
