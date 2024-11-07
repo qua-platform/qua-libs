@@ -20,6 +20,7 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from typing import Optional, Literal, List
 
+
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None

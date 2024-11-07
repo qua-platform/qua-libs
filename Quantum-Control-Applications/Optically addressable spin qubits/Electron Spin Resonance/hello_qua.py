@@ -1,6 +1,7 @@
 """
 A script used for playing with QUA
 """
+
 from qm import SimulationConfig
 from qm.qua import *
 from qm import LoopbackInterface

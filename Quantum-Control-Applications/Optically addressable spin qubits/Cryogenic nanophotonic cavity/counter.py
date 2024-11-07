@@ -1,6 +1,7 @@
 """
 counter.py: Starts a counter which reports the current counts from the SPCM.
 """
+
 from qm import QuantumMachinesManager
 from qm.qua import *
 from qm import SimulationConfig

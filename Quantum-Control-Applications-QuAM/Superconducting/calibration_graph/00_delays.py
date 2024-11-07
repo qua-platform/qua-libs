@@ -1,4 +1,4 @@
-#%%
+# %%
 from qm.qua import *
 from qualang_tools.units import unit
 from quam_libs.components import QuAM

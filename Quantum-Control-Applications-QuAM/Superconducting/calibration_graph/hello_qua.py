@@ -1,4 +1,4 @@
-#%%
+# %%
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.units import unit
