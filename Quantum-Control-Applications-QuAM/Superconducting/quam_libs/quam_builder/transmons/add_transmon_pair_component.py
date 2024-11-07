@@ -14,7 +14,7 @@ def add_transmon_pair_component(machine: QuAM, wiring_path: str, ports: Dict[str
             id=coupler_name,
             qubit_control=f"{wiring_path}/control_qubit",
             qubit_target=f"{wiring_path}/target_qubit",
-            coupler=TunableCoupler(id=coupler_name, opx_output=f"{wiring_path}/opx_output")
+            coupler=TunableCoupler(id=coupler_name, opx_output=f"{wiring_path}/opx_output"),
         )
 
     else:

@@ -57,9 +57,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters()
-)
+node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -180,18 +178,14 @@ else:
     ds.freq_full.attrs["long_name"] = "Frequency"
     ds.freq_full.attrs["units"] = "GHz"
     # Add the current axis of each qubit to the dataset coordinates for plotting
-    current = np.array(
-        [ds.flux.values / node.parameters.input_line_impedance_in_ohm for q in qubits]
-    )
+    current = np.array([ds.flux.values / node.parameters.input_line_impedance_in_ohm for q in qubits])
     ds = ds.assign_coords({"current": (["qubit", "flux"], current)})
     ds.current.attrs["long_name"] = "Current"
     ds.current.attrs["units"] = "A"
     # Add attenuated current to dataset
     attenuation_factor = 10 ** (-node.parameters.line_attenuation_in_db / 20)
     attenuated_current = ds.current * attenuation_factor
-    ds = ds.assign_coords(
-        {"attenuated_current": (["qubit", "flux"], attenuated_current.values)}
-    )
+    ds = ds.assign_coords({"attenuated_current": (["qubit", "flux"], attenuated_current.values)})
     ds.attenuated_current.attrs["long_name"] = "Attenuated Current"
     ds.attenuated_current.attrs["units"] = "A"
     # Add the dataset to the node
@@ -209,11 +203,7 @@ else:
     idle_offset = idle_offset / fit_osc.sel(fit_vals="f") / 2 / np.pi
     # finding the location of the minimum frequency flux point
     flux_min = idle_offset + ((idle_offset < 0) - 0.5) / fit_osc.sel(fit_vals="f")
-    flux_min = (
-        flux_min * (np.abs(flux_min) < 0.5)
-        + 0.5 * (flux_min > 0.5)
-        - 0.5 * (flux_min < -0.5)
-    )
+    flux_min = flux_min * (np.abs(flux_min) < 0.5) + 0.5 * (flux_min > 0.5) - 0.5 * (flux_min < -0.5)
     # finding the frequency as the sweet spot flux
     rel_freq_shift = peak_freq.sel(flux=idle_offset, method="nearest")
 
@@ -221,14 +211,10 @@ else:
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
-        fit_results[q.name]["resonator_frequency"] = (
-            rel_freq_shift.sel(qubit=q.name).values + q.resonator.RF_frequency
-        )
+        fit_results[q.name]["resonator_frequency"] = rel_freq_shift.sel(qubit=q.name).values + q.resonator.RF_frequency
         fit_results[q.name]["min_offset"] = float(flux_min.sel(qubit=q.name).data)
         fit_results[q.name]["offset"] = float(idle_offset.sel(qubit=q.name).data)
-        fit_results[q.name]["dv_phi0"] = (
-            1 / fit_osc.sel(fit_vals="f", qubit=q.name).values
-        )
+        fit_results[q.name]["dv_phi0"] = 1 / fit_osc.sel(fit_vals="f", qubit=q.name).values
         fit_results[q.name]["m_pH"] = (
             1e12
             * 2.068e-15
@@ -239,9 +225,7 @@ else:
             )
         )
         print(f"DC offset for {q.name} is {fit_results[q.name]['offset'] * 1e3:.0f} mV")
-        print(
-            f"Resonator frequency for {q.name} is {fit_results[q.name]['resonator_frequency'] / 1e9:.3f} GHz"
-        )
+        print(f"Resonator frequency for {q.name} is {fit_results[q.name]['resonator_frequency'] / 1e9:.3f} GHz")
         print(f"(shift of {rel_freq_shift.sel(qubit = q.name).values / 1e6:.0f} MHz)")
 
     node.results["fit_results"] = fit_results
@@ -285,10 +269,7 @@ else:
         # Location of the current resonator frequency
         ax.plot(
             idle_offset.loc[qubit].values,
-            (
-                machine.qubits[qubit["qubit"]].resonator.RF_frequency
-                + rel_freq_shift.sel(qubit=qubit["qubit"]).values
-            )
+            (machine.qubits[qubit["qubit"]].resonator.RF_frequency + rel_freq_shift.sel(qubit=qubit["qubit"]).values)
             * 1e-9,
             "r*",
             markersize=10,
@@ -312,14 +293,10 @@ else:
 
                 if update_flux_min:
                     q.z.min_offset = float(flux_min.sel(qubit=q.name).data)
-            q.resonator.intermediate_frequency += float(
-                rel_freq_shift.sel(qubit=q.name).data
-            )
+            q.resonator.intermediate_frequency += float(rel_freq_shift.sel(qubit=q.name).data)
             q.phi0_voltage = fit_results[q.name]["dv_phi0"]
             q.phi0_current = (
-                fit_results[q.name]["dv_phi0"]
-                * node.parameters.input_line_impedance_in_ohm
-                * attenuation_factor
+                fit_results[q.name]["dv_phi0"] * node.parameters.input_line_impedance_in_ohm * attenuation_factor
             )
 
     # %% {Save_results}

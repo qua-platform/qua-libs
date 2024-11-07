@@ -160,9 +160,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
 
     # Fix the structure of ds to avoid tuples
     def extract_value(element):
@@ -194,9 +192,7 @@ else:
         )
         # TODO: check the difference between the above and the below
         # Get the rotated 'I' quadrature
-        I_rot = ds.I_g.sel(qubit=q.name) * np.cos(angle) - ds.Q_g.sel(
-            qubit=q.name
-        ) * np.sin(angle)
+        I_rot = ds.I_g.sel(qubit=q.name) * np.cos(angle) - ds.Q_g.sel(qubit=q.name) * np.sin(angle)
         # Get the blobs histogram along the rotated axis
         hist = np.histogram(I_rot, bins=100)
         # Get the discriminating threshold along the rotated axis
@@ -210,9 +206,7 @@ else:
         node.results["results"][q.name]["angle"] = float(angle)
         node.results["results"][q.name]["threshold"] = float(threshold)
         node.results["results"][q.name]["fidelity"] = float(fidelity)
-        node.results["results"][q.name]["confusion_matrix"] = np.array(
-            [[gg, ge], [eg, ee]]
-        )
+        node.results["results"][q.name]["confusion_matrix"] = np.array([[gg, ge], [eg, ee]])
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
 
     # %% {Plotting}
@@ -287,18 +281,10 @@ else:
         ax.set_yticklabels(labels=["|g>", "|e>"])
         ax.set_ylabel("Prepared")
         ax.set_xlabel("Measured")
-        ax.text(
-            0, 0, f"{100 * confusion[0][0]:.1f}%", ha="center", va="center", color="k"
-        )
-        ax.text(
-            1, 0, f"{100 * confusion[0][1]:.1f}%", ha="center", va="center", color="w"
-        )
-        ax.text(
-            0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w"
-        )
-        ax.text(
-            1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k"
-        )
+        ax.text(0, 0, f"{100 * confusion[0][0]:.1f}%", ha="center", va="center", color="k")
+        ax.text(1, 0, f"{100 * confusion[0][1]:.1f}%", ha="center", va="center", color="w")
+        ax.text(0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w")
+        ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
         ax.set_title(qubit["qubit"])
 
     grid.fig.suptitle("g.s. and e.s. fidelity")
@@ -309,23 +295,23 @@ else:
     # %% {Update_state}
     with node.record_state_updates():
         for qubit in qubits:
-            qubit.resonator.operations[
-                operation_name
-            ].integration_weights_angle -= float(
+            qubit.resonator.operations[operation_name].integration_weights_angle -= float(
                 node.results["results"][qubit.name]["angle"]
             )
             # Convert the thresholds back in demod units
-            qubit.resonator.operations[operation_name].threshold = float(
-                node.results["results"][qubit.name]["threshold"]
-            ) * qubit.resonator.operations[operation_name].length / 2**12
+            qubit.resonator.operations[operation_name].threshold = (
+                float(node.results["results"][qubit.name]["threshold"])
+                * qubit.resonator.operations[operation_name].length
+                / 2**12
+            )
             # todo: add conf matrix to the readout operation rather than the resonator
-            qubit.resonator.operations[operation_name].rus_exit_threshold = float(
-                node.results["results"][qubit.name]["rus_threshold"]
-            ) * qubit.resonator.operations[operation_name].length / 2**12
+            qubit.resonator.operations[operation_name].rus_exit_threshold = (
+                float(node.results["results"][qubit.name]["rus_threshold"])
+                * qubit.resonator.operations[operation_name].length
+                / 2**12
+            )
             if operation_name == "readout":
-                qubit.resonator.confusion_matrix = node.results["results"][qubit.name][
-                    "confusion_matrix"
-                ].tolist()
+                qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

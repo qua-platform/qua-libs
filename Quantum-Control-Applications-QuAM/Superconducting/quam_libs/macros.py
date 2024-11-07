@@ -51,10 +51,10 @@ def multiplexed_readout(qubits, I, I_st, Q, Q_st, sequential=False, amplitude=1.
 
 
 def node_save(
-        quam: QuAM,
-        name: str,
-        data: dict,
-        additional_files: Optional[Union[dict, bool]] = None,
+    quam: QuAM,
+    name: str,
+    data: dict,
+    additional_files: Optional[Union[dict, bool]] = None,
 ):
     # Save results
     if isinstance(additional_files, dict):
@@ -92,7 +92,7 @@ def node_save(
     quam.save(content_mapping={"wiring.json": {"wiring", "network"}})
 
 
-def readout_state(qubit, state, pulse_name: str = 'readout', threshold: float = None, save_qua_var: StreamType = None):
+def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = None, save_qua_var: StreamType = None):
     I = declare(fixed)
     Q = declare(fixed)
     if threshold is None:
@@ -102,8 +102,9 @@ def readout_state(qubit, state, pulse_name: str = 'readout', threshold: float = 
     wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
 
 
-def readout_state_gef(qubit: Transmon, state: QuaVariableType, pulse_name: str = 'readout',
-                      save_qua_var: StreamType = None):
+def readout_state_gef(
+    qubit: Transmon, state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None
+):
     I = declare(fixed)
     Q = declare(fixed)
     diff = declare(fixed, size=3)
@@ -116,17 +117,18 @@ def readout_state_gef(qubit: Transmon, state: QuaVariableType, pulse_name: str =
     for p in range(3):
         assign(
             diff[p],
-            (I - gef_centers[p][0]) * (I - gef_centers[p][0])
-            + (Q - gef_centers[p][1]) * (Q - gef_centers[p][1]),
+            (I - gef_centers[p][0]) * (I - gef_centers[p][0]) + (Q - gef_centers[p][1]) * (Q - gef_centers[p][1]),
         )
     assign(state, Math.argmin(diff))
     wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
 
 
-def active_reset_gef(qubit: Transmon,
-                     readout_pulse_name: str = 'readout',
-                     pi_01_pulse_name: str = 'x180',
-                     pi_12_pulse_name: str = 'EF_x180'):
+def active_reset_gef(
+    qubit: Transmon,
+    readout_pulse_name: str = "readout",
+    pi_01_pulse_name: str = "x180",
+    pi_12_pulse_name: str = "EF_x180",
+):
     res_ar = declare(int)
     success = declare(int)
     assign(success, 0)
@@ -157,11 +159,12 @@ def active_reset_gef(qubit: Transmon,
 
 
 def active_reset(
-        qubit: Transmon,
-        save_qua_var: Optional[StreamType] = None,
-        pi_pulse_name: str = "x180",
-        readout_pulse_name: str = "readout_QND",
-        max_attempts: int = 15):
+    qubit: Transmon,
+    save_qua_var: Optional[StreamType] = None,
+    pi_pulse_name: str = "x180",
+    readout_pulse_name: str = "readout_QND",
+    max_attempts: int = 15,
+):
     pulse = qubit.resonator.operations[readout_pulse_name]
 
     I = declare(fixed)

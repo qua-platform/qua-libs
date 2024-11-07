@@ -6,18 +6,19 @@ from scipy.signal import savgol_filter
 from scipy.signal import deconvolve
 from scipy.optimize import minimize
 
-def transform_to_circle(x,y):
+
+def transform_to_circle(x, y):
     def ellipse_residuals(params, x, y):
         a, b, cx, cy, angle = params
         cos_angle = np.cos(angle)
         sin_angle = np.sin(angle)
         x_rot = cos_angle * (x - cx) + sin_angle * (y - cy)
         y_rot = -sin_angle * (x - cx) + cos_angle * (y - cy)
-        residuals = (x_rot / a)**2 + (y_rot / b)**2 - 1
+        residuals = (x_rot / a) ** 2 + (y_rot / b) ** 2 - 1
         return np.sum(residuals**2)  # Return the sum of squared residuals
 
     # Fit ellipse to points
-    initial_guess = [0.5, 0.5, 0.5, 0.5, 0.]  # Initial guess for ellipse parameters including angle
+    initial_guess = [0.5, 0.5, 0.5, 0.5, 0.0]  # Initial guess for ellipse parameters including angle
     result = minimize(ellipse_residuals, initial_guess, args=(x, y))
     a_fit, b_fit, cx_fit, cy_fit, angle_fit = result.x
 
@@ -61,50 +62,55 @@ def transform_to_circle(x,y):
 
     return x_transformed, y_transformed
 
-def savgol(da, dim, range = 3, order = 2):
-    def diff_func(x): return savgol_filter(
-        x , range, order, deriv=0, delta=1)
+
+def savgol(da, dim, range=3, order=2):
+    def diff_func(x):
+        return savgol_filter(x, range, order, deriv=0, delta=1)
+
     return xr.apply_ufunc(diff_func, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
 
 
-def diff_savgol(da, dim, range = 3, order = 2):
-    def diff_func(x): return savgol_filter(
-        x / (2 * np.pi), range, order, deriv=1, delta=1)
+def diff_savgol(da, dim, range=3, order=2):
+    def diff_func(x):
+        return savgol_filter(x / (2 * np.pi), range, order, deriv=1, delta=1)
+
     return xr.apply_ufunc(diff_func, da, input_core_dims=[[dim]], output_core_dims=[[dim]])
 
-def cryoscope_frequency(da, stable_time_indices, quad_term = -1, sg_range = 3, sg_order = 2, plot = False):
+
+def cryoscope_frequency(da, stable_time_indices, quad_term=-1, sg_range=3, sg_order=2, plot=False):
     da = da.copy()
-    
-    da_max = da.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).max(dim = 'time')
-    da_min = da.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).min(dim = 'time')
-    da_offset = (da_max+da_min)/2
+
+    da_max = da.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).max(dim="time")
+    da_min = da.sel(time=slice(stable_time_indices[0], stable_time_indices[1])).min(dim="time")
+    da_offset = (da_max + da_min) / 2
     da -= da_offset
-    
+
     if plot:
-        plt.scatter(da.sel(axis='x'), da.sel(axis='y'))
-        plt.gca().set_aspect('equal', adjustable='box')
-        plt.xlabel('<X>')
-        plt.ylabel('<Y>')
+        plt.scatter(da.sel(axis="x"), da.sel(axis="y"))
+        plt.gca().set_aspect("equal", adjustable="box")
+        plt.xlabel("<X>")
+        plt.ylabel("<Y>")
         plt.show()
-        
-    angle = apply_angle(da.sel(axis='x') + 1j * da.sel(axis='y'), 'time').rename('angle')
+
+    angle = apply_angle(da.sel(axis="x") + 1j * da.sel(axis="y"), "time").rename("angle")
     if plot:
         angle.plot()
         plt.show()
-        
-    freq_cryoscope = diff_savgol(angle,'time', range = sg_range, order =sg_order).rename('freq')
+
+    freq_cryoscope = diff_savgol(angle, "time", range=sg_range, order=sg_order).rename("freq")
     if plot:
         (-freq_cryoscope).plot()
-        plt.title('Frequency')
+        plt.title("Frequency")
         plt.show()
-    flux_cryoscope = np.sqrt(np.abs(1e9*freq_cryoscope  / quad_term)).fillna(0).rename('flux')
+    flux_cryoscope = np.sqrt(np.abs(1e9 * freq_cryoscope / quad_term)).fillna(0).rename("flux")
     if plot:
         flux_cryoscope.plot()
-        plt.title('Flux')
+        plt.title("Flux")
         plt.show()
     if quad_term == -1:
-        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(time = slice(80,120)).mean(dim = 'time')
+        flux_cryoscope = flux_cryoscope / flux_cryoscope.sel(time=slice(80, 120)).mean(dim="time")
     return flux_cryoscope
+
 
 def expdecay(x, s, a, t):
     """Exponential decay defined as 1 + a * np.exp(-x / t).
@@ -115,6 +121,7 @@ def expdecay(x, s, a, t):
     :return: numpy array for the exponential decay
     """
     return s * (1 + a * np.exp(-(x) / t))
+
 
 def two_expdecay(x, s, a, t, a2, t2):
     """Double exponential decay defined as s * (1 + a * np.exp(-x / t) + a2 * np.exp(-x / t2)).
@@ -129,36 +136,35 @@ def two_expdecay(x, s, a, t, a2, t2):
     return s * (1 + a * np.exp(-(x) / t) + a2 * np.exp(-(x) / t2))
 
 
-def single_exp(da, plot = True):
+def single_exp(da, plot=True):
     first_vals = da.sel(time=slice(0, 1)).mean().values
     final_vals = da.sel(time=slice(20, None)).mean().values
     print(first_vals, final_vals)
-    
-    fit = da.curvefit('time', expdecay,
-                                    p0={'a': 1 - first_vals/final_vals, 't': 50,  's': final_vals}).curvefit_coefficients
 
-    fit_vals = {k: v for k, v in zip(
-        fit.to_dict()['coords']['param']['data'], fit.to_dict()['data'])}
+    fit = da.curvefit(
+        "time", expdecay, p0={"a": 1 - first_vals / final_vals, "t": 50, "s": final_vals}
+    ).curvefit_coefficients
+
+    fit_vals = {k: v for k, v in zip(fit.to_dict()["coords"]["param"]["data"], fit.to_dict()["data"])}
 
     t_s = 1
-    alpha = np.exp(-t_s / fit_vals['t'])
-    A = fit_vals['a']
+    alpha = np.exp(-t_s / fit_vals["t"])
+    A = fit_vals["a"]
     fir = [1 / (1 + A), -alpha / (1 + A)]
     iir = [(A + alpha) / (1 + A)]
-  
-        
+
     if plot:
-        fig,ax = plt.subplots()
-        ax.plot(da.time, da,label =  'data')
-        ax.plot(da.time,
-                    expdecay(da.time, **fit_vals),label = 'fit')
-        ax.grid('all')
+        fig, ax = plt.subplots()
+        ax.plot(da.time, da, label="data")
+        ax.plot(da.time, expdecay(da.time, **fit_vals), label="fit")
+        ax.grid("all")
         ax.legend()
         print(f"Qubit - FIR: {fir}\nIIR: {iir}")
     else:
         fig = None
         ax = None
     return fir, iir, fig, ax, (da.time, expdecay(da.time, **fit_vals))
+
 
 def estimate_fir_coefficients(convolved_signal, step_response, num_coefficients):
     """
@@ -178,6 +184,8 @@ def estimate_fir_coefficients(convolved_signal, step_response, num_coefficients)
         estimated_coefficients = estimated_impulse_response[:num_coefficients]
     else:
         # Zero-pad if shorter
-        estimated_coefficients = np.pad(estimated_impulse_response, (0, num_coefficients - len(estimated_impulse_response)), 'constant')
+        estimated_coefficients = np.pad(
+            estimated_impulse_response, (0, num_coefficients - len(estimated_impulse_response)), "constant"
+        )
 
     return estimated_coefficients

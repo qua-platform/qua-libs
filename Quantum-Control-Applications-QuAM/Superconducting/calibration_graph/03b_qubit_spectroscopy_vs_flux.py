@@ -135,9 +135,7 @@ with program() as multi_qubit_spec_vs_flux:
                     qubit.xy.play(
                         operation,
                         amplitude_scale=operation_amp,
-                        duration=(
-                            operation_len * u.ns if operation_len is not None else None
-                        ),
+                        duration=(operation_len * u.ns if operation_len is not None else None),
                     )
                     qubit.align()
                     # Bring back the flux for readout
@@ -214,26 +212,16 @@ else:
     # Fit the result with a parabola
     parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Try to fit again with a smaller prominence factor (may need some adjustment)
-    if np.any(
-        np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))
-    ):
+    if np.any(np.isnan(np.concatenate(parabolic_fit_results.polyfit_coefficients.values))):
         # Find the resonance dips for each flux point
         peaks = peaks_dips(ds.I, dim="freq", prominence_factor=4)
         # Fit the result with a parabola
         parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Extract relevant fitted parameters
     coeff = parabolic_fit_results.polyfit_coefficients
-    fitted = (
-        coeff.sel(degree=2) * ds.flux**2
-        + coeff.sel(degree=1) * ds.flux
-        + coeff.sel(degree=0)
-    )
+    fitted = coeff.sel(degree=2) * ds.flux**2 + coeff.sel(degree=1) * ds.flux + coeff.sel(degree=0)
     flux_shift = -coeff[1] / (2 * coeff[0])
-    freq_shift = (
-        coeff.sel(degree=2) * flux_shift**2
-        + coeff.sel(degree=1) * flux_shift
-        + coeff.sel(degree=0)
-    )
+    freq_shift = coeff.sel(degree=2) * flux_shift**2 + coeff.sel(degree=1) * flux_shift + coeff.sel(degree=0)
 
     # Save fitting results
     fit_results = {}
@@ -246,23 +234,15 @@ else:
                 offset = q.z.joint_offset
             else:
                 offset = 0.0
-            print(
-                f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV"
-            )
+            print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
             print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
             print(
                 f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
             )
             print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-            print(
-                f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n"
-            )
-            fit_results[q.name]["flux_shift"] = float(
-                flux_shift.sel(qubit=q.name).values
-            )
-            fit_results[q.name]["drive_freq"] = float(
-                freq_shift.sel(qubit=q.name).values
-            )
+            print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
+            fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
+            fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
             fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
         else:
             print(f"No fit for qubit {q.name}")
@@ -279,13 +259,9 @@ else:
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )
-        ((fitted + freq_ref) / 1e9).loc[qubit].plot(
-            ax=ax, linewidth=0.5, ls="--", color="r"
-        )
+        ((fitted + freq_ref) / 1e9).loc[qubit].plot(ax=ax, linewidth=0.5, ls="--", color="r")
         ax.plot(flux_shift.loc[qubit], ((freq_shift.loc[qubit] + freq_ref) / 1e9), "r*")
-        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(
-            ax=ax, ls="", marker=".", color="g", ms=0.5
-        )
+        ((peaks.position.loc[qubit] + freq_ref) / 1e9).plot(ax=ax, ls="", marker=".", color="g", ms=0.5)
         ax.set_ylabel("Freq (GHz)")
         ax.set_xlabel("Flux (V)")
         ax.set_title(qubit["qubit"])

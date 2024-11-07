@@ -100,7 +100,9 @@ class Transmon(QuamComponent):
         """The transmon thermalization time in ns."""
         return self.thermalization_time_factor * self.T1
 
-    def calibrate_octave(self, QM: QuantumMachine, calibrate_drive: bool = True, calibrate_resonator: bool = True) -> None:
+    def calibrate_octave(
+        self, QM: QuantumMachine, calibrate_drive: bool = True, calibrate_resonator: bool = True
+    ) -> None:
         """Calibrate the Octave channels (xy and resonator) linked to this transmon for the LO frequency, intermediate
         frequency and Octave gain as defined in the state.
 

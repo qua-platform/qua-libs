@@ -20,14 +20,13 @@ class ReadoutResonatorBase:
     f_01: float = None
     f_12: float = None
     confusion_matrix: list = None
-    
-    gef_centers : list = None
-    gef_confusion_matrix : list = None
+
+    gef_centers: list = None
+    gef_confusion_matrix: list = None
 
 
 @quam_dataclass
 class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
-
     @property
     def upconverter_frequency(self):
         return self.LO_frequency
@@ -37,9 +36,9 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
         amplitude = self.operations[operation].amplitude
         return self.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
 
+
 @quam_dataclass
 class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
-
     @property
     def upconverter_frequency(self):
         return self.opx_output.upconverter_frequency
@@ -53,4 +52,3 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
 
 
 ReadoutResonator = ReadoutResonatorIQ
-

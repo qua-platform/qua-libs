@@ -52,9 +52,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters()
-)
+node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -144,9 +142,7 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(
-                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
-                    )
+                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
         # Measure sequentially
         align()
@@ -154,9 +150,7 @@ with program() as drag_calibration:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(
-                N_pi
-            ).average().save(f"state{i + 1}")
+            state_stream[i].boolean_to_int().buffer(len(amps)).buffer(N_pi).average().save(f"state{i + 1}")
 
 
 # %% {Simulate_or_execute}
@@ -181,9 +175,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"amp": amps, "N": N_pi_vec}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
     # Add the qubit pulse absolute alpha coefficient to the dataset
     ds = ds.assign_coords(
         {
@@ -203,12 +195,7 @@ else:
     alphas = ds.amp[data_max_idx]
     # Save fitting results
     fit_results = {
-        qubit.name: {
-            "alpha": float(
-                alphas.sel(qubit=qubit.name).values
-                * qubit.xy.operations[operation].alpha
-            )
-        }
+        qubit.name: {"alpha": float(alphas.sel(qubit=qubit.name).values * qubit.xy.operations[operation].alpha)}
         for qubit in qubits
     }
     for q in qubits:

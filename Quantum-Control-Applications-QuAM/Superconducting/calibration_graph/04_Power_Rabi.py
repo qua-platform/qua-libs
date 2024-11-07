@@ -120,12 +120,8 @@ with program() as power_rabi:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
-                f"I{i + 1}"
-            )
-            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
-                f"Q{i + 1}"
-            )
+            I_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"I{i + 1}")
+            Q_st[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(f"Q{i + 1}")
 
 
 # %% {Simulate_or_execute}
@@ -205,18 +201,14 @@ else:
 
         # Save fitting results
         for q in qubits:
-            new_pi_amp = float(
-                ds.abs_amp.sel(qubit=q.name)[data_max_idx.sel(qubit=q.name)].data
-            )
+            new_pi_amp = float(ds.abs_amp.sel(qubit=q.name)[data_max_idx.sel(qubit=q.name)].data)
             fit_results[q.name] = {}
             if new_pi_amp < 0.3:  # TODO: 1 for OPX1000 MW
                 fit_results[q.name]["Pi_amplitude"] = new_pi_amp
                 print(
                     f"amplitude for Pi pulse is modified by a factor of {I_n.idxmax(dim='amp').sel(qubit = q.name):.2f}"
                 )
-                print(
-                    f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n"
-                )  # TODO: 1 for OPX1000 MW
+                print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
             else:
                 print(f"Fitted amplitude too high, new amplitude is 300 mV \n")
                 fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
@@ -225,15 +217,11 @@ else:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if N_pi == 1:
-            (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].I * 1e3).plot(
-                ax=ax, x="amp_mV"
-            )
+            (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].I * 1e3).plot(ax=ax, x="amp_mV")
             ax.plot(ds.abs_amp.loc[qubit] * 1e3, 1e3 * fit_evals.loc[qubit][0])
             ax.set_ylabel("Trans. amp. I [mV]")
         elif N_pi > 1:
-            (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].I * 1e3).plot(
-                ax=ax, x="amp_mV", y="N"
-            )
+            (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].I * 1e3).plot(ax=ax, x="amp_mV", y="N")
             ax.axvline(1e3 * ds.abs_amp.loc[qubit][data_max_idx.loc[qubit]], color="r")
             ax.set_ylabel("num. of pulses")
         ax.set_xlabel("Amplitude [mV]")
@@ -248,9 +236,7 @@ else:
         for q in qubits:
             q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
             if operation == "x180":
-                q.xy.operations["x90"].amplitude = (
-                    fit_results[q.name]["Pi_amplitude"] / 2
-                )
+                q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

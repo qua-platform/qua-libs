@@ -17,6 +17,7 @@ class FluxLine(SingleChannel):
         arbitrary_offset (float): arbitrary flux bias in V.
         settle_time (float): the flux line settle time in ns.
     """
+
     independent_offset: float = 0.0
     joint_offset: float = 0.0
     min_offset: float = 0.0

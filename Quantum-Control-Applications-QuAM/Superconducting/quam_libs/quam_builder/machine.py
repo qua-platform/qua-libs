@@ -26,9 +26,10 @@ def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_setting
     return machine
 
 
-def build_quam_wiring(connectivity: Connectivity, host_ip: str, cluster_name: str,
-                      quam_state_path: Union[Path, str], port: int = None) -> QuAM:
-    if os.path.exists(quam_state_path) and 'state.json' in os.listdir(quam_state_path):
+def build_quam_wiring(
+    connectivity: Connectivity, host_ip: str, cluster_name: str, quam_state_path: Union[Path, str], port: int = None
+) -> QuAM:
+    if os.path.exists(quam_state_path) and "state.json" in os.listdir(quam_state_path):
         # if there is a non-empty QuAM state already
         machine = QuAM.load(quam_state_path)
     else:
@@ -39,6 +40,7 @@ def build_quam_wiring(connectivity: Connectivity, host_ip: str, cluster_name: st
     save_machine(machine, quam_state_path)
 
     return machine
+
 
 def create_base_machine(connectivity: Connectivity):
     """
@@ -53,17 +55,14 @@ def create_base_machine(connectivity: Connectivity):
                 elif channel.instrument_id in ["opx+"]:
                     return OPXPlusQuAM()
 
-    raise TypeError("Couldn't identify connectivity as OPX+ or LF-FEM. "
-                    "Are channels were allocated for the connectivity?")
+    raise TypeError(
+        "Couldn't identify connectivity as OPX+ or LF-FEM. " "Are channels were allocated for the connectivity?"
+    )
 
 
 def add_name_and_ip(machine: QuAM, host_ip: str, cluster_name: str, port: Union[int, None]):
-    """ Stores the minimal information to connect to a QuantumMachinesManager. """
-    machine.network = {
-        "host": host_ip,
-        "port": port,
-        "cluster_name": cluster_name
-    }
+    """Stores the minimal information to connect to a QuantumMachinesManager."""
+    machine.network = {"host": host_ip, "port": port, "cluster_name": cluster_name}
 
 
 def add_ports(machine: QuAM):
@@ -76,14 +75,12 @@ def add_ports(machine: QuAM):
             for ports in wiring_by_line_type.values():
                 for port in ports:
                     if "ports" in ports.get_unreferenced_value(port):
-                        machine.ports.reference_to_port(
-                            ports.get_unreferenced_value(port),
-                            create=True
-                        )
+                        machine.ports.reference_to_port(ports.get_unreferenced_value(port), create=True)
+
 
 def add_transmons(machine: QuAM):
     for element_type, wiring_by_element in machine.wiring.items():
-        if element_type == 'qubits':
+        if element_type == "qubits":
             for qubit_id, wiring_by_line_type in wiring_by_element.items():
                 transmon = Transmon(id=qubit_id)
                 machine.qubits[qubit_id] = transmon
@@ -96,29 +93,30 @@ def add_transmons(machine: QuAM):
                     elif line_type == WiringLineType.FLUX.value:
                         add_transmon_flux_component(transmon, wiring_path, ports)
                     else:
-                        raise ValueError(f'Unknown line type: {line_type}')
+                        raise ValueError(f"Unknown line type: {line_type}")
                 machine.active_qubit_names.append(transmon.name)
 
-        elif element_type == 'qubit_pairs':
+        elif element_type == "qubit_pairs":
             for qubit_pair_id, wiring_by_line_type in wiring_by_element.items():
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_pair_id}/{line_type}"
                     if line_type == WiringLineType.COUPLER.value:
                         transmon_pair = add_transmon_pair_component(machine, wiring_path, ports)
                     else:
-                        raise ValueError(f'Unknown line type: {line_type}')
+                        raise ValueError(f"Unknown line type: {line_type}")
                     machine.qubit_pairs[transmon_pair.name] = transmon_pair
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
 
 def add_pulses(machine: QuAM):
-    if hasattr(machine, 'qubits'):
+    if hasattr(machine, "qubits"):
         for transmon in machine.qubits.values():
             add_default_transmon_pulses(transmon)
 
-    if hasattr(machine, 'qubit_pairs'):
+    if hasattr(machine, "qubit_pairs"):
         for qubit_pair in machine.qubit_pairs.values():
             add_default_transmon_pair_pulses(qubit_pair)
+
 
 def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):
     octave_ips, octave_ports = [], []
@@ -136,7 +134,7 @@ def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Pa
             name=octave_name,
             ip=machine.network["octave_ips"][i],
             port=machine.network["octave_ports"][i],
-            calibration_db_path=quam_state_path
+            calibration_db_path=quam_state_path,
         )
         machine.octaves[octave_name] = octave
         octave.initialize_frequency_converters()
@@ -149,5 +147,5 @@ def save_machine(machine: QuAM, quam_state_path: Union[Path, str]):
         path=quam_state_path,
         content_mapping={
             "wiring.json": ["network", "wiring"],
-        }
+        },
     )

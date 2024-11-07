@@ -3,6 +3,7 @@ from typing import List
 from .paths import OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
+
 def create_octave_port(channel: AnyInstrumentChannel) -> (str, str):
     """
     Generates a key/JSON reference pair from which a QuAM port can be created
@@ -22,6 +23,7 @@ def create_octave_port(channel: AnyInstrumentChannel) -> (str, str):
     reference += f"/{channel.port}"
 
     return key, reference
+
 
 def create_mw_fem_port(channel: AnyInstrumentChannel) -> (str, str):
     """
@@ -72,6 +74,7 @@ def create_lf_opx_plus_port(channel: AnyInstrumentChannel, channels: List[AnyIns
 
     return key, reference
 
+
 def get_objects_with_same_type(obj, lst):
-    """ Returns all objects in the list that have the same type as the given object. """
+    """Returns all objects in the list that have the same type as the given object."""
     return [item for item in lst if isinstance(item, type(obj))]  # Return items with the same type

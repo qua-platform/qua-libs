@@ -16,10 +16,8 @@ class Parameters(NodeParameters):
     calibrate_resonator: bool = True
     calibrate_drive: bool = True
 
-node = QualibrationNode(
-    name="00_Mixer_Calibration",
-    parameters=Parameters()
-)
+
+node = QualibrationNode(name="00_Mixer_Calibration", parameters=Parameters())
 
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
@@ -30,15 +28,15 @@ config = machine.generate_config()
 qmm = machine.connect()
 qm = qmm.open_qm(config)
 
-if node.parameters.qubits is None or node.parameters.qubits == '':
+if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(' ', '').split(',')]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")]
 
 for qubit in qubits:
-    qubit.calibrate_octave(qm,
-                           calibrate_drive=node.parameters.calibrate_drive,
-                           calibrate_resonator=node.parameters.calibrate_resonator)
+    qubit.calibrate_octave(
+        qm, calibrate_drive=node.parameters.calibrate_drive, calibrate_resonator=node.parameters.calibrate_resonator
+    )
 
 qm.close()
 # %%

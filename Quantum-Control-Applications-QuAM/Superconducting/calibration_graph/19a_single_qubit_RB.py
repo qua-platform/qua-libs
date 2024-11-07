@@ -88,9 +88,7 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = node.parameters.delta_clifford
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
-assert (
-    max_circuit_depth / delta_clifford
-).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 num_depths = max_circuit_depth // delta_clifford + 1
 seed = node.parameters.seed  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -267,9 +265,7 @@ with program() as randomized_benchmarking:
                         # Make sure you updated the ge_threshold
                         assign(
                             state[i],
-                            Cast.to_int(
-                                I[i] > qubit.resonator.operations["readout"].threshold
-                            ),
+                            Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold),
                         )
                         save(state[i], state_st[i])
 
@@ -284,9 +280,9 @@ with program() as randomized_benchmarking:
     with stream_processing():
         m_st.save("iteration")
         for i in range(num_qubits):
-            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                num_depths
-            ).buffer(num_of_sequences).save(f"state{i + 1}")
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                f"state{i + 1}"
+            )
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -369,10 +365,7 @@ if not node.parameters.simulate:
         m = da_state.m.values
         ax.set_title(qubit["qubit"], pad=22)
         ax.set_xlabel("Circuit depth")
-        fit_dict = {
-            k: da_fit.sel(**qubit).sel(fit_vals=k).values
-            for k in da_fit.fit_vals.values
-        }
+        fit_dict = {k: da_fit.sel(**qubit).sel(fit_vals=k).values for k in da_fit.fit_vals.values}
         ax.plot(m, decay_exp(m, **fit_dict), "r--", label="fit")
         ax.text(
             0.0,

@@ -36,11 +36,11 @@ with program() as prog:
 
         # with for_(a, 0, a < 1.0, a +0.1):
 
-        qubits[2].xy.play('x180')
+        qubits[2].xy.play("x180")
         # qubits[1].xy.play('x180')
         # wait(4)
         # align()
-        qubits[0].resonator.play('const')
+        qubits[0].resonator.play("const")
         # align()
         wait(1_000)
         # for qubit in machine.active_qubits:

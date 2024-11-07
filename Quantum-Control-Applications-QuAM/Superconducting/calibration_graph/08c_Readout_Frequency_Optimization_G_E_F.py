@@ -46,9 +46,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="08c_Readout_Frequency_Optimization_G_E_F", parameters=Parameters()
-)
+node = QualibrationNode(name="08c_Readout_Frequency_Optimization_G_E_F", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -121,9 +119,7 @@ with program() as ro_freq_opt:
             save(n, n_st)
             with for_(*from_array(df, dfs)):
                 # Update the resonator frequencies
-                update_frequency(
-                    qubit.resonator.name, df + qubit.resonator.intermediate_frequency
-                )
+                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
                 align()
                 # Measure the state of the resonators
                 qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]))
@@ -148,9 +144,7 @@ with program() as ro_freq_opt:
 
                 # Play the x180 gate and EFx180 gate to put the qubits in the f state
                 qubit.xy.play("x180")
-                update_frequency(
-                    qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
-                )
+                update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
                 qubit.align()
                 qubit.xy.play(operation)
                 qubit.align()
@@ -230,11 +224,9 @@ else:
     # %% {Data_analysis}
     # Get the readout detuning as the index of the maximum of the cumulative average of D
     detuning = ds.D.rolling({"freq": 5}).mean("freq").idxmax("freq")
-    
+
     # Save fitting results
-    fit_results = {
-        q.name: {"GEF_detuning": int(detuning.loc[q.name].values)} for q in qubits
-    }
+    fit_results = {q.name: {"GEF_detuning": int(detuning.loc[q.name].values)} for q in qubits}
     node.results["fit_results"] = fit_results
 
     for q in qubits:
@@ -246,18 +238,10 @@ else:
     grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dge.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="GE"
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Def.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="EF"
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dgf.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="GF"
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(
-            ax=ax, x="freq_MHz"
-        )
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dge.loc[qubit]).plot(ax=ax, x="freq_MHz", label="GE")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Def.loc[qubit]).plot(ax=ax, x="freq_MHz", label="EF")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).Dgf.loc[qubit]).plot(ax=ax, x="freq_MHz", label="GF")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(ax=ax, x="freq_MHz")
         ax.axvline(
             fit_results[qubit["qubit"]]["GEF_detuning"] / 1e6,
             color="red",
@@ -272,15 +256,9 @@ else:
 
     grid = QubitGrid(ds, [f"q-{i}_0" for i in range(num_qubits)])
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="g.s."
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="e.s."
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_f.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="f.s."
-        )
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(ax=ax, x="freq_MHz", label="g.s.")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(ax=ax, x="freq_MHz", label="e.s.")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_f.loc[qubit]).plot(ax=ax, x="freq_MHz", label="f.s.")
         ax.set_xlabel("Frequency [MHz]")
         ax.set_ylabel("Resonator response [mV]")
         ax.legend()

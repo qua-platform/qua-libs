@@ -39,9 +39,7 @@ class Parameters(NodeParameters):
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 100000
     wait_time_step_in_ns: int = 600
-    flux_point_joint_or_independent_or_arbitrary: Literal[
-        "joint", "independent", "arbitrary"
-    ] = "independent"
+    flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
     reset_type: Literal["active", "thermal"] = "thermal"
     use_state_discrimination: bool = False
     simulate: bool = False
@@ -65,9 +63,7 @@ qmm = machine.connect()
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [
-        machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")
-    ]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")]
 num_qubits = len(qubits)
 
 
@@ -80,9 +76,7 @@ idle_times = np.arange(
     node.parameters.wait_time_step_in_ns // 4,
 )
 
-flux_point = (
-    node.parameters.flux_point_joint_or_independent_or_arbitrary
-)  # 'independent' or 'joint'
+flux_point = node.parameters.flux_point_joint_or_independent_or_arbitrary  # 'independent' or 'joint'
 if flux_point == "arbitrary":
     detunings = {q.name: q.arbitrary_intermediate_frequency for q in qubits}
     arb_flux_bias_offset = {q.name: q.z.arbitrary_offset for q in qubits}
@@ -121,8 +115,7 @@ with program() as t1:
                 qubit.z.wait(20)
                 qubit.z.play(
                     "const",
-                    amplitude_scale=arb_flux_bias_offset[qubit.name]
-                    / qubit.z.operations["const"].amplitude,
+                    amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude,
                     duration=t,
                 )
                 qubit.z.wait(20)

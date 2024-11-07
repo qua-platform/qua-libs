@@ -30,8 +30,8 @@ def get_simulated_samples_by_element(element_name: str, job: QmJob, config: dict
         port_i = element["mixInputs"]["I"]
         port_q = element["mixInputs"]["Q"]
         samples = (
-                sample_struct.__dict__[port_i[0]].analog[str(port_i[1])]
-                + 1j * sample_struct.__dict__[port_q[0]].analog[str(port_q[1])]
+            sample_struct.__dict__[port_i[0]].analog[str(port_i[1])]
+            + 1j * sample_struct.__dict__[port_q[0]].analog[str(port_q[1])]
         )
     else:
         port = element["singleInput"]["port"]
@@ -39,9 +39,7 @@ def get_simulated_samples_by_element(element_name: str, job: QmJob, config: dict
     return samples
 
 
-def plot_simulator_output(
-        plot_axes: List[List[str]], job: QmJob, config: dict, duration_nsec: int
-):
+def plot_simulator_output(plot_axes: List[List[str]], job: QmJob, config: dict, duration_nsec: int):
     """
     generate a plot of simulator output by elements
 
@@ -54,10 +52,7 @@ def plot_simulator_output(
     time_vec = np.linspace(0, duration_nsec - 1, duration_nsec)
     samples_struct = []
     for plot_axis in plot_axes:
-        samples_struct.append(
-            [get_simulated_samples_by_element(
-                pa, job, config) for pa in plot_axis]
-        )
+        samples_struct.append([get_simulated_samples_by_element(pa, job, config) for pa in plot_axis])
 
     fig = go.Figure().set_subplots(rows=len(plot_axes), cols=1, shared_xaxes=True)
 
@@ -65,24 +60,19 @@ def plot_simulator_output(
         for j, plotitem in enumerate(plot_axis):
             if samples_struct[i][j].dtype == float:
                 fig.add_trace(
-                    go.Scatter(
-                        x=time_vec, y=samples_struct[i][j], name=plotitem),
+                    go.Scatter(x=time_vec, y=samples_struct[i][j], name=plotitem),
                     row=i + 1,
                     col=1,
                 )
                 print(samples_struct[i][j])
             else:
                 fig.add_trace(
-                    go.Scatter(
-                        x=time_vec, y=samples_struct[i][j].real, name=plotitem + " I"
-                    ),
+                    go.Scatter(x=time_vec, y=samples_struct[i][j].real, name=plotitem + " I"),
                     row=i + 1,
                     col=1,
                 )
                 fig.add_trace(
-                    go.Scatter(
-                        x=time_vec, y=samples_struct[i][j].imag, name=plotitem + " Q"
-                    ),
+                    go.Scatter(x=time_vec, y=samples_struct[i][j].imag, name=plotitem + " Q"),
                     row=i + 1,
                     col=1,
                 )
@@ -119,19 +109,19 @@ def plot_ar_attempts(ar_data: dict[str, np.typing.NDArray], **hist_kwargs):
         plot_ar_attempts(ar_dat, bins=100, log=True)
     """
     qubits = list(ar_data.keys())
-    fig, axes = plt.subplots(
-        1, len(qubits), sharex='None', figsize=(14, 4), squeeze=False)
+    fig, axes = plt.subplots(1, len(qubits), sharex="None", figsize=(14, 4), squeeze=False)
     for i, q in enumerate(qubits):
         ax = axes[i]
         ax.hist(ar_data[q], **hist_kwargs)
-        ax.set_title(f'q = {q}')
-        ax.set_ylabel('prob.')
-        ax.set_xlabel('no. of attempts')
+        ax.set_title(f"q = {q}")
+        ax.set_ylabel("prob.")
+        ax.set_xlabel("no. of attempts")
     fig.tight_layout()
 
 
-def plot_spectrum(signal: np.ndarray, t_s_usec: float, num_zero_pad: int = 0) -> tuple[
-    np.ndarray, np.ndarray, plotly.graph_objs.Figure]:
+def plot_spectrum(
+    signal: np.ndarray, t_s_usec: float, num_zero_pad: int = 0
+) -> tuple[np.ndarray, np.ndarray, plotly.graph_objs.Figure]:
     """
     plot the spectrum of a signal
 
@@ -149,22 +139,21 @@ def plot_spectrum(signal: np.ndarray, t_s_usec: float, num_zero_pad: int = 0) ->
     freq_ax = np.fft.fftfreq(len(signal_pad), d=t_s_usec)
     f_s = 0.5 / t_s_usec
 
-    fig = px.line(x=freq_ax[1:], y=signal_fft[1:],
-                  labels={'x': 'frequency [MHz]', 'y': 'power'}
-                  )
+    fig = px.line(x=freq_ax[1:], y=signal_fft[1:], labels={"x": "frequency [MHz]", "y": "power"})
     fig.update_layout(xaxis_range=(0, f_s))
     return signal_fft, freq_ax, fig
 
 
 def grid_pair_names(qubit_pairs) -> Tuple[List[str], List[str]]:
-    """"
+    """ "
     Runs over defined qubit pairs and returns a list of the grid_name attribute of each qubit, returns a list of the grid location and a list of the qubit pair names
     """
-    return [f"{qp.qubit_control.grid_location}-{qp.qubit_target.grid_location}" for qp in qubit_pairs], [qp.name for qp
-                                                                                                         in qubit_pairs]
+    return [f"{qp.qubit_control.grid_location}-{qp.qubit_target.grid_location}" for qp in qubit_pairs], [
+        qp.name for qp in qubit_pairs
+    ]
 
 
-class QubitPairGrid():
+class QubitPairGrid:
     """Creates a grid object where qubit pairs are placed on a grid.
     The grid is builtb with references to the qubit pair names,
     which should of the form: 'q-i,j-q-n,m' where i,j and n,m are
@@ -198,7 +187,7 @@ class QubitPairGrid():
     """
 
     def _convert_to_int(self, incoming_string):
-        return tuple(map(int, incoming_string.split('_')))
+        return tuple(map(int, incoming_string.split("_")))
 
     def _list_clean(self, list_input_string):
         return [self._clean_up(input_string) for input_string in list_input_string]
@@ -208,17 +197,28 @@ class QubitPairGrid():
 
     def __init__(self, grid_names: list[str], qubit_pair_names: list[str], size: int = 4):
         if len(grid_names) > 1:
-            qubit_indices = [tuple([tuple(map(int, self._list_clean(gp.split('-')[0].split(',')))),
-                                    tuple(map(int, self._list_clean(gp.split('-')[1].split(','))))]) for gp in
-                             grid_names]
+            qubit_indices = [
+                tuple(
+                    [
+                        tuple(map(int, self._list_clean(gp.split("-")[0].split(",")))),
+                        tuple(map(int, self._list_clean(gp.split("-")[1].split(",")))),
+                    ]
+                )
+                for gp in grid_names
+            ]
         else:
-            qubit_indices = [tuple([tuple(map(int, self._list_clean(gp.split('-')[0].split(',')))),
-                                    tuple(map(int, self._list_clean(gp.split('-')[1].split(','))))]) for gp in
-                             grid_names]
+            qubit_indices = [
+                tuple(
+                    [
+                        tuple(map(int, self._list_clean(gp.split("-")[0].split(",")))),
+                        tuple(map(int, self._list_clean(gp.split("-")[1].split(",")))),
+                    ]
+                )
+                for gp in grid_names
+            ]
         row_diffs = [pair[1][0] - pair[0][0] for pair in qubit_indices]
         col_diffs = [pair[1][1] - pair[0][1] for pair in qubit_indices]
-        coupler_indices = [[2 * pair[0][1], 2 * pair[0][0]]
-                           for pair in qubit_indices]
+        coupler_indices = [[2 * pair[0][1], 2 * pair[0][0]] for pair in qubit_indices]
         for k, (col_diff, row_diff) in enumerate(zip(col_diffs, row_diffs)):
             coupler_indices[k][0] += col_diff
             coupler_indices[k][1] += row_diff
@@ -228,8 +228,7 @@ class QubitPairGrid():
         grid_col_idxs = [idx[1] for idx in coupler_indices]
         min_grid_row = min(grid_row_idxs)
         min_grid_col = min(grid_col_idxs)
-        shape = (max(grid_row_idxs) - min_grid_row + 1,
-                 max(grid_col_idxs) - min_grid_col + 1)
+        shape = (max(grid_row_idxs) - min_grid_row + 1, max(grid_col_idxs) - min_grid_col + 1)
 
         figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
 
@@ -252,10 +251,9 @@ class QubitPairGrid():
                 if (grid_row, grid_col) in coupler_indices:
 
                     axes.append(ax)
-                    qubit_names.append(
-                        qubit_pair_names[coupler_indices.index((grid_row, grid_col))])
+                    qubit_names.append(qubit_pair_names[coupler_indices.index((grid_row, grid_col))])
                 else:
-                    ax.axis('off')
+                    ax.axis("off")
         self.fig = figure
         self.all_axes = all_axes
         self.axes = [axes]
@@ -263,13 +261,13 @@ class QubitPairGrid():
 
 
 def grid_names(machine) -> List[str]:
-    """"
+    """ "
     Runs over active qubits in a QUAM object and returns a list of the grid_name attribute of each qubit
     """
     return [f"q-{q.grid_location}" for q in machine.active_qubits]
 
 
-class QubitGrid():
+class QubitGrid:
     """Creates a grid object where qubits are placed on a grid.
     Accepts a dataset whose dimension 'qubit is used as the dimension on which the grid is built.
     It also accepts a parameter "grid_names" that specifies the positon of each wubit on a grid. If none
@@ -322,18 +320,18 @@ class QubitGrid():
         if grid_names:
             if type(grid_names) == str:
                 grid_names = [grid_names]
-            grid_indices = [tuple(map(int, self._list_clean(
-                grid_name.split(',')))) for grid_name in grid_names]
+            grid_indices = [tuple(map(int, self._list_clean(grid_name.split(",")))) for grid_name in grid_names]
         else:
-            grid_indices = [tuple(map(int, self._list_clean(
-                ds.qubit.values[q_index].split(',')))) for q_index in range(ds.qubit.size)]
+            grid_indices = [
+                tuple(map(int, self._list_clean(ds.qubit.values[q_index].split(","))))
+                for q_index in range(ds.qubit.size)
+            ]
 
         if len(grid_indices) > 1:
             grid_name_mapping = dict(zip(grid_indices, ds.qubit.values))
         else:
             try:
-                grid_name_mapping = dict(
-                    zip(grid_indices, [str(ds.qubit.values[0])]))
+                grid_name_mapping = dict(zip(grid_indices, [str(ds.qubit.values[0])]))
             except:
                 grid_name_mapping = dict(zip(grid_indices, [str(ds.qubit.values)]))
         grid_row_idxs = [idx[1] for idx in grid_indices]
@@ -343,8 +341,7 @@ class QubitGrid():
         print(grid_col_idxs)
         min_grid_row = min(grid_row_idxs)
         min_grid_col = min(grid_col_idxs)
-        shape = (max(grid_row_idxs) - min_grid_row + 1,
-                 max(grid_col_idxs) - min_grid_col + 1)
+        shape = (max(grid_row_idxs) - min_grid_row + 1, max(grid_col_idxs) - min_grid_col + 1)
 
         figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
 
@@ -360,10 +357,9 @@ class QubitGrid():
                     axes.append(ax)
                     name = grid_name_mapping.get((grid_col, grid_row))
                     if name is not None:
-                        qubit_names.append(
-                            grid_name_mapping[(grid_col, grid_row)])
+                        qubit_names.append(grid_name_mapping[(grid_col, grid_row)])
                 else:
-                    ax.axis('off')
+                    ax.axis("off")
 
         self.fig = figure
         self.all_axes = all_axes

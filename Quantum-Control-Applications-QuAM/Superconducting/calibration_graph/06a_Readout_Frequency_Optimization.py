@@ -47,9 +47,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="06a_Readout_Frequency_Optimization", parameters=Parameters()
-)
+node = QualibrationNode(name="06a_Readout_Frequency_Optimization", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -106,9 +104,7 @@ with program() as ro_freq_opt:
             save(n, n_st)
             with for_(*from_array(df, dfs)):
                 # Update the resonator frequencies
-                update_frequency(
-                    qubit.resonator.name, df + qubit.resonator.intermediate_frequency
-                )
+                update_frequency(qubit.resonator.name, df + qubit.resonator.intermediate_frequency)
                 # Wait for the qubits to decay to the ground state
                 wait(qubit.thermalization_time * u.ns)
                 align()
@@ -194,24 +190,17 @@ else:
     chi = (ds.IQ_abs_e.idxmin(dim="freq") - ds.IQ_abs_g.idxmin(dim="freq")) / 2
 
     # Save fitting results
-    fit_results = {
-        q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values}
-        for q in qubits
-    }
+    fit_results = {q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values} for q in qubits}
     node.results["fit_results"] = fit_results
 
     for q in qubits:
-        print(
-            f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz"
-        )
+        print(f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz")
         print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label=None
-        )
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(ax=ax, x="freq_MHz", label=None)
         ax.axvline(
             fit_results[qubit["qubit"]]["detuning"] / 1e6,
             color="red",
@@ -227,12 +216,8 @@ else:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="g.s"
-        )
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(
-            ax=ax, x="freq_MHz", label="e.s"
-        )
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(ax=ax, x="freq_MHz", label="g.s")
+        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(ax=ax, x="freq_MHz", label="e.s")
         ax.axvline(
             fit_results[qubit["qubit"]]["detuning"] / 1e6,
             color="red",

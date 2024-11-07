@@ -128,9 +128,7 @@ with program() as stark_detuning:
                         qubit.wait(qubit.thermalization_time * u.ns)
 
                     # Update the qubit frequency after initialization for active reset
-                    update_frequency(
-                        qubit.xy.name, df + qubit.xy.intermediate_frequency
-                    )
+                    update_frequency(qubit.xy.name, df + qubit.xy.intermediate_frequency)
                     with for_(count, 0, count < npi, count + 1):
                         if operation == "x180":
                             qubit.xy.play(operation)
@@ -146,9 +144,7 @@ with program() as stark_detuning:
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     # State discrimination
-                    assign(
-                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
-                    )
+                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
@@ -158,9 +154,7 @@ with program() as stark_detuning:
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
-            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(
-                N_pi
-            ).average().save(f"state{i + 1}")
+            state_stream[i].boolean_to_int().buffer(len(dfs)).buffer(N_pi).average().save(f"state{i + 1}")
             I_stream = I_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"I{i + 1}")
             Q_stream = Q_st[i].buffer(len(dfs)).buffer(N_pi).average().save(f"Q{i + 1}")
 
@@ -187,9 +181,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec})
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits)
     # Add the dataset to the node
@@ -202,10 +194,7 @@ else:
     detuning = ds.freq[data_max_idx]
 
     # Save fitting results
-    fit_results = {
-        qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)}
-        for qubit in qubits
-    }
+    fit_results = {qubit.name: {"detuning": float(detuning.sel(qubit=qubit.name).values)} for qubit in qubits}
     for q in qubits:
         print(f"Detuning for {q.name} is {fit_results[q.name]['detuning']} Hz")
     node.results["fit_results"] = fit_results
@@ -213,9 +202,7 @@ else:
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(
-            ax=ax, x="freq_MHz", y="N"
-        )
+        ds.assign_coords(freq_MHz=ds.freq * 1e-6).loc[qubit].state.plot(ax=ax, x="freq_MHz", y="N")
         ax.axvline(1e-6 * fit_results[qubit["qubit"]]["detuning"], color="r")
         ax.set_ylabel("num. of pulses")
         ax.set_xlabel("detuning [MHz]")
@@ -231,9 +218,7 @@ else:
         qubit.revert_changes()
     with node.record_state_updates():
         for qubit in qubits:
-            qubit.xy.operations[operation].detuning = float(
-                fit_results[qubit.name]["detuning"]
-            )
+            qubit.xy.operations[operation].detuning = float(fit_results[qubit.name]["detuning"])
             if node.parameters.DRAG_setpoint is not None:
                 qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 

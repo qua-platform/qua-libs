@@ -127,9 +127,7 @@ with program() as qubit_spec:
                 # Drive the qubit to the excited state
                 qubit.xy.play("x180")
                 # Update the qubit frequency to scan around the excepted f_01
-                update_frequency(
-                    qubit.xy.name, df - qubit.anharmonicity + qubit.xy.intermediate_frequency
-                )
+                update_frequency(qubit.xy.name, df - qubit.anharmonicity + qubit.xy.intermediate_frequency)
                 # Play the saturation pulse
                 qubit.xy.play(
                     operation,
@@ -197,30 +195,19 @@ else:
 
     # %% {Data_analysis}
     # find the peak with minimal prominence as defined, if no such peak found, returns nan
-    result = peaks_dips(
-        ds.IQ_abs, dim="freq", prominence_factor=5, remove_baseline=False
-    )
+    result = peaks_dips(ds.IQ_abs, dim="freq", prominence_factor=5, remove_baseline=False)
     # calculate the modified anharmonicity
-    anharmonicities = dict(
-        [
-            (q.name, q.anharmonicity - result.sel(qubit=q.name).position.values)
-            for q in qubits
-        ]
-    )
-    
+    anharmonicities = dict([(q.name, q.anharmonicity - result.sel(qubit=q.name).position.values) for q in qubits])
+
     # Save fitting results
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
         if not np.isnan(result.sel(qubit=q.name).position.values):
             fit_results[q.name]["fit_successful"] = True
-            print(
-                f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz"
-            )
+            print(f"Anharmonicity for {q.name} is {anharmonicities[q.name]/1e6:.3f} MHz")
             fit_results[q.name]["anharmonicity"] = anharmonicities[q.name]
-            print(
-                f"(shift of {result.sel(qubit = q.name).position.values/1e6:.3f} MHz)"
-            )
+            print(f"(shift of {result.sel(qubit = q.name).position.values/1e6:.3f} MHz)")
             print()
         else:
             fit_results[q.name]["fit_successful"] = False
@@ -235,9 +222,7 @@ else:
 
     for ax, qubit in grid_iter(grid):
         # Plot the IQ_abs as a function of the full frequency
-        (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs * 1e3).plot(
-            ax=ax, x="freq_GHz"
-        )
+        (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs * 1e3).plot(ax=ax, x="freq_GHz")
         # Add a lin where the e->f is supposed to be
         ax.axvline(
             (

@@ -45,8 +45,8 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
-    reset_type_thermal_or_active: Literal['thermal', 'active'] = "thermal"
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     timeout: int = 100
     start_amp: float = 0.5
@@ -54,10 +54,8 @@ class Parameters(NodeParameters):
     num_amps: int = 10
     outliers_threshold: float = 0.98
 
-node = QualibrationNode(
-    name="06b_Readout_Power_Optimization",
-    parameters=Parameters()
-)
+
+node = QualibrationNode(name="06b_Readout_Power_Optimization", parameters=Parameters())
 
 from sklearn.mixture import GaussianMixture
 
@@ -73,7 +71,7 @@ config = machine.generate_config()
 qmm = machine.connect()
 
 # Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == '':
+if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
@@ -89,7 +87,7 @@ with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
     a = declare(fixed)
-    
+
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the minimum frequency point
@@ -100,13 +98,13 @@ with program() as iq_blobs:
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-                    # Wait for the flux bias to settle
+            # Wait for the flux bias to settle
         # Wait for the flux bias to settle
         for qb in qubits:
             wait(1000, qb.z.name)
-        
+
         align()
-        
+
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits
             save(n, n_st)
@@ -124,7 +122,7 @@ with program() as iq_blobs:
                 # save data
                 save(I_g[i], I_g_st[i])
                 save(Q_g[i], Q_g_st[i])
-                
+
                 if reset_type == "active":
                     active_reset(qubit, "readout")
                 elif reset_type == "thermal":
@@ -132,7 +130,7 @@ with program() as iq_blobs:
                 else:
                     raise ValueError(f"Unrecognized reset type {reset_type}.")
                 align()
-                qubit.xy.play('x180')
+                qubit.xy.play("x180")
                 align()
                 qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a)
                 align()
@@ -140,7 +138,6 @@ with program() as iq_blobs:
                 save(Q_e[i], Q_e_st[i])
 
         align()
-            
 
     with stream_processing():
         n_st.save("n")
@@ -149,9 +146,6 @@ with program() as iq_blobs:
             Q_g_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_g{i + 1}")
             I_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"I_e{i + 1}")
             Q_e_st[i].buffer(len(amps)).buffer(n_runs).save(f"Q_e{i + 1}")
-
-
-
 
 
 if node.parameters.simulate:
@@ -169,7 +163,7 @@ else:
 
         for i in range(num_qubits):
             print(f"Fetching results for qubit {qubits[i].name}")
-            data_list = sum([[f"I_g{i + 1}", f"Q_g{i + 1}",f"I_e{i + 1}", f"Q_e{i + 1}"] ], ["n"])
+            data_list = sum([[f"I_g{i + 1}", f"Q_g{i + 1}", f"I_e{i + 1}", f"Q_e{i + 1}"]], ["n"])
             results = fetching_tool(job, data_list, mode="live")
             while results.is_processing():
                 fetched_data = results.fetch_all()
@@ -228,27 +222,28 @@ else:
 # %%
 if not node.parameters.simulate:
     # %% {Data_fetching_and_dataset_creation}
-    
+
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
 
     def abs_amp(q):
         def foo(amp):
             return amp * q.resonator.operations["readout"].amplitude
+
         return foo
 
-    ds = ds.assign_coords({'readout_amp' : (['qubit','amplitude'],np.array([abs_amp(q)(amps) for q in qubits]))})
+    ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([abs_amp(q)(amps) for q in qubits]))})
 
     # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
     ds_rearranged = xr.Dataset()
 
     # Combine I_g and I_e into I
-    ds_rearranged['I'] = xr.concat([ds.I_g, ds.I_e], dim='state')
-    ds_rearranged['I'] = ds_rearranged['I'].assign_coords(state=[0, 1])
+    ds_rearranged["I"] = xr.concat([ds.I_g, ds.I_e], dim="state")
+    ds_rearranged["I"] = ds_rearranged["I"].assign_coords(state=[0, 1])
 
     # Combine Q_g and Q_e into Q
-    ds_rearranged['Q'] = xr.concat([ds.Q_g, ds.Q_e], dim='state')
-    ds_rearranged['Q'] = ds_rearranged['Q'].assign_coords(state=[0, 1])
+    ds_rearranged["Q"] = xr.concat([ds.Q_g, ds.Q_e], dim="state")
+    ds_rearranged["Q"] = ds_rearranged["Q"].assign_coords(state=[0, 1])
 
     # Copy other coordinates and data variables
     for var in ds.coords:
@@ -256,36 +251,40 @@ if not node.parameters.simulate:
             ds_rearranged[var] = ds[var]
 
     for var in ds.data_vars:
-        if var not in ['I_g', 'I_e', 'Q_g', 'Q_e']:
+        if var not in ["I_g", "I_e", "Q_g", "Q_e"]:
             ds_rearranged[var] = ds[var]
 
     # Replace the original dataset with the rearranged one
     ds = ds_rearranged
-
 
     node.results = {"ds": ds}
 
     node.results["results"] = {}
     node.results["figs"] = {}
 
-
     plot_raw = False
 
     if plot_raw:
-        fig, axes = plt.subplots(ncols=num_qubits, nrows=len(ds.amplitude), sharex=False, sharey=False,
-                                squeeze=False, figsize=(5*num_qubits, 5*len(ds.amplitude)))
+        fig, axes = plt.subplots(
+            ncols=num_qubits,
+            nrows=len(ds.amplitude),
+            sharex=False,
+            sharey=False,
+            squeeze=False,
+            figsize=(5 * num_qubits, 5 * len(ds.amplitude)),
+        )
         for amplitude, ax1 in zip(ds.amplitude, axes):
             for q, ax2 in zip(list(qubits), ax1):
                 ds_q = ds.sel(qubit=q.name, amplitude=amplitude)
                 ax2.plot(ds_q.I.sel(state=0), ds_q.Q.sel(state=0), ".", alpha=0.2, label="Ground", markersize=2)
                 ax2.plot(ds_q.I.sel(state=1), ds_q.Q.sel(state=1), ".", alpha=0.2, label="Excited", markersize=2)
-                ax2.set_xlabel('I')
-                ax2.set_ylabel('Q')
-                ax2.set_title(f'{q.name}, {float(amplitude)}')
-                ax2.axis('equal')
+                ax2.set_xlabel("I")
+                ax2.set_ylabel("Q")
+                ax2.set_title(f"{q.name}, {float(amplitude)}")
+                ax2.axis("equal")
         plt.show()
-        node.results['figure_raw_data'] = fig
-        
+        node.results["figure_raw_data"] = fig
+
 # %%
 if not node.parameters.simulate:
 
@@ -293,26 +292,36 @@ if not node.parameters.simulate:
         I_mean = np.mean(I, axis=1)
         Q_mean = np.mean(Q, axis=1)
         means_init = [[I_mean[0], Q_mean[0]], [I_mean[1], Q_mean[1]]]
-        precisions_init = [
-            1 / ((np.mean(np.var(I, axis=1)) + np.mean(np.var(Q, axis=1)))/2)] * 2
-        clf = GaussianMixture(n_components=2, covariance_type='spherical', means_init=means_init,
-                              precisions_init=precisions_init, tol=1e-5, reg_covar=1e-12)
+        precisions_init = [1 / ((np.mean(np.var(I, axis=1)) + np.mean(np.var(Q, axis=1))) / 2)] * 2
+        clf = GaussianMixture(
+            n_components=2,
+            covariance_type="spherical",
+            means_init=means_init,
+            precisions_init=precisions_init,
+            tol=1e-5,
+            reg_covar=1e-12,
+        )
         X = np.array([np.array(I).flatten(), np.array(Q).flatten()]).T
         clf.fit(X)
-        meas_fidelity = (np.sum(clf.predict(np.array([I[0], Q[0]]).T) == 0)/len(
-            I[0]) + np.sum(clf.predict(np.array([I[1], Q[1]]).T) == 1)/len(I[1]))/2
+        meas_fidelity = (
+            np.sum(clf.predict(np.array([I[0], Q[0]]).T) == 0) / len(I[0])
+            + np.sum(clf.predict(np.array([I[1], Q[1]]).T) == 1) / len(I[1])
+        ) / 2
         loglikelihood = clf.score_samples(X)
         max_ll = np.max(loglikelihood)
         outliers = np.sum(loglikelihood > np.log(0.01) + max_ll) / len(X)
         return np.array([meas_fidelity, outliers])
 
+    fit_res = xr.apply_ufunc(
+        apply_fit_gmm,
+        ds.I,
+        ds.Q,
+        input_core_dims=[["state", "N"], ["state", "N"]],
+        output_core_dims=[["result"]],
+        vectorize=True,
+    )
 
-    fit_res = xr.apply_ufunc(apply_fit_gmm, ds.I, ds.Q,
-                             input_core_dims=[['state', 'N'], ['state', 'N']],
-                             output_core_dims=[['result']],
-                             vectorize=True)
-
-    fit_res = fit_res.assign_coords(result=['meas_fidelity', 'outliers'])
+    fit_res = fit_res.assign_coords(result=["meas_fidelity", "outliers"])
 
 # %%
 if not node.parameters.simulate:
@@ -323,24 +332,25 @@ if not node.parameters.simulate:
     best_amp = {}
     for q in qubits:
         fit_res_q = fit_res.sel(qubit=q.name)
-        valid_amps = fit_res_q.amplitude[(fit_res_q.sel(result='outliers') >= node.parameters.outliers_threshold)]
-        amps_fidelity = fit_res_q.sel(
-            amplitude=valid_amps.values, result='meas_fidelity')
+        valid_amps = fit_res_q.amplitude[(fit_res_q.sel(result="outliers") >= node.parameters.outliers_threshold)]
+        amps_fidelity = fit_res_q.sel(amplitude=valid_amps.values, result="meas_fidelity")
         best_amp[q.name] = float(amps_fidelity.readout_amp[amps_fidelity.argmax()])
-        print(f'amp for {q.name} is {best_amp[q.name]}')
+        print(f"amp for {q.name} is {best_amp[q.name]}")
         node.results["results"][q.name] = {}
         node.results["results"][q.name]["best_amp"] = best_amp[q.name]
-           
+
         # Select data for the best amplitude
         best_amp_data = ds.sel(qubit=q.name, amplitude=float(amps_fidelity.idxmax()))
         best_data[q.name] = best_amp_data
-        
+
         # Extract I and Q data for ground and excited states
         I_g = best_amp_data.I.sel(state=0)
         Q_g = best_amp_data.Q.sel(state=0)
         I_e = best_amp_data.I.sel(state=1)
         Q_e = best_amp_data.Q.sel(state=1)
-        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, b_plot=plot_individual)
+        angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(
+            I_g, Q_g, I_e, Q_e, True, b_plot=plot_individual
+        )
         I_rot = I_g * np.cos(angle) - Q_g * np.sin(angle)
         hist = np.histogram(I_rot, bins=100)
         RUS_threshold = hist[1][1:][np.argmax(hist[0])]
@@ -355,51 +365,80 @@ if not node.parameters.simulate:
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
 
 
-
-
 # %%
 if not node.parameters.simulate:
 
-    grid_names = [f'{q.name}_0' for q in qubits]
+    grid_names = [f"{q.name}_0" for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        fit_res.loc[qubit].plot(ax = ax,x = 'readout_amp', hue='result', add_legend=False)
-        ax.axvline(best_amp[qubit['qubit']], color = 'k', linestyle = 'dashed')
-        ax.set_xlabel('Relative power')
-        ax.set_ylabel('Fidelity / outliers')
-        ax.set_title(qubit['qubit'])
-    grid.fig.suptitle('Assignment fidelity and non-outlier probability')
+        fit_res.loc[qubit].plot(ax=ax, x="readout_amp", hue="result", add_legend=False)
+        ax.axvline(best_amp[qubit["qubit"]], color="k", linestyle="dashed")
+        ax.set_xlabel("Relative power")
+        ax.set_ylabel("Fidelity / outliers")
+        ax.set_title(qubit["qubit"])
+    grid.fig.suptitle("Assignment fidelity and non-outlier probability")
 
     plt.tight_layout()
     plt.show()
-    node.results['figure_assignment_fid'] = grid.fig
+    node.results["figure_assignment_fid"] = grid.fig
 
 # %%
 if not node.parameters.simulate:
 
-    grid_names = [f'{q.name}_0' for q in qubits]
+    grid_names = [f"{q.name}_0" for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        ds_q = best_data[qubit['qubit']]
-        qn = qubit['qubit']
-        ax.plot(1e3*(ds_q.I.sel(state=0) * np.cos(node.results["results"][qn]["angle"]) - ds_q.Q.sel(state=0) * np.sin(node.results["results"][qn]["angle"])), 1e3*(ds_q.I.sel(state=0) * np.sin(node.results["results"][qn]["angle"]) + ds_q.Q.sel(state=0) * np.cos(node.results["results"][qn]["angle"])), ".", alpha=0.1, label="Ground", markersize=1)
-        ax.plot(1e3 * (ds_q.I.sel(state=1) * np.cos(node.results["results"][qn]["angle"]) - ds_q.Q.sel(state=1) * np.sin(node.results["results"][qn]["angle"])), 1e3 * (ds_q.I.sel(state=1) * np.sin(node.results["results"][qn]["angle"]) + ds_q.Q.sel(state=1) * np.cos(node.results["results"][qn]["angle"])), ".", alpha=0.1, label="Excited", markersize=1)
-        ax.axvline(1e3 * node.results["results"][qn]["rus_threshold"], color="k", linestyle="--", lw = 0.5, label="RUS Threshold")
-        ax.axvline(1e3 * node.results["results"][qn]["threshold"], color="r", linestyle="--", lw = 0.5, label="Threshold")
+        ds_q = best_data[qubit["qubit"]]
+        qn = qubit["qubit"]
+        ax.plot(
+            1e3
+            * (
+                ds_q.I.sel(state=0) * np.cos(node.results["results"][qn]["angle"])
+                - ds_q.Q.sel(state=0) * np.sin(node.results["results"][qn]["angle"])
+            ),
+            1e3
+            * (
+                ds_q.I.sel(state=0) * np.sin(node.results["results"][qn]["angle"])
+                + ds_q.Q.sel(state=0) * np.cos(node.results["results"][qn]["angle"])
+            ),
+            ".",
+            alpha=0.1,
+            label="Ground",
+            markersize=1,
+        )
+        ax.plot(
+            1e3
+            * (
+                ds_q.I.sel(state=1) * np.cos(node.results["results"][qn]["angle"])
+                - ds_q.Q.sel(state=1) * np.sin(node.results["results"][qn]["angle"])
+            ),
+            1e3
+            * (
+                ds_q.I.sel(state=1) * np.sin(node.results["results"][qn]["angle"])
+                + ds_q.Q.sel(state=1) * np.cos(node.results["results"][qn]["angle"])
+            ),
+            ".",
+            alpha=0.1,
+            label="Excited",
+            markersize=1,
+        )
+        ax.axvline(
+            1e3 * node.results["results"][qn]["rus_threshold"], color="k", linestyle="--", lw=0.5, label="RUS Threshold"
+        )
+        ax.axvline(1e3 * node.results["results"][qn]["threshold"], color="r", linestyle="--", lw=0.5, label="Threshold")
         ax.axis("equal")
         ax.set_xlabel("I [mV]")
         ax.set_ylabel("Q [mV]")
-        ax.set_title(qubit['qubit'])
+        ax.set_title(qubit["qubit"])
 
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    grid.fig.suptitle('g.s. and e.s. discriminators (rotated)')
+    ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+    grid.fig.suptitle("g.s. and e.s. discriminators (rotated)")
     plt.tight_layout()
-    node.results['figure_IQ_blobs'] = grid.fig
-
+    node.results["figure_IQ_blobs"] = grid.fig
 
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        confusion = node.results["results"][qubit['qubit']]["confusion_matrix"]
+        confusion = node.results["results"][qubit["qubit"]]["confusion_matrix"]
         ax.imshow(confusion)
         ax.set_xticks([0, 1])
         ax.set_yticks([0, 1])
@@ -411,27 +450,31 @@ if not node.parameters.simulate:
         ax.text(1, 0, f"{100 * confusion[0][1]:.1f}%", ha="center", va="center", color="w")
         ax.text(0, 1, f"{100 * confusion[1][0]:.1f}%", ha="center", va="center", color="w")
         ax.text(1, 1, f"{100 * confusion[1][1]:.1f}%", ha="center", va="center", color="k")
-        ax.set_title(qubit['qubit'])
+        ax.set_title(qubit["qubit"])
 
-    grid.fig.suptitle('g.s. and e.s. fidelity')
+    grid.fig.suptitle("g.s. and e.s. fidelity")
     plt.tight_layout()
     plt.show()
-    node.results['figure_fidelities'] = grid.fig
+    node.results["figure_fidelities"] = grid.fig
 
 # %%
 if not node.parameters.simulate:
 
     with node.record_state_updates():
         for qubit in qubits:
-            qubit.resonator.operations["readout"].integration_weights_angle -= float(node.results["results"][qubit.name]["angle"])
+            qubit.resonator.operations["readout"].integration_weights_angle -= float(
+                node.results["results"][qubit.name]["angle"]
+            )
             qubit.resonator.operations["readout"].threshold = float(node.results["results"][qubit.name]["threshold"])
-            qubit.resonator.operations["readout"].rus_exit_threshold = float(node.results["results"][qubit.name]["rus_threshold"])
+            qubit.resonator.operations["readout"].rus_exit_threshold = float(
+                node.results["results"][qubit.name]["rus_threshold"]
+            )
             qubit.resonator.operations["readout"].amplitude = float(node.results["results"][qubit.name]["best_amp"])
             qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
 # %% {Save_results}
 node.outcomes = {q.name: "successful" for q in qubits}
-node.results['initial_parameters'] = node.parameters.model_dump()
+node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()
 # %%

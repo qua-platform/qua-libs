@@ -146,9 +146,7 @@ with program() as iq_blobs:
             wait(qubit.thermalization_time * u.ns)
             align()
             qubit.xy.play("x180")
-            update_frequency(
-                qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
-            )
+            update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
             qubit.xy.play(GEF_operation)
             update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
             align()
@@ -192,9 +190,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
 
     # Fix the structure of ds to avoid tuples
     def extract_value(element):
@@ -215,15 +211,9 @@ else:
     for q in qubits:
         # TODO: maybe generalize it to N-state discrimination?
         # Get the center of each blob
-        I_g_cent, Q_g_cent = ds.I_g.sel(qubit=q.name).mean(dim="N"), ds.Q_g.sel(
-            qubit=q.name
-        ).mean(dim="N")
-        I_e_cent, Q_e_cent = ds.I_e.sel(qubit=q.name).mean(dim="N"), ds.Q_e.sel(
-            qubit=q.name
-        ).mean(dim="N")
-        I_f_cent, Q_f_cent = ds.I_f.sel(qubit=q.name).mean(dim="N"), ds.Q_f.sel(
-            qubit=q.name
-        ).mean(dim="N")
+        I_g_cent, Q_g_cent = ds.I_g.sel(qubit=q.name).mean(dim="N"), ds.Q_g.sel(qubit=q.name).mean(dim="N")
+        I_e_cent, Q_e_cent = ds.I_e.sel(qubit=q.name).mean(dim="N"), ds.Q_e.sel(qubit=q.name).mean(dim="N")
+        I_f_cent, Q_f_cent = ds.I_f.sel(qubit=q.name).mean(dim="N"), ds.Q_f.sel(qubit=q.name).mean(dim="N")
 
         node.results["results"][q.name] = {}
         node.results["results"][q.name]["I_g_cent"] = float(I_g_cent)
@@ -350,12 +340,8 @@ else:
     # %% {Update_state}
     # todo: fix list state updating in Qualibrate
     for qubit in qubits:
-        qubit.resonator.gef_centers = node.results["results"][qubit.name][
-            "center_matrix"
-        ].tolist()
-        qubit.resonator.gef_confusion_matrix = node.results["results"][qubit.name][
-            "confusion_matrix"
-        ].tolist()
+        qubit.resonator.gef_centers = node.results["results"][qubit.name]["center_matrix"].tolist()
+        qubit.resonator.gef_confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

@@ -51,25 +51,21 @@ class Parameters(NodeParameters):
     circuit_depth: int = 5
     seed: int = 345324
     frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 4.99  #0.25
+    frequency_step_in_mhz: float = 4.99  # 0.25
     min_amp_factor: float = 0.8
     max_amp_factor: float = 1.2
-    amp_factor_step: float = 0.099  #0.005
+    amp_factor_step: float = 0.099  # 0.005
     min_drag_coefficient_factor: float = 0.8
     max_drag_coefficient_factor: float = 1.2
-    drag_coefficient_factor_step: float = 0.099  #0.02
+    drag_coefficient_factor_step: float = 0.099  # 0.02
 
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "independent"
-    reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     timeout: int = 100
 
-node = QualibrationNode(
-    name="11c_Randomized_Benchmarking_Interleaved_ORBIT",
-    parameters=Parameters()
-)
 
-
+node = QualibrationNode(name="11c_Randomized_Benchmarking_Interleaved_ORBIT", parameters=Parameters())
 
 
 from qm.qua import *
@@ -84,7 +80,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -94,10 +89,10 @@ machine = QuAM.load()
 # Open Communication with the QOP
 qmm = machine.connect()
 
-if node.parameters.qubits is None or node.parameters.qubits == '':
+if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(' ', '').split(',')]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")]
 num_qubits = len(qubits)
 
 ##############################
@@ -108,20 +103,17 @@ dfs = np.arange(
     -node.parameters.frequency_span_in_mhz * u.MHz // 2,
     +node.parameters.frequency_span_in_mhz * u.MHz // 2,
     node.parameters.frequency_step_in_mhz * u.MHz,
-dtype=np.int32)
+    dtype=np.int32,
+)
 
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-amps = np.arange(
-    node.parameters.min_amp_factor,
-    node.parameters.max_amp_factor,
-    node.parameters.amp_factor_step
-)
+amps = np.arange(node.parameters.min_amp_factor, node.parameters.max_amp_factor, node.parameters.amp_factor_step)
 
 # Drag coefficient sweep (as a pre-factor of the qubit drag coefficient) - must be within [-2; 2)
 drag_coefficient_factors = np.arange(
     node.parameters.min_drag_coefficient_factor,
     node.parameters.max_drag_coefficient_factor,
-    node.parameters.drag_coefficient_factor_step
+    node.parameters.drag_coefficient_factor_step,
 )
 
 orbit_variables = ["frequency", "amplitude", "drag coefficient factor"]
@@ -172,7 +164,9 @@ def power_law(power, a, b, p):
     return a * (p**power) + b
 
 
-def set_orbit_value(qubit: Transmon, qubit_with_orbit_value: Transmon, orbit_variable: str, value: Union[float, int]) -> Transmon:
+def set_orbit_value(
+    qubit: Transmon, qubit_with_orbit_value: Transmon, orbit_variable: str, value: Union[float, int]
+) -> Transmon:
     interleaved_gate_operation = get_interleaved_gate(interleaved_gate_index)
 
     if orbit_variable == "frequency":
@@ -180,16 +174,19 @@ def set_orbit_value(qubit: Transmon, qubit_with_orbit_value: Transmon, orbit_var
         pass
     elif orbit_variable == "amplitude":
         qubit_with_orbit_value.xy.operations[interleaved_gate_operation].amplitude = None
-        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].amplitude = \
-            copy.deepcopy(qubit.xy.operations[interleaved_gate_operation].amplitude * value)
+        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].amplitude = copy.deepcopy(
+            qubit.xy.operations[interleaved_gate_operation].amplitude * value
+        )
     elif orbit_variable == "drag_coefficient_factor":
         qubit_with_orbit_value.xy.operations[interleaved_gate_operation].alpha = None
-        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].alpha = \
-            copy.deepcopy(qubit.xy.operations[interleaved_gate_operation].alpha * value)
+        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].alpha = copy.deepcopy(
+            qubit.xy.operations[interleaved_gate_operation].alpha * value
+        )
     else:
         raise ValueError(f"Orbit variable {orbit_variable} not recognized")
 
     return qubit_with_orbit_value
+
 
 def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -416,12 +413,12 @@ else:
         machine.qubits[qubit_with_orbit_value_name] = cloned_qubit
         qubit_with_orbit_value = machine.qubits[qubit_with_orbit_value_name]
 
-        for i, orbit_variable in enumerate(tqdm(orbit_variables, unit='ORBIT variable')):
+        for i, orbit_variable in enumerate(tqdm(orbit_variables, unit="ORBIT variable")):
             sweep = orbit_variable_sweeps[orbit_variable]
             # prepare empty array for state average
             node.results[orbit_variable] = np.zeros(len(sweep))
             # sweep each orbit variable one-at-a-time with fixed sequence depth
-            for j, value in enumerate(tqdm(sweep, unit=f'{orbit_variable} value')):
+            for j, value in enumerate(tqdm(sweep, unit=f"{orbit_variable} value")):
 
                 if orbit_variable in ["amplitude", "drag_coefficient_factor"]:
                     qubit_with_orbit_value = set_orbit_value(qubit, qubit_with_orbit_value, orbit_variable, value)
@@ -432,8 +429,7 @@ else:
                 if orbit_variable == "frequency":
                     # set the ORBIT frequency post open_qm to retain mixer calibration at original IF
                     qm.set_intermediate_frequency(
-                        element=qubit.name + "_with_orbit_value.xy",
-                        freq=qubit.xy.intermediate_frequency + float(value)
+                        element=qubit.name + "_with_orbit_value.xy", freq=qubit.xy.intermediate_frequency + float(value)
                     )
 
                 # silence job INFO output since we will execute many programs
@@ -485,6 +481,6 @@ plt.savefig("test21233321.png")
 node.results["figure"] = fig
 
 # %%
-node.results['initial_parameters'] = node.parameters.model_dump()
+node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()

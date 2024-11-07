@@ -30,16 +30,14 @@ def fetch_results_as_xarray(handles, qubits, measurement_axis):
 
     stream_handles = handles.keys()
     meas_vars = list(set([extract_string(handle) for handle in stream_handles if extract_string(handle) is not None]))
-    values = [[handles.get(f'{meas_var}{i + 1}').fetch_all() for i, qubit in enumerate(qubits)] for meas_var in
-              meas_vars]
+    values = [
+        [handles.get(f"{meas_var}{i + 1}").fetch_all() for i, qubit in enumerate(qubits)] for meas_var in meas_vars
+    ]
     measurement_axis["qubit"] = [qubit.name for qubit in qubits]
     measurement_axis = {key: measurement_axis[key] for key in reversed(measurement_axis.keys())}
 
     ds = xr.Dataset(
-        {
-            f"{meas_var}": ([key for key in measurement_axis.keys()], values[i])
-            for i, meas_var in enumerate(meas_vars)
-        },
+        {f"{meas_var}": ([key for key in measurement_axis.keys()], values[i]) for i, meas_var in enumerate(meas_vars)},
         coords=measurement_axis,
     )
 
@@ -76,7 +74,7 @@ def load_dataset(serial_number):
 
     base_folder = find_folder(get_storage_path(), serial_number)
     # Look for .nc files in the subfolder
-    nc_files = [f for f in os.listdir(base_folder) if f.endswith('.h5')]
+    nc_files = [f for f in os.listdir(base_folder) if f.endswith(".h5")]
 
     if nc_files:
         # Assuming there's only one .nc file per folder

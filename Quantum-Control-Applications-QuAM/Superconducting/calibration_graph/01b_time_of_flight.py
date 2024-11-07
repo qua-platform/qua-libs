@@ -42,6 +42,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
 
+
 node = QualibrationNode(name="01_Time_of_Flight", parameters=Parameters())
 
 
@@ -101,7 +102,6 @@ with program() as raw_trace_prog:
             adc_st[i].input1().save(f"adc_single_run{i + 1}")
 
 
-
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
@@ -126,7 +126,7 @@ else:
     time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: ds[key] / 2 ** 12 for key in ("adc", "adc_single_run")})
+    ds = ds.assign({key: ds[key] / 2**12 for key in ("adc", "adc_single_run")})
     # Add the dataset to the node
     node.results = {"ds": ds}
 

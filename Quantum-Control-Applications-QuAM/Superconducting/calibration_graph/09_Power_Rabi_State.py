@@ -76,9 +76,7 @@ num_qubits = len(qubits)
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
-N_pi = (
-    node.parameters.max_number_rabi_pulses_per_sweep
-)  # Number of applied Rabi pulses sweep
+N_pi = node.parameters.max_number_rabi_pulses_per_sweep  # Number of applied Rabi pulses sweep
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 operation = node.parameters.operation_x180_or_any_90  # The qubit operation to play
@@ -146,13 +144,13 @@ with program() as power_rabi:
         n_st.save("n")
         for i, qubit in enumerate(qubits):
             if operation == "x180":
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(
-                    np.ceil(N_pi / 2)
-                ).average().save(f"state{i + 1}")
+                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
+                    f"state{i + 1}"
+                )
             elif operation in ["x90", "-x90", "y90", "-y90"]:
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(
-                    np.ceil(N_pi / 4)
-                ).average().save(f"state{i + 1}")
+                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(
+                    f"state{i + 1}"
+                )
             else:
                 raise ValueError(f"Unrecognized operation {operation}.")
 
@@ -179,9 +177,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"amp": amps, "N": N_pi_vec}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
     # Add the qubit pulse absolute amplitude to the dataset
     ds = ds.assign_coords(
         {
@@ -206,8 +202,8 @@ else:
             fit.sel(fit_vals="phi"),
             fit.sel(fit_vals="offset"),
         )
-        
-    # Save fitting results
+
+        # Save fitting results
         for q in qubits:
             fit_results[q.name] = {}
             f_fit = fit.loc[q.name].sel(fit_vals="f")
@@ -217,9 +213,7 @@ else:
             new_pi_amp = q.xy.operations[operation].amplitude * factor
             if new_pi_amp < 0.3:  # TODO: 1 for OPX1000 MW
                 print(f"amplitude for Pi pulse is modified by a factor of {factor:.2f}")
-                print(
-                    f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n"
-                )  # TODO: 1 for OPX1000 MW
+                print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
                 fit_results[q.name]["Pi_amplitude"] = float(new_pi_amp)
             else:
                 print(f"Fitted amplitude too high, new amplitude is 300 mV \n")
@@ -230,8 +224,8 @@ else:
         # Get the average along the number of pulses axis to identify the best pulse amplitude
         I_n = ds.state.mean(dim="N")
         data_max_idx = I_n.argmax(dim="amp")
-        
-    # Save fitting results
+
+        # Save fitting results
         for q in qubits:
             new_pi_amp = ds.abs_amp.sel(qubit=q.name)[data_max_idx.sel(qubit=q.name)]
             fit_results[q.name] = {}
@@ -240,9 +234,7 @@ else:
                 print(
                     f"amplitude for Pi pulse is modified by a factor of {I_n.idxmax(dim='amp').sel(qubit = q.name):.2f}"
                 )
-                print(
-                    f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n"
-                )  # TODO: 1 for OPX1000 MW
+                print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
             else:
                 print(f"Fitted amplitude too high, new amplitude is 300 mV \n")
                 fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
@@ -253,15 +245,11 @@ else:
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
         if N_pi == 1:
-            ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(
-                ax=ax, x="amp_mV"
-            )
+            ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV")
             ax.plot(ds.abs_amp.loc[qubit] * 1e3, 1e3 * fit_evals.loc[qubit][0])
             ax.set_ylabel("Trans. amp. I [mV]")
         elif N_pi > 1:
-            ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(
-                ax=ax, x="amp_mV", y="N"
-            )
+            ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV", y="N")
             ax.axvline(1e3 * ds.abs_amp.loc[qubit][data_max_idx.loc[qubit]], color="r")
             ax.set_ylabel("num. of pulses")
         ax.set_xlabel("Amplitude [mV]")

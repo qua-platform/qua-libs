@@ -61,10 +61,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
 
 
-node = QualibrationNode(
-    name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters()
-)
-
+node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters())
 
 
 # %% {Utility functions}
@@ -80,30 +77,22 @@ def set_output_power(
         quam_object.operations[operation].amplitude = amplitude
         # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
         #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-        quam_object.frequency_converter_up.gain = (
-            round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2
-        )
-        print(
-            f"Setting the Octave gain to {round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2} dB"
-        )
+        quam_object.frequency_converter_up.gain = round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2
+        print(f"Setting the Octave gain to {round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2} dB")
         # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
         #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
     elif gain_or_full_scale_power_dbm is not None:
         quam_object.frequency_converter_up.gain = gain_or_full_scale_power_dbm
         # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
         #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
-        quam_object.operations[operation].amplitude = u.dBm2volts(
-            power_dBm - quam_object.frequency_converter_up.gain
-        )
+        quam_object.operations[operation].amplitude = u.dBm2volts(power_dBm - quam_object.frequency_converter_up.gain)
         print(
             f"Setting the {operation} amplitude to {u.dBm2volts(power_dBm - quam_object.frequency_converter_up.gain)} V"
         )
         # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
         #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
     else:
-        raise RuntimeError(
-            "Either amplitude or gain_or_full_scale_power_dbm must be specified."
-        )
+        raise RuntimeError("Either amplitude or gain_or_full_scale_power_dbm must be specified.")
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -134,7 +123,9 @@ for i, qubit in enumerate(qubits):
         #     power_dBm=node.parameters.max_power_dbm,
         #     amplitude=node.parameters.max_amp,
         # )
-        qubit.resonator.frequency_converter_up.gain = min(10, max(-20, int(node.parameters.max_power_dbm - u.volts2dBm(node.parameters.max_amp))))
+        qubit.resonator.frequency_converter_up.gain = min(
+            10, max(-20, int(node.parameters.max_power_dbm - u.volts2dBm(node.parameters.max_amp)))
+        )
         # qubit.resonator.operations["readout"].full_scale_power_dbm = node.parameters.max_power_dbm
         tracked_qubits.append(qubit)
 
@@ -226,7 +217,6 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "freq": dfs})
@@ -253,9 +243,7 @@ else:
 
         return foo
 
-    ds = ds.assign_coords(
-        {"abs_amp": (["qubit", "amp"], np.array([abs_amp(q)(amps) for q in qubits]))}
-    )
+    ds = ds.assign_coords({"abs_amp": (["qubit", "amp"], np.array([abs_amp(q)(amps) for q in qubits]))})
     ds.abs_amp.attrs["long_name"] = "Amplitude"
     ds.abs_amp.attrs["units"] = "V"
     # Add the absolute readout power to the dataset
@@ -264,13 +252,7 @@ else:
         {
             "power_dbm": (
                 ["qubit", "amp"],
-                np.array(
-                    [
-                        abs_pow(q)(20 * np.log10(amps))
-                        - node.parameters.ro_line_attenuation_dB
-                        for q in qubits
-                    ]
-                ),
+                np.array([abs_pow(q)(20 * np.log10(amps)) - node.parameters.ro_line_attenuation_dB for q in qubits]),
             )
         }
     )
@@ -284,10 +266,7 @@ else:
     # %% {Data_analysis}
     # Follow the resonator line for each amplitude - This gives a ds with all qubits for each amplitude
     res_min_vs_amp = [
-        peaks_dips(
-            ds.IQ_abs_norm.sel(amp=amp), dim="freq", prominence_factor=5
-        ).position
-        for amp in ds.amp
+        peaks_dips(ds.IQ_abs_norm.sel(amp=amp), dim="freq", prominence_factor=5).position for amp in ds.amp
     ]
     # This concatenates all the amplitudes within the same ds
     res_min_vs_amp = xr.concat(res_min_vs_amp, "amp")
@@ -307,7 +286,6 @@ else:
     RO_power_ratio = 0.45
     rr_pwr = RO_power_ratio * rr_pwr
 
-
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -322,9 +300,7 @@ else:
             robust=True,
             yscale="log",
         )
-        ds.loc[qubit].IQ_abs_norm.plot(
-            ax=ax, add_colorbar=False, x="freq_full", y="power_dbm", robust=True
-        )
+        ds.loc[qubit].IQ_abs_norm.plot(ax=ax, add_colorbar=False, x="freq_full", y="power_dbm", robust=True)
         ax.set_ylabel("Power (dBm)")
         # Plot the resonance frequency  for each amplitude
         ax2.plot(
@@ -352,12 +328,8 @@ else:
         fit_results[q.name] = {}
         if float(rr_pwr.sel(qubit=q.name)) > 0:
             with node.record_state_updates():
-                q.resonator.operations["readout"].amplitude = float(
-                    rr_pwr.sel(qubit=q.name)
-                )
-                q.resonator.intermediate_frequency += int(
-                    res_low_power.sel(qubit=q.name).values
-                )
+                q.resonator.operations["readout"].amplitude = float(rr_pwr.sel(qubit=q.name))
+                q.resonator.intermediate_frequency += int(res_low_power.sel(qubit=q.name).values)
         fit_results[q.name]["RO_amplitude"] = float(rr_pwr.sel(qubit=q.name))
         fit_results[q.name]["RO_frequency"] = q.resonator.RF_frequency
     node.results["resonator_frequency"] = fit_results

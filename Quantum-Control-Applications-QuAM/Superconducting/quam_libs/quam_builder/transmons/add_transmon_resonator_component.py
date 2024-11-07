@@ -7,6 +7,7 @@ from quam_libs.components import Transmon, ReadoutResonatorIQ, ReadoutResonatorM
 
 u = unit(coerce_to_integer=True)
 
+
 def add_transmon_resonator_component(transmon: Transmon, wiring_path: str, ports: Dict[str, str], machine: QuAM):
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
@@ -27,7 +28,7 @@ def add_transmon_resonator_component(transmon: Transmon, wiring_path: str, ports
             digital_outputs=digital_outputs,
             intermediate_frequency=intermediate_frequency,
             depletion_time=depletion_time,
-            time_of_flight=time_of_flight
+            time_of_flight=time_of_flight,
         )
 
         RF_output_resonator = transmon.resonator.frequency_converter_up
@@ -46,7 +47,7 @@ def add_transmon_resonator_component(transmon: Transmon, wiring_path: str, ports
             digital_outputs=digital_outputs,
             depletion_time=depletion_time,
             intermediate_frequency=intermediate_frequency,
-            time_of_flight=time_of_flight
+            time_of_flight=time_of_flight,
         )
 
     else:

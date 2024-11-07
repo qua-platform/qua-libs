@@ -10,17 +10,16 @@ from .create_analog_ports import create_octave_port, create_mw_fem_port, create_
 from .create_digital_ports import create_digital_output_port
 from .paths import *
 
+
 def create_wiring(connectivity: Connectivity) -> dict:
     """
     Generates a dictionary containing QuAM-compatible JSON references which
     can be used to generate QuAM `port` objects.
     """
-    wiring = { }
+    wiring = {}
     for element_id, element in connectivity.elements.items():
         for line_type, channels in element.channels.items():
-            if line_type in [WiringLineType.RESONATOR,
-                             WiringLineType.DRIVE,
-                             WiringLineType.FLUX]:
+            if line_type in [WiringLineType.RESONATOR, WiringLineType.DRIVE, WiringLineType.FLUX]:
                 for k, v in qubit_wiring(channels).items():
                     set_nested_value_with_path(wiring, f"qubits/{element_id}/{line_type.value}/{k}", v)
 
@@ -41,7 +40,7 @@ def qubit_wiring(channels: List[AnyInstrumentChannel]) -> dict:
     """
     qubit_line_wiring = {}
     for channel in channels:
-        if not(channel.signal_type == "digital" and channel.io_type == "input"):
+        if not (channel.signal_type == "digital" and channel.io_type == "input"):
             key, reference = get_channel_port(channel, channels)
             qubit_line_wiring[key] = reference
 
@@ -58,7 +57,7 @@ def qubit_pair_wiring(channels: List[AnyInstrumentChannel], element_id: QubitPai
         "target_qubit": f"{QUBITS_BASE_JSON_PATH}/q{element_id.target_index}",
     }
     for channel in channels:
-        if not(channel.signal_type == "digital" and channel.io_type == "input"):
+        if not (channel.signal_type == "digital" and channel.io_type == "input"):
             key, reference = get_channel_port(channel, channels)
             qubit_pair_line_wiring[key] = reference
 
@@ -83,5 +82,5 @@ def get_channel_port(channel: AnyInstrumentChannel, channels: List[AnyInstrument
 
 def set_nested_value_with_path(d: Dict, path: str, value: Any):
     """Set a value in a nested dictionary using a '/' separated path."""
-    keys = path.split('/')  # Split the path into keys
+    keys = path.split("/")  # Split the path into keys
     reduce(lambda d, key: d.setdefault(key, {}), keys[:-1], d)[keys[-1]] = value

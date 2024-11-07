@@ -125,9 +125,7 @@ with program() as power_rabi:
                 # Drive the qubit to the excited state
                 qubit.xy.play(operation)
                 # Update the qubit frequency to scan around the expected f_12
-                update_frequency(
-                    qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
-                )
+                update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity)
                 qubit.xy.play(operation, amplitude_scale=a)
                 align()
                 qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -184,7 +182,7 @@ else:
     # %% {Data_analysis}
     # Fit the power Rabi oscillations
     fit = fit_oscillation(ds.IQ_abs, "amp")
-    
+
     # Save fitting results
     fit_results = {}
     fit_evals = oscillation(
@@ -208,9 +206,7 @@ else:
             print(
                 f"amplitude for E-F Pi pulse is modified by a factor of {factor:.2f} w.r.t the original pi pulse amplitude"
             )
-            print(
-                f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n"
-            )  # TODO: 1 for OPX1000 MW
+            print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
             fit_results[q.name]["Pi_amplitude"] = new_pi_amp
         else:
             print(f"Fitted amplitude too high or negative, new amplitude is 300 mV \n")
@@ -221,9 +217,7 @@ else:
     grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].IQ_abs * 1e3).plot(
-            ax=ax, x="amp_mV"
-        )
+        (ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].IQ_abs * 1e3).plot(ax=ax, x="amp_mV")
         ax.plot(ds.abs_amp.loc[qubit] * 1e3, 1e3 * fit_evals.loc[qubit])
         ax.set_ylabel("Trans. amp. I [mV]")
         ax.set_xlabel("Amplitude [mV]")
@@ -249,9 +243,7 @@ else:
         else:
             with node.record_state_updates():
                 # set the new amplitude for the EF operation
-                q.xy.operations[ef_operation_name].amplitude = fit_results[q.name][
-                    "Pi_amplitude"
-                ]
+                q.xy.operations[ef_operation_name].amplitude = fit_results[q.name]["Pi_amplitude"]
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

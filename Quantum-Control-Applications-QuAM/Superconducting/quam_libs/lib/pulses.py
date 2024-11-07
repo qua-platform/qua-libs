@@ -32,6 +32,7 @@ class DragPulseCosine(Pulse):
 
     def waveform_function(self):
         from qualang_tools.config.waveform_tools import drag_cosine_pulse_waveforms
+
         I, Q = drag_cosine_pulse_waveforms(
             amplitude=self.amplitude,
             length=self.length,

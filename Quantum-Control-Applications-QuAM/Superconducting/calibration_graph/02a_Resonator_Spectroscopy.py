@@ -137,7 +137,6 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     if node.parameters.load_data_id is not None:
@@ -149,9 +148,7 @@ elif node.parameters.load_data_id is None:
     # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
     ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
     # Derive the phase IQ_abs = angle(I + j*Q)
-    ds = ds.assign(
-        {"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")}
-    )
+    ds = ds.assign({"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")})
     # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
     ds = ds.assign_coords(
         {
@@ -176,26 +173,20 @@ elif node.parameters.load_data_id is None:
         Qe = np.abs(fit.params["Qe_real"].value + 1j * fit.params["Qe_imag"].value)
         Qi = 1 / (1 / fit.params["Q"].value - 1 / Qe)
         fit_results[q.name] = {}
-        fit_results[q.name]["resonator_freq"] = (
-            fit.params["omega_r"].value + q.resonator.RF_frequency
-        )
+        fit_results[q.name]["resonator_freq"] = fit.params["omega_r"].value + q.resonator.RF_frequency
         fit_results[q.name]["Quality_external"] = Qe
         fit_results[q.name]["Quality_internal"] = Qi
         print(
             f"Resonator frequency for {q.name} is {(fit.params['omega_r'].value + q.resonator.RF_frequency) / 1e9:.3f} GHz"
         )
-        print(
-            f"freq shift for {q.name} is {fit.params['omega_r'].value/1e6:.2f} MHz with respect to the previous IF"
-        )
+        print(f"freq shift for {q.name} is {fit.params['omega_r'].value/1e6:.2f} MHz with respect to the previous IF")
         print(f"Qe for {q.name} is {Qe:,.0f}")
         print(f"Qi for {q.name} is {Qi:,.0f} \n")
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (ds.assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].IQ_abs * 1e3).plot(
-            ax=ax, x="freq_MHz"
-        )
+        (ds.assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].IQ_abs * 1e3).plot(ax=ax, x="freq_MHz")
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. amp. [mV]")
         ax.set_title(qubit["qubit"])
@@ -205,9 +196,7 @@ elif node.parameters.load_data_id is None:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (ds.assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].phase * 1e3).plot(
-            ax=ax, x="freq_MHz"
-        )
+        (ds.assign_coords(freq_MHz=ds.freq / 1e6).loc[qubit].phase * 1e3).plot(ax=ax, x="freq_MHz")
         ax.set_xlabel("Resonator detuning [MHz]")
         ax.set_ylabel("Trans. phase [mrad]")
         ax.set_title(qubit["qubit"])
@@ -217,9 +206,7 @@ elif node.parameters.load_data_id is None:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs * 1e3).plot(
-            ax=ax, x="freq_GHz"
-        )
+        (ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].IQ_abs * 1e3).plot(ax=ax, x="freq_GHz")
         ax.plot(
             ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].freq_GHz,
             1e3 * np.abs(fit_evals[qubit["qubit"]]),
@@ -237,9 +224,7 @@ elif node.parameters.load_data_id is None:
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for index, q in enumerate(qubits):
-                q.resonator.intermediate_frequency += int(
-                    fits[q.name].params["omega_r"].value
-                )
+                q.resonator.intermediate_frequency += int(fits[q.name].params["omega_r"].value)
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

@@ -130,9 +130,7 @@ with program() as drag_calibration:
 
                     qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(
-                        state[i], I[i] > qubit.resonator.operations["readout"].threshold
-                    )
+                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
         # Measure sequentially
         align()
@@ -163,12 +161,9 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"amp": amps, "sequence": [0, 1]}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "sequence": [0, 1]})
     # Add the qubit pulse absolute alpha coefficient to the dataset
     ds = ds.assign_coords(
         {"alpha": (["qubit", "amp"], np.array([q.xy.operations[operation].alpha * amps for q in qubits]))}
@@ -176,17 +171,12 @@ else:
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-
     # %% {Data_analysis}
     # Perform a linear fit of the qubit state vs DRAG coefficient scaling factor
     state = ds.state
     fitted = xr.polyval(state.amp, state.polyfit(dim="amp", deg=1).polyfit_coefficients)
     # TODO: what does it do? Explain the analysis
-    diffs = (
-        state.polyfit(dim="amp", deg=1)
-        .polyfit_coefficients.diff(dim="sequence")
-        .drop("sequence")
-    )
+    diffs = state.polyfit(dim="amp", deg=1).polyfit_coefficients.diff(dim="sequence").drop("sequence")
     intersection = -diffs.sel(degree=0) / diffs.sel(degree=1)
     intersection_alpha = intersection * xr.DataArray(
         [q.xy.operations[operation].alpha for q in qubits],
@@ -195,14 +185,10 @@ else:
     )
 
     # Save fitting results
-    fit_results = {
-        qubit.name: {"alpha": float(intersection_alpha.sel(qubit=qubit.name).values)}
-        for qubit in qubits
-    }
+    fit_results = {qubit.name: {"alpha": float(intersection_alpha.sel(qubit=qubit.name).values)} for qubit in qubits}
     for q in qubits:
         print(f"DRAG coefficient for {q.name} is {fit_results[q.name]['alpha']}")
     node.results["fit_results"] = fit_results
-
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])

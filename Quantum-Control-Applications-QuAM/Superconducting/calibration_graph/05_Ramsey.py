@@ -161,9 +161,7 @@ with program() as ramsey:
         n_st.save("n")
         for i in range(num_qubits):
             if node.parameters.use_state_discrimination:
-                state_st[i].buffer(2).buffer(len(idle_times)).average().save(
-                    f"state{i + 1}"
-                )
+                state_st[i].buffer(2).buffer(len(idle_times)).average().save(f"state{i + 1}")
             else:
                 I_st[i].buffer(2).buffer(len(idle_times)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(2).buffer(len(idle_times)).average().save(f"Q{i + 1}")
@@ -191,9 +189,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
-        job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times}
-    )
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits)
     # Add the absolute time to the dataset
@@ -260,9 +256,7 @@ else:
     }
     node.results["fit_results"] = fit_results
     for q in qubits:
-        print(
-            f"Frequency offset for qubit {q.name} : {(fit_results[q.name]['freq_offset']/1e6):.2f} MHz "
-        )
+        print(f"Frequency offset for qubit {q.name} : {(fit_results[q.name]['freq_offset']/1e6):.2f} MHz ")
         print(f"T2* for qubit {q.name} : {1e6*fit_results[q.name]['decay']:.2f} us")
 
     # %% {Plotting}

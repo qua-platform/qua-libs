@@ -6,8 +6,7 @@ from contextlib import contextmanager
 
 
 @contextmanager
-def tracked_updates(obj, auto_revert: bool = True,
-                    dont_assign_to_none: bool = False):
+def tracked_updates(obj, auto_revert: bool = True, dont_assign_to_none: bool = False):
     """
     A context manager to temporarily update attributes of an object.
 
@@ -48,7 +47,7 @@ class TrackableObject:
         return self._nested_trackables[attr]
 
     def __setattr__(self, attr, value):
-        if attr.startswith('_'):
+        if attr.startswith("_"):
             super().__setattr__(attr, value)
         else:
             if not (self._dont_assign_to_none and value is None):
