@@ -53,7 +53,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(name="09_Power_Rabi_State", parameters=Parameters())
+node = QualibrationNode(name="08_Power_Rabi_Error_Amplification", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

@@ -56,7 +56,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(name="11a_Randomized_Benchmarking", parameters=Parameters())
+node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}

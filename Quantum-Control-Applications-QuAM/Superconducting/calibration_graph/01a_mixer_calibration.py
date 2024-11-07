@@ -19,7 +19,7 @@ class Parameters(NodeParameters):
     timeout: int = 100
 
 
-node = QualibrationNode(name="00_Mixer_Calibration", parameters=Parameters())
+node = QualibrationNode(name="01a_Mixer_Calibration", parameters=Parameters())
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.

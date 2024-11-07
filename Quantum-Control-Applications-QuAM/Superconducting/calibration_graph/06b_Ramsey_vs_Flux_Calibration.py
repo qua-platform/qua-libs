@@ -37,7 +37,7 @@ class Parameters(NodeParameters):
     flux_mode_dc_or_pulsed: Literal["dc", "pulsed"] = "pulsed"
 
 
-node = QualibrationNode(name="08a_Ramsey_flux_cal", parameters=Parameters())
+node = QualibrationNode(name="06b_Ramsey_vs_Flux_Calibration", parameters=Parameters())
 
 
 from qm.qua import *
