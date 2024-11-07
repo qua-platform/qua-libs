@@ -37,7 +37,7 @@ class Parameters(NodeParameters):
     intermediate_frequency_in_mhz: Optional[float] = 50
     readout_amplitude_in_v: Optional[float] = 0.1
     readout_length_in_ns: Optional[int] = None
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

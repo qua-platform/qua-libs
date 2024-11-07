@@ -53,7 +53,7 @@ class Parameters(NodeParameters):
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
     update_flux_min: bool = False
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 
