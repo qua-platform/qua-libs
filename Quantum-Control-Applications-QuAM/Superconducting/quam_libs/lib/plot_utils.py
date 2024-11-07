@@ -336,9 +336,6 @@ class QubitGrid:
                 grid_name_mapping = dict(zip(grid_indices, [str(ds.qubit.values)]))
         grid_row_idxs = [idx[1] for idx in grid_indices]
         grid_col_idxs = [idx[0] for idx in grid_indices]
-        print(grid_indices)
-        print(grid_row_idxs)
-        print(grid_col_idxs)
         min_grid_row = min(grid_row_idxs)
         min_grid_col = min(grid_col_idxs)
         shape = (max(grid_row_idxs) - min_grid_row + 1, max(grid_col_idxs) - min_grid_col + 1)
