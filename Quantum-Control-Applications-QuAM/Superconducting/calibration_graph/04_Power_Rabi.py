@@ -48,7 +48,7 @@ class Parameters(NodeParameters):
     amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

@@ -49,7 +49,7 @@ class Parameters(NodeParameters):
     max_number_rabi_pulses_per_sweep: int = 100
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

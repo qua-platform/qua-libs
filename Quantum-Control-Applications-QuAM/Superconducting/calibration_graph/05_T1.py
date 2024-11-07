@@ -42,7 +42,7 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent_or_arbitrary: Literal["joint", "independent", "arbitrary"] = "independent"
     reset_type: Literal["active", "thermal"] = "thermal"
     use_state_discrimination: bool = False
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

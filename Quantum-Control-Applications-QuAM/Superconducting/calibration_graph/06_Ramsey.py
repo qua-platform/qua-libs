@@ -50,7 +50,7 @@ class Parameters(NodeParameters):
     log_or_linear_sweep: Literal["log", "linear"] = "log"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     use_state_discrimination: bool = False
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

@@ -56,7 +56,7 @@ class Parameters(NodeParameters):
     target_peak_width: Optional[float] = 2e6
     arbitrary_flux_bias: Optional[float] = None
     arbitrary_qubit_frequency_in_ghz: Optional[float] = None
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

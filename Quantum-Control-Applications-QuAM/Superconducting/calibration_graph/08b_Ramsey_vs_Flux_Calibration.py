@@ -49,7 +49,7 @@ class Parameters(NodeParameters):
     flux_span: float = 0.02
     flux_step: float = 0.002
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 

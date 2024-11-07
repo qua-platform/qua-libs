@@ -46,8 +46,8 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    simulate: bool = True
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     start_amp: float = 0.5

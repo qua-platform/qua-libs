@@ -43,7 +43,7 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     frequency_span_in_mhz: float = 30.0
     frequency_step_in_mhz: float = 0.1
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None

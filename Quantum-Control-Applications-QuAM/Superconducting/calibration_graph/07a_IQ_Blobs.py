@@ -49,7 +49,7 @@ class Parameters(NodeParameters):
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     operation_name: str = "readout"  # or "readout_QND"
-    simulate: bool = True
+    simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
 
