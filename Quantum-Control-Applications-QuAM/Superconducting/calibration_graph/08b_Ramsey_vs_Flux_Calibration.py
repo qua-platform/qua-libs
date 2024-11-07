@@ -122,6 +122,7 @@ with program() as ramsey:
                     # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
                     # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
                     assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
+                    # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
                     # Ramsey sequence
                     qubit.xy.play("x180", amplitude_scale=0.5)
                     qubit.align()
@@ -191,6 +192,7 @@ else:
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
+    # TODO: explain the data analysis
     fit_data = fit_oscillation_decay_exp(ds.state, "idle_time")
     fit_data.attrs = {"long_name": "time", "units": "µs"}
     fitted = oscillation_decay_exp(
