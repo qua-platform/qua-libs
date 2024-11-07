@@ -8,11 +8,9 @@ The data undergoes post-processing to calibrate three distinct parameters:
     This value is utilized to offset the acquisition window relative to when the readout pulse is dispatched.
 
     - Analog Inputs Offset: Due to minor impedance mismatches, the signals captured by the OPX might exhibit slight offsets.
-    These can be rectified in the configuration at: config/controllers/"con1"/analog_inputs, enhancing the demodulation process.
 
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
-    the variable gain of the OPX analog input can be modified to fit the signal within the ADC range of +/-0.5V.
-    This gain, ranging from -12 dB to 20 dB, can also be adjusted in the configuration at: config/controllers/"con1"/analog_inputs.
+    the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
 
 from qualibrate import QualibrationNode, NodeParameters
@@ -97,9 +95,11 @@ with program() as raw_trace_prog:
     with stream_processing():
         for i in range(num_qubits):
             # Will save average:
-            adc_st[i].input1().average().save(f"adc{i + 1}")
+            adc_st[i].input1().average().save(f"adcI{i + 1}")
+            adc_st[i].input2().average().save(f"adcQ{i + 1}")
             # Will save only last run:
-            adc_st[i].input1().save(f"adc_single_run{i + 1}")
+            adc_st[i].input1().save(f"adc_single_runI{i + 1}")
+            adc_st[i].input2().save(f"adc_single_runQ{i + 1}")
 
 
 # %% {Simulate_or_execute}
@@ -126,72 +126,116 @@ else:
     time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: ds[key] / 2**12 for key in ("adc", "adc_single_run")})
+    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
+    ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     # Add the dataset to the node
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
     # Filter the data to get the pulse arrival time
-    filtered_adc = savgol_filter(np.abs(ds.adc), 11, 3)
+    filtered_adc = savgol_filter(np.abs(ds.IQ_abs), 11, 3)
     # Detect the arrival of the readout signal
     delays = []
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
-        filtered_adc = savgol_filter(np.abs(ds.sel(qubit=q.name).adc), 11, 3)
-        th = (np.mean(filtered_adc[i][:100]) + np.mean(filtered_adc[i][:-100])) / 2
-        delay = np.where(filtered_adc[i] > th)[0][0]
+        # Filter the time trace to easily find the rising edge of the readout pulse
+        filtered_adc = savgol_filter(np.abs(ds.sel(qubit=q.name).IQ_abs), 11, 3)
+        # Get a threshold to detect the rising edge
+        th = (np.mean(filtered_adc[:100]) + np.mean(filtered_adc[:-100])) / 2
+        delay = np.where(filtered_adc > th)[0][0]
         # Find the closest multiple integer of 4ns
         delay = np.round(delay / 4) * 4
+        delays.append(delay)
         fit_results[q.name]["delay_to_add"] = delay
         fit_results[q.name]["fit_successful"] = True
     node.results["fit_results"] = fit_results
     # Add the delays to the dataset
     ds = ds.assign_coords({"delays": (["qubit"], delays)})
+    ds = ds.assign_coords({"offsets_I": ds.adcI.mean(dim="time")})
+    ds = ds.assign_coords({"offsets_Q": ds.adcQ.mean(dim="time")})
+    ds = ds.assign_coords(
+        {"con": (["qubit"], [machine.qubits[q.name].resonator.opx_input_I.controller_id for q in qubits])}
+    )
 
     # %% {Plotting}
     # Single run
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.loc[qubit].adc_single_run.plot(ax=ax, x="time")
+        ds.loc[qubit].adc_single_runI.plot(ax=ax, x="time", label="I", color="b")
+        ds.loc[qubit].adc_single_runQ.plot(ax=ax, x="time", label="Q", color="r")
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
+        ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
+        ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
         ax.fill_between(range(ds.sizes["time"]), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-        ax.legend(loc="upper right")
     grid.fig.suptitle("Single run")
     plt.tight_layout()
+    plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_single_run"] = grid.fig
 
     # Averaged run
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.loc[qubit].adc.plot(ax=ax, x="time")
+        ds.loc[qubit].adcI.plot(ax=ax, x="time", label="I", color="b")
+        ds.loc[qubit].adcQ.plot(ax=ax, x="time", label="Q", color="r")
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
+        ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
+        ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
         ax.set_title(qubit["qubit"])
-        ax.legend(loc="upper right")
     grid.fig.suptitle("Averaged run")
     plt.tight_layout()
+    plt.legend(loc="upper right", ncols=4, bbox_to_anchor=(0.5, 1.35))
     node.results["adc_averaged"] = grid.fig
 
     # %% {Update_state}
     print(f"Time Of Flight to add: {delays} ns")
-    for resonator in tracked_resonators:
-        resonator.revert_changes()
+    print(f"Offsets to add for I: {ds.offsets_I.values * 1000} mV")
+    print(f"Offsets to add for Q: {ds.offsets_I.values * 1000} mV")
 
     with node.record_state_updates():
-        for resonator in tracked_resonators:
-            resonator.reapply_changes()
-
         for q in qubits:
             if node.parameters.time_of_flight_in_ns is not None:
-                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(ds.loc(qubit=q.name).delay)
+                q.resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(ds.sel(qubit=q.name).delays)
             else:
-                # TODO: check when tof is set at the beginning
-                resonator.time_of_flight += int(ds.loc(qubit=q.name).delay)
+                q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
+
+    # Update the offsets per controller for each qubit
+    for con in np.unique(ds.con.values):
+        for i, q in enumerate(ds.where(ds.con == con).qubit.values):
+            # Only add the offsets once,
+            if i == 0:
+                if machine.qubits[q].resonator.opx_input_I.offset is not None:
+                    machine.qubits[q].resonator.opx_input_I.offset += float(
+                        ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
+                    )
+                else:
+                    machine.qubits[q].resonator.opx_input_I.offset = float(
+                        ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
+                    )
+                if machine.qubits[q].resonator.opx_input_Q.offset is not None:
+                    machine.qubits[q].resonator.opx_input_Q.offset += float(
+                        ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
+                    )
+                else:
+                    machine.qubits[q].resonator.opx_input_Q.offset = float(
+                        ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
+                    )
+            # else copy the values from the updated qubit
+            else:
+                machine.qubits[q].resonator.opx_input_I.offset = machine.qubits[
+                    ds.where(ds.con == con).qubit.values[0]
+                ].resonator.opx_input_I.offset
+                machine.qubits[q].resonator.opx_input_Q.offset = machine.qubits[
+                    ds.where(ds.con == con).qubit.values[0]
+                ].resonator.opx_input_Q.offset
+    # Revert the change done at the beginning of the node
+    for resonator in tracked_resonators:
+        resonator.revert_changes()
 
     # %% {Save_results}
     node.outcomes = {rr.name: "successful" for rr in resonators}
