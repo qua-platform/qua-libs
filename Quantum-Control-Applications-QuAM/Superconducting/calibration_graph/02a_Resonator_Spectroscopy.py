@@ -43,7 +43,8 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     frequency_span_in_mhz: float = 30.0
     frequency_step_in_mhz: float = 0.1
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
@@ -116,7 +117,7 @@ with program() as multi_res_spec:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, multi_res_spec, simulation_config)
     # Plot the simulated samples

@@ -43,7 +43,8 @@ class Parameters(NodeParameters):
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     timeout: int = 100
 
 
@@ -141,7 +142,7 @@ with program() as ro_freq_opt:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()

@@ -37,7 +37,8 @@ class Parameters(NodeParameters):
     intermediate_frequency_in_mhz: Optional[float] = 50
     readout_amplitude_in_v: Optional[float] = 0.1
     readout_length_in_ns: Optional[int] = None
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     timeout: int = 100
 
 
@@ -106,7 +107,7 @@ with program() as raw_trace_prog:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, raw_trace_prog, simulation_config)
     # Plot the simulated samples

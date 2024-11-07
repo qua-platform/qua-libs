@@ -50,7 +50,7 @@ class Parameters(NodeParameters):
     flux_step: float = 0.002
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = True
-    simulation_duration_ns: int = None
+    simulation_duration_ns: int = 2500
     timeout: int = 100
 
 
@@ -154,13 +154,13 @@ with program() as ramsey:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -178,7 +178,6 @@ else:
             n = results.fetch_all()[0]
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
-
 
     # %% {Data_fetching_and_dataset_creation}
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
@@ -214,7 +213,6 @@ else:
 
     frequency = frequency.where(frequency > 0, drop=True)
 
-
     fitvals = frequency.polyfit(dim="flux", deg=2)
     flux = frequency.flux
     a = {}
@@ -238,7 +236,6 @@ else:
         node.results["fit_results"][q.name]["flux_offset"] = flux_offset[q.name]
         node.results["fit_results"][q.name]["freq_offset"] = freq_offset[q.name]
         node.results["fit_results"][q.name]["quad_term"] = a[q.name]
-
 
     # %% {Plotting}
     grid_names = [q.grid_location for q in qubits]
@@ -273,7 +270,6 @@ else:
     plt.show()
     node.results["figure"] = grid.fig
 
-
     # %% {Update_state}
     with node.record_state_updates():
         for qubit in qubits:
@@ -285,7 +281,6 @@ else:
             else:
                 raise RuntimeError(f"unknown flux_point")
             qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
-
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

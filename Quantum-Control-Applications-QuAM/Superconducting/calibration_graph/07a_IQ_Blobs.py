@@ -49,7 +49,8 @@ class Parameters(NodeParameters):
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     operation_name: str = "readout"  # or "readout_QND"
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     timeout: int = 100
 
 
@@ -142,7 +143,7 @@ with program() as iq_blobs:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, iq_blobs, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()

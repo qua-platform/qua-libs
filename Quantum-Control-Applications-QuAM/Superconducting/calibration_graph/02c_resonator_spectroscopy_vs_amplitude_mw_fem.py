@@ -51,7 +51,8 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     forced_flux_bias_v: Optional[float] = None
     max_power_dbm: int = 10
     min_power_dbm: int = -20
@@ -188,7 +189,7 @@ simulate = node.parameters.simulate
 
 if simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, multi_res_spec_vs_amp, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()

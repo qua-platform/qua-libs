@@ -50,7 +50,8 @@ class Parameters(NodeParameters):
     log_or_linear_sweep: Literal["log", "linear"] = "log"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     use_state_discrimination: bool = False
-    simulate: bool = False
+    simulate: bool = True
+    simulation_duration_ns: int = 2500
     timeout: int = 100
 
 
@@ -171,7 +172,7 @@ with program() as ramsey:
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
     # Get the simulated samples and plot them for all controllers
     samples = job.get_simulated_samples()
