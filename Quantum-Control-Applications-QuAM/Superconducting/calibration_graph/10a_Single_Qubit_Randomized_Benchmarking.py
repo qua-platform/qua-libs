@@ -288,7 +288,13 @@ with program() as randomized_benchmarking:
 if node.parameters.simulate:
     simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
     job = qmm.simulate(config, randomized_benchmarking, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
     node.results["figure"] = plt.gcf()
     node.machine = machine
     node.save()

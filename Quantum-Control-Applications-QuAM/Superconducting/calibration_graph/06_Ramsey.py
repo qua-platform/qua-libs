@@ -57,6 +57,7 @@ class Parameters(NodeParameters):
 node = QualibrationNode(name="06a_Ramsey", parameters=Parameters())
 
 
+# %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handle units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
@@ -172,7 +173,15 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, ramsey, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
@@ -187,6 +196,7 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
+
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
@@ -195,9 +205,10 @@ else:
     # Add the absolute time to the dataset
     ds = ds.assign_coords({"time": (["time"], 4 * idle_times)})
     ds.time.attrs["long_name"] = "idle_time"
-    ds.time.attrs["units"] = "nS"
+    ds.time.attrs["units"] = "ns"
     # Add the dataset to the node
     node.results = {"ds": ds}
+
 
     # %% {Data_analysis}
     # Fit the Ramsey oscillations based on the qubit state or the 'I' quadrature
@@ -259,6 +270,7 @@ else:
         print(f"Frequency offset for qubit {q.name} : {(fit_results[q.name]['freq_offset']/1e6):.2f} MHz ")
         print(f"T2* for qubit {q.name} : {1e6*fit_results[q.name]['decay']:.2f} us")
 
+
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
@@ -283,7 +295,7 @@ else:
             ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
             ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
 
-        ax.set_xlabel("Idle time [nS]")
+        ax.set_xlabel("Idle time [ns]")
         ax.set_title(qubit["qubit"])
         ax.text(
             0.1,
@@ -300,16 +312,16 @@ else:
     plt.show()
     node.results["figure"] = grid.fig
 
+
     # %% {Update_state}
     with node.record_state_updates():
         for q in qubits:
             q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
             q.T2ramsey = float(fit_results[qubit["qubit"]]["decay"])
 
+
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
-
-# %%

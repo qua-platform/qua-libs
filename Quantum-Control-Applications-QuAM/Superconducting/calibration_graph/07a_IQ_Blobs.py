@@ -144,7 +144,15 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, iq_blobs, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()

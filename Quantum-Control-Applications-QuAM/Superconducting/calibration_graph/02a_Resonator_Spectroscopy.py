@@ -120,7 +120,13 @@ if node.parameters.simulate:
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, multi_res_spec, simulation_config)
     # Plot the simulated samples
-    job.get_simulated_samples().con1.plot()
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
     # Update the node & save
     node.results = {"figure": plt.gcf()}
     node.machine = machine

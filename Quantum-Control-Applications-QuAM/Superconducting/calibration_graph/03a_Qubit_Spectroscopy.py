@@ -193,7 +193,15 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, qubit_spec, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples and plot them for all controllers
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
+    # Save the figure
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
@@ -277,7 +285,7 @@ else:
                 f"by {factor_cw:.2f} to {factor_cw * used_amp / operation_amp * 1e3:.0f} mV"
             )
             print(
-                f"To obtain a Pi pulse at {Pi_length} nS the Rabi amplitude is modified by {factor_pi:.2f} "
+                f"To obtain a Pi pulse at {Pi_length} ns the Rabi amplitude is modified by {factor_pi:.2f} "
                 f"to {factor_pi*used_amp*1e3:.0f} mV"
             )
             print(f"readout angle for qubit {q.name}: {angle.sel(qubit = q.name).values:.4}")

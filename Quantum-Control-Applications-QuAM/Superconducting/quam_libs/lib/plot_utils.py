@@ -126,7 +126,7 @@ def plot_spectrum(
     plot the spectrum of a signal
 
     signal - 1D array to plot
-    t_s_usec - sampling time interval in usec
+    t_s_usec - sampling time interval in µs
     num_zero_pad - how much to zero pad the signal
 
     returns: the spectrum (abs^2), the frequency vector and the plotly figure object
