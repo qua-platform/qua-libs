@@ -60,7 +60,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = True
 
 
-node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude_Mw_Fem", parameters_class=Parameters)
+node = QualibrationNode(name="02c_Resonator_Spectroscopy_vs_Amplitude_Mw_Fem", parameters=Parameters())
 
 node.parameters = Parameters()
 
