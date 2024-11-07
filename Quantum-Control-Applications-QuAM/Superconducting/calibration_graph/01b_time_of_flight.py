@@ -110,7 +110,13 @@ if node.parameters.simulate:
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, raw_trace_prog, simulation_config)
     # Plot the simulated samples
-    job.get_simulated_samples().con1.plot()
+    samples = job.get_simulated_samples()
+    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
+    for i, con in enumerate(samples.keys()):
+        plt.subplot(len(samples.keys()),1,i+1)
+        samples[con].plot()
+        plt.title(con)
+    plt.tight_layout()
     # save the figure
     node.results = {"figure": plt.gcf()}
 else:
