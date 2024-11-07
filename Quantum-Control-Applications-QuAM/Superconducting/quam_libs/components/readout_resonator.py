@@ -1,6 +1,7 @@
 from quam.core import quam_dataclass
 from quam.components.channels import InOutIQChannel, InOutMWChannel
 import numpy as np
+from qualang_tools.units import unit
 
 __all__ = ["ReadoutResonator", "ReadoutResonatorIQ", "ReadoutResonatorMW"]
 
