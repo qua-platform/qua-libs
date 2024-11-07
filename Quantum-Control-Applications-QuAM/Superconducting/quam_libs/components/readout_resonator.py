@@ -32,12 +32,10 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
     def upconverter_frequency(self):
         return self.LO_frequency
 
-    # def get_output_power(self, operation, Z=50) -> float:
-    #     power = self.frequency_converter_up.power
-    #     amplitude = self.operations[operation].amplitude
-    #     x_mw = 10 ** (power / 10)
-    #     x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
-    #     return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
+    def get_output_power(self, operation, Z=50) -> float:
+        u = unit(coerce_to_integer=True)
+        amplitude = self.operations[operation].amplitude
+        return self.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
 
 @quam_dataclass
 class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
