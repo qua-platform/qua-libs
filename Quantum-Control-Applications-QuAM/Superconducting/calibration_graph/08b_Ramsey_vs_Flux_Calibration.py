@@ -181,8 +181,6 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
     # Add the absolute time in µs to the dataset
     ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
     ds.flux.attrs = {"long_name": "flux", "units": "V"}
