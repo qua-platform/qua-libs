@@ -37,6 +37,7 @@ from typing import Literal, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from sklearn.mixture import GaussianMixture
 
 
 # %% {Node_parameters}
@@ -57,8 +58,6 @@ class Parameters(NodeParameters):
 
 node = QualibrationNode(name="07c_Readout_Power_Optimization", parameters=Parameters())
 
-from sklearn.mixture import GaussianMixture
-
 
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
@@ -76,8 +75,9 @@ if node.parameters.qubits is None or node.parameters.qubits == "":
 else:
     qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
-# %%
 
+
+# %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
@@ -98,12 +98,6 @@ with program() as iq_blobs:
             machine.apply_all_flux_to_joint_idle()
         else:
             machine.apply_all_flux_to_zero()
-            # Wait for the flux bias to settle
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits
@@ -118,7 +112,7 @@ with program() as iq_blobs:
 
                 qubit.align()
                 qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]), amplitude_scale=a)
-                align()
+                qubit.align()
                 # save data
                 save(I_g[i], I_g_st[i])
                 save(Q_g[i], Q_g_st[i])
@@ -129,14 +123,14 @@ with program() as iq_blobs:
                     wait(qubit.thermalization_time * u.ns)
                 else:
                     raise ValueError(f"Unrecognized reset type {reset_type}.")
-                align()
+                qubit.align()
                 qubit.xy.play("x180")
-                align()
+                qubit.align()
                 qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]), amplitude_scale=a)
-                align()
                 save(I_e[i], I_e_st[i])
                 save(Q_e[i], Q_e_st[i])
 
+        # Measure sequentially
         align()
 
     with stream_processing():
@@ -178,80 +172,20 @@ else:
                 n = fetched_data[0]
                 progress_counter(n, n_runs, start_time=results.start_time)
 
-    # # Fetch data
-    # data_list = sum(
-    #     [[f"I_g{i+1}", f"Q_g{i+1}", f"I_e{i+1}", f"Q_e{i+1}"] for i in range(num_qubits)],
-    #     [],
-    # )
-    # results = fetching_tool(job, data_list)
-    # fetched_data = results.fetch_all()
-    # I_g_data = fetched_data[1::2]
-    # Q_g_data = fetched_data[2::2]
-    # I_e_data = fetched_data[3::2]
-    # Q_e_data = fetched_data[4::2]
-    # # Prepare for save data
-    # data = {}
-    # # Plot the results
-    # figs = []
-    # for i, qubit in enumerate(qubits):
-    #     I_g = I_g_data[i]
-    #     Q_g = Q_g_data[i]
-    #     I_e = I_e_data[i]
-    #     Q_e = Q_e_data[i]
 
-    #     hist = np.histogram(I_g, bins=100)
-    #     rus_threshold = hist[1][1:][np.argmax(hist[0])]
-    #     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(I_g, Q_g, I_e, Q_e, True, b_plot=True)
-
-    #     plt.suptitle(f"{qubit.name} - IQ Blobs")
-    #     plt.axvline(rus_threshold, color="k", linestyle="--", label="Threshold")
-    #     figs.append(plt.gcf())
-
-    #     data[f"{qubit.name}_I_g"] = I_g
-    #     data[f"{qubit.name}_Q_g"] = Q_g
-    #     data[f"{qubit.name}_I_e"] = I_e
-    #     data[f"{qubit.name}_Q_e"] = Q_e
-    #     data[f"{qubit.name}"] = {
-    #         "angle": angle,
-    #         "threshold": threshold,
-    #         "rus_exit_threshold": rus_threshold,
-    #         "fidelity": fidelity,
-    #         "confusion_matrix": [[gg, ge], [eg, ee]],
-    #     }
-    #     data[f"{qubit.name}_figure"] = figs[i]
-
-    #     qubit.resonator.operations["readout"].integration_weights_angle -= angle
-    #     qubit.resonator.operations["readout"].threshold = threshold
-    #     qubit.resonator.operations["readout"].rus_exit_threshold = rus_threshold
-    # plt.show()
-
-    # node_save(machine, "iq_blobs", data, additional_files=True)
-
-if not node.parameters.simulate:
     # %% {Data_fetching_and_dataset_creation}
-
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
-
-    def abs_amp(q):
-        def foo(amp):
-            return amp * q.resonator.operations["readout"].amplitude
-
-        return foo
-
-    ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([abs_amp(q)(amps) for q in qubits]))})
-
+    # Add the absolute readout power to the dataset
+    ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([amps * q.resonator.operations["readout"].amplitude for q in qubits]))})
     # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
     ds_rearranged = xr.Dataset()
-
     # Combine I_g and I_e into I
     ds_rearranged["I"] = xr.concat([ds.I_g, ds.I_e], dim="state")
     ds_rearranged["I"] = ds_rearranged["I"].assign_coords(state=[0, 1])
-
     # Combine Q_g and Q_e into Q
     ds_rearranged["Q"] = xr.concat([ds.Q_g, ds.Q_e], dim="state")
     ds_rearranged["Q"] = ds_rearranged["Q"].assign_coords(state=[0, 1])
-
     # Copy other coordinates and data variables
     for var in ds.coords:
         if var not in ds_rearranged.coords:
@@ -263,14 +197,9 @@ if not node.parameters.simulate:
 
     # Replace the original dataset with the rearranged one
     ds = ds_rearranged
-
-    node.results = {"ds": ds}
-
-    node.results["results"] = {}
-    node.results["figs"] = {}
+    node.results = {"ds": ds, "results": {}, "figs": {}}
 
     plot_raw = False
-
     if plot_raw:
         fig, axes = plt.subplots(
             ncols=num_qubits,
@@ -292,8 +221,8 @@ if not node.parameters.simulate:
         plt.show()
         node.results["figure_raw_data"] = fig
 
-if not node.parameters.simulate:
 
+    # %% {Data_analysis}
     def apply_fit_gmm(I, Q):
         I_mean = np.mean(I, axis=1)
         Q_mean = np.mean(Q, axis=1)
@@ -328,8 +257,6 @@ if not node.parameters.simulate:
     )
 
     fit_res = fit_res.assign_coords(result=["meas_fidelity", "outliers"])
-
-if not node.parameters.simulate:
 
     plot_individual = False
     best_data = {}
@@ -370,10 +297,8 @@ if not node.parameters.simulate:
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
 
 
-if not node.parameters.simulate:
-
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    # %% {Plotting}
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         fit_res.loc[qubit].plot(ax=ax, x="readout_amp", hue="result", add_legend=False)
         ax.axvline(best_amp[qubit["qubit"]], color="k", linestyle="dashed")
@@ -386,10 +311,7 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure_assignment_fid"] = grid.fig
 
-if not node.parameters.simulate:
-
-    grid_names = [f"{q.name}_0" for q in qubits]
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         ds_q = best_data[qubit["qubit"]]
         qn = qubit["qubit"]
@@ -439,7 +361,7 @@ if not node.parameters.simulate:
     plt.tight_layout()
     node.results["figure_IQ_blobs"] = grid.fig
 
-    grid = QubitGrid(ds, grid_names)
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         confusion = node.results["results"][qubit["qubit"]]["confusion_matrix"]
         ax.imshow(confusion)
@@ -460,8 +382,8 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure_fidelities"] = grid.fig
 
-if not node.parameters.simulate:
 
+    # %% {Update_state}
     with node.record_state_updates():
         for qubit in qubits:
             qubit.resonator.operations["readout"].integration_weights_angle -= float(
@@ -474,8 +396,9 @@ if not node.parameters.simulate:
             qubit.resonator.operations["readout"].amplitude = float(node.results["results"][qubit.name]["best_amp"])
             qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
-# %% {Save_results}
-node.outcomes = {q.name: "successful" for q in qubits}
-node.results["initial_parameters"] = node.parameters.model_dump()
-node.machine = machine
-node.save()
+
+    # %% {Save_results}
+    node.outcomes = {q.name: "successful" for q in qubits}
+    node.results["initial_parameters"] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
