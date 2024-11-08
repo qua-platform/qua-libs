@@ -113,12 +113,6 @@ with program() as power_rabi:
         else:
             machine.apply_all_flux_to_zero()
 
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
@@ -137,7 +131,6 @@ with program() as power_rabi:
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
-
         align()
 
     with stream_processing():
