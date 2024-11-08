@@ -1,4 +1,3 @@
-# %%
 """
         SINGLE QUBIT RANDOMIZED BENCHMARKING
 The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterward.
@@ -392,4 +391,3 @@ if not node.parameters.simulate:
     node.machine = machine
     node.save()
 
-# %%

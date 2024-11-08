@@ -1,4 +1,3 @@
-# %%
 """
         RESONATOR SPECTROSCOPY MULTIPLEXED
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to extract the
@@ -240,4 +239,3 @@ elif node.parameters.load_data_id is None:
     node.save()
     print("Results saved")
 
-# %%

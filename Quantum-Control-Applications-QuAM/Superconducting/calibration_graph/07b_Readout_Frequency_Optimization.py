@@ -1,4 +1,3 @@
-# %%
 """
         READOUT OPTIMISATION: FREQUENCY
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
@@ -252,4 +251,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

@@ -1,4 +1,3 @@
-# %%
 """
         POWER RABI WITH ERROR AMPLIFICATION
 This sequence involves repeatedly executing the qubit pulse (such as x180) 'N' times and
@@ -253,4 +252,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

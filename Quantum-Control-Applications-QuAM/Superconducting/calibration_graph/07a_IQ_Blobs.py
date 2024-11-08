@@ -1,4 +1,3 @@
-# %%
 """
         IQ BLOBS
 This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
@@ -328,4 +327,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

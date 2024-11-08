@@ -1,4 +1,3 @@
-# %%
 """
         QUBIT SPECTROSCOPY
 This sequence involves sending a saturation pulse to the qubit, placing it in a mixed state,
@@ -360,4 +359,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

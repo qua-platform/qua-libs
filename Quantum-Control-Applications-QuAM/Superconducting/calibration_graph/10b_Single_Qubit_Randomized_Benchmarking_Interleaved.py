@@ -1,4 +1,3 @@
-# %%
 """
 SINGLE QUBIT INTERLEAVED RANDOMIZED BENCHMARKING (for gates >= 40ns)
 The program consists in playing random sequences of Clifford gates and measuring the state of the resonator afterwards.
@@ -449,7 +448,6 @@ else:
 
             plt.show()
 
-# %%
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()

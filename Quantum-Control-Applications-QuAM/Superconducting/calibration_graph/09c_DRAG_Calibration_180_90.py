@@ -1,4 +1,3 @@
-# %%
 """
         DRAG PULSE CALIBRATION (YALE METHOD)
 The sequence consists in applying successively x180-y90 and y180-x90 to the qubit while varying the DRAG

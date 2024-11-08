@@ -1,4 +1,3 @@
-# %%
 """
         IQ BLOBS
 This sequence involves measuring the state of the resonator 'N' times, first after thermalization (with the qubit
@@ -228,7 +227,6 @@ else:
 
     # node_save(machine, "iq_blobs", data, additional_files=True)
 
-# %%
 if not node.parameters.simulate:
     # %% {Data_fetching_and_dataset_creation}
 
@@ -294,7 +292,6 @@ if not node.parameters.simulate:
         plt.show()
         node.results["figure_raw_data"] = fig
 
-# %%
 if not node.parameters.simulate:
 
     def apply_fit_gmm(I, Q):
@@ -332,7 +329,6 @@ if not node.parameters.simulate:
 
     fit_res = fit_res.assign_coords(result=["meas_fidelity", "outliers"])
 
-# %%
 if not node.parameters.simulate:
 
     plot_individual = False
@@ -374,7 +370,6 @@ if not node.parameters.simulate:
         node.results["results"][q.name]["rus_threshold"] = float(RUS_threshold)
 
 
-# %%
 if not node.parameters.simulate:
 
     grid_names = [f"{q.name}_0" for q in qubits]
@@ -391,7 +386,6 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure_assignment_fid"] = grid.fig
 
-# %%
 if not node.parameters.simulate:
 
     grid_names = [f"{q.name}_0" for q in qubits]
@@ -466,7 +460,6 @@ if not node.parameters.simulate:
     plt.show()
     node.results["figure_fidelities"] = grid.fig
 
-# %%
 if not node.parameters.simulate:
 
     with node.record_state_updates():
@@ -486,4 +479,3 @@ node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()
-# %%

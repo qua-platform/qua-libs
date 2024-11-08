@@ -1,4 +1,3 @@
-# %%
 """
         DRAG PULSE CALIBRATION (GOOGLE METHOD)
 The sequence consists in applying an increasing number of x180 and -x180 pulses successively while varying the DRAG
@@ -239,4 +238,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%
