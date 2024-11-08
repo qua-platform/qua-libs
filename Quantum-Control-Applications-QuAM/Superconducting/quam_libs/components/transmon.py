@@ -98,7 +98,7 @@ class Transmon(QuamComponent):
     @property
     def thermalization_time(self):
         """The transmon thermalization time in ns."""
-        return int(self.thermalization_time_factor * self.T1 * 1e9)
+        return int(self.thermalization_time_factor * self.T1 * 1e9 / 4) * 4
 
     def calibrate_octave(
         self, QM: QuantumMachine, calibrate_drive: bool = True, calibrate_resonator: bool = True
