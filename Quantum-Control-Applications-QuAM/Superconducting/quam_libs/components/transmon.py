@@ -51,7 +51,7 @@ class Transmon(QuamComponent):
     freq_vs_flux_01_quad_term: float = 0.0
     arbitrary_intermediate_frequency: float = 0.0
 
-    T1: float = 10_000
+    T1: float = 10e-6
     T2ramsey: float = None
     T2echo: float = None
     thermalization_time_factor: int = 5
@@ -98,7 +98,7 @@ class Transmon(QuamComponent):
     @property
     def thermalization_time(self):
         """The transmon thermalization time in ns."""
-        return self.thermalization_time_factor * self.T1
+        return int(self.thermalization_time_factor * self.T1 * 1e9)
 
     def calibrate_octave(
         self, QM: QuantumMachine, calibrate_drive: bool = True, calibrate_resonator: bool = True

@@ -153,7 +153,7 @@ if node.parameters.simulate:
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
+        plt.subplot(len(samples.keys()), 1, i + 1)
         samples[con].plot()
         plt.title(con)
     plt.tight_layout()
@@ -237,7 +237,11 @@ else:
     # %% {Update_state}
     with node.record_state_updates():
         for index, q in enumerate(qubits):
-            q.T1 = float(tau.sel(qubit=qubit["qubit"]).values) * 1e-6
+            if (
+                float(tau.sel(qubit=q.name).values) > 0
+                and tau_error.sel(qubit=q.name).values / float(tau.sel(qubit=q.name).values) < 1
+            ):
+                q.T1 = float(tau.sel(qubit=q.name).values) * 1e-6
 
     # %% {Save_results}
     node.results["initial_parameters"] = node.parameters.model_dump()
