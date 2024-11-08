@@ -1,4 +1,3 @@
-# %%
 """
         RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -125,7 +124,6 @@ config = machine.generate_config()
 amp_max = 10 ** (-(node.parameters.max_power_dbm - node.parameters.max_power_dbm) / 20)
 amp_min = 10 ** (-(node.parameters.max_power_dbm - node.parameters.min_power_dbm) / 20)
 
-# %%
 amps = np.geomspace(amp_min, amp_max, 100)  # 100 points from 0.01 to 1.0, logarithmically spaced
 
 # The frequency sweep around the resonator resonance frequencies f_opt
@@ -271,11 +269,9 @@ else:
     # data["figure"] = fig
     # node_save(machine, "resonator_spectroscopy_vs_amplitude", data, additional_files=True)
 
-# %%
 handles = job.result_handles
 ds = fetch_results_as_xarray(handles, qubits, {"amp": amps, "freq": dfs})
 
-# %%
 ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
 
 
@@ -323,7 +319,6 @@ ds = ds.assign({"IQ_abs_norm": ds["IQ_abs"] / ds.IQ_abs.mean(dim=["freq"])})
 node.results = {}
 node.results["ds"] = ds
 
-# %%
 res_min_vs_amp = [peaks_dips(ds.IQ_abs_norm.sel(amp=amp), dim="freq", prominence_factor=5).position for amp in ds.amp]
 res_min_vs_amp = xr.concat(res_min_vs_amp, "amp")
 res_freq_full = ds.freq_full.sel(freq=0, method="nearest") + res_min_vs_amp
@@ -337,7 +332,6 @@ rr_pwr = xr.where(
 RO_power_ratio = 0.3
 rr_pwr = RO_power_ratio * rr_pwr
 
-# %%
 grid_names = [q.grid_location for q in qubits]
 grid = QubitGrid(ds, grid_names)
 
@@ -363,7 +357,6 @@ plt.show()
 node.results["figure"] = grid.fig
 
 
-# %%
 fit_results = {}
 for q in qubits:
     fit_results[q.name] = {}
@@ -379,10 +372,8 @@ node.results["resonator_frequency"] = fit_results
 for tracked_qubit in tracked_qubits:
     tracked_qubit.revert_changes()
 
-# %%
 node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()
 
-# %%

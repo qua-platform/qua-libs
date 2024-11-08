@@ -1,4 +1,3 @@
-# %%
 """
         RESONATOR SPECTROSCOPY VERSUS READOUT AMPLITUDE
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -353,4 +352,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

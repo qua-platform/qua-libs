@@ -1,4 +1,3 @@
-# %%
 """
         QUBIT SPECTROSCOPY VERSUS FLUX
 This sequence involves doing a qubit spectroscopy for several flux biases in order to exhibit the qubit frequency
@@ -300,4 +299,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

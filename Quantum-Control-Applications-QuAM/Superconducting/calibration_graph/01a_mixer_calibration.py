@@ -46,4 +46,3 @@ with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
             qm, calibrate_drive=node.parameters.calibrate_drive, calibrate_resonator=node.parameters.calibrate_resonator
         )
 
-# %%

@@ -1,4 +1,3 @@
-# %%
 """
         RESONATOR SPECTROSCOPY VERSUS FLUX
 This sequence involves measuring the resonator by sending a readout pulse and demodulating the signals to
@@ -314,4 +313,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%

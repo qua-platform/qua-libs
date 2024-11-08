@@ -1,4 +1,3 @@
-# %%
 """
         TIME OF FLIGHT
 This sequence involves sending a readout pulse and capturing the raw ADC traces.
@@ -256,4 +255,3 @@ else:
     node.machine = machine
     node.save()
 
-# %%
