@@ -5,15 +5,18 @@ slug: ./
 id: index
 ---
 
-This example shows usage of the hardware simulator. The simulator mimics the output of the hardware, 
+This script intro-to-simulation.py shows usage of the hardware simulator. The simulator mimics the output of the hardware, 
 with its exact timing and voltage level, following the compilation of QUA to the FPGA's low-level. 
 It is a useful tool for predicting and debugging the outcome of a QUA program. 
-Read more on the simulator, and it's capabilities in the [QUA docs](https://qm-docs.qualang.io/guides/simulator).
+Read more on the simulator, and it's capabilities in the [QUA docs](https://docs.quantum-machines.co/latest/docs/Guides/simulator/).
 
-The Examples
+In addition, the script cloud-simulator-example.py demonstrates the usage of [QM cloud simulator](https://docs.quantum-machines.co/latest/docs/Guides/qm_saas_guide/), enabling to run the HW
+on virtual instances (and doesn't require access to actual HW).
+
+The intro-to-simulation Examples
 ============
 
-The following script gives three examples for the usage of the simulator in the QOP.
+The script gives three examples for the usage of the simulator in the QOP.
 
 First and second exampled
 -------------
