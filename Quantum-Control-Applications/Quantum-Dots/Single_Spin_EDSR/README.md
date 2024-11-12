@@ -39,15 +39,21 @@ is not saturated, correct for DC offsets.
 7. **Pauli Spin Blockade search** - Apply a triangle scan through the fast line of the bias-tess and on top of the charge stability map acquisition for finding the PSB readout point.
     * [Using the QDAC2 triggered by the OPX](07_PSB_search_qdac2_triggered.py)
     * [Using another external DC source](07_PSB_search_external_dc_source.py)
-8. [Qubit spectroscopy](08_qubit_spectroscopy.py) - Apply a strong and long qubit pulse and sweep its frequency over a wide range to identify the resonance. The magnetic field can also be swept to acquire the EDSR line and measure the g-factor.
+8. **Qubit Spectroscopy**
+    [Qubit spectroscopy](08a_qubit_spectroscopy.py) - Apply a strong and long qubit pulse and sweep its frequency over a wide range to identify the resonance. The magnetic field can also be swept to acquire the EDSR line and measure the g-factor.
+    **Chirp** -Alternative to qubit spectroscopy
+    [Chirp](8b_qubit_spectroscopy_with_chirp.py) -Allows user to define chirp duration and rate to sweep the IF and LO frequencies for quick determination of resonance.
 9. **Rabi chevron** - Measure the Rabi chevron by sweeping the qubit pulse frequency and duration. 
     * [Using real-time QUA](09a_rabi_chevron_qua.py) - Allows to sweep the pulse duration from 16ns and in steps of at least 4ns. There is no limit in the maximum pulse length or the number of points in the sweep.
     * [Using the baking tool](09b_rabi_chevron_baking.py) - Allows to sweep the pulse duration from 0ns and in steps of at least 1ns. Since the pulses must be loaded beforehand (like for an AWG), there is a limit in the number of samples that the OPX can memorize (65k per pulse processor).
     * [Using a combination of real-time QUA and baking](09c_rabi_chevron_baking+qua.py) - Combine the previous two methods in order to perform long scans with 1ns resolution.
-11. [T1](10_T1.py) - Measures T1.
-12. **Ramsey chevron** - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
+10. [T1](10_T1.py) - Measures T1.
+11. **Ramsey chevron** - Perform a 2D sweep (detuning versus idle time) to acquire the Ramsey chevron pattern.
     * [Using real-time QUA](11a_ramsey_chevron_4ns.py) - Allows to sweep the pulse duration from 16ns and in steps of at least 4ns. There is no limit in the maximum pulse length or the number of points in the sweep.
     * [Using the baking tool](11b_ramsey_chevron_full_baking.py) - Bake the full sequence (pi/2 - idle - pi/2) to allow 1ns resolution for the pi/2 pulses and exchange interaction time.
+12. **Single Qubit Randomized Benchmarking** - Perform an RB measurement to determine single qubit gate fidelites.
+    *[Using real-time QUA](12_randomized_benchmarking_single_qubit.py) - Allows the user to define and run different depths 
+    of a randomly generated sequence of single qubit XY clifford gates, followed by the appropriate inverse gate. Maximum number of gates = 7000.
 
 ## Use Cases
 
