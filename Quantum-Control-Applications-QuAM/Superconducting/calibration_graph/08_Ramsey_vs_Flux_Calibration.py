@@ -54,7 +54,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
-node = QualibrationNode(name="08b_Ramsey_vs_Flux_Calibration", parameters=Parameters())
+node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
