@@ -77,18 +77,20 @@ with program() as qubit_spectroscopy_prog:
     f = declare(int)  # QUA variable for the qubit pulse duration
     i = declare(int)  # QUA variable for the magnetic field sweep
     j = declare(int)  # QUA variable for the lo frequency sweep
-    chirp_var = declare(int, value = chirp_rate)
+    chirp_var = declare(int, value=chirp_rate)
     n_st = declare_stream()  # Stream for the iteration number (progress bar)
     with for_(i, 0, i < len(B_fields) + 1, i + 1):
         with for_(j, 0, j < len(lo_frequencies), j + 1):
-            #pause() # Needs to be uncommented when not simulating
+            # pause() # Needs to be uncommented when not simulating
             with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
                 with for_(*from_array(f, IFs)):  # Loop over the qubit pulse amplitude
                     update_frequency("qubit", f)
 
                     # Navigate through the charge stability map
                     seq.add_step(voltage_point_name="initialization")
-                    seq.add_step(voltage_point_name="idle", duration=chirp_duration + processing_time + delay_before_readout)  # Processing time is time it takes to calculate the chirp pulse
+                    seq.add_step(
+                        voltage_point_name="idle", duration=chirp_duration + processing_time + delay_before_readout
+                    )  # Processing time is time it takes to calculate the chirp pulse
                     seq.add_step(voltage_point_name="readout", duration=duration_readout)
                     seq.add_compensation_pulse(duration=duration_compensation_pulse)
 
@@ -97,7 +99,11 @@ with program() as qubit_spectroscopy_prog:
                     play("chirp", "qubit", chirp=(chirp_var, chirp_units))
 
                     # Measure the dot right after the qubit manipulation
-                    wait((duration_init + chirp_duration + processing_time + delay_before_readout)* u.ns, "tank_circuit", "TIA",)  #
+                    wait(
+                        (duration_init + chirp_duration + processing_time + delay_before_readout) * u.ns,
+                        "tank_circuit",
+                        "TIA",
+                    )  #
                     I, Q, I_st, Q_st = RF_reflectometry_macro()
                     dc_signal, dc_signal_st = DC_current_sensing_macro()
 
@@ -108,16 +114,12 @@ with program() as qubit_spectroscopy_prog:
         n_st.save("iteration")
         # Cast the data into a 2D matrix and performs a global averaging of the received 2D matrices together.
         # RF reflectometry
-        I_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(lo_frequencies)
-        ).save_all("I")
-        Q_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(lo_frequencies)
-        ).save_all("Q")
+        I_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all("I")
+        Q_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all("Q")
         # DC current sensing
-        dc_signal_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(lo_frequencies)
-        ).save_all("dc_signal")
+        dc_signal_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).buffer(len(lo_frequencies)).save_all(
+            "dc_signal"
+        )
 
 #####################################
 #  Open Communication with the QOP  #
@@ -193,9 +195,7 @@ else:
             wait_until_job_is_paused(job)
         if i == 0:
             # Get results from QUA program and initialize live plotting
-            results = fetching_tool(
-                job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live"
-            )
+            results = fetching_tool(job, data_list=["I", "Q", "dc_signal", "iteration"], mode="live")
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
