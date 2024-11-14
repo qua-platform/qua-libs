@@ -39,12 +39,8 @@ import matplotlib.pyplot as plt
 n_avg = 50
 num_of_sequences = 50  # Number of random sequences
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = (
-    10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
-)
-assert (
-    max_circuit_depth / delta_clifford
-).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
+assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 
 seed = 34553  # Pseudo-random number generator seed
 
@@ -172,8 +168,9 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
                 play("-x90", "qubit")
 
+
 # Macro to calculate exact duration of generated sequence at a given depth
-def generate_sequence_time(sequence_list, depth):  
+def generate_sequence_time(sequence_list, depth):
     j = declare(int)
     duration = declare(int)
     assign(duration, 0)  # Ensures duration is reset to 0 for every depth calculated
@@ -280,9 +277,7 @@ def generate_sequence_time(sequence_list, depth):
 ###################
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
-    depth_target = declare(
-        int
-    )  # QUA variable for the current depth (changes in steps of delta_clifford)
+    depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
     # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     saved_gate = declare(int)
     m = declare(int)  # QUA variable for the loop over random sequences
@@ -290,9 +285,7 @@ with program() as rb:
     I = declare(fixed)  # QUA variable for the 'I' quadrature
     Q = declare(fixed)  # QUA variable for the 'Q' quadrature
     state = declare(bool)  # QUA variable for state discrimination
-    sequence_time = declare(
-        int
-    )  # QUA variable for RB sequence duration for a given depth
+    sequence_time = declare(int)  # QUA variable for RB sequence duration for a given depth
     dc_signal = declare(fixed)  # QUA variable for the measured dc signal
     # Ensure that the result variables are assigned to the measurement elements
     assign_variables_to_element("tank_circuit", I, Q)
@@ -306,19 +299,13 @@ with program() as rb:
         I_st = declare_stream()
         Q_st = declare_stream()
 
-    with for_(
-        m, 0, m < num_of_sequences, m + 1
-    ):  # QUA for_ loop over the random sequences
+    with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
 
-        sequence_list, inv_gate_list = (
-            generate_sequence()
-        )  # Generate the random sequence of length max_circuit_depth
+        sequence_list, inv_gate_list = generate_sequence()  # Generate the random sequence of length max_circuit_depth
 
         assign(depth_target, 1)  # Initialize the current depth to 1
 
-        with for_(
-            depth, 1, depth <= max_circuit_depth, depth + 1
-        ):  # Loop over the depths
+        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):  # Loop over the depths
 
             # Replacing the last gate in the sequence with the sequence's inverse gate
             # The original gate is saved in 'saved_gate' and is being restored at the end
@@ -350,9 +337,7 @@ with program() as rb:
                         "TIA",
                     )  # Includes calculated RB duration as well as RB sequence processing time
                     I, Q, I_st, Q_st = RF_reflectometry_macro(I=I, Q=Q)
-                    dc_signal, dc_signal_st = DC_current_sensing_macro(
-                        dc_signal=dc_signal
-                    )
+                    dc_signal, dc_signal_st = DC_current_sensing_macro(dc_signal=dc_signal)
 
                     # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                     # Save the results to their respective streams
@@ -384,23 +369,23 @@ with program() as rb:
                 max_circuit_depth / delta_clifford
             ).average().save("state_avg")
         else:
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford
-            ).buffer(num_of_sequences).save("I")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford
-            ).buffer(num_of_sequences).save("Q")
-            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford
-            ).average().save("I_avg")
-            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford
-            ).average().save("Q_avg")
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
+                num_of_sequences
+            ).save("I")
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
+                num_of_sequences
+            ).save("Q")
+            I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
+                "I_avg"
+            )
+            Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
+                "Q_avg"
+            )
 
             # DC current sensing
-            dc_signal_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                max_circuit_depth / delta_clifford
-            ).buffer(num_of_sequences).save("dc_signal")
+            dc_signal_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).buffer(
+                num_of_sequences
+            ).save("dc_signal")
             dc_signal_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
                 max_circuit_depth / delta_clifford
             ).average().save("dc_signal_avg")
@@ -409,9 +394,7 @@ with program() as rb:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(
-    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config
-)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
 # Run or Simulate Program #
@@ -441,9 +424,7 @@ else:
     if state_discrimination:
         results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
     else:
-        results = fetching_tool(
-            job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
-        )
+        results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="live")
     # Live plotting
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
@@ -460,9 +441,7 @@ else:
 
         print(job.execution_report())
         # Progress bar
-        progress_counter(
-            iteration, num_of_sequences, start_time=results.get_start_time()
-        )
+        progress_counter(iteration, num_of_sequences, start_time=results.get_start_time())
         # Plot averaged values
         plt.cla()
         plt.plot(x, value_avg, marker=".")
@@ -497,9 +476,7 @@ else:
     print("#########################")
     print("### Fitted Parameters ###")
     print("#########################")
-    print(
-        f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
-    )
+    print(f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})")
     print("Covariance Matrix")
     print(cov)
 
