@@ -43,11 +43,11 @@ class Parameters(NodeParameters):
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 30
-    frequency_step_in_mhz: float = 0.25
+    frequency_span_in_mhz: float = 20
+    frequency_step_in_mhz: float = 0.1
     min_flux_offset_in_v: float = -0.01
     max_flux_offset_in_v: float = 0.01
-    num_flux_points: int = 21
+    num_flux_points: int = 51
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -120,7 +120,6 @@ with program() as multi_qubit_spec_vs_flux:
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                 with for_(*from_array(dc, dcs)):
                     # Flux sweeping for a qubit
-                    qubit.align()
                     duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length // 4
                     # Bring the qubit to the desired point during the satruration pulse
                     qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
@@ -280,12 +279,9 @@ if not node.parameters.simulate:
                     q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
                     q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
 
-        # %% {Save_results}
-
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
-
-
-# %%
+    # %% {Save_results}
+    node.results["ds"] = ds
+    node.outcomes = {q.name: "successful" for q in qubits}
+    node.results["initial_parameters"] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
