@@ -46,7 +46,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 
 node = QualibrationNode(name="02a_Resonator_Spectroscopy", parameters=Parameters())
@@ -146,24 +146,24 @@ elif node.parameters.load_data_id is None:
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     if node.parameters.load_data_id is not None:
-        ds = load_dataset(node.parameters.load_data_id)
+        ds, machine, json_data, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     else:
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
-    # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
-    ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-    # Derive the phase IQ_abs = angle(I + j*Q)
-    ds = ds.assign({"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")})
-    # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
-    ds = ds.assign_coords(
-        {
-            "freq_full": (
-                ["qubit", "freq"],
-                np.array([dfs + q.resonator.RF_frequency for q in qubits]),
-            )
-        }
-    )
+        # Convert IQ data into volts
+        ds = convert_IQ_to_V(ds, qubits)
+        # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
+        ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
+        # Derive the phase IQ_abs = angle(I + j*Q)
+        ds = ds.assign({"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")})
+        # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
+        ds = ds.assign_coords(
+            {
+                "freq_full": (
+                    ["qubit", "freq"],
+                    np.array([dfs + q.resonator.RF_frequency for q in qubits]),
+                )
+            }
+        )
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -233,9 +233,13 @@ elif node.parameters.load_data_id is None:
                 q.resonator.intermediate_frequency += int(fits[q.name].params["omega_r"].value)
 
     # %% {Save_results}
+    if node.parameters.load_data_id is not None:
+        node.storage_manager.active_machine_path = None
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
     print("Results saved")
 
+
+# %%
