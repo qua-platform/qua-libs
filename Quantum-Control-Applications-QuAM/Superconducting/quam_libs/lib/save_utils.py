@@ -103,15 +103,15 @@ def load_dataset(serial_number, target_filename = "ds", parameters = None):
         except Exception as e:
             print(f"Error loading machine: {e}")
             machine = None
-            
+        qubits = [machine.qubits[qname] for qname in ds.qubit.values]    
         if parameters is not None:
             for param_name, param_value in parameters:
                 if param_name is not "load_data_id":
                     if param_name in json_data["initial_parameters"]:
                         setattr(parameters, param_name, json_data["initial_parameters"][param_name])
-            return ds, machine, json_data, parameters
+            return ds, machine, json_data, qubits,parameters
         else:
-            return ds, machine, json_data
+            return ds, machine, json_data, qubits
     else:
         print(f"No .nc file found in folder: {base_folder}")
         return None

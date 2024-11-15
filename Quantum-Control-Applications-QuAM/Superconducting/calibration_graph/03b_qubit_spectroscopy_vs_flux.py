@@ -52,7 +52,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = 40
+    load_data_id: Optional[int] = None
 
 
 node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
@@ -178,7 +178,7 @@ elif node.parameters.load_data_id is None:
     # %% {Data_fetching_and_dataset_creation}
     
     if node.parameters.load_data_id is not None:
-        ds, machine, json_data, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     else:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"flux": dcs, "freq": dfs})
