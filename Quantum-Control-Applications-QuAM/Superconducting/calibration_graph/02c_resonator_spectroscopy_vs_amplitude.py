@@ -344,7 +344,8 @@ elif node.parameters.load_data_id is None:
 
     # %% {Save_results}
     if node.parameters.load_data_id is not None:
-        node.storage_manager.active_machine_path = None
+        if node.storage_manager is not None:
+            node.storage_manager.active_machine_path = None
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine

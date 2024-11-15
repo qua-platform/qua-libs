@@ -51,11 +51,11 @@ class Parameters(NodeParameters):
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
-    update_flux_min: bool = True
+    update_flux_min: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = 7
+    load_data_id: Optional[int] = None
 
 node = QualibrationNode(name="02b_Resonator_Spectroscopy_vs_Flux", parameters=Parameters())
 
@@ -309,11 +309,13 @@ elif node.parameters.load_data_id is None:
 
     # %% {Save_results}
     if node.parameters.load_data_id is not None:
-        node.storage_manager.active_machine_path = None
+        if node.storage_manager is not None:
+            node.storage_manager.active_machine_path = None
     node.outcomes = {q.name: "successful" for q in qubits}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
     node.save()
+
 
 
 # %%
