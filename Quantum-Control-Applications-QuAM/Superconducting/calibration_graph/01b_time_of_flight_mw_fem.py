@@ -96,9 +96,11 @@ with program() as raw_trace_prog:
         for i in range(num_qubits):
             # TODO: what about MW-fem?
             # Will save average:
-            adc_st[i].input1().average().save(f"adc{i + 1}")
+            adc_st[i].input1().real().average().save(f"adcI{i + 1}")
+            adc_st[i].input1().image().average().save(f"adcQ{i + 1}")
             # Will save only last run:
-            adc_st[i].input1().save(f"adc_single_run{i + 1}")
+            adc_st[i].input1().real().save(f"adc_single_runI{i + 1}")
+            adc_st[i].input1().image().save(f"adc_single_runQ{i + 1}")
 
 
 # %% {Simulate_or_execute}
@@ -131,8 +133,9 @@ else:
     time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adc", "adc_single_run")})
-    ds = ds.assign({"IQ_abs": np.sqrt(ds["adc"].real() ** 2 + ds["adc"].imag() ** 2)})
+    # TODO: what about MW-fem?
+    ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
+    ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -165,10 +168,9 @@ else:
     # Single run
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.loc[qubit].adc_single_run.abs().plot(ax=ax, x="time", label="Single run", color="b")
+        ds.loc[qubit].adc_single_runI.plot(ax=ax, x="time", label="I", color="b")
+        ds.loc[qubit].adc_single_runQ.plot(ax=ax, x="time", label="Q", color="r")
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
-        ax.axhline(ds.loc[qubit].offsets_I, color="b", linestyle="--")
-        ax.axhline(ds.loc[qubit].offsets_Q, color="r", linestyle="--")
         ax.fill_between(range(ds.sizes["time"]), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")
@@ -181,7 +183,8 @@ else:
     # Averaged run
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.loc[qubit].adc.abs().plot(ax=ax, x="time", label="I", color="b")
+        ds.loc[qubit].adcI.plot(ax=ax, x="time", label="I", color="b")
+        ds.loc[qubit].adcQ.plot(ax=ax, x="time", label="Q", color="r")
         ax.axvline(ds.loc[qubit].delays, color="k", linestyle="--", label="TOF")
         ax.set_xlabel("Time [ns]")
         ax.set_ylabel("Readout amplitude [mV]")

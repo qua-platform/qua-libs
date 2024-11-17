@@ -29,6 +29,22 @@ class ReadoutResonatorBase:
     gef_centers: list = None
     gef_confusion_matrix: list = None
 
+    @staticmethod
+    def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
+        """
+        Calculate the voltage scaling factor required to scale fixed power to target power.
+
+        Parameters:
+        fixed_power_dBm (float): The fixed power in dBm.
+        target_power_dBm (float): The target power in dBm.
+
+        Returns:
+        float: The voltage scaling factor.
+        """
+        power_difference = target_power_dBm - fixed_power_dBm
+        voltage_scaling_factor = 10 ** (power_difference / 20)
+        return voltage_scaling_factor
+
 
 @quam_dataclass
 class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
@@ -40,6 +56,48 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
         u = unit(coerce_to_integer=True)
         amplitude = self.operations[operation].amplitude
         return self.frequency_converter_up.gain + u.volts2dBm(amplitude, Z=Z)
+
+    def set_output_power(self, power_in_dbm: float, gain: Optional[int] = None,
+                         max_amplitude: Optional[float] = None, Z: int = 50,
+                         operation: Optional[str] = "readout"):
+        """
+        Configure the output power for a specific operation by setting the gain or amplitude.
+        Note that exactly one of `gain` or `amplitude` must be specified and the function calculates
+        the other parameter specifically to meet the desired output power.
+
+        Parameters:
+            power_in_dbm (float): Desired output power in dBm.
+            gain (Optional[int]): Optional gain in dB to set, must be within [-20, 20].
+            max_amplitude (Optional[float]): Optional pulse amplitude in volts, must be within [-0.5, 0.5).
+            Z (int): Impedance in ohms, default is 50.
+            operation (Optional[str]): Name of the operation to configure, default is "readout".
+
+        Raises:
+            RuntimeError: If neither or both `gain` and `amplitude` are specified.
+            ValueError: If `gain` or `amplitude` is outside their valid ranges.
+
+        """
+
+        u = unit(coerce_to_integer=True)
+
+        if not ((max_amplitude is None) ^ (gain is None)):
+            raise RuntimeError("Either or gain or amplitude must be specified.")
+        elif max_amplitude is not None:
+            gain = round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2
+        elif gain is not None:
+            max_amplitude = u.dBm2volts(power_in_dbm - self.frequency_converter_up.gain)
+
+        if not -20 <= gain <= 20:
+            raise ValueError(f"Expected Octave gain within [-20:0.5:20] dB, got {gain} dB.")
+
+        if not -0.5 <= max_amplitude < 0.5:
+            raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
+
+        print(f"Setting the Octave gain to {round((power_in_dbm - u.volts2dBm(max_amplitude, Z=Z)) * 2) / 2} dB")
+        print( f"Setting the {operation} amplitude to {u.dBm2volts(power_in_dbm - self.frequency_converter_up.gain)} V")
+
+        self.frequency_converter_up.gain = gain
+        self.operations[operation].amplitude = max_amplitude
 
 
 @quam_dataclass
@@ -57,26 +115,19 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
 
 
     def set_output_power(self, power_in_dbm: float, full_scale_power_dbm: Optional[int] = None,
-                         operation: Optional[str] = 'readout'):
+                         max_amplitude: Optional[float] = 1, operation: Optional[str] = 'readout'):
         """
         Sets the power level in dBm for a specified operation, increasing the full-scale power
-        in 3 dB steps if necessary until it covers the target power level.
+        in 3 dB steps if necessary until it covers the target power level, then scaling the
+        given operation’s amplitude to match exaclty the target power level.
 
         Parameters:
-        ----------
-        power_in_dbm : float
-            The target power level in dBm for the operation.
-
-        full_scale_power_dbm : Optional[int], default=None
-            The full-scale power limit in dBm within range [-41, 10] in 3 dB increments.
-
-        operation : Optional[str], default='readout'
-            The operation for which the power setting is applied. This operation’s
-            amplitude is adjusted based on the calculated voltage scaling factor to
-            match the target power level.
+            power_in_dbm (float): The target power level in dBm for the operation.
+            full_scale_power_dbm (Optional[int]): The full-scale power in dBm within [-41, 10] in 3 dB increments.
+            operation (Optional[str]): The operation for which the power setting is applied.
 
         """
-        allowed_full_scale_power_in_dbm_values = np.arange(-41, 10, 3)
+        allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)
 
         if full_scale_power_dbm is not None:
             if full_scale_power_dbm < -20 or full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
@@ -92,30 +143,20 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         if power_in_dbm > 10:
             raise ValueError(f"Expected `power_in_dbm` to be <10 dBm, got {power_in_dbm}")
 
-        while power_in_dbm > self.opx_output.full_scale_power_dbm:
-            self.opx_output.full_scale_power_dbm += 3
+        while self.calculate_voltage_scaling_factor(
+            fixed_power_dBm=self.opx_output.full_scale_power_dbm,
+            target_power_dBm=power_in_dbm,
+        ) > max_amplitude:
+            self.opx_output.full_scale_power_dbm = self.opx_output.full_scale_power_dbm + 3
+
+        if self.opx_output.full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
+            raise ValueError(f"Expected full_scale_power_dbm to be in range [-41, 10] "
+                             f"in steps of 3 dB, got {full_scale_power_dbm}.")
 
         self.operations[operation].amplitude = self.calculate_voltage_scaling_factor(
             fixed_power_dBm=self.opx_output.full_scale_power_dbm,
             target_power_dBm=power_in_dbm
         )
-
-
-    @staticmethod
-    def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
-        """
-        Calculate the voltage scaling factor required to scale fixed power to target power.
-
-        Parameters:
-        fixed_power_dBm (float): The fixed power in dBm.
-        target_power_dBm (float): The target power in dBm.
-
-        Returns:
-        float: The voltage scaling factor.
-        """
-        power_difference = target_power_dBm - fixed_power_dBm
-        voltage_scaling_factor = 10 ** (power_difference / 20)
-        return voltage_scaling_factor
 
 
 ReadoutResonator = ReadoutResonatorIQ

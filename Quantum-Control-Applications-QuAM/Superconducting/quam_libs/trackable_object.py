@@ -43,7 +43,18 @@ class TrackableObject:
     def __getattr__(self, attr):
         original_attr = getattr(self._obj, attr)
         if attr not in self._nested_trackables:
-            self._nested_trackables[attr] = TrackableObject(original_attr, self._dont_assign_to_none)
+            if callable(original_attr):
+                # this means it's an instance method
+                if hasattr(original_attr, '__func__'):
+                    def wrapped_method(*args, **kwargs):
+                        return original_attr.__func__(self, *args, **kwargs)
+                    return wrapped_method
+                else:
+                    return original_attr
+            elif isinstance(original_attr, (int, float)):
+                return original_attr
+            else:
+                self._nested_trackables[attr] = TrackableObject(original_attr, self._dont_assign_to_none)
         return self._nested_trackables[attr]
 
     def __setattr__(self, attr, value):
@@ -97,3 +108,23 @@ class TrackableObject:
 
     def __dir__(self):
         return dir(self._obj)
+
+    # Special methods forwarding
+    def _forward_special_method(name):
+        def method(self, *args):
+            return getattr(self._obj, name)(*args)
+
+        return method
+
+    # Define all special comparison methods dynamically
+    for method_name in [
+        "__lt__", "__le__", "__eq__", "__ne__", "__gt__", "__ge__",
+        "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__",
+        "__mod__", "__pow__", "__and__", "__or__", "__xor__",
+        "__lshift__", "__rshift__", "__neg__", "__pos__", "__abs__",
+        "__invert__", "__round__", "__trunc__", "__floor__", "__ceil__",
+        "__iadd__"
+    ]:
+        locals()[method_name] = _forward_special_method(method_name)
+
+    del _forward_special_method  # Clean up namespace
