@@ -182,7 +182,8 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
         # Add the absolute time in µs to the dataset

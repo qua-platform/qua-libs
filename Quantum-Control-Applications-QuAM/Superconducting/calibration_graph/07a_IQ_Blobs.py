@@ -167,7 +167,8 @@ elif node.parameters.load_data_id is None:
                 n = results.fetch_all()[0]
                 progress_counter(n, n_runs, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})

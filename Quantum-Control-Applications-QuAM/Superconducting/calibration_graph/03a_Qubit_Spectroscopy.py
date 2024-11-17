@@ -197,7 +197,9 @@ elif node.parameters.load_data_id is None:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+
     if node.parameters.load_data_id is not None:
         ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     else:
