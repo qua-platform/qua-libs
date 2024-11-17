@@ -26,7 +26,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -53,7 +53,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
 
@@ -84,7 +85,8 @@ for q in qubits:
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 
 # %% {QUA_program}
@@ -109,13 +111,9 @@ with program() as stark_detuning:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -149,7 +147,8 @@ with program() as stark_detuning:
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -177,7 +176,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(stark_detuning)
         results = fetching_tool(job, ["n"], mode="live")
@@ -188,10 +187,13 @@ else:
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs, "N": N_pi_vec})
+        # Convert IQ data into volts
+        ds = convert_IQ_to_V(ds, qubits)
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -224,11 +226,12 @@ else:
     # Revert the change done at the beginning of the node
     for qubit in tracked_qubits:
         qubit.revert_changes()
-    with node.record_state_updates():
-        for qubit in qubits:
-            qubit.xy.operations[operation].detuning = float(fit_results[qubit.name]["detuning"])
-            if node.parameters.DRAG_setpoint is not None:
-                qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.xy.operations[operation].detuning = float(fit_results[qubit.name]["detuning"])
+                if node.parameters.DRAG_setpoint is not None:
+                    qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

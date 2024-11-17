@@ -23,7 +23,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.trackable_object import tracked_updates
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -50,6 +50,10 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
+    alpha_setpoint: Optional[float] = -1.0
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
+
 
 
 node = QualibrationNode(name="09b_DRAG_Calibration_180_minus_180", parameters=Parameters())
@@ -70,15 +74,17 @@ num_qubits = len(qubits)
 
 # Update the readout power to match the desired range, this change will be reverted at the end of the node.
 tracked_qubits = []
-for q in qubits:
-    with tracked_updates(q, auto_revert=False, dont_assign_to_none=True) as q:
-        q.xy.operations[operation].alpha = -1.0
-        tracked_qubits.append(q)
+if node.parameters.alpha_setpoint is not None:
+    for q in qubits:
+        with tracked_updates(q, auto_revert=False, dont_assign_to_none=True) as q:
+            q.xy.operations[operation].alpha = node.parameters.alpha_setpoint
+            tracked_qubits.append(q)
 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
@@ -111,13 +117,9 @@ with program() as drag_calibration:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -145,7 +147,8 @@ with program() as drag_calibration:
                     assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -171,7 +174,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(drag_calibration)
         results = fetching_tool(job, ["n"], mode="live")
@@ -182,17 +185,20 @@ else:
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
-    # Add the qubit pulse absolute alpha coefficient to the dataset
-    ds = ds.assign_coords(
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        # Add the qubit pulse absolute alpha coefficient to the dataset
+        ds = ds.assign_coords(
         {
             "alpha": (
                 ["qubit", "amp"],
                 np.array([q.xy.operations[operation].alpha * amps for q in qubits]),
             )
         }
-    )
+        )
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -228,9 +234,10 @@ else:
     for qubit in tracked_qubits:
         qubit.revert_changes()
     # Update the state
-    with node.record_state_updates():
-        for q in qubits:
-            q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for q in qubits:
+                q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

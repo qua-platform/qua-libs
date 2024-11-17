@@ -24,7 +24,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, readout_state
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_oscillation_decay_exp, oscillation_decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -51,7 +51,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 node = QualibrationNode(name="08b_Ramsey_vs_Flux_Calibration", parameters=Parameters())
 
@@ -64,7 +65,8 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -143,7 +145,8 @@ with program() as ramsey:
                     reset_frame(qubit.xy.name)
                     qubit.align()
 
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -169,7 +172,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
@@ -180,11 +183,14 @@ else:
             progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
-    # Add the absolute time in µs to the dataset
-    ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
-    ds.flux.attrs = {"long_name": "flux", "units": "V"}
-    ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
+    if node.parameters.load_data_id is None:
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "flux": fluxes})
+        # Add the absolute time in µs to the dataset
+        ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
+        ds.flux.attrs = {"long_name": "flux", "units": "V"}
+        ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -226,7 +232,9 @@ else:
                 / fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients
             ).values
         )
-        freq_offset[q.name] = 1e6 * float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values) - detuning
+        freq_offset[q.name] = 1e6 * (flux_offset[q.name]**2 * float(fitvals.sel(qubit=q.name, degree=2).polyfit_coefficients.values) +
+                                     flux_offset[q.name] * float(fitvals.sel(qubit=q.name, degree=1).polyfit_coefficients.values) + 
+                                     float(fitvals.sel(qubit=q.name, degree=0).polyfit_coefficients.values)) - detuning
 
     # Save fitting results
     node.results["fit_results"] = {}
@@ -270,16 +278,17 @@ else:
     node.results["figure"] = grid.fig
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for qubit in qubits:
-            qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
-            if flux_point == "independent":
-                qubit.z.independent_offset += flux_offset[qubit.name]
-            elif flux_point == "joint":
-                qubit.z.joint_offset += flux_offset[qubit.name]
-            else:
-                raise RuntimeError(f"unknown flux_point")
-            qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
+                if flux_point == "independent":
+                    qubit.z.independent_offset += flux_offset[qubit.name]
+                elif flux_point == "joint":
+                    qubit.z.joint_offset += flux_offset[qubit.name]
+                else:
+                    raise RuntimeError(f"unknown flux_point")
+                qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}

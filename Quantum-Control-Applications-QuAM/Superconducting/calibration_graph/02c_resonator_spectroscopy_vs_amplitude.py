@@ -132,7 +132,9 @@ for i, qubit in enumerate(qubits):
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
+    
 
 
 # %% {QUA_program}
