@@ -24,7 +24,9 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
+
 from quam_libs.components import QuAM
+from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
@@ -100,7 +102,6 @@ step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, +span // 2, step, dtype=np.int32)
 flux_point = node.parameters.flux_point_joint_or_independent
 qubit_freqs = {q.name: q.xy.RF_frequency for q in qubits}  # for opx
-# qubit_freqs = {q.name :  q.xy.intermediate_frequency + q.xy.opx_output.upconverter_frequency for q in qubits} # TODO: for MW
 
 # Set the qubit frequency for a given flux point
 if node.parameters.arbitrary_flux_bias is not None:
@@ -328,15 +329,17 @@ if not node.parameters.simulate:
                         used_amp = q.xy.operations["saturation"].amplitude * operation_amp
                         factor_cw = float(target_peak_width / result.sel(qubit=q.name).width.values)
                         factor_pi = np.pi / (result.sel(qubit=q.name).width.values * Pi_length * 1e-9)
-                        if factor_cw * used_amp / operation_amp < 0.5:  # TODO: 1 for OPX1000 MW
+                        limits = instrument_limits(q.xy)
+                        if factor_cw * used_amp / operation_amp < limits.max_wf_amplitude:
                             q.xy.operations["saturation"].amplitude = factor_cw * used_amp / operation_amp
                         else:
-                            q.xy.operations["saturation"].amplitude = 0.5  # TODO: 1 for OPX1000 MW
+                            q.xy.operations["saturation"].amplitude = limits.max_wf_amplitude
 
-                        if factor_pi * used_amp < 0.3:  # TODO: 1 for OPX1000 MW
+                        if factor_pi * used_amp < limits.max_x180_wf_amplitude:
                             q.xy.operations["x180"].amplitude = factor_pi * used_amp
-                        elif factor_pi * used_amp >= 0.3:  # TODO: 1 for OPX1000 MW
-                            q.xy.operations["x180"].amplitude = 0.3
+                        elif factor_pi * used_amp >= limits.max_x180_wf_amplitude:
+                            q.xy.operations["x180"].amplitude = limits.max_x180_wf_amplitude
+        node.results["ds"] = ds
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}

@@ -94,7 +94,6 @@ with program() as raw_trace_prog:
 
     with stream_processing():
         for i in range(num_qubits):
-            # TODO: what about MW-fem?
             # Will save average:
             adc_st[i].input1().average().save(f"adcI{i + 1}")
             adc_st[i].input2().average().save(f"adcQ{i + 1}")
@@ -133,7 +132,6 @@ else:
     time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    # TODO: what about MW-fem?
     ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     # Add the dataset to the node
@@ -160,7 +158,6 @@ else:
     node.results["fit_results"] = fit_results
     # Add the delays to the dataset
     ds = ds.assign_coords({"delays": (["qubit"], delays)})
-    # TODO: what about MW-fem?
     ds = ds.assign_coords({"offsets_I": ds.adcI.mean(dim="time")})
     ds = ds.assign_coords({"offsets_Q": ds.adcQ.mean(dim="time")})
     ds = ds.assign_coords(
@@ -203,7 +200,6 @@ else:
 
     # %% {Update_state}
     print(f"Time Of Flight to add: {delays} ns")
-    # TODO: what about MW-fem?
     print(f"Offsets to add for I: {ds.offsets_I.values * 1000} mV")
     print(f"Offsets to add for Q: {ds.offsets_Q.values * 1000} mV")
 
@@ -215,7 +211,6 @@ else:
                 q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
 
     # Update the offsets per controller for each qubit
-    # TODO: what about MW-fem?
     for con in np.unique(ds.con.values):
         for i, q in enumerate(ds.where(ds.con == con).qubit.values):
             # Only add the offsets once,

@@ -94,7 +94,6 @@ with program() as raw_trace_prog:
 
     with stream_processing():
         for i in range(num_qubits):
-            # TODO: what about MW-fem?
             # Will save average:
             adc_st[i].input1().real().average().save(f"adcI{i + 1}")
             adc_st[i].input1().image().average().save(f"adcQ{i + 1}")
@@ -133,7 +132,6 @@ else:
     time_axis = np.linspace(0, resonators[0].operations["readout"].length, resonators[0].operations["readout"].length)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"time": time_axis})
     # Convert raw ADC traces into volts
-    # TODO: what about MW-fem?
     ds = ds.assign({key: -ds[key] / 2**12 for key in ("adcI", "adcQ", "adc_single_runI", "adc_single_runQ")})
     ds = ds.assign({"IQ_abs": np.sqrt(ds["adcI"] ** 2 + ds["adcQ"] ** 2)})
     # Add the dataset to the node
