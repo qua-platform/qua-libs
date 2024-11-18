@@ -22,9 +22,9 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.instrument_limits import instrument_limits
-from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -52,6 +52,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="08a_Power_Rabi_Error_Amplification", parameters=Parameters())
@@ -65,7 +67,8 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -98,21 +101,17 @@ else:
 
 with program() as power_rabi:
     I, _, Q, _, n, n_st = qua_declaration(num_qubits=num_qubits)
-    state = [declare(bool) for _ in range(num_qubits)]
+    state = [declare(int) for _ in range(num_qubits)]
     state_stream = [declare_stream() for _ in range(num_qubits)]
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()        
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -122,27 +121,30 @@ with program() as power_rabi:
                     if reset_type == "active":
                         active_reset(qubit, "readout")
                     else:
-                        wait(qubit.thermalization_time * u.ns)
+                        qubit.wait(qubit.thermalization_time * u.ns)
 
                     qubit.align()
                     # Loop for error amplification (perform many qubit pulses)
                     with for_(count, 0, count < npi, count + 1):
                         qubit.xy.play(operation, amplitude_scale=a)
-                    align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    qubit.align()
+                    # qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    # assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    readout_state(qubit, state[i])
                     save(state[i], state_stream[i])
-        align()
+        
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
         for i, qubit in enumerate(qubits):
             if operation == "x180":
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
+                state_stream[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
                     f"state{i + 1}"
                 )
             elif operation in ["x90", "-x90", "y90", "-y90"]:
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(
+                state_stream[i].buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(
                     f"state{i + 1}"
                 )
             else:
@@ -167,28 +169,30 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
-
-        # %% {Live_plot}
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             n = results.fetch_all()[0]
             progress_counter(n, n_avg, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
-    # Add the qubit pulse absolute amplitude to the dataset
-    ds = ds.assign_coords(
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        # Add the qubit pulse absolute amplitude to the dataset
+        ds = ds.assign_coords(
         {
             "abs_amp": (
                 ["qubit", "amp"],
                 np.array([q.xy.operations[operation].amplitude * amps for q in qubits]),
             )
-        }
-    )
+            }
+        )
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -264,12 +268,13 @@ else:
     node.results["figure"] = grid.fig
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for q in qubits:
-            q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for q in qubits:
+                q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()

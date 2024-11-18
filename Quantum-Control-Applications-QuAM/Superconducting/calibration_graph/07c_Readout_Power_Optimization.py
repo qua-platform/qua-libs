@@ -25,7 +25,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -54,6 +54,8 @@ class Parameters(NodeParameters):
     end_amp: float = 1.99
     num_amps: int = 10
     outliers_threshold: float = 0.98
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="07c_Readout_Power_Optimization", parameters=Parameters())
@@ -67,7 +69,8 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -90,14 +93,10 @@ with program() as iq_blobs:
 
     for i, qubit in enumerate(qubits):
 
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()       
 
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits
@@ -131,7 +130,8 @@ with program() as iq_blobs:
                 save(Q_e[i], Q_e_st[i])
 
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -159,7 +159,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
 
@@ -173,30 +173,36 @@ else:
                 progress_counter(n, n_runs, start_time=results.start_time)
 
 
-    # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
-    # Add the absolute readout power to the dataset
-    ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([amps * q.resonator.operations["readout"].amplitude for q in qubits]))})
-    # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
-    ds_rearranged = xr.Dataset()
-    # Combine I_g and I_e into I
-    ds_rearranged["I"] = xr.concat([ds.I_g, ds.I_e], dim="state")
-    ds_rearranged["I"] = ds_rearranged["I"].assign_coords(state=[0, 1])
-    # Combine Q_g and Q_e into Q
-    ds_rearranged["Q"] = xr.concat([ds.Q_g, ds.Q_e], dim="state")
-    ds_rearranged["Q"] = ds_rearranged["Q"].assign_coords(state=[0, 1])
-    # Copy other coordinates and data variables
-    for var in ds.coords:
-        if var not in ds_rearranged.coords:
-            ds_rearranged[var] = ds[var]
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amplitude": amps, "N": np.linspace(1, n_runs, n_runs)})
+        # Add the absolute readout power to the dataset
+        ds = ds.assign_coords({"readout_amp": (["qubit", "amplitude"], np.array([amps * q.resonator.operations["readout"].amplitude for q in qubits]))})
+        # Rearrange the data to combine I_g and I_e into I, and Q_g and Q_e into Q
+        ds_rearranged = xr.Dataset()
+        # Combine I_g and I_e into I
+        ds_rearranged["I"] = xr.concat([ds.I_g, ds.I_e], dim="state")
+        ds_rearranged["I"] = ds_rearranged["I"].assign_coords(state=[0, 1])
+        # Combine Q_g and Q_e into Q
+        ds_rearranged["Q"] = xr.concat([ds.Q_g, ds.Q_e], dim="state")
+        ds_rearranged["Q"] = ds_rearranged["Q"].assign_coords(state=[0, 1])
+        # Copy other coordinates and data variables
+        for var in ds.coords:
+            if var not in ds_rearranged.coords:
+                ds_rearranged[var] = ds[var]
 
-    for var in ds.data_vars:
-        if var not in ["I_g", "I_e", "Q_g", "Q_e"]:
-            ds_rearranged[var] = ds[var]
+        for var in ds.data_vars:
+            if var not in ["I_g", "I_e", "Q_g", "Q_e"]:
+                ds_rearranged[var] = ds[var]
 
-    # Replace the original dataset with the rearranged one
-    ds = ds_rearranged
+        # Replace the original dataset with the rearranged one
+        ds = ds_rearranged
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+    
+    
     node.results = {"ds": ds, "results": {}, "figs": {}}
 
     plot_raw = False
@@ -384,21 +390,22 @@ else:
 
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for qubit in qubits:
-            qubit.resonator.operations["readout"].integration_weights_angle -= float(
-                node.results["results"][qubit.name]["angle"]
-            )
-            qubit.resonator.operations["readout"].threshold = float(node.results["results"][qubit.name]["threshold"])
-            qubit.resonator.operations["readout"].rus_exit_threshold = float(
-                node.results["results"][qubit.name]["rus_threshold"]
-            )
-            qubit.resonator.operations["readout"].amplitude = float(node.results["results"][qubit.name]["best_amp"])
-            qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.resonator.operations["readout"].integration_weights_angle -= float(
+                    node.results["results"][qubit.name]["angle"]
+                )
+                qubit.resonator.operations["readout"].threshold = float(node.results["results"][qubit.name]["threshold"])
+                qubit.resonator.operations["readout"].rus_exit_threshold = float(
+                    node.results["results"][qubit.name]["rus_threshold"]
+                )
+                qubit.resonator.operations["readout"].amplitude = float(node.results["results"][qubit.name]["best_amp"])
+                qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()

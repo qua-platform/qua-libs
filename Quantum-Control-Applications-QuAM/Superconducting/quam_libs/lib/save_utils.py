@@ -3,7 +3,7 @@ from quam_libs.components import QuAM
 import os
 from pathlib import Path
 import xarray as xr
-
+import json
 
 def extract_string(input_string):
     # Find the index of the first occurrence of a digit in the input string
@@ -50,44 +50,68 @@ def get_storage_path():
     return Path(storage_location)
 
 
-def find_folder(path, id):
-    for root, dirs, _ in os.walk(path):
-        for dir in dirs:
-            if f"#{id}" in dir:
-                return os.path.join(root, dir)
+def find_numbered_folder(base_path, number):
+    """
+    Find folder that starts with '#number_'
+    Will match '#number_something' but not '#number' alone
+    """
+    search_prefix = f"#{number}_"
+    
+    # Manual search for folder starting with #number_ and having something after
+    for root, dirs, _ in os.walk(base_path):
+        matching_dirs = [d for d in dirs if d.startswith(search_prefix) and len(d) > len(search_prefix)]
+        if matching_dirs:
+            return os.path.join(root, matching_dirs[0])
+    
     return None
 
 
-def load_dataset(serial_number):
+
+def load_dataset(serial_number, target_filename = "ds", parameters = None):
     """
     Loads a dataset from a file based on the serial number.
-
+    
     Args:
         serial_number: The serial number to search for.
         base_folder: The base directory to search in.
-
+    
     Returns:
         An xarray Dataset if found, None otherwise.
     """
-    if type(serial_number) == int:
-        serial_number = str(serial_number)
-
-    base_folder = find_folder(get_storage_path(), serial_number)
+    if not isinstance(serial_number, int):
+        raise ValueError("serial_number must be an integer")
+        
+    base_folder = find_numbered_folder(get_storage_path(),serial_number)
     # Look for .nc files in the subfolder
-    nc_files = [f for f in os.listdir(base_folder) if f.endswith(".h5")]
-
+    nc_files = [f for f in os.listdir(base_folder) if f.endswith('.h5')]
+    
+    # look for filename.h5
+    is_present = target_filename in [file.split('.')[0] for file in nc_files]
+    filename = [file for file in nc_files if target_filename == file.split('.')[0]][0] if is_present else None
+    json_filename = "data.json"
+    
     if nc_files:
         # Assuming there's only one .nc file per folder
-        file_path = os.path.join(base_folder, nc_files[0])
-
+        file_path = os.path.join(base_folder, filename)
+        json_path = os.path.join(base_folder, json_filename)
         # Open the dataset
         ds = xr.open_dataset(file_path)
+        with open(json_path, 'r') as f:
+            json_data = json.load(f)
         try:
-            machine = QuAM.load(base_folder)
+            machine = QuAM.load(base_folder + "//quam_state.json")
         except Exception as e:
             print(f"Error loading machine: {e}")
             machine = None
-        return ds, machine
+        qubits = [machine.qubits[qname] for qname in ds.qubit.values]    
+        if parameters is not None:
+            for param_name, param_value in parameters:
+                if param_name is not "load_data_id":
+                    if param_name in json_data["initial_parameters"]:
+                        setattr(parameters, param_name, json_data["initial_parameters"][param_name])
+            return ds, machine, json_data, qubits,parameters
+        else:
+            return ds, machine, json_data, qubits
     else:
         print(f"No .nc file found in folder: {base_folder}")
         return None

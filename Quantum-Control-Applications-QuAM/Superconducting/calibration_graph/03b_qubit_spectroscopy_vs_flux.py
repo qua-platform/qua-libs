@@ -22,7 +22,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import peaks_dips
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -43,15 +43,17 @@ class Parameters(NodeParameters):
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 0.1
+    frequency_span_in_mhz: float = 30
+    frequency_step_in_mhz: float = 0.25
     min_flux_offset_in_v: float = -0.01
     max_flux_offset_in_v: float = 0.01
-    num_flux_points: int = 51
+    num_flux_points: int = 21
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
@@ -65,7 +67,8 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -105,13 +108,9 @@ with program() as multi_qubit_spec_vs_flux:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -119,33 +118,18 @@ with program() as multi_qubit_spec_vs_flux:
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
-
                 with for_(*from_array(dc, dcs)):
                     # Flux sweeping for a qubit
-                    if flux_point == "independent":
-                        qubit.z.set_dc_offset(dc + qubit.z.independent_offset)
-                    elif flux_point == "joint":
-                        qubit.z.set_dc_offset(dc + qubit.z.joint_offset)
-                    else:
-                        raise RuntimeError(f"unknown flux_point")
-                    qubit.z.settle()
                     qubit.align()
-
+                    duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length // 4
+                    # Bring the qubit to the desired point during the satruration pulse
+                    qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
                     # Apply saturation pulse to all qubits
                     qubit.xy.play(
                         operation,
                         amplitude_scale=operation_amp,
-                        duration=(operation_len * u.ns if operation_len is not None else None),
+                        duration=duration,
                     )
-                    qubit.align()
-                    # Bring back the flux for readout
-                    if flux_point == "independent":
-                        qubit.z.set_dc_offset(qubit.z.independent_offset)
-                    elif flux_point == "joint":
-                        qubit.z.set_dc_offset(qubit.z.joint_offset)
-                    else:
-                        raise RuntimeError(f"unknown flux_point")
-                    qubit.z.settle()
                     qubit.align()
                     # QUA macro to read the state of the active resonators
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
@@ -156,7 +140,8 @@ with program() as multi_qubit_spec_vs_flux:
                     qubit.resonator.wait(machine.depletion_time * u.ns)
 
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -183,7 +168,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(multi_qubit_spec_vs_flux)
         results = fetching_tool(job, ["n"], mode="live")
@@ -193,30 +178,34 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"flux": dcs, "freq": dfs})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
-    # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
-    ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-    # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
-    ds = ds.assign_coords(
-        {
-            "freq_full": (
-                ["qubit", "freq"],
-                np.array([dfs + q.xy.RF_frequency for q in qubits]),
-            )
-        }
-    )
-    ds.freq_full.attrs["long_name"] = "Frequency"
-    ds.freq_full.attrs["units"] = "GHz"
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+    if node.parameters.load_data_id is not None:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+    else:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"flux": dcs, "freq": dfs})
+        # Convert IQ data into volts
+        ds = convert_IQ_to_V(ds, qubits)
+        # Derive the amplitude IQ_abs = sqrt(I**2 + Q**2)
+        ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
+        # Add the resonator RF frequency axis of each qubit to the dataset coordinates for plotting
+        ds = ds.assign_coords(
+            {
+                "freq_full": (
+                    ["qubit", "freq"],
+                    np.array([dfs + q.xy.RF_frequency for q in qubits]),
+                )
+            }
+        )
+        ds.freq_full.attrs["long_name"] = "Frequency"
+        ds.freq_full.attrs["units"] = "GHz"
     # Add the dataset to the node
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
     # Find the resonance dips for each flux point
-    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=6)
+    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=5)
     # Fit the result with a parabola
     parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Try to fit again with a smaller prominence factor (may need some adjustment)
@@ -280,22 +269,23 @@ else:
     node.results["figure"] = grid.fig
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for q in qubits:
-            if not np.isnan(flux_shift.sel(qubit=q.name).values):
-                if flux_point == "independent":
-                    q.z.independent_offset += fit_results[q.name]["flux_shift"]
-                elif flux_point == "joint":
-                    q.z.joint_offset += fit_results[q.name]["flux_shift"]
-                q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
-                q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for q in qubits:
+                if not np.isnan(flux_shift.sel(qubit=q.name).values):
+                    if flux_point == "independent":
+                        q.z.independent_offset += fit_results[q.name]["flux_shift"]
+                    elif flux_point == "joint":
+                        q.z.joint_offset += fit_results[q.name]["flux_shift"]
+                    q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
+                    q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
 
-    ds = ds.drop_vars("freq_full")
-    node.results["ds"] = ds
+        # %% {Save_results}
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
+
+# %%

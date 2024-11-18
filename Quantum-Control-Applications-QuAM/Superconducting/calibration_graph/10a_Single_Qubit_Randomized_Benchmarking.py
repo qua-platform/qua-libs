@@ -24,7 +24,7 @@ from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM, Transmon
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
@@ -54,7 +54,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
@@ -68,7 +69,8 @@ machine = QuAM.load()
 
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
@@ -242,6 +244,8 @@ with program() as randomized_benchmarking:
                         if flux_point == "independent":
                             machine.apply_all_flux_to_min()
                             qubit.z.to_independent_idle()
+                        if node.parameters.multiplexed:
+                            qubit.align()
                         else:
                             align()
                         # Initialize the qubits
@@ -299,7 +303,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -314,17 +318,19 @@ else:
                 progress_counter(m, num_of_sequences, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
-    depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
-    depths[0] = 1
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(
+    if node.parameters.load_data_id is None:
+        depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+        depths[0] = 1
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(
         job.result_handles,
         qubits,
-        {"depths": depths, "sequence": np.arange(num_of_sequences)},
-    )
+            {"depths": depths, "sequence": np.arange(num_of_sequences)},
+        )
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
-
     # %% {Data_analysis}
     da_state = 1 - ds["state"].mean(dim="sequence")
     da_state: xr.DataArray
@@ -384,10 +390,10 @@ if not node.parameters.simulate:
     node.results["figure"] = grid.fig
 
 
-# %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+    # %% {Save_results}
+    if not node.parameters.simulate:
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

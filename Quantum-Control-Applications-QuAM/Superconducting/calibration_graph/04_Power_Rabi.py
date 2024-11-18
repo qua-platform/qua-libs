@@ -23,7 +23,7 @@ from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -40,17 +40,18 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 200
+    num_averages: int = 100
     operation: str = "x180"
     min_amp_factor: float = 0.001
     max_amp_factor: float = 2.0
-    amp_factor_step: float = 0.005
+    amp_factor_step: float = 0.01
     max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 
@@ -63,7 +64,8 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
@@ -95,27 +97,26 @@ with program() as power_rabi:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
                 with for_(*from_array(a, amps)):
+                    qubit.resonator.wait(5*qubit.thermalization_time * u.ns)
                     # Loop for error amplification (perform many qubit pulses)
+                    qubit.align()
                     with for_(count, 0, count < npi, count + 1):
                         qubit.xy.play(operation, amplitude_scale=a)
-                    align()
+                    qubit.align()
                     qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                     save(I[i], I_st[i])
                     save(Q[i], Q_st[i])
-                    qubit.resonator.wait(qubit.thermalization_time * u.ns)
-        align()
+        
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -142,7 +143,7 @@ if node.parameters.simulate:
     node.machine = machine
     node.save()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
@@ -152,20 +153,24 @@ else:
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits)
-    # Add the qubit pulse absolute amplitude to the dataset
-    ds = ds.assign_coords(
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        # Convert IQ data into volts
+        ds = convert_IQ_to_V(ds, qubits)
+        # Add the qubit pulse absolute amplitude to the dataset
+        ds = ds.assign_coords(
         {
             "abs_amp": (
                 ["qubit", "amp"],
                 np.array([q.xy.operations[operation].amplitude * amps for q in qubits]),
             )
-        }
-    )
+            }
+        )
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
     # Add the dataset to the node
     node.results = {"ds": ds}
 
@@ -242,15 +247,16 @@ else:
     node.results["figure"] = grid.fig
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for q in qubits:
-            q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
-            if operation == "x180":
-                q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for q in qubits:
+                q.xy.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
+                if operation == "x180":
+                    q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

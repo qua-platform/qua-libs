@@ -27,7 +27,7 @@ from quam_libs.components import QuAM
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
@@ -51,9 +51,11 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
+    load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 
-node = QualibrationNode(name="07a_IQ_Blobs", parameters=Parameters())
+node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -64,8 +66,9 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP
-qmm = machine.connect()
-
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
+    
 # Get the relevant QuAM components
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
@@ -86,13 +89,9 @@ with program() as iq_blobs:
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the desired frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint" or "arbitrary":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()
 
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits
@@ -119,16 +118,18 @@ with program() as iq_blobs:
                 qubit.wait(qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
-            align()
+            qubit.align()
             qubit.xy.play("x180")
-            align()
+            qubit.align()
             qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
             qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
             # save data
             save(I_e[i], I_e_st[i])
             save(Q_e[i], Q_e_st[i])
+        
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -156,8 +157,8 @@ if node.parameters.simulate:
     node.results = {"figure": plt.gcf()}
     node.machine = machine
     node.save()
-
-else:
+    
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
         for i in range(num_qubits):
@@ -166,25 +167,30 @@ else:
                 n = results.fetch_all()[0]
                 progress_counter(n, n_runs, start_time=results.start_time)
 
-    # %% {Data_fetching_and_dataset_creation}
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
+# %% {Data_fetching_and_dataset_creation}
+if not node.parameters.simulate:
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
 
-    # Fix the structure of ds to avoid tuples
-    def extract_value(element):
-        if isinstance(element, tuple):
-            return element[0]
-        return element
+        # Fix the structure of ds to avoid tuples
+        def extract_value(element):
+            if isinstance(element, tuple):
+                return element[0]
+            return element
 
-    ds = xr.apply_ufunc(
-        extract_value,
-        ds,
-        vectorize=True,  # This ensures the function is applied element-wise
-        dask="parallelized",  # This allows for parallel processing
-        output_dtypes=[float],  # Specify the output data type
-    )
-    # Convert IQ data into volts
-    ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
+        ds = xr.apply_ufunc(
+            extract_value,
+            ds,
+            vectorize=True,  # This ensures the function is applied element-wise
+            dask="parallelized",  # This allows for parallel processing
+            output_dtypes=[float],  # Specify the output data type
+        )
+        # Convert IQ data into volts
+        ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
+    else:
+        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+    
     # %% {Data_analysis}
     node.results = {"ds": ds, "figs": {}, "results": {}}
     plot_individual = False
@@ -301,29 +307,30 @@ else:
     node.results["figure_fidelity"] = grid.fig
 
     # %% {Update_state}
-    with node.record_state_updates():
-        for qubit in qubits:
-            qubit.resonator.operations[operation_name].integration_weights_angle -= float(
-                node.results["results"][qubit.name]["angle"]
-            )
-            # Convert the thresholds back in demod units
-            qubit.resonator.operations[operation_name].threshold = (
-                float(node.results["results"][qubit.name]["threshold"])
-                * qubit.resonator.operations[operation_name].length
-                / 2**12
-            )
-            # todo: add conf matrix to the readout operation rather than the resonator
-            qubit.resonator.operations[operation_name].rus_exit_threshold = (
-                float(node.results["results"][qubit.name]["rus_threshold"])
-                * qubit.resonator.operations[operation_name].length
-                / 2**12
-            )
-            if operation_name == "readout":
-                qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            for qubit in qubits:
+                qubit.resonator.operations[operation_name].integration_weights_angle -= float(
+                    node.results["results"][qubit.name]["angle"]
+                )
+                # Convert the thresholds back in demod units
+                qubit.resonator.operations[operation_name].threshold = (
+                    float(node.results["results"][qubit.name]["threshold"])
+                    * qubit.resonator.operations[operation_name].length
+                    / 2**12
+                )
+                # todo: add conf matrix to the readout operation rather than the resonator
+                qubit.resonator.operations[operation_name].rus_exit_threshold = (
+                    float(node.results["results"][qubit.name]["rus_threshold"])
+                    * qubit.resonator.operations[operation_name].length
+                    / 2**12
+                )
+                if operation_name == "readout":
+                    qubit.resonator.confusion_matrix = node.results["results"][qubit.name]["confusion_matrix"].tolist()
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
