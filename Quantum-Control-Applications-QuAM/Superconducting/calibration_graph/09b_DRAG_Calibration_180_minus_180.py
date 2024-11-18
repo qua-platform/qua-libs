@@ -240,9 +240,9 @@ if not node.parameters.simulate:
             for q in qubits:
                 q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

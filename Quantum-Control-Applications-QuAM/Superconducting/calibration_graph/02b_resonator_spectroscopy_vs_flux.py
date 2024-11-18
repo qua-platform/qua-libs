@@ -310,14 +310,11 @@ if not node.parameters.simulate:
                     fit_results[q.name]["dv_phi0"] * node.parameters.input_line_impedance_in_ohm * attenuation_factor
                 )
 
-    # %% {Save_results}
-    if node.parameters.load_data_id is not None:
-        if node.storage_manager is not None:
-            node.storage_manager.active_machine_path = None
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
 
 

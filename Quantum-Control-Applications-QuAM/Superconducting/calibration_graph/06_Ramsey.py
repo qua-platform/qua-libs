@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
-node = QualibrationNode(name="06a_Ramsey", parameters=Parameters())
+node = QualibrationNode(name="06_Ramsey", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -158,8 +158,8 @@ with program() as ramsey:
                     # Reset the frame of the qubits in order not to accumulate rotations
                     reset_frame(qubit.xy.name)
         # Measure sequentially
-        
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -328,10 +328,10 @@ if not node.parameters.simulate:
                 q.T2ramsey = float(fit_results[q.name]["decay"])
 
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
 # %%

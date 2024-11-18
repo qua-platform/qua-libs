@@ -338,14 +338,11 @@ if not node.parameters.simulate:
                         elif factor_pi * used_amp >= 0.3:  # TODO: 1 for OPX1000 MW
                             q.xy.operations["x180"].amplitude = 0.3
 
-    # %% {Save_results}
-    if node.parameters.load_data_id is not None:
-        if node.storage_manager is not None:
-            node.storage_manager.active_machine_path = None
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
 
 # %%

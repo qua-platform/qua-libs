@@ -234,9 +234,9 @@ if not node.parameters.simulate:
                 if node.parameters.DRAG_setpoint is not None:
                     qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

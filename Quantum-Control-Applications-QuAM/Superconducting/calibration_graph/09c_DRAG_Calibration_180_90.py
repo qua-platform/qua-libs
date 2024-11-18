@@ -131,7 +131,8 @@ with program() as drag_calibration:
                     assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
                     save(state[i], state_stream[i])
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -223,7 +224,7 @@ if not node.parameters.simulate:
             for q in qubits:
                 q.xy.operations[operation].alpha = fit_results[q.name]["alpha"]
 
-    # %% {Save_results}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()

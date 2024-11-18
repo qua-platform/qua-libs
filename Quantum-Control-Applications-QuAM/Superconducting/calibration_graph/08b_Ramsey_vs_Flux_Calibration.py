@@ -291,8 +291,8 @@ if not node.parameters.simulate:
                     raise RuntimeError(f"unknown flux_point")
                 qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()

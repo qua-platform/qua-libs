@@ -66,7 +66,7 @@ if node.parameters.load_data_id is None:
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits]
 num_qubits = len(qubits)
 
 
@@ -247,8 +247,8 @@ if not node.parameters.simulate:
                 ):
                     q.T1 = float(tau.sel(qubit=q.name).values) * 1e-6
 
-    # %% {Save_results}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

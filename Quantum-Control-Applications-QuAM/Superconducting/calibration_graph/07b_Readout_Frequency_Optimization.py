@@ -250,9 +250,9 @@ if not node.parameters.simulate:
                 q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
                 q.chi = float(fit_results[q.name]["chi"])
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

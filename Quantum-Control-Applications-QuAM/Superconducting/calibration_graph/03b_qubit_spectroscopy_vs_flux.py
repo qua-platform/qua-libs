@@ -53,6 +53,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
+    multiplexed: bool = False
 
 
 node = QualibrationNode(name="03b_Qubit_Spectroscopy_vs_Flux", parameters=Parameters())
@@ -139,7 +140,8 @@ with program() as multi_qubit_spec_vs_flux:
                     qubit.resonator.wait(machine.depletion_time * u.ns)
 
         # Measure sequentially
-        align()
+        if not node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
@@ -278,17 +280,12 @@ if not node.parameters.simulate:
                     q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"]
                     q.freq_vs_flux_01_quad_term = fit_results[q.name]["quad_term"]
 
-    # ds = ds.drop_vars("freq_full")
-    node.results["ds"] = ds
+        # %% {Save_results}
 
-    # %% {Save_results}
-    if node.parameters.load_data_id is not None:
-        if node.storage_manager is not None:
-            node.storage_manager.active_machine_path = None
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
 
 # %%

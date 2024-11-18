@@ -50,7 +50,7 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    load_data_id: Optional[int] = False
+    load_data_id: Optional[int] = None
     multiplexed: bool = False
 
 node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
@@ -252,9 +252,9 @@ if not node.parameters.simulate:
                 if operation == "x180":
                     q.xy.operations["x90"].amplitude = fit_results[q.name]["Pi_amplitude"] / 2
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 

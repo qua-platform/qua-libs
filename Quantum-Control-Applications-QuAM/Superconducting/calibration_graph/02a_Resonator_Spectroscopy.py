@@ -103,8 +103,8 @@ with program() as multi_res_spec:
                 # save data
                 save(I[i], I_st[i])
                 save(Q[i], Q_st[i])
-                if not node.parameters.multiplexed:
-                    align()
+    if not node.parameters.multiplexed:
+        align()
 
     with stream_processing():
         n_st.save("n")
@@ -233,15 +233,12 @@ if not node.parameters.simulate:
             for index, q in enumerate(qubits):
                 q.resonator.intermediate_frequency += int(fits[q.name].params["omega_r"].value)
 
-    # %% {Save_results}
-    if node.parameters.load_data_id is not None:
-        if node.storage_manager is not None:
-            node.storage_manager.active_machine_path = None
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
-    print("Results saved")
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
+        print("Results saved")
 
 
 # %%
