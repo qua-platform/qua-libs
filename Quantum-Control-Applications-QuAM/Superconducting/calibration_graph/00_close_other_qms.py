@@ -12,7 +12,7 @@ from quam_libs.components import QuAM
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[str] = None
+    qubits: Optional[List[str]] = None
 
 
 node = QualibrationNode(name="00_Close_other_QMs", parameters=Parameters())
