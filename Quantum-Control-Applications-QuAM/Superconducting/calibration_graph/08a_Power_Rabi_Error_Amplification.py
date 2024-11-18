@@ -21,6 +21,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
+from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
@@ -212,13 +213,14 @@ else:
             phi_fit = phi_fit - np.pi * (phi_fit > np.pi / 2)
             factor = float(1.0 * (np.pi - phi_fit) / (2 * np.pi * f_fit))
             new_pi_amp = q.xy.operations[operation].amplitude * factor
-            if new_pi_amp < 0.3:  # TODO: 1 for OPX1000 MW
+            limits = instrument_limits(q.xy)
+            if new_pi_amp < limits.max_x180_wf_amplitude:
                 print(f"amplitude for Pi pulse is modified by a factor of {factor:.2f}")
-                print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
+                print(f"new amplitude is {1e3 * new_pi_amp:.2f} \n")
                 fit_results[q.name]["Pi_amplitude"] = float(new_pi_amp)
             else:
-                print(f"Fitted amplitude too high, new amplitude is 300 mV \n")
-                fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
+                print(f"Fitted amplitude too high, new amplitude is {limits.max_x180_wf_amplitude} {limits.units} \n")
+                fit_results[q.name]["Pi_amplitude"] = limits.max_x180_wf_amplitude
         node.results["fit_results"] = fit_results
 
     elif N_pi > 1:
@@ -230,15 +232,16 @@ else:
         for q in qubits:
             new_pi_amp = ds.abs_amp.sel(qubit=q.name)[data_max_idx.sel(qubit=q.name)]
             fit_results[q.name] = {}
-            if new_pi_amp < 0.3:  # TODO: 1 for OPX1000 MW
+            limits = instrument_limits(q.xy)
+            if new_pi_amp < limits.max_x180_wf_amplitude:
                 fit_results[q.name]["Pi_amplitude"] = float(new_pi_amp)
                 print(
                     f"amplitude for Pi pulse is modified by a factor of {I_n.idxmax(dim='amp').sel(qubit = q.name):.2f}"
                 )
-                print(f"new amplitude is {1e3 * new_pi_amp:.2f} mV \n")  # TODO: 1 for OPX1000 MW
+                print(f"new amplitude is {1e3 * new_pi_amp:.2f} {limits.units} \n")
             else:
-                print(f"Fitted amplitude too high, new amplitude is 300 mV \n")
-                fit_results[q.name]["Pi_amplitude"] = 0.3  # TODO: 1 for OPX1000 MW
+                print(f"Fitted amplitude too high, new amplitude is {limits.max_x180_wf_amplitude} {limits.units} \n")
+                fit_results[q.name]["Pi_amplitude"] = limits.max_x180_wf_amplitude
         node.results["fit_results"] = fit_results
 
     # %% {Plotting}
