@@ -48,7 +48,7 @@ class Parameters(NodeParameters):
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
-node = QualibrationNode(name="07b_Readout_Frequency_Optimization", parameters=Parameters())
+node = QualibrationNode(name="07a_Readout_Frequency_Optimization", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
