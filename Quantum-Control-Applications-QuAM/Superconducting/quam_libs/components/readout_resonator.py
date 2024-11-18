@@ -3,7 +3,6 @@ from typing import Optional
 from quam.core import quam_dataclass
 from quam.components.channels import InOutIQChannel, InOutMWChannel
 import numpy as np
-from sympy.codegen.cnodes import static
 
 from qualang_tools.units import unit
 
