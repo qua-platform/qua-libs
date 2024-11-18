@@ -25,11 +25,8 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 
-from quam.quam.components import IQChannel
-
-from quam.quam.components.channels import MWChannel
 from quam_libs.components import QuAM
-from quam_libs.lib.constants import instrument_limits
+from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
