@@ -103,15 +103,10 @@ with program() as ramsey:
     flux = declare(fixed)  # QUA variable for the flux dc level
 
     for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+        qubit.z.settle()
+        qubit.align()   
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)

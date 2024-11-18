@@ -21,7 +21,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_oscillation, oscillation
@@ -100,7 +100,7 @@ else:
 
 with program() as power_rabi:
     I, _, Q, _, n, n_st = qua_declaration(num_qubits=num_qubits)
-    state = [declare(bool) for _ in range(num_qubits)]
+    state = [declare(int) for _ in range(num_qubits)]
     state_stream = [declare_stream() for _ in range(num_qubits)]
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
@@ -120,16 +120,18 @@ with program() as power_rabi:
                     if reset_type == "active":
                         active_reset(qubit, "readout")
                     else:
-                        wait(qubit.thermalization_time * u.ns)
+                        qubit.wait(qubit.thermalization_time * u.ns)
 
                     qubit.align()
                     # Loop for error amplification (perform many qubit pulses)
                     with for_(count, 0, count < npi, count + 1):
                         qubit.xy.play(operation, amplitude_scale=a)
                     qubit.align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    # qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                    # assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                    readout_state(qubit, state[i])
                     save(state[i], state_stream[i])
+        
         if not node.parameters.multiplexed:
             align()
 
@@ -137,11 +139,11 @@ with program() as power_rabi:
         n_st.save("n")
         for i, qubit in enumerate(qubits):
             if operation == "x180":
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
+                state_stream[i].buffer(len(amps)).buffer(np.ceil(N_pi / 2)).average().save(
                     f"state{i + 1}"
                 )
             elif operation in ["x90", "-x90", "y90", "-y90"]:
-                state_stream[i].boolean_to_int().buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(
+                state_stream[i].buffer(len(amps)).buffer(np.ceil(N_pi / 4)).average().save(
                     f"state{i + 1}"
                 )
             else:

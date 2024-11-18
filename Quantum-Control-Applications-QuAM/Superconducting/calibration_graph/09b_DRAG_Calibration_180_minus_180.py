@@ -129,7 +129,7 @@ with program() as drag_calibration:
                     if reset_type == "active":
                         active_reset(qubit, "readout")
                     else:
-                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                        qubit.wait(qubit.thermalization_time * u.ns)
                     qubit.align()
                     # Loop for error amplification (perform many qubit pulses)
                     with for_(count, 0, count < npi, count + 1):

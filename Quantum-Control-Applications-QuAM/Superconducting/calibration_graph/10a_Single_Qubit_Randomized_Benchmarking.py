@@ -244,6 +244,8 @@ with program() as randomized_benchmarking:
                         if flux_point == "independent":
                             machine.apply_all_flux_to_min()
                             qubit.z.to_independent_idle()
+                        if node.parameters.multiplexed:
+                            qubit.align()
                         else:
                             align()
                         # Initialize the qubits
@@ -388,10 +390,10 @@ if not node.parameters.simulate:
     node.results["figure"] = grid.fig
 
 
-# %% {Save_results}
-if not node.parameters.simulate:
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+    # %% {Save_results}
+    if not node.parameters.simulate:
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
