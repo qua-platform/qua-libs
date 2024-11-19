@@ -308,14 +308,13 @@ elif node.parameters.load_data_id is None:
     node.results = {}
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(randomized_benchmarking)
-        for i in range(num_qubits):
-            print(f"Fetching results for qubit {qubits[i].name}")
-            data_list = ["iteration"]
-            results = fetching_tool(job, data_list, mode="live")
-            while results.is_processing():
-                # Fetch results
-                m = results.fetch_all()[0]
-                progress_counter(m, num_of_sequences, start_time=results.start_time)
+        results = fetching_tool(job, ["iteration"], mode="live")
+        while results.is_processing():
+            # Fetch results
+            m = results.fetch_all()[0]
+            # Progress bar
+            progress_counter(m, num_of_sequences, start_time=results.start_time)
+
 
     # %% {Data_fetching_and_dataset_creation}
     if node.parameters.load_data_id is None:
