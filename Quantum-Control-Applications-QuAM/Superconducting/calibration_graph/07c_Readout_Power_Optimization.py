@@ -47,13 +47,14 @@ class Parameters(NodeParameters):
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    simulate: bool = False
-    simulation_duration_ns: int = 2500
-    timeout: int = 100
     start_amp: float = 0.5
     end_amp: float = 1.99
     num_amps: int = 10
     outliers_threshold: float = 0.98
+    plot_raw: bool = False
+    simulate: bool = False
+    simulation_duration_ns: int = 2500
+    timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
@@ -162,15 +163,12 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
-
-        for i in range(num_qubits):
-            print(f"Fetching results for qubit {qubits[i].name}")
-            data_list = sum([[f"I_g{i + 1}", f"Q_g{i + 1}", f"I_e{i + 1}", f"Q_e{i + 1}"]], ["n"])
-            results = fetching_tool(job, data_list, mode="live")
-            while results.is_processing():
-                fetched_data = results.fetch_all()
-                n = fetched_data[0]
-                progress_counter(n, n_runs, start_time=results.start_time)
+        results = fetching_tool(job, ["n"], mode="live")
+        while results.is_processing():
+            # Fetch results
+            n = results.fetch_all()[0]
+            # Progress bar
+            progress_counter(n, n_runs, start_time=results.start_time)
 
 
 # %% {Data_fetching_and_dataset_creation}
@@ -201,12 +199,11 @@ if not node.parameters.simulate:
         ds = ds_rearranged
     else:
         ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
-    
-    
+
+
     node.results = {"ds": ds, "results": {}, "figs": {}}
 
-    plot_raw = False
-    if plot_raw:
+    if node.parameters.plot_raw:
         fig, axes = plt.subplots(
             ncols=num_qubits,
             nrows=len(ds.amplitude),
