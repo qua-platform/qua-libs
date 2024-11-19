@@ -4,6 +4,7 @@ hello_octave.py: template for basic usage of the Octave
 
 from qm import QuantumMachinesManager
 from qm.qua import *
+from qm.octave import *
 from configuration import *
 from qm import SimulationConfig
 import time

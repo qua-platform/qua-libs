@@ -1,9 +1,8 @@
 """
-Octave configuration working up to QOP222 and qm-qua==1.1.7.
+Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 """
 
-import os
-from qm.octave import QmOctaveConfig
+from set_octave import OctaveUnit, octave_declaration
 
 ######################
 # Network parameters #
@@ -15,10 +14,13 @@ qop_port = None  # Write the QOP port if version < QOP220
 ############################
 # Set octave configuration #
 ############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
+octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
+octave_1 = OctaveUnit("octave1", qop_ip, port=octave_port, con="con1")
 
+# Add the octaves
+octaves = [octave_1]
+# Configure the Octaves
+octave_config = octave_declaration(octaves)
 
 #####################
 # OPX configuration #

@@ -5,6 +5,7 @@ down-converters and calibration
 
 from qm import QuantumMachinesManager
 from qm.octave import *
+from qm.octave.octave_manager import ClockMode
 from qm.qua import *
 import os
 import time
@@ -24,9 +25,9 @@ qop_ip = "172.0.0.1"
 cluster_name = "Cluster_1"
 opx_port = None
 
+octave_port = 11250  # Must be 11xxx, where xxx are the last three digits of the Octave IP address
 con = "con1"
-octave = "oct1"
-
+octave = "octave1"
 # The elements used to test the ports of the Octave
 elements = ["qe1", "qe2", "qe3", "qe4", "qe5"]
 IF = 50e6  # The IF frequency
@@ -271,6 +272,8 @@ config = {
 octave_config = QmOctaveConfig()
 # Specify where to store the outcome of the calibration (correction matrix, offsets...)
 octave_config.set_calibration_db(os.getcwd())
+# Add an Octave called 'octave1' with the specified IP and port
+octave_config.add_device_info(octave, qop_ip, octave_port)
 
 qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, cluster_name=cluster_name, octave=octave_config)
 
@@ -285,7 +288,13 @@ with program() as hello_octave:
 ###########################
 # Step 1 : clock settings #
 ###########################
-# The Octave clock setting is now set from the admin panel
+external_clock = False
+if external_clock:
+    # Change to the relevant external frequency
+    qm.octave.set_clock(octave, clock_mode=ClockMode.External_10MHz)
+else:
+    qm.octave.set_clock(octave, clock_mode=ClockMode.Internal)
+# You can connect clock out from rear panel to a spectrum analyzer  to see the 1GHz signal
 
 #######################################
 # Step 2 : checking the up-converters #
