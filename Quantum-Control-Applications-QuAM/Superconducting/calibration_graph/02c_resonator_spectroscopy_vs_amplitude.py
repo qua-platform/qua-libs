@@ -57,8 +57,8 @@ class Parameters(NodeParameters):
     max_amp: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     ro_line_attenuation_dB: float = 0
-    derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
-    derivative_smoothing_window_num_points: int = 20
+    derivative_crossing: int = int(-50e3)
+    derivative_smoothing_window_num_points: int = 30
     moving_average_filter_window_num_points: int = 15
     multiplexed: bool = False
     load_data_id: Optional[int] = None
