@@ -242,7 +242,7 @@ if not node.parameters.simulate:
         [
             (
                 q.name,
-                ds.freq_full.sel(freq = result.position).sel(qubit=q.name).values,
+                ds.freq_full.sel(freq = result.position.sel(qubit=q.name).values).sel(qubit=q.name).values,
             )
             for q in qubits if not np.isnan(result.sel(qubit=q.name).position.values)
         ]
