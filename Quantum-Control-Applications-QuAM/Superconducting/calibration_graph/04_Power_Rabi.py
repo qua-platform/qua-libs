@@ -42,11 +42,11 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 100
+    num_averages: int = 50
     operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
     min_amp_factor: float = 0.001
-    max_amp_factor: float = 2.0
-    amp_factor_step: float = 0.01
+    max_amp_factor: float = 1.99
+    amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
@@ -258,7 +258,7 @@ if not node.parameters.simulate:
             I_n = ds.state.mean(dim="N")
         else:
             I_n = ds.I.mean(dim="N")
-        if N_pi_vec[0] % 2 == 0:
+        if (N_pi_vec[0] % 2 == 0 and operation == "x180") or (N_pi_vec[0] % 2 != 0 and operation != "x180"):
             data_max_idx = I_n.argmin(dim="amp")
         else:
             data_max_idx = I_n.argmax(dim="amp")
