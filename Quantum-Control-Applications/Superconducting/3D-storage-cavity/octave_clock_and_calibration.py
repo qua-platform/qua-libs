@@ -16,11 +16,11 @@ qm = qmm.open_qm(config)
 ##################
 # Clock settings #
 ##################
-qm.octave.set_clock("octave1", clock_mode=ClockMode.Internal)
+qm.octave.set_clock("oct1", clock_mode=ClockMode.Internal)
 # If using external LO change this line to one of the following:
-#     qm.octave.set_clock("octave1", clock_mode=ClockMode.External_10MHz)
-#     qm.octave.set_clock("octave1", clock_mode=ClockMode.External_100MHz)
-#     qm.octave.set_clock("octave1", clock_mode=ClockMode.External_1000MHz)
+#     qm.octave.set_clock("oct1", clock_mode=ClockMode.External_10MHz)
+#     qm.octave.set_clock("oct1", clock_mode=ClockMode.External_100MHz)
+#     qm.octave.set_clock("oct1", clock_mode=ClockMode.External_1000MHz)
 
 ##################
 # Calibration #

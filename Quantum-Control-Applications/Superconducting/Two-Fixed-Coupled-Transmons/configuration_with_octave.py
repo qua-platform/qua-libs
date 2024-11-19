@@ -43,13 +43,13 @@ qop_port = None  # Write the QOP port if version < QOP220
 
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
+octave_1 = OctaveUnit("oct1", qop_ip, port=11050, con="con1")
 # octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
 
 # If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
 # or directly to the Octave (without QM the router), use the local octave IP and port 80.
 # octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("octave1", octave_ip, port=80, con="con1")
+# octave_1 = OctaveUnit("oct1", octave_ip, port=80, con="con1")
 
 # Add the octaves
 octaves = [octave_1]
@@ -333,8 +333,8 @@ config = {
     },
     "elements": {
         "rr1": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
+            "RF_outputs": {"port": ("oct1", 1)},
             "intermediate_frequency": resonator_IF_q1,  # in Hz [-350e6, +350e6]
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -344,8 +344,8 @@ config = {
             },
         },
         "rr2": {
-            "RF_inputs": {"port": ("octave1", 1)},
-            "RF_outputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
+            "RF_outputs": {"port": ("oct1", 1)},
             "intermediate_frequency": resonator_IF_q2,  # in Hz [-350e6, +350e6]
             "time_of_flight": time_of_flight,
             "smearing": 0,
@@ -355,7 +355,7 @@ config = {
             },
         },
         "q1_xy": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": qubit_IF_q1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -368,7 +368,7 @@ config = {
             },
         },
         "q2_xy": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("oct1", 3)},
             "intermediate_frequency": qubit_IF_q2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -381,7 +381,7 @@ config = {
             },
         },
         "cr_drive_c1t2": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": cr_drive_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -390,7 +390,7 @@ config = {
             },
         },
         "cr_drive_c2t1": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("oct1", 3)},
             "intermediate_frequency": cr_drive_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -399,7 +399,7 @@ config = {
             },
         },
         "cr_cancel_c1t2": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -408,7 +408,7 @@ config = {
             },
         },
         "cr_cancel_c2t1": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("oct1", 3)},
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -418,7 +418,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 1: {
                     "LO_frequency": resonator_LO,
