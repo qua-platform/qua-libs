@@ -5,7 +5,6 @@ QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
-from set_octave import OctaveUnit, octave_declaration
 from qm.qua._dsl import QuaVariable, QuaExpression
 from qm.qua import declare, assign, play, fixed, Cast, amp, wait, ramp, ramp_to_zero
 from typing import Union

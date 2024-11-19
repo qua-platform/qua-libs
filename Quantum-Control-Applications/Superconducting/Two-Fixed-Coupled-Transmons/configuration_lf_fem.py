@@ -1,5 +1,5 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX1000 w/ LF-FEM & external mixers
 """
 
 from pathlib import Path
@@ -35,7 +35,6 @@ def IQ_imbalance(g, phi):
 qop_ip = "172.16.33.116"  # Write the QM router IP address
 cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-octave_config = None
 
 #####################
 # OPX configuration #

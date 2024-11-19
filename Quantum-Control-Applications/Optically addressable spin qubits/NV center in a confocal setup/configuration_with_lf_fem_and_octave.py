@@ -20,16 +20,13 @@ qop_port = None  # Write the QOP port if version < QOP220
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
 
-octave_ip = qop_ip  # Write the Octave IP address
-octave_port = 11050  # 11xxx, where xxx are the last three digits of the Octave IP address
-
 
 ############################
 # Set octave configuration #
 ############################
 octave_config = QmOctaveConfig()
+# Location of the calibration database
 octave_config.set_calibration_db(os.getcwd())
-octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 
 #############
@@ -156,7 +153,7 @@ config = {
     },
     "elements": {
         "NV": {
-            "RF_inputs": {"port": ("octave1", 1)},
+            "RF_inputs": {"port": ("oct1", 1)},
             "intermediate_frequency": NV_IF_freq,
             "operations": {
                 "cw": "const_pulse",
@@ -254,7 +251,7 @@ config = {
         },
     },
     "octaves": {
-        "octave1": {
+        "oct1": {
             "RF_outputs": {
                 1: {
                     "LO_frequency": NV_LO_freq,

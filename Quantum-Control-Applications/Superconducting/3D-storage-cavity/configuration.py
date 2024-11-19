@@ -1,10 +1,11 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX+ & Octave
 """
 
 from pathlib import Path
 import numpy as np
-from set_octave import OctaveUnit, octave_declaration
+import os
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -26,21 +27,10 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 ############################
 # Set octave configuration #
 ############################
+octave_config = QmOctaveConfig()
+# Location of the calibration database
+octave_config.set_calibration_db(os.getcwd())
 
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("oct1", "192.168.88.250", port=80, con="con1")
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con="con1")
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("oct1", octave_ip, port=80, con="con1")
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
 
 #####################
 # OPX configuration #

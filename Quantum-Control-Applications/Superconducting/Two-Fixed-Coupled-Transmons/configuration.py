@@ -1,6 +1,6 @@
 # %%
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX+ and external mixers
 """
 
 from pathlib import Path

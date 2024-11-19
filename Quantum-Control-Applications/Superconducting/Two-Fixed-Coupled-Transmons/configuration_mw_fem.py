@@ -1,6 +1,6 @@
 # %%
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
 
 from pathlib import Path

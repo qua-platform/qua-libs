@@ -1,33 +1,19 @@
 """
-Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
+QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
 
 from pathlib import Path
 import numpy as np
+import os
+from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
-from set_octave import OctaveUnit, octave_declaration
 
 
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
-
-
-# IQ imbalance matrix
-def IQ_imbalance(g, phi):
-    """
-    Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
-    be seen here:
-    https://docs.qualang.io/libs/examples/mixer-calibration/#non-ideal-mixer
-    :param g: relative gain imbalance between the 'I' & 'Q' ports. (unit-less), set to 0 for no gain imbalance.
-    :param phi: relative phase imbalance between the 'I' & 'Q' ports (radians), set to 0 for no phase imbalance.
-    """
-    c = np.cos(phi)
-    s = np.sin(phi)
-    N = 1 / ((1 - g**2) * (2 * c**2 - 1))
-    return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
 ######################
@@ -40,33 +26,16 @@ qop_port = None  # Write the QOP port if version < QOP220
 ############################
 # Set octave configuration #
 ############################
-con = "con1"
-fem = 1  # Should be the LF-FEM index, e.g., 1
+octave_config = QmOctaveConfig()
+# Location of the calibration database
+octave_config.set_calibration_db(os.getcwd())
 
-# The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
-# the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
-octave_1 = OctaveUnit("oct1", qop_ip, port=11050, con=con)
-# octave_2 = OctaveUnit("octave2", qop_ip, port=11051, con=con)
-
-# If the control PC or local network is connected to the internal network of the QM router (port 2 onwards)
-# or directly to the Octave (without QM the router), use the local octave IP and port 80.
-# octave_ip = "192.168.88.X"
-# octave_1 = OctaveUnit("oct1", octave_ip, port=80, con=con)
-
-# Add the octaves
-octaves = [octave_1]
-# Configure the Octaves
-octave_config = octave_declaration(octaves)
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 5  # Should be the LF-FEM index, e.g., 1
-
-# Set octave_config to None if no octave are present
-octave_config = None
-
 
 sampling_rate = int(1e9)  # or, int(2e9)
 
@@ -805,44 +774,4 @@ config = {
             "sine": opt_weights_minus_real_q2,
         },
     },
-    "mixers": {
-        "mixer_qubit_q1": [
-            {
-                "intermediate_frequency": qubit_IF_q1,
-                "lo_frequency": qubit_LO_q1,
-                "correction": IQ_imbalance(mixer_qubit_g_q1, mixer_qubit_phi_q1),
-            },
-            {
-                "intermediate_frequency": cr_drive_IF_c1t2,
-                "lo_frequency": qubit_LO_q1,
-                "correction": IQ_imbalance(mixer_cr_drive_c1t2_g, mixer_cr_drive_c1t2_phi),
-            },
-        ],
-        "mixer_qubit_q2": [
-            {
-                "intermediate_frequency": qubit_IF_q2,
-                "lo_frequency": qubit_LO_q2,
-                "correction": IQ_imbalance(mixer_qubit_g_q2, mixer_qubit_phi_q2),
-            },
-            {
-                "intermediate_frequency": cr_drive_IF_c2t1,
-                "lo_frequency": qubit_LO_q2,
-                "correction": IQ_imbalance(mixer_cr_drive_c2t1_g, mixer_cr_drive_c2t1_phi),
-            },
-        ],
-        "mixer_resonator": [
-            {
-                "intermediate_frequency": resonator_IF_q1,
-                "lo_frequency": resonator_LO,
-                "correction": IQ_imbalance(mixer_resonator_g_q1, mixer_resonator_phi_q1),
-            },
-            {
-                "intermediate_frequency": resonator_IF_q2,
-                "lo_frequency": resonator_LO,
-                "correction": IQ_imbalance(mixer_resonator_g_q2, mixer_resonator_phi_q2),
-            },
-        ],
-    },
 }
-
-# %%
