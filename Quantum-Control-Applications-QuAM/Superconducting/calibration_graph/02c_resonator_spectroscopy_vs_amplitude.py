@@ -59,7 +59,7 @@ class Parameters(NodeParameters):
     ro_line_attenuation_dB: float = 0
     derivative_crossing: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
-    moving_average_filter_window_num_points: int = 15
+    moving_average_filter_window_num_points: int = 30
     multiplexed: bool = False
     load_data_id: Optional[int] = None
 
