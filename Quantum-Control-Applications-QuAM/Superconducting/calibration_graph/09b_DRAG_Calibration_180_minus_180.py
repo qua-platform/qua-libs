@@ -130,7 +130,7 @@ with program() as drag_calibration:
                         active_reset(qubit, "readout")
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
-                    qubit.align()
+
                     # Loop for error amplification (perform many qubit pulses)
                     with for_(count, 0, count < npi, count + 1):
                         if operation == "x180":
