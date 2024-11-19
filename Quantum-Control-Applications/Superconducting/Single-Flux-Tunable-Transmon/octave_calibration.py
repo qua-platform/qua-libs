@@ -11,7 +11,6 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config, l
 qm = qmm.open_qm(config)
 
 
-
 ##################
 # Calibration #
 ##################
