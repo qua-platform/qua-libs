@@ -43,10 +43,10 @@ class Parameters(NodeParameters):
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 20
+    frequency_span_in_mhz: float = 40
     frequency_step_in_mhz: float = 0.1
-    min_flux_offset_in_v: float = -0.01
-    max_flux_offset_in_v: float = 0.01
+    min_flux_offset_in_v: float = -0.02
+    max_flux_offset_in_v: float = 0.02
     num_flux_points: int = 51
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     simulate: bool = False

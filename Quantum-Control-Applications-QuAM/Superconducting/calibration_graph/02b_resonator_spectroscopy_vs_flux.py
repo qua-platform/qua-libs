@@ -279,7 +279,7 @@ if not node.parameters.simulate:
         # Location of the current resonator frequency
         ax.plot(
             idle_offset.loc[qubit].values,
-            (abs_freqs.sel(qubit=qubit["qubit"]).values)
+            abs_freqs.sel(qubit=qubit["qubit"]).values
             * 1e-9,
             "r*",
             markersize=10,

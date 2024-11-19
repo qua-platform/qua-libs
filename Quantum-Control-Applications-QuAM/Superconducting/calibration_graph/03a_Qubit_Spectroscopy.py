@@ -140,10 +140,11 @@ with program() as qubit_spec:
                 # Update the qubit frequency
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detunings[qubit.name])
                 qubit.align()
-                duration = operation_len * u.ns if operation_len is not None else qubit.xy.operations[operation].length // 4
-                # Bring the qubit to the desired point during the satruration pulse
+                duration = operation_len * u.ns if operation_len is not None else (qubit.xy.operations[operation].length + qubit.z.settle_time) // 4
+                # Bring the qubit to the desired point during the saturation pulse
                 qubit.z.play("const", amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude, duration=duration)
                 # Play the saturation pulse
+                qubit.z.wait(qubit.z.settle_time * u.ns)
                 qubit.xy.play(
                     operation,
                     amplitude_scale=operation_amp,

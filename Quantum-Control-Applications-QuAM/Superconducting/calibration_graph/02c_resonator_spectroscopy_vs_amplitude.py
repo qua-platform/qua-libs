@@ -51,13 +51,13 @@ class Parameters(NodeParameters):
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
-    max_power_dbm: int = -20
+    max_power_dbm: int = -30
     min_power_dbm: int = -50
     num_power_points: int = 100
     max_amp: float = 0.1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     ro_line_attenuation_dB: float = 0
-    derivative_crossing: int = int(-50e3)
+    derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
     moving_average_filter_window_num_points: int = 30
     multiplexed: bool = False
@@ -300,7 +300,7 @@ if not node.parameters.simulate:
     fit_results = {}
     for q in qubits:
         fit_results[q.name] = {}
-        if node.parameters.load_id is None:
+        if not node.parameters.load_data_id:
             with node.record_state_updates():
                 if not np.isnan(rr_optimal_power_dbm[q.name]):
                     power_settings = q.resonator.set_output_power(
