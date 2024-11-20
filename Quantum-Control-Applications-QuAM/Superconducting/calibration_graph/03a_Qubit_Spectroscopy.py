@@ -51,7 +51,7 @@ class Parameters(NodeParameters):
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.1
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 50
+    frequency_span_in_mhz: float = 100
     frequency_step_in_mhz: float = 0.25
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     target_peak_width: Optional[float] = 2e6
@@ -133,18 +133,18 @@ with program() as qubit_spec:
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
         qubit.align()
-        
+
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
                 qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detunings[qubit.name])
                 qubit.align()
-                duration = operation_len * u.ns if operation_len is not None else (qubit.xy.operations[operation].length + qubit.z.settle_time) // 4
+                duration = operation_len * u.ns if operation_len is not None else (qubit.xy.operations[operation].length + qubit.z.settle_time) * u.ns
                 # Bring the qubit to the desired point during the saturation pulse
                 qubit.z.play("const", amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude, duration=duration)
                 # Play the saturation pulse
-                qubit.z.wait(qubit.z.settle_time * u.ns)
+                qubit.xy.wait(qubit.z.settle_time * u.ns)
                 qubit.xy.play(
                     operation,
                     amplitude_scale=operation_amp,
