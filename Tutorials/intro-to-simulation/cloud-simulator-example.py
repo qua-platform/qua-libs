@@ -9,7 +9,6 @@ config = {
     "version": 1,
     "controllers": {
         "con1": {
-            "type": "opx1",
             "analog_outputs": {
                 1: {"offset": +0.0},
             },
@@ -37,7 +36,6 @@ config = {
 }
 
 # ======================================================================================================================
-# Name: example1.py
 # Description: Use default host and port for the QOP simulator. Email and password are mandatory.
 #              Using the context manager ensures them simulator instance is closed properly.
 # ======================================================================================================================
@@ -50,6 +48,7 @@ password = "Password_given_by_QM"
 client = QmSaas(email=email, password=password)
 
 # Choose your QOP version (QOP2.x.y or QOP3.x.y)
+# if you choose QOP3.x.y, make sure you are using an adequate config.
 version = QoPVersion.v2_2_2
 
 with client.simulator(version=version) as instance:  # Specify the QOP version

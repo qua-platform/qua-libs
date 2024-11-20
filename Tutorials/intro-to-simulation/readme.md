@@ -10,7 +10,7 @@ with its exact timing and voltage level, following the compilation of QUA to the
 It is a useful tool for predicting and debugging the outcome of a QUA program. 
 Read more on the simulator, and it's capabilities in the [QUA docs](https://docs.quantum-machines.co/latest/docs/Guides/simulator/).
 
-In addition, the script cloud-simulator-example.py demonstrates the usage of [QM cloud simulator](https://docs.quantum-machines.co/latest/docs/Guides/qm_saas_guide/), enabling to run the HW
+In addition, the script cloud-simulator-example.py demonstrates the usage of [QM cloud simulator](https://docs.quantum-machines.co/latest/docs/Guides/qm_saas_guide/), enabling to run the HW simulator
 on virtual instances (and doesn't require access to actual HW).
 
 The intro-to-simulation Examples
@@ -18,10 +18,10 @@ The intro-to-simulation Examples
 
 The script gives three examples for the usage of the simulator in the QOP.
 
-First and second exampled
+First and second examples
 -------------
 
-The first and second demonstrates basic usage od the simulator. Note that the simulation is done via the QuantumMachinesManager (qmm) object. 
+The first and second examples demonstrate basic usage of the simulator. Note that the simulation is done via the QuantumMachinesManager (qmm) object. 
 The simulation function is given the configuration, the program and the `SimulationConfig` instance. The last sets the duration for the 
 simulation. i.e. how many clock cycles should the simulator simulate. The outcome of the simulator is a `job` object. 
 
