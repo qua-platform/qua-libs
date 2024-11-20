@@ -2,6 +2,8 @@ from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import play, program
 from qm_saas import QoPVersion, QmSaas
 
+# for qm-saas version 1.1.1
+
 # Define quantum machine configuration dictionary
 config = {
     "version": 1,
