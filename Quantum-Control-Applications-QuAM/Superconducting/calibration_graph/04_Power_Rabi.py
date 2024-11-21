@@ -117,9 +117,7 @@ with program() as power_rabi:
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        qubit.z.settle()
-        qubit.align()
-
+        
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
