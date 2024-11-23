@@ -22,7 +22,7 @@ Prerequisites:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM, Transmon
-from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
@@ -217,44 +217,29 @@ with program() as randomized_benchmarking:
 
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            raise ValueError(f"Unrecognized flux point {flux_point}")
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
-    # QUA for_ loop over the random sequences
-    with for_(m, 0, m < num_of_sequences, m + 1):
-        # Generate the random sequence of length max_circuit_depth
-        sequence_list, inv_gate_list = generate_sequence()
-        assign(depth_target, 0)  # Initialize the current depth to 0
-
-        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
-            # Replacing the last gate in the sequence with the sequence's inverse gate
-            # The original gate is saved in 'saved_gate' and is being restored at the end
-            assign(saved_gate, sequence_list[depth])
-            assign(sequence_list[depth], inv_gate_list[depth - 1])
-            # Only played the depth corresponding to target_depth
-            with if_((depth == 1) | (depth == depth_target)):
-                with for_(n, 0, n < n_avg, n + 1):
-                    for i, qubit in enumerate(qubits):
-                        # Bring the active qubits to the desired frequency point
-                        if flux_point == "independent":
-                            machine.apply_all_flux_to_min()
-                            qubit.z.to_independent_idle()
-                        if node.parameters.multiplexed:
-                            qubit.align()
-                        else:
-                            align()
+        # QUA for_ loop over the random sequences
+        with for_(m, 0, m < num_of_sequences, m + 1):
+            # Generate the random sequence of length max_circuit_depth
+            sequence_list, inv_gate_list = generate_sequence()
+            assign(depth_target, 0)  # Initialize the current depth to 0
+            
+            with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+                # Replacing the last gate in the sequence with the sequence's inverse gate
+                # The original gate is saved in 'saved_gate' and is being restored at the end
+                assign(saved_gate, sequence_list[depth])
+                assign(sequence_list[depth], inv_gate_list[depth - 1])
+                # Only played the depth corresponding to target_depth
+                with if_((depth == 1) | (depth == depth_target)):
+                    with for_(n, 0, n < n_avg, n + 1):
                         # Initialize the qubits
                         if reset_type == "active":
                             active_reset(qubit, "readout")
                         else:
                             qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         # Align the two elements to play the sequence after qubit initialization
-                        align(qubit.xy.name, qubit.resonator.name)
+                        qubit.align()
                         # The strict_timing ensures that the sequence will be played without gaps
                         if strict_timing:
                             with strict_timing_():
@@ -263,23 +248,18 @@ with program() as randomized_benchmarking:
                         else:
                             play_sequence(sequence_list, depth, qubit)
                         # Align the two elements to measure after playing the circuit.
-                        align(qubit.xy.name, qubit.resonator.name)
-                        # Make sure you updated the ge_threshold and angle if you want to use state discrimination
-                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                        # Make sure you updated the ge_threshold
-                        assign(
-                            state[i],
-                            Cast.to_int(I[i] > qubit.resonator.operations["readout"].threshold),
-                        )
+                        qubit.align()
+                        readout_state(qubit, state[i])
+
                         save(state[i], state_st[i])
 
-                # Go to the next depth
-                assign(depth_target, depth_target + delta_clifford)
-            # Reset the last gate of the sequence back to the original Clifford gate
-            # (that was replaced by the recovery gate at the beginning)
-            assign(sequence_list[depth], saved_gate)
-        # Save the counter for the progress bar
-        save(m, m_st)
+                    # Go to the next depth
+                    assign(depth_target, depth_target + delta_clifford)
+                # Reset the last gate of the sequence back to the original Clifford gate
+                # (that was replaced by the recovery gate at the beginning)
+                assign(sequence_list[depth], saved_gate)
+            # Save the counter for the progress bar
+            save(m, m_st)
 
     with stream_processing():
         m_st.save("iteration")
@@ -396,3 +376,5 @@ if not node.parameters.simulate:
         node.machine = machine
         node.save()
 
+
+# %%
