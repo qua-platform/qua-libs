@@ -21,7 +21,7 @@ def add_default_transmon_pulses(transmon: Transmon):
         )
         transmon.xy.operations["x90_DragCosine"] = pulses.DragCosinePulse(
             amplitude=0.1 / 2,
-            alpha=0.0,
+            alpha="#../x180_DragCosine/alpha",
             anharmonicity="#../x180_DragCosine/anharmonicity",
             length="#../x180_DragCosine/length",
             axis_angle=0,

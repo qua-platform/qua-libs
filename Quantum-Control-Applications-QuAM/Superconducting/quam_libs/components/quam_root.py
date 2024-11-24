@@ -154,6 +154,8 @@ class QuAM(QuamRoot):
             target.to_mutual_idle()
             target_bias = target.mutual_flux_bias
         
+        target.z.settle()
+        target.align()
         return target_bias      
 
     def connect(self) -> QuantumMachinesManager:

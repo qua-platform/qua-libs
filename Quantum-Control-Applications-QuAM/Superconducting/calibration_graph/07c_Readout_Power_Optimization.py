@@ -96,8 +96,7 @@ with program() as iq_blobs:
 
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        qubit.z.settle()
-        qubit.align()       
+         
 
         with for_(n, 0, n < n_runs, n + 1):
             # ground iq blobs for all qubits

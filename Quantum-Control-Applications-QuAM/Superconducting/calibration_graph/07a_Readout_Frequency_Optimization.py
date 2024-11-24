@@ -95,10 +95,7 @@ with program() as ro_freq_opt:
 
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        qubit.z.settle()
-        qubit.align()
-
-
+        
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(df, dfs)):
