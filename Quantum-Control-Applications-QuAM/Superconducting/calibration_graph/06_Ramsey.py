@@ -47,13 +47,13 @@ class Parameters(NodeParameters):
     max_wait_time_in_ns: int = 3000
     num_time_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     use_state_discrimination: bool = False
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(name="06_Ramsey", parameters=Parameters())
 
