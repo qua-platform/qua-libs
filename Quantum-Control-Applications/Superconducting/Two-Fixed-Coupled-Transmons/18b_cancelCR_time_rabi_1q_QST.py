@@ -18,7 +18,7 @@ Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
@@ -41,10 +41,9 @@ qt = 2  # index of target qubit
 n_avg = 100
 cr_drive_amp = 0.8  # ratio
 cr_drive_phase = 0.5  # in units of 2pi
+cr_cancel_amp = 0.8  # ratio
+cr_cancel_phase = 0.5  # in units of 2pi
 ts_cycles = np.arange(4, 400, 4)  # in clock cylcle = 4ns
-
-# Readout Parameters
-weights = "rotated_"  # ["", "rotated_", "opt_"]
 
 # Derived parameters
 qc_xy = f"q{qc}_xy"
@@ -65,6 +64,8 @@ save_data_dict = {
     "cr_cancel": cr_cancel,
     "cr_drive_amp": cr_drive_amp,
     "cr_drive_phase": cr_drive_phase,
+    "cr_cancel_amp": cr_cancel_amp,
+    "cr_cancel_phase": cr_cancel_phase,
     "ts_ns": ts_ns,
     "n_avg": n_avg,
     "config": config,
@@ -92,10 +93,17 @@ with program() as PROGRAM:
                         play("x180", qc_xy)
                         align(qc_xy, cr_drive)
 
-                    # Control
-                    play("square_positive", cr_drive, duration=t)
+                    # phase shift for cancel drive
+                    frame_rotation_2pi(cr_drive_phase, cr_drive)
+                    frame_rotation_2pi(cr_cancel_phase, cr_cancel)
 
-                    align(cr_drive, qt_xy)
+                    # direct + cancel
+                    align(qc_xy, qt_xy, cr_drive, cr_cancel)
+                    play("square_positive", cr_drive, duration=t)
+                    play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=t)
+
+                    # QST on Target
+                    align(qc_xy, qt_xy, cr_drive, cr_cancel)
                     with switch_(c):
                         with case_(0):  # projection along X
                             play("-y90", qt_xy)
@@ -112,6 +120,11 @@ with program() as PROGRAM:
                     save(state[0], state_st[0])
                     assign(state[1], I[1] > ge_threshold_q2)
                     save(state[1], state_st[1])
+
+                    # reset phase shift for cancel drive
+                    reset_frame(cr_drive)
+                    reset_frame(cr_cancel)
+
                     # Wait for the qubit to decay to the ground state - Can be replaced by active reset
                     wait(thermalization_time * u.ns)
 
@@ -124,7 +137,7 @@ with program() as PROGRAM:
         # target qubit
         I_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I2")
         Q_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q2")
-        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("state2")
+        state_st[1].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state2")
 
 
 #####################################
@@ -142,6 +155,7 @@ if simulate:
     simulation_config = SimulationConfig(duration=3_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, PROGRAM, simulation_config)
     job.get_simulated_samples().con1.plot()
+    plt.show()
 
 else:
     try:
@@ -165,8 +179,8 @@ else:
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
             # Plots
-            plt.suptitle("non-echo CR Time Rabi")
-            for i, (axs, bss) in enumerate(zip(axss, ["X", "Y", "Z"])):
+            plt.suptitle("non-echo + cancel CR Time Rabi")
+            for i, (axs, bss) in enumerate(zip(axss, ["X", "y", "z"])):
                 for ax, q in zip(axs, ["c", "t"]):
                     I = I1 if q == "c" else I2
                     ax.cla()
@@ -186,7 +200,7 @@ else:
         script_name = Path(__file__).name
         data_handler = DataHandler(root_data_folder=save_dir)
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="cr_time_rabi")
+        data_handler.save_data(data=save_data_dict, name="cr_cancel_time_rabi")
 
     except Exception as e:
         print(f"An exception occurred: {e}")

@@ -18,7 +18,7 @@ Reference: A. D. Corcoles et al., Phys. Rev. A 87, 030301 (2013)
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.loops import from_array
@@ -102,8 +102,21 @@ with program() as PROGRAM:
                     play("square_positive", cr_drive, duration=t)
                     play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=t)
 
+                    # pi pulse on control
+                    align(qc_xy, cr_drive, cr_cancel)
+                    play("x180", qc_xy)
+
+                    # echoed direct + cancel
+                    align(qc_xy, cr_drive, cr_cancel)
+                    play("square_negative" * amp(cr_drive_amp), cr_drive, duration=t)
+                    play("square_negative" * amp(cr_cancel_amp), cr_cancel, duration=t)
+
+                    # pi pulse on control
+                    align(qc_xy, cr_drive, cr_cancel)
+                    play("x180", qc_xy)
+
                     # QST on Target
-                    align(qc_xy, qt_xy, cr_drive, cr_cancel)
+                    align(qc_xy, qt_xy)
                     with switch_(c):
                         with case_(0):  # projection along X
                             play("-y90", qt_xy)
@@ -133,7 +146,7 @@ with program() as PROGRAM:
         # control qubit
         I_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I1")
         Q_st[0].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q1")
-        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("state1")
+        state_st[0].boolean_to_int().buffer(2).buffer(3).buffer(len(ts_cycles)).average().save(f"state1")
         # target qubit
         I_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("I2")
         Q_st[1].buffer(2).buffer(3).buffer(len(ts_cycles)).average().save("Q2")
@@ -179,8 +192,8 @@ else:
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
             # Plots
-            plt.suptitle("non-echo + cancel CR Time Rabi")
-            for i, (axs, bss) in enumerate(zip(axss, ["X", "y", "z"])):
+            plt.suptitle("echo CR Time Rabi")
+            for i, (axs, bss) in enumerate(zip(axss, ["X", "Y", "Z"])):
                 for ax, q in zip(axs, ["c", "t"]):
                     I = I1 if q == "c" else I2
                     ax.cla()
@@ -200,7 +213,7 @@ else:
         script_name = Path(__file__).name
         data_handler = DataHandler(root_data_folder=save_dir)
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="cr_cancel_time_rabi")
+        data_handler.save_data(data=save_data_dict, name="cr_echo_time_rabi")
 
     except Exception as e:
         print(f"An exception occurred: {e}")

@@ -1,24 +1,24 @@
 """
-        POWER RABI WITH ERROR AMPLIFICATION
-This sequence involves repeatedly executing the qubit pulse (such as x180, square_pi, or similar) 'N' times and
-measuring the state of the resonator across different qubit pulse amplitudes and number of pulses.
-By doing so, the effect of amplitude inaccuracies is amplified, enabling a more precise measurement of the pi pulse
-amplitude. The results are then analyzed to determine the qubit pulse amplitude suitable for the selected duration.
+        RABI CHEVRON (AMPLITUDE VS FREQUENCY)
+This sequence involves executing the qubit pulse and measuring the state
+of the resonator across various qubit intermediate frequencies and pulse amplitudes.
+By analyzing the results, one can determine the qubit and estimate the x180 pulse amplitude for a specified duration.
 
 Prerequisites:
-    - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
-    - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
-    - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
-    - Having found the pi pulse amplitude (power_rabi).
-    - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the configuration.
+    - Determination of the resonator's resonance frequency when coupled to the qubit of interest (referred to as "resonator_spectroscopy").
+    - Calibration of the IQ mixer connected to the qubit drive line (be it an external mixer or an Octave port).
+    - Identification of the approximate qubit frequency (referred to as "qubit_spectroscopy").
+    - Configuration of the qubit frequency and the desired pi pulse duration (labeled as "pi_len_q").
 
-Next steps before going to the next node:
-    - Update the qubit pulse amplitude (pi_amp_q) in the configuration.
+Before proceeding to the next node:
+    - Adjust the qubit frequency setting, labeled as "qubit_IF_q", in the configuration.
+    - Modify the qubit pulse amplitude setting, labeled as "pi_amp_q", in the configuration.
 """
 
-from qm import QuantumMachinesManager, SimulationConfig
+from qm import QuantumMachinesManager
 from qm.qua import *
-from configuration_mw_fem import *
+from qm import SimulationConfig
+from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
@@ -31,21 +31,24 @@ from qualang_tools.results.data_handler import DataHandler
 ##################
 # Parameters Definition
 n_avg = 10  # The number of averages
-scaling_min = 0.0
-scaling_max = 1.5
-scaling_step = 0.005
+# Qubit detuning sweep with respect to qubit_IF
+freq_span = 40e6
+freq_step = 0.1e6
+dfs = np.arange(-freq_span, +freq_span, freq_step)
+# Qubit pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+scaling_max = 1.00
+scaling_min = 0
+scaling_step = 0.25
 scalings = np.arange(scaling_min, scaling_max, scaling_step)
-# repeated rabi
-max_nb_of_pulses = 80  # Maximum number of qubit pulses
-nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play an odd/even number of pulses to end up in the same state
 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
-    "nb_of_pulses": nb_of_pulses,
+    "dfs": dfs,
     "scalings": scalings,
     "config": config,
 }
+
 
 ###################
 #   QUA Program   #
@@ -53,20 +56,22 @@ save_data_dict = {
 
 with program() as PROGRAM:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
-    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
-    npi = declare(int)  # QUA variable for the number of qubit pulses
-    count = declare(int)  # QUA variable for counting the qubit pulses
+    df = declare(int)  # QUA variable for the qubit detuning
+    a = declare(fixed)  # QUA variable for the qubit pulse amplitude pre-factor
 
     with for_(n, 0, n < n_avg, n + 1):
-        with for_(*from_array(npi, nb_of_pulses)):
+        with for_(*from_array(df, dfs)):
+            # Update the frequency of the two qubit elements
+            update_frequency("q1_xy", df + qubit_IF_q1)
+            update_frequency("q2_xy", df + qubit_IF_q2)
+
             with for_(*from_array(a, scalings)):
-                # Loop for error amplification (perform many qubit pulses)
-                with for_(count, 0, count < npi, count + 1):
-                    play("x180" * amp(a), "q1_xy")
-                    play("x180" * amp(a), "q2_xy")
-                # Align the elements to measure after playing the qubit pulses.
+                # Play qubit pulses simultaneously
+                play("x180" * amp(a), "q1_xy")
+                play("x180" * amp(a), "q2_xy")
+                # Measure after the qubit pulses
                 align()
-                # Start using Rotated integration weights (cf. IQ_blobs.py)
+                # Multiplexed readout, also saves the measurement outcomes
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
                 # Wait for the qubit to decay to the ground state
                 wait(thermalization_time * u.ns)
@@ -76,11 +81,11 @@ with program() as PROGRAM:
     with stream_processing():
         n_st.save("n")
         # resonator 1
-        I_st[0].buffer(len(scalings)).buffer(len(nb_of_pulses)).average().save("I1")
-        Q_st[0].buffer(len(scalings)).buffer(len(nb_of_pulses)).average().save("Q1")
+        I_st[0].buffer(len(scalings)).buffer(len(dfs)).average().save("I1")
+        Q_st[0].buffer(len(scalings)).buffer(len(dfs)).average().save("Q1")
         # resonator 2
-        I_st[1].buffer(len(scalings)).buffer(len(nb_of_pulses)).average().save("I2")
-        Q_st[1].buffer(len(scalings)).buffer(len(nb_of_pulses)).average().save("Q2")
+        I_st[1].buffer(len(scalings)).buffer(len(dfs)).average().save("I2")
+        Q_st[1].buffer(len(scalings)).buffer(len(dfs)).average().save("Q2")
 
 
 #####################################
@@ -99,14 +104,13 @@ if simulate:
     simulation_config = SimulationConfig(duration=1_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, PROGRAM, simulation_config)
     job.get_simulated_samples().con1.plot()
-
+    plt.show(block=False)
 else:
     try:
         # Open the quantum machine
         qm = qmm.open_qm(config)
         # Send the QUA program to the OPX, which compiles and executes it
         job = qm.execute(PROGRAM)
-        # Prepare the figure for live plotting
         fig = plt.figure()
         interrupt_on_close(fig, job)
         # Tool to easily fetch results from the OPX (results_handle used in it)
@@ -121,27 +125,30 @@ else:
             I1, Q1 = u.demod2volts(I1, readout_len), u.demod2volts(Q1, readout_len)
             I2, Q2 = u.demod2volts(I2, readout_len), u.demod2volts(Q2, readout_len)
             # Plots
-            # Power Rabi with error amplification
+            plt.suptitle("Rabi chevron")
             plt.subplot(221)
             plt.cla()
-            plt.pcolor(scalings * pi_amp_q1, nb_of_pulses, I1)
-            plt.title("I1")
-            plt.ylabel("# of Rabi pulses")
+            plt.pcolor(scalings * pi_amp_q1, dfs, I1)
+            plt.xlabel("Qubit pulse amplitude [V]")
+            plt.ylabel("Qubit 1 detuning [MHz]")
+            plt.title(f"q1 (f_res: {(qubit_LO_q1 + qubit_IF_q1) / u.MHz} MHz)")
             plt.subplot(223)
             plt.cla()
-            plt.pcolor(scalings * pi_amp_q1, nb_of_pulses, Q1)
-            plt.title("Q1")
-            plt.xlabel("qubit pulse amplitude [V]")
-            plt.ylabel("# of Rabi pulses")
+            plt.pcolor(scalings * pi_amp_q1, dfs, Q1)
+            plt.xlabel("Qubit pulse amplitude [V]")
+            plt.ylabel("Qubit 1 detuning [MHz]")
             plt.subplot(222)
             plt.cla()
-            plt.pcolor(scalings * pi_amp_q2, nb_of_pulses, I2)
-            plt.title("I2")
+            plt.pcolor(scalings * pi_amp_q2, dfs, I2)
+            plt.title(f"q2 (f_res: {(qubit_LO_q2 + qubit_IF_q2) / u.MHz} MHz)")
+            plt.xlabel("Qubit pulse amplitude [V]")
+            plt.ylabel("Qubit 2 detuning [MHz]")
             plt.subplot(224)
             plt.cla()
-            plt.pcolor(scalings * pi_amp_q2, nb_of_pulses, Q2)
-            plt.title("Q2")
+            plt.pcolor(scalings * pi_amp_q2, dfs, Q2)
             plt.xlabel("Qubit pulse amplitude [V]")
+            plt.ylabel("Qubit 2 detuning [MHz]")
+            plt.tight_layout()
             plt.pause(1)
 
         # Save results
@@ -149,7 +156,7 @@ else:
         data_handler = DataHandler(root_data_folder=save_dir)
         save_data_dict.update({"fig_live": fig})
         data_handler.additional_files = {script_name: script_name, **default_additional_files}
-        data_handler.save_data(data=save_data_dict, name="power_rabi")
+        data_handler.save_data(data=save_data_dict, name="rabi_chevron")
 
     except Exception as e:
         print(f"An exception occurred: {e}")
