@@ -32,8 +32,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.116"  # Write the QM router IP address
-cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
@@ -483,8 +483,8 @@ config = {
         },
         "cr_cancel_c1t2": {
             "mixInputs": {
-                "I": (con, fem, 1),
-                "Q": (con, fem, 2),
+                "I": (con, fem, 3),
+                "Q": (con, fem, 4),
                 "lo_frequency": qubit_LO_q1,
                 "mixer": "mixer_qubit_q1",
             },
@@ -497,8 +497,8 @@ config = {
         },
         "cr_cancel_c2t1": {
             "mixInputs": {
-                "I": (con, fem, 3),
-                "Q": (con, fem, 4),
+                "I": (con, fem, 1),
+                "Q": (con, fem, 2),
                 "lo_frequency": qubit_LO_q2,
                 "mixer": "mixer_qubit_q2",
             },

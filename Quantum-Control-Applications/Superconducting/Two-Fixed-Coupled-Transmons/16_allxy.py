@@ -4,7 +4,7 @@
 
 from qm.qua import *
 from qm import QuantumMachinesManager
-from configuration_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qm import SimulationConfig
 from qualang_tools.results import fetching_tool
