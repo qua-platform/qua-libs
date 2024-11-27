@@ -45,7 +45,7 @@ class Parameters(NodeParameters):
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     num_random_sequences: int = 100  # Number of random sequences
-    num_averages: int = 20
+    num_averages: int = 40
     max_circuit_depth: int = 100  # Maximum circuit depth
     delta_clifford: int = 4
     seed: int = 345324
@@ -380,7 +380,7 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(randomized_benchmarking)
         results = fetching_tool(job, ["iteration"], mode="live")
         while results.is_processing():
@@ -418,7 +418,7 @@ elif node.parameters.load_data_id is None:
     # average_gate_per_clifford = 45/24 = 1.875
     num_of_x_gates = 0*3 + 1*8 + 2*13
     num_of_z_gates = 0*4 + 1*7 + 2*11 + 3*2
-    average_gate_per_clifford = (num_of_x_gates + 0*num_of_z_gates) / 24
+    average_gate_per_clifford = (num_of_x_gates + num_of_z_gates) / 24
     # EPC from here: https://qiskit.org/textbook/ch-quantum-hardware/randomized-benchmarking.html#Step-5:-Fit-the-results
     EPC = (1 - alpha) - (1 - alpha) / 2
     EPG = EPC / average_gate_per_clifford
@@ -439,7 +439,7 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])
-        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"])
+        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"])/np.sqrt(ds.sequence.size)
         ax.errorbar(
             da_state_qubit.m,
             da_state_qubit,
