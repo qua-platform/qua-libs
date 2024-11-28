@@ -33,8 +33,8 @@ def IQ_imbalance(g, phi):
 ######################
 # Network parameters #
 ######################
-qop_ip = "172.16.33.101"  # Write the QM router IP address
-cluster_name = "Cluster_81"  # Write your cluster_name if version >= QOP220
+qop_ip = "127.0.0.1"  # Write the QM router IP address
+cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
 ############################
@@ -399,7 +399,7 @@ config = {
             },
         },
         "cr_cancel_c1t2": {
-            "RF_inputs": {"port": ("octave1", 2)},
+            "RF_inputs": {"port": ("octave1", 3)},
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -408,7 +408,7 @@ config = {
             },
         },
         "cr_cancel_c2t1": {
-            "RF_inputs": {"port": ("octave1", 3)},
+            "RF_inputs": {"port": ("octave1", 2)},
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",

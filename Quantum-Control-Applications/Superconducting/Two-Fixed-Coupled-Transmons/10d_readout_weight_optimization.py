@@ -4,7 +4,7 @@
 
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
-from configuration_mw_fem import *
+from configuration import *
 import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
