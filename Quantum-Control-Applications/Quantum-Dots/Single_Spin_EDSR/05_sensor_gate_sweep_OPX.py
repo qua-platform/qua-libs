@@ -102,7 +102,7 @@ else:
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         # Progress bar
