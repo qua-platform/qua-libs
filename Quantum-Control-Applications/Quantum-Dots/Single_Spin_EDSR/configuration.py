@@ -311,7 +311,7 @@ level_readout = [0.12, -0.12]
 duration_init = 2500
 duration_manip = 1000
 duration_readout = readout_len + 100
-duration_compensation_pulse = 4 * u.us
+duration_compensation_pulse = 4 * u.us  # Note, may need to be increased when running long RB sequences
 
 # Step parameters
 step_length = 16  # in ns
@@ -343,6 +343,32 @@ gaussian_length = 20  # in ns
 # CW pulse
 cw_amp = 0.3  # in V
 cw_len = 100  # in ns
+
+# Chirp Pulse
+chirp_duration = 1000  # in clock cycles
+chirp_rate = 5000
+chirp_units = "Hz/nsec"
+chirp_amp = 0.05  # 0.3
+processing_time = 196  # time in ns for chirp to be calculated
+
+# RB Gate specifics
+x180_len = 100
+x180_amp = 0.1  # 0.35
+
+x90_len = x180_len
+x90_amp = x180_amp / 2
+
+minus_x90_len = x180_len
+minus_x90_amp = -x90_amp
+
+y180_len = x180_len
+y180_amp = x180_amp
+
+y90_len = x180_len
+y90_amp = y180_amp / 2
+
+minus_y90_len = y180_len
+minus_y90_amp = -y90_amp
 
 #############################################
 #                  Config                   #
@@ -459,6 +485,13 @@ config = {
                 "pi": "pi_pulse",
                 "pi_half": "pi_half_pulse",
                 "gauss": "gaussian_pulse",
+                "chirp": "chirp_pulse",
+                "x180": "x180_pulse",
+                "x90": "x90_pulse",
+                "-x90": "minus_x90_pulse",
+                "y180": "y180_pulse",
+                "y90": "y90_pulse",
+                "-y90": "minus_y90_pulse",
             },
         },
         "tank_circuit": {
@@ -526,6 +559,14 @@ config = {
                 "Q": "zero_wf",
             },
         },
+        "chirp_pulse": {
+            "operation": "control",
+            "length": chirp_duration,
+            "waveforms": {
+                "I": "chirp_wf",
+                "Q": "zero_wf",
+            },
+        },
         "gaussian_pulse": {
             "operation": "control",
             "length": gaussian_length,
@@ -573,6 +614,54 @@ config = {
             },
             "digital_marker": "ON",
         },
+        "x180_pulse": {
+            "operation": "control",
+            "length": x180_len,
+            "waveforms": {
+                "I": "x180_I_wf",
+                "Q": "x180_Q_wf",
+            },
+        },
+        "x90_pulse": {
+            "operation": "control",
+            "length": x90_len,
+            "waveforms": {
+                "I": "x90_I_wf",
+                "Q": "x90_Q_wf",
+            },
+        },
+        "minus_x90_pulse": {
+            "operation": "control",
+            "length": x90_len,
+            "waveforms": {
+                "I": "-x90_I_wf",
+                "Q": "-x90_Q_wf",
+            },
+        },
+        "y180_pulse": {
+            "operation": "control",
+            "length": y180_len,
+            "waveforms": {
+                "I": "y180_I_wf",
+                "Q": "y180_Q_wf",
+            },
+        },
+        "y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "y90_I_wf",
+                "Q": "y90_Q_wf",
+            },
+        },
+        "minus_y90_pulse": {
+            "operation": "control",
+            "length": y90_len,
+            "waveforms": {
+                "I": "-y90_I_wf",
+                "Q": "-y90_Q_wf",
+            },
+        },
     },
     "waveforms": {
         "P1_step_wf": {"type": "constant", "sample": P1_step_amp},
@@ -588,6 +677,20 @@ config = {
         "reflect_wf": {"type": "constant", "sample": reflectometry_readout_amp},
         "const_wf": {"type": "constant", "sample": cw_amp},
         "zero_wf": {"type": "constant", "sample": 0.0},
+        "chirp_wf": {"type": "constant", "sample": chirp_amp},
+        "zero_wf": {"type": "constant", "sample": 0.0},
+        "x180_I_wf": {"type": "constant", "sample": x180_amp},
+        "x180_Q_wf": {"type": "constant", "sample": 0.0},
+        "x90_I_wf": {"type": "constant", "sample": x90_amp},
+        "x90_Q_wf": {"type": "constant", "sample": 0.0},
+        "-x90_I_wf": {"type": "constant", "sample": minus_x90_amp},
+        "-x90_Q_wf": {"type": "constant", "sample": 0.0},
+        "y180_I_wf": {"type": "constant", "sample": 0.0},
+        "y180_Q_wf": {"type": "constant", "sample": y180_amp},
+        "y90_I_wf": {"type": "constant", "sample": 0.0},
+        "y90_Q_wf": {"type": "constant", "sample": y90_amp},
+        "-y90_I_wf": {"type": "constant", "sample": 0.0},
+        "-y90_Q_wf": {"type": "constant", "sample": minus_y90_amp},
     },
     "digital_waveforms": {
         "ON": {"samples": [(1, 0)]},
