@@ -23,8 +23,8 @@ class TwoQubitRbDebugger:
     def run_phased_xz_commands(self, qmm: QuantumMachinesManager, num_averages: int):
         """
         Run a program testing selected commands containing only combinations of PhasedXZ
-        gates which lead to a variery of transformations on the |00> staet.
-        This is useful for testing the 1Q component of your gate implementation.
+        gates and other fundamental gates, which lead to a variety of transformations on
+        the |00> state. This is useful for testing the 1Q component of the gate implementation.
         """
         sequences_dict = {
             r"I \otimes I": [720],  # Identity on both qubits
