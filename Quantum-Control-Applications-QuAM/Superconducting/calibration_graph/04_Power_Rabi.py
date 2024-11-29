@@ -42,20 +42,20 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 50
-    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
-    min_amp_factor: float = 0.001
-    max_amp_factor: float = 1.99
-    amp_factor_step: float = 0.005
-    max_number_rabi_pulses_per_sweep: int = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    state_discrimination: bool = False
+    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x90"
+    min_amp_factor: float = 0.97
+    max_amp_factor: float = 1.03
+    amp_factor_step: float = 0.001
+    max_number_rabi_pulses_per_sweep: int = 200
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    state_discrimination: bool = True
     update_x90: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(name="04_Power_Rabi", parameters=Parameters())
 

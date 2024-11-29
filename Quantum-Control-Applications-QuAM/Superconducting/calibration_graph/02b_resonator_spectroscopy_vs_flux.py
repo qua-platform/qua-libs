@@ -46,9 +46,9 @@ class Parameters(NodeParameters):
     min_flux_offset_in_v: float = -0.5
     max_flux_offset_in_v: float = 0.5
     num_flux_points: int = 201
-    frequency_span_in_mhz: float = 15
+    frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     input_line_impedance_in_ohm: float = 50
     line_attenuation_in_db: float = 0
     update_flux_min: bool = False

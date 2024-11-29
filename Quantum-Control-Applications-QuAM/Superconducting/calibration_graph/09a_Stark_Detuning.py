@@ -43,18 +43,18 @@ import numpy as np
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_averages: int = 20
-    operation: str = "x180"
-    frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 0.02
+    operation: str = "x90"
+    frequency_span_in_mhz: float = 10
+    frequency_step_in_mhz: float = 0.05
     max_number_pulses_per_sweep: int = 20
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    DRAG_setpoint: Optional[float] = -1.0
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    DRAG_setpoint: Optional[float] = None
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(name="09a_Stark_Detuning", parameters=Parameters())
 
@@ -78,7 +78,7 @@ tracked_qubits = []
 for q in qubits:
     with tracked_updates(q, auto_revert=False) as q:
         if node.parameters.DRAG_setpoint is not None:
-            q.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
+            q.xy.operations["x180"].alpha = node.parameters.DRAG_setpoint
         q.xy.operations[operation].detuning = 0
         tracked_qubits.append(q)
 
@@ -232,7 +232,7 @@ if not node.parameters.simulate:
             for qubit in qubits:
                 qubit.xy.operations[operation].detuning = float(fit_results[qubit.name]["detuning"])
                 if node.parameters.DRAG_setpoint is not None:
-                    qubit.xy.operations[operation].alpha = node.parameters.DRAG_setpoint
+                    qubit.xy.operations["x180"].alpha = node.parameters.DRAG_setpoint
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}
