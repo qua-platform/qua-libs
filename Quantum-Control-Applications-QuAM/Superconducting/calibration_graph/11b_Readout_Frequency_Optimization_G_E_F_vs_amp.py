@@ -197,7 +197,7 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(ro_freq_opt)
 
         results = fetching_tool(job, ["n"], mode="live")
@@ -341,7 +341,7 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     for q in qubits:
         with node.record_state_updates():
-            q.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
+            q.resonator.GEF_frequency_shift = int(fit_results[q.name]["GEF_detuning"])
 
             if operation == "x180":
                 # Create the |e> -> |f> operation

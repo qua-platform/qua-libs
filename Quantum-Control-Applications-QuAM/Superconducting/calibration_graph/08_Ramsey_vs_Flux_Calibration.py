@@ -95,7 +95,7 @@ fluxes = np.arange(
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
-    init_state = declare(int)
+    init_state = [declare(int) for _ in range(num_qubits)]
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
     t = declare(int)  # QUA variable for the idle time
@@ -112,7 +112,7 @@ with program() as ramsey:
             with for_(*from_array(flux, fluxes)):
                 with for_(*from_array(t, idle_times)):
                     # Read the state of the qubit before Ramsey starts
-                    readout_state(qubit, init_state)
+                    readout_state(qubit, init_state[i])
                     qubit.align()
                     # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
                     # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
@@ -132,7 +132,7 @@ with program() as ramsey:
                     align()
                     # Measure the state of the resonators
                     readout_state(qubit, state[i])
-                    assign(state[i], init_state ^ state[i])
+                    assign(state[i], init_state[i] ^ state[i])
                     save(state[i], state_st[i])
 
                     # Reset the frame of the qubits in order not to accumulate rotations
@@ -167,7 +167,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -279,9 +279,9 @@ if not node.parameters.simulate:
             for qubit in qubits:
                 qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
                 if flux_point == "independent":
-                    qubit.z.independent_offset += flux_offset[qubit.name]
+                    qubit.z.independent_offset += flux_offset[qubit.name]/2
                 elif flux_point == "joint":
-                    qubit.z.joint_offset += flux_offset[qubit.name]
+                    qubit.z.joint_offset += flux_offset[qubit.name]/2
                 else:
                     raise RuntimeError(f"unknown flux_point")
                 qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])
