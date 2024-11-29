@@ -30,19 +30,20 @@ import xarray as xr
 # %% {Node_parameters}
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC1", "qubitC2", "qubitC3"]
+    qubits: Optional[List[str]] = ["qubitC1", "qubitC2"]
     operation: Literal["z90", "z180"] = "z180"
     timeout: int = 100
+    target_qubit_frequency_in_ghz: float = 0.1
     num_averages: int = 500
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 150000
-    wait_time_step_in_ns: int = 1000
+    max_wait_time_in_ns: int = 4000
+    wait_time_step_in_ns: int = 4
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     load_data_id: Optional[int] = None
    
-node = QualibrationNode(name="23_Z_crosstalk_pulsed", parameters=Parameters())
+node = QualibrationNode(name="23c_Z_crosstalk_pulsed_time", parameters=Parameters())
 
 
 
@@ -77,45 +78,67 @@ idle_times = np.arange(
     node.parameters.wait_time_step_in_ns // 4,
 )
 
+
+detunings = {
+    q.name: 1e9 * node.parameters.target_qubit_frequency_in_ghz for q in qubits
+}
+flux_bias_offset = {q.name: np.sqrt(np.abs(detunings[q.name] / q.freq_vs_flux_01_quad_term)) for q in qubits}
+
+
 with program() as cross_talk_sequential:
     n = declare(int)
     n_st = declare_stream()
+    play_main_qubit = declare(int)
     state = [declare(int) for _ in range(num_qubits * (num_qubits ))]
     state_stream = [declare_stream() for _ in range(num_qubits * (num_qubits ))]
     
     t = declare(int)  
-
+    phi = declare(fixed)
+    
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         for j, qubit2 in enumerate(qubits):
             with for_(n, 0, n < n_avg, n + 1):
-                save(n, n_st)            
-                with for_(*from_array(t, idle_times)):   
-                    if node.parameters.reset_type_thermal_or_active == "active":
-                        active_reset(qubit, "readout")
-                    else:
-                        qubit.wait(qubit.thermalization_time * u.ns)
-                    qubit.align()
-                    qubit.xy.play("x90")
-                    align()
-                    qubit2.z.wait(10)
-                    qubit2.z.play(node.parameters.operation, duration = t)
-                    qubit2.z.wait(10)
-                    align()
-                    qubit.xy.play("x90")
-                    align()
-                    readout_state(qubit, state[i*num_qubits + j - 1])
-                    save(state[i*num_qubits + j - 1], state_stream[i*num_qubits + j - 1])
+                save(n, n_st)        
+                    
+                with for_(*from_array(t, idle_times)): 
+                    with for_(play_main_qubit, 0, play_main_qubit < 2, play_main_qubit + 1):
+                        if node.parameters.reset_type_thermal_or_active == "active":
+                            active_reset(qubit, "readout")
+                        else:
+                            qubit.wait(qubit.thermalization_time * u.ns)
+                        assign(phi, Cast.mul_fixed_by_int(detunings[qubit.name] * 1e-9 , 4 * t))                        
+                        qubit.align()
+                        qubit.xy.play("x90")
+                        align()
+                        
+                        with if_(play_main_qubit == 1, unsafe = False):
+                            qubit2.z.wait(10)
+                            qubit2.z.play("const", amplitude_scale=1.999 , duration=t)
+                            qubit2.z.wait(10)
+                        with else_():
+                            qubit2.z.wait(t)
+                            
+                        qubit.z.wait(10)
+                        qubit.z.play("const", amplitude_scale=flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude, duration=t)
+                        qubit.z.wait(10)
+                                               
+                        qubit.xy.frame_rotation_2pi(-phi)
+                        align()
+                        qubit.xy.play("x90")
+                        align()
+                        readout_state(qubit, state[i*num_qubits + j - 1])
+                        save(state[i*num_qubits + j - 1], state_stream[i*num_qubits + j - 1])
 
-            align()
+                    align()
 
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
             for j in range(num_qubits):
-                state_stream[i*num_qubits + j-1].buffer(len(idle_times)).average().save(f"state{j+1}_{i+1}")
+                state_stream[i*num_qubits + j-1].buffer(2).buffer(len(idle_times)).average().save(f"state{j+1}_{i+1}")
 
 
 # %% {Simulate_or_execute}
@@ -137,7 +160,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout,keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(cross_talk_sequential)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -168,10 +191,11 @@ if not node.parameters.simulate:
 
     ds = xr.Dataset(
         {
-            f"{meas_vars[0]}": (["qubit_pair", "time"], np.array(values).reshape(-1, len(idle_times)))
+            f"{meas_vars[0]}": (["qubit_pair",  "time", "play_main_qubit"], np.array(values))
         },
         coords={
             "time": 4e-3*idle_times,
+            "play_main_qubit": [0,1],
             "qubit_pair": [f"q{i+1}_q{j+1}" for i in range(len(qubits)) for j in range(len(qubits))]
         }
     )
@@ -179,13 +203,13 @@ if not node.parameters.simulate:
 
     # %%
 
-    fit = fit_oscillation_decay_exp(ds.state, 'time')
-    fit_evals = oscillation_decay_exp(ds.time,fit.sel(fit_vals = 'a'),
-                                    fit.sel(fit_vals = 'f'),fit.sel(fit_vals = 'phi'),
-                                    fit.sel(fit_vals = 'offset'),fit.sel(fit_vals = 'decay'))
+    # fit = fit_oscillation_decay_exp(ds.state, 'time')
+    # fit_evals = oscillation_decay_exp(ds.time,fit.sel(fit_vals = 'a'),
+    #                                 fit.sel(fit_vals = 'f'),fit.sel(fit_vals = 'phi'),
+    #                                 fit.sel(fit_vals = 'offset'),fit.sel(fit_vals = 'decay'))
 
-    # Add fit_evals to the dataset
-    ds['fit'] = (('qubit_pair', 'time'), fit_evals.values)
+    # # Add fit_evals to the dataset
+    # ds['fit'] = (('qubit_pair', 'time'), fit_evals.values)
 
     # Update the plotting code to include the fit
     fig, axs = plt.subplots(num_qubits, num_qubits, figsize=(4*num_qubits, 4*num_qubits))
@@ -203,8 +227,9 @@ if not node.parameters.simulate:
             ax = axs[i*num_qubits + j]
             
             # Plot the data and fit for this qubit pair
-            ds[meas_vars[0]].sel(qubit_pair=qubit_pair).plot(ax=ax, label='Data')
-            ds['fit'].sel(qubit_pair=qubit_pair).plot(ax=ax, label='Fit')
+            ds[meas_vars[0]].sel(qubit_pair=qubit_pair, play_main_qubit=0).plot(ax=ax, label='control')
+            ds[meas_vars[0]].sel(qubit_pair=qubit_pair, play_main_qubit=1).plot(ax=ax, label='crosstalk')
+            # ds['fit'].sel(qubit_pair=qubit_pair).plot(ax=ax, label='Fit')
             
             ax.set_title(f"Qubit Pair: {qubit_pair}")
             ax.set_xlabel("Time (us)")
