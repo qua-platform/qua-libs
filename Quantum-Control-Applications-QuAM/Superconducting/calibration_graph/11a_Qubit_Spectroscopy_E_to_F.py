@@ -50,13 +50,13 @@ import numpy as np
 class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
-    num_averages: int = 500
+    num_averages: int = 200
     operation: str = "saturation"
     operation_amplitude_factor: Optional[float] = 0.5
     operation_len_in_ns: Optional[int] = None
-    frequency_span_in_mhz: float = 200
-    frequency_step_in_mhz: float = 1.0
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    frequency_span_in_mhz: float = 30
+    frequency_step_in_mhz: float = 0.5
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     timeout: int = 100
     multiplexed: bool = False
@@ -159,7 +159,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(qubit_spec)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -262,7 +262,7 @@ if not node.parameters.load_data_id:
             for q in qubits:
                 fit_results[q.name] = {}
                 if not np.isnan(result.sel(qubit=q.name).position.values):
-                    q.anharmonicity = int(anharmonicities[q.name])
+                    q.anharmonicity = -int(anharmonicities[q.name])
 
     # %% {Save_results}
     if not node.parameters.simulate:
