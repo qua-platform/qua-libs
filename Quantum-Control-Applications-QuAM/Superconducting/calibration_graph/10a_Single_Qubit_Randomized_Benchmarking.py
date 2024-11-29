@@ -343,7 +343,7 @@ if not node.parameters.simulate:
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         da_state_qubit = da_state.sel(qubit=qubit["qubit"])
-        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"])
+        da_state_std = ds["state"].std(dim="sequence").sel(qubit=qubit["qubit"])/np.sqrt(ds.sequence.size)
         ax.errorbar(
             da_state_qubit.m,
             da_state_qubit,
