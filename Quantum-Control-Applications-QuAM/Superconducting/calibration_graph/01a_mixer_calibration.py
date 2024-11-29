@@ -31,7 +31,7 @@ machine = QuAM.load()
 if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")]
+    qubits = [machine.qubits[q] for q in node.parameters.qubits]
 
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
