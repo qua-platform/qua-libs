@@ -197,7 +197,8 @@ if not node.parameters.simulate:
         # Replace the original dataset with the rearranged one
         ds = ds_rearranged
     else:
-        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
 
 
     node.results = {"ds": ds, "results": {}, "figs": {}}

@@ -27,7 +27,7 @@ class ReadoutResonatorBase:
 
     gef_centers: list = None
     gef_confusion_matrix: list = None
-
+    GEF_frequency_shift: float = None
     @staticmethod
     def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
         """

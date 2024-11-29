@@ -147,7 +147,8 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     if node.parameters.load_data_id is not None:
-        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
     else:
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
         # Convert IQ data into volts

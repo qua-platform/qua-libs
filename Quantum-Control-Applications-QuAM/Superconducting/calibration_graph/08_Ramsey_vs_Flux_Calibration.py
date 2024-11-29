@@ -185,7 +185,8 @@ if not node.parameters.simulate:
         ds.flux.attrs = {"long_name": "flux", "units": "V"}
         ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
     else:
-        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
     # Add the dataset to the node
     node.results = {"ds": ds}
 

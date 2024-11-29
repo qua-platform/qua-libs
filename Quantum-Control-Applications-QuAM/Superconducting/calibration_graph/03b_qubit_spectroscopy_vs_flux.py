@@ -179,7 +179,8 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is not None:
-        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
     else:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
         ds = fetch_results_as_xarray(job.result_handles, qubits, {"flux": dcs, "freq": dfs})
@@ -219,38 +220,39 @@ if not node.parameters.simulate:
     freq_shift = coeff.sel(degree=2) * flux_shift**2 + coeff.sel(degree=1) * flux_shift + coeff.sel(degree=0)
 
     # Save fitting results
-    fit_results = {}
-    for q in qubits:
-        fit_results[q.name] = {}
-        if not np.isnan(flux_shift.sel(qubit=q.name).values):
-            if flux_point == "independent":
-                offset = q.z.independent_offset
-            elif flux_point == "joint":
-                offset = q.z.joint_offset
+    if node.parameters.load_data_id is None:
+        fit_results = {}
+        for q in qubits:
+            fit_results[q.name] = {}
+            if not np.isnan(flux_shift.sel(qubit=q.name).values):
+                if flux_point == "independent":
+                    offset = q.z.independent_offset
+                elif flux_point == "joint":
+                    offset = q.z.joint_offset
+                else:
+                    offset = 0.0
+                print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
+                print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
+                print(
+                    f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
+                )
+                print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
+                print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
+                fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
+                fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
+                fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
             else:
-                offset = 0.0
-            print(f"flux offset for qubit {q.name} is {offset*1e3 + flux_shift.sel(qubit = q.name).values*1e3:.0f} mV")
-            print(f"(shift of  {flux_shift.sel(qubit = q.name).values*1e3:.0f} mV)")
-            print(
-                f"Drive frequency for {q.name} is {(freq_shift.sel(qubit = q.name).values + q.xy.RF_frequency)/1e9:.3f} GHz"
-            )
-            print(f"(shift of {freq_shift.sel(qubit = q.name).values/1e6:.0f} MHz)")
-            print(f"quad term for qubit {q.name} is {float(coeff.sel(degree = 2, qubit = q.name)/1e9):.3e} GHz/V^2 \n")
-            fit_results[q.name]["flux_shift"] = float(flux_shift.sel(qubit=q.name).values)
-            fit_results[q.name]["drive_freq"] = float(freq_shift.sel(qubit=q.name).values)
-            fit_results[q.name]["quad_term"] = float(coeff.sel(degree=2, qubit=q.name))
-        else:
-            print(f"No fit for qubit {q.name}")
-            fit_results[q.name]["flux_shift"] = np.nan
-            fit_results[q.name]["drive_freq"] = np.nan
-            fit_results[q.name]["quad_term"] = np.nan
-    node.results["fit_results"] = fit_results
+                print(f"No fit for qubit {q.name}")
+                fit_results[q.name]["flux_shift"] = np.nan
+                fit_results[q.name]["drive_freq"] = np.nan
+                fit_results[q.name]["quad_term"] = np.nan
+        node.results["fit_results"] = fit_results
 
     # %% {Plotting}
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        freq_ref = machine.qubits[qubit["qubit"]].xy.RF_frequency
+        freq_ref = (ds.freq_full-ds.freq).sel(qubit = qubit["qubit"]).values[0]
         ds.assign_coords(freq_GHz=ds.freq_full / 1e9).loc[qubit].I.plot(
             ax=ax, add_colorbar=False, x="flux", y="freq_GHz", robust=True
         )

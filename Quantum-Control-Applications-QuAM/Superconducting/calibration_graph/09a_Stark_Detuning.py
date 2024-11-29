@@ -193,7 +193,8 @@ if not node.parameters.simulate:
         # Convert IQ data into volts
         ds = convert_IQ_to_V(ds, qubits)
     else:
-        ds, machine, json_data, qubits, node.parameters = load_dataset(node.parameters.load_data_id, parameters = node.parameters)
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
     # Add the dataset to the node
     node.results = {"ds": ds}
 
