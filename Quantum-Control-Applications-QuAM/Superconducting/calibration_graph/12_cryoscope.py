@@ -23,9 +23,6 @@ from quam_libs.lib.save_utils import fetch_results_as_xarray
 import xarray as xr
 from scipy.optimize import curve_fit, minimize
 from scipy.signal import deconvolve, lfilter, convolve
-
-
-
 from qualibrate import QualibrationNode, NodeParameters
 from typing import Optional, Literal, List
 from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coefficients, two_expdecay, expdecay, savgol
@@ -33,16 +30,17 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qubitC1']    
-    num_averages: int = 300
-    amplitude_factor: float = 1.0
-    cryoscope_len: int = 240
+    qubits: Optional[List[str]] = ['qubitC2']    
+    num_averages: int = 50000
+    amplitude_factor: float = 0.2
+    cryoscope_len: int = 960
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
     reset_filters: bool = True
-
+    load_data_id: Optional[int] = None
+    
 node = QualibrationNode(
     name="12_Cryoscope",
     parameters=Parameters()
@@ -72,7 +70,8 @@ if node.parameters.reset_filters:
 config = machine.generate_config()
 octave_config = machine.get_octave_config()
 # Open Communication with the QOP
-qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_active_or_thermal
 amplitude_factor = node.parameters.amplitude_factor
@@ -131,16 +130,8 @@ with program() as cryoscope:
     qubit = qubits[0]
     i = 0
     
-    # Bring the active qubits to the minimum frequency point
-    if flux_point == "independent":
-        machine.apply_all_flux_to_min()
-        qubit.z.to_independent_idle()
-    elif flux_point == "joint":
-        machine.apply_all_flux_to_joint_idle()
-        # qubit.z.set_dc_offset(0.01 + qubit.z.joint_offset)
-    else:
-        machine.apply_all_flux_to_zero()
-    wait(1000)
+    # Bring the active qubits to the desired frequency point
+    machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     # Outer loop for averaging
     with for_(n, 0, n < n_avg, n + 1):
@@ -292,7 +283,7 @@ if node.parameters.simulate:
     samples.con5.plot()
     plt.show()
 
-else:
+elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(cryoscope)
         data_list = ["iteration"]
@@ -308,11 +299,14 @@ else:
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
-    
-    # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, [qubit], {"axis": ["x","y"], "time": cryoscope_time})
-    plot_process = True
-
+    if node.parameters.load_data_id is None:
+        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
+        ds = fetch_results_as_xarray(job.result_handles, [qubit], {"axis": ["x","y"], "time": cryoscope_time})
+        plot_process = True
+        node.results['ds'] = ds
+    else:
+        node = node.load_from_id(node.parameters.load_data_id)
+        ds = node.results["ds"]
 # %%
 if not node.parameters.simulate:
     if plot_process:
@@ -467,7 +461,7 @@ if not node.parameters.simulate and node.parameters.reset_filters:
     ####  FIR filter for the response
     flux_q = flux_cryoscope_q.copy()
     flux_q.values = filtered_response_long
-    flux_q_tp = flux_q.sel(time=slice(rise_index, drop_index))
+    flux_q_tp = flux_q.sel(time=slice(rise_index, 200)) # calculate the FIR only based on the first 200 nS
     flux_q_tp = flux_q_tp.assign_coords(
         time=flux_q_tp.time - rise_index)
     final_vals = flux_q_tp.sel(time=slice(100, None)).mean().values
@@ -487,7 +481,7 @@ if not node.parameters.simulate and node.parameters.reset_filters:
         plt.plot(filtered_response_Full, label = 'filtered full, deconvolved')
         plt.axhline(final_vals*1.001, color = 'k')
         plt.axhline(final_vals*0.999, color = 'k')
-        # plt.ylim([final_vals*0.95,final_vals*1.05])
+        plt.ylim([final_vals*0.95,final_vals*1.05])
         plt.legend()
         plt.show()
 
@@ -504,6 +498,8 @@ if not node.parameters.simulate and node.parameters.reset_filters:
     result = minimize(find_diff, x0=FIR_new, args = (filtered_response_long,np.mean(filtered_response_long[rise_index+50:drop_index])))
 
     convolved_fir = convolve(long_FIR,result.x, mode='full')
+    if np.abs(np.max(convolved_fir)) > 2:
+        convolved_fir=1.99*convolved_fir/np.max(np.abs(convolved_fir))
     filtered_response_Full = lfilter(convolved_fir,long_IIR, flux_cryoscope_q)
 
     if plot_process:
