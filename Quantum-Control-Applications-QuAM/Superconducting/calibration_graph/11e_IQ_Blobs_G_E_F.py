@@ -129,9 +129,8 @@ with program() as iq_blobs:
 
         align()
 
-        update_frequency(
-            qubit.resonator.name,
-            qubit.resonator.intermediate_frequency + qubit.GEF_frequency_shift,
+        qubit.resonator.update_frequency(
+            qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
         )
 
         with for_(n, 0, n < n_runs, n + 1):

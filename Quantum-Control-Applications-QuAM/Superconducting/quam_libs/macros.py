@@ -128,6 +128,7 @@ def active_reset_gef(
     readout_pulse_name: str = "readout",
     pi_01_pulse_name: str = "x180",
     pi_12_pulse_name: str = "EF_x180",
+    max_attempts: int = 10,
 ):
     res_ar = declare(int)
     success = declare(int)
@@ -135,9 +136,8 @@ def active_reset_gef(
     attempts = declare(int)
     assign(attempts, 0)
     qubit.align()
-    with while_(success < 2):
+    with while_((success < 2) & (attempts < max_attempts)):
         readout_state_gef(qubit, res_ar, readout_pulse_name)
-        wait(qubit.rr.res_deplete_time // 4, qubit.xy.name)
         qubit.align()
         with if_(res_ar == 0):
             assign(success, success + 1)  # we need to measure 'g' two times in a row to increase our confidence
