@@ -28,6 +28,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
+from qualang_tools.results.data_handler import DataHandler
 
 
 ###################
@@ -42,6 +43,14 @@ dfs = np.arange(-span, +span + 0.1, df)
 a_min = 0.001
 a_max = 1.99
 amplitudes = np.geomspace(a_min, a_max, 20)
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "frequencies": dfs,
+    "amplitudes": amplitudes,
+    "config": config,
+}
 
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
@@ -96,7 +105,12 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, resonator_spec_2D, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # get DAC and digital samples (optional).
+    samples = job.get_simulated_samples()
+    # get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # dave and plot the simulated samples
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 
 else:
     # Open the quantum machine
@@ -139,3 +153,11 @@ else:
         plt.xlim(amplitudes[0] * readout_amp, amplitudes[-1] * readout_amp)
         plt.pause(0.1)
         plt.tight_layout()
+
+
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name}
+        data_handler.save_data(data=save_data_dict, name=script_name.rsplit(".", 1)[0])

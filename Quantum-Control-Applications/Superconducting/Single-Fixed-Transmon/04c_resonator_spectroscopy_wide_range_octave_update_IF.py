@@ -28,7 +28,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.octave_tools import get_correction_for_each_LO_and_IF
 import matplotlib.pyplot as plt
 from scipy.signal import detrend
-
+from qualang_tools.results.data_handler import DataHandler
 
 #####################################
 #  Open Communication with the QOP  #
@@ -68,6 +68,15 @@ corrected_IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_
     calibrate=True,
     qm=qm,
 )
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": IFs,
+    "LO_frequencies": LOs,
+    "config": config,
+}
+
 
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -199,3 +208,10 @@ plt.xlabel("qubit frequency [MHz]")
 plt.ylabel("Phase [rad]")
 plt.pause(0.1)
 plt.tight_layout()
+
+# Save results
+script_name = Path(__file__).name
+data_handler = DataHandler(root_data_folder=save_dir)
+save_data_dict.update({"fig_live": fig})
+data_handler.additional_files = {script_name: script_name}
+data_handler.save_data(data=save_data_dict, name=script_name.rsplit(".", 1)[0])

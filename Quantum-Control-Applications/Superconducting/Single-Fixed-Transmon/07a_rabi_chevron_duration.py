@@ -96,7 +96,12 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, rabi_amp_freq, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # get DAC and digital samples (optional).
+    samples = job.get_simulated_samples()
+    # get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # dave and plot the simulated samples
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)

@@ -226,7 +226,12 @@ if simulation:
         duration=28000, simulation_interface=LoopbackInterface([("con1", 3, "con1", 1)])
     )
     job = qmm.simulate(config, active_reset_prog, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # get DAC and digital samples (optional).
+    samples = job.get_simulated_samples()
+    # get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # dave and plot the simulated samples
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     qm = qmm.open_qm(config)
     job = qm.execute(active_reset_prog)

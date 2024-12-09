@@ -22,7 +22,7 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from time import sleep
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #
@@ -41,6 +41,14 @@ f_max_external = 4e9 - f_max
 df_external = f_max - f_min
 freqs_external = np.arange(f_min_external, f_max_external + 0.1, df_external)
 frequency = np.array(np.concatenate([frequencies + freqs_external[i] for i in range(len(freqs_external))]))
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": frequencies,
+    "external_frequencies": freqs_external,
+    "config": config,
+}
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -142,3 +150,10 @@ for i in range(n_avg):
     plt.ylabel("Phase [rad]")
     plt.pause(0.1)
     plt.tight_layout()
+
+# Save results
+script_name = Path(__file__).name
+data_handler = DataHandler(root_data_folder=save_dir)
+save_data_dict.update({"fig_live": fig})
+data_handler.additional_files = {script_name: script_name}
+data_handler.save_data(data=save_data_dict, name=script_name.rsplit(".", 1)[0])

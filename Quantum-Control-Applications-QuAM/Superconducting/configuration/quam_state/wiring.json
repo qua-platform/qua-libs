@@ -1,0 +1,53 @@
+{
+    "network": {
+        "host": "172.16.33.101",
+        "port": 9510,
+        "cluster_name": "Cluster_81",
+        "octave_ips": [
+            "172.16.33.101"
+        ],
+        "octave_ports": [
+            11232
+        ]
+    },
+    "wiring": {
+        "qubits": {
+            "q1": {
+                "rr": {
+                    "opx_input_I": "#/ports/analog_inputs/con1/1",
+                    "opx_input_Q": "#/ports/analog_inputs/con1/2",
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1"
+                },
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/3",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/4",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/2"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/5"
+                }
+            },
+            "q2": {
+                "rr": {
+                    "opx_input_I": "#/ports/analog_inputs/con1/1",
+                    "opx_input_Q": "#/ports/analog_inputs/con1/2",
+                    "opx_output_I": "#/ports/analog_outputs/con1/1",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/2",
+                    "frequency_converter_down": "#/octaves/octave1/RF_inputs/1",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/1"
+                },
+                "xy": {
+                    "opx_output_I": "#/ports/analog_outputs/con1/7",
+                    "opx_output_Q": "#/ports/analog_outputs/con1/8",
+                    "frequency_converter_up": "#/octaves/octave1/RF_outputs/4"
+                },
+                "z": {
+                    "opx_output": "#/ports/analog_outputs/con1/6"
+                }
+            }
+        }
+    }
+}

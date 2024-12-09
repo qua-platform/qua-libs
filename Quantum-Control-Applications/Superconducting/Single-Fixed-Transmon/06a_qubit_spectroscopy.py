@@ -32,6 +32,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
+from qualang_tools.results.data_handler import DataHandler
 
 
 ###################
@@ -47,6 +48,13 @@ span = 10 * u.MHz
 df = 100 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "dfs": dfs,
+    "config": config,
+}
 
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -102,8 +110,12 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
     job = qmm.simulate(config, qubit_spec, simulation_config)
-    job.get_simulated_samples().con1.plot()
-
+    # get DAC and digital samples (optional).
+    samples = job.get_simulated_samples()
+    # get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # dave and plot the simulated samples
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
@@ -137,3 +149,10 @@ else:
         plt.ylabel("Phase [rad]")
         plt.pause(0.1)
         plt.tight_layout()
+
+        # Save results
+        script_name = Path(__file__).name
+        data_handler = DataHandler(root_data_folder=save_dir)
+        save_data_dict.update({"fig_live": fig})
+        data_handler.additional_files = {script_name: script_name}
+        data_handler.save_data(data=save_data_dict, name=script_name.rsplit(".", 1)[0])
