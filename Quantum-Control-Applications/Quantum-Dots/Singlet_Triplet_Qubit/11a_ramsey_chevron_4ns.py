@@ -23,17 +23,15 @@ Before proceeding to the next node:
     - Extract J, T2*...
 """
 
-from qm.qua import *
-from qm import QuantumMachinesManager
-from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.loops import from_array
-from qualang_tools.addons.variables import assign_variables_to_element
 import matplotlib.pyplot as plt
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
-
+from configuration import *
+from macros import DC_current_sensing_macro, RF_reflectometry_macro
+from qm import QuantumMachinesManager, SimulationConfig
+from qm.qua import *
+from qualang_tools.addons.variables import assign_variables_to_element
+from qualang_tools.loops import from_array
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import fetching_tool, progress_counter
 
 ###################
 # The QUA program #
@@ -165,10 +163,10 @@ else:
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
-        DC_signal = u.demod2volts(DC_signal, readout_len)
+        DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
         progress_counter(iteration, n_avg)
         # Plot data
