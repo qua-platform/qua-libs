@@ -20,7 +20,7 @@ class Parameters(NodeParameters):
     zeros_before_after_pulse: int = 36  # Beginning/End of the flux pulse (before we put zeros to see the rising time)
     z_pulse_amplitude: float = 0.1  # defines how much you want to detune the qubit in frequency
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
-    reset_type_thermal_or_active: Literal['thermal', 'active'] = "thermal"
+    reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
     simulate: bool = False
     timeout: int = 100
 
@@ -144,9 +144,6 @@ with program() as xy_z_delay_calibration:
         # Bring the active qubits to the minimum frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
         align()
 
         with for_(n, 0, n < n_avg, n + 1):
@@ -158,7 +155,7 @@ with program() as xy_z_delay_calibration:
 
                     # qubit reset
                     if reset_type == "active":
-                        active_reset(machine, qubit.name)
+                        active_reset(qubit)
                     else:
                         qubit.resonator.wait(machine.thermalization_time * u.ns)
                         qubit.align()
@@ -245,10 +242,10 @@ def find_transition_boundary(params, x_range, threshold=0.0001):
         if sigmoid_derivative(x, a, b, c, d) > threshold:
             return x
     return None  # If no boundary is found in the range
-
+# %%
 grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
-# %%
+
 flux_delays = []
 for ax, qubit in grid_iter(grid):
     x = ds.relative_time
