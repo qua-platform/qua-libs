@@ -15,7 +15,7 @@ Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit spectroscopy, rabi_chevron, power_rabi and updated the state.
     - Having the qubit frequency perfectly calibrated (ramsey).
-    - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
+    - (optional) Having calibrated the readout (readout_frequency, amplitude, length_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the desired flux bias.
 
 
@@ -50,19 +50,19 @@ class Parameters(NodeParameters):
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     num_random_sequences: int = 100  # Number of random sequences
-    num_averages: int = 40
-    max_circuit_depth: int = 100  # Maximum circuit depth
-    delta_clifford: int = 4
+    num_averages: int = 20
+    max_circuit_depth: int = 1000  # Maximum circuit depth
+    delta_clifford: int = 20
     seed: int = 345324
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
-    simulation_duration_ns: int = 2500
+    simulation_length_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
 
-node = QualibrationNode(name="23_Single_Qubit_Randomized_Benchmarking_fluxZ", parameters=Parameters())
+node = QualibrationNode(name="29a_Single_Qubit_Randomized_Benchmarking__wait_fluxZ", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -133,99 +133,99 @@ def generate_sequence():
 def play_sequence(sequence_list, depth, qubit: Transmon):
     i = declare(int)
     with for_(i, 0, i <= depth, i + 1):
-        with switch_(sequence_list[i], unsafe=False):
+        with switch_(sequence_list[i], unsafe=True):
             with case_(0): # I
-                pass
+                qubit.xy.wait(qubit.z.operations["-z90"].length // 4)
             
             with case_(1): # X180
                 qubit.xy.play("x180")
                 
             with case_(2): # Y180
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["-z90"].length // 4)
                 qubit.xy.play("x180")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                             
+                
             with case_(3): # Y180,X180
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.xy.operations["x90"].length // 4)
                 qubit.z.play("z180")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")  
-                              
+                
             with case_(4): # x90, y90
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
                                 
             with case_(5): # x90, -y90
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
                 
             with case_(6): # x90, y90
                 qubit.xy.play("-x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
                 
             with case_(7): # -x90, -y90
                 qubit.xy.play("-x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
                 
             with case_(8): # y90 x90      
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
                 
             with case_(9): # y90 -x90      
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("-x90")
 
             with case_(10): # -y90 x90      
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
 
             with case_(11): # -y90 -x90      
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("-x90")
-                                                
+                
             with case_(12): # x90
                 qubit.xy.play("x90")
                 
@@ -234,18 +234,18 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 
             with case_(14): # y90
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                                
+                
             with case_(15): # -y90
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                                
+                
             with case_(16): # Z90
                 qubit.z.play("z90")
                 
@@ -254,53 +254,53 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 
             with case_(18): # x180 y90
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
                 
             with case_(19):  # x180 -y90
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
                 
             with case_(20): # Y180 X90
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                                
+                
             with case_(21): # Y180 -X90
                 qubit.z.play("-z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
-                qubit.align()
+                qubit.xy.wait(qubit.z.operations["z180"].length // 4)
                 qubit.xy.play("-x90")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
                 
             with case_(22): # x90 Y90 X90
                 qubit.xy.play("x180")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("z90")
                 
             with case_(23): # -x90 Y90 -X90
                 qubit.xy.play("x180")
-                qubit.align()
+                qubit.z.wait(qubit.z.operations["z180"].length // 4)
                 qubit.z.play("-z90")
 
 
 # %% {QUA_program}
-with program() as randomized_benchmarking:
+with program() as randomized_benchmarking_sequential:
     depth = declare(int)  # QUA variable for the varying depth
     # QUA variable for the current depth (changes in steps of delta_clifford)
     depth_target = declare(int)
@@ -315,6 +315,9 @@ with program() as randomized_benchmarking:
     state_st = [declare_stream() for _ in range(num_qubits)]
 
     for i, qubit in enumerate(qubits):
+
+        align()
+
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
@@ -367,10 +370,89 @@ with program() as randomized_benchmarking:
                 f"state{i + 1}"
             )
 
+with program() as randomized_benchmarking_multiplexed:
+    depth = declare(int)  # QUA variable for the varying depth
+    # QUA variable for the current depth (changes in steps of delta_clifford)
+    depth_target = declare(int)
+    # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
+    saved_gate = declare(int)
+    m = declare(int)  # QUA variable for the loop over random sequences
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    state = [declare(int) for _ in range(num_qubits)]
+    # The relevant streams
+    m_st = declare_stream()
+    # state_st = declare_stream()
+    state_st = [declare_stream() for _ in range(num_qubits)]
+
+    for i, qubit in enumerate(qubits):
+
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+
+    # QUA for_ loop over the random sequences
+    with for_(m, 0, m < num_of_sequences, m + 1):
+        # Generate the random sequence of length max_circuit_depth
+        sequence_list, inv_gate_list = generate_sequence()
+        assign(depth_target, 0)  # Initialize the current depth to 0
+        
+        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+            # Replacing the last gate in the sequence with the sequence's inverse gate
+            # The original gate is saved in 'saved_gate' and is being restored at the end
+            assign(saved_gate, sequence_list[depth])
+            assign(sequence_list[depth], inv_gate_list[depth - 1])
+            # Only played the depth corresponding to target_depth
+            with if_((depth == 1) | (depth == depth_target)):
+                with for_(n, 0, n < n_avg, n + 1):
+
+                    for i, qubit in enumerate(qubits):
+
+                        # Initialize the qubits
+                        if reset_type == "active":
+                            active_reset(qubit, "readout")
+                        else:
+                            qubit.resonator.wait(qubit.thermalization_time * u.ns)
+
+                    # Align the two elements to play the sequence after qubit initialization
+                    align()
+
+                    for i, qubit in enumerate(qubits):
+
+                        # The strict_timing ensures that the sequence will be played without gaps
+                        if strict_timing:
+                            with strict_timing_():
+                                # Play the random sequence of desired depth
+                                play_sequence(sequence_list, depth, qubit)
+                        else:
+                            play_sequence(sequence_list, depth, qubit)
+
+                    # Align the two elements to measure after playing the circuit.
+                    align()
+
+                    for i, qubit in enumerate(qubits):
+
+                        readout_state(qubit, state[i])
+
+                        save(state[i], state_st[i])
+
+                # Go to the next depth
+                assign(depth_target, depth_target + delta_clifford)
+            # Reset the last gate of the sequence back to the original Clifford gate
+            # (that was replaced by the recovery gate at the beginning)
+            assign(sequence_list[depth], saved_gate)
+        # Save the counter for the progress bar
+        save(m, m_st)
+
+    with stream_processing():
+        m_st.save("iteration")
+        for i in range(num_qubits):
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                f"state{i + 1}"
+            )
+
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
-    job = qmm.simulate(config, randomized_benchmarking, simulation_config)
+    simulation_config = SimulationConfig(length=100_000)  # in clock cycles
+    job = qmm.simulate(config, randomized_benchmarking_sequential, simulation_config)
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
@@ -385,8 +467,11 @@ if node.parameters.simulate:
 elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
-    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
-        job = qm.execute(randomized_benchmarking)
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        if not node.parameters.multiplexed:
+            job = qm.execute(randomized_benchmarking_sequential)
+        else:
+            job = qm.execute(randomized_benchmarking_multiplexed)
         results = fetching_tool(job, ["iteration"], mode="live")
         while results.is_processing():
             # Fetch results

@@ -42,10 +42,10 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 50
-    operation_x180_or_any_90: Literal["z180", "z90", "-z90"] = "z180"
-    min_amp_factor: float = 0.8
-    max_amp_factor: float = 1.2
-    amp_factor_step: float = 0.001
+    operation_x180_or_any_90: Literal["z180", "z90", "-z90"] = "-z90"
+    min_amp_factor: float = 0.9
+    max_amp_factor: float = 1.1
+    amp_factor_step: float = 0.005
     max_number_rabi_pulses_per_sweep: int = 50
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
@@ -104,22 +104,29 @@ else:
 
 
 with program() as power_rabi:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, _, n_st = qua_declaration(num_qubits=num_qubits)
     if state_discrimination:
         state = [declare(bool) for _ in range(num_qubits)]
         state_stream = [declare_stream() for _ in range(num_qubits)]
-    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
-    npi = declare(int)  # QUA variable for the number of qubit pulses
-    count = declare(int)  # QUA variable for counting the qubit pulses
+
+    shots = [declare(int) for _ in range(num_qubits)]
+    a = [declare(fixed) for _ in range(num_qubits)]  # QUA variable for the qubit drive amplitude pre-factor
+    npi = [declare(int) for _ in range(num_qubits)]  # QUA variable for the number of qubit pulses
+    count = [declare(int) for _ in range(num_qubits)]  # QUA variable for counting the qubit pulses
+
+    if node.parameters.multiplexed:
+        for i , qubit in enumerate(qubits):
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-        
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(*from_array(npi, N_pi_vec)):
-                with for_(*from_array(a, amps)):
+        if not node.parameters.multiplexed:
+            # Bring the active qubits to the desired frequency point
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+
+        with for_(shots[i], 0, shots[i] < n_avg, shots[i] + 1):
+            save(shots[i], n_st)
+            with for_(*from_array(npi[i], N_pi_vec)):
+                with for_(*from_array(a[i], amps)):
                     # Initialize the qubits
                     if reset_type == "active":
                         active_reset(qubit, "readout")
@@ -129,9 +136,9 @@ with program() as power_rabi:
                     # Loop for error amplification (perform many qubit pulses)
                     qubit.xy.play("x90")
                     qubit.align()
-                    with for_(count, 0, count < npi, count + 1):
+                    with for_(count[i], 0, count[i] < npi[i], count[i] + 1):
                         qubit.align()
-                        qubit.z.play(operation, amplitude_scale=a)
+                        qubit.z.play(operation, amplitude_scale=a[i])
                         qubit.align()
                     qubit.align() 
                     qubit.xy.play("x90")                        
@@ -177,7 +184,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():

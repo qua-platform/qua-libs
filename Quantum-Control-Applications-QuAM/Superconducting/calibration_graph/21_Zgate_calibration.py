@@ -47,7 +47,7 @@ class Parameters(NodeParameters):
     reset_type: Literal['active', 'thermal'] = "active"
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(
     name="21_Zgate_calibration",
@@ -133,34 +133,41 @@ num_qubits = len(qubits)
 # %% {QUA_program}
 n_avg = node.parameters.num_averages  # The number of averages
 
-operation_time = min(qubit.xy.operations['x180'].length for qubit in qubits)
-assert operation_time % 4 == 0, "Operation time must be a multiple of 4"
+# assert operation_time % 4 == 0, "Operation time must be a multiple of 4"
 
-quad_term = sum(qubit.freq_vs_flux_01_quad_term for qubit in qubits)/num_qubits
+quad_terms = {qubit.name: qubit.freq_vs_flux_01_quad_term for qubit in qubits}
 
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
-frequencies = 1e9*np.linspace(0, 1.5 / operation_time, node.parameters.num_points) + node.parameters.ref_frequnecy_MHz*1e6
+frequencies = {qubit.name: 1e9*np.linspace(0, 1.5 / qubit.xy.operations['x180'].length, node.parameters.num_points) + node.parameters.ref_frequnecy_MHz*1e6 for qubit in qubits}
 
-fluxes = np.sqrt(-frequencies/quad_term)
+fluxes = {qubit.name: np.sqrt(-frequencies[qubit.name]/quad_terms[qubit.name]) for qubit in qubits}
 reset_type = node.parameters.reset_type
 
 # %%
 with program() as ramsey:
-    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    I, I_st, Q, Q_st, _, n_st = qua_declaration(num_qubits=num_qubits)
+
     state = [declare(int) for _ in range(num_qubits)]
     state_st = [declare_stream() for _ in range(num_qubits)]
-    t = declare(int)  # QUA variable for the idle time
-    flux = declare(fixed)  # QUA variable for the flux dc level
-    
+
+    shots = [declare(int) for _ in range(num_qubits)]
+
+    t = [declare(int) for _ in range(num_qubits)]  # QUA variable for the idle time
+    flux = [declare(fixed) for _ in range(num_qubits)]  # QUA variable for the flux dc level
+
+    if node.parameters.multiplexed:
+        for i , qubit in enumerate(qubits):
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+
     for i, qubit in enumerate(qubits):
+        if not node.parameters.multiplexed:
+            # Bring the active qubits to the desired frequency point
+            machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
-
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_each_(flux, fluxes):
+        with for_(shots[i], 0, shots[i] < n_avg, shots[i] + 1):
+            save(shots[i], n_st)
+            with for_each_(flux[i], fluxes[qubit.name]):
                 if reset_type == "active":
                     active_reset(qubit)
                 else:
@@ -172,7 +179,7 @@ with program() as ramsey:
                 
                 qubit.align()
                 wait(10, qubit.z.name)
-                qubit.z.play("const", amplitude_scale = flux / 0.1, duration=operation_time // 4)
+                qubit.z.play("const", amplitude_scale = flux[i] / qubit.z.operations['const'].amplitude, duration=qubit.xy.operations['x180'].length // 4)
                 wait(10, qubit.z.name)
                 qubit.align()
                 
@@ -190,7 +197,7 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(len(fluxes)).average().save(f"state{i + 1}")
+            state_st[i].buffer(len(fluxes[qubits[0].name])).average().save(f"state{i + 1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -215,9 +222,9 @@ elif node.parameters.load_data_id is None:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
-            # Fetch results
+            # fetch results
             n = results.fetch_all()[0]
-            # Progress bar
+            # progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
 
@@ -225,15 +232,21 @@ elif node.parameters.load_data_id is None:
 # %%
 if not node.parameters.simulate:
     handles = job.result_handles
-    ds = fetch_results_as_xarray(handles, qubits, {"flux": fluxes,})
+    ds = fetch_results_as_xarray(handles, qubits, {"flux_int": np.arange(len(fluxes[qubits[0].name]))})
     node.results = {}
     
-
+    def flux_num_to_flux(q):
+        return fluxes[q.name]
+    
     def detuning(q, flux):
         return -1e-6 * q.freq_vs_flux_01_quad_term * flux**2
 
     ds = ds.assign_coords(
-        {"detuning": (["qubit", "flux"], np.array([detuning(q, fluxes) for q in qubits]))}
+        {"flux": (["qubit", "flux"], np.array([flux_num_to_flux(q) for q in qubits]))}
+    )
+
+    ds = ds.assign_coords(
+        {"detuning": (["qubit", "flux"], np.array([detuning(q, ds.sel(qubit=q.name).flux) for q in qubits]))}
     )
     ds.detuning.attrs["long_name"] = "Detuning"
     ds.detuning.attrs["units"] = "MHz"
@@ -262,7 +275,7 @@ if not node.parameters.simulate:
                 # A_fit = -A_fit
                 # phi_fit += np.pi  # Adjust phase by pi to maintain the same curve shape
             
-            Z_id, _ = find_maximum_cosine(A_fit, f_fit, x.min().values-5, x.max().values)
+            Z_id, _ = find_maximum_cosine(A_fit, f_fit, x.min().values, x.max().values)
             Z_90 = Z_id + 1/(4*f_fit)
             Z_180 = Z_id + 1/(2*f_fit)
             Z_270 = Z_id + 3/(4*f_fit)           
@@ -290,28 +303,27 @@ if not node.parameters.simulate:
 
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
-        ds.sel(qubit=qubit['qubit']).state.plot(ax=ax, x = 'detuning', marker='o', linestyle='', label='Data')
-        ds.sel(qubit=qubit['qubit']).fitted.plot(ax=ax, x = 'detuning', label='Fitted')
+        flux_q = ds.sel(qubit=qubit['qubit']).flux
+        det_q = ds.sel(qubit=qubit['qubit']).detuning
+        ax.plot(det_q, ds.sel(qubit=qubit['qubit']).state, marker='o', linestyle='', label='Data')
+        ax.plot(det_q, ds.sel(qubit=qubit['qubit']).fitted, label='Fitted')
+        # ds.sel(qubit=qubit['qubit']).state.plot(ax=ax, x = 'detuning', marker='o', linestyle='', label='Data')
+        # ds.sel(qubit=qubit['qubit']).fitted.plot(ax=ax, x = 'detuning', label='Fitted')
         ax.axvline(x = fit_data[qubit['qubit']]['Z_id'], color = 'k', linestyle = '--')
         ax.axvline(x = fit_data[qubit['qubit']]['Z_90'], color = 'k', linestyle = '--')
         ax.axvline(x = fit_data[qubit['qubit']]['Z_180'], color = 'k', linestyle = '--')
         ax.axvline(x = fit_data[qubit['qubit']]['Z_270'], color = 'k', linestyle = '--')
-        
-        # Create a second x-axis for flux
-        ax2 = ax.twiny()
-        
-        # Calculate flux values
-        flux_values = 1e3*np.sqrt(-1e6 * ds.sel(qubit=qubit['qubit']).detuning / machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term)
-        
-        # Set the limits for the second x-axis
-        ax2.set_xlim(flux_values.min(), flux_values.max())
-        
-        # Set the label for the second x-axis
+        ax.set_xlim(0, det_q.max().values)
+        # Create a second x-axis for flux with proper non-linear mapping
+        def detuning_to_flux(det):
+            return 1e3 * np.sqrt(-1e6 * det / machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term)
+
+        def flux_to_detuning(flux):
+            return -1e-6 * (flux/1e3)**2 * machine.qubits[qubit['qubit']].freq_vs_flux_01_quad_term
+
+        # Create secondary axis with the transformation functions
+        ax2 = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
         ax2.set_xlabel('Flux (mV)')
-        
-        # Adjust the position of the second x-axis to the top
-        ax2.xaxis.set_ticks_position('top')
-        ax2.xaxis.set_label_position('top')
 
         ax.set_title(qubit['qubit'])
         ax.set_xlabel('Detuning (MHz)')
@@ -320,23 +332,27 @@ if not node.parameters.simulate:
     grid.fig.suptitle('Ramsey: Data and Fitted Curves')
     plt.tight_layout()
     plt.show()
-    node.results['figure_fitted'] = grid.fig
+    # node.results['figure_fitted'] = grid.fig
+    node.results['figure_fitted'] = []
+
 
     # %%
     if node.parameters.load_data_id is None:
         with node.record_state_updates():
             for qubit in qubits:
-                qubit.z.operations['z0'] = SquarePulse(length=operation_time, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_id']/qubit.freq_vs_flux_01_quad_term))
-                qubit.z.operations['z90'] = SquarePulse(length=operation_time, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_90']/qubit.freq_vs_flux_01_quad_term))
-                qubit.z.operations['z180'] = SquarePulse(length=operation_time, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_180']/qubit.freq_vs_flux_01_quad_term))
-                qubit.z.operations['-z90'] = SquarePulse(length=operation_time, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_270']/qubit.freq_vs_flux_01_quad_term))
-
-          
+                qubit.z.operations['z0'] = SquarePulse(
+                    length=qubit.xy.operations['x180'].length,
+                    amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_id']/qubit.freq_vs_flux_01_quad_term)
+                )
+                qubit.z.operations['z90'] = SquarePulse(length=qubit.xy.operations['x180'].length, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_90']/qubit.freq_vs_flux_01_quad_term))
+                qubit.z.operations['z180'] = SquarePulse(length=qubit.xy.operations['x180'].length, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_180']/qubit.freq_vs_flux_01_quad_term))
+                qubit.z.operations['-z90'] = SquarePulse(length=qubit.xy.operations['x180'].length, amplitude=np.sqrt(-1e6*fit_data[qubit.name]['Z_270']/qubit.freq_vs_flux_01_quad_term))
+                print(f"{qubit.name}  Z180: {np.sqrt(-1e6*fit_data[qubit.name]['Z_180']/qubit.freq_vs_flux_01_quad_term)}")
     # %%
 
-        node.results['initial_parameters'] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+    node.results['initial_parameters'] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
 # %%
 
 # %%

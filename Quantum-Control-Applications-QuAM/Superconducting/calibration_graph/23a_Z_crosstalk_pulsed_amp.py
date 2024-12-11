@@ -30,18 +30,18 @@ import xarray as xr
 # %% {Node_parameters}
 
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ["qubitC1", "qubitC2", "qubitC3", "qubitC4"]
-    duration_ns: int = 32
+    qubits: Optional[List[str]] = ["q1", "q4", "q5"]
+    duration_ns: int = 44
     timeout: int = 100
-    target_qubit_frequency_in_ghz: float = 0.5
-    num_averages: int = 500
-    amplitude_step: float = 0.02
-    max_amplitude: float = 1.3
+    target_qubit_frequency_in_ghz: float = 0.05
+    num_averages: int = 100
+    amplitude_step: float = 0.01
+    max_amplitude: float = 0.4
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     load_data_id: Optional[int] = None
-   
+
 node = QualibrationNode(name="23a_Z_crosstalk_pulsed_amp", parameters=Parameters())
 
 
@@ -83,8 +83,8 @@ flux_bias_offset = {q.name: np.sqrt(np.abs(detunings[q.name] / q.freq_vs_flux_01
 with program() as cross_talk_sequential:
     n = declare(int)
     n_st = declare_stream()
-    state = [declare(int) for _ in range(num_qubits * (num_qubits ))]
-    state_stream = [declare_stream() for _ in range(num_qubits * (num_qubits ))]
+    state = [declare(int) for _ in range(num_qubits * num_qubits )]
+    state_stream = [declare_stream() for _ in range(num_qubits * num_qubits )]
     
     amp = declare(fixed)  
     phi = declare(fixed)
@@ -94,29 +94,33 @@ with program() as cross_talk_sequential:
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
         for j, qubit2 in enumerate(qubits):
+
             with for_(n, 0, n < n_avg, n + 1):
+
                 save(n, n_st)        
                     
-                with for_(*from_array(amp, amps)): 
+                # with for_(*from_array(amp, amps)): 
+                with for_(amp, 0.0, amp < node.parameters.max_amplitude, amp + node.parameters.amplitude_step):
+
                     if node.parameters.reset_type_thermal_or_active == "active":
                         active_reset(qubit, "readout")
                     else:
                         qubit.wait(qubit.thermalization_time * u.ns)
+
                     assign(phi, Cast.mul_fixed_by_int(detunings[qubit.name] * 1e-9 , node.parameters.duration_ns))                        
                     qubit.align()
+
                     qubit.xy.play("x90")
+
                     align()
                     
-                    qubit2.z.wait(20)
                     qubit2.z.play("const", amplitude_scale=amp , duration=node.parameters.duration_ns)
-                    qubit2.z.wait(20)
                     
                     if i!=j:    
-                        qubit.z.wait(20)
                         qubit.z.play("const", amplitude_scale=flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude, duration=node.parameters.duration_ns)
-                        qubit.z.wait(20)
                                             
                     qubit.xy.frame_rotation_2pi(-phi)
+
                     align()
                     qubit.xy.play("x90")
                     align()
@@ -151,7 +155,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout,keep_dc_offsets_when_closing=True) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(cross_talk_sequential)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -306,7 +310,8 @@ if not node.parameters.simulate:
         for i, q_i in enumerate(qubits):
             q_i.z.opx_output.crosstalk = {}
             for j, q_j in enumerate(qubits):
-                q_i.z.opx_output.crosstalk[q_i.z.opx_output.port_id] = inv_crosstalk_matrix[i, j]
+                if i != j:
+                    q_i.z.opx_output.crosstalk[q_j.z.opx_output.port_id] = inv_crosstalk_matrix[i, j]
     # %%
     node.results['initial_parameters'] = node.parameters.model_dump()
     node.machine = machine
