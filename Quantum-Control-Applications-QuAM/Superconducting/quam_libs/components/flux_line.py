@@ -22,7 +22,7 @@ class FluxLine(SingleChannel):
     joint_offset: float = 0.0
     min_offset: float = 0.0
     arbitrary_offset: float = 0.0
-    settle_time: float = 0.0
+    settle_time: float = 4
 
     def settle(self):
         """Wait for the flux bias to settle"""
