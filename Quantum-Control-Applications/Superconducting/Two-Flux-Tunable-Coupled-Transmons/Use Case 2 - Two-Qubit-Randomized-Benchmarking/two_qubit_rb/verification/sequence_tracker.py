@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 
@@ -54,15 +54,25 @@ class SequenceTracker:
         state correctly recovers to the |00> state at the end.
         """
         for i, sequence in enumerate(self._sequences_as_gates):
-            ground_state = np.kron(np.array([1, 0]), np.array([1, 0]))
-            ground_state_rho = np.outer(ground_state, ground_state.conj())
-            rho = ground_state_rho
-            for gate in sequence:
-                rho = gate.matrix() @ rho @ gate.matrix().conj().T
-
-            assert np.allclose(rho, ground_state_rho), f"expected to recover to at {ground_state_rho}, got {rho}"
+            ideal_state = self.calculate_resultant_state(sequence)
+            expected_state = np.kron(np.array([1, 0]), np.array([1, 0]))  # should recover to |00>
+            expected_state = np.outer(expected_state, expected_state.conj())
+            assert np.allclose(ideal_state, expected_state), f"expected to recover to at {expected_state}, got {ideal_state}"
 
         print(f"Verification passed for all {len(self._sequences_as_gates)} sequence(s).")
+
+    def calculate_resultant_state(self, sequence: List[Gate]) -> np.ndarray:
+        """
+        Calculate the result of applying a list of gates in `sequence` to
+        the multi-qubit ground-state.
+        """
+        ground_state = np.kron(np.array([1, 0]), np.array([1, 0]))
+        ground_state_rho = np.outer(ground_state, ground_state.conj())
+        rho = ground_state_rho
+        for gate in sequence:
+            rho = gate.matrix() @ rho @ gate.matrix().conj().T
+
+        return rho
 
     def print_sequences(self):
         print(self._serialize_sequences())
