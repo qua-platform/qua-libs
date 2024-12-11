@@ -33,15 +33,15 @@ from quam_libs.lib.cryoscope_tools import cryoscope_frequency, estimate_fir_coef
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-    qubits: Optional[List[str]] = ['qubitC4']    
-    num_averages: int = 15000
+    qubits: Optional[List[str]] = ['qubitC1']    
+    num_averages: int = 300
     amplitude_factor: float = 1.0
     cryoscope_len: int = 240
     reset_type_active_or_thermal: Literal['active', 'thermal'] = 'active'
     flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
     simulate: bool = False
     timeout: int = 100
-    reset_filters: bool = False
+    reset_filters: bool = True
 
 node = QualibrationNode(
     name="12_Cryoscope",
@@ -293,7 +293,7 @@ if node.parameters.simulate:
     plt.show()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(cryoscope)
         data_list = ["iteration"]
         results = fetching_tool(job, data_list, mode="live")
