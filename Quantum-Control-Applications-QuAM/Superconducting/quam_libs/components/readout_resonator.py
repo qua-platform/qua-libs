@@ -24,7 +24,8 @@ class ReadoutResonatorBase:
     f_01: float = None
     f_12: float = None
     confusion_matrix: list = None
-
+    
+    GEF_frequency_shift: float = None
     gef_centers: list = None
     gef_confusion_matrix: list = None
     GEF_frequency_shift: float = None
