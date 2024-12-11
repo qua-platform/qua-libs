@@ -42,9 +42,9 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 50
-    operation_x180_or_any_90: Literal["z180", "z90", "-z90"] = "z180"
-    min_amp_factor: float = 0.8
-    max_amp_factor: float = 1.2
+    operation_x180_or_any_90: Literal["z180", "z90", "-z90"] = "z90"
+    min_amp_factor: float = 0.9
+    max_amp_factor: float = 1.1
     amp_factor_step: float = 0.001
     max_number_rabi_pulses_per_sweep: int = 50
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
@@ -177,7 +177,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -255,10 +255,10 @@ if not node.parameters.simulate:
             for q in qubits:
                 q.z.operations[operation].amplitude = fit_results[q.name]["Pi_amplitude"]
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+        # %% {Save_results}
+        node.outcomes = {q.name: "successful" for q in qubits}
+        node.results["initial_parameters"] = node.parameters.model_dump()
+        node.machine = machine
+        node.save()
 
 # %%
