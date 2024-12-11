@@ -41,7 +41,7 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = None
+    qubits: Optional[List[str]] = ["q4", "q5"]
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     num_random_sequences: int = 100  # Number of random sequences
@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
@@ -201,7 +201,7 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
 
 
 # %% {QUA_program}
-with program() as randomized_benchmarking:
+with program() as randomized_benchmarking_individual:
     depth = declare(int)  # QUA variable for the varying depth
     # QUA variable for the current depth (changes in steps of delta_clifford)
     depth_target = declare(int)
@@ -216,6 +216,9 @@ with program() as randomized_benchmarking:
     state_st = [declare_stream() for _ in range(num_qubits)]
 
     for i, qubit in enumerate(qubits):
+
+        align()
+
         # Bring the active qubits to the desired frequency point
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
 
@@ -268,10 +271,91 @@ with program() as randomized_benchmarking:
                 f"state{i + 1}"
             )
 
+
+with program() as randomized_benchmarking_multiplexed:
+    depth = declare(int)  # QUA variable for the varying depth
+    # QUA variable for the current depth (changes in steps of delta_clifford)
+    depth_target = declare(int)
+    # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
+    saved_gate = declare(int)
+    m = declare(int)  # QUA variable for the loop over random sequences
+    I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
+    state = [declare(int) for _ in range(num_qubits)]
+    # The relevant streams
+    m_st = declare_stream()
+    # state_st = declare_stream()
+    state_st = [declare_stream() for _ in range(num_qubits)]
+
+    for i, qubit in enumerate(qubits):
+
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+
+    # QUA for_ loop over the random sequences
+    with for_(m, 0, m < num_of_sequences, m + 1):
+        # Generate the random sequence of length max_circuit_depth
+        sequence_list, inv_gate_list = generate_sequence()
+        assign(depth_target, 0)  # Initialize the current depth to 0
+        
+        with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
+            # Replacing the last gate in the sequence with the sequence's inverse gate
+            # The original gate is saved in 'saved_gate' and is being restored at the end
+            assign(saved_gate, sequence_list[depth])
+            assign(sequence_list[depth], inv_gate_list[depth - 1])
+            # Only played the depth corresponding to target_depth
+            with if_((depth == 1) | (depth == depth_target)):
+
+                with for_(n, 0, n < n_avg, n + 1):
+
+                    for i, qubit in enumerate(qubits):
+
+                        # Initialize the qubits
+                        if reset_type == "active":
+                            active_reset(qubit, "readout")
+                        else:
+                            qubit.resonator.wait(qubit.thermalization_time * u.ns)
+                        # Align the two elements to play the sequence after qubit initialization
+
+                    align()
+
+                    for i, qubit in enumerate(qubits):
+
+                        # The strict_timing ensures that the sequence will be played without gaps
+                        if strict_timing:
+                            with strict_timing_():
+                                # Play the random sequence of desired depth
+                                play_sequence(sequence_list, depth, qubit)
+                        else:
+                            play_sequence(sequence_list, depth, qubit)
+
+                    align()
+
+                    # Align the two elements to measure after playing the circuit.
+                    for i, qubit in enumerate(qubits):
+
+                        readout_state(qubit, state[i])
+
+                        save(state[i], state_st[i])
+
+                # Go to the next depth
+                assign(depth_target, depth_target + delta_clifford)
+            # Reset the last gate of the sequence back to the original Clifford gate
+            # (that was replaced by the recovery gate at the beginning)
+            assign(sequence_list[depth], saved_gate)
+        # Save the counter for the progress bar
+        save(m, m_st)
+
+    with stream_processing():
+        m_st.save("iteration")
+        for i in range(num_qubits):
+            state_st[i].buffer(n_avg).map(FUNCTIONS.average()).buffer(num_depths).buffer(num_of_sequences).save(
+                f"state{i + 1}"
+            )
+
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
     simulation_config = SimulationConfig(duration=100_000)  # in clock cycles
-    job = qmm.simulate(config, randomized_benchmarking, simulation_config)
+    job = qmm.simulate(config, randomized_benchmarking_individual, simulation_config)
     samples = job.get_simulated_samples()
     fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
     for i, con in enumerate(samples.keys()):
@@ -287,7 +371,10 @@ elif node.parameters.load_data_id is None:
     # Prepare data for saving
     node.results = {}
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(randomized_benchmarking)
+        if not node.parameters.multiplexed:
+            job = qm.execute(randomized_benchmarking_individual)
+        else:
+            job = qm.execute(randomized_benchmarking_multiplexed)
         results = fetching_tool(job, ["iteration"], mode="live")
         while results.is_processing():
             # Fetch results
