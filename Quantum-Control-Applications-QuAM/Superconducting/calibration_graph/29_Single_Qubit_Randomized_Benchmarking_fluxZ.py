@@ -262,7 +262,7 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
             with case_(19):  # x180 -y90
                 qubit.xy.play("x90")
                 qubit.align()
-                qubit.z.frame_rotation(np.pi/2)
+                qubit.z.play("z90")
                 qubit.align()
                 qubit.xy.play("x90")
                 

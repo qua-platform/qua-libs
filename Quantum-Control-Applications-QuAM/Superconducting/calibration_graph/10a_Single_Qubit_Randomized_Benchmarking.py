@@ -44,8 +44,8 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ["q4", "q5"]
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
-    num_random_sequences: int = 100  # Number of random sequences
-    num_averages: int = 20
+    num_random_sequences: int = 2000  # Number of random sequences
+    num_averages: int = 1
     max_circuit_depth: int = 1000  # Maximum circuit depth
     delta_clifford: int = 20
     seed: int = 345324
@@ -449,7 +449,7 @@ if not node.parameters.simulate:
         ax.text(
             0.0,
             1.07,
-            f"RB fidelity = {1 - EPG.sel(**qubit).values:.5f}",
+            f"RB fidelity = {1 - EPG.sel(**qubit).values:.4f}",
             transform=ax.transAxes,
         )
     plt.tight_layout()
