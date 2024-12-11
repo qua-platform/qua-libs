@@ -198,7 +198,10 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        if N_pi == 1:
+            ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps})
+        else:
+            ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
         if not state_discrimination:
             ds = convert_IQ_to_V(ds, qubits)
         # Add the qubit pulse absolute amplitude to the dataset
