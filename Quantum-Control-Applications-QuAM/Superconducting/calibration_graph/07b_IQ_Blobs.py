@@ -97,7 +97,7 @@ with program() as iq_blobs:
             if reset_type == "active":
                 active_reset(qubit, "readout")
             elif reset_type == "thermal":
-                qubit.wait(qubit.thermalization_time * u.ns)
+                qubit.wait(4 * qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
