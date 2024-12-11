@@ -17,7 +17,12 @@ Prerequisites:
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR and state discrimination.
     - Set the desired flux bias.
+
+
+The gates are chosen based on : https://doi.org/10.1103/PhysRevX.9.021011
+
 """
+
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
