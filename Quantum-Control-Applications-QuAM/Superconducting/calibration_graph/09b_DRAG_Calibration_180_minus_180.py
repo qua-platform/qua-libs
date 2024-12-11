@@ -41,18 +41,18 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     num_averages: int = 10
     operation: str = "x180"
-    min_amp_factor: float = 0.0001
-    max_amp_factor: float = 2.0
+    min_amp_factor: float = -1.5
+    max_amp_factor: float = 1.5
     amp_factor_step: float = 0.02
     max_number_pulses_per_sweep: int = 40
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
     alpha_setpoint: Optional[float] = -1.0
     load_data_id: Optional[int] = None
-    multiplexed: bool = False
+    multiplexed: bool = True
 
 
 

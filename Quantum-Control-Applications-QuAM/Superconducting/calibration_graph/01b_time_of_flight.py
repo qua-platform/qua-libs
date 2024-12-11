@@ -11,7 +11,7 @@ The data undergoes post-processing to calibrate three distinct parameters:
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
     the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
-
+# %%
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
