@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
     num_averages: int = 100
     max_time_in_ns: int = 160
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "thermal"
+    reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     amp_range : float = 0.1
@@ -316,17 +316,20 @@ if not node.parameters.simulate:
         ax.set_xlabel('time [nS]')
         f_eff = np.sqrt(4*Js[qubit_pair['qubit']]**2 + (ds.detuning.sel(qubit=qubit_pair['qubit'])-detunings[qubit_pair['qubit']])**2)
         for n in range(10):
-            ax.plot(n*0.5/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
+            ax.plot(n/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
 
-        ax2 = ax.twinx()
-        detuning_range = ds.detuning.sel(qubit=qubit_pair['qubit'])
-        amp_full_range = np.sqrt(-detuning_range / qp.qubit_control.freq_vs_flux_01_quad_term)
-        ax2.set_ylim(amp_full_range.min(), amp_full_range.max())
+        quad = machine.qubit_pairs[qubit_pair["qubit"]].qubit_control.freq_vs_flux_01_quad_term
+        print(f"qubit_pair: {qubit_pair['qubit']}, quad: {quad}")
+        
+        def detuning_to_flux(det, quad = quad):
+            return 1e3 * np.sqrt(-1e6 * det / quad)
+
+        def flux_to_detuning(flux, quad = quad):
+            return -1e-6 * (flux/1e3)**2 * quad
+        
+        ax2 = ax.secondary_yaxis('right', functions=(detuning_to_flux, flux_to_detuning))
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
-        ax.set_ylim(detuning_range.min() * 1e-6, detuning_range.max() * 1e-6)
-        ax2.yaxis.set_label_position('right')
-        ax2.yaxis.tick_right()
         
     plt.suptitle('control qubit state')
     plt.show()
@@ -345,17 +348,20 @@ if not node.parameters.simulate:
         ax.set_xlabel('time [nS]')
         f_eff = np.sqrt(4*Js[qubit_pair['qubit']]**2 + (ds.detuning.sel(qubit=qubit_pair['qubit'])-detunings[qubit_pair['qubit']])**2)
         for n in range(10):
-            ax.plot(n*0.5/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
+            ax.plot(n/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
+        quad = machine.qubit_pairs[qubit_pair["qubit"]].qubit_control.freq_vs_flux_01_quad_term
 
-        ax2 = ax.twinx()
-        detuning_range = ds.detuning.sel(qubit=qubit_pair['qubit'])
-        amp_full_range = np.sqrt(-detuning_range / qp.qubit_control.freq_vs_flux_01_quad_term)
-        ax2.set_ylim(amp_full_range.min(), amp_full_range.max())
+        def detuning_to_flux(det, quad = quad):
+            return 1e3 * np.sqrt(-1e6 * det / quad)
+
+        def flux_to_detuning(flux, quad = quad):
+            return -1e-6 * (flux/1e3)**2 * quad
+        
+        ax2 = ax.secondary_yaxis('right', functions=(detuning_to_flux, flux_to_detuning))
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
-        ax.set_ylim(detuning_range.min() * 1e-6, detuning_range.max() * 1e-6)
-        ax2.yaxis.set_label_position('right')
-        ax2.yaxis.tick_right()
+        
+        
     plt.suptitle('target qubit state')
     plt.show()
     node.results["figure_target"] = grid.fig
