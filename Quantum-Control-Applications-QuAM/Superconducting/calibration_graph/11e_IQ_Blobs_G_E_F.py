@@ -24,7 +24,7 @@ Next steps before going to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import qua_declaration, active_reset
+from quam_libs.macros import qua_declaration, active_reset_gef
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.results import progress_counter, fetching_tool
@@ -46,6 +46,7 @@ class Parameters(NodeParameters):
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
+    multiplexed: bool = False
     simulate: bool = False
     timeout: int = 100
 
@@ -115,19 +116,7 @@ with program() as iq_blobs:
     for i, qubit in enumerate(qubits):
 
         # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
+        machine.set_all_fluxes(flux_point, qubit)
 
         qubit.resonator.update_frequency(
             qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
@@ -137,48 +126,62 @@ with program() as iq_blobs:
             # ground iq blobs for all qubits
             save(n, n_st)
             if reset_type == "active":
-                active_reset(qubit)
+                active_reset_gef(qubit)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
+                )                
             elif reset_type == "thermal":
-                wait(qubit.thermalization_time * u.ns)
+                wait(4 * qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
 
             qubit.align()
             qubit.resonator.measure("readout", qua_vars=(I_g[i], Q_g[i]))
-            align()
+            qubit.align()
             # save data
             save(I_g[i], I_g_st[i])
             save(Q_g[i], Q_g_st[i])
 
             if reset_type == "active":
-                active_reset(qubit)
+                active_reset_gef(qubit)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
+                )   
             elif reset_type == "thermal":
-                wait(qubit.thermalization_time * u.ns)
+                wait(4*qubit.thermalization_time * u.ns)
             else:
                 raise ValueError(f"Unrecognized reset type {reset_type}.")
-            align()
+            qubit.align()
             qubit.xy.play("x180")
-            align()
+            qubit.align()
             qubit.resonator.measure("readout", qua_vars=(I_e[i], Q_e[i]))
-            align()
+            qubit.align()
             save(I_e[i], I_e_st[i])
             save(Q_e[i], Q_e_st[i])
 
-            wait(qubit.thermalization_time * u.ns)
-            align()
+            if reset_type == "active":
+                active_reset_gef(qubit)
+                qubit.resonator.update_frequency(
+                    qubit.resonator.intermediate_frequency + qubit.resonator.GEF_frequency_shift
+                )   
+            elif reset_type == "thermal":
+                wait(4*qubit.thermalization_time * u.ns)
+            else:
+                raise ValueError(f"Unrecognized reset type {reset_type}.")
+            qubit.align()
             qubit.xy.play("x180")
             update_frequency(
                 qubit.xy.name, qubit.xy.intermediate_frequency - qubit.anharmonicity
             )
             qubit.xy.play(GEF_operation)
             update_frequency(qubit.xy.name, qubit.xy.intermediate_frequency)
-            align()
+            qubit.align()
             qubit.resonator.measure("readout", qua_vars=(I_f[i], Q_f[i]))
-            align()
+            qubit.align()
             save(I_f[i], I_f_st[i])
             save(Q_f[i], Q_f_st[i])
-
-        align()
+        if node.parameters.multiplexed:
+            align()
 
     with stream_processing():
         n_st.save("n")
