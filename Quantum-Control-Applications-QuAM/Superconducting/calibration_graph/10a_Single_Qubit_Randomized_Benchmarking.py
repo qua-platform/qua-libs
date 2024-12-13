@@ -41,7 +41,7 @@ import xarray as xr
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubits: Optional[List[str]] = ["q4", "q5"]
+    qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
     num_random_sequences: int = 2000  # Number of random sequences
@@ -55,7 +55,7 @@ class Parameters(NodeParameters):
     simulation_duration_ns: int = 2500
     timeout: int = 100
     load_data_id: Optional[int] = None
-    multiplexed: bool = True
+    multiplexed: bool = False
 
 node = QualibrationNode(name="10a_Single_Qubit_Randomized_Benchmarking", parameters=Parameters())
 
