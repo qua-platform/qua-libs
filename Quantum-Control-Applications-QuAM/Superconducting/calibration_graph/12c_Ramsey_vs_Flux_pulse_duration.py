@@ -57,7 +57,7 @@ class Parameters(NodeParameters):
     multiplexed: bool = False
     net_zero: bool = False
 
-node = QualibrationNode(name="08_Ramsey_vs_Flux_Calibration", parameters=Parameters())
+node = QualibrationNode(name="12c_Ramsey_vs_Flux_pulse_duration", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
