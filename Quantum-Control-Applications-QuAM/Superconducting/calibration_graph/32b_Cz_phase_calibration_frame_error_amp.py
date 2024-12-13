@@ -57,18 +57,18 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["qC2-qC4"]
+    qubit_pairs: Optional[List[str]] = None
     num_averages: int = 500
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.005
-    amp_step : float = 0.0001
+    amp_range : float = 0.01
+    amp_step : float = 0.0002
     num_frames: int = 10
-    num_repeats: int = 20
+    num_repeats: int = 10
     load_data_id: Optional[int] = None # 92417 
-    plot_raw : bool = False
+    plot_raw : bool = True
     measure_leak : bool = True
 
 
@@ -259,11 +259,13 @@ if not node.parameters.simulate:
                                                         fit_vals="phi"),
                                                     fit_data.sel(fit_vals="offset"))})
         if node.parameters.plot_raw:
-            plt.figure()
-            ds_qp.mean(dim = 'N').to_array()\
-                .sel(variable=["state_target", "fitted"])\
-                .stack(control_axis_fit=("control_axis", "variable"))\
-                .plot.line(x='frame', col='amp', col_wrap=4)
+            # plt.figure()
+            # ds_qp.mean(dim = 'N').to_array()\
+            #     .sel(variable=["state_target", "fitted"])\
+            #     .stack(control_axis_fit=("control_axis", "variable"))\
+            #     .plot.line(x='frame', col='amp', col_wrap=4)
+            # plt.show()
+            (phase_diff-0.5).plot()
             plt.show()
             
         phase = fix_oscillation_phi_2pi(fit_data)    
@@ -276,7 +278,7 @@ if not node.parameters.simulate:
         #     print(f"Fitting failed for {qp.name}")
         #     optimal_amp = float(np.abs(phase_diff - 0.5).idxmin("amp"))    
         
-        # phase_diffs[qp.name] = phase_diff
+        phase_diffs[qp.name] = phase_diff
         # optimal_amps[qp.name] = optimal_amp * qp.gates['Cz'].flux_pulse_control.amplitude
         
         # print(f"parameters for {qp.name}: amp={optimal_amps[qp.name]}")

@@ -60,7 +60,7 @@ class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = None
     num_averages: int = 1000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "thermal"
+    reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     num_frames: int = 21

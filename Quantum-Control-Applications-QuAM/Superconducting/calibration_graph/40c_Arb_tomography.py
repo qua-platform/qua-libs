@@ -58,7 +58,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = None
+    qubit_pairs: Optional[List[str]] = ["qC3-qC4"]
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
@@ -68,7 +68,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="40b_Bell_state_tomography", parameters=Parameters()
+    name="40a_Bell_state_Zbasis", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -308,9 +308,9 @@ with program() as CPhase_Oscillations:
                     qp.align()
                     # Bell state
                     qp.qubit_control.xy.play("-y90")
-                    qp.qubit_target.xy.play("y90")
+                    qp.qubit_target.xy.play("y180")
                     qp.gates['Cz'].execute()
-                    qp.qubit_control.xy.play("y90")
+                    # qp.qubit_control.xy.play("y90")
                     qp.align()
                     # tomography pulses
                     with if_(tomo_axis_control == 0): #X axis
@@ -391,7 +391,6 @@ for qp in qubit_pairs:
             results = results_xr.sel(tomo_axis_control = tomo_axis_control, tomo_axis_target = tomo_axis_target, 
                                      qubit = qp.name)
             results = np.linalg.inv(qp.confusion) @ results.data
-            # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data[:,0]
 
             results = results * (results > 0)
             results = results / results.sum()
@@ -518,3 +517,4 @@ if not node.parameters.simulate:
     node.save()
         
 # %%
+''
