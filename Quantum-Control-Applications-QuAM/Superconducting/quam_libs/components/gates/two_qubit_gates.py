@@ -128,13 +128,7 @@ class CZWithCompensationGate(CZGate):
         if not self.compensations:
             super().execute(*args, **kwargs)
             return
-        
-        compensation_qubits = [compensation["qubit"] for compensation in self.compensations]
-        qubits = [self.qubit_control, self.qubit_target, *compensation_qubits]
-        extra_compensation_qubits = [q for q in compensation_qubits if q not in [self.qubit_control, self.qubit_target]]
-        
-        for qubit in extra_compensation_qubits:
-            qubit.align(self.qubit_control)
+
         self.transmon_pair.align()
                  
         pulse_duration = self.flux_pulse_control.length // 4 + 10
@@ -142,15 +136,13 @@ class CZWithCompensationGate(CZGate):
         for compensation in self.compensations:
             qubit = compensation["qubit"]
             # Assume amplitude is 100 mV by default
-            qubit.z.play(f"const_100mV", duration=pulse_duration, amplitude_scale=compensation["shift"] / 0.1)
+            qubit.z.play(f"const", duration=pulse_duration, 
+                         amplitude_scale=compensation["shift"] / qubit.z.operations["const"].amplitude)
             frame_rotation_2pi(compensation["phase"], qubit.xy.name)
             qubit.xy.play("x180", amplitude_scale=0.0, duration=4)
-        self.qubit_control.z.wait(20)
         
         super().execute(*args, **kwargs)
 
-        for qubit in extra_compensation_qubits:
-            qubit.align(self.qubit_control)
         self.transmon_pair.align()
 
 @quam_dataclass

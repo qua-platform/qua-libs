@@ -54,10 +54,10 @@ from quam_libs.lib.pulses import FluxPulse
 class Parameters(NodeParameters):
 
     qubit_pairs: Optional[List[str]] = None
-    num_averages: int = 50
+    num_averages: int = 40
     max_time_in_ns: int = 128
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "thermal"
+    reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     method: Literal['coarse', 'fine'] = "fine"
@@ -196,7 +196,11 @@ with program() as CPhase_Oscillations:
         else:
             machine.apply_all_flux_to_zero()
         wait(1000)
-
+        if qp.gates['Cz'].compensations:
+            compensation_qubits = [compensation["qubit"] for compensation in qp.gates['Cz'].compensations]
+        else:
+            compensation_qubits = []
+            
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             
@@ -206,26 +210,26 @@ with program() as CPhase_Oscillations:
                     # reset                    
                     if node.parameters.reset_type == "active":
                         active_reset_gef(qp.qubit_control)
-                        qp.align()
-                        active_reset(qp.qubit_target)
-                        qp.align()
+                        active_reset(qp.qubit_target)               
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
-                    # set both qubits to the excited state
-                    for state,qubit in zip([state_control, state_target], [qp.qubit_control, qp.qubit_target]):
-                        qubit.xy.play("x180")
-                        qubit.xy.wait(5)
                     qp.align()
-
+                    
+                    # set both qubits to the excited state
+                    for qubit in  [qp.qubit_control, qp.qubit_target]:
+                        qubit.xy.play("x180")
+                    qp.align()
+                    
                     # play the flux pulse
                     with switch_(idx):
                         for j in range(node.parameters.max_time_in_ns):
                             with case_(j):
                                 baked_signals[qp.name][j].run(amp_array = [(qp.qubit_control.z.name, amp)]) 
-                                                                               
-                    # wait for the flux pulse to end and some extra time
-                    for qubit in [qp.qubit_control, qp.qubit_target]:
-                        qubit.xy.wait(node.parameters.max_time_in_ns // 4 + 10)
+                    # # check if there are any compensations and play the relevant flux pulse
+                    for comp_ind, qubit in enumerate(compensation_qubits):
+                        shift = qp.gates['Cz'].compensations[comp_ind]["shift"]
+                        qubit.z.play("const", amplitude_scale= shift / qubit.z.operations["const"].amplitude, 
+                                                    duration = node.parameters.max_time_in_ns // 4 + 10)
                     qp.align()
                     
                     # measure both qubits
@@ -233,6 +237,7 @@ with program() as CPhase_Oscillations:
                     readout_state(qp.qubit_target, state_target[i])
                     save(state_control[i], state_st_control[i])
                     save(state_target[i], state_st_target[i])
+
         align()
         
     with stream_processing():
@@ -325,38 +330,28 @@ if not node.parameters.simulate:
                                                                 fit_data.sel(
                                                                     fit_vals="offset"),
                                                                 fit_data.sel(fit_vals="decay"))})
-        # if node.parameters.method == "fine":
-        if True:
-            t = ds.time*1e-9
-            f = ds.sel(qubit = qp.name).detuning
-            t,f = np.meshgrid(t,f)
-            J, f0, a, offset = fit_rabi_chevron(ds_qp, lengths[qp.name]*2, detunings[qp.name])
-            initial_guess = (1e9/lengths[qp.name]/2, detunings[qp.name], -1, 1.0)
-            initial_model = rabi_chevron_model((f,t), *initial_guess).reshape(len(ds.amp), len(ds.time))
-            data_fitted = rabi_chevron_model((f,t), J, f0, a, offset).reshape(len(ds.amp), len(ds.time))
-            Js[qp.name] = J
-            detunings[qp.name] = f0
-            amplitudes[qp.name] = np.sqrt(-detunings[qp.name]/qp.qubit_control.freq_vs_flux_01_quad_term)
-            flux_time = int(1/(2*J)*1e9)
-            lengths[qp.name] = flux_time-flux_time%4+4
-            zero_paddings[qp.name]=lengths[qp.name]-flux_time  
+        
+        t = ds.time*1e-9
+        f = ds.sel(qubit = qp.name).detuning
+        t,f = np.meshgrid(t,f)
+        J, f0, a, offset = fit_rabi_chevron(ds_qp, lengths[qp.name]*2, detunings[qp.name])
+        initial_guess = (1e9/lengths[qp.name]/2, detunings[qp.name], -1, 1.0)
+        initial_model = rabi_chevron_model((f,t), *initial_guess).reshape(len(ds.amp), len(ds.time))
+        data_fitted = rabi_chevron_model((f,t), J, f0, a, offset).reshape(len(ds.amp), len(ds.time))
+        Js[qp.name] = J
+        detunings[qp.name] = f0
+        amplitudes[qp.name] = np.sqrt(-detunings[qp.name]/qp.qubit_control.freq_vs_flux_01_quad_term)
+        flux_time = int(1/(2*J)*1e9)
+        lengths[qp.name] = flux_time-flux_time%4+4
+        zero_paddings[qp.name]=lengths[qp.name]-flux_time  
             
-            fig,axs = plt.subplots(1,3)
-            im0 = axs[0].pcolormesh(t*1e9,f*1e-6,initial_model)
-            im1 = axs[1].pcolormesh(t*1e9,f*1e-6,data_fitted)
-            plt.colorbar(im0, ax=axs[0], orientation='vertical', label='Amplitude')
-            plt.colorbar(im1, ax=axs[1], orientation='vertical', label='Amplitude')
-            ds_qp.state_target.plot(ax = axs[2])
-            plt.show()
-# %%
-
-# plt.figure(figsize=(10, 6))
-# im = plt.pcolormesh(t*1e9, f*1e-6, data_fitted)
-# plt.colorbar(im, label='Amplitude')
-# plt.xlabel('Time (ns)')
-# plt.ylabel('Detuning (MHz)')
-# plt.title('Fitted Rabi Chevron')
-# plt.show()
+            # fig,axs = plt.subplots(1,3)
+            # im0 = axs[0].pcolormesh(t*1e9,f*1e-6,initial_model)
+            # im1 = axs[1].pcolormesh(t*1e9,f*1e-6,data_fitted)
+            # plt.colorbar(im0, ax=axs[0], orientation='vertical', label='Amplitude')
+            # plt.colorbar(im1, ax=axs[1], orientation='vertical', label='Amplitude')
+            # ds_qp.state_target.plot(ax = axs[2])
+            # plt.show()
 # %%
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
@@ -374,15 +369,17 @@ if not node.parameters.simulate:
         for n in range(10):
             ax.plot(n*0.5/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
 
-        ax2 = ax.twinx()
-        detuning_range = ds.detuning.sel(qubit=qubit_pair['qubit'])
-        amp_full_range = np.sqrt(-detuning_range / qp.qubit_control.freq_vs_flux_01_quad_term)
-        ax2.set_ylim(amp_full_range.min(), amp_full_range.max())
+        quad = machine.qubit_pairs[qubit_pair["qubit"]].qubit_control.freq_vs_flux_01_quad_term
+
+        def detuning_to_flux(det, quad = quad):
+            return 1e3 * np.sqrt(-1e6 * det / quad)
+
+        def flux_to_detuning(flux, quad = quad):
+            return -1e-6 * (flux/1e3)**2 * quad
+        
+        ax2 = ax.secondary_yaxis('right', functions=(detuning_to_flux, flux_to_detuning))
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
-        ax.set_ylim(detuning_range.min() * 1e-6, detuning_range.max() * 1e-6)
-        ax2.yaxis.set_label_position('right')
-        ax2.yaxis.tick_right()
         
     plt.suptitle('control qubit state')
     plt.show()
@@ -402,16 +399,18 @@ if not node.parameters.simulate:
         f_eff = np.sqrt(Js[qubit_pair['qubit']]**2 + 0.25*(ds.detuning.sel(qubit=qubit_pair['qubit'])-detunings[qubit_pair['qubit']])**2)
         for n in range(10):
             ax.plot(n*0.5/f_eff*1e9,1e-6*ds.detuning.sel(qubit= qubit_pair['qubit']), color = 'red', lw = 0.3)
+        quad = machine.qubit_pairs[qubit_pair["qubit"]].qubit_control.freq_vs_flux_01_quad_term
 
-        ax2 = ax.twinx()
-        detuning_range = ds.detuning.sel(qubit=qubit_pair['qubit'])
-        amp_full_range = np.sqrt(-detuning_range / qp.qubit_control.freq_vs_flux_01_quad_term)
-        ax2.set_ylim(amp_full_range.min(), amp_full_range.max())
+        def detuning_to_flux(det, quad = quad):
+            return 1e3 * np.sqrt(-1e6 * det / quad)
+
+        def flux_to_detuning(flux, quad = quad):
+            return -1e-6 * (flux/1e3)**2 * quad
+        
+        ax2 = ax.secondary_yaxis('right', functions=(detuning_to_flux, flux_to_detuning))
         ax2.set_ylabel('Flux amplitude [V]')
         ax.set_ylabel('Detuning [MHz]')
-        ax.set_ylim(detuning_range.min() * 1e-6, detuning_range.max() * 1e-6)
-        ax2.yaxis.set_label_position('right')
-        ax2.yaxis.tick_right()
+        
     plt.suptitle('target qubit state')
     plt.show()
     node.results["figure_target"] = grid.fig
