@@ -154,13 +154,13 @@ def grid_pair_names(qubit_pairs) -> Tuple[List[str], List[str]]:
 
 
 class QubitPairGrid:
-    """Creates a grid object where qubit pairs are placed on a grid.
-    The grid is builtb with references to the qubit pair names,
+    """ Creates a grid object where qubit pairs are placed on a grid.
+    The grid is built with references to the qubit pair names,
     which should of the form: 'q-i,j-q-n,m' where i,j and n,m are
-    integeres describing the x and y coordinates of the qubits of
+    integers describing the x and y coordinates of the qubits of
     the pair on a qubit grid.
 
-    Iteration of the resuting grid can be done using 'grid_iter'
+    Iteration of the resulting grid can be done using 'grid_iter'
     defined in lib.qua_datasets
 
     :param ds: The ds containing the names of the qubit in ds.qubit
@@ -268,25 +268,25 @@ def grid_names(machine) -> List[str]:
 
 
 class QubitGrid:
-    """Creates a grid object where qubits are placed on a grid.
-    Accepts a dataset whose dimension 'qubit is used as the dimension on which the grid is built.
-    It also accepts a parameter "grid_names" that specifies the positon of each wubit on a grid. If none
-    it assumes that qubit names are of the form: 'q-i,j' where i,j are integeres describing the x and y coordinates of the grid.
+    """ Creates a grid object where qubits are placed on a grid.
+    Accepts a dataset whose dimension 'qubit' is used as the dimension on which the grid is built.
+    It also accepts a parameter "grid_names" that specifies the position of each qubit on a grid. If none
+    It assumes that qubit names are of the form 'q-i,j' where i and j are integers describing the x and y coordinates of the grid.
 
-    Iteration of the resuting grid can be done using 'grid_iter' defined in lib.qua_datasets
+    Iteration of the resulting grid can be done using 'grid_iter' defined in lib.qua_datasets
 
     :param ds: The ds containing the names of the qubit in ds.qubit
     :params grid_names: a list of names in the required qubit names, in case the qubits names
-                        given in a different format. Defalut is None
+                        are given in a different format. Default is None
 
     :var fig: the created figure object
-    :var all_axes: all of the created axis, used and unused
-    :var axes: a list of the axes relevant for the grid
+    :var all_axes: all of the created axes, used and unused
+    :var axes: a list of the axes relevant to the grid
     :name_dicts: a list containing the names of the qubit, taken from ds.qubit, in the
                 convention of FacetGrid dict_names
 
     usage example:
-    Assume we have a dataset with a data variable I, and a data coordinate q formated
+    Assume we have a dataset with a data variable I, and a data coordinate q formatted
     according to the naming convention. A way to plot the data on the grid would be
 
     '''
