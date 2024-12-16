@@ -4,8 +4,8 @@ from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visu
 from quam_libs.quam_builder.machine import build_quam_wiring
 
 # Define static parameters
-host_ip = "172.16.33.101"  # QOP IP address
-cluster_name = "Cluster_81"  # Name of the cluster
+host_ip = "127.0.0.1"  # QOP IP address
+cluster_name = "Cluster_1"  # Name of the cluster
 # Desired location of wiring.json and state.json
 # The folder must not contain other json files.
 path = "./quam_state"
@@ -16,11 +16,11 @@ instruments.add_opx_plus(controllers=[1])
 instruments.add_octave(indices=1)
 
 # Define which qubit indices are present in the system
-qubits = [1, 2, 3, 4]
+qubits = [1, 2, 3, 7]
 qubit_pairs = [
     (1, 2), (2, 1),
     (2, 3), (3, 2),
-    (3, 4), (4, 3),
+    (3, 7), (7, 3),
 ]
 # Allocate the wiring to the connectivity object based on the available instruments
 connectivity = Connectivity()
@@ -32,19 +32,19 @@ qs_xy_ch_map = {
     1: octave_spec(index=1, rf_out=2),
     2: octave_spec(index=1, rf_out=3),
     3: octave_spec(index=1, rf_out=4),
-    4: octave_spec(index=1, rf_out=5),
+    7: octave_spec(index=1, rf_out=5),
 }
 
-connectivity.add_resonator_line(qubits=qubits)
-allocate_wiring(connectivity, instruments)
+connectivity.add_resonator_line(qubits=qubits) #I: 1, Q:2
+allocate_wiring(connectivity, instruments) # physically assign ports to resonator
 
-connectivity.add_qubit_drive_lines(qubits=[1, 2, 3, 4])
-allocate_wiring(connectivity, instruments, block_used_channels=False)
+connectivity.add_qubit_drive_lines(qubits=[1, 2, 3, 7]) # q1: I:3 Q:7 -> octave_spec(index=1, rf_out=2), q2: 5,6
+allocate_wiring(connectivity, instruments, block_used_channels=False) # physically assign ports to qubit
 
 for qp in qubit_pairs:
     connectivity.add_qubit_pair_cross_resonance_lines(
-        qubit_pairs=[qp],
-        constraints=qs_xy_ch_map[qp[0]],
+        qubit_pairs=[qp], # qp = (1,2)
+        constraints=qs_xy_ch_map[qp[0]], # qs_xy_ch_map[qp[0]] = octave_spec(index=1, rf_out=2), constraint to assign cr drive to q1 drive line.
     )  # Cross Resonance
     allocate_wiring(connectivity, instruments, block_used_channels=False)
     connectivity.add_qubit_pair_zz_drive_lines(
