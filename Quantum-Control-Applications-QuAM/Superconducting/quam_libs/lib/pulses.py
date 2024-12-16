@@ -70,3 +70,24 @@ class FluxPulse(Pulse):
                 )
             waveform[-self.zero_padding :] = 0
         return waveform
+    
+@quam_dataclass
+class SNZPulse(Pulse):
+    amplitude: float
+    step_amplitude: float
+    step_length: int
+    spacing : int
+    
+    def __post_init__(self):
+        self.length -= self.length % 4
+
+    def waveform_function(self):
+        rect_duration = (self.length - 4 - 2 * self.step_length - self.spacing) // 2
+        waveform = [self.amplitude] * rect_duration
+        waveform += [self.step_amplitude] * self.step_length
+        waveform += [0] * self.spacing
+        waveform += [-self.step_amplitude] * self.step_length
+        waveform += [-self.amplitude] * rect_duration
+        waveform += [0.0] * (self.length - len(waveform))
+        
+        return waveform    

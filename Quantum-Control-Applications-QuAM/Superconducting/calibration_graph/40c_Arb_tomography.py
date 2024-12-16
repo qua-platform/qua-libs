@@ -58,7 +58,7 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["qC3-qC4"]
+    qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "thermal"
@@ -68,7 +68,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="40a_Bell_state_Zbasis", parameters=Parameters()
+    name="40c_Arb_tomography", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -137,69 +137,7 @@ def plot_3d_hist_with_frame(data,ideal, title = ''):
     fig.suptitle(title)
     # Show the plot
     
-    return fig
-
-
-def plot_3d_hist_with_frame_real(data,ideal, ax ):
-    xpos, ypos = np.meshgrid(np.arange(4) + 0.5, np.arange(4) + 0.5, indexing="ij")
-    xpos = xpos.ravel()
-    ypos = ypos.ravel()
-    zpos = np.zeros_like(xpos)
-    # Create a custom colormap with two distinct colors for positive and negative values
-    colors = [(0.1, 0.1, 0.6), (0.55, 0.55, 1.0)]  # Light blue for positive, dark blue for negative
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
-
-    # finding global min,max
-    gmin = np.min([np.min(np.real(data)),np.min(np.imag(data)),np.min(np.real(ideal)),np.min(np.imag(ideal))])
-    gmax = np.max([np.max(np.real(data)),np.max(np.imag(data)),np.max(np.real(ideal)),np.max(np.imag(ideal))])
-
-    # Use the bar3d function with the 'color' parameter to color the bars
-    dz = np.real(data).ravel()
-    dzi = np.real(ideal).ravel()
-    ax.set_title('real')
-    
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
-    # Set tick labels for x and y axes
-    ax.set_xticks(np.arange(1, 5))
-    ax.set_yticks(np.arange(1, 5))
-    ax.set_xticklabels(['00', '01', '10', '11'])
-    ax.set_yticklabels(['00', '01', '10', '11'])
-    ax.set_xticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_yticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_zlim([gmin,gmax])
-    # Show the plot
-
-def plot_3d_hist_with_frame_imag(data,ideal, axs):
-    xpos, ypos = np.meshgrid(np.arange(4) + 0.5, np.arange(4) + 0.5, indexing="ij")
-    xpos = xpos.ravel()
-    ypos = ypos.ravel()
-    zpos = np.zeros_like(xpos)
-    # Create a custom colormap with two distinct colors for positive and negative values
-    colors = [(0.1, 0.1, 0.6), (0.55, 0.55, 1.0)]  # Light blue for positive, dark blue for negative
-    cmap = LinearSegmentedColormap.from_list('custom_cmap', colors, N=256)
-
-    # finding global min,max
-    gmin = np.min([np.min(np.real(data)),np.min(np.imag(data)),np.min(np.real(ideal)),np.min(np.imag(ideal))])
-    gmax = np.max([np.max(np.real(data)),np.max(np.imag(data)),np.max(np.real(ideal)),np.max(np.imag(ideal))])
-
-    # Use the bar3d function with the 'color' parameter to color the bars
-    dz = np.imag(data).ravel()
-    dzi = np.imag(ideal).ravel()
-    ax.set_title('imaginary')
-    
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dz, alpha= 1, color=cmap(np.sign(dz)))
-    ax.bar3d(xpos, ypos, zpos, dx=0.4, dy=0.4, dz=dzi, alpha= 0.1, edgecolor = 'k')
-    # Set tick labels for x and y axes
-    ax.set_xticks(np.arange(1, 5))
-    ax.set_yticks(np.arange(1, 5))
-    ax.set_xticklabels(['00', '01', '10', '11'])
-    ax.set_yticklabels(['00', '01', '10', '11'])
-    ax.set_xticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_yticklabels(['00', '01', '10', '11'], rotation=45)
-    ax.set_zlim([gmin,gmax])
-    # Show the plot
-    
+    return fig    
 
 def flatten(data):
     if isinstance(data, tuple):
@@ -308,8 +246,13 @@ with program() as CPhase_Oscillations:
                     qp.align()
                     # Bell state
                     qp.qubit_control.xy.play("-y90")
-                    qp.qubit_target.xy.play("y180")
+                    qp.qubit_target.xy.play("-y90")
                     qp.gates['Cz'].execute()
+                    # qp.align()
+                    # qp.gates['Cz'].execute()
+                    # qp.align()
+                    # qp.qubit_control.xy.play("y90")
+                    # qp.qubit_target.xy.play("y180")                    
                     # qp.qubit_control.xy.play("y90")
                     qp.align()
                     # tomography pulses
@@ -507,6 +450,8 @@ if not node.parameters.simulate:
     node.results["figure_paulis"] = grid.fig
 # %%
 
+# %%
+
 # %% {Update_state}
 
 # %% {Save_results}
@@ -514,7 +459,6 @@ if not node.parameters.simulate:
     node.outcomes = {qp.name: "successful" for qp in qubit_pairs}
     node.results["initial_parameters"] = node.parameters.model_dump()
     node.machine = machine
-    node.save()
+    # node.save()
         
 # %%
-''

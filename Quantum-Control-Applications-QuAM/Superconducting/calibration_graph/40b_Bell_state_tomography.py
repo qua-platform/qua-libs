@@ -61,7 +61,7 @@ class Parameters(NodeParameters):
     qubit_pairs: Optional[List[str]] = None
     num_shots: int = 2000
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
-    reset_type: Literal['active', 'thermal'] = "thermal"
+    reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
@@ -391,7 +391,7 @@ for qp in qubit_pairs:
             results = results_xr.sel(tomo_axis_control = tomo_axis_control, tomo_axis_target = tomo_axis_target, 
                                      qubit = qp.name)
             results = np.linalg.inv(qp.confusion) @ results.data
-            # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data[:,0]
+            # results = np.linalg.inv(np.diag((1,1,1,1))) @ results.data
 
             results = results * (results > 0)
             results = results / results.sum()
@@ -426,6 +426,19 @@ for qp in qubit_pairs:
         rhos[qp.name] = get_density_matrix(paulis_data[qp.name])
         
     # %%
+    from scipy.linalg import sqrtm
+    ideal_dat = np.array([[1,0,0,1],[0,0,0,0],[0,0,0,0],[1,0,0,1]])/2
+    s_ideal = sqrtm(ideal_dat)
+    for qp in qubit_pairs:
+        fidelity = np.abs(np.trace(sqrtm(s_ideal @rhos[qp.name] @ s_ideal)))**2
+        print(f"Fidelity of {qp.name}: {fidelity:.3f}")
+        purity = np.abs(np.trace(rhos[qp.name] @ rhos[qp.name]))
+        print(f"Purity of {qp.name}: {purity:.3f}")
+        print()
+        node.results[f"{qp.name}_fidelity"] = fidelity
+        node.results[f"{qp.name}_purity"] = purity
+
+
 
 # %%
 if not node.parameters.simulate:

@@ -122,7 +122,7 @@ class CZGate(TwoQubitGate):
 
 @quam_dataclass
 class CZWithCompensationGate(CZGate):
-    compensations : list   # Extra qubits that are not part of the gate but are shifted when the gate to be executed. Expected format: [{"qubit": qubit_object,"shift" : float, "phase" : float}]
+    compensations : list  = None # Extra qubits that are not part of the gate but are shifted when the gate to be executed. Expected format: [{"qubit": qubit_object,"shift" : float, "phase" : float}]
 
     def execute(self, *args, **kwargs):
         if not self.compensations:

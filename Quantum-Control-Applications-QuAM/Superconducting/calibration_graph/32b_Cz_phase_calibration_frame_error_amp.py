@@ -73,7 +73,7 @@ class Parameters(NodeParameters):
 
 
 node = QualibrationNode(
-    name="32a_Cz_phase_calibration_frame", parameters=Parameters()
+    name="32b_Cz_phase_calibration_frame_error_amp", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 

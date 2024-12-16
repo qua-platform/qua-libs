@@ -204,7 +204,8 @@ if not node.parameters.simulate:
         results[qp.name] = np.array(results[qp.name])/node.parameters.num_shots
         
         conf_mat = qp.confusion
-        corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
+        # corrected_results[qp.name] = np.linalg.inv(conf_mat) @ results[qp.name]
+        corrected_results[qp.name] = results[qp.name]
         print(f"{qp.name}: {corrected_results[qp.name]}")
 
 # %%
