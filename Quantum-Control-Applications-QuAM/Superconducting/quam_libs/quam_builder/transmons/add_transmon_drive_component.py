@@ -31,8 +31,8 @@ def add_transmon_drive_component(transmon: Transmon, wiring_path: str, ports: Di
             opx_output_I=f"{wiring_path}/opx_output_I",
             opx_output_Q=f"{wiring_path}/opx_output_Q",
             frequency_converter_up=f"{wiring_path}/frequency_converter_up",
-            intermediate_frequency=-250 * u.MHz,
-            digital_outputs=digital_outputs
+            intermediate_frequency=transmon.xy.intermediate_frequency - 10 * u.MHz,
+            digital_outputs=digital_outputs,
         )
 
         RF_output = transmon.xy_detuned.frequency_converter_up
@@ -51,7 +51,7 @@ def add_transmon_drive_component(transmon: Transmon, wiring_path: str, ports: Di
         transmon.xy_detuned = MWChannel(
             opx_output=f"{wiring_path}/opx_output",
             digital_outputs=digital_outputs,
-            intermediate_frequency=-250 * u.MHz
+            intermediate_frequency=transmon.xy.intermediate_frequency - 10 * u.MHz,
         )
 
     else:

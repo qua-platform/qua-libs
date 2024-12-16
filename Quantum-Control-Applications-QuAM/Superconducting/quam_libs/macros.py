@@ -1,7 +1,9 @@
 import inspect
+import pathlib
 from pathlib import Path
 from typing import Optional, Union
 import warnings
+import xarray as xr
 
 from qm.qua import *
 from quam_libs.components import QuAM
@@ -148,3 +150,16 @@ def active_reset(
     qubit.align()    
     if save_qua_var is not None:
         save(attempts, save_qua_var)
+
+
+def load_xarray_data(data_path: str | pathlib.PosixPath):
+    if isinstance(data_path.name, str):
+        data_path = Path(data_path)
+
+    # Load the dataset
+    ds = xr.open_dataset(data_path / "ds.h5", engine="netcdf4")  # or engine="netcdf4" if needed
+
+    # View the dataset
+    print(ds)
+
+    return ds
