@@ -44,64 +44,22 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 100
     frequency_span_in_mhz: float = 30
     frequency_step_in_mhz: float = 0.1
     simulate: bool = False
     timeout: int = 100
-    forced_flux_bias_v: Optional[float] = None
-    max_power_dbm: int = 2
+    max_power_dbm: int = 1
     min_power_dbm: int = -50
     max_amp: float = 0.4
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     ro_line_attenuation_dB: float = 0
     multiplexed: bool = True
 
 
 node = QualibrationNode(
-    name="02c_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters()
+    name="02b_Resonator_Spectroscopy_vs_Amplitude", parameters=Parameters()
 )
-
-
-
-def set_output_power(
-    quam_object,
-    operation,
-    power_dBm,
-    amplitude=None,
-    gain_or_full_scale_power_dbm=None,
-    Z=50,
-):
-    if amplitude is not None:
-        quam_object.operations[operation].amplitude = amplitude
-        # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
-        #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-        quam_object.frequency_converter_up.gain = (
-            round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2
-        )
-        print(
-            f"Setting the Octave gain to {round((power_dBm - u.volts2dBm(amplitude, Z=Z)) * 2) / 2} dB"
-        )
-        # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
-        #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
-    elif gain_or_full_scale_power_dbm is not None:
-        quam_object.frequency_converter_up.gain = gain_or_full_scale_power_dbm
-        # if not -20 <= quam_object.frequency_converter_up.gain <= 20:
-        #     raise ValueError("The Octave gain must be within [-20:0.5:20] dB.")
-        quam_object.operations[operation].amplitude = u.dBm2volts(
-            power_dBm - quam_object.frequency_converter_up.gain
-        )
-        print(
-            f"Setting the {operation} amplitude to {u.dBm2volts(power_dBm - quam_object.frequency_converter_up.gain)} V"
-        )
-        # if not -0.5 <= quam_object.operations[operation].amplitude < 0.5:
-        #     raise ValueError("The OPX+ pulse amplitude must be within [-0.5, 0.5) V.")
-    else:
-        raise RuntimeError(
-            "Either amplitude or gain_or_full_scale_power_dbm must be specified."
-        )
 
 
 u = unit(coerce_to_integer=True)
@@ -123,19 +81,7 @@ tracked_qubits = []
 for i, qubit in enumerate(qubits):
     with tracked_updates(qubit, auto_revert=False, dont_assign_to_none=True) as qubit:
         qubit.resonator.operations["readout"].amplitude = node.parameters.max_amp
-        # TODO: I can't call function of the trackable object
-        # qubit.resonator.set_output_power("readout", power_dBm=node.parameters.max_power_dbm, amplitude=qubit.resonator.operations["readout"].amplitude)
-        # TODO: the two below are not reverted at the end of the node...
-        set_output_power(
-            qubit.resonator,
-            "readout",
-            power_dBm=node.parameters.max_power_dbm,
-            amplitude=node.parameters.max_amp,
-        )
-        # qubit.resonator.frequency_converter_up.gain = min(10, max(-20, int(node.parameters.max_power_dbm - u.volts2dBm(node.parameters.max_amp))))
-        # qubit.resonator.operations["readout"].full_scale_power_dbm = node.parameters.max_power_dbm
-        if node.parameters.forced_flux_bias_v is not None:
-            qubit.z.joint_offset = node.parameters.forced_flux_bias_v
+        qubit.resonator.opx_output.full_scale_power_dbm = node.parameters.max_power_dbm
         tracked_qubits.append(qubit)
 
 # Generate the OPX and Octave configurations
@@ -154,11 +100,10 @@ amps = np.geomspace(
     amp_min, amp_max, 100
 )  # 100 points from 0.01 to 1.0, logarithmically spaced
 
-# The frequency sweep around the resonator resonance frequencies 
+# The frequency sweep around the resonator resonance frequencies
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span / 2, +span / 2, step)
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 with program() as multi_res_spec_vs_amp:
     # Declare 'I' and 'Q' and the corresponding streams for the two resonators.
@@ -168,16 +113,6 @@ with program() as multi_res_spec_vs_amp:
     df = declare(int)  # QUA variable for the readout frequency
 
     for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
         # resonator of this qubit
         rr = qubit.resonator
 
@@ -220,16 +155,17 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(multi_res_spec_vs_amp)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(multi_res_spec_vs_amp)
 
-        # %% {Live_plot}
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+    # %% {Live_plot}
+    results = fetching_tool(job, ["n"], mode="live")
+    while results.is_processing():
+        # Fetch results
+        n = results.fetch_all()[0]
+        # Progress bar
+        progress_counter(n, n_avg, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:

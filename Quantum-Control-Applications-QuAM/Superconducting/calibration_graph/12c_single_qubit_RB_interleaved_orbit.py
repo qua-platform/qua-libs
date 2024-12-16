@@ -29,8 +29,9 @@ Prerequisites:
     - Qubit pi pulse (x180) has been calibrated through qubit spectroscopy, rabi_chevron, power_rabi, and state updates.
     - Qubit frequency has been precisely calibrated (ramsey).
     - (optional) Readout has been calibrated (readout frequency, amplitude, duration optimization, IQ blobs) for improved SNR.
-    - Desired flux bias has been set.
 """
+
+
 import copy
 import logging
 
@@ -51,25 +52,20 @@ class Parameters(NodeParameters):
     circuit_depth: int = 5
     seed: int = 345324
     frequency_span_in_mhz: float = 20
-    frequency_step_in_mhz: float = 4.99  #0.25
+    frequency_step_in_mhz: float = 4.99  # 0.25
     min_amp_factor: float = 0.8
     max_amp_factor: float = 1.2
-    amp_factor_step: float = 0.099  #0.005
+    amp_factor_step: float = 0.099  # 0.005
     min_drag_coefficient_factor: float = 0.8
     max_drag_coefficient_factor: float = 1.2
-    drag_coefficient_factor_step: float = 0.099  #0.02
+    drag_coefficient_factor_step: float = 0.099  # 0.02
 
-    flux_point_joint_or_independent: Literal['joint', 'independent'] = "joint"
-    reset_type_thermal_or_active: Literal['thermal', 'active'] = "active"
+    reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     timeout: int = 100
 
-node = QualibrationNode(
-    name="11c_Randomized_Benchmarking_Interleaved_ORBIT",
-    parameters=Parameters()
-)
 
-
+node = QualibrationNode(name="19c_Randomized_Benchmarking_Interleaved_ORBIT", parameters=Parameters())
 
 
 from qm.qua import *
@@ -84,7 +80,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -95,10 +90,12 @@ octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
-if node.parameters.qubits is None or node.parameters.qubits == '':
+if node.parameters.qubits is None or node.parameters.qubits == "":
     qubits = machine.active_qubits
 else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits.replace(' ', '').split(',')]
+    qubits = [
+        machine.qubits[q] for q in node.parameters.qubits.replace(" ", "").split(",")
+    ]
 num_qubits = len(qubits)
 
 ##############################
@@ -109,31 +106,35 @@ dfs = np.arange(
     -node.parameters.frequency_span_in_mhz * u.MHz // 2,
     +node.parameters.frequency_span_in_mhz * u.MHz // 2,
     node.parameters.frequency_step_in_mhz * u.MHz,
-dtype=np.int32)
+    dtype=np.int32,
+)
 
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(
     node.parameters.min_amp_factor,
     node.parameters.max_amp_factor,
-    node.parameters.amp_factor_step
+    node.parameters.amp_factor_step,
 )
 
 # Drag coefficient sweep (as a pre-factor of the qubit drag coefficient) - must be within [-2; 2)
 drag_coefficient_factors = np.arange(
     node.parameters.min_drag_coefficient_factor,
     node.parameters.max_drag_coefficient_factor,
-    node.parameters.drag_coefficient_factor_step
+    node.parameters.drag_coefficient_factor_step,
 )
 
 orbit_variables = ["frequency", "amplitude", "drag coefficient factor"]
-orbit_variable_sweeps = dict(zip(orbit_variables, [dfs, amps, drag_coefficient_factors]))
+orbit_variable_sweeps = dict(
+    zip(orbit_variables, [dfs, amps, drag_coefficient_factors])
+)
 
 # RB Parameters
 num_of_sequences = node.parameters.num_random_sequences  # Number of random sequences
 # %% {QUA_program}
-n_avg = node.parameters.num_averages  # Number of averaging loops for each random sequence
+n_avg = (
+    node.parameters.num_averages
+)  # Number of averaging loops for each random sequence
 circuit_depth = node.parameters.circuit_depth  # Maximum circuit depth
-flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
 seed = node.parameters.seed  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -166,31 +167,47 @@ def get_interleaved_gate(gate_index):
     elif gate_index == 15:
         return "-y90"
     else:
-        raise ValueError(f"Interleaved gate index {gate_index} doesn't correspond to a single operation")
+        raise ValueError(
+            f"Interleaved gate index {gate_index} doesn't correspond to a single operation"
+        )
 
 
 def power_law(power, a, b, p):
     return a * (p**power) + b
 
 
-def set_orbit_value(qubit: Transmon, qubit_with_orbit_value: Transmon, orbit_variable: str, value: Union[float, int]) -> Transmon:
+def set_orbit_value(
+    qubit: Transmon,
+    qubit_with_orbit_value: Transmon,
+    orbit_variable: str,
+    value: Union[float, int],
+) -> Transmon:
     interleaved_gate_operation = get_interleaved_gate(interleaved_gate_index)
 
     if orbit_variable == "frequency":
         # set in program to retain mixer calibration at original IF
         pass
     elif orbit_variable == "amplitude":
-        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].amplitude = None
-        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].amplitude = \
-            copy.deepcopy(qubit.xy.operations[interleaved_gate_operation].amplitude * value)
+        qubit_with_orbit_value.xy.operations[
+            interleaved_gate_operation
+        ].amplitude = None
+        qubit_with_orbit_value.xy.operations[
+            interleaved_gate_operation
+        ].amplitude = copy.deepcopy(
+            qubit.xy.operations[interleaved_gate_operation].amplitude * value
+        )
     elif orbit_variable == "drag_coefficient_factor":
         qubit_with_orbit_value.xy.operations[interleaved_gate_operation].alpha = None
-        qubit_with_orbit_value.xy.operations[interleaved_gate_operation].alpha = \
-            copy.deepcopy(qubit.xy.operations[interleaved_gate_operation].alpha * value)
+        qubit_with_orbit_value.xy.operations[
+            interleaved_gate_operation
+        ].alpha = copy.deepcopy(
+            qubit.xy.operations[interleaved_gate_operation].alpha * value
+        )
     else:
         raise ValueError(f"Orbit variable {orbit_variable} not recognized")
 
     return qubit_with_orbit_value
+
 
 def generate_sequence(interleaved_gate_index):
     cayley = declare(int, value=c1_table.flatten().tolist())
@@ -217,7 +234,9 @@ def generate_sequence(interleaved_gate_index):
     return sequence, inv_gate
 
 
-def play_sequence(sequence_list, depth, qubit: Transmon, qubit_with_orbit_values: Transmon):
+def play_sequence(
+    sequence_list, depth, qubit: Transmon, qubit_with_orbit_values: Transmon
+):
     i = declare(int)
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
@@ -327,19 +346,15 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
         if state_discrimination:
             state_st = declare_stream()
 
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
         wait(1000)
 
-        with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
+        with for_(
+            m, 0, m < num_of_sequences, m + 1
+        ):  # QUA for_ loop over the random sequences
             # Generates the RB sequence with a gate interleaved after each Clifford
-            sequence_list, inv_gate_list = generate_sequence(interleaved_gate_index=interleaved_gate_index)
+            sequence_list, inv_gate_list = generate_sequence(
+                interleaved_gate_index=interleaved_gate_index
+            )
             # Depth_target is used to always play the gates by pairs [(random_gate-interleaved_gate)^depth/2-inv_gate]
             assign(depth, circuit_depth)
             # Replacing the last gate in the sequence with the sequence's inverse gate
@@ -358,7 +373,9 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
                 if node.parameters.use_strict_timing:
                     with strict_timing_():
                         # Play the random sequence of desired depth
-                        play_sequence(sequence_list, depth, qubit, qubit_with_orbit_values)
+                        play_sequence(
+                            sequence_list, depth, qubit, qubit_with_orbit_values
+                        )
                 else:
                     # Play the random sequence of desired depth
                     play_sequence(sequence_list, depth, qubit, qubit_with_orbit_values)
@@ -383,12 +400,20 @@ def get_rb_interleaved_program(qubit: Transmon, qubit_with_orbit_values: Transmo
             m_st.save("iteration")
             if state_discrimination:
                 # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(num_of_sequences).save("state")
+                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_of_sequences
+                ).save("state")
                 # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                state_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).average().save("state_avg")
+                state_st.boolean_to_int().buffer(n_avg).map(
+                    FUNCTIONS.average()
+                ).average().save("state_avg")
             else:
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_of_sequences).save("I")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_of_sequences).save("Q")
+                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_of_sequences
+                ).save("I")
+                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    num_of_sequences
+                ).save("Q")
                 I_st.buffer(n_avg).map(FUNCTIONS.average()).average().save("I_avg")
                 Q_st.buffer(n_avg).map(FUNCTIONS.average()).average().save("Q_avg")
 
@@ -417,15 +442,18 @@ else:
         machine.qubits[qubit_with_orbit_value_name] = cloned_qubit
         qubit_with_orbit_value = machine.qubits[qubit_with_orbit_value_name]
 
-        for i, orbit_variable in enumerate(tqdm(orbit_variables, unit='ORBIT variable')):
+        for i, orbit_variable in enumerate(
+            tqdm(orbit_variables, unit="ORBIT variable")
+        ):
             sweep = orbit_variable_sweeps[orbit_variable]
             # prepare empty array for state average
             node.results[orbit_variable] = np.zeros(len(sweep))
             # sweep each orbit variable one-at-a-time with fixed sequence depth
-            for j, value in enumerate(tqdm(sweep, unit=f'{orbit_variable} value')):
-
+            for j, value in enumerate(tqdm(sweep, unit=f"{orbit_variable} value")):
                 if orbit_variable in ["amplitude", "drag_coefficient_factor"]:
-                    qubit_with_orbit_value = set_orbit_value(qubit, qubit_with_orbit_value, orbit_variable, value)
+                    qubit_with_orbit_value = set_orbit_value(
+                        qubit, qubit_with_orbit_value, orbit_variable, value
+                    )
 
                 config = machine.generate_config()
                 qm = qmm.open_qm(config)
@@ -434,18 +462,26 @@ else:
                     # set the ORBIT frequency post open_qm to retain mixer calibration at original IF
                     qm.set_intermediate_frequency(
                         element=qubit.name + "_with_orbit_value.xy",
-                        freq=qubit.xy.intermediate_frequency + float(value)
+                        freq=qubit.xy.intermediate_frequency + float(value),
                     )
 
                 # silence job INFO output since we will execute many programs
                 logger.setLevel(logging.WARNING)
                 # execute the program
-                job = qm.execute(get_rb_interleaved_program(qubit, qubit_with_orbit_value))
+                job = qm.execute(
+                    get_rb_interleaved_program(qubit, qubit_with_orbit_value)
+                )
 
                 if state_discrimination:
-                    results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="wait_for_all")
+                    results = fetching_tool(
+                        job, data_list=["state_avg", "iteration"], mode="wait_for_all"
+                    )
                 else:
-                    results = fetching_tool(job, data_list=["I_avg", "Q_avg", "iteration"], mode="wait_for_all")
+                    results = fetching_tool(
+                        job,
+                        data_list=["I_avg", "Q_avg", "iteration"],
+                        mode="wait_for_all",
+                    )
 
                 if state_discrimination:
                     state_avg, iteration = results.fetch_all()
@@ -467,7 +503,7 @@ else:
 
                 node.results[orbit_variable][j] = value_avg
 
-            # Close the quantum machines at the end in order to put all flux biases to 0 so that the fridge doesn't heat-up
+            # Close the quantum machines at the end
             qm.close()
 
 # %%
@@ -486,6 +522,6 @@ plt.savefig("test21233321.png")
 node.results["figure"] = fig
 
 # %%
-node.results['initial_parameters'] = node.parameters.model_dump()
+node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()

@@ -11,7 +11,6 @@ Prerequisites:
     - Having calibrated the IQ mixer connected to the qubit drive line (external mixer or Octave port)
     - Having found the rough qubit frequency and pi pulse duration (rabi_chevron_duration or time_rabi).
     - Set the qubit frequency, desired pi pulse duration and rough pi pulse amplitude in the state.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the qubit pulse amplitude (pi_amp) in the state.
@@ -40,19 +39,17 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 200
     operation: str = "x180"
     min_amp_factor: float = 0.0
     max_amp_factor: float = 1.5
     amp_factor_step: float = 0.005
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     timeout: int = 100
 
 
-node = QualibrationNode(name="08b_Power_Rabi_E_to_F", parameters=Parameters())
+node = QualibrationNode(name="10b_Power_Rabi_E_to_F", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -82,7 +79,6 @@ for q in qubits:
 # %% {QUA_program}
 operation = node.parameters.operation  # The qubit operation to play
 n_avg = node.parameters.num_averages  # The number of averages
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 amps = np.arange(
@@ -98,20 +94,6 @@ with program() as power_rabi:
     count = declare(int)  # QUA variable for counting the qubit pulses
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -156,14 +138,15 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(power_rabi)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(power_rabi)
 
-        # %% {Live_plot}
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            n = results.fetch_all()[0]
-            progress_counter(n, n_avg, start_time=results.start_time)
+    # %% {Live_plot}
+    results = fetching_tool(job, ["n"], mode="live")
+    while results.is_processing():
+        n = results.fetch_all()[0]
+        progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -185,7 +168,7 @@ else:
     # %% {Data_analysis}
     # Fit the power Rabi oscillations
     fit = fit_oscillation(ds.IQ_abs, "amp")
-    
+
     # Save fitting results
     fit_results = {}
     fit_evals = oscillation(

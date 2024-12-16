@@ -12,7 +12,6 @@ The resulting IQ blobs are displayed, and the data is processed to determine:
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
-    - Set the desired flux bias
 
 Next steps before going to the next node:
     - Update the rotation angle (rotation_angle) in the state.
@@ -40,16 +39,14 @@ import xarray as xr
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_runs: int = 2000
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     timeout: int = 100
 
 
-node = QualibrationNode(name="08d_IQ_Blobs_G_E_F", parameters=Parameters())
+node = QualibrationNode(name="10d_IQ_Blobs_G_E_F", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -83,7 +80,6 @@ for q in qubits:
 
 # %% {QUA_program}
 n_runs = node.parameters.num_runs  # Number of runs
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
 
 with program() as iq_blobs:
@@ -92,21 +88,6 @@ with program() as iq_blobs:
     I_f, I_f_st, Q_f, Q_f_st, _, _ = qua_declaration(num_qubits=num_qubits)
 
     for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         update_frequency(
             qubit.resonator.name,
@@ -182,14 +163,15 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(iq_blobs)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(iq_blobs)
 
-        # %% {Live_plot}
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            n = results.fetch_all()[0]
-            progress_counter(n, n_runs, start_time=results.start_time)
+    # %% {Live_plot}
+    results = fetching_tool(job, ["n"], mode="live")
+    while results.is_processing():
+        n = results.fetch_all()[0]
+        progress_counter(n, n_runs, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)

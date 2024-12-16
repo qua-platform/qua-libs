@@ -48,7 +48,6 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 200
     operation: str = "saturation"
@@ -56,12 +55,11 @@ class Parameters(NodeParameters):
     operation_len_in_ns: Optional[int] = None
     frequency_span_in_mhz: float = 500
     frequency_step_in_mhz: float = 1
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     timeout: int = 100
 
 
-node = QualibrationNode(name="08a_Qubit_Spectroscopy_E_to_F", parameters=Parameters())
+node = QualibrationNode(name="10a_Qubit_Spectroscopy_E_to_F", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -97,7 +95,6 @@ else:
 span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, +span // 2, step, dtype=np.int32)
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
 
 with program() as qubit_spec:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
@@ -105,20 +102,6 @@ with program() as qubit_spec:
     df = declare(int)  # QUA variable for the qubit frequency
 
     for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -129,7 +112,8 @@ with program() as qubit_spec:
                 qubit.xy.play("x180")
                 # Update the qubit frequency to scan around the excepted f_01
                 update_frequency(
-                    qubit.xy.name, df - qubit.anharmonicity + qubit.xy.intermediate_frequency
+                    qubit.xy.name,
+                    df - qubit.anharmonicity + qubit.xy.intermediate_frequency,
                 )
                 # Play the saturation pulse
                 qubit.xy.play(
@@ -165,16 +149,17 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(qubit_spec)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(qubit_spec)
 
-        # %% {Live_plot}
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+    # %% {Live_plot}
+    results = fetching_tool(job, ["n"], mode="live")
+    while results.is_processing():
+        # Fetch results
+        n = results.fetch_all()[0]
+        # Progress bar
+        progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -208,7 +193,7 @@ else:
             for q in qubits
         ]
     )
-    
+
     # Save fitting results
     fit_results = {}
     for q in qubits:

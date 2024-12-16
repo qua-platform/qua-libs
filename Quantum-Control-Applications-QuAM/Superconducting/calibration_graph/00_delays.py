@@ -1,4 +1,4 @@
-#%%
+# %%
 from qm.qua import *
 from qualang_tools.units import unit
 from quam_libs.components import QuAM
@@ -19,12 +19,10 @@ qmm = machine.connect()
 qubits = machine.active_qubits
 
 with program() as prog:
-
     with infinite_loop_():
-
-        qubits[0].xy.play('saturation')
-        qubits[0].z.play('const')
-        qubits[0].resonator.play('readout')
+        qubits[0].xy.play("saturation")
+        # qubits[0].z.play("const")
+        qubits[0].resonator.play("readout")
 
 qm = qmm.open_qm(config)
 job = qm.execute(prog)

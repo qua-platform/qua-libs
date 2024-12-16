@@ -17,7 +17,6 @@ Prerequisites:
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the config.
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux bias.
 """
 
 # %% {Imports}
@@ -40,7 +39,6 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = False
@@ -49,18 +47,13 @@ class Parameters(NodeParameters):
     max_circuit_depth: int = 1000  # Maximum circuit depth
     delta_clifford: int = 20
     seed: int = 345324
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
     simulate: bool = False
     timeout: int = 100
     multiplexed: bool = True
 
-node = QualibrationNode(
-    name="11a_Randomized_Benchmarking",
-    parameters=Parameters()
-)
 
-
+node = QualibrationNode(name="19a_Randomized_Benchmarking", parameters=Parameters())
 
 
 from qm.qua import *
@@ -80,9 +73,6 @@ import matplotlib
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
-
-
-
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -115,7 +105,6 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = (
     node.parameters.delta_clifford
 )  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
 assert (
     max_circuit_depth / delta_clifford
@@ -253,20 +242,13 @@ with program() as randomized_benchmarking:
     # state_st = declare_stream()
     state_st = [declare_stream() for _ in range(num_qubits)]
 
-    for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            raise ValueError(f"Unrecognized flux point {flux_point}")
-
     with for_(
         m, 0, m < num_of_sequences, m + 1
     ):  # QUA for_ loop over the random sequences
-        sequence_list, inv_gate_list = (
+        (
+            sequence_list,
+            inv_gate_list,
+        ) = (
             generate_sequence()
         )  # Generate the random sequence of length max_circuit_depth
 
@@ -281,15 +263,7 @@ with program() as randomized_benchmarking:
             with if_((depth == 1) | (depth == depth_target)):
                 with for_(n, 0, n < n_avg, n + 1):
                     for i, qubit in enumerate(qubits):
-                        # Bring the active qubits to the minimum frequency point
-                        if flux_point == "independent":
-                            machine.apply_all_flux_to_min()
-                            qubit.z.to_independent_idle()
-                            qubit.z.wait(1000)
-                        if node.parameters.multiplexed:
-                            qubit.align()
-                        else:
-                            align()
+
                         # Initialize the qubits
                         if reset_type == "active":
                             active_reset(machine, qubit.name)
@@ -344,17 +318,18 @@ if node.parameters.simulate:
 else:
     # Prepare data for saving
     node.results = {}
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(randomized_benchmarking)
-        for i in range(num_qubits):
-            print(f"Fetching results for qubit {qubits[i].name}")
-            data_list = ["iteration"]
-            results = fetching_tool(job, data_list, mode="live")
-            while results.is_processing():
-                # Fetch results
-                fetched_data = results.fetch_all()
-                m = fetched_data[0]
-                progress_counter(m, num_of_sequences, start_time=results.start_time)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(randomized_benchmarking, flags=['not-strict-timing'])
+    for i in range(num_qubits):
+        print(f"Fetching results for qubit {qubits[i].name}")
+        data_list = ["iteration"]
+        results = fetching_tool(job, data_list, mode="live")
+        while results.is_processing():
+            # Fetch results
+            fetched_data = results.fetch_all()
+            m = fetched_data[0]
+            progress_counter(m, num_of_sequences, start_time=results.start_time)
 
 # %%
 depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford)

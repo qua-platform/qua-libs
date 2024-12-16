@@ -40,7 +40,6 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 100
     frequency_span_in_mhz: float = 15.0
@@ -52,7 +51,6 @@ class Parameters(NodeParameters):
 node = QualibrationNode(name="02a_Resonator_Spectroscopy", parameters=Parameters())
 
 
-
 # %% {Initialize_QuAM_and_QOP}
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
@@ -60,7 +58,7 @@ u = unit(coerce_to_integer=True)
 machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
-octave_config = machine.get_octave_config()
+# octave_config = machine.get_octave_config()
 # Open Communication with the QOP
 qmm = machine.connect()
 
@@ -87,16 +85,13 @@ with program() as multi_res_spec:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     df = declare(int)  # QUA variable for the readout frequency
 
-    # Bring the active qubits to the minimum frequency point
-    machine.apply_all_flux_to_min()
-
     with for_(n, 0, n < n_avg, n + 1):
         with for_(*from_array(df, dfs)):
             for i, rr in enumerate(resonators):
                 # Update the resonator frequencies for all resonators
                 update_frequency(rr.name, df + rr.intermediate_frequency)
                 # Measure the resonator
-                rr.measure("readout", qua_vars=(I[i], Q[i]))
+                rr.measure("readout", qua_vars=(I[i], Q[i])) # qubit.resonator.operations["readout"].integration_weights_angle
                 # wait for the resonator to relax
                 rr.wait(machine.depletion_time * u.ns)
                 # save data
@@ -123,56 +118,55 @@ if node.parameters.simulate:
     node.save()
 else:
     # Open a quantum machine to execute the QUA program
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(multi_res_spec)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(multi_res_spec)
 
-        # %% {Live_plot}
-        # Tool to easily fetch results from the OPX (results_handle used in it)
-        data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
-        results = fetching_tool(job, data_list, mode="live")
-        # Prepare the figures for live plotting
-        fig, axss = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 5))
-        if len(axss.shape) == 1:
-            axss = np.expand_dims(axss, -1)
-        interrupt_on_close(fig, job)
-        s_data = []
-        while results.is_processing():
-            # Fetch results
-            data = results.fetch_all()
-            for i in range(num_qubits):
-                I, Q = data[2 * i : 2 * i + 2]
-                rr = resonators[i]
-                # Data analysis
-                s_data.append(
-                    u.demod2volts(I + 1j * Q, rr.operations["readout"].length)
-                )
-                # Plot
-                plt.sca(axss[0, i])
-                plt.suptitle("Multiplexed resonator spectroscopy")
-                plt.cla()
-                plt.plot(rr.RF_frequency / u.MHz + dfs / u.MHz, np.abs(s_data[-1]), ".")
-                plt.title(f"{rr.name}")
-                plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
-                plt.sca(axss[1, i])
-                plt.cla()
-                plt.plot(
-                    rr.RF_frequency / u.MHz + dfs / u.MHz,
-                    signal.detrend(np.unwrap(np.angle(s_data[-1]))),
-                    ".",
-                )
-                plt.ylabel("Phase [rad]")
-                plt.xlabel("Readout frequency [MHz]")
-                plt.tight_layout()
-                plt.pause(0.1)
+    # %% {Live_plot}
+    # Tool to easily fetch results from the OPX (results_handle used in it)
+    data_list = sum([[f"I{i + 1}", f"Q{i + 1}"] for i in range(num_qubits)], [])
+    results = fetching_tool(job, data_list, mode="live")
+    # Prepare the figures for live plotting
+    fig, axss = plt.subplots(2, num_qubits, figsize=(4 * num_qubits, 5))
+    if len(axss.shape) == 1:
+        axss = np.expand_dims(axss, -1)
+    interrupt_on_close(fig, job)
+    s_data = []
+    while results.is_processing():
+        # Fetch results
+        data = results.fetch_all()
+        for i in range(num_qubits):
+            I, Q = data[2 * i : 2 * i + 2]
+            rr = resonators[i]
+            # Data analysis
+            s_data.append(
+                u.demod2volts(I + 1j * Q, rr.operations["readout"].length)
+            )
+            # Plot
+            plt.sca(axss[0, i])
+            plt.suptitle("Multiplexed resonator spectroscopy")
+            plt.cla()
+            plt.plot(rr.RF_frequency / u.MHz + dfs / u.MHz, np.abs(s_data[-1]), ".")
+            plt.title(f"{rr.name}")
+            plt.ylabel(r"R=$\sqrt{I^2 + Q^2}$ [V]")
+            plt.sca(axss[1, i])
+            plt.cla()
+            plt.plot(
+                rr.RF_frequency / u.MHz + dfs / u.MHz,
+                signal.detrend(np.unwrap(np.angle(s_data[-1]))),
+                ".",
+            )
+            plt.ylabel("Phase [rad]")
+            plt.xlabel("Readout frequency [MHz]")
+            plt.tight_layout()
+            plt.pause(0.1)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"freq": dfs})
 
     ds = ds.assign({"IQ_abs": np.sqrt(ds["I"] ** 2 + ds["Q"] ** 2)})
-    ds = ds.assign(
-        {"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")}
-    )
+    ds = ds.assign({"phase": subtract_slope(apply_angle(ds.I + 1j * ds.Q, dim="freq"), dim="freq")})
 
     def abs_freq(q, freq):
         return freq + q.resonator.RF_frequency

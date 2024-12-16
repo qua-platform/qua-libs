@@ -18,6 +18,7 @@ from typing import Optional
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.trackable_object import tracked_updates
 
+
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubit: str = "q1"
@@ -29,11 +30,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
 
-node = QualibrationNode(
-    name="01_Time_of_Flight",
-    parameters=Parameters()
-)
 
+node = QualibrationNode(name="01_Time_of_Flight", parameters=Parameters())
 
 
 from qm.qua import *
@@ -43,7 +41,6 @@ from quam_libs.components import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
-
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -57,12 +54,18 @@ resonators = [q.resonator for q in machine.active_qubits]
 tracked_resonators = []
 for resonator in resonators:
     # make temporary updates before running the program and revert at the end.
-    with tracked_updates(resonator, auto_revert=False, dont_assign_to_none=True) as resonator:
+    with tracked_updates(
+        resonator, auto_revert=False, dont_assign_to_none=True
+    ) as resonator:
         resonator.time_of_flight = node.parameters.time_of_flight_in_ns
         resonator.operations["readout"].length = node.parameters.readout_length_in_ns
-        resonator.operations["readout"].amplitude = node.parameters.readout_amplitude_in_v
+        resonator.operations[
+            "readout"
+        ].amplitude = node.parameters.readout_amplitude_in_v
         if node.parameters.intermediate_frequency_in_mhz is not None:
-            resonator.intermediate_frequency = node.parameters.intermediate_frequency_in_mhz * u.MHz
+            resonator.intermediate_frequency = (
+                node.parameters.intermediate_frequency_in_mhz * u.MHz
+            )
         tracked_resonators.append(resonator)
 
 # Generate the OPX and Octave configurations
@@ -73,7 +76,6 @@ qmm = machine.connect()
 
 # Get the relevant QuAM components
 resonator = machine.qubits[node.parameters.qubit].resonator  # The resonator element
-
 
 
 with program() as raw_trace_prog:
@@ -90,10 +92,9 @@ with program() as raw_trace_prog:
 
     with stream_processing():
         # Will save average:
-        adc_st.input1().average().save("adc")
+        adc_st.input2().average().save("adc")
         # Will save only last run:
-        adc_st.input1().save("adc_single_run")
-
+        adc_st.input2().save("adc_single_run")
 
 
 if node.parameters.simulate:
@@ -136,7 +137,14 @@ else:
     xl = plt.xlim()
     yl = plt.ylim()
     plt.axvline(delay, color="k", linestyle="--", label="TOF")
-    plt.fill_between(range(len(adc_single_run)), -0.5, 0.5, color="grey", alpha=0.2, label="ADC Range")
+    plt.fill_between(
+        range(len(adc_single_run)),
+        -0.5,
+        0.5,
+        color="grey",
+        alpha=0.2,
+        label="ADC Range",
+    )
     plt.xlabel("Time [ns]")
     plt.ylabel("Signal amplitude [V]")
     plt.legend()
@@ -162,10 +170,11 @@ else:
             resonator.reapply_changes()
         for resonator in resonators:
             if node.parameters.time_of_flight_in_ns is not None:
-                resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(delay)
+                resonator.time_of_flight = node.parameters.time_of_flight_in_ns + int(
+                    delay
+                )
             else:
                 resonator.time_of_flight = resonator.time_of_flight + int(delay)
-
 
     node.results = {
         "run_parameters": node.parameters.model_dump(),

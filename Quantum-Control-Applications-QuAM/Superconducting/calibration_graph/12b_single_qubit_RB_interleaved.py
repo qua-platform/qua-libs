@@ -19,7 +19,6 @@ Prerequisites:
     - Having calibrated qubit pi pulse (x180) by running qubit, spectroscopy, rabi_chevron, power_rabi and updated the state.
     - Having the qubit frequency perfectly calibrated (ramsey).
     - (optional) Having calibrated the readout (readout_frequency, amplitude, duration_optimization IQ_blobs) for better SNR.
-    - Set the desired flux bias.
 """
 
 
@@ -45,21 +44,21 @@ class Parameters(NodeParameters):
     qubits: Optional[List[str]] = None
     use_state_discrimination: bool = True
     use_strict_timing: bool = True
+    # Correspondence table:
+    #  0: identity |  1: x180 |  2: y180
+    # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
     interleaved_gate_index: int = 2
     num_random_sequences: int = 50  # Number of random sequences
     num_averages: int = 20
     max_circuit_depth: int = 1000  # Maximum circuit depth
     delta_clifford: int = 10
     seed: int = 345324
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
     simulate: bool = False
     timeout: int = 100
 
 
-node = QualibrationNode(
-    name="11b_Randomized_Benchmarking_Interleaved", parameters=Parameters()
-)
+node = QualibrationNode(name="19b_Randomized_Benchmarking_Interleaved", parameters=Parameters())
 
 
 # %% {Initialize_QuAM_and_QOP}
@@ -93,7 +92,6 @@ if node.parameters.delta_clifford < 1:
 delta_clifford = (
     node.parameters.delta_clifford
 )  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 1
-flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active
 assert (
     max_circuit_depth / delta_clifford
@@ -258,20 +256,6 @@ def get_rb_interleaved_program(qubit: Transmon):
         if state_discrimination:
             state_st = declare_stream()
 
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
 
         with for_(
             m, 0, m < num_of_sequences, m + 1
@@ -367,119 +351,120 @@ if node.parameters.simulate:
 else:
     node.results = {}
     for qubit in qubits:
-        with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-            job = qm.execute(get_rb_interleaved_program(qubit))
-            if state_discrimination:
-                results = fetching_tool(
-                    job, data_list=["state_avg", "iteration"], mode="live"
-                )
-            else:
-                results = fetching_tool(
-                    job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
-                )
-            # Live plotting
-            fig = plt.figure()
-            interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+        qm = qmm.open_qm(config, close_other_machines=True)
+        # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+        job = qm.execute(get_rb_interleaved_program(qubit), flags=['not-strict-timing'])
+        if state_discrimination:
+            results = fetching_tool(
+                job, data_list=["state_avg", "iteration"], mode="live"
+            )
+        else:
+            results = fetching_tool(
+                job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
+            )
+        # Live plotting
+        fig = plt.figure()
+        interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
+        # data analysis
+        x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
+        x[
+            0
+        ] = 1  # to set the first value of 'x' to be depth = 1 as in the experiment
+        while results.is_processing():
             # data analysis
-            x = np.arange(0, max_circuit_depth + 0.1, delta_clifford)
-            x[0] = (
-                1  # to set the first value of 'x' to be depth = 1 as in the experiment
-            )
-            while results.is_processing():
-                # data analysis
-                if state_discrimination:
-                    state_avg, iteration = results.fetch_all()
-                    value_avg = state_avg
-                else:
-                    I, Q, iteration = results.fetch_all()
-                    value_avg = I
-
-                # Progress bar
-                progress_counter(
-                    iteration, num_of_sequences, start_time=results.get_start_time()
-                )
-                # Plot averaged values
-                plt.cla()
-                plt.plot(x, value_avg, marker=".")
-                plt.xlabel("Number of Clifford gates")
-                plt.ylabel("Sequence Fidelity")
-                plt.title(
-                    f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}"
-                )
-                plt.pause(0.1)
-
-            # At the end of the program, fetch the non-averaged results to get the error-bars
             if state_discrimination:
-                results = fetching_tool(job, data_list=["state"])
-                state = results.fetch_all()[0]
-                value_avg = np.mean(state, axis=0)
-                error_avg = np.std(state, axis=0)
+                state_avg, iteration = results.fetch_all()
+                value_avg = state_avg
             else:
-                results = fetching_tool(job, data_list=["I", "Q"])
-                I, Q = results.fetch_all()
-                value_avg = np.mean(I, axis=0)
-                error_avg = np.std(I, axis=0)
-            # data analysis
-            pars, cov = curve_fit(
-                f=power_law,
-                xdata=x,
-                ydata=value_avg,
-                p0=[0.5, 0.5, 0.9],
-                bounds=(-np.inf, np.inf),
-                maxfev=2000,
-            )
-            stdevs = np.sqrt(np.diag(cov))
+                I, Q, iteration = results.fetch_all()
+                value_avg = I
 
-            print("#########################")
-            print("### Fitted Parameters ###")
-            print("#########################")
-            print(
-                f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+            # Progress bar
+            progress_counter(
+                iteration, num_of_sequences, start_time=results.get_start_time()
             )
-            print("Covariance Matrix")
-            print(cov)
-
-            one_minus_p = 1 - pars[2]
-            r_c = one_minus_p * (1 - 1 / 2**1)
-            r_g = (
-                r_c / 1.875
-            )  # 1.875 is the average number of gates in clifford operation
-            r_c_std = stdevs[2] * (1 - 1 / 2**1)
-            r_g_std = r_c_std / 1.875
-
-            print("#########################")
-            print("### Useful Parameters ###")
-            print("#########################")
-            print(
-                f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
-                f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
-                f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
-            )
-            # Plots
-            fig_analysis = plt.figure()
-            plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
-            plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+            # Plot averaged values
+            plt.cla()
+            plt.plot(x, value_avg, marker=".")
             plt.xlabel("Number of Clifford gates")
             plt.ylabel("Sequence Fidelity")
             plt.title(
-                f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})"
+                f"Single qubit interleaved RB {get_interleaved_gate(interleaved_gate_index)}"
             )
+            plt.pause(0.1)
 
-            # Save data from the node
-            node.results[qubit.name] = {
-                f"{qubit.name}_depth": x,
-                f"{qubit.name}_fidelity": value_avg,
-                f"{qubit.name}_error": error_avg,
-                f"{qubit.name}_fit": power_law(x, *pars),
-                f"{qubit.name}_covariance_par": pars,
-                f"{qubit.name}_error_rate": one_minus_p,
-                f"{qubit.name}_clifford_set_infidelity": r_c,
-                f"{qubit.name}_gate_infidelity": r_g,
-            }
-            node.results[f"{qubit.name}_figure"] = fig
-            node.results[f"{qubit.name}_figure_analysis"] = fig_analysis
+        # At the end of the program, fetch the non-averaged results to get the error-bars
+        if state_discrimination:
+            results = fetching_tool(job, data_list=["state"])
+            state = results.fetch_all()[0]
+            value_avg = np.mean(state, axis=0)
+            error_avg = np.std(state, axis=0)
+        else:
+            results = fetching_tool(job, data_list=["I", "Q"])
+            I, Q = results.fetch_all()
+            value_avg = np.mean(I, axis=0)
+            error_avg = np.std(I, axis=0)
+        # data analysis
+        pars, cov = curve_fit(
+            f=power_law,
+            xdata=x,
+            ydata=value_avg,
+            p0=[0.5, 0.5, 0.9],
+            bounds=(-np.inf, np.inf),
+            maxfev=2000,
+        )
+        stdevs = np.sqrt(np.diag(cov))
 
-            plt.show()
+        print("#########################")
+        print("### Fitted Parameters ###")
+        print("#########################")
+        print(
+            f"A = {pars[0]:.3} ({stdevs[0]:.1}), B = {pars[1]:.3} ({stdevs[1]:.1}), p = {pars[2]:.3} ({stdevs[2]:.1})"
+        )
+        print("Covariance Matrix")
+        print(cov)
+
+        one_minus_p = 1 - pars[2]
+        r_c = one_minus_p * (1 - 1 / 2**1)
+        r_g = (
+            r_c / 1.875
+        )  # 1.875 is the average number of gates in clifford operation
+        r_c_std = stdevs[2] * (1 - 1 / 2**1)
+        r_g_std = r_c_std / 1.875
+
+        print("#########################")
+        print("### Useful Parameters ###")
+        print("#########################")
+        print(
+            f"Error rate: 1-p = {np.format_float_scientific(one_minus_p, precision=2)} ({stdevs[2]:.1})\n"
+            f"Clifford set infidelity: r_c = {np.format_float_scientific(r_c, precision=2)} ({r_c_std:.1})\n"
+            f"Gate infidelity: r_g = {np.format_float_scientific(r_g, precision=2)}  ({r_g_std:.1})"
+        )
+        # Plots
+        fig_analysis = plt.figure()
+        plt.errorbar(x, value_avg, yerr=error_avg, marker=".")
+        plt.plot(x, power_law(x, *pars), linestyle="--", linewidth=2)
+        plt.xlabel("Number of Clifford gates")
+        plt.ylabel("Sequence Fidelity")
+        plt.title(
+            f"Single qubit interleaved RB for {qubit.name} ({get_interleaved_gate(interleaved_gate_index)})"
+        )
+
+        # Save data from the node
+        node.results[qubit.name] = {
+            f"{qubit.name}_depth": x,
+            f"{qubit.name}_fidelity": value_avg,
+            f"{qubit.name}_error": error_avg,
+            f"{qubit.name}_fit": power_law(x, *pars),
+            f"{qubit.name}_covariance_par": pars,
+            f"{qubit.name}_error_rate": one_minus_p,
+            f"{qubit.name}_clifford_set_infidelity": r_c,
+            f"{qubit.name}_gate_infidelity": r_g,
+        }
+        node.results[f"{qubit.name}_figure"] = fig
+        node.results[f"{qubit.name}_figure_analysis"] = fig_analysis
+
+        plt.show()
 
 # %%
 node.results["initial_parameters"] = node.parameters.model_dump()

@@ -39,22 +39,18 @@ import numpy as np
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
-
     qubits: Optional[List[str]] = None
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
     max_wait_time_in_ns: int = 3000
     wait_time_step_in_ns: int = 16
-    flux_point_joint_or_independent_or_arbitrary: Literal[
-        "joint", "independent", "arbitrary"
-    ] = "joint"
     simulate: bool = False
     timeout: int = 100
     use_state_discrimination: bool = False
 
 
-node = QualibrationNode(name="05_Ramsey", parameters=Parameters())
+node = QualibrationNode(name="06a_Ramsey", parameters=Parameters())
 
 
 # Class containing tools to help handle units and conversions.
@@ -93,18 +89,6 @@ idle_times = np.unique(
 
 # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
-flux_point = (
-    node.parameters.flux_point_joint_or_independent_or_arbitrary
-)  # 'independent' or 'joint'
-if flux_point == "arbitrary":
-    arb_detunings = {
-        q.name: q.xy.intermediate_frequency - q.arbitrary_intermediate_frequency
-        for q in qubits
-    }
-    arb_flux_bias_offset = {q.name: q.z.arbitrary_offset for q in qubits}
-else:
-    arb_flux_bias_offset = {q.name: 0.0 for q in qubits}
-    arb_detunings = {q.name: 0.0 for q in qubits}
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -118,21 +102,6 @@ with program() as ramsey:
 
     for i, qubit in enumerate(qubits):
 
-        # Bring the active qubits to the minimum frequency point
-        if flux_point == "independent":
-            machine.apply_all_flux_to_min()
-            qubit.z.to_independent_idle()
-        elif flux_point == "joint" or "arbitrary":
-            machine.apply_all_flux_to_joint_idle()
-        else:
-            machine.apply_all_flux_to_zero()
-
-        # Wait for the flux bias to settle
-        for qb in qubits:
-            wait(1000, qb.z.name)
-
-        align()
-
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_each_(t, idle_times):
@@ -143,33 +112,14 @@ with program() as ramsey:
                     # assign(phi, Cast.mul_fixed_by_int(arb_detunings[qubit.name] + detuning * 1e-9, 4 * t ))
                     # assign(phi, Cast.mul_fixed_by_int(phi, sign))
                     with if_(sign == 1):
-                        assign(
-                            phi,
-                            Cast.mul_fixed_by_int(
-                                (-arb_detunings[qubit.name] + detuning) * 1e-9, 4 * t
-                            ),
-                        )
+                        assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
                     with else_():
-                        assign(
-                            phi,
-                            Cast.mul_fixed_by_int(
-                                (-arb_detunings[qubit.name] - detuning) * 1e-9, 4 * t
-                            ),
-                        )
+                        assign(phi, Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * t))
                     align()
                     # # Strict_timing ensures that the sequence will be played without gaps
                     # with strict_timing_():
                     qubit.xy.play("x180", amplitude_scale=0.5)
                     qubit.xy.frame_rotation_2pi(phi)
-                    qubit.align()
-                    qubit.z.wait(20)
-                    qubit.z.play(
-                        "const",
-                        amplitude_scale=arb_flux_bias_offset[qubit.name]
-                        / qubit.z.operations["const"].amplitude,
-                        duration=t,
-                    )
-                    qubit.z.wait(20)
                     qubit.align()
                     qubit.xy.play("x180", amplitude_scale=0.5)
 
@@ -198,9 +148,7 @@ with program() as ramsey:
         n_st.save("n")
         for i in range(num_qubits):
             if node.parameters.use_state_discrimination:
-                state_st[i].buffer(2).buffer(len(idle_times)).average().save(
-                    f"state{i + 1}"
-                )
+                state_st[i].buffer(2).buffer(len(idle_times)).average().save(f"state{i + 1}")
             else:
                 I_st[i].buffer(2).buffer(len(idle_times)).average().save(f"I{i + 1}")
                 Q_st[i].buffer(2).buffer(len(idle_times)).average().save(f"Q{i + 1}")
@@ -217,16 +165,17 @@ if node.parameters.simulate:
     node.save()
 
 else:
-    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
-        job = qm.execute(ramsey)
+    qm = qmm.open_qm(config, close_other_machines=True)
+    # with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
+    job = qm.execute(ramsey)
 
-        # %% {Live_plot}
-        results = fetching_tool(job, ["n"], mode="live")
-        while results.is_processing():
-            # Fetch results
-            n = results.fetch_all()[0]
-            # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+    # %% {Live_plot}
+    results = fetching_tool(job, ["n"], mode="live")
+    while results.is_processing():
+        # Fetch results
+        n = results.fetch_all()[0]
+        # Progress bar
+        progress_counter(n, n_avg, start_time=results.start_time)
 
     # %% {Data_fetching_and_dataset_creation}
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
@@ -285,7 +234,7 @@ else:
     )
     decay = 1e-9 * tau.mean(dim="sign")
     decay_error = 1e-9 * tau_error.mean(dim="sign")
-    
+
     # Save fitting results
     fit_results = {
         q.name: {
@@ -347,15 +296,7 @@ else:
     # %% {Update_state}
     with node.record_state_updates():
         for q in qubits:
-            if (
-                not node.parameters.flux_point_joint_or_independent_or_arbitrary
-                == "arbitrary"
-            ):
-                q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
-            else:
-                q.arbitrary_intermediate_frequency -= float(
-                    fit_results[q.name]["freq_offset"]
-                )
+            q.xy.intermediate_frequency -= float(fit_results[q.name]["freq_offset"])
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
