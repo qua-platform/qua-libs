@@ -137,88 +137,60 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 
             with case_(2): # Y180
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x180")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                              
             with case_(3): # Y180,X180
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi)
-                qubit.align()
                 qubit.xy.play("x90")  
                               
             with case_(4): # x90, y90
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                                 
             with case_(5): # x90, -y90
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
                 
             with case_(6): # x90, y90
                 qubit.xy.play("-x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                 
             with case_(7): # -x90, -y90
                 qubit.xy.play("-x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
                 
             with case_(8): # y90 x90      
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
                 
             with case_(9): # y90 -x90      
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("-x90")
 
             with case_(10): # -y90 x90      
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
 
             with case_(11): # -y90 -x90      
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("-x90")
                                                 
             with case_(12): # x90
@@ -229,16 +201,12 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 
             with case_(14): # y90
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                                 
             with case_(15): # -y90
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
                                 
             with case_(16): # Z90
@@ -249,48 +217,34 @@ def play_sequence(sequence_list, depth, qubit: Transmon):
                 
             with case_(18): # x180 y90
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
                 
             with case_(19):  # x180 -y90
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
                 
             with case_(20): # Y180 X90
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                                 
             with case_(21): # Y180 -X90
                 qubit.xy.frame_rotation(-np.pi/2)
-                qubit.align()
                 qubit.xy.play("x90")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
-                qubit.align()
                 qubit.xy.play("-x90")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
                 
             with case_(22): # x90 Y90 X90
                 qubit.xy.play("x180")
-                qubit.align()
                 qubit.xy.frame_rotation(np.pi/2)
                 
             with case_(23): # -x90 Y90 -X90
                 qubit.xy.play("x180")
-                qubit.align()
                 qubit.xy.frame_rotation(-np.pi/2)
 
 
