@@ -40,12 +40,12 @@ import numpy as np
 # %% {Node_parameters}
 class Parameters(NodeParameters):
     qubits: Optional[List[str]] = ["qubitC4"]
-    num_averages: int = 100
-    frequency_detuning_in_mhz: float = 4.0
+    num_averages: int = 200
+    frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
-    max_wait_time_in_ns: int = 1000
+    max_wait_time_in_ns: int = 2000
     wait_time_step_in_ns: int = 4
-    repeatitions : int = 500
+    repeatitions : int = 50
     flux_offset_in_V: float = 0.04
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
@@ -89,6 +89,7 @@ idle_times = np.arange(
 # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = int(1e6 * node.parameters.frequency_detuning_in_mhz)
 flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
+freqs = {qubit.name: int((node.parameters.flux_offset_in_V**2 * qubit.freq_vs_flux_01_quad_term)) for qubit in qubits}
 
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -97,48 +98,56 @@ with program() as ramsey:
     state_st = [declare_stream() for _ in range(num_qubits)]
     t = declare(int)  # QUA variable for the idle time
     phi = declare(fixed)  # QUA variable for dephasing the second pi/2 pulse (virtual Z-rotation)
+    phi2 = declare(fixed)  # QUA variable for the flux dc level
     flux = declare(fixed)  # QUA variable for the flux dc level
     repeatition = declare(int)
+    sign = declare(int)
     
     for i, qubit in enumerate(qubits):
         # Bring the active qubits to the desired frequency point
         # qubit.z.set_dc_offset(0.3)
         # align()
         # wait(1_000_000)
+        freq_qua = declare(int,value=freqs[qubit.name])
         machine.set_all_fluxes(flux_point=flux_point, target=qubit)
         
-
-        with for_(n, 0, n < n_avg, n + 1):
-            save(n, n_st)
-            with for_(repeatition, 0, repeatition < node.parameters.repeatitions, repeatition + 1):
+        with for_(repeatition, 0, repeatition < node.parameters.repeatitions, repeatition + 1):
+            save(repeatition, n_st)
+            wait(2_000_000_000)
+            wait(2_000_000_000)
+            with for_(n, 0, n < n_avg, n + 1):
                 with for_(*from_array(t, idle_times)):
-                    # Read the state of the qubit before Ramsey starts
-                    readout_state(qubit, init_state[i])
-                    qubit.align()
-                    # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
-                    # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
-                    assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
-                    # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
-                    # Ramsey sequence
-                    qubit.xy.play("x180", amplitude_scale=0.5)
-                    qubit.align()
-                    wait(20, qubit.z.name)
-                    qubit.z.play("const", amplitude_scale=node.parameters.flux_offset_in_V / qubit.z.operations["const"].amplitude, duration=t)
-                    wait(20, qubit.z.name)
-                    qubit.xy.frame_rotation_2pi(phi)
-                    qubit.align()
-                    qubit.xy.play("x180", amplitude_scale=0.5)
+                    with for_(sign, -1, sign < 2, sign + 2):
+                        # Read the state of the qubit before Ramsey starts
+                        readout_state(qubit, init_state[i])
+                        qubit.align()
+                        # Rotate the frame of the second x90 gate to implement a virtual Z-rotation
+                        # 4*tau because tau was in clock cycles and 1e-9 because tau is ns
+                        assign(phi, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * t))
+                        assign(phi2, Cast.mul_fixed_by_int(4e-9, t * freq_qua))
+                        assign(phi, phi2+phi)
+                        # TODO: this has gaps and the Z rotation is not derived properly, is it okay still?
+                        # Ramsey sequence
+                        qubit.xy.play("x180", amplitude_scale=0.5)
+                        qubit.align()
+                        with if_(sign == 1):
+                            qubit.z.play("const", amplitude_scale=node.parameters.flux_offset_in_V / qubit.z.operations["const"].amplitude, duration=t)
+                        with else_():
+                            qubit.z.play("const", amplitude_scale=-node.parameters.flux_offset_in_V / qubit.z.operations["const"].amplitude, duration=t)
+                        qubit.xy.frame_rotation_2pi(phi)
+                        qubit.align()
+                        qubit.xy.play("x180", amplitude_scale=0.5)
 
-                    # Align the elements to measure after playing the qubit pulse.
-                    qubit.align()
-                    # Measure the state of the resonators
-                    readout_state(qubit, state[i])
-                    assign(state[i], init_state[i] ^ state[i])
-                    save(state[i], state_st[i])
+                        # Align the elements to measure after playing the qubit pulse.
+                        qubit.align()
+                        # Measure the state of the resonators
+                        readout_state(qubit, state[i])
+                        assign(state[i], init_state[i] ^ state[i])
+                        save(state[i], state_st[i])
 
-                    # Reset the frame of the qubits in order not to accumulate rotations
-                    reset_frame(qubit.xy.name)
-                    qubit.align()
+                        # Reset the frame of the qubits in order not to accumulate rotations
+                        reset_frame(qubit.xy.name)
+                        qubit.align()
 
         if not node.parameters.multiplexed:
             align()
@@ -146,7 +155,7 @@ with program() as ramsey:
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
-            state_st[i].buffer(len(idle_times)).buffer(node.parameters.repeatitions).average().save(f"state{i + 1}")
+            state_st[i].buffer(2).buffer(len(idle_times)).buffer(n_avg).buffer(node.parameters.repeatitions).save(f"state{i + 1}")
 
 
 # %% {Simulate_or_execute}
@@ -168,22 +177,23 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=False) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
         job = qm.execute(ramsey)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
             # Fetch results
             n = results.fetch_all()[0]
             # Progress bar
-            progress_counter(n, n_avg, start_time=results.start_time)
+            progress_counter(n-1, node.parameters.repeatitions, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times, "repeatition": np.arange(node.parameters.repeatitions)})
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1,1], "idle_time": idle_times, "n_avg": np.arange(node.parameters.num_averages), "repeatition": np.arange(node.parameters.repeatitions)})
         # Add the absolute time in µs to the dataset
         ds = ds.assign_coords(idle_time=4 * ds.idle_time / 1e3)
         ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
+        ds = ds.mean(dim = "n_avg")
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
@@ -220,7 +230,7 @@ if not node.parameters.simulate:
     grid_names = [q.grid_location for q in qubits]
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        ds.sel(qubit=qubit["qubit"]).state.plot(ax=ax)
+        ds.sel(qubit=qubit["qubit"], sign=1).state.plot(ax=ax)
         ax.set_title(qubit["qubit"])
         ax.set_xlabel("Idle_time (uS)")
         ax.set_ylabel(" repeatition")
@@ -231,7 +241,9 @@ if not node.parameters.simulate:
 
     grid = QubitGrid(ds, grid_names)
     for ax, qubit in grid_iter(grid):
-        frequency.sel(qubit=qubit["qubit"]).plot(marker=".", linewidth=0, ax=ax)
+        frequency.sel(qubit=qubit["qubit"], sign=1).plot(marker=".", linewidth=0, ax=ax, label="positive flux")
+        frequency.sel(qubit=qubit["qubit"], sign=-1).plot(marker=".", linewidth=0, ax=ax, label="negative flux")
+        ax.legend()
         ax.set_title(qubit["qubit"])
         ax.set_xlabel(" repeatition")
         ax.set_ylabel(" frequency (MHz)")
@@ -239,6 +251,19 @@ if not node.parameters.simulate:
     plt.tight_layout()
     plt.show()
     node.results["figure"] = grid.fig
+
+    grid = QubitGrid(ds, grid_names)
+    for ax, qubit in grid_iter(grid):
+        positive_flux = frequency.sel(qubit=qubit["qubit"], sign=1)
+        negative_flux = frequency.sel(qubit=qubit["qubit"], sign=-1)
+        ax.plot(negative_flux.values, positive_flux.values,'.')
+        ax.set_title(qubit["qubit"])
+        ax.set_xlabel(" negative flux")
+        ax.set_ylabel(" positive flux")
+    grid.fig.suptitle("Ramsey freq. Vs. repeatition")
+    plt.tight_layout()
+    plt.show()
+    node.results["figure_correlation"] = grid.fig
 
     # %% {Update_state}
     
@@ -250,5 +275,8 @@ if not node.parameters.simulate:
         node.results["initial_parameters"] = node.parameters.model_dump()
         node.machine = machine
         node.save()
+
+# %%
+
 
 # %%
