@@ -42,14 +42,14 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 50
-    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x90"
-    min_amp_factor: float = 0.97
-    max_amp_factor: float = 1.03
-    amp_factor_step: float = 0.001
-    max_number_rabi_pulses_per_sweep: int = 200
+    operation_x180_or_any_90: Literal["x180", "x90", "-x90", "y90", "-y90"] = "x180"
+    min_amp_factor: float = 0.
+    max_amp_factor: float = 1.5
+    amp_factor_step: float = 0.05
+    max_number_rabi_pulses_per_sweep: int = 1
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type_thermal_or_active: Literal["thermal", "active"] = "active"
-    state_discrimination: bool = True
+    state_discrimination: bool = False
     update_x90: bool = True
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -185,7 +185,7 @@ if node.parameters.simulate:
     node.save()
 
 elif node.parameters.load_data_id is None:
-    with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
+    with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
@@ -198,10 +198,7 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        if N_pi == 1:
-            ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps})
-        else:
-            ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
         if not state_discrimination:
             ds = convert_IQ_to_V(ds, qubits)
         # Add the qubit pulse absolute amplitude to the dataset
