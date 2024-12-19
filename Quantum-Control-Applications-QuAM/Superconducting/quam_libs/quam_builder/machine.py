@@ -156,9 +156,7 @@ def add_external_mixers(machine: QuAM, quam_state_path: Union[Path, str]):
                     if "mixers" in references.get_unreferenced_value(reference):
                         frequency_converter = FrequencyConverter(
                             local_oscillator=LocalOscillator(),
-                            mixer=Mixer(
-                                correction_gain=0.
-                            ),
+                            mixer=Mixer(),
                         )
                         mixer_name = references.get_unreferenced_value(reference).split('/')[2]
                         machine.mixers[mixer_name] = frequency_converter
