@@ -6,7 +6,8 @@ from qualang_tools.wirer.connectivity.element import QubitPairReference
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
-from .create_analog_ports import create_octave_port, create_mw_fem_port, create_lf_opx_plus_port
+from .create_analog_ports import create_octave_port, create_mw_fem_port, create_lf_opx_plus_port, \
+    create_external_mixer_reference
 from .create_digital_ports import create_digital_output_port
 from .paths import *
 
@@ -74,6 +75,8 @@ def get_channel_port(channel: AnyInstrumentChannel, channels: List[AnyInstrument
             key, reference = create_mw_fem_port(channel)
         elif channel.instrument_id in ["lf-fem", "opx+"]:
             key, reference = create_lf_opx_plus_port(channel, channels)
+        elif channel.instrument_id in ["external-mixer"]:
+            key, reference = create_external_mixer_reference(channel)
         else:
             raise ValueError(f"Unknown instrument type {channel.instrument_id}")
 

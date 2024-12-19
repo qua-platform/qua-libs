@@ -1,6 +1,8 @@
 import os
 import warnings
 from pathlib import Path
+
+from quam.components import FrequencyConverter
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
 from quam.components.ports import (
@@ -30,6 +32,7 @@ class QuAM(QuamRoot):
     """Example QuAM root component."""
 
     octaves: Dict[str, Octave] = field(default_factory=dict)
+    mixers: Dict[str, FrequencyConverter] = field(default_factory=dict)
 
     qubits: Dict[str, Transmon] = field(default_factory=dict)
     qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
