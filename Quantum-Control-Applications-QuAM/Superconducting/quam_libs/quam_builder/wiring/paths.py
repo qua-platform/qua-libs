@@ -1,3 +1,4 @@
+MIXERS_BASE_JSON_PATH = "#/mixers"
 OCTAVES_BASE_JSON_PATH = "#/octaves"
 QUBITS_BASE_JSON_PATH = "#/qubits"
 PORTS_BASE_JSON_PATH = "#/ports"

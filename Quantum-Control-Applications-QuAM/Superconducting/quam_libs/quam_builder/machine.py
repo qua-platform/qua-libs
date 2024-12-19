@@ -2,9 +2,10 @@ import os
 from pathlib import Path
 from typing import Union, Dict
 
-from quam.components import Octave
+from quam.components import Octave, LocalOscillator, Mixer
 
 from qualang_tools.wirer import Connectivity
+from quam.components import FrequencyConverter
 from quam_libs.quam_builder.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from quam_libs.quam_builder.transmons.add_transmon_drive_component import add_transmon_drive_component
 from quam_libs.quam_builder.transmons.add_transmon_flux_component import add_transmon_flux_component
@@ -17,6 +18,7 @@ from quam_libs.quam_builder.wiring.create_wiring import create_wiring
 
 def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_settings: Dict = {}) -> QuAM:
     add_octaves(machine, octaves_settings, quam_state_path)
+    add_external_mixers(machine, quam_state_path)
     add_ports(machine)
     add_transmons(machine)
     add_pulses(machine)
@@ -138,6 +140,28 @@ def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Pa
         )
         machine.octaves[octave_name] = octave
         octave.initialize_frequency_converters()
+
+    return machine
+
+
+def add_external_mixers(machine: QuAM, quam_state_path: Union[Path, str]):
+    if isinstance(quam_state_path, str):
+        quam_state_path = Path(quam_state_path)
+    quam_state_path = str(quam_state_path.parent.resolve())
+
+    for wiring_by_element in machine.wiring.values():
+        for wiring_by_line_type in wiring_by_element.values():
+            for references in wiring_by_line_type.values():
+                for reference in references:
+                    if "mixers" in references.get_unreferenced_value(reference):
+                        frequency_converter = FrequencyConverter(
+                            local_oscillator=LocalOscillator(),
+                            mixer=Mixer(
+                                correction_gain=0.
+                            ),
+                        )
+                        mixer_name = references.get_unreferenced_value(reference).split('/')[2]
+                        machine.mixers[mixer_name] = frequency_converter
 
     return machine
 
