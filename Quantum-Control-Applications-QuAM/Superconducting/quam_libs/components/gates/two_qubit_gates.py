@@ -54,12 +54,12 @@ class CZGate(TwoQubitGate):
     # the CZ operation, i.e. it is only applied as part of a CZ operation
 
     flux_pulse_control: Pulse
+    coupler_flux_pulse: Pulse = None
     
     pre_wait: int = 4
 
     phase_shift_control: float = 0.0
     phase_shift_target: float = 0.0
-    
 
     @property
     def gate_label(self) -> str:
@@ -77,6 +77,15 @@ class CZGate(TwoQubitGate):
 
         return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
 
+    @property
+    def coupler_flux_pulse_label(self) -> str:
+        if self.coupler_flux_pulse.id is not None:
+            pulse_label = self.coupler_flux_pulse.id
+        else:
+            pulse_label = "coupler_flux_pulse"
+
+        return f"{self.gate_label}{str_ref.DELIMITER}{pulse_label}"
+
     def execute(self, amplitude_scale=None):        
         self.transmon_pair.align()
         
@@ -88,6 +97,12 @@ class CZGate(TwoQubitGate):
             validate=False,
             amplitude_scale=amplitude_scale,
         )
+        
+        if self.coupler_flux_pulse is not None:
+            self.coupler.play(
+                self.coupler_flux_pulse_label,
+                validate=False
+            )
         
         self.transmon_pair.align()
         frame_rotation_2pi(self.phase_shift_control, self.qubit_control.xy.name)
@@ -119,6 +134,16 @@ class CZGate(TwoQubitGate):
         element_config = config["elements"][self.qubit_control.z.name]
         element_config["operations"][self.flux_pulse_control_label] = pulse.pulse_name
 
+        if self.coupler_flux_pulse is not None:
+            pulse = copy(self.coupler_flux_pulse)
+            pulse.id = self.coupler_flux_pulse_label
+            pulse.parent = None  # Reset parent so it can be attached to new parent
+            pulse.parent = self.coupler
+
+            pulse.apply_to_config(config)
+
+        element_config_coupler = config["elements"][self.coupler.name]
+        element_config_coupler["operations"][self.coupler_flux_pulse_label] = pulse.pulse_name
 
 @quam_dataclass
 class CZWithCompensationGate(CZGate):
