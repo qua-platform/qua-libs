@@ -48,7 +48,7 @@ class Parameters(NodeParameters):
     min_flux_offset_in_v: float = -0.02
     max_flux_offset_in_v: float = 0.03
     num_flux_points: int = 51
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
+    flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
     timeout: int = 100
@@ -204,7 +204,7 @@ if not node.parameters.simulate:
 
     # %% {Data_analysis}
     # Find the resonance dips for each flux point
-    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=5)
+    peaks = peaks_dips(ds.I, dim="freq", prominence_factor=3)
     # Fit the result with a parabola
     parabolic_fit_results = peaks.position.polyfit("flux", 2)
     # Try to fit again with a smaller prominence factor (may need some adjustment)
