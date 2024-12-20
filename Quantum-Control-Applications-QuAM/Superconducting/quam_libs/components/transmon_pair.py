@@ -35,9 +35,10 @@ class TransmonPair(QuamComponent):
         if self.coupler:
              channels += [self.coupler.name]
         
-        if self.gates['Cz'].compensations:
-            for compensation in self.gates['Cz'].compensations:
-                channels += [compensation["qubit"].xy.name, compensation["qubit"].z.name, compensation["qubit"].resonator.name]
+        if "Cz" in self.gates:
+            if hasattr(self.gates['Cz'], 'compensations'):
+                for compensation in self.gates['Cz'].compensations:
+                    channels += [compensation["qubit"].xy.name, compensation["qubit"].z.name, compensation["qubit"].resonator.name]
 
         align(*channels)
 
