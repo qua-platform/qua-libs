@@ -157,6 +157,27 @@ def active_reset_gef(
         qubit.align()
         assign(attempts, attempts + 1)
 
+def active_reset_simple(
+        qubit: Transmon,
+        save_qua_var: Optional[StreamType] = None,
+        pi_pulse_name: str = "x180",
+        readout_pulse_name: str = "readout"):
+    """
+    Simple active reset for a qubit
+    """
+    pulse = qubit.resonator.operations[readout_pulse_name]
+
+    I = declare(fixed)
+    Q = declare(fixed)
+    state = declare(bool)
+    qubit.align()
+    qubit.resonator.measure("readout", qua_vars=(I, Q))
+    assign(state, I > pulse.threshold)
+    wait(qubit.resonator.depletion_time // 4, qubit.resonator.name)
+    qubit.align()
+    qubit.xy.play(pi_pulse_name, condition=state)
+    qubit.align()
+
 
 def active_reset(
         qubit: Transmon,
