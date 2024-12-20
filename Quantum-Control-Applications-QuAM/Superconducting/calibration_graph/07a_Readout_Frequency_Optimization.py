@@ -39,8 +39,8 @@ class Parameters(NodeParameters):
 
     qubits: Optional[List[str]] = None
     num_averages: int = 100
-    frequency_span_in_mhz: float = 10
-    frequency_step_in_mhz: float = 0.1
+    frequency_span_in_mhz: float = 30
+    frequency_step_in_mhz: float = 0.2
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     simulate: bool = False
     simulation_duration_ns: int = 2500
@@ -254,3 +254,5 @@ if not node.parameters.simulate:
         node.machine = machine
         node.save()
 
+
+# %%
