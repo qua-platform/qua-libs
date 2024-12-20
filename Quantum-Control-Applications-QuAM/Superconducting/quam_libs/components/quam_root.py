@@ -154,7 +154,11 @@ class QuAM(QuamRoot):
             target.to_mutual_idle()
             target_bias = target.mutual_flux_bias
         
-        target.z.settle()
+        if isinstance(target, Transmon):
+            target.z.settle()
+        elif isinstance(target, TransmonPair):
+            target.qubit_control.z.settle()
+            target.qubit_target.z.settle()
         target.align()
         return target_bias      
 
