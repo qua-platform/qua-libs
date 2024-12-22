@@ -42,9 +42,11 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 n_avg = 100
 # Pulse duration sweep in ns
-durations = np.arange(100, 500, 1)
+durations = np.arange(1, 30, 1)
+# Ramp duration in ns
+ramp_duration = 7
 # Pulse amplitude sweep as the absolute voltage level in V
-Vpi = 0.3
+Vpi = 0.27
 
 seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
@@ -57,16 +59,16 @@ pi_list_4ns = []
 for t in range(16):  # Create the different baked sequences
     t = int(t)
     with baking(config, padding_method="left") as b:  # don't use padding to assure error if timing is incorrect
+        ramp_p1 = np.linspace(0.0, Vpi - level_init[0], ramp_duration).tolist()
+        ramp_p2 = np.linspace(0.0, -Vpi - level_init[1], ramp_duration).tolist()
         if t == 0:
-            wf1 = [0.0] * 16
-            wf2 = [0.0] * 16
+            wf1 = ramp_p1
+            wf2 = ramp_p2
         else:
-            wf1 = [0.25] * t
-            wf2 = [0.25] * t
+            wf1 = ramp_p1 + [Vpi - level_init[0]] * t
+            wf2 = ramp_p2 + [-Vpi - level_init[1]] * t
 
         # Add the baked operation to the config
-        play("ramp", "P1")
-        play("ramp", "P2")
         b.add_op("pi_baked", "P1", wf1)
         b.add_op("pi_baked", "P2", wf2)
 
@@ -77,12 +79,10 @@ for t in range(16):  # Create the different baked sequences
         b.play("pi_baked", "P2")  # Play the qubit pulse
     if t < 4:
         with baking(config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
-            wf1 = [0.25] * t
-            wf2 = [0.25] * t
+            wf1 = ramp_p1 + [Vpi - level_init[0]] * t
+            wf2 = ramp_p2 + [-Vpi - level_init[1]] * t
 
             # Add the baked operation to the config
-            play("ramp", "P1")
-            play("ramp", "P2")
             b4ns.add_op("pi_baked2", "P1", wf1)
             b4ns.add_op("pi_baked2", "P2", wf2)
 
@@ -102,6 +102,7 @@ with program() as Rabi_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration
     t_cycles = declare(int)  # QUA variable for the qubit pulse duration
+    t_over = declare(int)  # QUA variable for the qubit pulse duration
     t_left_ns = declare(int)  # QUA variable for the remainder
     n_st = declare_stream()  # Stream for the iteration number (progress bar)
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
@@ -120,11 +121,8 @@ with program() as Rabi_prog:
                     for ii in range(16):
                         with case_(ii):
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                            wait(duration_init * u.ns - 4 - 9 - 4, "P1", "P2")
-                            pi_list[ii].run(
-                                amp_array=[("P1", (Vpi - level_init[0]) * 4), ("P2", (-Vpi - level_init[1]) * 4)]
-                            )
-
+                            wait(duration_init * u.ns - 4 - 9, "P1", "P2")
+                            pi_list[ii].run()
             # Long qubit pulse: baking and play combined
             with else_():
                 assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
@@ -134,10 +132,8 @@ with program() as Rabi_prog:
                     for ii in range(4):
                         with case_(ii):
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                            wait(duration_init * u.ns - t_cycles - 4 - 29 - 4, "P1", "P2")
-                            pi_list_4ns[ii].run(
-                                amp_array=[("P1", (Vpi - level_init[0]) * 4), ("P2", (-Vpi - level_init[1]) * 4)]
-                            )
+                            wait(duration_init * u.ns - 4 - 9, "P1", "P2")
+                            pi_list_4ns[ii].run()
                             play("step" * amp((Vpi - level_init[0]) * 4), "P1", duration=t_cycles)
                             play("step" * amp((-Vpi - level_init[1]) * 4), "P2", duration=t_cycles)
 
@@ -244,4 +240,5 @@ else:
         plt.ylabel("Vpi [V]")
         plt.tight_layout()
         plt.pause(0.1)
+        plt.show()
 # %%
