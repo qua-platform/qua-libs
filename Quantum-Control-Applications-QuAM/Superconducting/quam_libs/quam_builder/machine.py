@@ -150,13 +150,16 @@ def add_external_mixers(machine: QuAM, quam_state_path: Union[Path, str]):
     quam_state_path = str(quam_state_path.parent.resolve())
 
     for wiring_by_element in machine.wiring.values():
-        for wiring_by_line_type in wiring_by_element.values():
-            for references in wiring_by_line_type.values():
+        for qubit, wiring_by_line_type in wiring_by_element.items():
+            for element, references in wiring_by_line_type.items():
                 for reference in references:
                     if "mixers" in references.get_unreferenced_value(reference):
                         frequency_converter = FrequencyConverter(
                             local_oscillator=LocalOscillator(),
-                            mixer=Mixer(),
+                            mixer=Mixer(
+                                intermediate_frequency=f"#/qubits/{qubit}/{element}/intermediate_frequency",
+                                # "local_oscillator_frequency": "...",
+                            )
                         )
                         mixer_name = references.get_unreferenced_value(reference).split('/')[2]
                         machine.mixers[mixer_name] = frequency_converter

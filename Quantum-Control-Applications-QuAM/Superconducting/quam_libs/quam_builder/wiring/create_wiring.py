@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from functools import reduce
 
 from qualang_tools.wirer import Connectivity
-from qualang_tools.wirer.connectivity.element import QubitPairReference
+from qualang_tools.wirer.connectivity.element import QubitPairReference, QubitReference
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
@@ -21,7 +21,7 @@ def create_wiring(connectivity: Connectivity) -> dict:
     for element_id, element in connectivity.elements.items():
         for line_type, channels in element.channels.items():
             if line_type in [WiringLineType.RESONATOR, WiringLineType.DRIVE, WiringLineType.FLUX]:
-                for k, v in qubit_wiring(channels).items():
+                for k, v in qubit_wiring(channels, element_id, line_type).items():
                     set_nested_value_with_path(wiring, f"qubits/{element_id}/{line_type.value}/{k}", v)
 
             elif line_type == WiringLineType.COUPLER:
@@ -34,14 +34,17 @@ def create_wiring(connectivity: Connectivity) -> dict:
     return wiring
 
 
-def qubit_wiring(channels: List[AnyInstrumentChannel]) -> dict:
+def qubit_wiring(channels: List[AnyInstrumentChannel], element_id: QubitReference, line_type: WiringLineType) -> dict:
     """
     Generates a dictionary containing QuAM-compatible JSON references for a
     list of channels from a single qubit and the same line type.
     """
     qubit_line_wiring = {}
     for channel in channels:
-        if not (channel.signal_type == "digital" and channel.io_type == "input"):
+        if channel.instrument_id == "external-mixer":
+            key, reference = create_external_mixer_reference(channel, element_id, line_type)
+            qubit_line_wiring[key] = reference
+        elif not (channel.signal_type == "digital" and channel.io_type == "input"):
             key, reference = get_channel_port(channel, channels)
             qubit_line_wiring[key] = reference
 
@@ -75,8 +78,6 @@ def get_channel_port(channel: AnyInstrumentChannel, channels: List[AnyInstrument
             key, reference = create_mw_fem_port(channel)
         elif channel.instrument_id in ["lf-fem", "opx+"]:
             key, reference = create_lf_opx_plus_port(channel, channels)
-        elif channel.instrument_id in ["external-mixer"]:
-            key, reference = create_external_mixer_reference(channel)
         else:
             raise ValueError(f"Unknown instrument type {channel.instrument_id}")
 
