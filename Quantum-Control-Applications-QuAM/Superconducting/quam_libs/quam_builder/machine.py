@@ -20,7 +20,7 @@ from quam_libs.quam_builder.wiring.create_wiring import create_wiring
 
 def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_settings: Dict = {}) -> QuAM:
     add_octaves(machine, octaves_settings, quam_state_path)
-    add_external_mixers(machine, quam_state_path)
+    add_external_mixers(machine)
     add_ports(machine)
     add_transmons(machine)
     add_pulses(machine)
@@ -146,11 +146,7 @@ def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Pa
     return machine
 
 
-def add_external_mixers(machine: QuAM, quam_state_path: Union[Path, str]):
-    if isinstance(quam_state_path, str):
-        quam_state_path = Path(quam_state_path)
-    quam_state_path = str(quam_state_path.parent.resolve())
-
+def add_external_mixers(machine: QuAM):
     for wiring_by_element in machine.wiring.values():
         for qubit, wiring_by_line_type in wiring_by_element.items():
             for line_type, references in wiring_by_line_type.items():
