@@ -35,7 +35,7 @@ Outcomes:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
+from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
@@ -49,36 +49,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 import warnings
 from qualang_tools.bakery import baking
-from quam_libs.lib.fit import extract_dominant_frequencies
+from quam_libs.lib.fit import fit_oscillation, oscillation, fix_oscillation_phi_2pi
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from scipy.optimize import curve_fit
 from quam_libs.components.gates.two_qubit_gates import CZGate
 from quam_libs.lib.pulses import FluxPulse
-from scipy.fft import fft
-import xarray as xr
-from quam_libs.components.gates.two_qubit_gates import SWAP_Coupler_Gate
 
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] =  ["coupler_q1_q2"]
-    num_averages: int = 200
+    qubit_pairs: Optional[List[str]] = ["coupler_q2_q3"]
+    num_averages: int = 100
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = -0.06
-    coupler_flux_max : float = -0.0
-    coupler_flux_step : float = 0.001
-    idle_time_min : int = 16
-    idle_time_max : int = 2000
-    idle_time_step : int = 4
+    coupler_flux_min : float = -0.1
+    coupler_flux_max : float = -0.05
+    coupler_flux_step : float = 0.0005
+    qubit_flux_min : float = -0.08
+    qubit_flux_max : float = -0.05
+    qubit_flux_step : float = 0.0005   
     use_state_discrimination: bool = True
+    pulse_duration_ns: int = 48
     
 
 node = QualibrationNode(
-    name="64_coupler_interaction_strength_calibration", parameters=Parameters()
+    name="64a_coupler_leakage_cal", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -116,22 +114,29 @@ n_avg = node.parameters.num_averages  # The number of averages
 
 flux_point = node.parameters.flux_point_joint_or_independent_or_pairwise  # 'independent' or 'joint' or 'pairwise'
 # Loop parameters
-fluxes_coupler = np.arange(node.parameters.coupler_flux_min, node.parameters.coupler_flux_max, node.parameters.coupler_flux_step)
-idle_times = np.arange(node.parameters.idle_time_min, node.parameters.idle_time_max, node.parameters.idle_time_step) // 4
+fluxes_coupler = np.arange(node.parameters.coupler_flux_min, node.parameters.coupler_flux_max+0.0001, node.parameters.coupler_flux_step)
+fluxes_qubit = np.arange(node.parameters.qubit_flux_min, node.parameters.qubit_flux_max+0.0001, node.parameters.qubit_flux_step)
+fluxes_qp = {}
+for qp in qubit_pairs:
+    # estimate the flux shift to get the control qubit to the target qubit frequency
+    fluxes_qp[qp.name] = fluxes_qubit + qp.detuning
+    
+pulse_duration = node.parameters.pulse_duration_ns // 4
+reset_coupler_bias = False
 
 with program() as CPhase_Oscillations:
     n = declare(int)
     flux_coupler = declare(float)
+    flux_qubit = declare(float)
     comp_flux_qubit = declare(float)
-    idle_time = declare(int)
     n_st = declare_stream()
+    qua_pulse_duration = declare(int, value = pulse_duration)
+    
     if node.parameters.use_state_discrimination:
         state_control = [declare(int) for _ in range(num_qubit_pairs)]
         state_target = [declare(int) for _ in range(num_qubit_pairs)]
-        state = [declare(int) for _ in range(num_qubit_pairs)]
         state_st_control = [declare_stream() for _ in range(num_qubit_pairs)]
         state_st_target = [declare_stream() for _ in range(num_qubit_pairs)]
-        state_st = [declare_stream() for _ in range(num_qubit_pairs)]
     else:
         I_control = [declare(float) for _ in range(num_qubit_pairs)]
         Q_control = [declare(float) for _ in range(num_qubit_pairs)]
@@ -145,43 +150,42 @@ with program() as CPhase_Oscillations:
     
     for i, qp in enumerate(qubit_pairs):
         # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes("joint", qp)
+        machine.set_all_fluxes(flux_point, qp)
+        if reset_coupler_bias:
+            qp.coupler.set_dc_offset(0.0)
+        wait(1000)
 
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)         
             with for_(*from_array(flux_coupler, fluxes_coupler)):
-                with for_(*from_array(idle_time, idle_times)):
+                with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
                     # reset
                     if node.parameters.reset_type == "active":
-                            active_reset(qp.qubit_control)
-                            active_reset(qp.qubit_target)
-                            qp.align()
+                        active_reset_simple(qp.qubit_control)
+                        active_reset_simple(qp.qubit_target)
+                        qp.align()
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
                         wait(qp.qubit_target.thermalization_time * u.ns)
+                    align()
                     
-                    
-                    assign(comp_flux_qubit, qp.detuning  +  0.03 * flux_coupler )
-                    qp.align()
-                    
-                    # setting both qubits ot the initial state
+                    if "coupler_qubit_crosstalk" in qp.extras:
+                        assign(comp_flux_qubit, flux_qubit  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
+                    else:
+                        assign(comp_flux_qubit, flux_qubit)                    # setting both qubits ot the initial state
                     qp.qubit_control.xy.play("x180")
-                    qp.qubit_control.z.wait(qp.qubit_control.xy.operations["x180"].length >> 2)
-                    qp.coupler.wait(qp.qubit_control.xy.operations["x180"].length >> 2)             
-                    
-                    # Play the flux pulse on the qubit control and coupler
-                    qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = idle_time)
-                    qp.coupler.play("const", amplitude_scale = flux_coupler / qp.coupler.operations["const"].amplitude, duration = idle_time)
-                    
-                    qp.align()
+                    qp.qubit_target.xy.play("x180")
+                    align()
+                    qp.qubit_control.z.play("const", amplitude_scale = comp_flux_qubit / qp.qubit_control.z.operations["const"].amplitude, duration = qua_pulse_duration)                
+                    qp.coupler.play("const", amplitude_scale = flux_coupler / qp.coupler.operations["const"].amplitude, duration = qua_pulse_duration)
+                    align()
+                    wait(20)
                     # readout
                     if node.parameters.use_state_discrimination:
-                        readout_state(qp.qubit_control, state_control[i])
+                        readout_state_gef(qp.qubit_control, state_control[i])
                         readout_state(qp.qubit_target, state_target[i])
-                        assign(state[i], state_control[i]*2 + state_target[i])
                         save(state_control[i], state_st_control[i])
                         save(state_target[i], state_st_target[i])
-                        save(state[i], state_st[i])
                     else:
                         qp.qubit_control.resonator.measure("readout", qua_vars=(I_control[i], Q_control[i]))
                         qp.qubit_target.resonator.measure("readout", qua_vars=(I_target[i], Q_target[i]))
@@ -195,14 +199,13 @@ with program() as CPhase_Oscillations:
         n_st.save("n")
         for i in range(num_qubit_pairs):
             if node.parameters.use_state_discrimination:
-                state_st_control[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"state_control{i + 1}")
-                state_st_target[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"state_target{i + 1}")
-                state_st[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"state{i + 1}")
+                state_st_control[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"state_control{i + 1}")
+                state_st_target[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"state_target{i + 1}")
             else:
-                I_st_control[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"I_control{i + 1}")
-                Q_st_control[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"Q_control{i + 1}")
-                I_st_target[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"I_target{i + 1}")
-                Q_st_target[i].buffer(len(idle_times)).buffer(len(fluxes_coupler)).average().save(f"Q_target{i + 1}")
+                I_st_control[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_control{i + 1}")
+                Q_st_control[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_control{i + 1}")
+                I_st_target[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"I_target{i + 1}")
+                Q_st_target[i].buffer(len(fluxes_qubit)).buffer(len(fluxes_coupler)).average().save(f"Q_target{i + 1}")
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
@@ -228,102 +231,125 @@ elif node.parameters.load_data_id is None:
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {  "idle_time": idle_times, "flux_coupler": fluxes_coupler})
+        ds = fetch_results_as_xarray(job.result_handles, qubit_pairs, {  "flux_qubit": fluxes_qubit, "flux_coupler": fluxes_coupler})
+        flux_qubit_full = np.array([fluxes_qp[qp.name] for qp in qubit_pairs])
+        ds = ds.assign_coords({"flux_qubit_full": (["qubit", "flux_qubit"], flux_qubit_full)})
     else:
         ds, machine = load_dataset(node.parameters.load_data_id)
         
     node.results = {"ds": ds}
-
 # %%
+detuning_mode = "quadratic" # "cosine" or "quadratic"
 if not node.parameters.simulate:
-    ds = ds.assign_coords(idle_time = ds.idle_time * 4)
-    if node.parameters.use_state_discrimination:
-        ds = ds.assign({"res_sum" : ds.state_control - ds.state_target})
+    if reset_coupler_bias:
+        flux_coupler_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
     else:
-        ds = ds.assign({"res_sum" : ds.I_control - ds.I_target})
-    flux_coupler_full = np.array([fluxes_coupler + qp.coupler.decouple_offset for qp in qubit_pairs])
-    ds = ds.assign_coords({"flux_coupler_full": (["qubit", "flux_coupler"], flux_coupler_full)})    
+        flux_coupler_full = np.array([fluxes_coupler for qp in qubit_pairs])
+    if detuning_mode == "quadratic":
+        detuning = np.array([-fluxes_qp[qp.name] ** 2 * qp.qubit_control.freq_vs_flux_01_quad_term  for qp in qubit_pairs])
+    elif detuning_mode == "cosine":
+        detuning = np.array([oscillation(fluxes_qubit, qp.qubit_control.extras['a'], qp.qubit_control.extras['f'], qp.qubit_control.extras['phi'], qp.qubit_control.extras['offset']) for qp in qubit_pairs])
+    ds = ds.assign_coords({"flux_coupler_full": (["qubit", "flux_coupler"], flux_coupler_full)})
+    ds = ds.assign_coords({"detuning": (["qubit", "flux_qubit"], detuning)})
+    node.results = {"ds": ds}
+  
 # %%
-if not node.parameters.simulate:
-    # Add the dominant frequencies to the dataset
-    ds['dominant_frequency'] = extract_dominant_frequencies(ds.res_sum)
-    ds.dominant_frequency.attrs['units'] = 'GHz'
+node.results["results"] = {}
 
+## HARD CODED FROM EXPERIMENT
+node.results["results"]["coupler_q2_q3"] = {"flux_coupler_Cz": -0.092, "flux_qubit_Cz": 0.094}
 
-    # %%
-    # Plot the dominant frequencies
-    # Find the values of flux_coupler_full for which the dominant frequencies are max and min
-    interaction_max = (ds.dominant_frequency * (ds.dominant_frequency<0.04)).max(dim='flux_coupler')
-    coupler_flux_pulse = ds.flux_coupler_full.isel(flux_coupler=(ds.dominant_frequency * (ds.dominant_frequency<0.04)).argmax(dim='flux_coupler'))
-    coupler_flux_min = ds.flux_coupler_full.isel(flux_coupler=ds.dominant_frequency.argmin(dim='flux_coupler'))
+# if not node.parameters.simulate:
+#     if node.parameters.use_state_discrimination:
+#         res_sum = -ds.state_control + ds.state_target
+#     else:
+#         res_sum = -ds.I_control + ds.I_target
+    
+#     for i, qp in enumerate(qubit_pairs):
+#         coupler_min_arg = res_sum.sel(qubit = qp.name).mean(dim = 'flux_qubit').argmin()
+#         flux_coupler_min = ds.flux_coupler_full.sel(qubit = qp.name)[coupler_min_arg]
+#         qubit_max_arg = res_sum.sel(qubit = qp.name).mean(dim = "flux_coupler").argmax()
+#         flux_qubit_max = fluxes_qp[qp.name][qubit_max_arg]
+#         node.results["results"][qp.name] = {"flux_coupler_min": float(flux_coupler_min.values), "flux_qubit_max": float(flux_qubit_max)}
 
+#     res_sum.plot()
+    
+    
 # %% {Plotting}
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
     grid = QubitPairGrid(grid_names, qubit_pair_names)    
-    for ax, qp in grid_iter(grid):     
+    for ax, qp in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             values_to_plot = ds.state_control.sel(qubit=qp['qubit'])
         else:
-            values_to_plot = ds.Q_control.sel(qubit=qp['qubit'])
-        values_to_plot.plot(ax = ax, cmap = 'viridis', y = 'idle_time', x = 'flux_coupler_full')
+            values_to_plot = ds.I_control.sel(qubit=qp['qubit'])
+        
+        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
         ax.set_title(qp['qubit'])
-    grid.fig.suptitle('I Control')
+        ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
+        ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
+        # Create a secondary x-axis for detuning
+        base_detuning = -machine.qubit_pairs[qp['qubit']].detuning **2 * machine.qubit_pairs[qp['qubit']].qubit_control.freq_vs_flux_01_quad_term
+        flux_qubit_data = ds.sel(qubit=qp['qubit']).flux_qubit_full.values*1e3
+        detuning_data = (ds.sel(qubit=qp['qubit']).detuning.values -base_detuning) * 1e-6
+
+        def flux_to_detuning(x):
+            return np.interp(x, flux_qubit_data, detuning_data)
+
+        def detuning_to_flux(y):
+            return np.interp(y, detuning_data, flux_qubit_data)
+
+        sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
+        sec_ax.set_xlabel('Detuning [MHz]')
+        ax.set_xlabel('Qubit flux shift [V]')
+        ax.set_ylabel('Coupler flux [V]')
+    grid.fig.suptitle('Control')
     plt.tight_layout()
     plt.show()
-    node.results['figure_I_control'] = grid.fig
+    node.results['figure_control'] = grid.fig
     
     grid = QubitPairGrid(grid_names, qubit_pair_names)    
     for ax, qp in grid_iter(grid):
         if node.parameters.use_state_discrimination:
             values_to_plot = ds.state_target.sel(qubit=qp['qubit'])
         else:
-            values_to_plot = ds.Q_target.sel(qubit=qp['qubit'])
-        values_to_plot.plot(ax = ax, cmap = 'viridis', y = 'idle_time', x = 'flux_coupler_full')
+            values_to_plot = ds.I_target.sel(qubit=qp['qubit'])
+        
+        values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
         ax.set_title(qp['qubit'])
-    grid.fig.suptitle('I Target')
-    plt.tight_layout()
-    plt.show()
-    node.results['figure_I_target'] = grid.fig
-    
-    grid = QubitPairGrid(grid_names, qubit_pair_names)    
-    for ax, qp in grid_iter(grid):
-        (1e3*ds.dominant_frequency.sel(qubit=qp['qubit'])).plot(ax = ax, marker = '.', ls = 'None', x = 'flux_coupler_full')
-        ax.axvline(x = coupler_flux_pulse.sel(qubit=qp['qubit']), color = 'red', lw = 0.5, ls = '--')
-        ax.axvline(x = coupler_flux_min.sel(qubit=qp['qubit']), color = 'green', lw = 0.5, ls = '--')
-        ax.set_title(qp['qubit'])
-        ax.set_xlabel('Flux Coupler')
-        ax.set_ylabel('Frequency (MHz)')
-    grid.fig.suptitle('Dominant Frequency')
-    plt.tight_layout()
-    plt.show()
-    node.results['figure_dominant_frequency'] = grid.fig
-# %%
-# from importlib import reload
-# import quam_libs.components.gates.two_qubit_gates as two_qubit_gates
-# reload(two_qubit_gates)
-# from quam_libs.components.gates.two_qubit_gates import SWAP_Coupler_Gate
+        ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
+        ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
+        # Create a secondary x-axis for detuning
+        base_detuning = -machine.qubit_pairs[qp['qubit']].detuning **2 * machine.qubit_pairs[qp['qubit']].qubit_control.freq_vs_flux_01_quad_term
+        flux_qubit_data = ds.sel(qubit=qp['qubit']).flux_qubit_full.values*1e3
+        detuning_data = (ds.sel(qubit=qp['qubit']).detuning.values -base_detuning) * 1e-6
 
-# # If you need to use the reloaded SWAP_Coupler_Gate specifically:
-# SWAP_Coupler_Gate = two_qubit_gates.SWAP_Coupler_Gate
+        def flux_to_detuning(x):
+            return np.interp(x, flux_qubit_data, detuning_data)
+
+        def detuning_to_flux(y):
+            return np.interp(y, detuning_data, flux_qubit_data)
+
+        sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
+        sec_ax.set_xlabel('Detuning [MHz]')
+        ax.set_xlabel('Qubit flux shift [V]')
+        ax.set_ylabel('Coupler flux [V]')
+    grid.fig.suptitle('Target')
+    plt.tight_layout()
+    plt.show()
+    node.results['figure_target'] = grid.fig
 
 
 # %% {Update_state}
 if not node.parameters.simulate:
-    with node.record_state_updates():
-        for qp in qubit_pairs:
-            gate_time_ns = int(1/ (2 * interaction_max.sel(qubit = qp.name).values)) 
-            
-            gate_time_including_zeros = gate_time_ns - gate_time_ns % 4 + 4
-            zero_padding = gate_time_including_zeros - gate_time_ns
-            coupler_flux_pulse_amp = float(coupler_flux_pulse.sel(qubit = qp.name).values)
-            qubit_flux_pulse_amp = qp.detuning + 0.03 * coupler_flux_pulse_amp ##### HARD CODED! - TO FIX!!! #######
-            
-            # qp.coupler.decouple_offset = float(coupler_flux_min.sel(qubit = qp.name).values)
-            qp.gates['SWAP_Coupler'] = SWAP_Coupler_Gate(flux_pulse_control = FluxPulse(length = gate_time_including_zeros, amplitude = qubit_flux_pulse_amp, zero_padding = zero_padding, id = 'flux_pulse_control_' + qp.qubit_target.name), 
-                                                         coupler_pulse_control = FluxPulse(length = gate_time_including_zeros, amplitude = coupler_flux_pulse_amp, zero_padding = zero_padding, id = 'coupler_pulse_control_' + qp.qubit_target.name))
-            qp.extras["flux_values"] = ds.flux_coupler_full.sel(qubit = qp.name).values.tolist()
-            qp.extras["J_vs_flux"] = ds.dominant_frequency.sel(qubit = qp.name).values.tolist()
+    if not node.parameters.simulate:
+        with node.record_state_updates():
+            for qp in qubit_pairs:
+                qp.extras["CZ_coupler_flux"] = node.results["results"][qp.name]["flux_coupler_Cz"]
+                qp.extras["CZ_qubit_flux"] = node.results["results"][qp.name]["flux_qubit_Cz"]
+                qp.extras["CZ_time"] = node.parameters.pulse_duration_ns
+
 # %% {Save_results}
 if not node.parameters.simulate:    
     node.outcomes = {q.name: "successful" for q in qubit_pairs}

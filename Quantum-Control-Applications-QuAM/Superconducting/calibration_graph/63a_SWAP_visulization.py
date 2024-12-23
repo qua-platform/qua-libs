@@ -35,7 +35,7 @@ Outcomes:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from quam_libs.components import QuAM
-from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef
+from quam_libs.macros import active_reset, readout_state, readout_state_gef, active_reset_gef, active_reset_simple
 from quam_libs.lib.plot_utils import QubitPairGrid, grid_iter, grid_pair_names
 from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 from qualang_tools.results import progress_counter, fetching_tool
@@ -58,14 +58,14 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
+    qubit_pairs: Optional[List[str]] = ["coupler_q2_q3"]
     num_averages: int = 100
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = -0.06
+    coupler_flux_min : float = -0.1
     coupler_flux_max : float = 0.0
     coupler_flux_step : float = 0.001
     qubit_flux_min : float = -0.09
@@ -76,7 +76,7 @@ class Parameters(NodeParameters):
     
 
 node = QualibrationNode(
-    name="65a_SWAP_visulization", parameters=Parameters()
+    name="63a_SWAP_visulization", parameters=Parameters()
 )
 assert not (node.parameters.simulate and node.parameters.load_data_id is not None), "If simulate is True, load_data_id must be None, and vice versa."
 
@@ -162,16 +162,18 @@ with program() as CPhase_Oscillations:
                 with for_(*from_array(flux_qubit, fluxes_qp[qp.name])):
                     # reset
                     if node.parameters.reset_type == "active":
-                            active_reset(qp.qubit_control)
-                            active_reset(qp.qubit_target)
+                            active_reset_simple(qp.qubit_control)
+                            active_reset_simple(qp.qubit_target)
                             qp.align()
                     else:
                         wait(qp.qubit_control.thermalization_time * u.ns)
                         wait(qp.qubit_target.thermalization_time * u.ns)
                     align()
                     
-                    assign(comp_flux_qubit, flux_qubit  +  0.03 * flux_coupler )
-                    # setting both qubits ot the initial state
+                    if "coupler_qubit_crosstalk" in qp.extras:
+                        assign(comp_flux_qubit, flux_qubit  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
+                    else:
+                        assign(comp_flux_qubit, flux_qubit)                    # setting both qubits ot the initial state
                     qp.qubit_control.xy.play("x180")
                     # qp.qubit_target.xy.play("x180")
                     align()
