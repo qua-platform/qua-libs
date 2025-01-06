@@ -1,7 +1,28 @@
 from typing import List
 
-from .paths import OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH
+from qualang_tools.wirer.connectivity.element import QubitReference
+from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
+from .paths import OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH, MIXERS_BASE_JSON_PATH
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
+
+
+def create_external_mixer_reference(channel: AnyInstrumentChannel, element_id: QubitReference,
+                                    line_type: WiringLineType) -> (str, str):
+    """
+    Generates a key/JSON reference pair from which a QuAM port can be created
+    for a single Octave channel.
+    """
+    if channel.io_type == "output":
+        key = "frequency_converter_up"
+    elif channel.io_type == "input":
+        key = "frequency_converter_down"
+    else:
+        raise ValueError(f"Unknown IO type {channel.io_type}")
+
+    reference = MIXERS_BASE_JSON_PATH
+    reference += f"/mixer{channel.con}_{element_id}.{line_type.value}"
+
+    return key, reference
 
 
 def create_octave_port(channel: AnyInstrumentChannel) -> (str, str):
