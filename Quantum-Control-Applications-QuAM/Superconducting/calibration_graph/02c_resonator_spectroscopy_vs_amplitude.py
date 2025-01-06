@@ -60,6 +60,7 @@ class Parameters(NodeParameters):
     derivative_crossing_threshold_in_hz_per_dbm: int = int(-50e3)
     derivative_smoothing_window_num_points: int = 30
     moving_average_filter_window_num_points: int = 30
+    buffer_from_crossing_threshold_in_dbm: int = 1
     multiplexed: bool = False
     load_data_id: Optional[int] = None
 
@@ -239,12 +240,14 @@ if not node.parameters.simulate:
     for qubit in qubits:
         if below_threshold.sel(qubit=qubit.name).any():
             rr_optimal_power_dbm[qubit.name] = below_threshold.sel(qubit=qubit.name).idxmax(dim="power_dbm")  # Get the first occurrence
+            if node.parameters.buffer_from_crossing_threshold_in_dbm is not None:
+                rr_optimal_power_dbm[qubit.name] -= node.parameters.buffer_from_crossing_threshold_in_dbm
         else:
             rr_optimal_power_dbm[qubit.name] = np.nan
 
         if not np.isnan(rr_optimal_power_dbm[qubit.name]):
             fit, fit_eval = fit_resonator(
-                s21_data=ds.sel(power_dbm=rr_optimal_power_dbm[qubit.name].data).sel(qubit=qubit.name),
+                s21_data=ds.sel(power_dbm=rr_optimal_power_dbm[qubit.name].data, method='nearest').sel(qubit=qubit.name),
                 frequency_LO_IF=qubit.resonator.RF_frequency,
                 print_report=True
             )
@@ -276,9 +279,16 @@ if not node.parameters.simulate:
         if not np.isnan(rr_optimal_power_dbm[qubit['qubit']]):
             ax.axhline(
                 y=rr_optimal_power_dbm[qubit['qubit']],
-                color="r",
-                linestyle="--",
+                color="g",
+                linestyle="-",
             )
+            if node.parameters.buffer_from_crossing_threshold_in_dbm is not None:
+                # Plot the optimal power if there was no buffer
+                ax.axhline(
+                    y=rr_optimal_power_dbm[qubit['qubit']] + node.parameters.buffer_from_crossing_threshold_in_dbm,
+                    color="g",
+                    linestyle="--",
+                )
         if not np.isnan(rr_optimal_frequencies[qubit['qubit']]):
             ax.axvline(
                 x=rr_optimal_frequencies[qubit['qubit']] + machine.qubits[qubit['qubit']].resonator.RF_frequency,
