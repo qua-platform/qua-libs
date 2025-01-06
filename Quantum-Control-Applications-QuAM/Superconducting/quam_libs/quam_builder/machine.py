@@ -161,7 +161,6 @@ def add_external_mixers(machine: QuAM):
                             local_oscillator=LocalOscillator(),
                             mixer=StandaloneMixer(
                                 intermediate_frequency=f"#/qubits/{qubit}/{transmon_channel[line_type]}/intermediate_frequency",
-                                # "local_oscillator_frequency": "...",
                             )
                         )
                         machine.mixers[mixer_name] = frequency_converter
