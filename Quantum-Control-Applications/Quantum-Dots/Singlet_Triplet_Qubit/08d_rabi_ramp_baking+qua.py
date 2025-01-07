@@ -23,18 +23,19 @@ Before proceeding to the next node:
     - Identify the pi and pi/2 pulse parameters, Rabi frequency...
 """
 
-# %%
-from qm.qua import *
-from qm import QuantumMachinesManager
-from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.loops import from_array
-from qualang_tools.bakery import baking
-import matplotlib.pyplot as plt
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
+import os
 
+# %%
+import matplotlib.pyplot as plt
+from configuration import *
+from macros import DC_current_sensing_macro, RF_reflectometry_macro
+from qm import QuantumMachinesManager, SimulationConfig
+from qm.qua import *
+from qm_saas import QmSaas, QoPVersion
+from qualang_tools.bakery import baking
+from qualang_tools.loops import from_array
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import fetching_tool, progress_counter
 
 ###################
 # The QUA program #
@@ -42,7 +43,7 @@ from macros import RF_reflectometry_macro, DC_current_sensing_macro
 
 n_avg = 100
 # Pulse duration sweep in ns
-durations = np.arange(1, 30, 1)
+durations = np.arange(13, 30, 1)
 # Ramp duration in ns
 ramp_duration = 7
 # Pulse amplitude sweep as the absolute voltage level in V
@@ -73,22 +74,32 @@ for t in range(16):  # Create the different baked sequences
         b.add_op("pi_baked", "P2", wf2)
 
         # Baked sequence
-        b.wait(16 - t, "P1")  # Wait time to take gaps into account and always play right before reading out
-        b.wait(16 - t, "P2")  # Wait time to take gaps into account and always play right before reading out
+
+        t_wait = 32 - (t + ramp_duration)
+        b.wait(t_wait, "P1")  # Wait time to take gaps into account and always play right before reading out
+        b.wait(t_wait, "P2")  # Wait time to take gaps into account and always play right before reading out
         b.play("pi_baked", "P1")  # Play the qubit pulse
         b.play("pi_baked", "P2")  # Play the qubit pulse
     if t < 4:
         with baking(config, padding_method="left") as b4ns:  # don't use padding to assure error if timing is incorrect
-            wf1 = ramp_p1 + [Vpi - level_init[0]] * t
-            wf2 = ramp_p2 + [-Vpi - level_init[1]] * t
+            if t == 0:
+                wf1 = ramp_p1
+                wf2 = ramp_p2
+            else:
+                wf1 = ramp_p1 + [Vpi - level_init[0]] * t
+                wf2 = ramp_p2 + [-Vpi - level_init[1]] * t
 
             # Add the baked operation to the config
             b4ns.add_op("pi_baked2", "P1", wf1)
             b4ns.add_op("pi_baked2", "P2", wf2)
 
             # Baked sequence
-            b4ns.wait(32 - t, "P1")  # Wait time to take gaps into account and always play right before reading out
-            b4ns.wait(32 - t, "P2")  # Wait time to take gaps into account and always play right before reading out
+            b4ns.wait(
+                32 - (t + ramp_duration), "P1"
+            )  # Wait time to take gaps into account and always play right before reading out
+            b4ns.wait(
+                32 - (t + ramp_duration), "P2"
+            )  # Wait time to take gaps into account and always play right before reading out
             b4ns.play("pi_baked2", "P1")  # Play the qubit pulse
             b4ns.play("pi_baked2", "P2")  # Play the qubit pulse
 
@@ -121,7 +132,7 @@ with program() as Rabi_prog:
                     for ii in range(16):
                         with case_(ii):
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                            wait(duration_init * u.ns - 4 - 9, "P1", "P2")
+                            wait(duration_init * u.ns - 8 - 8, "P1", "P2")
                             pi_list[ii].run()
             # Long qubit pulse: baking and play combined
             with else_():
@@ -132,7 +143,7 @@ with program() as Rabi_prog:
                     for ii in range(4):
                         with case_(ii):
                             # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
-                            wait(duration_init * u.ns - 4 - 9, "P1", "P2")
+                            wait(duration_init * u.ns - 8 - 18 - t_cycles, "P1", "P2")
                             pi_list_4ns[ii].run()
                             play("step" * amp((Vpi - level_init[0]) * 4), "P1", duration=t_cycles)
                             play("step" * amp((-Vpi - level_init[1]) * 4), "P2", duration=t_cycles)
@@ -157,6 +168,7 @@ with program() as Rabi_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
+
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ###########################
@@ -167,8 +179,8 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 simulate = True
 
 if simulate:
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate the QUA program
+    simulation_config = SimulationConfig(duration=500_000 >> 2)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, Rabi_prog, simulation_config)
     # Plot the simulated samples

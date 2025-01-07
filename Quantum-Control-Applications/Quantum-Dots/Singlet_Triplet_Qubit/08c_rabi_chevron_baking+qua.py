@@ -127,7 +127,7 @@ with program() as Rabi_prog:
                     assign(t_cycles, t >> 2)  # Right shift by 2 is a quick way to divide by 4
                     assign(t_left_ns, t - (t_cycles << 2))  # left shift by 2 is a quick way to multiply by 4
                     # switch case to select the baked waveform corresponding to the burst duration
-                    with switch_(t_left_ns, unsafe=True):
+                    with switch_(t_left_ns, unsafe=True): 
                         for ii in range(4):
                             with case_(ii):
                                 # Drive the singlet-triplet qubit using an exchange pulse at the end of the manipulation step
