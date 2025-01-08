@@ -220,11 +220,11 @@ config = {
                     "analog_outputs": {
                         # Flux line
                         1: {
+                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "offset": max_frequency_point,
                             # The "output_mode" can be used to tailor the max voltage and frequency bandwidth, i.e.,
                             #   "direct":    1Vpp (-0.5V to 0.5V), 750MHz bandwidth (default)
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
-                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "output_mode": "amplified",
                             # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
                             #   1 GS/s: uses one core per output (default)
@@ -247,8 +247,9 @@ config = {
     },
     "elements": {
         "qubit": {
+            # MWInput corresponds to an OPX physical output port
             "MWInput": {
-                "port": (con, mw_fem, 1),
+                "port": (con, mw_fem, 2),
                 "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF,
@@ -266,8 +267,9 @@ config = {
             },
         },
         "resonator": {
+            # MWInput corresponds to an OPX physical output port
             "MWInput": {
-                "port": (con, mw_fem, 2),
+                "port": (con, mw_fem, 1),
                 "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF,
@@ -275,6 +277,7 @@ config = {
                 "cw": "const_pulse",
                 "readout": "readout_pulse",
             },
+            # MWOutput corresponds to an OPX physical input port
             "MWOutput": {
                 "port": (con, mw_fem, 1),
             },
