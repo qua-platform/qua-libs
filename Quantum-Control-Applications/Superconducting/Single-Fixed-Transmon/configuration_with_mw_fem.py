@@ -190,7 +190,7 @@ config = {
                     "analog_inputs": {
                         1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
-                }
+                },
             },
         },
     },
