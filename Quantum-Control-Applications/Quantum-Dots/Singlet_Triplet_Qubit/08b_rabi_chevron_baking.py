@@ -42,7 +42,7 @@ pi_levels = np.arange(0.21, 0.3, 0.01)
 durations = np.arange(0, 153, 1)
 assert max(durations) % 4 == 0
 
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, duration_readout)

@@ -49,7 +49,7 @@ N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_poi
 level_empty = [-0.2, 0.0]
 duration_empty = 5000
 
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("empty", level_empty, duration_empty)
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("readout", level_readout, duration_readout)

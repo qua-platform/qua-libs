@@ -44,7 +44,7 @@ n_avg = 100
 durations = np.arange(16, 2000, 100)
 
 # Add the relevant voltage points describing the "slow" sequence (no qubit pulse)
-seq = OPX_virtual_gate_sequence(config, ["P1_sticky", "P2_sticky"])
+seq = VoltageGateSequence(config, ["P1_sticky", "P2_sticky"])
 seq.add_points("initialization", level_init, duration_init)
 seq.add_points("idle", level_manip, duration_manip)
 seq.add_points("readout", level_readout, readout_len)

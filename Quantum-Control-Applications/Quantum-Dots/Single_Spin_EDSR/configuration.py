@@ -40,7 +40,7 @@ octave_config = None
 #############################################
 #              OPX PARAMETERS               #
 #############################################
-class OPX_virtual_gate_sequence:
+class VoltageGateSequence:
     def __init__(self, configuration: dict, elements: list):
         """Framework allowing to design an arbitrary pulse sequence using virtual gates and pre-defined point from the
         charge stability map. TODO better docstring explaining how it works
