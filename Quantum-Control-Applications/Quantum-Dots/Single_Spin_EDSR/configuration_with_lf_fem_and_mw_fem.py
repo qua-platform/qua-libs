@@ -118,7 +118,11 @@ config = {
                     # Its range is -41dBm to +10dBm with 3dBm steps.
                     "type": "MW",
                     "analog_outputs": {
-                        1: {"band": 1, "full_scale_power_dbm": qubit_power, "upconverters": { 1: {"frequency": qubit_LO} } },  # qubit
+                        1: {
+                            "band": 1,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO}},
+                        },  # qubit
                     },
                     "digital_outputs": {},
                 },
@@ -266,7 +270,8 @@ config = {
             "MWInput": {
                 "port": (con, mw_fem, 1),
                 "upconverter": 1,
-            },            "intermediate_frequency": qubit_IF,
+            },
+            "intermediate_frequency": qubit_IF,
             "operations": {
                 "cw": "cw_pulse",
                 "pi": "pi_pulse",

@@ -168,8 +168,8 @@ config = {
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, O8 & O1
-                    # must be in the same band, or in bands 1 & 3.
+                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
+                    # must be in the same band, or in bands 1 & 3 (that is, if you assign band 2 to one of the coupled ports, the other must use the same band).
                     # The keyword "full_scale_power_dbm" is the maximum power of
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
@@ -180,11 +180,15 @@ config = {
                     "type": "MW",
                     "analog_outputs": {
                         1: {
-                            "full_scale_power_dbm": resonator_power,
                             "band": 2,
-                            "upconverter_frequency": resonator_LO,
+                            "full_scale_power_dbm": resonator_power,
+                            "upconverters": {1: {"frequency": resonator_LO}},
                         },  # resonator
-                        2: {"full_scale_power_dbm": qubit_power, "band": 2, "upconverter_frequency": qubit_LO},  # qubit
+                        2: {
+                            "band": 2,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO}},
+                        },  # qubit
                     },
                     "digital_outputs": {},
                     "analog_inputs": {

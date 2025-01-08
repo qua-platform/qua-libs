@@ -204,11 +204,15 @@ config = {
                     "type": "MW",
                     "analog_outputs": {
                         1: {
-                            "full_scale_power_dbm": resonator_power,
                             "band": 2,
-                            "upconverter_frequency": resonator_LO,
+                            "full_scale_power_dbm": resonator_power,
+                            "upconverters": {1: {"frequency": resonator_LO}},
                         },  # resonator
-                        2: {"full_scale_power_dbm": qubit_power, "band": 2, "upconverter_frequency": qubit_LO},  # qubit
+                        2: {
+                            "band": 2,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO}},
+                        },  # qubit
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
