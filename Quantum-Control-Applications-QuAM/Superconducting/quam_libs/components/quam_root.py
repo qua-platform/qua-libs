@@ -15,6 +15,8 @@ from quam.components.ports import (
     FEMPortsContainer,
     OPXPlusPortsContainer,
 )
+
+from . import ReadoutResonator
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
@@ -25,6 +27,8 @@ from dataclasses import field
 from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
+
+from ..experiments.node import QubitExperimentNodeParameters
 
 
 @quam_dataclass
@@ -201,6 +205,19 @@ class QuAM(QuamRoot):
             except NoCalibrationElements:
                 print(f"No calibration elements found for {name}. Skipping calibration.")
 
+
+    def get_qubits_used_in_node(self, node: QubitExperimentNodeParameters) -> List[Transmon]:
+        if node.parameters.qubits is None or node.parameters.qubits == "":
+            qubits = self.active_qubits
+        else:
+            qubits = [self.qubits[q] for q in node.parameters.qubits]
+
+        return qubits
+
+    def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> List[ReadoutResonator]:
+        resonators = [qubit.resonator for qubit in self.get_used_qubits_in_node(node)]
+
+        return resonators
 
 @quam_dataclass
 class FEMQuAM(QuAM):
