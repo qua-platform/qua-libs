@@ -215,7 +215,7 @@ class QuAM(QuamRoot):
         return qubits
 
     def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> List[ReadoutResonator]:
-        resonators = [qubit.resonator for qubit in self.get_used_qubits_in_node(node)]
+        resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node)]
 
         return resonators
 

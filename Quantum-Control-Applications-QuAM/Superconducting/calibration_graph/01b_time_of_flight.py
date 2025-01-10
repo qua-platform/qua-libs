@@ -11,10 +11,10 @@ The data undergoes post-processing to calibrate three distinct parameters:
     - Analog Inputs Gain: If a signal is constrained by digitization or if it saturates the ADC,
     the variable gain of the OPX analog input, ranging from -12 dB to 20 dB, can be modified to fit the signal within the ADC range of +/-0.5V.
 """
-
+# %%
 from qualibrate import QualibrationNode
 
-from CS_installations.quam_libs.experiments.two_qubit_rb.test.configuration import time_of_flight
+# from CS_installations.quam_libs.experiments.two_qubit_rb.test.configuration import time_of_flight
 from quam_libs.components import QuAM
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.experiments.time_of_flight.analysis import fetch_dataset, analyze_pulse_arrival_times
@@ -49,8 +49,8 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load()
 
-qubits = machine.get_qubits_used_in_node(node.parameters)
-resonators = machine.get_resonators_used_in_node(node.parameters)
+qubits = machine.get_qubits_used_in_node(node)
+resonators = machine.get_resonators_used_in_node(node)
 patched_resonators = patch_readout_pulse_params(resonators, node.parameters)
 
 config = machine.generate_config()
@@ -85,8 +85,8 @@ with program() as raw_trace_prog:
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    fig = simulate_and_plot(qmm, config, time_of_flight, node.parameters)
-    node.results = {"figure": fig}
+    fig, samples = simulate_and_plot(qmm, config, raw_trace_prog, node.parameters)
+    node.results = {"figure": fig, "samples": samples}
 
 else:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
@@ -155,3 +155,5 @@ else:
     node.machine = machine
     node.save()
 
+
+# %%

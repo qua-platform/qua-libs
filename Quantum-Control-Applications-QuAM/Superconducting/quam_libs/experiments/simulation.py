@@ -23,4 +23,4 @@ def simulate_and_plot(qmm: QuantumMachinesManager, config: dict, program: Progra
         plt.title(con)
     plt.tight_layout()
 
-    return fig
+    return fig, samples
