@@ -142,8 +142,8 @@ class CZGate(TwoQubitGate):
 
             pulse.apply_to_config(config)
 
-        element_config_coupler = config["elements"][self.coupler.name]
-        element_config_coupler["operations"][self.coupler_flux_pulse_label] = pulse.pulse_name
+            element_config_coupler = config["elements"][self.coupler.name]
+            element_config_coupler["operations"][self.coupler_flux_pulse_label] = pulse.pulse_name
 
 @quam_dataclass
 class CZWithCompensationGate(CZGate):

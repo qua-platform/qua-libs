@@ -162,9 +162,9 @@ with program() as CPhase_Oscillations:
                     
                     
                     if "coupler_qubit_crosstalk" in qp.extras:
-                        assign(comp_flux_qubit, flux_qubit  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
+                        assign(comp_flux_qubit, qp.detuning  +  qp.extras["coupler_qubit_crosstalk"] * flux_coupler )
                     else:
-                        assign(comp_flux_qubit, flux_qubit)
+                        assign(comp_flux_qubit, qp.detuning)
                     qp.align()
                     
                     # setting both qubits ot the initial state
