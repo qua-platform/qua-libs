@@ -4,7 +4,6 @@ from quam_libs.components import ReadoutResonator
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.experiments.time_of_flight.parameters import Parameters
 
-
 def patch_readout_pulse_params(resonators: List[ReadoutResonator], node_parameters: Parameters):
     patched_resonators = []
     for resonator in resonators:
@@ -14,7 +13,7 @@ def patch_readout_pulse_params(resonators: List[ReadoutResonator], node_paramete
             resonator.operations["readout"].length = node_parameters.readout_length_in_ns
             resonator.operations["readout"].amplitude = node_parameters.readout_amplitude_in_v
             if node_parameters.intermediate_frequency_in_mhz is not None:
-                resonator.intermediate_frequency = node_parameters.intermediate_frequency_in_mhz * u.MHz
+                resonator.intermediate_frequency = int(node_parameters.intermediate_frequency_in_mhz * 1e6)
             patched_resonators.append(resonator)
 
     return patched_resonators
