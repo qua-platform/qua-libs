@@ -288,7 +288,7 @@ cryoscope_time = np.arange(1, cryoscope_len + 1, 1)  # x-axis for plotting - mus
 #     plt.show()
 
 # else:
-#     with qm_session(qmm, config, timeout=node.parameters.timeout, keep_dc_offsets_when_closing=True) as qm:
+#     with qm_session(qmm, config, timeout=node.parameters.timeout ) as qm:
 #         job = qm.execute(cryoscope)
 #         data_list = ["iteration"]
 #         results = fetching_tool(job, data_list, mode="live")
