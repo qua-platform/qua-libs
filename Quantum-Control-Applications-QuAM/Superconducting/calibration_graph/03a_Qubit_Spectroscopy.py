@@ -30,7 +30,7 @@ from quam_libs.macros import qua_declaration
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.experiments.execution import print_progress_bar
 from quam_libs.experiments.Qubit_Spectroscopy.parameters import Parameters
-from quam_libs.experiments.Qubit_Spectroscopy.node import get_optional_parameters
+from quam_libs.experiments.Qubit_Spectroscopy.node import get_optional_pulse_duration
 from quam_libs.experiments.Qubit_Spectroscopy.analysis import fetch_dataset, fit_qubits
 from quam_libs.experiments.Qubit_Spectroscopy.plotting import plot_qubit_response
 
@@ -56,8 +56,6 @@ node = QualibrationNode(
         frequency_step_in_mhz=0.25,
         flux_point_joint_or_independent="independent",
         target_peak_width=2e6,
-        arbitrary_flux_bias=None,
-        arbitrary_qubit_frequency_in_ghz=None,
         simulate=False,
         simulation_duration_ns=2500,
         timeout=100,
@@ -89,7 +87,7 @@ span = node.parameters.frequency_span_in_mhz * u.MHz
 step = node.parameters.frequency_step_in_mhz * u.MHz
 dfs = np.arange(-span // 2, +span // 2, step, dtype=np.int32)
 # Get the optional parameters
-qubit_pulse_duration, arb_flux_bias_offset, detuning = get_optional_parameters(qubits, node.parameters)
+qubit_pulse_duration = get_optional_pulse_duration(qubits, node.parameters)
 
 with program() as qua_prog:
     # Macro to declare I, Q, n and their respective streams for a given number of qubit (defined in macros.py)
@@ -104,16 +102,9 @@ with program() as qua_prog:
             save(n, n_st)
             with for_(*from_array(df, dfs)):
                 # Update the qubit frequency
-                qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency + detuning[qubit.name])
+                qubit.xy.update_frequency(df + qubit.xy.intermediate_frequency)
                 qubit.align()
-                # Bring the qubit to the desired point during the saturation pulse
-                qubit.z.play(
-                    "const",
-                    amplitude_scale=arb_flux_bias_offset[qubit.name] / qubit.z.operations["const"].amplitude,
-                    duration=qubit_pulse_duration[qubit.name] * u.ns,
-                )
                 # Play the saturation pulse
-                qubit.xy.wait(qubit.z.settle_time * u.ns)
                 qubit.xy.play(
                     node.parameters.operation,
                     amplitude_scale=node.parameters.operation_amplitude_factor,
@@ -152,7 +143,7 @@ else:
 
     # %% {Data_fetching_and_dataset_creation}
     if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, frequencies=dfs, detuning=detuning)
+        ds = fetch_dataset(job, qubits, frequencies=dfs)
         node.results = {"ds": ds}
     else:
         node = node.load_from_id(node.parameters.load_data_id)
@@ -171,30 +162,21 @@ else:
         with node.record_state_updates():
             for q in qubits:
                 if fit_results[q.name]["fit_successful"]:
-                    if node.parameters.flux_point_joint_or_independent == "arbitrary":
-                        q.arbitrary_intermediate_frequency = float(
-                            fit_results[q.name]["drive_freq"]
-                            + detuning[q.name]
-                            + q.xy.intermediate_frequency
-                            - q.xy.RF_frequency
-                        )
-                        q.z.arbitrary_offset = arb_flux_bias_offset[q.name]
+                    # Update the qubit IF
+                    q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"] - q.xy.RF_frequency
+                    # Update the IW angle
+                    q.resonator.operations["readout"].integration_weights_angle = fit_results[q.name]["angle"]
+                    # Update the saturation amplitude
+                    limits = instrument_limits(q.xy)
+                    if fit_results[q.name]["saturation_amplitude"] < limits.max_wf_amplitude:
+                        q.xy.operations["saturation"].amplitude = fit_results[q.name]["saturation_amplitude"]
                     else:
-                        q.xy.intermediate_frequency += fit_results[q.name]["drive_freq"] - q.xy.RF_frequency
-                    if not node.parameters.flux_point_joint_or_independent == "arbitrary":
-                        # Update the IW angle
-                        q.resonator.operations["readout"].integration_weights_angle = fit_results[q.name]["angle"]
-                        # Update the saturation amplitude
-                        limits = instrument_limits(q.xy)
-                        if fit_results[q.name]["saturation_amplitude"] < limits.max_wf_amplitude:
-                            q.xy.operations["saturation"].amplitude = fit_results[q.name]["saturation_amplitude"]
-                        else:
-                            q.xy.operations["saturation"].amplitude = limits.max_wf_amplitude
-                        # Update the expected x180 amplitude
-                        if fit_results[q.name]["x180_amplitude"] < limits.max_x180_wf_amplitude:
-                            q.xy.operations["x180"].amplitude = fit_results[q.name]["x180_amplitude"]
-                        else:
-                            q.xy.operations["x180"].amplitude = limits.max_x180_wf_amplitude
+                        q.xy.operations["saturation"].amplitude = limits.max_wf_amplitude
+                    # Update the expected x180 amplitude
+                    if fit_results[q.name]["x180_amplitude"] < limits.max_x180_wf_amplitude:
+                        q.xy.operations["x180"].amplitude = fit_results[q.name]["x180_amplitude"]
+                    else:
+                        q.xy.operations["x180"].amplitude = limits.max_x180_wf_amplitude
         node.results["ds"] = ds
 
         # %% {Save_results}

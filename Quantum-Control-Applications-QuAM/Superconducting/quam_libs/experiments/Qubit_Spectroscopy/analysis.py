@@ -8,7 +8,7 @@ from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import peaks_dips
 
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], frequencies: List[float], detuning: Dict):
+def fetch_dataset(job: QmJob, qubits: List[Transmon], frequencies: List[float]):
     """
     Fetches IQ measurement results from the OPX as a function of resonator frequency detuning and processes them into an xarray dataset.
 
@@ -42,7 +42,7 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], frequencies: List[float], 
         {
             "freq_full": (
                 ["qubit", "freq"],
-                np.array([frequencies + q.xy.RF_frequency + detuning[q.name] for q in qubits]),
+                np.array([frequencies + q.xy.RF_frequency for q in qubits]),
             )
         }
     )

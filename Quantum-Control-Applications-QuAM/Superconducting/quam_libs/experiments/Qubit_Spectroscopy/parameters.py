@@ -17,8 +17,6 @@ class Parameters(SimulatableNodeParameters):
         frequency_step_in_mhz (float): to do.
         flux_point_joint_or_independent (str): to do.
         target_peak_width (float): The desired width of the response to the saturation pulse (including saturation amp), in Hz.
-        arbitrary_flux_bias (float): to do.
-        arbitrary_qubit_frequency_in_ghz (float): to do.
         timeout (int): to do.
         load_data_id (int): to do.
         multiplexed (bool): to do.
@@ -33,8 +31,6 @@ class Parameters(SimulatableNodeParameters):
     frequency_step_in_mhz: float = 0.25
     flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
     target_peak_width: Optional[float] = 3e6
-    arbitrary_flux_bias: Optional[float] = None
-    arbitrary_qubit_frequency_in_ghz: Optional[float] = None
     timeout: int = 100
     load_data_id: Optional[int] = None
     multiplexed: bool = False
