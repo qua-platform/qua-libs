@@ -17,6 +17,7 @@ from quam.components.ports import (
 )
 
 from . import ReadoutResonator
+from .batchable_list import BatchableList
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
@@ -206,18 +207,18 @@ class QuAM(QuamRoot):
                 print(f"No calibration elements found for {name}. Skipping calibration.")
 
 
-    def get_qubits_used_in_node(self, node: QubitExperimentNodeParameters) -> List[Transmon]:
+    def get_qubits_used_in_node(self, node: QubitExperimentNodeParameters) -> Sequence[Transmon]:
         if node.parameters.qubits is None or node.parameters.qubits == "":
             qubits = self.active_qubits
         else:
             qubits = [self.qubits[q] for q in node.parameters.qubits]
 
-        return qubits
+        return BatchableList(qubits, node.multiplexed)
 
-    def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> List[ReadoutResonator]:
+    def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> Sequence[ReadoutResonator]:
         resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node)]
 
-        return resonators
+        return BatchableList(resonators, node.multiplexed)
 
 @quam_dataclass
 class FEMQuAM(QuAM):
