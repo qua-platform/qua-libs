@@ -22,8 +22,8 @@ save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
 # OPX configuration #
 #####################
 con = "con1"
-lf_fem = 1
-mw_fem = 5
+lf_fem = 5
+mw_fem = 1
 
 # Set octave_config to None if no octave are present
 octave_config = None
@@ -299,8 +299,8 @@ config = {
                     #   1: (50 MHz - 5.5 GHz)
                     #   2: (4.5 GHz - 7.5 GHz)
                     #   3: (6.5 GHz - 10.5 GHz)
-                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, O8 & O1
-                    # must be in the same band, or in bands 1 & 3.
+                    # Note that the "coupled" ports O1 & I1, O2 & O3, O4 & O5, O6 & O7, and O8 & I2
+                    # must be in the same band, or in bands 1 & 3 (that is, if you assign band 2 to one of the coupled ports, the other must use the same band).
                     # The keyword "full_scale_power_dbm" is the maximum power of
                     # normalized pulse waveforms in [-1,1]. To convert to voltage,
                     #   power_mw = 10**(full_scale_power_dbm / 10)
@@ -311,15 +311,27 @@ config = {
                     "type": "MW",
                     "analog_outputs": {
                         # Resonator XY
-                        1: {"full_scale_power_dbm": resonator_power, "band": 2, "upconverter_frequency": resonator_LO},
+                        1: {
+                            "band": 2,
+                            "full_scale_power_dbm": resonator_power,
+                            "upconverters": {1: {"frequency": resonator_LO}},
+                        },
                         # Qubit 1 XY
-                        2: {"full_scale_power_dbm": qubit_power, "band": 1, "upconverter_frequency": qubit_LO_q1},
+                        2: {
+                            "band": 1,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO_q1}},
+                        },
                         # Qubit 2 XY
-                        3: {"full_scale_power_dbm": qubit_power, "band": 1, "upconverter_frequency": qubit_LO_q2},
+                        3: {
+                            "band": 1,
+                            "full_scale_power_dbm": qubit_power,
+                            "upconverters": {1: {"frequency": qubit_LO_q2}},
+                        },
                     },
                     "digital_outputs": {},
                     "analog_inputs": {
-                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # I from down-conversion
+                        1: {"band": 2, "downconverter_frequency": resonator_LO},  # for down-conversion
                     },
                 },
                 lf_fem: {
@@ -363,6 +375,7 @@ config = {
         "rr1": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q1,  # frequency at offset ch7
             "operations": {
@@ -378,6 +391,7 @@ config = {
         "rr2": {
             "MWInput": {
                 "port": (con, mw_fem, 1),
+                "upconverter": 1,
             },
             "intermediate_frequency": resonator_IF_q2,  # frequency at offset ch8
             "operations": {
@@ -393,6 +407,7 @@ config = {
         "q1_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 2),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q1,  # frequency at offset ch7 (max freq)
             "operations": {
@@ -409,6 +424,7 @@ config = {
         "q2_xy": {
             "MWInput": {
                 "port": (con, mw_fem, 3),
+                "upconverter": 1,
             },
             "intermediate_frequency": qubit_IF_q2,  # frequency at offset ch8 (max freq)
             "operations": {
