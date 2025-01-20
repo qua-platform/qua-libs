@@ -271,17 +271,6 @@ for qp in qubit_pairs:
     A_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="a"))
     offset_control[qp.name] = float(fit_data_control.sel(qubit=qp.name, fit_vals="offset"))
     offset_target[qp.name] = float(fit_data_target.sel(qubit=qp.name, fit_vals="offset"))
-    
-    # qp.gates['Cz'].phase_shift_control -= (phase_control / params['cz_num'])
-    # qp.gates['Cz'].phase_shift_control = qp.gates['Cz'].phase_shift_control  % (1.0)
-    # qp.gates['Cz'].phase_shift_target -= (phase_target/ params['cz_num'])
-    # qp.gates['Cz'].phase_shift_target = qp.gates['Cz'].phase_shift_target  % (1.0)
-    # qp.gates['Cz'].extras['A_control'] = A_control
-    # qp.gates['Cz'].extras['A_target'] = A_target
-    # qp.gates['Cz'].extras['offset_control'] = offset_control
-    # qp.gates['Cz'].extras['offset_target'] = offset_target
-    
-    
 
 # %% {Update_state}
 if not node.parameters.simulate:
