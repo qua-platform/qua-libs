@@ -53,15 +53,15 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q2_q3"]
+    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
     num_averages: int = 100
     max_time_in_ns: int = 200
     flux_point_joint_or_independent: Literal["joint", "independent"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
-    amp_range : float = 0.2
-    amp_step : float = 0.005
+    amp_range : float = 0.1
+    amp_step : float = 0.003
     load_data_id: Optional[int] = None  
 
 node = QualibrationNode(
@@ -303,7 +303,7 @@ if not node.parameters.simulate:
             Js[qp.name] = J
             detunings[qp.name] = f0
             amplitudes[qp.name] = np.sqrt(-detunings[qp.name]/qp.qubit_control.freq_vs_flux_01_quad_term)
-            flux_time = int(1/(2*J)*1e9)
+            flux_time = int(1/(2*J)*1e9)+9
             lengths[qp.name] = flux_time-flux_time%4+4
             zero_paddings[qp.name]=lengths[qp.name]-flux_time    
         except Exception as e:
@@ -313,6 +313,7 @@ if not node.parameters.simulate:
             amplitudes[qp.name] = np.sqrt(-detunings[qp.name]/qp.qubit_control.freq_vs_flux_01_quad_term)
             lengths[qp.name] = lengths[qp.name]
             zero_paddings[qp.name] = zero_paddings[qp.name]
+                        
 # %%
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)

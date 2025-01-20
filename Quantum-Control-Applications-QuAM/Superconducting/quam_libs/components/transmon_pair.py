@@ -18,7 +18,7 @@ class TransmonPair(QuamComponent):
     coupler: Optional[TunableCoupler] = None
     gates: Dict[str, TwoQubitGate] = field(default_factory=dict)
     J2: float = 0
-    detuning: float = 0
+    detuning: Optional[float] = None # flux amplitude required to bring the qubits to the same energy in V
     confusion: Optional[List[List[float]]] = None
     mutual_flux_bias: List[float] = field(default_factory=lambda: [0, 0])
     extras: Dict[str, Any] = field(default_factory=dict)

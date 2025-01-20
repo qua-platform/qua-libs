@@ -58,17 +58,17 @@ from quam_libs.lib.pulses import FluxPulse
 # %% {Node_parameters}
 class Parameters(NodeParameters):
 
-    qubit_pairs: Optional[List[str]] = ["coupler_q2_q3"]
+    qubit_pairs: Optional[List[str]] = ["coupler_q1_q2"]
     num_averages: int = 100
     flux_point_joint_or_independent_or_pairwise: Literal["joint", "independent", "pairwise"] = "joint"
     reset_type: Literal['active', 'thermal'] = "active"
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = -0.1
-    coupler_flux_max : float = 0.0
+    coupler_flux_min : float = 0.05 #relative to the coupler set point
+    coupler_flux_max : float = 0.2 #relative to the coupler set point
     coupler_flux_step : float = 0.001
-    qubit_flux_span : float = 0.02
+    qubit_flux_span : float = 0.015 # relative to the known/calculated detuning between the qubits
     qubit_flux_step : float = 0.0005   
     use_state_discrimination: bool = True
     pulse_duration_ns: int = 100
@@ -118,7 +118,10 @@ fluxes_qubit = np.arange(-node.parameters.qubit_flux_span / 2, node.parameters.q
 fluxes_qp = {}
 for qp in qubit_pairs:
     # estimate the flux shift to get the control qubit to the target qubit frequency
-    est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) / qp.qubit_control.freq_vs_flux_01_quad_term)
+    if qp.detuning is not None:
+        est_flux_shift = qp.detuning
+    else:
+        est_flux_shift = np.sqrt(-(qp.qubit_control.xy.RF_frequency - qp.qubit_target.xy.RF_frequency) / qp.qubit_control.freq_vs_flux_01_quad_term)
     fluxes_qp[qp.name] = fluxes_qubit + est_flux_shift
     
 pulse_duration = node.parameters.pulse_duration_ns // 4
@@ -285,7 +288,8 @@ if not node.parameters.simulate:
             values_to_plot = ds.I_control.sel(qubit=qp['qubit'])
         
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
-        ax.set_title(qp['qubit'])
+        qubit_pair = machine.qubit_pairs[qp['qubit']]
+        ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_min"], color = 'red', lw = 0.5, ls = '--')
         ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_max"], color = 'red', lw =0.5, ls = '--')
         # Create a secondary x-axis for detuning
@@ -300,8 +304,8 @@ if not node.parameters.simulate:
 
         sec_ax = ax.secondary_xaxis('top', functions=(flux_to_detuning, detuning_to_flux))
         sec_ax.set_xlabel('Detuning [MHz]')
-        ax.set_xlabel('Qubit flux shift [V]')
-        ax.set_ylabel('Coupler flux [V]')
+        ax.set_xlabel('Qubit flux pulse [mV]')
+        ax.set_ylabel('Coupler flux pulse [mV]')
     grid.fig.suptitle('Control')
     plt.tight_layout()
     plt.show()
@@ -315,7 +319,8 @@ if not node.parameters.simulate:
             values_to_plot = ds.I_target.sel(qubit=qp['qubit'])
         
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, cmap = 'viridis', x = 'flux_qubit_mV', y = 'flux_coupler_mV')
-        ax.set_title(qp['qubit'])
+        qubit_pair = machine.qubit_pairs[qp['qubit']]
+        ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_min"], color = 'red', lw = 0.5, ls = '--')
         ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_max"], color = 'red', lw =0.5, ls = '--')
         # Create a secondary x-axis for detuning
