@@ -167,14 +167,20 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        settings = dict(
-            host=self.network["host"],
-            cluster_name=self.network["cluster_name"],
-            octave=self.get_octave_config(),
-        )
-        if "port" in self.network:
-            settings["port"] = self.network["port"]
-        self.qmm = QuantumMachinesManager(**settings)
+        if self.network["cloud"]:
+            self.qmm = CloudQuantumMachinesManager(self.network["quantum_computer_backend"])
+        else:
+            settings = dict(
+                host=self.network["host"],
+                cluster_name=self.network["cluster_name"],
+                octave=self.get_octave_config(),
+            )
+
+            if "port" in self.network:
+                settings["port"] = self.network["port"]
+
+            self.qmm = QuantumMachinesManager(**settings)
+
         return self.qmm
 
     def get_octave_config(self) -> dict:

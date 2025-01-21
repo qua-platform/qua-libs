@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import xarray as xr
 import json
+import numpy as np
 
 def extract_string(input_string):
     # Find the index of the first occurrence of a digit in the input string
@@ -35,7 +36,8 @@ def fetch_results_as_xarray(handles, qubits, measurement_axis):
     ]
     measurement_axis["qubit"] = [qubit.name for qubit in qubits]
     measurement_axis = {key: measurement_axis[key] for key in reversed(measurement_axis.keys())}
-
+    values=np.asarray(values).squeeze()
+    
     ds = xr.Dataset(
         {f"{meas_var}": ([key for key in measurement_axis.keys()], values[i]) for i, meas_var in enumerate(meas_vars)},
         coords=measurement_axis,
