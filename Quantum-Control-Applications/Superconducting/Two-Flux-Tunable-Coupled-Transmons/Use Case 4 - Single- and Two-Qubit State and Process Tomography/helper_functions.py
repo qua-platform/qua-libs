@@ -575,7 +575,7 @@ def P_Pauli2(s, t, m, n):
     return result
 
 
-def map_from_bloch_state_to_pauli2(q, n, arr):
+def map_from_bloch_state_to_pauli_basis2(q, n, arr):
 
     if arr.shape != (6, 6, 6, 6):
         raise ValueError("Input array must be 6x6x6x6")
