@@ -19,7 +19,6 @@ Next steps before going to the next node:
 
 # %% {Imports}
 
-# TODO: there is a quam_libs folder but also a quam list package
 from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
 from quam_libs.experiments.Power_Rabi.parameters import Parameters
@@ -39,7 +38,6 @@ import numpy as np
 
 
 # %% {Node_parameters}
-# TODO: Power_Rabi Node 
 node = QualibrationNode(
     name="04_Power_Rabi",
     parameters=Parameters(
@@ -69,7 +67,7 @@ u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
 # Get the relevant QuAM components
-qubits = machine.get_qubits_used_in_node(node) # TODO : type hinting
+qubits = machine.get_qubits_used_in_node(node)
 resonators = machine.get_resonators_used_in_node(node)
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
@@ -185,31 +183,20 @@ elif node.parameters.load_data_id is None:
             n = results.fetch_all()[0]
             # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
-        
-        # # TODO : should we change it to this ?
-        
-        # # Send the QUA program to the OPX, which compiles and executes it
-        # job = qm.execute(power_rabi)
-        # # Creates a result handle to fetch data from the OPX
-        # res_handles = job.result_handles
-        # # Waits (blocks the Python console) until all results have been acquired
-        # res_handles.wait_for_all_values()
-
 
 # %% {Data_fetching_and_dataset_creation}
-# TODO : should we combine N_pi, state_discrimination, operation, amps, N_pi_vec into a Power_Rabi_Node ? 
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         ds = fetch_dataset(job, qubits, resonators, N_pi=N_pi, state_discrimination=state_discrimination, operation=operation, amps=amps, N_pi_vec=N_pi_vec)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
-        ds = node.results["ds"] # TODO : type hinting for ds
+        ds = node.results["ds"] 
     # Add the dataset to the node
     node.results = {"ds": ds}
 
     # %% {Data_analysis}
     fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_pi_vec)
-    node.results["fit_results"] = fit_results # TODO: verify that putting pi_amp inside fit_results does not break the api
+    node.results["fit_results"] = fit_results 
     # %% {Plotting}
     fig = plot(ds, qubits, fit_results, N_pi, state_discrimination)
     node.results["figure"] = fig

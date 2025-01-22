@@ -1,7 +1,6 @@
 from qualibrate import NodeParameters
 from typing import List, Optional, Literal
 
-# TODO : documentation
 class Parameters(NodeParameters):
     """
     Parameters for the Power Rabi experiment.
