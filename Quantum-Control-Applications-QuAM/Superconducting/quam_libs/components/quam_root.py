@@ -213,12 +213,12 @@ class QuAM(QuamRoot):
         else:
             qubits = [self.qubits[q] for q in node.parameters.qubits]
 
-        return BatchableList(qubits, node.multiplexed)
+        return BatchableList(qubits, node.parameters.multiplexed)
 
     def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> Sequence[ReadoutResonator]:
         resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node)]
 
-        return BatchableList(resonators, node.multiplexed)
+        return BatchableList(resonators, node.parameters.multiplexed)
 
 @quam_dataclass
 class FEMQuAM(QuAM):
