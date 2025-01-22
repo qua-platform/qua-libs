@@ -34,9 +34,11 @@ def fetch_results_as_xarray(handles, qubits, measurement_axis):
     values = [
         [handles.get(f"{meas_var}{i + 1}").fetch_all() for i, qubit in enumerate(qubits)] for meas_var in meas_vars
     ]
+    if np.array(values).shape[-1] == 1:
+        values = np.array(values).squeeze(axis=-1)
     measurement_axis["qubit"] = [qubit.name for qubit in qubits]
     measurement_axis = {key: measurement_axis[key] for key in reversed(measurement_axis.keys())}
-    values=np.asarray(values).squeeze()
+    
     
     ds = xr.Dataset(
         {f"{meas_var}": ([key for key in measurement_axis.keys()], values[i]) for i, meas_var in enumerate(meas_vars)},
