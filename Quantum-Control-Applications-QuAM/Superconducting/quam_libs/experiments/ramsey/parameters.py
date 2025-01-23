@@ -2,6 +2,7 @@ from typing import Literal
 
 import numpy as np
 from qualibrate import NodeParameters
+from qualibrate.parameters import RunnableParameters
 
 from quam_libs.experiments.node_parameters import (
     QubitsExperimentNodeParameters,
@@ -13,15 +14,7 @@ from quam_libs.experiments.node_parameters import (
 )
 
 
-class Parameters(
-    NodeParameters,
-    QubitsExperimentNodeParameters,
-    SimulatableNodeParameters,
-    FluxControlledNodeParameters,
-    MultiplexableNodeParameters,
-    DataLoadableNodeParameters,
-    QmSessionNodeParameters
-):
+class RamseyParameters(RunnableParameters):
     num_averages: int = 100
     frequency_detuning_in_mhz: float = 1.0
     min_wait_time_in_ns: int = 16
@@ -29,6 +22,17 @@ class Parameters(
     num_time_points: int = 500
     log_or_linear_sweep: Literal["log", "linear"] = "log"
     use_state_discrimination: bool = False
+
+class Parameters(
+    NodeParameters,
+    SimulatableNodeParameters,
+    DataLoadableNodeParameters,
+    QmSessionNodeParameters,
+    RamseyParameters,
+    FluxControlledNodeParameters,
+    MultiplexableNodeParameters,
+    QubitsExperimentNodeParameters,
+):
 
     def get_idle_times_in_clock_cycles(self) -> np.ndarray:
         """
@@ -38,9 +42,9 @@ class Parameters(
         The minimum is 4 clock cycles.
         """
         if self.log_or_linear_sweep == "linear":
-            idle_times = self._get_idle_times_linear_sweep()
+            idle_times = self._get_idle_times_linear_sweep_in_clock_cycles()
         elif self.log_or_linear_sweep == "log":
-            idle_times = self._get_idle_times_log_sweep()
+            idle_times = self._get_idle_times_log_sweep_in_clock_cycles()
         else:
             raise ValueError(f"Expected sweep type to be 'log' or 'linear', got {self.log_or_linear_sweep}")
 

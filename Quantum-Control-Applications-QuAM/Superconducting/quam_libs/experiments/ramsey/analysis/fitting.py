@@ -1,6 +1,6 @@
 import logging
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, asdict
+from typing import List, Optional
 
 import numpy as np
 import xarray as xr
@@ -18,7 +18,7 @@ class RamseyFit:
     decay_error: float
 
     qubit_name: Optional[str] = ""
-    raw_fit_results: Optional[xr.DataArray] = None
+    raw_fit_results: Optional[xr.Dataset] = None
 
     def log_frequency_offset(self, logger=None):
         if logger is None:
@@ -55,7 +55,7 @@ def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, qubits: List[Transmon], 
             freq_offset=1e9 * freq_offset.loc[q.name].values,
             decay=decay.loc[q.name].values,
             decay_error=decay_error.loc[q.name].values,
-            raw_fit_results=fit
+            raw_fit_results=fit.to_dataset(name="fit")
         )
 
         for q in qubits
@@ -131,7 +131,7 @@ def calculate_fit_results(frequency, tau, tau_error, fit, detuning):
     within_detuning = (1e9 * frequency < 2 * detuning).mean(dim="sign") == 1
     positive_shift = frequency.sel(sign=1) > frequency.sel(sign=-1)
     freq_offset = (
-        within_detuning * (frequency * fit.detuning_sign).mean(dim="sign")
+        within_detuning * (frequency * fit.sign).mean(dim="sign")
         + ~within_detuning * positive_shift * frequency.mean(dim="sign")
         - ~within_detuning * ~positive_shift * frequency.mean(dim="sign")
     )
