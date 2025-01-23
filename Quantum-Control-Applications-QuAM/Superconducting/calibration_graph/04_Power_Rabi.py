@@ -41,7 +41,7 @@ import numpy as np
 node = QualibrationNode(
     name="04_Power_Rabi",
     parameters=Parameters(
-       qubits = ["qubitB1", "qubitB3"],
+       qubits = None,
        num_averages = 50,
        operation_x180_or_any_90 = "x180",
        min_amp_factor = 0.001,
@@ -214,3 +214,5 @@ node.outcomes = {q.name: "successful" for q in qubits}
 node.results["initial_parameters"] = node.parameters.model_dump()
 node.machine = machine
 node.save()
+
+# %%
