@@ -11,6 +11,7 @@ def instruct_to_integer(instruct):
         instruct: a list of instructions such as [('x90', 0), ('I', 1), ('CNOT', 01)]
     return:
         instruct_integers: a list of integers each corresponding to a specific pulse (see "run=two-qubit-rb-CR-CNOT.py")
+                            the example above gives you [1, 49]
     """
 
     instruct_integers = []
@@ -57,8 +58,10 @@ def generate_sequence_list(depth):
 
     """
     for a given depth, generate ONE random sequence containing 2q clifford gates at a certain depth
+    input:
+        depth: the depth of the sequence of the clifford gates
     return:
-        instruct_integers: a list of integers each corresponding to a specific pulse (see "run=two-qubit-rb-CR-CNOT.py")
+        instruct_integers: a list of integers; each corresponds to a specific pulse (see "run=two-qubit-rb-CR-CNOT.py")
     """
     
     with open('2q_Clifford_gen_CNOT_instruct.pkl', 'rb') as file:
@@ -163,7 +166,6 @@ def pre_generate_sequence(number_of_sequences, depth_list):
             len_list.append(len(new_list))
    
     return sequence_list, len_list
-
 
 
 def pre_generate_sequence_interleaved(number_of_sequences, depth_list):

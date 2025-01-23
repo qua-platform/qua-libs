@@ -2,15 +2,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
-import datetime
-from scipy.signal import detrend
 from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig, generate_qua_script
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.results.data_handler import DataHandler
 from qualang_tools.analysis import two_state_discriminator
-from scipy.signal import detrend
 from importlib import reload
 from qualang_tools.addons.variables import assign_variables_to_element
 from configuration import *
@@ -158,14 +154,14 @@ def play_sequence(sequence, start, length):
             with case_(28):
                 play('y90', qt_xy)
             with case_(29):
-                play('x90',qc_xy)
-                play('y90',qt_xy)
+                play('x90', qc_xy)
+                play('y90', qt_xy)
             with case_(30):
                 play('-x90', qc_xy)
-                play('y90',qt_xy)
+                play('y90', qt_xy)
             with case_(31):
                 play('x180', qc_xy)
-                play('y90',qt_xy)
+                play('y90', qt_xy)
             with case_(32):
                 play('y90', qc_xy)
                 play('y90', qt_xy)
@@ -216,18 +212,23 @@ def play_sequence(sequence, start, length):
                 play('y180', qc_xy)
                 play('y180', qt_xy)
             with case_(49):
-
+                # We use direct CR
+                #
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
                 play("square_positive" * amp(cr_drive_amp), cr_drive, duration=120)
                 play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=120)
 
+                # play("flattop_blackman" * amp(cr_drive_amp), cr_drive, duration=120)
+                # play("flattop_blackman" * amp(cr_cancel_amp), cr_cancel, duration=120)
+                # flattop envelope is smoother than square
+
                 # # align for the next step and clear the phase shift
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
-                frame_rotation_2pi(-0.25, qc_xy)
-                # check the sign of 0.25 -- could be either way depending on the drive phase
+                frame_rotation_2pi(+0.25, qc_xy)
+                # check the sign before 0.25 -- could be either way depending on cr_drive_phase
                 play('y90' * amp(0.00001), qc_xy, duration=1)
-                # this is a tricky step: avoid frame rotations to be face to face
-                # qm only recognizes the last frame rotation if multiple rotations are adjacent
+                # this is a tricky step. the goal is to avoid face-to-face frame rotations
+                # qm only recognizes the last frame rotation if multiple frame rotations stacked
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
 
 
@@ -238,12 +239,11 @@ def play_sequence(sequence, start, length):
 
 with program() as rb:
 
-    depth = declare(int)  # QUA variable for the varying depth index
+    depth = declare(int)  # QUA variable for the varying depth_list index
     depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
     depth_len = declare(int)
     assign(depth_len, len(depth_list))
     n_avg_ = declare(int, value=n_avg)
-    # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
     m = declare(int)  # QUA variable for the loop over random sequences
     # n = declare(int)  # QUA variable for the averaging loop
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
@@ -282,9 +282,12 @@ with program() as rb:
                 wait(thermalization_time * u.ns, f"rr{1}")
                 wait(thermalization_time * u.ns, f"rr{2}")
                 align()
-                # play("cw_rip_pulse", "c_12_xy") # This if for our case where a coupler is also driven
 
-                play_sequence(sequence_qua,start,len_list_qua[run])
+                # play("cw_rip_pulse", "c_12_xy")
+                # wait(10*u.us, qc_xy,qt_xy,cr_drive, cr_cancel)
+                # The above is for SQMS use case, where we also drive a center coupler resonator (Phys. Rev. Applied 22, 034007)
+
+                play_sequence(sequence_qua, start, len_list_qua[run])
                 align(qc_xy, qt_xy, "rr1", "rr2", cr_drive, cr_cancel)
                 # Align the two elements to measure after playing the circuit.
                 # Make sure you updated the ge_threshold and angle if you want to use state discrimination

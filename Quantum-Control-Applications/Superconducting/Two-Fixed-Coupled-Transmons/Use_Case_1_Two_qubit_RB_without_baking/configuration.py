@@ -6,6 +6,7 @@ Octave configuration working for QOP222 and qm-qua==1.1.5 and newer.
 from pathlib import Path
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
+from qualang_tools.config.waveform_tools import flattop_blackman_waveform
 from qualang_tools.units import unit
 
 
@@ -225,6 +226,48 @@ cr_cancel_square_phase_c2t1 = 0.0  # in units of 2pi
 cr_drive_square_phase_ZI_correct_c1t2 = 0.0  # in units of 2pi
 cr_drive_square_phase_ZI_correct_c2t1 = 0.0  # in units of 2pi
 
+#############################################
+#             Blackman pulse                #
+#############################################
+
+const_amp_cr = 490 * u.mV
+const_amp_cr_negative = -490 * u.mV
+const_amp_cr_drive_c1t2 = const_amp_cr
+const_amp_cr_negative_drive_c1t2 = const_amp_cr_negative
+const_amp_cr_cancel_c1t2 = const_amp_cr
+const_amp_cr_negative_cancel_c1t2 = const_amp_cr_negative
+const_amp_cr_drive_c2t1 = const_amp_cr
+const_amp_cr_negative_drive_c2t1 = const_amp_cr_negative
+const_amp_cr_cancel_c2t1 = const_amp_cr
+const_amp_cr_negative_cancel_c2t1 = const_amp_cr_negative
+
+const_amp_zero = 0.0 * u.mV
+total_length_cr = 400 * u.ns
+
+total_length_cr_drive_c1t2 = total_length_cr
+total_length_cr_negative_drive_c1t2 = total_length_cr
+total_length_cr_cancel_c1t2 = total_length_cr
+total_length_cr_negative_cancel_c1t2 = total_length_cr
+total_length_cr_drive_c2t1 = total_length_cr
+total_length_cr_negative_drive_c2t1 = total_length_cr
+total_length_cr_cancel_c2t1 = total_length_cr
+total_length_cr_negative_cancel_c2t1 = total_length_cr
+
+rise_fall_length_cr = 80 * u.ns
+flat_length_cr = total_length_cr - 2 * rise_fall_length_cr
+
+
+flattop_blackman_cr_drive_c1t2 = np.array(flattop_blackman_waveform(const_amp_cr_drive_c1t2, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_negative_drive_c1t2 = np.array(flattop_blackman_waveform(const_amp_cr_negative_drive_c1t2, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_cancel_c1t2 = np.array(flattop_blackman_waveform(const_amp_cr_cancel_c1t2, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_negative_cancel_c1t2 = np.array(flattop_blackman_waveform(const_amp_cr_negative_cancel_c1t2, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_drive_c2t1 = np.array(flattop_blackman_waveform(const_amp_cr_drive_c2t1, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_negative_drive_c2t1 = np.array(flattop_blackman_waveform(const_amp_cr_negative_drive_c2t1, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_cancel_c2t1 = np.array(flattop_blackman_waveform(const_amp_cr_cancel_c2t1, flat_length_cr, rise_fall_length_cr))
+flattop_blackman_cr_negative_cancel_c2t1 = np.array(flattop_blackman_waveform(const_amp_cr_negative_cancel_c2t1, flat_length_cr, rise_fall_length_cr))
+
+flattop_zero = np.array(flattop_blackman_waveform(const_amp_zero, flat_length_cr, rise_fall_length_cr))
+
 
 #############################################
 #                Resonators                 #
@@ -399,6 +442,8 @@ config = {
             "intermediate_frequency": cr_drive_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
+                "flattop_blackman": "flattop_blackman_pulse_cr_drive_c1t2",
+                "flattop_blackman_negative": "flattop_blackman_pulse_cr_negative_drive_c1t2",
                 "square_positive": "square_positive_pulse_cr_drive_c1t2",
                 "square_negative": "square_negative_pulse_cr_drive_c1t2",
             },
@@ -413,6 +458,8 @@ config = {
             "intermediate_frequency": cr_drive_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
+                "flattop_blackman": "flattop_blackman_pulse_cr_drive_c2t1",
+                "flattop_blackman_negative": "flattop_blackman_pulse_cr_negative_drive_c2t1",
                 "square_positive": "square_positive_pulse_cr_drive_c2t1",
                 "square_negative": "square_negative_pulse_cr_drive_c2t1",
             },
@@ -427,6 +474,8 @@ config = {
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
+                "flattop_blackman": "flattop_blackman_pulse_cr_cancel_c1t2",
+                "flattop_blackman_negative": "flattop_blackman_pulse_cr_negative_cancel_c1t2",
                 "square_positive": "square_positive_pulse_cr_cancel_c1t2",
                 "square_negative": "square_negative_pulse_cr_cancel_c1t2",
             },
@@ -441,6 +490,8 @@ config = {
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",
+                "flattop_blackman": "flattop_blackman_pulse_cr_cancel_c2t1",
+                "flattop_blackman_negative": "flattop_blackman_pulse_cr_negative_cancel_c2t1",
                 "square_positive": "square_positive_pulse_cr_cancel_c2t1",
                 "square_negative": "square_negative_pulse_cr_cancel_c2t1",
             },
@@ -571,6 +622,79 @@ config = {
                 "Q": "minus_y90_Q_wf_q2",
             },
         },
+        "flattop_blackman_pulse_cr_drive_c1t2": {
+            "operation": "control",
+            "length": total_length_cr_drive_c1t2,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_drive_c1t2",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_negative_drive_c1t2": {
+            "operation": "control",
+            "length": total_length_cr_negative_drive_c1t2,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_negative_drive_c1t2",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_cancel_c1t2": {
+            "operation": "control",
+            "length": total_length_cr_cancel_c1t2,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_cancel_c1t2",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_negative_cancel_c1t2": {
+            "operation": "control",
+            "length": total_length_cr_negative_cancel_c1t2,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_negative_cancel_c1t2",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_drive_c2t1": {
+            "operation": "control",
+            "length": total_length_cr_drive_c2t1,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_drive_c2t1",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_negative_drive_c2t1": {
+            "operation": "control",
+            "length": total_length_cr_negative_drive_c2t1,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_negative_drive_c2t1",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_cancel_c2t1": {
+            "operation": "control",
+            "length": total_length_cr_cancel_c2t1,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_cancel_c2t1",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+        "flattop_blackman_pulse_cr_negative_cancel_c2t1": {
+            "operation": "control",
+            "length": total_length_cr_negative_cancel_c2t1,
+            "waveforms": {
+                "I": "flattop_blackman_wf_cr_negative_cancel_c2t1",
+                "Q": "zero_wf",
+            },
+            "digital_marker": "ON",
+        },
+
         "readout_pulse_q2": {
             "operation": "measurement",
             "length": readout_len,
@@ -661,6 +785,15 @@ config = {
         "minus_y90_I_wf_q2": {"type": "arbitrary", "samples": minus_y90_I_wf_q2.tolist()},
         "minus_y90_Q_wf_q2": {"type": "arbitrary", "samples": minus_y90_Q_wf_q2.tolist()},
         "readout_wf_q2": {"type": "constant", "sample": readout_amp_q2},
+        "flattop_blackman_wf_cr_drive_c1t2": {"type": "arbitrary", "samples": flattop_blackman_cr_drive_c1t2.tolist()},
+        "flattop_blackman_wf_cr_negative_drive_c1t2": {"type": "arbitrary", "samples": flattop_blackman_cr_negative_drive_c1t2.tolist()},
+        "flattop_blackman_wf_cr_cancel_c1t2": {"type": "arbitrary", "samples": flattop_blackman_cr_cancel_c1t2.tolist()},
+        "flattop_blackman_wf_cr_negative_cancel_c1t2": {"type": "arbitrary", "samples": flattop_blackman_cr_negative_cancel_c1t2.tolist()},
+        "flattop_blackman_wf_cr_drive_c2t1": {"type": "arbitrary", "samples": flattop_blackman_cr_drive_c2t1.tolist()},
+        "flattop_blackman_wf_cr_negative_drive_c2t1": {"type": "arbitrary", "samples": flattop_blackman_cr_negative_drive_c2t1.tolist()},
+        "flattop_blackman_wf_cr_cancel_c2t1": {"type": "arbitrary", "samples": flattop_blackman_cr_cancel_c2t1.tolist()},
+        "flattop_blackman_wf_cr_negative_cancel_c2t1": {"type": "arbitrary", "samples": flattop_blackman_cr_negative_cancel_c2t1.tolist()},
+        "flattop_zero_wf":  {"type": "arbitrary", "samples": flattop_zero.tolist()},
         "square_positive_wf_cr_drive_c1t2": {"type": "constant", "sample": cr_drive_square_amp_c1t2},
         "square_negative_wf_cr_drive_c1t2": {"type": "constant", "sample": -cr_drive_square_amp_c1t2},
         "square_positive_wf_cr_cancel_c1t2": {"type": "constant", "sample": cr_cancel_square_amp_c1t2},
