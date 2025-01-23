@@ -2,24 +2,57 @@ from typing import List
 import numpy as np
 import xarray as xr
 from qm import QmJob
+from qualang_tools.units import unit
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.components import Transmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], idle_times: np.ndarray) -> xr.Dataset:
+def fetch_dataset(job: QmJob, qubits: List[Transmon], idle_times: np.ndarray, unit: unit) -> xr.Dataset:
+    
+    """
+    Fetches raw ADC data from the OPX and processes it into an xarray dataset with labeled coordinates and attributes.
+    
+    arguments:
+    - job (QmJob): the job object containing the results.
+    - qubits (List[Transmon]): the qubits on which the data was acquired.
+    - idle_times (np.ndarray): the idle times array.
+    - unit (unit): the unit object.
+    
+    Attributes:
+    - The dataset will contain the following variables:
+        - adcI: Normalized ADC values for the in-phase component.
+        - adcQ: Normalized ADC values for the quadrature component.
+       
+    Coordinates:
+    - idle_time: 1D array representing the idle time axis.
+    
+    returns:
+    - ds (xr.Dataset): the dataset containing the fetched measurement results.
+
+    """
     
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times})
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits)
     # Convert time into µs
-    ds = ds.assign_coords(idle_time=4 * ds.idle_time / u.us)  # convert to µs
+    ds = ds.assign_coords(idle_time=4 * ds.idle_time / unit.us)  # convert to µs
     ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
     
     return ds
 
 def fit_exponential_decay(ds: xr.Dataset, node_parameters) -> dict:
+    
+    """
+    Fits the T1 associated with the exponential decay.
+    Parameters:
+    ds (xr.Dataset): The dataset containing the experimental data.
+    note_parameters: The node parameters.
+
+    Returns:
+    Dict: A dictionary containing the fit results.
+    """    
     
     # Fit the exponential decay
     if node_parameters.use_state_discrimination:

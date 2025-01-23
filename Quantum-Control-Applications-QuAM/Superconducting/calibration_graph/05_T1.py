@@ -14,25 +14,20 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
+from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
 from quam_libs.experiments.T1.parameters import Parameters
 from quam_libs.experiments.T1.analysis import fetch_dataset, fit_exponential_decay
 from quam_libs.experiments.T1.plotting import plot
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.macros import qua_declaration, active_reset, readout_state
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
-from quam_libs.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
-from qm import SimulationConfig
-from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
+
+from qm.qua import program, declare, for_, save, stream_processing, align, declare_stream
+
 import numpy as np
 
 
@@ -155,7 +150,7 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, idle_times=idle_times)
+        ds = fetch_dataset(job, qubits, idle_times=idle_times, unit=u)
         node.results = {"ds": ds}
     else:
         node = node.load_from_id(node.parameters.load_data_id)

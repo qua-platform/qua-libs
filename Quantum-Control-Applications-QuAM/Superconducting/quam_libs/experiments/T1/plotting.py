@@ -7,6 +7,18 @@ from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 
 def plot(ds: xr.Dataset, qubits: List[Transmon], fit_results: Dict, node: QualibrationNode) -> plt.Figure:
     
+    """
+    Plots the T1 results and fit for a given dataset and qubits.
+    Parameters:
+    ds (xarray.Dataset): The dataset containing the experimental data.
+    qubits (list): A list of qubit objects to be plotted.
+    fit_results (dict): A dictionary containing the fit results.
+    node (QualibrationNode): The node object.
+    
+    Returns:
+    Figure: The matplotlib figure object containing the plots.
+    """
+    
     tau = fit_results["tau"]
     tau_error = fit_results["tau_error"]
     fitted = fit_results["fitted"]
