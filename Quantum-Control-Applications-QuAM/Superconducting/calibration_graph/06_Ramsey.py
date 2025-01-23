@@ -76,7 +76,7 @@ with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     idle_time = declare(int)
     detuning_sign = declare(int)
-    virtual_detuning_phase = declare(fixed)
+    virtual_detuning_phases = [declare(fixed) for _ in range(num_qubits)]
 
     if node.parameters.use_state_discrimination:
         state = [declare(int) for _ in range(num_qubits)]
@@ -84,31 +84,29 @@ with program() as ramsey:
 
     for multiplexed_qubits in qubits.batch():
         # todo: is this the right behaviour?
-        for qubit in  multiplexed_qubits:
+        for qubit in multiplexed_qubits.values():
             machine.set_all_fluxes(flux_point, target=qubit)
-        
+
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
 
             with for_each_(idle_time, idle_times):
                 with for_(*from_array(detuning_sign, detuning_signs)):
-
                     for i, qubit in multiplexed_qubits.items():
-
                         with if_(detuning_sign == 1):
-                            assign(virtual_detuning_phase, Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time))
+                            assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time))
                         with else_():
-                            assign(virtual_detuning_phase, Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time))
+                            assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time))
 
                         qubit.align()
 
                         qubit.xy.play("x90")
                         qubit.xy.wait(idle_time)
-                        qubit.xy.frame_rotation_2pi(virtual_detuning_phase)
+                        qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
                         qubit.xy.play("x90")
+                    align()
 
-                        qubit.align()
-
+                    for i, qubit in multiplexed_qubits.items():
                         if node.parameters.use_state_discrimination:
                             readout_state(qubit, state[i])
                             save(state[i], state_st[i])
@@ -116,13 +114,11 @@ with program() as ramsey:
                             qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
+                    align()
 
+                    for i, qubit in multiplexed_qubits.items():
                         qubit.resonator.wait(qubit.thermalization_time * u.ns)
                         reset_frame(qubit.xy.name)
-
-        # Measure sequentially
-        if not node.parameters.multiplexed:
-            align()
 
     with stream_processing():
         n_st.save("n")
