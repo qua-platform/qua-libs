@@ -144,7 +144,7 @@ with program() as ramsey:
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    fig = simulate_and_plot(qmm, config, ramsey, node.parameters)
+    samples, fig = simulate_and_plot(qmm, config, ramsey, node.parameters)
     node.results = {"figure": fig}
     node.machine = machine
     node.save()
