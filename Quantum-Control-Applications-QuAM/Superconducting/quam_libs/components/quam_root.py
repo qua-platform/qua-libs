@@ -29,7 +29,7 @@ from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
-from ..experiments.node_parameters import QubitsExperimentNodeParameters
+from ..experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
 
 
 @quam_dataclass
@@ -207,18 +207,27 @@ class QuAM(QuamRoot):
                 print(f"No calibration elements found for {name}. Skipping calibration.")
 
 
-    def get_qubits_used_in_node(self, node: QubitExperimentNodeParameters) -> Sequence[Transmon]:
-        if node.parameters.qubits is None or node.parameters.qubits == "":
+    def get_qubits_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[Transmon]:
+        if node_parameters.qubits is None or node_parameters.qubits == "":
             qubits = self.active_qubits
         else:
-            qubits = [self.qubits[q] for q in node.parameters.qubits]
+            qubits = [self.qubits[q] for q in node_parameters.qubits]
 
-        return BatchableList(qubits, node.multiplexed)
+        return make_batchable_list(qubits, node_parameters)
 
-    def get_resonators_used_in_node(self, node: QubitExperimentNodeParameters) -> Sequence[ReadoutResonator]:
-        resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node)]
+    def get_resonators_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[ReadoutResonator]:
+        resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node_parameters)]
 
-        return BatchableList(resonators, node.multiplexed)
+        return make_batchable_list(resonators, node_parameters)
+
+def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) -> BatchableList:
+    if isinstance(node_parameters, MultiplexableNodeParameters):
+        multiplexed = node_parameters.multiplexed
+    else:
+        multiplexed = False
+
+    return BatchableList(items, multiplexed)
+
 
 @quam_dataclass
 class FEMQuAM(QuAM):

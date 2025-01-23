@@ -16,7 +16,7 @@ Next steps before going to the next node:
     - Update the qubits frequency and T2_ramsey in the state.
     - Save the current state
 """
-
+from dataclasses import asdict
 
 # %% {Imports}
 from qualibrate import QualibrationNode
@@ -57,7 +57,7 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load()
 
-qubits = machine.get_qubits_used_in_node(node)
+qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)
 
 config = machine.generate_config()
@@ -66,7 +66,7 @@ if node.parameters.load_data_id is None:
 
 # %% {QUA_program}
 n_avg = node.parameters.num_averages
-idle_times = node.parameters.idle_times()
+idle_times = node.parameters.get_idle_times_in_clock_cycles()
 detuning = node.parameters.frequency_detuning_in_mhz * u.MHz
 flux_point = node.parameters.flux_point_joint_or_independent
 
@@ -169,7 +169,7 @@ if not node.parameters.simulate:
 
     # %% {Data_analysis}
     fits = fit_frequency_detuning_and_t2_decay(ds, qubits, node.parameters)
-    node.results["fit_results"] = fits
+    node.results["fit_results"] = {k: asdict(v) for k, v in fits.items()}
 
     for fit in fits.values():
         fit.log_frequency_offset()

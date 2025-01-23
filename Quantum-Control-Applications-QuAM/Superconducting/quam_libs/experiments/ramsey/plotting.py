@@ -17,7 +17,7 @@ def plot_ramseys_data_with_fit(ds: xr.Dataset, qubits: List[Transmon],
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
-        plot_ramsey_data_with_fit(ax, ds, qubit, node_parameters, fits[qubit.name])
+        plot_ramsey_data_with_fit(ax, ds, qubit, node_parameters, fits[qubit["qubit"]])
 
     grid.fig.suptitle("Ramsey: I vs. idle time")
 
@@ -42,7 +42,7 @@ def plot_ramsey_data_with_fit(ax, ds, qubit, node_parameters, fit):
         plot_state(ax, ds, qubit, fitted_ramsey_data)
         ax.set_ylabel("State")
     else:
-        plot_trans_amplitude(ax, ds, qubit, fitted_ramsey_data)
+        plot_transmission_amplitude(ax, ds, qubit, fitted_ramsey_data)
         ax.set_ylabel("Trans. amp. I [mV]")
 
     ax.set_xlabel("Idle time [ns]")
@@ -59,11 +59,11 @@ def plot_state(ax, ds, qubit, fitted):
     ds.sel(sign=-1).loc[qubit].state.plot(
         ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
-    ax.plot(ds.time, fitted.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-    ax.plot(ds.time, fitted.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
+    ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
+    ax.plot(ds.time, fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
 
 
-def plot_trans_amplitude(ax, ds, qubit, fitted):
+def plot_transmission_amplitude(ax, ds, qubit, fitted):
     """Plot transmission amplitude for a qubit."""
     (ds.sel(sign=1).loc[qubit].I * 1e3).plot(
         ax=ax, x="time", c="C0", marker=".", ms=5.0, ls="", label="$\Delta$ = +"
@@ -71,8 +71,8 @@ def plot_trans_amplitude(ax, ds, qubit, fitted):
     (ds.sel(sign=-1).loc[qubit].I * 1e3).plot(
         ax=ax, x="time", c="C1", marker=".", ms=5.0, ls="", label="$\Delta$ = -"
     )
-    ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
-    ax.plot(ds.time, 1e3 * fitted.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
+    ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=1), c="C0", ls="-", lw=1)
+    ax.plot(ds.time, 1e3 * fitted.fit.loc[qubit].sel(sign=-1), c="C1", ls="-", lw=1)
 
 
 def add_fit_text(ax, fit):
