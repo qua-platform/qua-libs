@@ -1,21 +1,18 @@
-import os
 from pathlib import Path
 from typing import Union, Dict
 
 from quam.components import Octave, LocalOscillator
-
-from qualang_tools.wirer import Connectivity
 from quam.components import FrequencyConverter
 
 from quam_libs.components.mixer import StandaloneMixer
-from quam_libs.quam_builder.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
-from quam_libs.quam_builder.transmons.add_transmon_drive_component import add_transmon_drive_component
-from quam_libs.quam_builder.transmons.add_transmon_flux_component import add_transmon_flux_component
-from quam_libs.quam_builder.transmons.add_transmon_pair_component import add_transmon_pair_component
-from quam_libs.quam_builder.transmons.add_transmon_resonator_component import add_transmon_resonator_component
+from quam_libs.quam_builder.superconducting.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
+from quam_libs.quam_builder.superconducting.add_transmon_drive_component import add_transmon_drive_component
+from quam_libs.quam_builder.superconducting.add_transmon_flux_component import add_transmon_flux_component
+from quam_libs.quam_builder.superconducting.add_transmon_pair_component import add_transmon_pair_component
+from quam_libs.quam_builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from quam_libs.components import OPXPlusQuAM, FEMQuAM, QuAM, Transmon
-from quam_libs.quam_builder.wiring.create_wiring import create_wiring
+from quam_libs.components import QuAM, Transmon
+from quam_libs.quam_builder.qop_connectivity.build_quam_wiring import save_machine
 
 
 def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_settings: Dict = {}) -> QuAM:
@@ -28,46 +25,6 @@ def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_setting
     save_machine(machine, quam_state_path)
 
     return machine
-
-
-def build_quam_wiring(
-    connectivity: Connectivity, host_ip: str, cluster_name: str, quam_state_path: Union[Path, str], port: int = None
-) -> QuAM:
-    if os.path.exists(quam_state_path) and "state.json" in os.listdir(quam_state_path):
-        # if there is a non-empty QuAM state already
-        machine = QuAM.load(quam_state_path)
-    else:
-        machine = create_base_machine(connectivity)
-
-    add_name_and_ip(machine, host_ip, cluster_name, port)
-    machine.wiring = create_wiring(connectivity)
-    save_machine(machine, quam_state_path)
-
-    return machine
-
-
-def create_base_machine(connectivity: Connectivity):
-    """
-    Detects whether the `connectivity` is using OPX+ or OPX1000 and returns
-    the corresponding base object. Otherwise, raises a TypeError.
-    """
-    for element in connectivity.elements.values():
-        for channels in element.channels.values():
-            for channel in channels:
-                if channel.instrument_id in ["lf-fem", "mw-fem"]:
-                    return FEMQuAM()
-                elif channel.instrument_id in ["opx+"]:
-                    return OPXPlusQuAM()
-
-    raise TypeError(
-        "Couldn't identify connectivity as OPX+ or LF-FEM. " "Are channels were allocated for the connectivity?"
-    )
-
-
-def add_name_and_ip(machine: QuAM, host_ip: str, cluster_name: str, port: Union[int, None]):
-    """Stores the minimal information to connect to a QuantumMachinesManager."""
-    machine.network = {"host": host_ip, "port": port, "cluster_name": cluster_name}
-
 
 def add_ports(machine: QuAM):
     """
@@ -166,12 +123,3 @@ def add_external_mixers(machine: QuAM):
                         machine.mixers[mixer_name] = frequency_converter
 
     return machine
-
-
-def save_machine(machine: QuAM, quam_state_path: Union[Path, str]):
-    machine.save(
-        path=quam_state_path,
-        content_mapping={
-            "wiring.json": ["network", "wiring"],
-        },
-    )

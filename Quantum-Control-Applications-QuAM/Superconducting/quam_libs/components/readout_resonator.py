@@ -137,4 +137,4 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         return set_output_power(self, power_in_dbm, full_scale_power_dbm, max_amplitude, operation)
 
 
-ReadoutResonator = ReadoutResonatorIQ
+ReadoutResonator = ReadoutResonatorMW
