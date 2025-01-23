@@ -29,7 +29,7 @@ from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
-from ..experiments.node import QubitExperimentNodeParameters
+from ..experiments.node_parameters import QubitsExperimentNodeParameters
 
 
 @quam_dataclass
