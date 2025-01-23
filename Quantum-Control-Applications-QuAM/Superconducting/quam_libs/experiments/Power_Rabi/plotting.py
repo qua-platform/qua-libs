@@ -18,12 +18,12 @@ def plot(ds, qubits, fit_results, N_pi, state_discrimination) -> Figure:
     """
     
 
-    fit_evals = fit_results["fit_evals"]
-    data_max_idx = fit_results["data_max_idx"]
-    
     grid = QubitGrid(ds, [q.grid_location for q in qubits])
     for ax, qubit in grid_iter(grid):
         if N_pi == 1:
+            
+            fit_evals = fit_results["fit_evals"]
+            
             if state_discrimination:
                 ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV")
                 ax.plot(ds.abs_amp.loc[qubit] * 1e3, fit_evals.loc[qubit][0])
@@ -34,6 +34,7 @@ def plot(ds, qubits, fit_results, N_pi, state_discrimination) -> Figure:
                 ax.set_ylabel("Trans. amp. I [mV]")
 
         elif N_pi > 1:
+            data_max_idx = fit_results["data_max_idx"]
             if state_discrimination:
                 ds.assign_coords(amp_mV=ds.abs_amp * 1e3).loc[qubit].state.plot(ax=ax, x="amp_mV", y="N")
             else:

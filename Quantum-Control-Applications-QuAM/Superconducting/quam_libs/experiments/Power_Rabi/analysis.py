@@ -9,14 +9,13 @@ from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.lib.instrument_limits import instrument_limits
 
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], N_pi: int, state_discrimination: bool, operation: str, amps: np.ndarray, N_pi_vec: np.ndarray) -> xr.Dataset:
+def fetch_dataset(job: QmJob, qubits: List[Transmon], state_discrimination: bool, operation: str, amps: np.ndarray, N_pi_vec: np.ndarray) -> xr.Dataset:
     """
     Fetches raw ADC data from the OPX and processes it into an xarray dataset with labeled coordinates and attributes.
 
     arguments:
     - job (QmJob): the job object containing the results.
     - qubits (List[Transmon]): the qubits on which the data was acquired.
-    - N_pi (int): the max number of pi pulses applied.
     - state_discrimination (bool): whether the data was acquired with state discrimination.
     - operation (str): the operation performed on the qubit (e.g., 'x180').
     - amps (np.ndarray): the amplitude factors of the drive pulse.
@@ -40,10 +39,8 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], N_pi: int, state_discrimin
     """
     
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    if N_pi == 1:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps})
-    else:
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps, "N": N_pi_vec})
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps,  "N": N_pi_vec})
+    
     if not state_discrimination:
         ds = convert_IQ_to_V(ds, qubits)
     # Add the qubit pulse absolute amplitude to the dataset

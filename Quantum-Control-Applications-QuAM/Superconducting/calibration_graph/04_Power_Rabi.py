@@ -41,7 +41,7 @@ import numpy as np
 node = QualibrationNode(
     name="04_Power_Rabi",
     parameters=Parameters(
-       qubits = None,
+       qubits = ["qubitB1", "qubitB3"],
        num_averages = 50,
        operation_x180_or_any_90 = "x180",
        min_amp_factor = 0.001,
@@ -187,29 +187,30 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, resonators, N_pi=N_pi, state_discrimination=state_discrimination, operation=operation, amps=amps, N_pi_vec=N_pi_vec)
+        ds = fetch_dataset(job, qubits, state_discrimination=state_discrimination, 
+                           operation=operation, amps=amps, N_pi_vec=N_pi_vec)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"] 
     # Add the dataset to the node
     node.results = {"ds": ds}
 
-    # %% {Data_analysis}
-    fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_pi_vec)
-    node.results["fit_results"] = fit_results 
-    # %% {Plotting}
-    fig = plot(ds, qubits, fit_results, N_pi, state_discrimination)
-    node.results["figure"] = fig
-    # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        with node.record_state_updates():
-            for q in qubits:
-                q.xy.operations[operation].amplitude = fit_results["pi_amp_fit"][q.name]["Pi_amplitude"]
-                if operation == "x180" and node.parameters.update_x90:
-                    q.xy.operations["x90"].amplitude = fit_results["pi_amp_fit"][q.name]["Pi_amplitude"] / 2
+# %% {Data_analysis}
+fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_pi_vec)
+node.results["fit_results"] = fit_results 
+# %% {Plotting}
+fig = plot(ds, qubits, fit_results, N_pi, state_discrimination)
+node.results["figure"] = fig
+# %% {Update_state}
+if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        for q in qubits:
+            q.xy.operations[operation].amplitude = fit_results["pi_amp_fit"][q.name]["Pi_amplitude"]
+            if operation == "x180" and node.parameters.update_x90:
+                q.xy.operations["x90"].amplitude = fit_results["pi_amp_fit"][q.name]["Pi_amplitude"] / 2
 
-    # %% {Save_results}
-    node.outcomes = {q.name: "successful" for q in qubits}
-    node.results["initial_parameters"] = node.parameters.model_dump()
-    node.machine = machine
-    node.save()
+# %% {Save_results}
+node.outcomes = {q.name: "successful" for q in qubits}
+node.results["initial_parameters"] = node.parameters.model_dump()
+node.machine = machine
+node.save()
