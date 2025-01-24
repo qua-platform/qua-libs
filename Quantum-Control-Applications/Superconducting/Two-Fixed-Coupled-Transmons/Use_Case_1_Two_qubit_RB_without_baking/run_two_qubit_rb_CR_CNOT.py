@@ -77,7 +77,7 @@ def play_sequence(sequence, start, length):
         align(qc_xy, qt_xy, cr_drive, cr_cancel)
         with switch_(sequence[i], unsafe=False):
             with case_(0):
-                # wait(pi_len//4, qc_xy,qt_xy)
+                # identity
                 align(qc_xy, qt_xy, cr_drive, cr_cancel)
             with case_(1):
                 play('x90', qc_xy)
@@ -228,7 +228,14 @@ def play_sequence(sequence, start, length):
                 # check the sign before 0.25 -- could be either way depending on cr_drive_phase
                 play('y90' * amp(0.00001), qc_xy, duration=1)
                 # this is a tricky step. the goal is to avoid face-to-face frame rotations
-                # qm only recognizes the last frame rotation if multiple frame rotations stacked
+                # qm only recognizes the last frame rotation before a real pulse if multiple frame rotations are stacked
+                # e.g., two CNOTs can be adjacent in a random gate sequence, and two 0.25 rotations are intended
+                # but qm only implements the last 0.25 rotation
+
+                # if you want to avoid this subtlety, you can use real XY gates to replace the virtual Z/2
+                # Z/2: play('-x90', qc_xy); play('y90', qc_xy); play('x90', qc_xy);
+                # -Z/2: play('-x90', qc_xy); play('-y90', qc_xy); play('x90', qc_xy);
+
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
 
 
