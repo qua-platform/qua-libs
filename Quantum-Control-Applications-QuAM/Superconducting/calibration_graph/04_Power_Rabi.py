@@ -67,7 +67,7 @@ u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
 machine = QuAM.load()
 # Get the relevant QuAM components
-qubits = machine.get_qubits_used_in_node(node)
+qubits = machine.get_qubits_used_in_node(node.parameters)
 resonators = machine.get_resonators_used_in_node(node)
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
