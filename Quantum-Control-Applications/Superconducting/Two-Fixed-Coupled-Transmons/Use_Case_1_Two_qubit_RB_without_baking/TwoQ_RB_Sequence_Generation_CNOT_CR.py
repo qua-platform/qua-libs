@@ -66,8 +66,12 @@ def generate_sequence_list(depth):
     
     with open('2q_Clifford_gen_CNOT_instruct.pkl', 'rb') as file:
         instruct_list = pickle.load(file)
-    with open('2q_Clifford_gen_CNOT_circuit.pkl', 'rb') as file:
+    with open('2q_Clifford_gen_CNOT_circuit_cirq14.pkl', 'rb') as file:
         circuit_list = pickle.load(file)
+        # based on cirq=1.4.1
+    # with open('2q_Clifford_gen_CNOT_circuit_cirq12.pkl', 'rb') as file:
+    #     circuit_list = pickle.load(file)
+    #     # based on cirq=1.2.0
     with open('2q_Clifford_gen_CNOT_unitary.pkl', 'rb') as file:
         unitary_list = pickle.load(file)
 
@@ -90,6 +94,8 @@ def generate_sequence_list(depth):
     unitary = cirq.unitary(circuit)
     for c_ in range(11520):
         if abs((unitary @ unitary_list[c_]).trace())>3.95:
+            # set a bar for judging whether circuit[c_] is the inverse gate; ideally should be 4
+            # 3.95 rather than 4 to account for any floating point error
             break
     circuit.append(circuit_list[c_])
     sequence_ints.append(c_)
@@ -110,7 +116,7 @@ def generate_sequence_list_interleaved(depth):
     
     with open('2q_Clifford_gen_CNOT_instruct.pkl', 'rb') as file:
         instruct_list = pickle.load(file)
-    with open('2q_Clifford_gen_CNOT_circuit.pkl', 'rb') as file:
+    with open('2q_Clifford_gen_CNOT_circuit_cirq14.pkl', 'rb') as file:
         circuit_list = pickle.load(file)
     with open('2q_Clifford_gen_CNOT_unitary.pkl', 'rb') as file:
         unitary_list = pickle.load(file)
@@ -134,7 +140,9 @@ def generate_sequence_list_interleaved(depth):
         instruct.extend([('CNOT', '01')])
     unitary = cirq.unitary(circuit)
     for c_ in range(11520):
-        if abs((unitary @ unitary_list[c_]).trace())>3.9:
+        if abs((unitary @ unitary_list[c_]).trace())>3.95:
+            # set a bar for judging whether circuit[c_] is the inverse gate
+            # 3.95 rather than 4 to account for any floating point error; ideally should be 4
             break
     circuit.append(circuit_list[c_])
     sequence_ints.append(c_)
