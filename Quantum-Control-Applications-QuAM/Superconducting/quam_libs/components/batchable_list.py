@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Dict
 from collections.abc import MutableSequence
 from quam_libs.components import Transmon
 
@@ -27,8 +27,8 @@ class BatchableList(MutableSequence):
     def __repr__(self) -> str:
         return repr(self._items)
 
-    def batch(self):
+    def batch(self) -> List[Dict[int, Any]]:
         if self.multiplexed:
-            return [self._items]
+            return [{i: item for i, item in enumerate(self._items)}]
         else:
-            return [[item] for item in self._items]
+            return [{i: item} for i, item in enumerate(self._items)]
