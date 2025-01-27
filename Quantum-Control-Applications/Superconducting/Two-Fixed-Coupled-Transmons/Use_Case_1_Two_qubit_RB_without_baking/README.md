@@ -7,7 +7,9 @@ _Authors and experimenters: Ziwen Huang, Paul Heidler, Nicholas Bornman_
 *particular setup.*
 
 The main entrypoint file is is [run_two_qubit_rb_CR_CNOT.py](run_two_qubit_rb_CR_CNOT.py), which relies on random Cliffords generation 
-coded in [TwoQ_RB_Sequence_Generation_CNOT_CR.py](TwoQ_RB_Sequence_Generation_CNOT_CR.py).
+coded in [TwoQ_RB_Sequence_Generation_CNOT_CR.py](TwoQ_RB_Sequence_Generation_CNOT_CR.py). 
+
+Reference: Samuel Haberthür (2015), Randomized benchmarking of two-qubit gates, Master's Thesis, ETH Zurich.
 
 ## 1. Pre-requisite calibrations and some notes
 
@@ -27,7 +29,7 @@ The configuration consists of 4 elements:
 * `rr1` and `rr2` send readout pulses and measure the transmitted signal for each qubit
 * `q1_xy` and `q2_xy` send drive XY pulses to each qubit
 * In `cr_drive_c1t2`, qubit 1 acts as the control quubit and qubit 2 as the target. Conversely, in `cr_drive_c2t1` qubit 2 is the control qubit and qubit 1 is the target. They send cross-resonance drive to the control qubit (at the target frequency).
-* In `cr_cancel_c1t2`, qubit 1 acts as the control qubit, and qubit 2 as the target. Conversely, in `cr_cancel_c2t1`, qubit 2 is the control qubit, and qubit 1 is the target. They send cancellation drive the target qubit (also at the target frequency).
+* In `cr_cancel_c1t2`, qubit 1 acts as the control qubit, and qubit 2 as the target. Conversely, in `cr_cancel_c2t1`, qubit 2 is the control qubit, and qubit 1 is the target. They send cancellation drive to the target qubit (also at the target frequency).
 
 ### 2.2 The operations, pulse and waveforms
 
