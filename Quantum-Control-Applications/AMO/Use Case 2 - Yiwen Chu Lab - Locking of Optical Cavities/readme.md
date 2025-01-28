@@ -27,7 +27,7 @@ Pound-Drever-Hall (PDH) locking is a widely-used technique for stabilizing the f
 ## Setup
 
 The corresponding experimental setup is as follows (cf. figure below):
-* Each cavity necessitates one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 8).
+* Each cavity uses one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 8).
 * Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 6).
 * One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1). 
 * The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
@@ -48,7 +48,7 @@ The corresponding experimental setup is as follows (cf. figure below):
 
 ## Detailed Description of Files and Functions
 ### The Filter Cavities Functions Library
-* `PID_derivation`: Derives PID/correction signal `corr` based on the `input_signal`, `target` value, and the PID gains.
+* `PID_derivation`: Derives PID/correction signal `corr` based on the `input_signal`, `target` value, and the PID gains. Bitshift is being used as FPGA-efficient division.
 
 ```python
 def PID_derivation(input_signal,corr,error,integrator_error,derivative_error,old_error, bitshift_scale_factor, gain_P, gain_I, gain_D, alpha, target):
@@ -168,7 +168,7 @@ def fullock(locktime,dc_offset_cav1,dc_offset_cav2,dc_offset_cav3,single_shot_DC
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
 
 ### The Cavity Monitoring File
-This script can be utilized to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity Lock Data Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
+This script can be used to characterize the quality of the lock. This has also been used to measure the data presented in the figures above. It PID locks a single optical cavity and alternates `N_outer_repeat` times between lock and out of lock. The DC and AC signal as well as the lock paramters are saved in a `.npz` file to be plotted using [Cavity Lock Data Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb).
 
 ## Results
 
