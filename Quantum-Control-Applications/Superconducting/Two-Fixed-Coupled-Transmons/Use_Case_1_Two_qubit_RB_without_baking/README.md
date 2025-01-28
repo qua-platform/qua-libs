@@ -132,10 +132,10 @@ Here, the first moment `('x180', '0'),
 ### 3.2 Playing multiple random sequences with different depths
 
 #### 3.2.1 Stacking all `instruct_integers` into `sequence_list`
-We have one `instruct_integers` for each randomization and for each different depth, therefore a large number of integer lists need to be inserted into a QUA program if many randomizations and depth choices are to be tested. Our solution is to use a single list to store all `instruct_integers` from different randomizations and for different `depth`'s. This is done by the function `pre_generate_sequence`.
+We have one `instruct_integers` for each randomization and for each different depth, therefore a large number of integer lists needs to be inserted into a QUA program if many randomizations and depth choices are to be tested. Our solution is to use a single list to store all `instruct_integers` from different randomizations and for different `depth`'s. This is done by the function `pre_generate_sequence`.
 
 Furthermore, it is important to also store the length of each individual `instruct_integers` variable to inform the qm program where to start and to stop for each iteration when reading `sequence_list`. That information is stored in `len_list`. 
 
 ### 3.2.2 Finally, `play_sequence` in loops.
 
-Every time this function is used inside a QUA program, it is provided with the full list `sequence_list`. The QUA program is also fed information instructing it where to `start` playing pulses, and the `length` of instructions the program needs to cycle over in each iteration.
+Every time this function is used inside a QUA program, it is provided with the full list `sequence_list`. The QUA program is also fed with information instructing it where to `start` playing pulses, and the `length` of instructions the program needs to cycle over in each iteration.

@@ -1,28 +1,20 @@
-
-
-import numpy as np
-import matplotlib.pyplot as plt
 from qm.qua import *
 from qm import QuantumMachinesManager, SimulationConfig, generate_qua_script
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.results.data_handler import DataHandler
-from qualang_tools.analysis import two_state_discriminator
-from importlib import reload
-from qualang_tools.addons.variables import assign_variables_to_element
 from configuration import *
 from TwoQ_RB_Sequence_Generation_CNOT_CR import *
 from macros import qua_declaration, multiplexed_readout
 import time
 
 
-root_directory = "C:\\Users\\td-srv-quantum\\Desktop\\QM_RB\\data_zoo_q1q2"  # change to your local directory
+root_directory = "C:\\Users\\name\\Desktop\\QM_RB\\data_q1q2"  # change to your local directory
 data_handler = DataHandler(root_data_folder=root_directory)
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 ##############################
 # Program-specific variables #
 ##############################
-
 
 # Qubits and resonators
 qc = 1  # index of control qubit
@@ -37,26 +29,22 @@ qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"rr{i}" for i in [qc, qt]]
 seed = 0
 
-cr_drive_amp = 0.95      # ratio
+cr_drive_amp = 0.95      # scaling factor
 cr_drive_phase = 0.1925  # in units of 2pi
-cr_cancel_amp = 0.164    # ratio
-cr_cancel_phase = -0.008
+cr_cancel_amp = 0.164    # scaling factor
+cr_cancel_phase = -0.008 # in units of 2pi
 
-threshold_1 = ge_threshold_q1
-threshold_2 = ge_threshold_q2
+threshold_1 = ge_threshold_q1 # set the threshold from the configuration
+threshold_2 = ge_threshold_q2 # set the threshold from the configuration
 
 # Random circuit generation
-
 num_of_sequences = 20  # Number of random sequences
 n_avg = 200  # Number of averaging loops for each random sequence
 depth_list = [0, 1, 5, 7, 14, 20, 26, 32]
-np.random.seed(seed=int(time.time()%1*1e8))
+np.random.seed(seed=int(time.time() % 1 * 1e8))
 # np.random.seed(seed = 0) # can set the seed for consistent comparison
 sequence_list, len_list = pre_generate_sequence(num_of_sequences, depth_list)  # standard RB
 # sequence_list, len_list = pre_generate_sequence_interleaved(num_of_sequences, depth_list) # interleaved RB
-
-# Random circuit generation
-
 
 # ###### TEST EXAMPLE
 # num_of_sequences = 1
@@ -66,8 +54,7 @@ sequence_list, len_list = pre_generate_sequence(num_of_sequences, depth_list)  #
 # n_avg = 100
 # ###### TEST EXAMPLE
 
-print('Generating OK')
-
+print('The sequence was successfully generated')
 
 def play_sequence(sequence, start, length):
     align(qc_xy, qt_xy, cr_drive, cr_cancel)
@@ -213,16 +200,16 @@ def play_sequence(sequence, start, length):
                 play('y180', qt_xy)
             with case_(49):
                 # We use direct CR
-                #
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
                 play("square_positive" * amp(cr_drive_amp), cr_drive, duration=120)
                 play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=120)
 
+                # One can also use flattop envelope, which is smoother than a square envelope
                 # play("flattop_blackman" * amp(cr_drive_amp), cr_drive, duration=120)
                 # play("flattop_blackman" * amp(cr_cancel_amp), cr_cancel, duration=120)
-                # flattop envelope is smoother than square
 
-                # # align for the next step and clear the phase shift
+
+                # align for the next step and clear the phase shift
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
                 frame_rotation_2pi(+0.25, qc_xy)
                 # check the sign before 0.25 -- could be either way depending on cr_drive_phase
@@ -243,9 +230,7 @@ def play_sequence(sequence, start, length):
 # The QUA program #
 ###################
 
-
 with program() as rb:
-
     depth = declare(int)  # QUA variable for the varying depth_list index
     depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)
     depth_len = declare(int)
@@ -259,10 +244,9 @@ with program() as rb:
     # The relevant streams
     m_st = declare_stream()
 
-    state_discrimination = True
-    if state_discrimination:
-        state1_st = declare_stream()
-        state2_st = declare_stream()
+
+    state1_st = declare_stream()
+    state2_st = declare_stream()
 
     sequence_qua = declare(int, value=sequence_list)
     len_list_qua = declare(int, value=len_list)
@@ -300,11 +284,10 @@ with program() as rb:
                 # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                 multiplexed_readout(I, I_st, Q, Q_st, resonators=[1, 2], weights="rotated_")
 
-                if state_discrimination:
-                    assign(state1, (I[0] < ge_threshold_q1) & (I[1] < ge_threshold_q2))
-                    save(state1, state1_st)
-                    assign(state2, I[1] > ge_threshold_q2)
-                    save(state2, state2_st)
+                assign(state1, (I[0] < ge_threshold_q1) & (I[1] < ge_threshold_q2))
+                save(state1, state1_st)
+                assign(state2, I[1] > ge_threshold_q2)
+                save(state2, state2_st)
 
                 assign(start, start + len_list_qua[run])
                 assign(run, run + 1)
@@ -314,29 +297,27 @@ with program() as rb:
 
     with stream_processing():
         m_st.save("iteration")
-        if state_discrimination:
-            # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-            state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                len(depth_list)
-            ).buffer(num_of_sequences).save("state2")
-            # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-            state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-               len(depth_list)
-            ).average().save("state2_avg")
-            # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-            state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                len(depth_list)
-            ).buffer(num_of_sequences).save("state1")
-            # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-            state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                len(depth_list)
-            ).average().save("state1_avg")
+        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            len(depth_list)
+        ).buffer(num_of_sequences).save("state2")
+        # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+           len(depth_list)
+        ).average().save("state2_avg")
+        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            len(depth_list)
+        ).buffer(num_of_sequences).save("state1")
+        # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
+            len(depth_list)
+        ).average().save("state1_avg")
 
 
 ###########################
 # Run or Simulate Program #
 ###########################
-
 simulate = False
 
 if simulate:
@@ -351,10 +332,10 @@ else:
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
     # Get results from QUA program
-    if state_discrimination:
-        results = fetching_tool(job, data_list=["state1_avg", "state2_avg", "iteration", "state1"], mode="live")
+    results = fetching_tool(job, data_list=["state1_avg", "state2_avg", "iteration", "state1"], mode="live")
 
     state1_avg, state2_avg, iteration, state = results.fetch_all()
+
     print(state)
     print(state1_avg)
     ydata = state1_avg
