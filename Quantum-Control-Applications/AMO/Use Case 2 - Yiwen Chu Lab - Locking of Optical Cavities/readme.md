@@ -1,6 +1,6 @@
 # Pound-Drever-Hall Locking of Optical Cavities with the OPX
 
-*Authors: Theo Laudat and Eric Planz*
+*Authors: Eric Planz and Theo Laudat*
 
 *Demonstrated on the experiment of Sam Pautrel in the Lab of Prof. Yiwen Chu at ETH Zurich.*
 
@@ -40,11 +40,11 @@ The corresponding experimental setup is as follows (cf. figure below):
 
 |                 File                 | Description                                                                  |
 |:------------------------------------:|------------------------------------------------------------------------------|
-| [filter_cavities_lib.py](20240506_filtercavities_QUA/filter_cavities_lib.py)   | Lock functions including the PID derivation, slow and fast loop engagement, and full lock to lock three cavities in series using optical switches control. |
-| [configuration_cavity_locking_ETHZ_OPX1.py](20240506_filtercavities_QUA/configuration_cavity_locking_ETHZ_OPX1.py) | Configuration file corresponding to the setup figure, including QUA configuration. |
-| [Cavity_monitoring_QUA.py](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity_monitoring_QUA.py) | Program repeatedly switches between PID lock 'on' and 'off' to assess the quality of the lock. |
-| [Cavity Lock Data Analysis.ipynb](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity%20Lock%20Data%20Analysis.ipynb) | Plots the results of [Cavity_monitoring_QUA.py](QuantumMachine_UserCase/QuantumMachine_UserCase/Cavity_monitoring_QUA.py). |
-| [3cavities_locking_QUA.py](20240506_filtercavities_QUA/3cavities_locking_QUA.py) | Performes the full lock of three cascaded cavities. Saves the photodiode signal of each cavity lock for a certain `locktime` after each lock has been applied and saves the PID parameters. |
+| [filter_cavities_lib.py](filter_cavities_lib.py)   | Lock functions including the PID derivation, slow and fast loop engagement, and full lock to lock three cavities in series using optical switches control. |
+| [configuration_cavity_locking_ETHZ_OPX1.py](configuration_cavity_locking_ETHZ_OPX1.py) | Configuration file corresponding to the setup figure, including QUA configuration. |
+| [Cavity_monitoring_QUA.py](Cavity_monitoring_QUA.py) | Program repeatedly switches between PID lock 'on' and 'off' to assess the quality of the lock. |
+| [Cavity Lock Data Analysis.ipynb](Cavity%20Lock%20Data%20Analysis.ipynb) | Plots the results of [Cavity_monitoring_QUA.py](Cavity_monitoring_QUA.py). |
+| [3cavities_locking_QUA.py](3cavities_locking_QUA.py) | Performes the full lock of three cascaded cavities. Saves the photodiode signal of each cavity lock for a certain `locktime` after each lock has been applied and saves the PID parameters. |
 
 ## Detailed Description of Files and Functions
 ### The Filter Cavities Functions Library
