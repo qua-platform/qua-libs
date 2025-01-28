@@ -29,13 +29,13 @@ qubits = [f"q{i}_xy" for i in [qc, qt]]
 resonators = [f"rr{i}" for i in [qc, qt]]
 seed = 0
 
-cr_drive_amp = 0.95      # scaling factor
+cr_drive_amp = 0.95  # scaling factor
 cr_drive_phase = 0.1925  # in units of 2pi
-cr_cancel_amp = 0.164    # scaling factor
-cr_cancel_phase = -0.008 # in units of 2pi
+cr_cancel_amp = 0.164  # scaling factor
+cr_cancel_phase = -0.008  # in units of 2pi
 
-threshold_1 = ge_threshold_q1 # set the threshold from the configuration
-threshold_2 = ge_threshold_q2 # set the threshold from the configuration
+threshold_1 = ge_threshold_q1  # set the threshold from the configuration
+threshold_2 = ge_threshold_q2  # set the threshold from the configuration
 
 # Random circuit generation
 num_of_sequences = 20  # Number of random sequences
@@ -54,150 +54,151 @@ sequence_list, len_list = pre_generate_sequence(num_of_sequences, depth_list)  #
 # n_avg = 100
 # ###### TEST EXAMPLE
 
-print('The sequence was successfully generated')
+print("The sequence was successfully generated")
+
 
 def play_sequence(sequence, start, length):
     align(qc_xy, qt_xy, cr_drive, cr_cancel)
     i = declare(int)
     align(qc_xy, qt_xy, cr_drive, cr_cancel)
-    with for_(i, start, i < start+length, i + 1):
+    with for_(i, start, i < start + length, i + 1):
         align(qc_xy, qt_xy, cr_drive, cr_cancel)
         with switch_(sequence[i], unsafe=False):
             with case_(0):
                 # identity
                 align(qc_xy, qt_xy, cr_drive, cr_cancel)
             with case_(1):
-                play('x90', qc_xy)
+                play("x90", qc_xy)
             with case_(2):
-                play('-x90', qc_xy)
+                play("-x90", qc_xy)
             with case_(3):
-                play('x180', qc_xy)
+                play("x180", qc_xy)
             with case_(4):
-                play('y90', qc_xy)
+                play("y90", qc_xy)
             with case_(5):
-                play('-y90', qc_xy)
+                play("-y90", qc_xy)
             with case_(6):
-                play('y180', qc_xy)
+                play("y180", qc_xy)
             with case_(7):
-                play('x90', qt_xy)
+                play("x90", qt_xy)
             with case_(8):
-                play('x90', qc_xy)
-                play('x90',qt_xy)
+                play("x90", qc_xy)
+                play("x90", qt_xy)
             with case_(9):
-                play('-x90', qc_xy)
-                play('x90', qt_xy)
+                play("-x90", qc_xy)
+                play("x90", qt_xy)
             with case_(10):
-                play('x180', qc_xy)
-                play('x90', qt_xy)
+                play("x180", qc_xy)
+                play("x90", qt_xy)
             with case_(11):
-                play('y90', qc_xy)
-                play('x90', qt_xy)
+                play("y90", qc_xy)
+                play("x90", qt_xy)
             with case_(12):
-                play('-y90', qc_xy)
-                play('x90', qt_xy)
+                play("-y90", qc_xy)
+                play("x90", qt_xy)
             with case_(13):
-                play('y180', qc_xy)
-                play('x90', qt_xy)
+                play("y180", qc_xy)
+                play("x90", qt_xy)
             with case_(14):
-                play('-x90', qt_xy)
+                play("-x90", qt_xy)
             with case_(15):
-                play('x90',qc_xy)
-                play('-x90', qt_xy)
+                play("x90", qc_xy)
+                play("-x90", qt_xy)
             with case_(16):
-                play('-x90', qc_xy)
-                play('-x90', qt_xy)
+                play("-x90", qc_xy)
+                play("-x90", qt_xy)
             with case_(17):
-                play('x180', qc_xy)
-                play('-x90', qt_xy)
+                play("x180", qc_xy)
+                play("-x90", qt_xy)
             with case_(18):
-                play('y90',qc_xy)
-                play('-x90', qt_xy)
+                play("y90", qc_xy)
+                play("-x90", qt_xy)
             with case_(19):
-                play('-y90',qc_xy)
-                play('-x90', qt_xy)
+                play("-y90", qc_xy)
+                play("-x90", qt_xy)
             with case_(20):
-                play('y180', qc_xy)
-                play('-x90', qt_xy)
+                play("y180", qc_xy)
+                play("-x90", qt_xy)
             with case_(21):
-                play('x180', qt_xy)
+                play("x180", qt_xy)
             with case_(22):
-                play('x90', qc_xy)
-                play('x180', qt_xy)
+                play("x90", qc_xy)
+                play("x180", qt_xy)
             with case_(23):
-                play('-x90', qc_xy)
-                play('x180', qt_xy)
+                play("-x90", qc_xy)
+                play("x180", qt_xy)
             with case_(24):
-                play('x180', qc_xy)
-                play('x180', qt_xy)
+                play("x180", qc_xy)
+                play("x180", qt_xy)
             with case_(25):
-                play('y90', qc_xy)
-                play('x180', qt_xy)
+                play("y90", qc_xy)
+                play("x180", qt_xy)
             with case_(26):
-                play('-y90', qc_xy)
-                play('x180', qt_xy)
+                play("-y90", qc_xy)
+                play("x180", qt_xy)
             with case_(27):
-                play('y180', qc_xy)
-                play('x180', qt_xy)
+                play("y180", qc_xy)
+                play("x180", qt_xy)
             with case_(28):
-                play('y90', qt_xy)
+                play("y90", qt_xy)
             with case_(29):
-                play('x90', qc_xy)
-                play('y90', qt_xy)
+                play("x90", qc_xy)
+                play("y90", qt_xy)
             with case_(30):
-                play('-x90', qc_xy)
-                play('y90', qt_xy)
+                play("-x90", qc_xy)
+                play("y90", qt_xy)
             with case_(31):
-                play('x180', qc_xy)
-                play('y90', qt_xy)
+                play("x180", qc_xy)
+                play("y90", qt_xy)
             with case_(32):
-                play('y90', qc_xy)
-                play('y90', qt_xy)
+                play("y90", qc_xy)
+                play("y90", qt_xy)
             with case_(33):
-                play('-y90', qc_xy)
-                play('y90', qt_xy)
+                play("-y90", qc_xy)
+                play("y90", qt_xy)
             with case_(34):
-                play('y180', qc_xy)
-                play('y90', qt_xy)
+                play("y180", qc_xy)
+                play("y90", qt_xy)
             with case_(35):
-                play('-y90', qt_xy)
+                play("-y90", qt_xy)
             with case_(36):
-                play('x90', qc_xy)
-                play('-y90', qt_xy)
+                play("x90", qc_xy)
+                play("-y90", qt_xy)
             with case_(37):
-                play('-x90', qc_xy)
-                play('-y90', qt_xy)
+                play("-x90", qc_xy)
+                play("-y90", qt_xy)
             with case_(38):
-                play('x180', qc_xy)
-                play('-y90', qt_xy)
+                play("x180", qc_xy)
+                play("-y90", qt_xy)
             with case_(39):
-                play('y90', qc_xy)
-                play('-y90', qt_xy)
+                play("y90", qc_xy)
+                play("-y90", qt_xy)
             with case_(40):
-                play('-y90', qc_xy)
-                play('-y90', qt_xy)
+                play("-y90", qc_xy)
+                play("-y90", qt_xy)
             with case_(41):
-                play('y180', qc_xy)
-                play('-y90', qt_xy)
+                play("y180", qc_xy)
+                play("-y90", qt_xy)
             with case_(42):
-                play('y180', qt_xy)
+                play("y180", qt_xy)
             with case_(43):
-                play('x90', qc_xy)
-                play('y180', qt_xy)
+                play("x90", qc_xy)
+                play("y180", qt_xy)
             with case_(44):
-                play('-x90',qc_xy)
-                play('y180', qt_xy)
+                play("-x90", qc_xy)
+                play("y180", qt_xy)
             with case_(45):
-                play('x180', qc_xy)
-                play('y180', qt_xy)
+                play("x180", qc_xy)
+                play("y180", qt_xy)
             with case_(46):
-                play('y90', qc_xy)
-                play('y180', qt_xy)
+                play("y90", qc_xy)
+                play("y180", qt_xy)
             with case_(47):
-                play('-y90', qc_xy)
-                play('y180', qt_xy)
+                play("-y90", qc_xy)
+                play("y180", qt_xy)
             with case_(48):
-                play('y180', qc_xy)
-                play('y180', qt_xy)
+                play("y180", qc_xy)
+                play("y180", qt_xy)
             with case_(49):
                 # We use direct CR
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
@@ -208,12 +209,11 @@ def play_sequence(sequence, start, length):
                 # play("flattop_blackman" * amp(cr_drive_amp), cr_drive, duration=120)
                 # play("flattop_blackman" * amp(cr_cancel_amp), cr_cancel, duration=120)
 
-
                 # align for the next step and clear the phase shift
                 align(qt_xy, qc_xy, cr_drive, cr_cancel)
                 frame_rotation_2pi(+0.25, qc_xy)
                 # check the sign before 0.25 -- could be either way depending on cr_drive_phase
-                play('y90' * amp(0.00001), qc_xy, duration=1)
+                play("y90" * amp(0.00001), qc_xy, duration=1)
                 # this is a tricky step. the goal is to avoid face-to-face frame rotations
                 # qm only recognizes the last frame rotation before a real pulse if multiple frame rotations are stacked
                 # e.g., two CNOTs can be adjacent in a random gate sequence, and two 0.25 rotations are intended
@@ -243,7 +243,6 @@ with program() as rb:
     state2 = declare(bool)
     # The relevant streams
     m_st = declare_stream()
-
 
     state1_st = declare_stream()
     state2_st = declare_stream()
@@ -298,21 +297,21 @@ with program() as rb:
     with stream_processing():
         m_st.save("iteration")
         # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(depth_list)
-        ).buffer(num_of_sequences).save("state2")
+        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).buffer(
+            num_of_sequences
+        ).save("state2")
         # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-           len(depth_list)
-        ).average().save("state2_avg")
+        state2_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).average().save(
+            "state2_avg"
+        )
         # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(depth_list)
-        ).buffer(num_of_sequences).save("state1")
+        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).buffer(
+            num_of_sequences
+        ).save("state1")
         # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(
-            len(depth_list)
-        ).average().save("state1_avg")
+        state1_st.boolean_to_int().buffer(n_avg).map(FUNCTIONS.average()).buffer(len(depth_list)).average().save(
+            "state1_avg"
+        )
 
 
 ###########################
@@ -341,4 +340,3 @@ else:
     ydata = state1_avg
 
     qm.close()
-

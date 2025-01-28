@@ -127,7 +127,7 @@ def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=N
     if (max_tries < 1) or (not float(max_tries).is_integer()):
         raise Exception("max_count must be an integer >= 1.")
     # Initialize Ig to be > threshold
-    assign(Ig, threshold + 2**-28)
+    assign(Ig, threshold + 2 ** -28)
     # Number of tries for active reset
     counter = declare(int)
     # Reset the number of tries
@@ -139,10 +139,7 @@ def active_reset(threshold: float, qubit: str, resonator: str, max_tries=1, Ig=N
     with while_((Ig > threshold) & (counter < max_tries)):
         # Measure the resonator
         measure(
-            "readout",
-            resonator,
-            None,
-            dual_demod.full("rotated_cos", "rotated_sin", Ig),
+            "readout", resonator, None, dual_demod.full("rotated_cos", "rotated_sin", Ig),
         )
         # Play a pi pulse to get back to the ground state
         play("x180", qubit, condition=(Ig > threshold))
