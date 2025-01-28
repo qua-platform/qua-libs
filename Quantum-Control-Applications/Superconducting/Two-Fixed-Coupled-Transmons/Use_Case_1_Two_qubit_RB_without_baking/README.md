@@ -6,8 +6,8 @@ _Authors and experimenters: Ziwen Huang, Paul Heidler, Nicholas Bornman_
 *gates for a pair of coupled transmon qubits. This codebase would need to be tailored for the user's*
 *particular setup.*
 
-The main entrypoint file is is [run_two_qubit_rb_CR_CNOT.py](run_two_qubit_rb_CR_CNOT.py), which relies on random Cliffords generation 
-coded in [TwoQ_RB_Sequence_Generation_CNOT_CR.py](TwoQ_RB_Sequence_Generation_CNOT_CR.py). 
+The main entrypoint file is [run_two_qubit_rb_CR_CNOT.py](run_two_qubit_rb_CR_CNOT.py), which relies on random Cliffords generation 
+coded in [TwoQ_RB_Sequence_Generation_CNOT_CR.py](TwoQ_RB_Sequence_Generation_CNOT_CR.py). (Currently only tested for Python 3.10. Incompatibility was identified when running on Python 3.12+. This may be resolved later.)
 
 Reference: Samuel Haberthür (2015), Randomized benchmarking of two-qubit gates, Master's Thesis, ETH Zurich.
 
