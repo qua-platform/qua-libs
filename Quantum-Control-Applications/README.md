@@ -41,7 +41,7 @@ These files showcase various experiments that can be done on a single fixed-freq
 ### [3D storage cavity](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/3D-storage-cavity)
 These files showcase various experiments that can be done on a qubit coupled to a 3d storage cavity.
 
-## AMO Qubits](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO)
+## [AMO Qubits](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO)
 ### Rydberg Arrays
 
 #### <u> Advanced use-cases: </u>
