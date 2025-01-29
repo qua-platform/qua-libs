@@ -5,7 +5,6 @@ import time
 
 
 def instruct_to_integer(instruct):
-
     """
     input:
         instruct: a list of instructions such as [('x90', 0), ('I', 1), ('CNOT', 01)]
@@ -55,7 +54,6 @@ def instruct_to_integer(instruct):
 
 
 def generate_sequence_list(depth):
-
     """
     for a given depth, generate ONE random sequence containing 2q clifford gates at a certain depth
     input:
@@ -106,7 +104,6 @@ def generate_sequence_list(depth):
 
 
 def generate_sequence_list_interleaved(depth):
-
     """
     for a given depth, generate ONE random sequence containing 2q clifford gates at a certain depth
     interleaved by CNOT
