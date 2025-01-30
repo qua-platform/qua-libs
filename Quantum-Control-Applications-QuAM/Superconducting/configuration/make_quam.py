@@ -6,8 +6,8 @@ path = "./quam_state"
 
 machine = QuAM.load(path)
 
-# octave_settings = {"octave1": {"port": 11235} }  # externally configured: (11XXX where XXX are last three digits of oct ip)
-# octave_settings = {"octave1": {"ip": "192.168.88.250"} }  # "internally" configured: use the local ip address of the Octave
+# octave_settings = {"oct1": {"port": 11235} }  # externally configured: (11XXX where XXX are last three digits of oct ip)
+# octave_settings = {"oct1": {"ip": "192.168.88.250"} }  # "internally" configured: use the local ip address of the Octave
 octave_settings = {}
 
 # Make the QuAM object and save it

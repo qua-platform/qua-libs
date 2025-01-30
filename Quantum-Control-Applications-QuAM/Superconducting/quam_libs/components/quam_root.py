@@ -15,6 +15,9 @@ from quam.components.ports import (
     FEMPortsContainer,
     OPXPlusPortsContainer,
 )
+
+from . import ReadoutResonator
+from .batchable_list import BatchableList
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
@@ -25,6 +28,8 @@ from dataclasses import field
 from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
+
+from ..experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
 
 
 @quam_dataclass
@@ -200,6 +205,28 @@ class QuAM(QuamRoot):
                 self.qubits[name].calibrate_octave(QM)
             except NoCalibrationElements:
                 print(f"No calibration elements found for {name}. Skipping calibration.")
+
+
+    def get_qubits_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[Transmon]:
+        if node_parameters.qubits is None or node_parameters.qubits == "":
+            qubits = self.active_qubits
+        else:
+            qubits = [self.qubits[q] for q in node_parameters.qubits]
+
+        return make_batchable_list(qubits, node_parameters)
+
+    def get_resonators_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[ReadoutResonator]:
+        resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node_parameters)]
+
+        return make_batchable_list(resonators, node_parameters)
+
+def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) -> BatchableList:
+    if isinstance(node_parameters, MultiplexableNodeParameters):
+        multiplexed = node_parameters.multiplexed
+    else:
+        multiplexed = False
+
+    return BatchableList(items, multiplexed)
 
 
 @quam_dataclass
