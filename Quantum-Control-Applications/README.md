@@ -17,7 +17,7 @@ These files showcase various experiments that can be done on a several flux-tuna
 ### [Two fixed coupled transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons)
 These files showcase various experiments that can be done on two fixed coupled transmons.
 #### <u> Advanced use-cases: </u>
-* [Two qubit RB with cross-resonance gates](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use%20Case%201%20-%20Two%20qubit%20RB%20with%20cross%20-%20resonance%20gates).
+* [Two qubit RB with cross-resonance gates](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use%20Case%201%20-%20Two%20qubit%20RB%20with%20cross-resonance%20gates).
 
 ### [Single flux tunable transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon)
 These files showcase various experiments that can be done on a single flux-tunable transmon.
