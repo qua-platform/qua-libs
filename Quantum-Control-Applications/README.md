@@ -7,7 +7,7 @@ Note that for them to work, you would need to download the latest version of the
 
 ## Superconducting Qubits
 ### [Two flux tunable transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Coupled-Transmons)
-These files showcase various experiments that can be done on a several flux-tunable transmons using the [standard configuration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Transmons/Standard%20Configuration#two-flux-tunable-transmons-with-the-standard-configuration).
+These files showcase various experiments that can be done on a several flux-tunable transmons using the [standard configuration](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Coupled-Transmons/Standard%20Configuration).
 #### <u> Advanced use-cases: </u>
 * [SWAP spectroscopy improved with predistortion digital filters](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Coupled-Transmons/Use%20Case%201%20-%20Two%20qubit%20gate%20optimization%20with%20cryoscope).
 * [Two-qubit randomized benchmarking](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Flux-Tunable-Coupled-Transmons/Use%20Case%202%20-%20Two-Qubit-Randomized-Benchmarking).
@@ -17,7 +17,7 @@ These files showcase various experiments that can be done on a several flux-tuna
 ### [Two fixed coupled transmons](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons)
 These files showcase various experiments that can be done on two fixed coupled transmons.
 #### <u> Advanced use-cases: </u>
-* [Two qubit RB with cross-resonance gates](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use%20Case%201%20Two%20qubit%20RB%20without%20baking).
+* [Two qubit RB with cross-resonance gates](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use%20Case%201%20-%20Two%20qubit%20RB%20with%20cross%20-%20resonance%20gates).
 
 ### [Single flux tunable transmon](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon)
 These files showcase various experiments that can be done on a single flux-tunable transmon.
