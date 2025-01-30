@@ -112,34 +112,44 @@ with program() as power_rabi:
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
     npi = declare(int)  # QUA variable for the number of qubit pulses
     count = declare(int)  # QUA variable for counting the qubit pulses
-
-    for i, qubit in enumerate(qubits):
-        # Bring the active qubits to the minimum frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+ 
+    for i, multiplexed_qubits in qubits.batch():
+        
+        q0 = list(multiplexed_qubits.values())[0]
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point, target=q0)
         
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
                 with for_(*from_array(a, amps)):
-                    # Initialize the qubits
-                    if reset_type == "active":
-                        active_reset(qubit, "readout")
-                    else:
-                        qubit.wait(qubit.thermalization_time * u.ns)
+                    
+                    for qubit in multiplexed_qubits.values():
+                        # Initialize the qubits
+                        if reset_type == "active":
+                            active_reset(qubit, "readout")
+                        else:
+                            qubit.wait(qubit.thermalization_time * u.ns)
+                    
+                    align()
+                    
+                    for qubit in multiplexed_qubits.values():
 
-                    # Loop for error amplification (perform many qubit pulses)
-                    with for_(count, 0, count < npi, count + 1):
-                        qubit.xy.play(operation, amplitude_scale=a)
-                    qubit.align()
-                    qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
-                    if state_discrimination:
-                        assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
-                        save(state[i], state_stream[i])
-                    else:
-                        save(I[i], I_st[i])
-                        save(Q[i], Q_st[i])
-        if not node.parameters.multiplexed:
-            align()
+                        # Loop for error amplification (perform many qubit pulses)
+                        with for_(count, 0, count < npi, count + 1):
+                            qubit.xy.play(operation, amplitude_scale=a)
+                    
+                    align()
+                    
+                    for qubit in multiplexed_qubits.values():
+                        qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
+                        if state_discrimination:
+                            assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
+                            save(state[i], state_stream[i])
+                        else:
+                            save(I[i], I_st[i])
+                            save(Q[i], Q_st[i])
+                            
 
     with stream_processing():
         n_st.save("n")
