@@ -173,7 +173,8 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        if self.network["cloud"]:
+        
+        if self.network.get("cloud", False):
             self.qmm = CloudQuantumMachinesManager(self.network["quantum_computer_backend"])
         else:
             settings = dict(
