@@ -8,7 +8,7 @@ from quam_libs.components import Transmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_decay_exp, decay_exp
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], idle_times: np.ndarray, unit: unit) -> xr.Dataset:
+def fetch_dataset(job: QmJob, qubits: List[Transmon], idle_times: np.ndarray) -> xr.Dataset:
     
     """
     Fetches raw ADC data from the OPX and processes it into an xarray dataset with labeled coordinates and attributes.
@@ -32,12 +32,14 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], idle_times: np.ndarray, un
 
     """
     
+    u = unit(coerce_to_integer=True)
+    
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"idle_time": idle_times})
     # Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits)
     # Convert time into µs
-    ds = ds.assign_coords(idle_time=4 * ds.idle_time / unit.us)  # convert to µs
+    ds = ds.assign_coords(idle_time=4 * ds.idle_time / u.us)  # convert to µs
     ds.idle_time.attrs = {"long_name": "idle time", "units": "µs"}
     
     return ds
