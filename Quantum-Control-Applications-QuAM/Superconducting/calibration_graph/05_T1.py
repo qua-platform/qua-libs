@@ -26,9 +26,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 
-from qm.qua import program, declare, for_, save, stream_processing, align, declare_stream, strict_timing_, reset_frame
-
-import numpy as np
+from qm.qua import program, declare, for_, save, stream_processing, align, declare_stream, strict_timing_
 
 
 # %% {Node_parameters}
@@ -40,14 +38,14 @@ node = QualibrationNode(
         min_wait_time_in_ns = 16,
         max_wait_time_in_ns = 100000,
         wait_time_step_in_ns = 600,
-        flux_point_joint_or_independent_or_arbitrary = "independent",
+        flux_point_joint_or_independent_or_arbitrary = "joint",
         reset_type = "thermal",
         use_state_discrimination = False,
         simulate = False,
         simulation_duration_ns = 2500,
         timeout = 100,
         load_data_id = None,
-        multiplexed = False
+        multiplexed = True
         )
     )
 
@@ -81,10 +79,10 @@ with program() as t1:
         
     for multiplexed_qubits in qubits.batch():
         
-        for qubit in multiplexed_qubits.values():
-             # Bring the active qubits to the desired frequency point
-            machine.set_all_fluxes(flux_point, target=qubit)
-
+        q0 = list(multiplexed_qubits.values())[0]
+        # Bring the active qubits to the desired frequency point
+        machine.set_all_fluxes(flux_point, target=q0)
+        
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(t, idle_times)):
@@ -94,11 +92,11 @@ with program() as t1:
                         active_reset(qubit, "readout")
                     else:
                         qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        qubit.align() # TODO : is this necessary?
+                        
                 align()
                 
                 for qubit in multiplexed_qubits.values():
-                    with strict_timing_(): # TODO : is this necessary?
+                    with strict_timing_():
                         qubit.xy.play("x180")
                         qubit.align()
                         qubit.z.wait(20)
@@ -108,7 +106,6 @@ with program() as t1:
                             duration=t,
                         )
                         qubit.z.wait(20)
-                        qubit.align()
                 
                 align()
 
@@ -122,12 +119,7 @@ with program() as t1:
                         # save data
                         save(I[i], I_st[i])
                         save(Q[i], Q_st[i])
-                        
-                align()
                 
-                for i, qubit in multiplexed_qubits.items(): # TODO : Added this. Is this necessary?
-                        qubit.resonator.wait(qubit.thermalization_time * u.ns)
-                        reset_frame(qubit.xy.name)
         
     with stream_processing():
         n_st.save("n")
@@ -214,7 +206,7 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, idle_times=idle_times, unit=u)
+        ds = fetch_dataset(job, qubits, idle_times=idle_times)
         node.results = {"ds": ds}
     else:
         node = node.load_from_id(node.parameters.load_data_id)
@@ -244,3 +236,5 @@ if not node.parameters.simulate:
         node.machine = machine
         node.save()
 
+
+# %%
