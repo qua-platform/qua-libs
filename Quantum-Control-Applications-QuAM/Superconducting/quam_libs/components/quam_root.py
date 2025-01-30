@@ -21,6 +21,8 @@ from .batchable_list import BatchableList
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
+from ..cloud_infrastructure import CloudQuantumMachinesManager
+
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
@@ -171,14 +173,18 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        settings = dict(
-            host=self.network["host"],
-            cluster_name=self.network["cluster_name"],
-            octave=self.get_octave_config(),
-        )
-        if "port" in self.network:
-            settings["port"] = self.network["port"]
-        self.qmm = QuantumMachinesManager(**settings)
+        
+        if self.network.get("cloud", False):
+            self.qmm = CloudQuantumMachinesManager(self.network["quantum_computer_backend"])
+        else:
+            settings = dict(
+                host=self.network["host"],
+                cluster_name=self.network["cluster_name"],
+                octave=self.get_octave_config(),
+            )
+            if "port" in self.network:
+                settings["port"] = self.network["port"]
+            self.qmm = QuantumMachinesManager(**settings)
         return self.qmm
 
     def get_octave_config(self) -> dict:
