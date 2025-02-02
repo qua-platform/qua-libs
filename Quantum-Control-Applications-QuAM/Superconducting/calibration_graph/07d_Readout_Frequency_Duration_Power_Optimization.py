@@ -18,12 +18,11 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
-import matplotlib.pyplot as plt
-import numpy as np
-
 from qualibrate import QualibrationNode
 
+from quam_libs.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import calculate_readout_fidelity
 from quam_libs.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
+from quam_libs.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.components import QuAM
 from quam_libs.experiments.readout_optimization_3d.parameters import Parameters, get_durations
@@ -32,9 +31,6 @@ from quam_libs.experiments.readout_optimization_3d.parameters import (
     get_amplitude_factors
 )
 from quam_libs.experiments.simulation import simulate_and_plot
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
 
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -51,24 +47,26 @@ node = QualibrationNode(
         qubits=["q1", "q2"],
         multiplexed=True,
         flux_point_joint_or_independent="joint",
-        num_averages=100,
-        frequency_span_in_mhz=10,
-        frequency_step_in_mhz=0.1,
+        num_runs=1000,
+        frequency_span_in_mhz=5,
+        frequency_step_in_mhz=0.2,
         min_amplitude_factor=0.5,
         max_amplitude_factor=1.99,
-        num_amplitudes=10,
-        max_duration_in_ns=4000,
-        num_durations=8,
-        simulate=True,
-        simulation_duration_ns=1000,
-        use_waveform_report=True
+        num_amplitudes=15,
+        max_duration_in_ns=1040,
+        num_durations=4,
+        load_data_id=1100,
+        plotting_dimension="2D"
+        # simulate=True,
+        # simulation_duration_ns=1000,
+        # use_waveform_report=True
     )
 )
 
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-machine = QuAM.load("/home/dean/src/qm/qm/quams/quam_state_as_beta8")
+machine = QuAM.load("/home/dean/src/qm/qm/quams/quam_state_as")
 
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
@@ -88,7 +86,7 @@ for resonator in [qubit.resonator for qubit in qubits]:
 config = machine.generate_config()
 
 # %% {QUA_program}
-n_avg = node.parameters.num_averages
+n_avg = node.parameters.num_runs
 
 dfs = get_frequency_detunings_in_hz(node.parameters)
 amps = get_amplitude_factors(node.parameters)
@@ -182,7 +180,7 @@ with program() as readout_optimization_3d:
                     .buffer(node.parameters.num_durations) \
                     .buffer(len(amps)) \
                     .buffer(len(dfs)) \
-                    .average() \
+                    .buffer(node.parameters.num_runs) \
                     .save(f"{name}{i + 1}")
 
 
@@ -209,56 +207,23 @@ if not node.parameters.simulate:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
 
-    # Add the dataset to the node
+    ds = ds.assign_coords(freq_mhz=ds.freq / 1e6)
+    ds.freq_mhz.attrs["long_name"] = "Frequency"
+    ds.freq_mhz.attrs["units"] = "MHz"
+
     node.results = {"ds": ds}
 
-    # %% {Data_analysis}
-    # Get the readout detuning as the index of the maximum of the cumulative average of D
-    detuning = ds.D.rolling({"freq": 5}).mean("freq").idxmax("freq")
-    # Get the dispersive shift as the distance between the resonator frequency when the qubit is in |g> and |e>
-    chi = (ds.IQ_abs_e.idxmin(dim="freq") - ds.IQ_abs_g.idxmin(dim="freq")) / 2
+    ds["fidelity"] = calculate_readout_fidelity(ds)
 
-    # Save fitting results
-    fit_results = {q.name: {"detuning": detuning.loc[q.name].values, "chi": chi.loc[q.name].values} for q in qubits}
-    node.results["fit_results"] = fit_results
+    if node.parameters.plotting_dimension == "3D":
+        # doesn't save the figure
+        fig = plot_fidelity_3d(ds)
+        fig.show()
 
-    for q in qubits:
-        print(f"{q.name}: Shifting readout frequency by {fit_results[q.name]['detuning']/1e3:.0f} kHz")
-        print(f"{q.name}: Chi = {fit_results[q.name]['chi']:.2f} \n")
-
-    # %% {Plotting}
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).D.loc[qubit]).plot(ax=ax, x="freq_MHz", label=None)
-        ax.axvline(
-            fit_results[qubit["qubit"]]["detuning"] / 1e6,
-            color="red",
-            linestyle="--",
-            label="applied detuning",
-        )
-        ax.set_xlabel("Detuning [MHz]")
-        ax.set_ylabel("Distance between IQ blobs [mv]")
-        ax.legend(loc="upper left")
-    plt.tight_layout()
-    plt.show()
-    node.results["figure"] = grid.fig
-
-    grid = QubitGrid(ds, [q.grid_location for q in qubits])
-    for ax, qubit in grid_iter(grid):
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_g.loc[qubit]).plot(ax=ax, x="freq_MHz", label="g.s")
-        (1e3 * ds.assign_coords(freq_MHz=ds.freq / 1e6).IQ_abs_e.loc[qubit]).plot(ax=ax, x="freq_MHz", label="e.s")
-        ax.axvline(
-            fit_results[qubit["qubit"]]["detuning"] / 1e6,
-            color="red",
-            linestyle="--",
-            label="applied detuning",
-        )
-        ax.set_xlabel("Detuning [MHz]")
-        ax.set_ylabel("Resonator response [mV]")
-        ax.legend(loc="upper left")
-    plt.tight_layout()
-    plt.show()
-    node.results["figure2"] = grid.fig
+    elif node.parameters.plotting_dimension == "2D":
+        figs = plot_fidelity_2d(ds)
+        for i, q in enumerate(ds.qubit):
+            node.results[f"fig_{q.name}"] = figs[i]
 
     # undo temporary readout length
     for tracked_resonator in tracked_resonators:
@@ -266,10 +231,11 @@ if not node.parameters.simulate:
 
     # %% {Update_state}
     if node.parameters.load_data_id is None:
-        for q in qubits:
-            with node.record_state_updates():
-                q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
-                q.chi = float(fit_results[q.name]["chi"])
+        # for q in qubits:
+        #     with node.record_state_updates():
+        #         # todo: pick best values
+        #         q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
+        #         q.chi = float(fit_results[q.name]["chi"])
 
         # %% {Save_results}
         node.outcomes = {q.name: "successful" for q in qubits}

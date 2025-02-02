@@ -1,6 +1,7 @@
 from typing import Literal
 
 import numpy as np
+from pydantic import model_validator
 from qualang_tools.units import unit
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -16,7 +17,7 @@ from quam_libs.experiments.node_parameters import (
 
 
 class ReadoutOptimization3dParameters(RunnableParameters):
-    num_averages: int = 100
+    num_runs: int = 100
     frequency_span_in_mhz: float = 10
     frequency_step_in_mhz: float = 0.1
     min_amplitude_factor: float = 0.5
@@ -25,7 +26,24 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     min_duration_in_ns: int = 500
     max_duration_in_ns: int = 4000
     num_durations: int = 8
+    plotting_dimension: Literal['2D', '3D'] = '2D'
 
+    @model_validator(mode="after")
+    def check_plot_type_is_2d_or_3d(self):
+        if self.plotting_dimension not in ['2D', '3D']:
+            raise ValueError(f"Expected plot dimension to be '2D' or '3D', got {self.plotting_dimension}")
+
+        return self
+
+    @model_validator(mode="after")
+    def check_durations_are_divisible_by_4(self):
+        if self.max_duration_in_ns / self.num_durations % 4 != 0:
+            raise ValueError(
+                f"Expected readout segment length to be disvisible by 4, got "
+                f"{self.max_duration_in_ns} / {self.num_durations} = "
+                f"{self.max_duration_in_ns / self.num_durations}"
+            )
+        return self
 
 class Parameters(
     NodeParameters,

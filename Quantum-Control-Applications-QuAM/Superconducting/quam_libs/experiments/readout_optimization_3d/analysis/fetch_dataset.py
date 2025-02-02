@@ -16,12 +16,12 @@ def fetch_dataset(job, qubits, node_parameters: ReadoutOptimization3dParameters)
         handles=job.result_handles,
         qubits=qubits,
         measurement_axis={
+            "duration": durations,
             "amp": amps,
             "freq": dfs,
-            "duration": durations,
+            "run": range(node_parameters.num_runs)
         }
     )
-    # todo: Convert IQ data into volts
     ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
 
     # since we use accumulated demod, the readout length differs over the duration axis.
@@ -50,3 +50,9 @@ def fetch_dataset(job, qubits, node_parameters: ReadoutOptimization3dParameters)
     )
     ds.freq_full.attrs["long_name"] = "Frequency"
     ds.freq_full.attrs["units"] = "GHz"
+
+    ds = ds.assign_coords(freq_mhz=ds.freq / 1e6)
+    ds.freq_mhz.attrs["long_name"] = "Frequency"
+    ds.freq_mhz.attrs["units"] = "MHz"
+
+    return ds
