@@ -16,6 +16,8 @@ from quam.components.ports import (
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
+from ..cloud_infrastructure import CloudQuantumMachinesManager
+
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
