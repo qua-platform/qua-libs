@@ -74,8 +74,8 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load("/home/dean/src/qm/qm/quams/quam_state_as")
 
-# if node.parameters.load_data_id is None:
-#     qmm = machine.connect()
+if node.parameters.load_data_id is None:
+    qmm = machine.connect()
 
 qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)
@@ -240,36 +240,36 @@ if not node.parameters.simulate:
         tracked_resonator.revert_changes()
 
     # %% {Update_state}
-    # if node.parameters.load_data_id is None:
-    with node.record_state_updates():
-        optimal_output_powers = {}
-        for q in qubits:
-            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
-            q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
-            q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
-            # q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
-            q.resonator.operations[readout_pulse_name].amplitude = 0.9
-            optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
+    if node.parameters.load_data_id is None:
+        with node.record_state_updates():
+            optimal_output_powers = {}
+            for q in qubits:
+                optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
+                q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
+                q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
+                # q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
+                q.resonator.operations[readout_pulse_name].amplitude = 0.9
+                optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
 
-        # If the amplitude increased above the maximum readout amplitude, increase the power
-        # and reduce the amplitude below 0.1 to protect against saturating the output channel.
-        #
-        # However, since different resonators need different powers, but can share the same port,
-        # take the safe approach and define a *lower* bound for the power of the port by
-        # sorting in descending order of power requirements.
-        lowest_possible_full_scale_power_dbm = None
-        for qubit, power in sorted(optimal_output_powers.items(), key=lambda item: item[1], reverse=True):
-            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
+            # If the amplitude increased above the maximum readout amplitude, increase the power
+            # and reduce the amplitude below 0.1 to protect against saturating the output channel.
+            #
+            # However, since different resonators need different powers, but can share the same port,
+            # take the safe approach and define a *lower* bound for the power of the port by
+            # sorting in descending order of power requirements.
+            lowest_possible_full_scale_power_dbm = None
+            for qubit, power in sorted(optimal_output_powers.items(), key=lambda item: item[1], reverse=True):
+                optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
 
-            power_settings = qubit.resonator.set_output_power(
-                power_in_dbm=power,
-                full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
-                max_amplitude=instrument_limits(qubit.resonator.opx_output).max_readout_amplitude,
-                operation=readout_pulse_name
-            )
+                power_settings = qubit.resonator.set_output_power(
+                    power_in_dbm=power,
+                    full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
+                    max_amplitude=instrument_limits(qubit.resonator.opx_output).max_readout_amplitude,
+                    operation=readout_pulse_name
+                )
 
-            if lowest_possible_full_scale_power_dbm is None:
-                lowest_possible_full_scale_power_dbm = power_settings["full_scale_power_dbm"]
+                if lowest_possible_full_scale_power_dbm is None:
+                    lowest_possible_full_scale_power_dbm = power_settings["full_scale_power_dbm"]
 
     # %% {Save_results}
     node.outcomes = {q.name: "successful" for q in qubits}
