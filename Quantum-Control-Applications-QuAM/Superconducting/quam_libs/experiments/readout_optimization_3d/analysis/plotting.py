@@ -7,7 +7,7 @@ from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
 
 
-def plot_fidelity_3d(ds: xr.Dataset) -> Figure:
+def plot_fidelity_3d(ds: xr.Dataset, optimal_ds: xr.Dataset) -> Figure:
     """ Browser-based 3D volume plotting with appropriate axis labels. """
     fig = make_subplots(
         rows=1,
@@ -41,11 +41,10 @@ def plot_fidelity_3d(ds: xr.Dataset) -> Figure:
         ), row=1, col=i + 1)
 
         # Find the index of the maximum fidelity value
-        fi, ai, di = np.unravel_index(np.argmax(da.data), da.shape)
         fig.add_trace(go.Scatter3d(
-            x=[float(ds.freq[fi]) / 1e6],  # Convert to MHz
-            z=[float(ds.amp[ai])],
-            y=[float(ds.duration[di])],
+            x=[float(optimal_ds.freq_mhz)],  # Convert to MHz
+            z=[float(optimal_ds.amp)],
+            y=[float(optimal_ds.duration)],
             mode="markers+text",
             marker=dict(size=6, color="white", symbol="x"),
             text=[f"Max: {da.max():.3f}"],  # Display the value as text
@@ -69,13 +68,19 @@ def plot_fidelity_3d(ds: xr.Dataset) -> Figure:
     return fig
 
 
-def plot_fidelity_2d(ds: xr.Dataset):
+def plot_fidelity_2d(ds: xr.Dataset, optimal_ds: xr.Dataset):
     figs = []
     for qubit in ds.qubit:
-        fig, ax = plt.subplots(1, len(ds.duration), figsize=(15, 5), sharex=True, sharey=True)
-
-        # Choose a good colormap for normalized data
-        cmap = "RdYlGn"
+        closest_square_side_length = int(np.ceil(np.sqrt(len(ds.duration))))
+        figure_size_side_length = 3 + 2*closest_square_side_length
+        fig, ax = plt.subplots(
+            nrows=closest_square_side_length,
+            ncols=closest_square_side_length,
+            figsize=(figure_size_side_length, figure_size_side_length),
+            sharex=True, sharey=True
+        )
+        ax = ax.flatten()
+        cmap = "Spectral"
 
         # Plot each duration slice and store the returned image for colorbar reference
         im_list = []
@@ -85,6 +90,24 @@ def plot_fidelity_2d(ds: xr.Dataset):
                 vmin=ds.fidelity.sel(qubit=qubit).min(),
                 vmax=ds.fidelity.sel(qubit=qubit).max()
             )
+
+            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit)
+            if duration == optimal_ds_for_this_qubit.duration:
+
+                ax[i].scatter(optimal_ds_for_this_qubit.freq_mhz,
+                              optimal_ds_for_this_qubit.amp,
+                              color="yellow", s=50, marker="*")
+
+                ax[i].annotate(
+                    f"({float(optimal_ds_for_this_qubit.freq_mhz.data):.2f} MHz,"
+                    f" {float(optimal_ds_for_this_qubit.amp.data):.2f})\nFidelity:"
+                    f" {float(optimal_ds_for_this_qubit.optimal_readout_point.data):.2f}%",
+                    (optimal_ds_for_this_qubit.freq_mhz, optimal_ds_for_this_qubit.amp),
+                    textcoords="offset points",
+                    xytext=(10, 10),  # Offset text to avoid overlap
+                    ha='left', color="white", fontsize=10, bbox=dict(facecolor="black", alpha=0.5)
+                )
+
             ax[i].set_title(f"Duration: {int(duration.values)}ns")  # Ensure titles for clarity
             ax[i].set_xlabel(None)
             ax[i].set_ylabel(None)

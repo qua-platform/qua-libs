@@ -27,6 +27,7 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     max_duration_in_ns: int = 4000
     num_durations: int = 8
     plotting_dimension: Literal['2D', '3D'] = '2D'
+    fidelity_smoothing_intensity: float = 0.5
 
     @model_validator(mode="after")
     def check_plot_type_is_2d_or_3d(self):

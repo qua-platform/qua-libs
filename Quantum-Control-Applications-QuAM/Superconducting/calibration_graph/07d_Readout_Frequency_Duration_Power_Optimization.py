@@ -2,10 +2,11 @@
         READOUT OPTIMISATION: FREQUENCY, POWER, DURATION
 This sequence involves measuring the state of the resonator in two scenarios: first, after thermalization
 (with the qubit in the |g> state) and then after applying a pi pulse to the qubit (transitioning the qubit to the
-|e> state). This is done while varying the readout frequency.
+|e> state). This is done while varying the readout pulse frequency, power and duration.
+
 The average I & Q quadratures for the qubit states |g> and |e>, along with their variances, are extracted to
-determine the Signal-to-Noise Ratio (SNR). The readout frequency that yields the highest SNR is selected as the
-optimal choice.
+determine the Signal-to-Noise Ratio (SNR). The readout parameters that yield the highest fidelity is selected
+as the optimal choice.
 
 Prerequisites:
     - Having found the resonance frequency of the resonator coupled to the qubit under study (resonator_spectroscopy).
@@ -18,11 +19,16 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
+import matplotlib.pyplot as plt
+
 from qualibrate import QualibrationNode
 
-from quam_libs.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import calculate_readout_fidelity
+from quam_libs.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
+    calculate_readout_fidelity, get_maximum_fidelity_per_qubit
 from quam_libs.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
+from quam_libs.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
 from quam_libs.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
+from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.trackable_object import tracked_updates
 from quam_libs.components import QuAM
 from quam_libs.experiments.readout_optimization_3d.parameters import Parameters, get_durations
@@ -68,8 +74,8 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load("/home/dean/src/qm/qm/quams/quam_state_as")
 
-if node.parameters.load_data_id is None:
-    qmm = machine.connect()
+# if node.parameters.load_data_id is None:
+#     qmm = machine.connect()
 
 qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)
@@ -204,7 +210,9 @@ if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
         ds = fetch_dataset(job, qubits, node.parameters)
     else:
-        node = node.load_from_id(node.parameters.load_data_id)
+        load_data_id = node.parameters.load_data_id
+        node = node.load_from_id(load_data_id)
+        node.parameters.load_data_id = load_data_id
         ds = node.results["ds"]
 
     ds = ds.assign_coords(freq_mhz=ds.freq / 1e6)
@@ -213,33 +221,58 @@ if not node.parameters.simulate:
 
     node.results = {"ds": ds}
 
-    ds["fidelity"] = calculate_readout_fidelity(ds)
+    ds["raw_fidelity"] = calculate_readout_fidelity(ds)
+    ds["fidelity"] = filter_readout_fidelity(ds, node.parameters)
+    optimal_ds = get_maximum_fidelity_per_qubit(ds)
 
     if node.parameters.plotting_dimension == "3D":
         # doesn't save the figure
-        fig = plot_fidelity_3d(ds)
+        fig = plot_fidelity_3d(ds, optimal_ds)
         fig.show()
 
     elif node.parameters.plotting_dimension == "2D":
-        figs = plot_fidelity_2d(ds)
+        figs = plot_fidelity_2d(ds, optimal_ds)
         for i, q in enumerate(ds.qubit):
-            node.results[f"fig_{q.name}"] = figs[i]
+            node.results[f"fig_{q.item()}"] = figs[i]
 
     # undo temporary readout length
     for tracked_resonator in tracked_resonators:
         tracked_resonator.revert_changes()
 
     # %% {Update_state}
-    if node.parameters.load_data_id is None:
-        # for q in qubits:
-        #     with node.record_state_updates():
-        #         # todo: pick best values
-        #         q.resonator.intermediate_frequency += int(fit_results[q.name]["detuning"])
-        #         q.chi = float(fit_results[q.name]["chi"])
+    # if node.parameters.load_data_id is None:
+    with node.record_state_updates():
+        optimal_output_powers = {}
+        for q in qubits:
+            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
+            q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
+            q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
+            # q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
+            q.resonator.operations[readout_pulse_name].amplitude = 0.9
+            optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
 
-        # %% {Save_results}
-        node.outcomes = {q.name: "successful" for q in qubits}
-        node.results["initial_parameters"] = node.parameters.model_dump()
-        node.machine = machine
-        node.save()
+        # If the amplitude increased above the maximum readout amplitude, increase the power
+        # and reduce the amplitude below 0.1 to protect against saturating the output channel.
+        #
+        # However, since different resonators need different powers, but can share the same port,
+        # take the safe approach and define a *lower* bound for the power of the port by
+        # sorting in descending order of power requirements.
+        lowest_possible_full_scale_power_dbm = None
+        for qubit, power in sorted(optimal_output_powers.items(), key=lambda item: item[1], reverse=True):
+            optimal_ds_for_this_qubit = optimal_ds.sel(qubit=qubit.name)
 
+            power_settings = qubit.resonator.set_output_power(
+                power_in_dbm=power,
+                full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
+                max_amplitude=instrument_limits(qubit.resonator.opx_output).max_readout_amplitude,
+                operation=readout_pulse_name
+            )
+
+            if lowest_possible_full_scale_power_dbm is None:
+                lowest_possible_full_scale_power_dbm = power_settings["full_scale_power_dbm"]
+
+    # %% {Save_results}
+    node.outcomes = {q.name: "successful" for q in qubits}
+    node.results["initial_parameters"] = node.parameters.model_dump()
+    node.machine = machine
+    node.save()
