@@ -215,10 +215,6 @@ if not node.parameters.simulate:
         node.parameters.load_data_id = load_data_id
         ds = node.results["ds"]
 
-    ds = ds.assign_coords(freq_mhz=ds.freq / 1e6)
-    ds.freq_mhz.attrs["long_name"] = "Frequency"
-    ds.freq_mhz.attrs["units"] = "MHz"
-
     node.results = {"ds": ds}
 
     ds["raw_fidelity"] = calculate_readout_fidelity(ds)
