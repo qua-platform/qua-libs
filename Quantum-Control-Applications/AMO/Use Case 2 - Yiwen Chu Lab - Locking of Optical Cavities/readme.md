@@ -29,7 +29,7 @@ Pound-Drever-Hall (PDH) locking is a widely-used technique for stabilizing the f
 The corresponding experimental setup is as follows (cf. figure below):
 * Each cavity uses one analog output to drive their respective piezo-electric motor controller (AO 6, 7 & 8).
 * Another analog output is used to provide the Pound-Drever-Hall modulation signal to the phase modulator (AO 6).
-* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 1). 
+* One analog input is connected to an RF switch which allows probing the optical signal acquired by a photodiode placed after each cavity (AI 2). 
 * The state of the RF switch (3 pins) is controlled by three digital markers provided by three OPX digital outputs (DO 7-9).
 * Four additional digital markers are used to control the optical switches rerouting the light in different sections of the full setup not part of the lock setup (DO 1-4).
 * Other channels are used for qubit control and readout, AOM drive, and optical switches.
