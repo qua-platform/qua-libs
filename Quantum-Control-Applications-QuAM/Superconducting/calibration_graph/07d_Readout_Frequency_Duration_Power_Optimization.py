@@ -72,7 +72,7 @@ node = QualibrationNode(
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)
 
-machine = QuAM.load("/home/dean/src/qm/qm/quams/quam_state_as")
+machine = QuAM.load()
 
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
