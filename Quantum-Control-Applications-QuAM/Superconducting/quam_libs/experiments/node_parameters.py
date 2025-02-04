@@ -27,4 +27,4 @@ class DataLoadableNodeParameters(RunnableParameters):
 
 
 class QmSessionNodeParameters(RunnableParameters):
-    timeout: int = 100
+    timeout: int = Field(120, description="Whether to use the interactive waveform report in simulation", units="seconds")
