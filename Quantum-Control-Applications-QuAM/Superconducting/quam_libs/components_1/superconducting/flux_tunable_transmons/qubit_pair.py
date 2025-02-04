@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, Union
 from dataclasses import field
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.flux_tunable_transmon import Transmon
+from qubit import Transmon
 from ..architectural_elements.tunable_coupler import TunableCoupler
 
 

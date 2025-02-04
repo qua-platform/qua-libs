@@ -3,7 +3,7 @@ from dataclasses import field
 from qm.qua import align, wait
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.flux_tunable_transmon import Transmon
+from qubit import Transmon
 from ..architectural_elements.cross_resonance import CrossResonance
 from ..architectural_elements.zz_drive import ZZDrive
 

@@ -4,11 +4,10 @@ from quam import QuamComponent
 from ..architectural_elements.readout_resonator import ReadoutResonator
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
-from typing import Dict, Any, Union, List, Tuple
+from typing import Dict, Any, Union
 from qm.qua import align, wait
 import numpy as np
 from dataclasses import field
-from quam.components.pulses import GaussianPulse
 
 __all__ = ["Transmon"]
 

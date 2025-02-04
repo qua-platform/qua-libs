@@ -12,8 +12,8 @@ from quam.components.ports import (
 
 from ..architectural_elements.readout_resonator import ReadoutResonator
 from ...batchable_list import BatchableList
-from ..qubit.flux_tunable_transmon import Transmon
-from ..qubit_pair.flux_tunable_transmons import TransmonPair
+from qubit import Transmon
+from qubit_pair import TransmonPair
 
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
