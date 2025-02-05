@@ -1,7 +1,7 @@
 from typing import Literal
 
 import numpy as np
-from pydantic import model_validator
+from pydantic import model_validator, Field
 from qualang_tools.units import unit
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
@@ -28,6 +28,8 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     num_durations: int = 8
     plotting_dimension: Literal['2D', '3D'] = '2D'
     fidelity_smoothing_intensity: float = 0.5
+    max_readout_amplitude: float = Field(0.125, description="upper limit for readout pulse amplitude to "
+                                                            "avoid saturation when doing multiplexed readout")
 
     @model_validator(mode="after")
     def check_plot_type_is_2d_or_3d(self):

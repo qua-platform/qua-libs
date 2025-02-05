@@ -62,7 +62,9 @@ node = QualibrationNode(
         max_duration_in_ns=1040,
         num_durations=4,
         load_data_id=1100,
-        plotting_dimension="2D"
+        plotting_dimension="2D",
+        fidelity_smoothing_intensity=0.5,
+        max_readout_amplitude=0.125
         # simulate=True,
         # simulation_duration_ns=1000,
         # use_waveform_report=True
@@ -126,7 +128,7 @@ with program() as readout_optimization_3d:
     n_st = declare_stream()
 
     for multiplexed_qubits in qubits.batch():
-        machine.set_all_fluxes(flux_point=flux_point, target=multiplexed_qubits[0])
+        machine.set_all_fluxes(flux_point=flux_point, target=list(multiplexed_qubits.values())[0])
         
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
@@ -217,10 +219,6 @@ if not node.parameters.simulate:
 
     node.results = {"ds": ds}
 
-    ds["raw_fidelity"] = calculate_readout_fidelity(ds)
-    ds["fidelity"] = filter_readout_fidelity(ds, node.parameters)
-    optimal_ds = get_maximum_fidelity_per_qubit(ds)
-
     if node.parameters.plotting_dimension == "3D":
         # doesn't save the figure
         fig = plot_fidelity_3d(ds, optimal_ds)
@@ -243,14 +241,12 @@ if not node.parameters.simulate:
                 optimal_ds_for_this_qubit = optimal_ds.sel(qubit=q.name)
                 q.resonator.intermediate_frequency += int(optimal_ds_for_this_qubit.freq.data)
                 q.resonator.operations[readout_pulse_name].length = int(optimal_ds_for_this_qubit.duration.data)
-                # q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
-                q.resonator.operations[readout_pulse_name].amplitude = 0.9
+                q.resonator.operations[readout_pulse_name].amplitude *= float(optimal_ds_for_this_qubit.amp.data)
                 optimal_output_powers[q] = q.resonator.get_output_power(operation=readout_pulse_name)
 
             # If the amplitude increased above the maximum readout amplitude, increase the power
-            # and reduce the amplitude below 0.1 to protect against saturating the output channel.
-            #
-            # However, since different resonators need different powers, but can share the same port,
+            # and reduce the amplitude below its limit to protect against saturating the output channel.
+            #  However, since different resonators need different powers, but can share the same port,
             # take the safe approach and define a *lower* bound for the power of the port by
             # sorting in descending order of power requirements.
             lowest_possible_full_scale_power_dbm = None
@@ -260,7 +256,7 @@ if not node.parameters.simulate:
                 power_settings = qubit.resonator.set_output_power(
                     power_in_dbm=power,
                     full_scale_power_dbm=lowest_possible_full_scale_power_dbm,
-                    max_amplitude=instrument_limits(qubit.resonator.opx_output).max_readout_amplitude,
+                    max_amplitude=node.parameters.max_readout_amplitude,
                     operation=readout_pulse_name
                 )
 
