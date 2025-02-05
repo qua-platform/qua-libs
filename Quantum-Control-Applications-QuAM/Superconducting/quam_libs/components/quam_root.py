@@ -21,6 +21,7 @@ from qualang_tools.results.data_handler import DataHandler
 
 from dataclasses import field
 from typing import List, Dict, ClassVar, Any, Optional, Sequence, Union
+from ..cloud_infrastructure import CloudQuantumMachinesManager
 
 __all__ = ["QuAM", "FEMQuAM", "OPXPlusQuAM"]
 
