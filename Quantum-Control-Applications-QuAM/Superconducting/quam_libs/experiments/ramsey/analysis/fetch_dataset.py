@@ -1,6 +1,6 @@
 import xarray as xr
 
-from quam_libs.experiments.ramsey.parameters import Parameters
+from quam_libs.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 
@@ -22,7 +22,7 @@ def fetch_dataset(job, qubits, node_parameters: Parameters) -> xr.Dataset:
         - Each variable has dimensions corresponding to the coordinates (`sign`, `time`, `qubit`).
 
     """
-    idle_times = node_parameters.get_idle_times_in_clock_cycles()
+    idle_times = get_idle_times_in_clock_cycles(node_parameters)
 
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
     ds = convert_IQ_to_V(ds, qubits)
