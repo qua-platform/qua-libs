@@ -219,6 +219,10 @@ if not node.parameters.simulate:
 
     node.results = {"ds": ds}
 
+    ds["raw_fidelity"] = calculate_readout_fidelity(ds)
+    ds["fidelity"] = filter_readout_fidelity(ds, node.parameters)
+    optimal_ds = get_maximum_fidelity_per_qubit(ds)
+
     if node.parameters.plotting_dimension == "3D":
         # doesn't save the figure
         fig = plot_fidelity_3d(ds, optimal_ds)
