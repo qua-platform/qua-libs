@@ -20,7 +20,7 @@ def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
     if isinstance(channel, MWChannel):
         limits = InstrumentLimits(
             max_wf_amplitude=1,  # MW-FEM max normalized amplitude
-            max_x180_wf_amplitude=0.6,  # A subjective "safe" value for x180 pulses
+            max_x180_wf_amplitude=1.0,  # A subjective "safe" value for x180 pulses
             units="(scaled by `full_scale_power_dbm`)"
         )
     elif isinstance(channel, IQChannel):
