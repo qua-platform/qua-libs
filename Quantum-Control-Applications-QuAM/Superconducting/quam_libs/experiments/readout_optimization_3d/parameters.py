@@ -23,7 +23,6 @@ class ReadoutOptimization3dParameters(RunnableParameters):
     min_amplitude_factor: float = 0.5
     max_amplitude_factor: float = 1.99
     num_amplitudes: int = 10
-    min_duration_in_ns: int = 500
     max_duration_in_ns: int = 4000
     num_durations: int = 8
     plotting_dimension: Literal['2D', '3D'] = '2D'
