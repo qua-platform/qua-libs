@@ -141,7 +141,8 @@ with program() as readout_optimization_3d:
                             qubit.resonator.intermediate_frequency + df
                         )
 
-                    wait(machine.thermalization_time * u.ns)
+                    if not node.parameters.simulate:
+                        wait(machine.thermalization_time * u.ns)
 
                     align()
                     for i, qubit in multiplexed_qubits.items():
@@ -153,7 +154,8 @@ with program() as readout_optimization_3d:
                         )
 
                     align()
-                    wait(machine.thermalization_time * u.ns)
+                    if not node.parameters.simulate:
+                        wait(machine.thermalization_time * u.ns)
 
                     for i, qubit in multiplexed_qubits.items():
                         qubit.xy.play("x180")
