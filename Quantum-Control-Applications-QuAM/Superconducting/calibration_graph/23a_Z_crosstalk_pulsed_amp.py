@@ -250,10 +250,12 @@ if not node.parameters.simulate:
                 amplitude = fit_params.sel(fit_vals='a').values
                 frequency = fit_params.sel(fit_vals='f').values
                 if np.abs(amplitude) > 0.2:
-                    crosstalk_matrix[i, j] = np.pi*np.abs(frequency) / (np.abs(qubits[j].freq_vs_flux_01_quad_term) * 
-                                                                flux_bias_offset[qubits[j].name] * 
-                                                                qubits[i].z.operations['const'].amplitude *
-                                                                node.parameters.duration_ns * 1e-9)
+                    f_0 = detunings[qubits[j].name]
+                    delta_f = np.abs(frequency) / (node.parameters.duration_ns * 1e-9) 
+                    quad = np.abs(qubits[j].freq_vs_flux_01_quad_term)
+                    v_0 = flux_bias_offset[qubits[j].name]
+                    full_pulse = qubits[i].z.operations['const'].amplitude
+                    crosstalk_matrix[i, j] = ( np.sqrt(f_0/quad + delta_f/quad ) - v_0) / full_pulse
                 else:
                     crosstalk_matrix[i, j] = 0.0
             else:
