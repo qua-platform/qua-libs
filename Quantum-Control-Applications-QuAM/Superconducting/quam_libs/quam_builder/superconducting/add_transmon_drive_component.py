@@ -1,15 +1,15 @@
-from typing import Dict
+from typing import Dict, Union
 from quam.components.channels import IQChannel, MWChannel
 
 from quam_libs.quam_builder.qop_connectivity.channel_ports import iq_out_channel_ports, mw_out_channel_ports
 from quam_libs.quam_builder.qop_connectivity.get_digital_outputs import get_digital_outputs
 from qualang_tools.addons.calibration.calibrations import unit
-from quam_libs.components import Transmon
+from quam_libs.components_2.superconducting.qpu import FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon
 
 u = unit(coerce_to_integer=True)
 
 
-def add_transmon_drive_component(transmon: Transmon, wiring_path: str, ports: Dict[str, str]):
+def add_transmon_drive_component(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon], wiring_path: str, ports: Dict[str, str]):
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
     if all(key in ports for key in iq_out_channel_ports):

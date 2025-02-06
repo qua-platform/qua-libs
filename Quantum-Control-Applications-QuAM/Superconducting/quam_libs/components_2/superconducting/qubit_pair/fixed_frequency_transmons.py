@@ -3,7 +3,7 @@ from dataclasses import field
 from qm.qua import align, wait
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.flux_tunable_transmon import Transmon
+from ..qubit.fixed_frequency_transmon import FixedFrequencyTransmon
 from ..architectural_elements.cross_resonance import CrossResonance
 from ..architectural_elements.zz_drive import ZZDrive
 
@@ -14,8 +14,9 @@ __all__ = ["TransmonPair"]
 @quam_dataclass
 class TransmonPair(QuamComponent):
     id: Union[int, str]
-    qubit_control: Transmon = None
-    qubit_target: Transmon = None
+    qubit_control: FixedFrequencyTransmon = None
+    qubit_target: FixedFrequencyTransmon = None
+    # TODO: Need to add xy_detuning here
     cross_resonance: Optional[CrossResonance] = None
     zz_drive: Optional[ZZDrive] = None
     confusion: list = None

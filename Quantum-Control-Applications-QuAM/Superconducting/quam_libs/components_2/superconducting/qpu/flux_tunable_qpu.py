@@ -1,23 +1,28 @@
 import warnings
 from quam.core import quam_dataclass
-from ..qubit.flux_tunable_transmon import Transmon
-from ..qubit_pair.flux_tunable_transmons import TransmonPair
-from base_quam import Base_QuAM
+from quam_libs.components_2.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
+from quam_libs.components_2.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
+from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
+
 
 
 from dataclasses import field
-from typing import Dict, Union
+from typing import Dict, Union, ClassVar, Type
 
-__all__ = ["QuAM"]
+__all__ = ["QuAM", "FluxTunableTransmon", "TransmonPair"]
 
 
 @quam_dataclass
-class QuAM(Base_QuAM):
+class QuAM(BaseQuAM):
     """Example QuAM root component."""
 
-    qubits: Dict[str, Transmon] = field(default_factory=dict)
+    qubits: Dict[str, FluxTunableTransmon] = field(default_factory=dict)
+    qubit_type: ClassVar[Type[FluxTunableTransmon]] = FluxTunableTransmon
     qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
+    qubit_pair_type: ClassVar[Type[TransmonPair]] = TransmonPair
 
+    def load(self, *args, **kwargs) -> "QuAM":
+        return super().load(*args, **kwargs)
 
     def apply_all_couplers_to_min(self) -> None:
         """Apply the offsets that bring all the active qubit pairs to a decoupled point."""
@@ -54,9 +59,9 @@ class QuAM(Base_QuAM):
         for q in self.active_qubits:
             q.z.to_zero()
 
-    def set_all_fluxes(self, flux_point: str, target: Union[Transmon, TransmonPair]):
+    def set_all_fluxes(self, flux_point: str, target: Union[FluxTunableTransmon, TransmonPair]):
         if flux_point == "independent":
-            assert isinstance(target, Transmon), "Independent flux point is only supported for individual transmons"
+            assert isinstance(target, FluxTunableTransmon), "Independent flux point is only supported for individual transmons"
         elif flux_point == "pairwise":
             assert isinstance(target, TransmonPair), "Pairwise flux point is only supported for transmon pairs"
 
@@ -80,3 +85,4 @@ class QuAM(Base_QuAM):
         target.z.settle()
         target.align()
         return target_bias
+

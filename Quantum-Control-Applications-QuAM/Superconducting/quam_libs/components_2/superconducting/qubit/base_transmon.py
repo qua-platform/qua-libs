@@ -1,13 +1,11 @@
 from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, MWChannel, Pulse
 from quam import QuamComponent
-from ..architectural_elements.flux_line import FluxLine
-from ..architectural_elements.readout_resonator import ReadoutResonator
+from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
 from typing import Dict, Any, Union
 from qm.qua import align, wait
-import numpy as np
 from dataclasses import field
 
 __all__ = ["BaseTransmon"]
@@ -36,10 +34,8 @@ class BaseTransmon(QuamComponent):
 
     id: Union[int, str]
 
-    # TODO: IQ or MW
-    xy: IQChannel = None
-    # xy: MWChannel = None
-    resonator: ReadoutResonator = None
+    xy: Union[MWChannel, IQChannel] = None
+    resonator: Union[ReadoutResonatorIQ, ReadoutResonatorMW] = None
 
     f_01: float = None
     f_12: float = None

@@ -1,12 +1,13 @@
 # %%
 from qualang_tools.wirer.wirer.channel_specs import opx_spec, octave_spec, opx_iq_octave_spec
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
-from quam_libs.quam_builder.machine import build_quam_wiring
+from quam_libs.quam_builder.qop_connectivity import build_quam_wiring
+from get_my_quam import QuAM
 
 # Define static parameters
-host_ip = "127.0.0.1"  # QOP IP address
+host_ip = "172.16.33.101"  # QOP IP address
 port = None  # QOP Port
-cluster_name = "Cluster_1"  # Name of the cluster
+cluster_name = "Cluster_81"  # Name of the cluster
 # Desired location of wiring.json and state.json
 # The folder must not contain other json files.
 path = "./quam_state"
@@ -45,8 +46,9 @@ allocate_wiring(connectivity, instruments)
 #     connectivity.add_qubit_drive_lines(qubits=qubit, constraints=q1_drive_ch)
 #     allocate_wiring(connectivity, instruments, block_used_channels=False)
 
+
 # Build the wiring and network into a QuAM machine and save it as "wiring.json"
-build_quam_wiring(connectivity, host_ip, cluster_name, path)
+build_quam_wiring(connectivity, host_ip, cluster_name, path, QuAM)
 
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)

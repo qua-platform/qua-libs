@@ -6,7 +6,7 @@ import numpy as np
 
 from qualang_tools.units import unit
 
-__all__ = ["ReadoutResonator", "ReadoutResonatorIQ", "ReadoutResonatorMW"]
+__all__ = ["ReadoutResonatorIQ", "ReadoutResonatorMW"]
 
 
 @quam_dataclass
@@ -170,4 +170,4 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         }
 
 
-ReadoutResonator = ReadoutResonatorMW
+# ReadoutResonator = ReadoutResonatorMW

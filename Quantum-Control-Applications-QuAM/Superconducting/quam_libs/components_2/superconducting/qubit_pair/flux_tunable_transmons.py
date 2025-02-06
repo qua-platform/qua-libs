@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, Union
 from dataclasses import field
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.flux_tunable_transmon import Transmon
+from ..qubit.flux_tunable_transmon import FluxTunableTransmon
 from ..architectural_elements.tunable_coupler import TunableCoupler
 
 
@@ -12,8 +12,8 @@ __all__ = ["TransmonPair"]
 @quam_dataclass
 class TransmonPair(QuamComponent):
     id: Union[int, str]
-    qubit_control: Transmon = None
-    qubit_target: Transmon = None
+    qubit_control: FluxTunableTransmon = None
+    qubit_target: FluxTunableTransmon = None
     coupler: Optional[TunableCoupler] = None
 
     extras: Dict[str, Any] = field(default_factory=dict)

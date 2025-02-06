@@ -8,15 +8,18 @@ from quam_libs.components.mixer import StandaloneMixer
 from quam_libs.quam_builder.superconducting.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from quam_libs.quam_builder.superconducting.add_transmon_drive_component import add_transmon_drive_component
 from quam_libs.quam_builder.superconducting.add_transmon_flux_component import add_transmon_flux_component
-from quam_libs.quam_builder.superconducting.add_transmon_pair_component import add_transmon_pair_component
+from quam_libs.quam_builder.superconducting.add_transmon_pair_component import (
+    add_transmon_pair_tunable_coupler_component, add_transmon_pair_cross_resonance_component, add_transmon_pair_zz_drive_component
+)
 from quam_libs.quam_builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from quam_libs.components import QuAM, Transmon
+from quam_libs.components_2.superconducting.qpu import FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon
+from quam_libs.components_2.superconducting.qpu import BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM
 from quam_libs.quam_builder.qop_connectivity.build_quam_wiring import save_machine
 
 
-def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_settings: Dict = {}) -> QuAM:
-    add_octaves(machine, octaves_settings, quam_state_path)
+def build_quam(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], quam_state_path: Union[Path, str]) -> Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]:
+    add_octaves(machine, quam_state_path)
     add_external_mixers(machine)
     add_ports(machine)
     add_transmons(machine)
@@ -26,7 +29,7 @@ def build_quam(machine: QuAM, quam_state_path: Union[Path, str], octaves_setting
 
     return machine
 
-def add_ports(machine: QuAM):
+def add_ports(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     """
     Creates and stores all input/output ports according to what has been
     allocated to each element in the machine's wiring.
@@ -38,17 +41,16 @@ def add_ports(machine: QuAM):
                     if "ports" in ports.get_unreferenced_value(port):
                         machine.ports.reference_to_port(ports.get_unreferenced_value(port), create=True)
 
-
-def add_transmons(machine: QuAM):
+def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     for element_type, wiring_by_element in machine.wiring.items():
         if element_type == "qubits":
             for qubit_id, wiring_by_line_type in wiring_by_element.items():
-                transmon = Transmon(id=qubit_id)
+                transmon = machine.qubit_type(id=qubit_id)
                 machine.qubits[qubit_id] = transmon
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_id}/{line_type}"
                     if line_type == WiringLineType.RESONATOR.value:
-                        add_transmon_resonator_component(transmon, wiring_path, ports, machine)
+                        add_transmon_resonator_component(transmon, wiring_path, ports)
                     elif line_type == WiringLineType.DRIVE.value:
                         add_transmon_drive_component(transmon, wiring_path, ports)
                     elif line_type == WiringLineType.FLUX.value:
@@ -59,17 +61,24 @@ def add_transmons(machine: QuAM):
 
         elif element_type == "qubit_pairs":
             for qubit_pair_id, wiring_by_line_type in wiring_by_element.items():
+                qc, qt = qubit_pair_id.split("-")
+                qt = f"q{qt}"
+                transmon_pair = machine.qubit_pair_type(id=qubit_pair_id, qubit_control=f"#/qubits/{qc}",qubit_target=f"#/qubits/{qt}")
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_pair_id}/{line_type}"
                     if line_type == WiringLineType.COUPLER.value:
-                        transmon_pair = add_transmon_pair_component(machine, wiring_path, ports)
+                        add_transmon_pair_tunable_coupler_component(transmon_pair, wiring_path, ports)
+                    elif line_type == WiringLineType.CROSS_RESONANCE.value:
+                        add_transmon_pair_cross_resonance_component(transmon_pair, wiring_path, ports)
+                    elif line_type == WiringLineType.ZZ_DRIVE.value:
+                        add_transmon_pair_zz_drive_component(transmon_pair, wiring_path, ports)
                     else:
-                        raise ValueError(f"Unknown line type: {line_type}")
+                        raise ValueError(f'Unknown line type: {line_type}')
                     machine.qubit_pairs[transmon_pair.name] = transmon_pair
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
 
-def add_pulses(machine: QuAM):
+def add_pulses(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     if hasattr(machine, "qubits"):
         for transmon in machine.qubits.values():
             add_default_transmon_pulses(transmon)
@@ -79,31 +88,49 @@ def add_pulses(machine: QuAM):
             add_default_transmon_pair_pulses(qubit_pair)
 
 
-def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):
-    octave_ips, octave_ports = [], []
-    for octave_settings in octaves_settings.values():
-        octave_ips.append(octave_settings.get("ip", machine.network.host))
-        octave_ports.append(octave_settings.get("port", 80))
-    machine.network["octave_ips"] = octave_ips
-    machine.network["octave_ports"] = octave_ports
+# def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):
+#     octave_ips, octave_ports = [], []
+#     for octave_settings in octaves_settings.values():
+#         octave_ips.append(octave_settings.get("ip", machine.network.host))
+#         octave_ports.append(octave_settings.get("port", 80))
+#     machine.network["octave_ips"] = octave_ips
+#     machine.network["octave_ports"] = octave_ports
+#
+#     if isinstance(quam_state_path, str):
+#         quam_state_path = Path(quam_state_path)
+#     quam_state_path = str(quam_state_path.parent.resolve())
+#     for i, octave_name in enumerate(octaves_settings):
+#         octave = Octave(
+#             name=octave_name,
+#             # ip=machine.network["octave_ips"][i],
+#             # port=machine.network["octave_ports"][i],
+#             calibration_db_path=quam_state_path,
+#         )
+#         machine.octaves[octave_name] = octave
+#         octave.initialize_frequency_converters()
+#
+#     return machine
 
+def add_octaves(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], quam_state_path: Union[Path, str]):
     if isinstance(quam_state_path, str):
         quam_state_path = Path(quam_state_path)
     quam_state_path = str(quam_state_path.parent.resolve())
-    for i, octave_name in enumerate(octaves_settings):
-        octave = Octave(
-            name=octave_name,
-            ip=machine.network["octave_ips"][i],
-            port=machine.network["octave_ports"][i],
-            calibration_db_path=quam_state_path,
-        )
-        machine.octaves[octave_name] = octave
-        octave.initialize_frequency_converters()
+    for wiring_by_element in machine.wiring.values():
+        for qubit, wiring_by_line_type in wiring_by_element.items():
+            for line_type, references in wiring_by_line_type.items():
+                for reference in references:
+                    if "octaves" in references.get_unreferenced_value(reference):
+                        octave_name = references.get_unreferenced_value(reference).split('/')[2]
+                        octave = Octave(
+                            name=octave_name,
+                            calibration_db_path=quam_state_path,
+                        )
+                        machine.octaves[octave_name] = octave
+                        octave.initialize_frequency_converters()
 
     return machine
 
-
-def add_external_mixers(machine: QuAM):
+def add_external_mixers(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     for wiring_by_element in machine.wiring.values():
         for qubit, wiring_by_line_type in wiring_by_element.items():
             for line_type, references in wiring_by_line_type.items():

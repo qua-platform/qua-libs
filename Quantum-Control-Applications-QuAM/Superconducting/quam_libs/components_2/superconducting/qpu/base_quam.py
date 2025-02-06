@@ -9,7 +9,7 @@ from quam.components.ports import (
     OPXPlusPortsContainer,
 )
 
-from ..architectural_elements.readout_resonator import ReadoutResonator
+from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
 from ...batchable_list import BatchableList
 from ..qubit.base_transmon import BaseTransmon
 from ..qubit_pair.flux_tunable_transmons import TransmonPair
@@ -20,13 +20,13 @@ from qualang_tools.results.data_handler import DataHandler
 from dataclasses import field
 from typing import List, Dict, ClassVar, Optional, Sequence, Union
 
-__all__ = ["Base_QuAM", "FEMQuAM", "OPXPlusQuAM"]
+__all__ = ["BaseQuAM", "BaseTransmon", "TransmonPair"]
 
 from ....experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
 
 
 @quam_dataclass
-class Base_QuAM(QuamRoot):
+class BaseQuAM(QuamRoot):
     """Example QuAM root component."""
 
     octaves: Dict[str, Octave] = field(default_factory=dict)
@@ -39,6 +39,8 @@ class Base_QuAM(QuamRoot):
 
     active_qubit_names: List[str] = field(default_factory=list)
     active_qubit_pair_names: List[str] = field(default_factory=list)
+
+    ports: Union[FEMPortsContainer, OPXPlusPortsContainer] = None
 
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
@@ -117,7 +119,7 @@ class Base_QuAM(QuamRoot):
         return make_batchable_list(qubits, node_parameters)
 
     def get_resonators_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[
-        ReadoutResonator]:
+        Union[ReadoutResonatorIQ, ReadoutResonatorMW]]:
         resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node_parameters)]
 
         return make_batchable_list(resonators, node_parameters)
@@ -158,13 +160,3 @@ def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) 
         multiplexed = False
 
     return BatchableList(items, multiplexed)
-
-
-@quam_dataclass
-class FEMQuAM(Base_QuAM):
-    ports: FEMPortsContainer = field(default_factory=FEMPortsContainer)
-
-
-@quam_dataclass
-class OPXPlusQuAM(Base_QuAM):
-    ports: OPXPlusPortsContainer = field(default_factory=OPXPlusPortsContainer)
