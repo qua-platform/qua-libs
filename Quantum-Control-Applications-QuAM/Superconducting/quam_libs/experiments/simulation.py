@@ -13,7 +13,7 @@ def simulate_and_plot(qmm: QuantumMachinesManager, config: dict,
                       program: Program, node_parameters: Parameters) -> Tuple[SimulatorSamples, Figure]:
 
     # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
+    simulation_config = SimulationConfig(duration=node_parameters.simulation_duration_ns // 4)
 
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, program, simulation_config)

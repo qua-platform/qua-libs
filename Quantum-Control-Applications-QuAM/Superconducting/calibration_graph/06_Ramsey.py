@@ -97,18 +97,16 @@ with program() as ramsey:
                             assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(detuning * 1e-9, 4 * idle_time))
                         with else_():
                             assign(virtual_detuning_phases[i], Cast.mul_fixed_by_int(-detuning * 1e-9, 4 * idle_time))
+
                     align()
-
-                    for i, qubit in multiplexed_qubits.items():
-                        qubit.align()
-
-                        with strict_timing_():
+                    with strict_timing_():
+                        for i, qubit in multiplexed_qubits.items():
                             qubit.xy.play("x90")
-                            qubit.xy.wait(idle_time)
                             qubit.xy.frame_rotation_2pi(virtual_detuning_phases[i])
+                            qubit.xy.wait(idle_time)
                             qubit.xy.play("x90")
-                    align()
 
+                    align()
                     for i, qubit in multiplexed_qubits.items():
                         if node.parameters.use_state_discrimination:
                             readout_state(qubit, state[i])
