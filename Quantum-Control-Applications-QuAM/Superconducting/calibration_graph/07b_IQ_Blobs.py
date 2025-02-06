@@ -22,113 +22,106 @@ Next steps before going to the next node:
 
 
 # %% {Imports}
-from qualibrate import QualibrationNode, NodeParameters
+import matplotlib.pyplot as plt
+import numpy as np
+import xarray as xr
+
+from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
+from quam_libs.experiments.iq_blobs.fetch_dataset import fetch_dataset
+from quam_libs.experiments.iq_blobs.parameters import Parameters
+from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.macros import qua_declaration, active_reset
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray, load_dataset
+from quam_libs.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm import SimulationConfig
 from qm.qua import *
-from typing import Literal, Optional, List
-import matplotlib.pyplot as plt
-import numpy as np
-import xarray as xr
 
 
 # %% {Node_parameters}
-class Parameters(NodeParameters):
-
-    qubits: Optional[List[str]] = None
-    num_runs: int = 2000
-    reset_type_thermal_or_active: Literal["thermal", "active"] = "thermal"
-    flux_point_joint_or_independent: Literal["joint", "independent"] = "independent"
-    operation_name: str = "readout"  # or "readout_QND"
-    simulate: bool = False
-    simulation_duration_ns: int = 2500
-    timeout: int = 100
-    load_data_id: Optional[int] = None
-    multiplexed: bool = False
-
-
-node = QualibrationNode(name="07b_IQ_Blobs", parameters=Parameters())
-
+node = QualibrationNode(
+    name="07b_IQ_Blobs",
+    parameters=Parameters(
+        qubits=None,
+        multiplexed=True,
+        flux_point_joint_or_independent="joint",
+        num_runs=2000,
+        load_data_id=None,
+        simulate=False,
+        simulation_duration_ns=1000,
+        use_waveform_report=False
+    )
+)
 
 # %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
-# Instantiate the QuAM class from the state file
+
 machine = QuAM.load()
-# Generate the OPX and Octave configurations
-config = machine.generate_config()
-# Open Communication with the QOP
+
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
-    
-# Get the relevant QuAM components
-if node.parameters.qubits is None or node.parameters.qubits == "":
-    qubits = machine.active_qubits
-else:
-    qubits = [machine.qubits[q] for q in node.parameters.qubits]
+
+qubits = machine.get_qubits_used_in_node(node.parameters)
 num_qubits = len(qubits)
 
+config = machine.generate_config()
 
 # %% {QUA_program}
-n_runs = node.parameters.num_runs  # Number of runs
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
+n_runs = node.parameters.num_runs
+flux_point = node.parameters.flux_point_joint_or_independent
+reset_type = node.parameters.reset_type_thermal_or_active
 operation_name = node.parameters.operation_name
+
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(num_qubits=num_qubits)
 
-    for i, qubit in enumerate(qubits):
-
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point=flux_point, target=qubit)
+    for multiplexed_qubits in qubits.batch():
+        machine.set_all_fluxes(flux_point=flux_point, target=list(multiplexed_qubits.values())[0])
 
         with for_(n, 0, n < n_runs, n + 1):
-            # ground iq blobs for all qubits
-            save(n, n_st)
-            if reset_type == "active":
-                active_reset(qubit, "readout")
-            elif reset_type == "thermal":
-                qubit.wait(4 * qubit.thermalization_time * u.ns)
-            else:
-                raise ValueError(f"Unrecognized reset type {reset_type}.")
 
-            qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_g[i], Q_g[i]))
-            qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-            # save data
-            save(I_g[i], I_g_st[i])
-            save(Q_g[i], Q_g_st[i])
+            # measure ground-state IQ blob for all qubits
+            for i, qubit in multiplexed_qubits.items():
+                save(n, n_st)
+                if reset_type == "active":
+                    active_reset(qubit, "readout")
+                elif reset_type == "thermal":
+                    qubit.wait(4 * qubit.thermalization_time * u.ns)
+                else:
+                    raise ValueError(f"Unrecognized reset type {reset_type}.")
 
-            qubit.align()
-            # excited iq blobs for all qubits
-            if reset_type == "active":
-                active_reset(qubit, "readout")
-            elif reset_type == "thermal":
-                qubit.wait(qubit.thermalization_time * u.ns)
-            else:
-                raise ValueError(f"Unrecognized reset type {reset_type}.")
-            qubit.align()
-            qubit.xy.play("x180")
-            qubit.align()
-            qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
-            qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
-            # save data
-            save(I_e[i], I_e_st[i])
-            save(Q_e[i], Q_e_st[i])
-        
-        # Measure sequentially
-        if not node.parameters.multiplexed:
             align()
+            for i, qubit in multiplexed_qubits.items():
+                qubit.resonator.measure(operation_name, qua_vars=(I_g[i], Q_g[i]))
+                qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                save(I_g[i], I_g_st[i])
+                save(Q_g[i], Q_g_st[i])
 
+            # measure excited-state IQ blob for all qubits
+            align()
+            for i, qubit in multiplexed_qubits.items():
+                if reset_type == "active":
+                    active_reset(qubit, "readout")
+                elif reset_type == "thermal":
+                    qubit.wait(qubit.thermalization_time * u.ns)
+                else:
+                    raise ValueError(f"Unrecognized reset type {reset_type}.")
+
+            align()
+            for i, qubit in multiplexed_qubits.items():
+                qubit.xy.play("x180")
+                qubit.align()
+                qubit.resonator.measure(operation_name, qua_vars=(I_e[i], Q_e[i]))
+                qubit.resonator.wait(qubit.resonator.depletion_time * u.ns)
+                save(I_e[i], I_e_st[i])
+                save(Q_e[i], Q_e_st[i])
+        
     with stream_processing():
         n_st.save("n")
         for i in range(num_qubits):
@@ -140,22 +133,11 @@ with program() as iq_blobs:
 
 # %% {Simulate_or_execute}
 if node.parameters.simulate:
-    # Simulates the QUA program for the specified duration
-    simulation_config = SimulationConfig(duration=node.parameters.simulation_duration_ns * 4)  # In clock cycles = 4ns
-    job = qmm.simulate(config, iq_blobs, simulation_config)
-    # Get the simulated samples and plot them for all controllers
-    samples = job.get_simulated_samples()
-    fig, ax = plt.subplots(nrows=len(samples.keys()), sharex=True)
-    for i, con in enumerate(samples.keys()):
-        plt.subplot(len(samples.keys()),1,i+1)
-        samples[con].plot()
-        plt.title(con)
-    plt.tight_layout()
-    # Save the figure
-    node.results = {"figure": plt.gcf()}
+    samples, fig = simulate_and_plot(qmm, config, iq_blobs, node.parameters)
+    node.results = {"figure": fig}
     node.machine = machine
     node.save()
-    
+
 elif node.parameters.load_data_id is None:
     with qm_session(qmm, config, timeout=node.parameters.timeout) as qm:
         job = qm.execute(iq_blobs)
@@ -168,24 +150,8 @@ elif node.parameters.load_data_id is None:
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-        ds = fetch_results_as_xarray(job.result_handles, qubits, {"N": np.linspace(1, n_runs, n_runs)})
-
-        # Fix the structure of ds to avoid tuples
-        def extract_value(element):
-            if isinstance(element, tuple):
-                return element[0]
-            return element
-
-        ds = xr.apply_ufunc(
-            extract_value,
-            ds,
-            vectorize=True,  # This ensures the function is applied element-wise
-            dask="parallelized",  # This allows for parallel processing
-            output_dtypes=[float],  # Specify the output data type
-        )
-        # Convert IQ data into volts
-        ds = convert_IQ_to_V(ds, qubits, ["I_g", "Q_g", "I_e", "Q_e"])
+        # todo: Write docstring
+        ds = fetch_dataset(job, qubits, node.parameters)
     else:
         node = node.load_from_id(node.parameters.load_data_id)
         ds = node.results["ds"]
