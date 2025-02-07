@@ -65,8 +65,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = 0.05  # relative to the coupler set point
-    coupler_flux_max : float = 0.18 # relative to the coupler set point
+    coupler_flux_min : float = 0.2  # relative to the coupler set point
+    coupler_flux_max : float = 0.25 # relative to the coupler set point
     coupler_flux_step : float = 0.0005
     qubit_flux_min : float = -0.08 # relative to the qubit pair detuning
     qubit_flux_max : float = -0.06 # relative to the qubit pair detuning
@@ -258,7 +258,7 @@ if not node.parameters.simulate:
 node.results["results"] = {}
 
 ## HARD CODED FROM EXPERIMENT
-node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.160, "flux_qubit_Cz": 0.07}
+node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.242, "flux_qubit_Cz": 0.068}
 
 # if not node.parameters.simulate:
 #     if node.parameters.use_state_discrimination:

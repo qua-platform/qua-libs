@@ -65,13 +65,13 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = 0.05 #relative to the coupler set point
-    coupler_flux_max : float = 0.2 #relative to the coupler set point
-    coupler_flux_step : float = 0.001
-    qubit_flux_span : float = 0.015 # relative to the known/calculated detuning between the qubits
-    qubit_flux_step : float = 0.0005   
+    coupler_flux_min : float = -0. #relative to the coupler set point
+    coupler_flux_max : float = 0.4 #relative to the coupler set point
+    coupler_flux_step : float = 0.0005
+    qubit_flux_span : float = 0.01 # relative to the known/calculated detuning between the qubits
+    qubit_flux_step : float = 0.00025   
     use_state_discrimination: bool = True
-    pulse_duration_ns: int = 100
+    pulse_duration_ns: int = 48
     
 
 node = QualibrationNode(
@@ -346,7 +346,7 @@ if not node.parameters.simulate:
 if not node.parameters.simulate:
     with node.record_state_updates():
         for qp in qubit_pairs:
-            # qp.coupler.decouple_offset = node.results["results"][qp.name]["flux_coupler_min"]
+            qp.coupler.decouple_offset = node.results["results"][qp.name]["flux_coupler_min"]
             qp.detuning = node.results["results"][qp.name]["flux_qubit_max"]
 
 # %% {Save_results}

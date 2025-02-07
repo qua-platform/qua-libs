@@ -279,9 +279,9 @@ if not node.parameters.simulate:
             for qubit in qubits:
                 qubit.xy.intermediate_frequency -= freq_offset[qubit.name]
                 if flux_point == "independent":
-                    qubit.z.independent_offset += flux_offset[qubit.name]/2
+                    qubit.z.independent_offset += flux_offset[qubit.name]
                 elif flux_point == "joint":
-                    qubit.z.joint_offset += flux_offset[qubit.name]/2
+                    qubit.z.joint_offset += flux_offset[qubit.name]
                 else:
                     raise RuntimeError(f"unknown flux_point")
                 qubit.freq_vs_flux_01_quad_term = float(a[qubit.name])

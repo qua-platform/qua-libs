@@ -65,12 +65,12 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = 0.1 # relative to the coupler set point 
-    coupler_flux_max : float = 0.17 # relative to the coupler set point
-    coupler_flux_step : float = 0.0005
-    qubit_flux_min : float = -0.08 # relative to the qubit pair detuning
-    qubit_flux_max : float = -0.06 # relative to the qubit pair detuning
-    qubit_flux_step : float = 0.0005 
+    coupler_flux_min : float = 0.235 # relative to the coupler set point 
+    coupler_flux_max : float = 0.25 # relative to the coupler set point
+    coupler_flux_step : float = 0.00015
+    qubit_flux_min : float = -0.073 # relative to the qubit pair detuning
+    qubit_flux_max : float = -0.065 # relative to the qubit pair detuning
+    qubit_flux_step : float = 0.00015 
     use_state_discrimination: bool = True
     pulse_duration_ns: int = 60
     num_frames : int = 20
@@ -275,15 +275,39 @@ if not node.parameters.simulate:
     phase = fix_oscillation_phi_2pi(fit_data)
     phase_diff = phase.diff(dim="control_ax")
 
+
     # %%
-  
+    leak = ds.state_control_f.mean(dim = "frame").sel(control_ax = 1)
+    # leak.plot()
+    (((phase_diff+0.5 )% 1 -0.5)*360).plot()
     # %%
+    # %%
+
+    mask = (np.abs((np.abs(phase_diff)-0.5))<0.02)
+    leak_mask = leak * mask + (1 - mask)
+    min_value = leak_mask.min(dim=["flux_qubit", "flux_coupler","control_ax"])
+    min_coords = {}
+    for q in phase_diff.qubit.values:
+
+        min_coords[q] = leak_mask.sel(qubit=q).where(leak_mask.sel(qubit=q) == min_value.sel(qubit=q), drop=True)[0]
     node.results["results"] = {}
+    for q in min_coords.keys():
+        node.results["results"][q] = {}
+        node.results["results"][q]["flux_coupler_Cz"] = float(min_coords[q].flux_coupler_full.values)
+        node.results["results"][q]["flux_qubit_Cz"] = float(min_coords[q].flux_qubit_full.values)
+
+
+
+    # %%
+    # %%
+    # node.results["results"] = {}
+
 
     ## HARD CODED FROM EXPERIMENT
-    node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.157, "flux_qubit_Cz": 0.07}
+    # node.results["results"]["coupler_q1_q2"] = {"flux_coupler_Cz": 0.243, "flux_qubit_Cz": 0.069}
 
     
+
 # %% {Plotting}
 if not node.parameters.simulate:
     grid_names, qubit_pair_names = grid_pair_names(qubit_pairs)
@@ -295,6 +319,22 @@ if not node.parameters.simulate:
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)
         ax.axhline(1e3*node.results["results"][qp["qubit"]]["flux_coupler_Cz"], color = 'red', lw = 0.5, ls = '--')
         ax.axvline(1e3*node.results["results"][qp["qubit"]]["flux_qubit_Cz"], color = 'red', lw =0.5, ls = '--')
+
+        mask_q = mask.loc[qp['qubit']].sel(control_ax=1)
+
+        # Create 2D arrays of coordinates
+        amp_coords = 1e3 * mask_q.flux_qubit_full.values
+        rel_coords = 1e3 * mask_q.flux_coupler_full.values
+        # Get the indices where mask is True
+        true_indices = np.where(mask_q.values)
+
+        # Get the corresponding coordinate values
+        valid_amps = amp_coords[true_indices[1]]
+        valid_rels = rel_coords[true_indices[0]]
+
+        if len(valid_amps) > 0:
+            ax.scatter(valid_amps, valid_rels, alpha=0.5, color="red", s=1)
+
         # Create a secondary x-axis for detuning
         base_detuning = -machine.qubit_pairs[qp['qubit']].detuning **2 * machine.qubit_pairs[qp['qubit']].qubit_control.freq_vs_flux_01_quad_term
         flux_qubit_data = ds.sel(qubit=qp['qubit']).flux_qubit_full.values*1e3
@@ -319,7 +359,6 @@ if not node.parameters.simulate:
     for ax, qp in grid_iter(grid):
 
         values_to_plot = (((phase_diff+0.5 )% 1 -0.5)*360).sel(qubit = qp['qubit'])
-        
         values_to_plot.assign_coords({"flux_qubit_mV": 1e3*values_to_plot.flux_qubit_full, "flux_coupler_mV": 1e3*values_to_plot.flux_coupler_full}).plot(ax = ax, x = 'flux_qubit_mV', y = 'flux_coupler_mV')
         qubit_pair = machine.qubit_pairs[qp['qubit']]
         ax.set_title(f"{qp['qubit']}, coupler set point: {qubit_pair.coupler.decouple_offset}", fontsize = 10)

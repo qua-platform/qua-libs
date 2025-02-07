@@ -68,8 +68,8 @@ class Parameters(NodeParameters):
     simulate: bool = False
     timeout: int = 100
     load_data_id: Optional[int] = None
-    coupler_flux_min : float = 0.13
-    coupler_flux_max : float = 0.17
+    coupler_flux_min : float = 0.1
+    coupler_flux_max : float = 0.25
     coupler_flux_step : float = 0.001
     idle_time_min : int = 16
     idle_time_max : int = 2000
