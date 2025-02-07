@@ -4,7 +4,7 @@ from ..qubit_pair.fixed_frequency_transmons import TransmonPair
 from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
 
 from dataclasses import field
-from typing import Dict, Union, ClassVar, Type
+from typing import Dict, ClassVar, Type
 
 __all__ = ["QuAM", "FixedFrequencyTransmon", "TransmonPair"]
 

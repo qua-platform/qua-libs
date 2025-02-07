@@ -65,6 +65,7 @@ class QuAM(BaseQuAM):
         elif flux_point == "pairwise":
             assert isinstance(target, TransmonPair), "Pairwise flux point is only supported for transmon pairs"
 
+        target_bias = None
         if flux_point == "joint":
             self.apply_all_flux_to_joint_idle()
             if isinstance(target, TransmonPair):

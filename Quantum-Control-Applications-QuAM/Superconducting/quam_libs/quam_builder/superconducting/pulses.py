@@ -1,6 +1,6 @@
 from quam.components import pulses
 from qualang_tools.units import unit
-from quam_libs.components_2.superconducting.qpu import FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon
+from quam_libs.components_2.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 import numpy as np
 from typing import Union
 
@@ -8,7 +8,7 @@ from typing import Union
 u = unit(coerce_to_integer=True)
 
 
-def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon]):
+def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon]):
     # TODO: Make gates amplitude a reference to x180 amplitude
     if transmon.xy is not None:
         transmon.xy.operations["x180_DragCosine"] = pulses.DragCosinePulse(

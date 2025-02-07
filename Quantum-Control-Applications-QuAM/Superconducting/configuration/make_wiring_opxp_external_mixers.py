@@ -1,7 +1,8 @@
 # %%
 from qualang_tools.wirer.wirer.channel_specs import opx_spec, octave_spec, opx_iq_octave_spec, opx_iq_ext_mixer_spec
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
-from quam_libs.quam_builder.machine import build_quam_wiring
+from quam_libs.quam_builder.qop_connectivity import build_quam_wiring
+from get_my_quam import QuAM
 
 # Define static parameters
 host_ip = "172.16.33.101"  # QOP IP address
@@ -43,7 +44,7 @@ allocate_wiring(connectivity, instruments)
 # connectivity.add_qubit_pair_flux_lines(qubit_pairs=[(1,2)])  # Tunable coupler
 
 # Build the wiring and network into a QuAM machine and save it as "wiring.json"
-build_quam_wiring(connectivity, host_ip, cluster_name, path)
+build_quam_wiring(connectivity, host_ip, cluster_name, path, QuAM)
 
 # View wiring schematic
 visualize(connectivity.elements, available_channels=instruments.available_channels)

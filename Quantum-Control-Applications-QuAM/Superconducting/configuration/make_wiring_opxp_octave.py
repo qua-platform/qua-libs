@@ -18,7 +18,7 @@ instruments.add_opx_plus(controllers=[1, 2])
 instruments.add_octave(indices=1)
 
 # Define which qubit indices are present in the system
-qubits = [1, 2]
+qubits = ["A", "B"]
 # Allocate the wiring to the connectivity object based on the available instruments
 connectivity = Connectivity()
 
@@ -27,9 +27,9 @@ connectivity = Connectivity()
 q1_res_ch = octave_spec(index=1, rf_out=1, rf_in=1)
 connectivity.add_resonator_line(qubits=qubits, constraints=q1_res_ch)
 connectivity.add_qubit_flux_lines(qubits=qubits)
-connectivity.add_qubit_drive_lines(qubits=[1], constraints=octave_spec(index=1, rf_out=2))
+connectivity.add_qubit_drive_lines(qubits=qubits[0], constraints=octave_spec(index=1, rf_out=2))
 connectivity.add_qubit_drive_lines(
-    qubits=[2], constraints=opx_iq_octave_spec(con=1, out_port_i=7, out_port_q=8, octave_index=1, rf_out=4)
+    qubits=qubits[1], constraints=opx_iq_octave_spec(con=1, out_port_i=7, out_port_q=8, octave_index=1, rf_out=4)
 )
 # connectivity.add_qubit_pair_flux_lines(qubit_pairs=[(1,2)])  # Tunable coupler
 allocate_wiring(connectivity, instruments)

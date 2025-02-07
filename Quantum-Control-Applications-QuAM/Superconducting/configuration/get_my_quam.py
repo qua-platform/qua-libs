@@ -12,4 +12,4 @@ get_my_quam = {
     Architecture.FIXED_FREQUENCY: FixedFrequencyQuAM(),
 }
 
-QuAM = get_my_quam[Architecture.FIXED_FREQUENCY]
+QuAM = get_my_quam[Architecture.FLUX_TUNABLE]

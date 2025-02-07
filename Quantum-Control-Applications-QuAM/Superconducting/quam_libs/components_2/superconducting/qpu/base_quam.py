@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+from qm.octave import QmOctaveConfig
 from quam.components import FrequencyConverter
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
@@ -11,9 +11,8 @@ from quam.components.ports import (
 
 from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
 from ...batchable_list import BatchableList
-from ..qubit.base_transmon import BaseTransmon
 from ..qubit_pair.flux_tunable_transmons import TransmonPair
-
+from quam_libs.components_2.superconducting.qubit.base_transmon import BaseTransmon
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
@@ -70,15 +69,12 @@ class BaseQuAM(QuamRoot):
 
         super().save(path, content_mapping, include_defaults, ignore)
 
-    def get_octave_config(self) -> dict:
+    def get_octave_config(self) -> QmOctaveConfig:
         """Return the Octave configuration."""
         octave_config = None
         for octave in self.octaves.values():
             if octave_config is None:
                 octave_config = octave.get_octave_config()
-            else:
-                octave_config.add_device_info(octave.name, octave.ip, octave.port)
-
         return octave_config
 
     def connect(self) -> QuantumMachinesManager:
@@ -93,7 +89,7 @@ class BaseQuAM(QuamRoot):
         )
         if "port" in self.network:
             settings["port"] = self.network["port"]
-        self.qmm = QuantumMachinesManager(**settings)
+        self.qmm = QuantumMachinesManager(**settings) # TODO: how to fix this warning?
         return self.qmm
 
     def calibrate_octave_ports(self, QM: QuantumMachine) -> None:
@@ -128,7 +124,7 @@ class BaseQuAM(QuamRoot):
     def data_handler(self) -> DataHandler:
         """Return the existing data handler or open a new one to conveniently handle data saving."""
         if self._data_handler is None:
-            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"])
+            self._data_handler = DataHandler(root_data_folder=self.network["data_folder"]) # TODO: how to fix this warning?
             DataHandler.node_data = {"quam": "./state.json"}
         return self._data_handler
 

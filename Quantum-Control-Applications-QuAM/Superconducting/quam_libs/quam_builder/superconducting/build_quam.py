@@ -13,7 +13,7 @@ from quam_libs.quam_builder.superconducting.add_transmon_pair_component import (
 )
 from quam_libs.quam_builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from quam_libs.components_2.superconducting.qpu import FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon
+from quam_libs.components_2.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 from quam_libs.components_2.superconducting.qpu import BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM
 from quam_libs.quam_builder.qop_connectivity.build_quam_wiring import save_machine
 

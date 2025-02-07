@@ -4,12 +4,12 @@ from quam_libs.quam_builder.qop_connectivity.channel_ports import iq_in_out_chan
 from quam_libs.quam_builder.qop_connectivity.get_digital_outputs import get_digital_outputs
 from qualang_tools.addons.calibration.calibrations import unit
 from quam_libs.components_2.superconducting.architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
-from quam_libs.components_2.superconducting.qpu import FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon
+from quam_libs.components_2.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 
 u = unit(coerce_to_integer=True)
 
 
-def add_transmon_resonator_component(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon, BaseTransmon], wiring_path: str, ports: Dict[str, str]):
+def add_transmon_resonator_component(transmon: Union[FixedFrequencyTransmon, FluxTunableTransmon], wiring_path: str, ports: Dict[str, str]):
     digital_outputs = get_digital_outputs(wiring_path, ports)
 
     intermediate_frequency = -250 * u.MHz

@@ -5,7 +5,6 @@ from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, Reado
 from qualang_tools.octave_tools import octave_calibration_tool
 from qm import QuantumMachine, logger
 from typing import Dict, Any, Union
-from qm.qua import align, wait
 from dataclasses import field
 
 __all__ = ["BaseTransmon"]
@@ -72,7 +71,6 @@ class BaseTransmon(QuamComponent):
             raise AttributeError(f"Error inferring anharmonicity for channel {name}: {self.f_12=} is not a number")
         return self.f_12 - self.f_01
 
-    @property
     def sigma(self, operation: Pulse):
         return operation.length / self.sigma_time_factor
 
@@ -134,9 +132,3 @@ class BaseTransmon(QuamComponent):
                 return qubit_pair
         else:
             raise ValueError("Qubit pair not found: qubit_control={self.name}, " "qubit_target={other.name}")
-
-    def align(self):
-        align(self.xy.name, self.z.name, self.resonator.name)
-
-    def wait(self, duration):
-        wait(duration, self.xy.name, self.z.name, self.resonator.name)
