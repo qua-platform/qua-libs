@@ -1,12 +1,12 @@
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from configuration.get_my_quam import QuAM
+from configuration.get_quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
 from qualang_tools.units import unit
-from configuration.get_my_quam import QuAM
+from configuration.get_quam import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #

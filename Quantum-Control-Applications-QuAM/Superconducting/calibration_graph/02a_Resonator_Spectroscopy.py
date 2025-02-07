@@ -18,7 +18,7 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode
-from configuration.get_my_quam import QuAM
+from configuration.get_quam import QuAM
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.experiments.resonator_spectroscopy.analysis import fetch_dataset, fit_resonators
 from quam_libs.experiments.resonator_spectroscopy.plotting import plot_raw_amplitude, plot_raw_phase, plot_fit_amplitude

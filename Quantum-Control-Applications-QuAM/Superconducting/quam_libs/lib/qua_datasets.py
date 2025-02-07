@@ -1,5 +1,5 @@
 from typing import Optional
-from configuration.get_my_quam import QuAM
+from configuration.get_quam import QuAM
 import numpy as np
 import xarray as xr
 

@@ -2,7 +2,7 @@
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_libs.quam_builder.qop_connectivity import build_quam_wiring
-from get_my_quam import QuAM
+from get_quam import QuAM
 
 # Define static parameters
 host_ip = "127.0.0.1"  # QOP IP address

@@ -7,9 +7,9 @@ class Architecture(Enum):
     FLUX_TUNABLE = 2
     CUSTOM = 3
 
-get_my_quam = {
+get_quam = {
     Architecture.FLUX_TUNABLE: FluxTunableQuAM(),
     Architecture.FIXED_FREQUENCY: FixedFrequencyQuAM(),
 }
 
-QuAM = get_my_quam[Architecture.FLUX_TUNABLE]
+QuAM = get_quam[Architecture.FLUX_TUNABLE]
