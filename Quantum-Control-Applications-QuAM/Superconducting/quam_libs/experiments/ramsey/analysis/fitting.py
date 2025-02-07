@@ -31,7 +31,7 @@ class RamseyFit:
         logger.info(f"T2* for qubit {self.qubit_name} : {1e6 * self.decay:.2f} us")
 
 
-def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, qubits: List[Transmon], node_parameters: Parameters) \
+def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, node_parameters: Parameters) \
         -> dict[str, RamseyFit]:
     """
     Fit the frequency detuning and T2 decay of the Ramsey oscillations for each qubit.
@@ -51,14 +51,14 @@ def fit_frequency_detuning_and_t2_decay(ds: xr.Dataset, qubits: List[Transmon], 
 
     fits = {
         q.name: RamseyFit(
-            qubit_name = q.name,
-            freq_offset=1e9 * freq_offset.loc[q.name].values,
-            decay=decay.loc[q.name].values,
-            decay_error=decay_error.loc[q.name].values,
+            qubit_name = q.item(),
+            freq_offset=1e9 * freq_offset.loc[q].values,
+            decay=decay.loc[q].values,
+            decay_error=decay_error.loc[q].values,
             raw_fit_results=fit.to_dataset(name="fit")
         )
 
-        for q in qubits
+        for q in freq_offset.qubit
     }
 
     return fits

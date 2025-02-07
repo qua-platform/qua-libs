@@ -18,14 +18,15 @@ def fetch_dataset(job, qubits, node_parameters: Parameters) -> xr.Dataset:
       - `qubit` : A dimension listing the names of the qubits involved in the measurement.
 
       **Data Variables:**
-      - One or more measurement variables, e.g., `I` or `Q`, based on the stream handles fetched from the job.
+      - Measurement variables, e.g., `I` and `Q`, or `state`, based on the stream handles fetched from the job.
         - Each variable has dimensions corresponding to the coordinates (`sign`, `time`, `qubit`).
 
     """
     idle_times = get_idle_times_in_clock_cycles(node_parameters)
 
     ds = fetch_results_as_xarray(job.result_handles, qubits, {"sign": [-1, 1], "time": idle_times})
-    ds = convert_IQ_to_V(ds, qubits)
+    if not node_parameters.use_state_discrimination:
+        ds = convert_IQ_to_V(ds, qubits)
 
     ds = ds.assign_coords({"time": (["time"], 4 * idle_times)})
 
