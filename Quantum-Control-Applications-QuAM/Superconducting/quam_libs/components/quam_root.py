@@ -2,6 +2,7 @@ import os
 import warnings
 from pathlib import Path
 
+from qm.qua import infinite_loop_
 from quam.components import FrequencyConverter
 from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
@@ -16,6 +17,7 @@ from quam.components.ports import (
     OPXPlusPortsContainer,
 )
 
+from quam.components import MWChannel
 from . import ReadoutResonator
 from .batchable_list import BatchableList
 from .transmon import Transmon
@@ -49,6 +51,12 @@ class QuAM(QuamRoot):
 
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
+    twpa: Optional[MWChannel] = None
+
+    def twpa_run(self):
+        with infinite_loop_():
+            self.twpa.play("const")
+
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":

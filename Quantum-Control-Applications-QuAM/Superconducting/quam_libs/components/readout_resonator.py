@@ -8,6 +8,8 @@ from qualang_tools.units import unit
 
 __all__ = ["ReadoutResonator", "ReadoutResonatorIQ", "ReadoutResonatorMW"]
 
+from quam_libs.lib.power_tools import calculate_voltage_scaling_factor, set_output_power_mw_channel
+
 
 @quam_dataclass
 class ReadoutResonatorBase:
@@ -28,6 +30,7 @@ class ReadoutResonatorBase:
     gef_centers: list = None
     gef_confusion_matrix: list = None
     GEF_frequency_shift: float = None
+
     @staticmethod
     def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
         """
@@ -40,9 +43,7 @@ class ReadoutResonatorBase:
         Returns:
         float: The voltage scaling factor.
         """
-        power_difference = target_power_dBm - fixed_power_dBm
-        voltage_scaling_factor = 10 ** (power_difference / 20)
-        return voltage_scaling_factor
+        return calculate_voltage_scaling_factor(fixed_power_dBm, target_power_dBm)
 
 
 @quam_dataclass
@@ -125,7 +126,7 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         """
         Sets the power level in dBm for a specified operation, increasing the full-scale power
         in 3 dB steps if necessary until it covers the target power level, then scaling the
-        given operation’s amplitude to match exaclty the target power level.
+        given operation’s amplitude to match exactly the target power level.
 
         Parameters:
             power_in_dbm (float): The target power level in dBm for the operation.
@@ -133,46 +134,7 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
             operation (Optional[str]): The operation for which the power setting is applied.
 
         """
-        allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)
-
-        if full_scale_power_dbm is not None:
-            if full_scale_power_dbm < -20 or full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
-                raise ValueError(f"Expected full_scale_power_dbm to be > -20 in QOP3.2.0, or "
-                                 f"in range [-41, 10] in steps of 3 dB, got {full_scale_power_dbm}.")
-
-            if power_in_dbm > full_scale_power_dbm:
-                raise ValueError(f"Can't fix full_scale_power_dbm to {full_scale_power_dbm} dBm since it is "
-                                 f"less than the target power {power_in_dbm} dBm.")
-
-            self.opx_output.full_scale_power_dbm = full_scale_power_dbm
-
-        if power_in_dbm > 10:
-            raise ValueError(f"Expected `power_in_dbm` to be <10 dBm, got {power_in_dbm}")
-
-        # use a temporary variable for node.record_state_updates
-        temp_full_scale_power_dbm = self.opx_output.full_scale_power_dbm
-
-        while self.calculate_voltage_scaling_factor(
-            fixed_power_dBm=temp_full_scale_power_dbm,
-            target_power_dBm=power_in_dbm,
-        ) > max_amplitude:
-            temp_full_scale_power_dbm = temp_full_scale_power_dbm + 3
-
-        if temp_full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
-            raise ValueError(f"Expected full_scale_power_dbm to be in range [-41, 10] "
-                             f"in steps of 3 dB, got {temp_full_scale_power_dbm}.")
-
-        self.operations[operation].amplitude = self.calculate_voltage_scaling_factor(
-            fixed_power_dBm=temp_full_scale_power_dbm,
-            target_power_dBm=power_in_dbm
-        )
-
-        self.opx_output.full_scale_power_dbm = temp_full_scale_power_dbm
-
-        return {
-            "full_scale_power_dbm": temp_full_scale_power_dbm,
-            "amplitude": self.operations[operation].amplitude
-        }
+        return set_output_power(self, power_in_dbm, full_scale_power_dbm, max_amplitude, operation)
 
 
 ReadoutResonator = ReadoutResonatorIQ
