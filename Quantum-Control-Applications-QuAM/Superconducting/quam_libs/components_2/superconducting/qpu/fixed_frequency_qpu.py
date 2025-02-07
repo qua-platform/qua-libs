@@ -1,7 +1,7 @@
 from quam.core import quam_dataclass
 from ..qubit.fixed_frequency_transmon import FixedFrequencyTransmon
 from ..qubit_pair.fixed_frequency_transmons import TransmonPair
-from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
+from quam_libs.components.superconducting.qpu.base_quam import BaseQuAM
 
 from dataclasses import field
 from typing import Dict, ClassVar, Type

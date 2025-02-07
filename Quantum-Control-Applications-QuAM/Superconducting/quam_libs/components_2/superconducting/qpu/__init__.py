@@ -1,6 +1,6 @@
-from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
-from quam_libs.components_2.superconducting.qpu.fixed_frequency_qpu import QuAM as FixedFrequencyQuAM
-from quam_libs.components_2.superconducting.qpu.flux_tunable_qpu import QuAM as FluxTunableQuAM
+from quam_libs.components.superconducting.qpu.base_quam import BaseQuAM
+from quam_libs.components.superconducting.qpu.fixed_frequency_qpu import QuAM as FixedFrequencyQuAM
+from quam_libs.components.superconducting.qpu.flux_tunable_qpu import QuAM as FluxTunableQuAM
 
 __all__ = [
     *base_quam.__all__,

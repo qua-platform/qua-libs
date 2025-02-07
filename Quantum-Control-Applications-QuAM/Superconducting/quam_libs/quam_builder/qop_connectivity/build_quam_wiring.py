@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Union
 from qualang_tools.wirer import Connectivity
-from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
+from quam_libs.components.superconducting.qpu.base_quam import BaseQuAM
 from quam_libs.quam_builder.qop_connectivity.create_wiring import create_wiring
 from quam.components.ports import (
     FEMPortsContainer,

@@ -1,6 +1,6 @@
 from quam.components import pulses
 from qualang_tools.units import unit
-from quam_libs.components_2.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
+from quam_libs.components.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 import numpy as np
 from typing import Union
 

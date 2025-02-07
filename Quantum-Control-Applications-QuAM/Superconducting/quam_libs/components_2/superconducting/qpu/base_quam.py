@@ -12,7 +12,7 @@ from quam.components.ports import (
 from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
 from ...batchable_list import BatchableList
 from ..qubit_pair.flux_tunable_transmons import TransmonPair
-from quam_libs.components_2.superconducting.qubit.base_transmon import BaseTransmon
+from quam_libs.components.superconducting.qubit.base_transmon import BaseTransmon
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 

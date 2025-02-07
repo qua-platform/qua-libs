@@ -1,6 +1,6 @@
-from quam_libs.components_2.superconducting.qubit.base_transmon import BaseTransmon
-from quam_libs.components_2.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
-from quam_libs.components_2.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
+from quam_libs.components.superconducting.qubit.base_transmon import BaseTransmon
+from quam_libs.components.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
+from quam_libs.components.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
 
 __all__ = [
     *base_transmon.__all__,

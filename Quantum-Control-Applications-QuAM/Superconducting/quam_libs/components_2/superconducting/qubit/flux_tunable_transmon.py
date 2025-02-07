@@ -1,6 +1,6 @@
 from quam.core import quam_dataclass
-from quam_libs.components_2.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
-from quam_libs.components_2.superconducting.architectural_elements.flux_line import FluxLine
+from quam_libs.components.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
+from quam_libs.components.superconducting.architectural_elements.flux_line import FluxLine
 from qm.qua import align, wait
 
 __all__ = ["FluxTunableTransmon"]

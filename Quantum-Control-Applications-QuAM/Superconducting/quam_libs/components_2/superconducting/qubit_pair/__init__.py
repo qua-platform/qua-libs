@@ -1,4 +1,4 @@
-from quam_libs.components_2.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
+from quam_libs.components.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
 # __all__ = [
 #     *fixed_frequency_transmons.__all__,
 #     *fixed_frequency_qpu.__all__,

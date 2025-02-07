@@ -1,8 +1,8 @@
 import warnings
 from quam.core import quam_dataclass
-from quam_libs.components_2.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
-from quam_libs.components_2.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
-from quam_libs.components_2.superconducting.qpu.base_quam import BaseQuAM
+from quam_libs.components.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
+from quam_libs.components.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
+from quam_libs.components.superconducting.qpu.base_quam import BaseQuAM
 
 
 

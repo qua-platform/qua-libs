@@ -1,5 +1,5 @@
 from quam.core import quam_dataclass
-from quam_libs.components_2.superconducting.qubit.base_transmon import BaseTransmon
+from quam_libs.components.superconducting.qubit.base_transmon import BaseTransmon
 from qm.qua import align, wait
 
 __all__ = ["FixedFrequencyTransmon"]

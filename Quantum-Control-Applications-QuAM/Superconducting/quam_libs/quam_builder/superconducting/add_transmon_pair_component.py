@@ -1,10 +1,10 @@
 from typing import Dict, Union
 
-from quam_libs.components_2.superconducting.architectural_elements.cross_resonance import CrossResonanceIQ, CrossResonanceMW
-from quam_libs.components_2.superconducting.architectural_elements.zz_drive import ZZDriveIQ, ZZDriveMW
-from quam_libs.components_2.superconducting.qubit_pair.flux_tunable_transmons import TunableCoupler
-from quam_libs.components_2.superconducting.qubit_pair.fixed_frequency_transmons import TransmonPair as FluxTunableTransmonPair
-from quam_libs.components_2.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair as FixedFrequencyTransmonPair
+from quam_libs.components.superconducting.architectural_elements.cross_resonance import CrossResonanceIQ, CrossResonanceMW
+from quam_libs.components.superconducting.architectural_elements.zz_drive import ZZDriveIQ, ZZDriveMW
+from quam_libs.components.superconducting.qubit_pair.flux_tunable_transmons import TunableCoupler
+from quam_libs.components.superconducting.qubit_pair.fixed_frequency_transmons import TransmonPair as FluxTunableTransmonPair
+from quam_libs.components.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair as FixedFrequencyTransmonPair
 from quam_libs.quam_builder.qop_connectivity.channel_ports import iq_in_out_channel_ports, mw_in_out_channel_ports
 
 
