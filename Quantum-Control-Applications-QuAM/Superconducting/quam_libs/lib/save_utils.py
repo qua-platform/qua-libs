@@ -1,6 +1,3 @@
-from qualibrate_app.config import get_config_path, get_settings
-import os
-from pathlib import Path
 import xarray as xr
 
 def extract_string(input_string):
@@ -17,11 +14,11 @@ def extract_string(input_string):
 
 def fetch_results_as_xarray(handles, qubits, measurement_axis):
     """
-    Fetches measurement results as an xarray dataset.
+    Fetches measurement results as a xarray dataset.
     Parameters:
     - handles : A dictionary containing stream handles, obtained through handles = job.result_handles after the execution of the program.
     - qubits (list): A list of qubits.
-    - measurement_axis (dict): A dictionary containing measurement axis information, e.g. {"frequency" : freqs, "flux",}.
+    - measurement_axis (dict): A dictionary containing measurement axis information, e.g. {"idle_time": idle_times, "flux": flux_biases}.
     Returns:
     - ds (xarray.Dataset): An xarray dataset containing the fetched measurement results.
     """
