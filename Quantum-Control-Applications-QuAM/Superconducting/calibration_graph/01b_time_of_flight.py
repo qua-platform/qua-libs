@@ -210,6 +210,10 @@ else:
             else:
                 q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
 
+    # Revert the change done at the beginning of the node
+    for resonator in tracked_resonators:
+        resonator.revert_changes()
+
     # Update the offsets per controller for each qubit
     for con in np.unique(ds.con.values):
         for i, q in enumerate(ds.where(ds.con == con).qubit.values):
@@ -239,9 +243,6 @@ else:
                 machine.qubits[q].resonator.opx_input_Q.offset = machine.qubits[
                     ds.where(ds.con == con).qubit.values[0]
                 ].resonator.opx_input_Q.offset
-    # Revert the change done at the beginning of the node
-    for resonator in tracked_resonators:
-        resonator.revert_changes()
 
     # %% {Save_results}
     node.outcomes = {rr.name: "successful" for rr in resonators}
