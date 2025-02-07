@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Union
-
+from numpy import sqrt, ceil
 from quam.components import Octave, LocalOscillator
 from quam.components import FrequencyConverter
 
@@ -40,12 +40,24 @@ def add_ports(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
                     if "ports" in ports.get_unreferenced_value(port):
                         machine.ports.reference_to_port(ports.get_unreferenced_value(port), create=True)
 
+
+def _set_default_grid_location(qubit_number: int, total_nuber_of_qubits: int):
+    number_of_rows = int(ceil(sqrt(total_nuber_of_qubits)))
+    y = qubit_number % number_of_rows
+    x = qubit_number // number_of_rows
+    return f"{x},{y}"
+
+
 def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     for element_type, wiring_by_element in machine.wiring.items():
         if element_type == "qubits":
+            number_of_qubits = len(wiring_by_element.items())
+            qubit_number = 0
             for qubit_id, wiring_by_line_type in wiring_by_element.items():
                 transmon = machine.qubit_type(id=qubit_id)
                 machine.qubits[qubit_id] = transmon
+                machine.qubits[qubit_id].grid_location = _set_default_grid_location(qubit_number, number_of_qubits)
+                qubit_number += 1
                 for line_type, ports in wiring_by_line_type.items():
                     wiring_path = f"#/wiring/{element_type}/{qubit_id}/{line_type}"
                     if line_type == WiringLineType.RESONATOR.value:
