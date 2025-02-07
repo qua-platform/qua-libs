@@ -7,6 +7,7 @@ from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
 from configuration.get_quam import QuAM
 
+# TODO: put this in a tutorial section about QuAM
 machine = QuAM()  # or, QuAM.load() if the state already exists
 
 # vvv  delete these if using QuAM.load()

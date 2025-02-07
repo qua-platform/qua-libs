@@ -2,9 +2,10 @@
 import json
 from qualang_tools.units import unit
 from configuration.get_quam import QuAM
-from quam_libs.quam_builder.machine import save_machine
+from quam_libs.quam_builder.superconducting.build_quam import save_machine
 import numpy as np
 
+# TODO: to do properly and compare with oqc
 
 def get_band(freq):
     if 50e6 <= freq < 5.5e9:
