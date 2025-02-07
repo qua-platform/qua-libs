@@ -79,21 +79,22 @@ with program() as multi_res_spec:
     # Bring the active qubits to the minimum frequency point
     machine.apply_all_flux_to_min()
 
-    with for_(n, 0, n < n_avg, n + 1):
-        save(n, n_st)
-        with for_(*from_array(df, dfs)):
-            for i, rr in enumerate(resonators):
-                # Update the resonator frequencies for all resonators
-                update_frequency(rr.name, df + rr.intermediate_frequency)
-                # Measure the resonator
-                rr.measure("readout", qua_vars=(I[i], Q[i]))
-                # wait for the resonator to relax
-                rr.wait(machine.depletion_time * u.ns)
-                # save data
-                save(I[i], I_st[i])
-                save(Q[i], Q_st[i])
-    if not node.parameters.multiplexed:
-        align()
+    for _resonators in resonators.batch():
+        with for_(n, 0, n < n_avg, n + 1):
+            save(n, n_st)
+            with for_(*from_array(df, dfs)):
+                for i, rr in enumerate(_resonators):
+                    # Update the resonator frequencies for all resonators
+                    update_frequency(rr.name, df + rr.intermediate_frequency)
+                    # Measure the resonator
+                    rr.measure("readout", qua_vars=(I[i], Q[i]))
+                    # wait for the resonator to relax
+                    rr.wait(machine.depletion_time * u.ns)
+                    # save data
+                    save(I[i], I_st[i])
+                    save(Q[i], Q_st[i])
+
+                    align()
 
     with stream_processing():
         n_st.save("n")
