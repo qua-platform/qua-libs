@@ -2,6 +2,7 @@ from typing import Optional
 
 from quam.core import quam_dataclass
 from quam.components.channels import InOutIQChannel, InOutMWChannel
+from quam_libs.lib.power_tools import calculate_voltage_scaling_factor, set_output_power_mw_channel
 import numpy as np
 
 from qualang_tools.units import unit
@@ -28,6 +29,7 @@ class ReadoutResonatorBase:
     gef_centers: list = None
     gef_confusion_matrix: list = None
     GEF_frequency_shift: float = None
+
     @staticmethod
     def calculate_voltage_scaling_factor(fixed_power_dBm: float, target_power_dBm: float):
         """
@@ -40,9 +42,7 @@ class ReadoutResonatorBase:
         Returns:
         float: The voltage scaling factor.
         """
-        power_difference = target_power_dBm - fixed_power_dBm
-        voltage_scaling_factor = 10 ** (power_difference / 20)
-        return voltage_scaling_factor
+        return calculate_voltage_scaling_factor(fixed_power_dBm, target_power_dBm)
 
 
 @quam_dataclass
@@ -72,7 +72,7 @@ class ReadoutResonatorIQ(InOutIQChannel, ReadoutResonatorBase):
             operation (Optional[str]): Name of the operation to configure, default is "readout".
 
         Raises:
-            RuntimeError: If neither or both `gain` and `amplitude` are specified.
+            RuntimeError: If neither nor both `gain` and `amplitude` are specified.
             ValueError: If `gain` or `amplitude` is outside their valid ranges.
 
         """
@@ -125,49 +125,12 @@ class ReadoutResonatorMW(InOutMWChannel, ReadoutResonatorBase):
         """
         Sets the power level in dBm for a specified operation, increasing the full-scale power
         in 3 dB steps if necessary until it covers the target power level, then scaling the
-        given operation’s amplitude to match exaclty the target power level.
+        given operation’s amplitude to match exactly the target power level.
 
         Parameters:
             power_in_dbm (float): The target power level in dBm for the operation.
+            operation (str): The operation for which the power setting is applied.
             full_scale_power_dbm (Optional[int]): The full-scale power in dBm within [-41, 10] in 3 dB increments.
-            operation (Optional[str]): The operation for which the power setting is applied.
-
+            max_amplitude (Optional[float]):
         """
-        allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)
-
-        if full_scale_power_dbm is not None:
-            if full_scale_power_dbm < -20 or full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
-                raise ValueError(f"Expected full_scale_power_dbm to be > -20 in QOP3.2.0, or "
-                                 f"in range [-41, 10] in steps of 3 dB, got {full_scale_power_dbm}.")
-
-            if power_in_dbm > full_scale_power_dbm:
-                raise ValueError(f"Can't fix full_scale_power_dbm to {full_scale_power_dbm} dBm since it is "
-                                 f"less than the target power {power_in_dbm} dBm.")
-
-            self.opx_output.full_scale_power_dbm = full_scale_power_dbm
-
-        if power_in_dbm > 10:
-            raise ValueError(f"Expected `power_in_dbm` to be <10 dBm, got {power_in_dbm}")
-
-        while self.calculate_voltage_scaling_factor(
-            fixed_power_dBm=self.opx_output.full_scale_power_dbm,
-            target_power_dBm=power_in_dbm,
-        ) > max_amplitude:
-            self.opx_output.full_scale_power_dbm = self.opx_output.full_scale_power_dbm + 3
-
-        if self.opx_output.full_scale_power_dbm not in allowed_full_scale_power_in_dbm_values:
-            raise ValueError(f"Expected full_scale_power_dbm to be in range [-41, 10] "
-                             f"in steps of 3 dB, got {full_scale_power_dbm}.")
-
-        self.operations[operation].amplitude = self.calculate_voltage_scaling_factor(
-            fixed_power_dBm=self.opx_output.full_scale_power_dbm,
-            target_power_dBm=power_in_dbm
-        )
-
-        return {
-            "full_scale_power_dbm": full_scale_power_dbm,
-            "amplitude": self.operations[operation].amplitude
-        }
-
-
-# ReadoutResonator = ReadoutResonatorMW
+        return set_output_power_mw_channel(self, power_in_dbm, operation, full_scale_power_dbm, max_amplitude)
