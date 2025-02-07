@@ -5,7 +5,7 @@ A simple program to calibrate Octave mixers for all qubits and resonators
 """
 
 from qualibrate import QualibrationNode, NodeParameters
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from typing import Optional, List

@@ -259,7 +259,7 @@ according to the wiring and the QUAM components. The default values used for the
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
 ```python
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 from quam_libs.quam_builder.machine import build_quam
 
 path = "./quam_state"
@@ -285,7 +285,7 @@ from quam import QuamDict
 from quam.components.ports import MWFEMAnalogOutputPort, MWFEMAnalogInputPort
 from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 
 machine = QuAM()  # or, QuAM.load() if the state already exists
 
@@ -352,7 +352,7 @@ Once the state is created, each parameter can be updated based on the desired in
 # %%
 import numpy as np
 import json
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 from quam_libs.quam_builder.machine import save_machine
 
 # Load QuAM

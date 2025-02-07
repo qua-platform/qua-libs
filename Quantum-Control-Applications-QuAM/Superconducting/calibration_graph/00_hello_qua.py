@@ -1,12 +1,12 @@
 from qm.qua import *
 from qm import SimulationConfig
 from qualang_tools.units import unit
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
 from qualang_tools.units import unit
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #
@@ -14,8 +14,7 @@ from quam_libs.components import QuAM
 # Class containing tools to help handling units and conversions.
 u = unit(coerce_to_integer=True)
 # Instantiate the QuAM class from the state file
-path = r"C:\Users\KevinAVillegasRosale\OneDrive - QM Machines LTD\Documents\GitKraken\CS_installations\configuration\quam_state"
-machine = QuAM.load()
+machine = QuAM.load("C:\git\qua-libs\Quantum-Control-Applications-QuAM\Superconducting\configuration\quam_state")
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Open Communication with the QOP

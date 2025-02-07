@@ -1,7 +1,7 @@
 # %%
 import json
 from qualang_tools.units import unit
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 from quam_libs.quam_builder.machine import save_machine
 import numpy as np
 

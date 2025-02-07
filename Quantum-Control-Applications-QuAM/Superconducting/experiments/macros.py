@@ -4,7 +4,7 @@ from typing import Optional, Union
 import warnings
 
 from qm.qua import *
-from quam_libs.components import QuAM
+from configuration.get_my_quam import QuAM
 from quam_libs.components import Transmon
 
 __all__ = [
