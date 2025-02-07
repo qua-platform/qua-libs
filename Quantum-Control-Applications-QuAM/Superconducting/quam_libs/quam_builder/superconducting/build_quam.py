@@ -51,6 +51,7 @@ def _set_default_grid_location(qubit_number: int, total_nuber_of_qubits: int):
 def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
     for element_type, wiring_by_element in machine.wiring.items():
         if element_type == "qubits":
+            machine.active_qubit_names = []
             number_of_qubits = len(wiring_by_element.items())
             qubit_number = 0
             for qubit_id, wiring_by_line_type in wiring_by_element.items():
@@ -71,6 +72,7 @@ def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM])
                 machine.active_qubit_names.append(transmon.name)
 
         elif element_type == "qubit_pairs":
+            machine.active_qubit_pair_names = []
             for qubit_pair_id, wiring_by_line_type in wiring_by_element.items():
                 qc, qt = qubit_pair_id.split("-")
                 qt = f"q{qt}"
@@ -98,29 +100,6 @@ def add_pulses(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
         for qubit_pair in machine.qubit_pairs.values():
             add_default_transmon_pair_pulses(qubit_pair)
 
-
-# def add_octaves(machine: QuAM, octaves_settings: Dict, quam_state_path: Union[Path, str]):
-#     octave_ips, octave_ports = [], []
-#     for octave_settings in octaves_settings.values():
-#         octave_ips.append(octave_settings.get("ip", machine.network.host))
-#         octave_ports.append(octave_settings.get("port", 80))
-#     machine.network["octave_ips"] = octave_ips
-#     machine.network["octave_ports"] = octave_ports
-#
-#     if isinstance(quam_state_path, str):
-#         quam_state_path = Path(quam_state_path)
-#     quam_state_path = str(quam_state_path.parent.resolve())
-#     for i, octave_name in enumerate(octaves_settings):
-#         octave = Octave(
-#             name=octave_name,
-#             # ip=machine.network["octave_ips"][i],
-#             # port=machine.network["octave_ports"][i],
-#             calibration_db_path=quam_state_path,
-#         )
-#         machine.octaves[octave_name] = octave
-#         octave.initialize_frequency_converters()
-#
-#     return machine
 
 def add_octaves(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], quam_state_path: Union[Path, str]):
     if isinstance(quam_state_path, str):

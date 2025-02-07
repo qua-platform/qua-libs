@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Union
 from qualang_tools.wirer import Connectivity
-from quam_libs.components.superconducting.qpu.base_quam import BaseQuAM
+from quam_libs.components.superconducting.qpu import BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM
 from quam_libs.quam_builder.qop_connectivity.create_wiring import create_wiring
 from quam.components.ports import (
     FEMPortsContainer,
@@ -10,20 +10,18 @@ from quam.components.ports import (
 )
 
 def build_quam_wiring(
-    connectivity: Connectivity, host_ip: str, cluster_name: str, quam_state_path: Union[Path, str], quam_instance: BaseQuAM, port: int = None
+    connectivity: Connectivity, host_ip: str, cluster_name: str, quam_state_path: Union[Path, str], quam_instance: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], port: int = None
 ):
-    if os.path.exists(quam_state_path) and "state.json" in os.listdir(quam_state_path):
-        # if there is a non-empty QuAM state already
-        machine = quam_instance.load(quam_state_path)
-    else:
-        machine = quam_instance
-
-    add_name_and_ip(machine, host_ip, cluster_name, port)
+    # TODO: I removed this because it was raising QUAM warnings, maybe we should consider adding an update_quam_wiring function instead
+    # if os.path.exists(quam_state_path) and "state.json" in os.listdir(quam_state_path):
+    #     # if there is a non-empty QuAM state already
+    #     machine = quam_instance.load(quam_state_path)
+    # else:
+    machine = quam_instance
     add_ports_container(connectivity, machine)
+    add_name_and_ip(machine, host_ip, cluster_name, port)
     machine.wiring = create_wiring(connectivity)
     save_machine(machine, quam_state_path)
-
-    return machine
 
 
 def add_ports_container(connectivity: Connectivity, machine: BaseQuAM):

@@ -1,7 +1,5 @@
 from qm.qua import *
 from qm import SimulationConfig
-from qualang_tools.units import unit
-from configuration.get_quam import QuAM
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
