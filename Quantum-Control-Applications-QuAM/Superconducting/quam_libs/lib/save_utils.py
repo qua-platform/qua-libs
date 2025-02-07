@@ -40,25 +40,3 @@ def fetch_results_as_xarray(handles, qubits, measurement_axis):
     )
 
     return ds
-
-
-def get_storage_path():
-    settings = get_settings(get_config_path())
-    storage_location = settings.qualibrate.storage.location
-    return Path(storage_location)
-
-
-def find_numbered_folder(base_path, number):
-    """
-    Find folder that starts with '#number_'
-    Will match '#number_something' but not '#number' alone
-    """
-    search_prefix = f"#{number}_"
-    
-    # Manual search for folder starting with #number_ and having something after
-    for root, dirs, _ in os.walk(base_path):
-        matching_dirs = [d for d in dirs if d.startswith(search_prefix) and len(d) > len(search_prefix)]
-        if matching_dirs:
-            return os.path.join(root, matching_dirs[0])
-    
-    return None
