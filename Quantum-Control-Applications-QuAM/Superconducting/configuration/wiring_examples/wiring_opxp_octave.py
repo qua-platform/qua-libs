@@ -2,26 +2,26 @@ from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 
 ########################################################################################################################
-#                                      Define the available instrument setup
+# %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
 instruments.add_opx_plus(controllers=[1, 2])
 instruments.add_octave(indices=1)
 
 ########################################################################################################################
-#                                 Define which qubit ids are present in the system
+# %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [1, 2, 3, 4]
 qubit_pairs = [(qubits[i], qubits[i + 1]) for i in range(len(qubits) - 1)]
 
 ########################################################################################################################
-#                                 Define any custom/hardcoded channel addresses
+# %%                                 Define any custom/hardcoded channel addresses
 ########################################################################################################################
 # multiplexed readout for qubits 1 to 5
 q1_res_ch = octave_spec(index=1, rf_out=1, rf_in=1)
 
 ########################################################################################################################
-# Allocate the wiring to the connectivity object based on the available instruments
+# %%                 Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
 # The readout line

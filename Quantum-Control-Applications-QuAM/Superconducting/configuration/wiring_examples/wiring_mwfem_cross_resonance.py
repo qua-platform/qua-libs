@@ -3,20 +3,20 @@ from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visu
 
 
 ########################################################################################################################
-#                                      Define the available instrument setup
+# %%                                      Define the available instrument setup
 ########################################################################################################################
 instruments = Instruments()
 instruments.add_mw_fem(controller=1, slots=[2, 3, 5, 7])
 
 ########################################################################################################################
-#                                 Define which qubit ids are present in the system
+# %%                                 Define which qubit ids are present in the system
 ########################################################################################################################
 qubits = [i + 1 for i in range(8)]
 qubit_pairs = [(i + 1, i + 2) for i in range(7)]
 qubit_pairs.append((8, 1))
 
 ########################################################################################################################
-#                                 Define any custom/hardcoded channel addresses
+# %%                                 Define any custom/hardcoded channel addresses
 ########################################################################################################################
 rr_slots = [2, 2, 3, 3, 5, 5, 7, 7]
 rr_out_ports = [1, 8, 1, 8, 1, 8, 1, 8]
@@ -25,7 +25,7 @@ xy_slots = rr_slots
 xy_ports = [2, 3, 2, 3, 2, 3, 2, 3]
 
 ########################################################################################################################
-# Allocate the wiring to the connectivity object based on the available instruments
+# %%                 Allocate the wiring to the connectivity object based on the available instruments
 ########################################################################################################################
 connectivity = Connectivity()
 # Single qubit individual drive and readout lines
