@@ -10,7 +10,6 @@ from quam.components.ports import (
 )
 
 from ..architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
-from ...batchable_list import BatchableList
 from ..qubit_pair.flux_tunable_transmons import TransmonPair
 from quam_libs.components.superconducting.qubit.base_transmon import BaseTransmon
 from qm import QuantumMachinesManager, QuantumMachine
@@ -21,8 +20,8 @@ from typing import List, Dict, ClassVar, Optional, Sequence, Union
 
 __all__ = ["BaseQuAM", "BaseTransmon", "TransmonPair"]
 
-from ....experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
-
+from ....experiments.node_parameters import QubitsExperimentNodeParameters
+from quam_libs.batchable_list import make_batchable_list
 
 @quam_dataclass
 class BaseQuAM(QuamRoot):
@@ -149,10 +148,4 @@ class BaseQuAM(QuamRoot):
         return max(q.thermalization_time for q in self.active_qubits)
 
 
-def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) -> BatchableList:
-    if isinstance(node_parameters, MultiplexableNodeParameters):
-        multiplexed = node_parameters.multiplexed
-    else:
-        multiplexed = False
 
-    return BatchableList(items, multiplexed)

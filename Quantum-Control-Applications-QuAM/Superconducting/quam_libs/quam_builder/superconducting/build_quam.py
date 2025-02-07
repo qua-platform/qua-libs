@@ -1,10 +1,10 @@
 from pathlib import Path
-from typing import Union, Dict
+from typing import Union
 
 from quam.components import Octave, LocalOscillator
 from quam.components import FrequencyConverter
 
-from quam_libs.components.mixer import StandaloneMixer
+from quam_libs.components.superconducting.architectural_elements.mixer import StandaloneMixer
 from quam_libs.quam_builder.superconducting.pulses import add_default_transmon_pulses, add_default_transmon_pair_pulses
 from quam_libs.quam_builder.superconducting.add_transmon_drive_component import add_transmon_drive_component
 from quam_libs.quam_builder.superconducting.add_transmon_flux_component import add_transmon_flux_component
@@ -13,7 +13,6 @@ from quam_libs.quam_builder.superconducting.add_transmon_pair_component import (
 )
 from quam_libs.quam_builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from quam_libs.components.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
 from quam_libs.components.superconducting.qpu import BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM
 from quam_libs.quam_builder.qop_connectivity.build_quam_wiring import save_machine
 
