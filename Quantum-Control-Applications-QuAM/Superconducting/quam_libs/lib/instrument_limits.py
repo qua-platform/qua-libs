@@ -13,6 +13,7 @@ class InstrumentLimits:
 
 
 def instrument_limits(channel: Union[IQChannel, MWChannel]) -> InstrumentLimits:
+    # Todo: these parameters should be accessible to the user
     if not (isinstance(channel, IQChannel) ^ isinstance(channel, MWChannel)):
         raise TypeError(
             f"Expected channel to be type IQChannel xor MWChannel for type checking, got {type(channel)}."

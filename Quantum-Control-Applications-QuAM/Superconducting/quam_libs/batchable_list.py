@@ -1,7 +1,7 @@
 from typing import List, Any, Dict, Union
 from collections.abc import MutableSequence
 from quam_libs.components.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
-from quam_libs.experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
+# from quam_libs.experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
 
 
 class BatchableList(MutableSequence):
@@ -35,10 +35,10 @@ class BatchableList(MutableSequence):
             return [{i: item} for i, item in enumerate(self._items)]
 
 
-def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) -> BatchableList:
-    if isinstance(node_parameters, MultiplexableNodeParameters):
-        multiplexed = node_parameters.multiplexed
-    else:
-        multiplexed = False
-
-    return BatchableList(items, multiplexed)
+# def make_batchable_list(items, node_parameters: QubitsExperimentNodeParameters) -> BatchableList:
+#     if isinstance(node_parameters, MultiplexableNodeParameters):
+#         multiplexed = node_parameters.multiplexed
+#     else:
+#         multiplexed = False
+#
+#     return BatchableList(items, multiplexed)
