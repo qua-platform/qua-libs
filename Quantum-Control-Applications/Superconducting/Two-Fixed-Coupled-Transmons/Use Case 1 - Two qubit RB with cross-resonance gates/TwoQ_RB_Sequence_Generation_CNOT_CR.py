@@ -62,15 +62,20 @@ def generate_sequence_list(depth):
         instruct_integers: a list of integers; each corresponds to a specific pulse (see "run=two-qubit-rb-CR-CNOT.py")
     """
 
-    with open("2q_Clifford_gen_CNOT_instruct.pkl", "rb") as file:
+    path = "/home/omrieoqm/r_and_d/qua_libs_v2/qua-libs/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use Case 1 - Two qubit RB with cross-resonance gates/2q_Clifford_gen_CNOT_instruct.pkl"
+    with open(path, "rb") as file:
         instruct_list = pickle.load(file)
-    with open("2q_Clifford_gen_CNOT_circuit_cirq14.pkl", "rb") as file:
+        
+    path = "/home/omrieoqm/r_and_d/qua_libs_v2/qua-libs/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use Case 1 - Two qubit RB with cross-resonance gates/2q_Clifford_gen_CNOT_circuit_cirq14.pkl"
+    with open(path, "rb") as file:
         circuit_list = pickle.load(file)
         # based on cirq=1.4.1
     # with open('2q_Clifford_gen_CNOT_circuit_cirq12.pkl', 'rb') as file:
     #     circuit_list = pickle.load(file)
     #     # based on cirq=1.2.0
-    with open("2q_Clifford_gen_CNOT_unitary.pkl", "rb") as file:
+    
+    path = "/home/omrieoqm/r_and_d/qua_libs_v2/qua-libs/Quantum-Control-Applications/Superconducting/Two-Fixed-Coupled-Transmons/Use Case 1 - Two qubit RB with cross-resonance gates/2q_Clifford_gen_CNOT_unitary.pkl"
+    with open(path, "rb") as file:
         unitary_list = pickle.load(file)
 
     if depth == 0:

@@ -8,8 +8,8 @@ from macros import qua_declaration, multiplexed_readout
 import time
 
 
-root_directory = "C:\\Users\\name\\Desktop\\QM_RB\\data_q1q2"  # change to your local directory
-data_handler = DataHandler(root_data_folder=root_directory)
+# root_directory = "C:\\Users\\name\\Desktop\\QM_RB\\data_q1q2"  # change to your local directory
+# data_handler = DataHandler(root_data_folder=root_directory)
 from quam_libs.components import QuAM
 
 machine = QuAM.load()
@@ -22,30 +22,30 @@ qmm = machine.connect()
 ##############################
 
 # Qubits and resonators
-qc = 1  # index of control qubit
-qt = 2  # index of target qubit
+qubit_pair_name = "qB4-qB5"
+qubit_pair = machine.active_qubit_pairs[qubit_pair_name]
+control = qubit_pair.qubit_control
+target = qubit_pair.qubit_target
 
-# Derived parameters
-qc_xy = f"q{qc}_xy"
-qt_xy = f"q{qt}_xy"
-cr_drive = f"cr_drive_c{qc}t{qt}"
-cr_cancel = f"cr_cancel_c{qc}t{qt}"
-qubits = [f"q{i}_xy" for i in [qc, qt]]
-resonators = [f"rr{i}" for i in [qc, qt]]
+resonator_c = machine.active_qubit_pairs[qubit_pair_name].qubit_control.resonator
+resonator_t = machine.active_qubit_pairs[qubit_pair_name].qubit_target.resonator
+
+# xy elements
+qc_xy = qubit_pair.qubit_control.xy
+qt_xy = qubit_pair.qubit_target.xy
+
+# cz gate
+cz = qubit_pair.cz
+
 seed = 0
 
-cr_drive_amp = 0.95  # scaling factor
-cr_drive_phase = 0.1925  # in units of 2pi
-cr_cancel_amp = 0.164  # scaling factor
-cr_cancel_phase = -0.008  # in units of 2pi
-
-threshold_1 = ge_threshold_q1  # set the threshold from the configuration
-threshold_2 = ge_threshold_q2  # set the threshold from the configuration
+threshold_1 = machine.active_qubit_pairs[qubit_pair_name].qubit_control.resonator.operations["readout"].threshold  # set the threshold from the configuration
+threshold_2 = machine.active_qubit_pairs[qubit_pair_name].qubit_target.resonator.operations["readout"].threshold  # set the threshold from the configuration
 
 # Random circuit generation
-num_of_sequences = 20  # Number of random sequences
+num_of_sequences = 2  # Number of random sequences
 n_avg = 200  # Number of averaging loops for each random sequence
-depth_list = [0, 1, 5, 7, 14, 20, 26, 32]
+depth_list = [0, 1, 5, 7, 14, 20, 26, 32][:2]
 np.random.seed(seed=int(time.time() % 1 * 1e8))
 # np.random.seed(seed = 0) # can set the seed for consistent comparison
 sequence_list, len_list = pre_generate_sequence(num_of_sequences, depth_list)  # standard RB
@@ -63,15 +63,17 @@ print("The sequence was successfully generated")
 
 
 def play_sequence(sequence, start, length):
-    align(qc_xy, qt_xy, cr_drive, cr_cancel)
+    
+    align(qc_xy, qt_xy, cz)
     i = declare(int)
-    align(qc_xy, qt_xy, cr_drive, cr_cancel)
+    align(qc_xy, qt_xy, cz)
+    
     with for_(i, start, i < start + length, i + 1):
-        align(qc_xy, qt_xy, cr_drive, cr_cancel)
+        align(qc_xy, qt_xy, cz)
         with switch_(sequence[i], unsafe=False):
             with case_(0):
                 # identity
-                align(qc_xy, qt_xy, cr_drive, cr_cancel)
+                align(qc_xy, qt_xy, cz)
             with case_(1):
                 play("x90", qc_xy)
             with case_(2):
@@ -206,7 +208,7 @@ def play_sequence(sequence, start, length):
                 play("y180", qt_xy)
             with case_(49):
                 # We use direct CR
-                align(qt_xy, qc_xy, cr_drive, cr_cancel)
+                align(qc_xy, qt_xy, cz)
                 play("square_positive" * amp(cr_drive_amp), cr_drive, duration=120)
                 play("square_positive" * amp(cr_cancel_amp), cr_cancel, duration=120)
 
@@ -259,8 +261,8 @@ with program() as rb:
     start = declare(int, value=0)
     run = declare(int, value=0)
 
-    frame_rotation_2pi(cr_drive_phase, cr_drive)
-    frame_rotation_2pi(cr_cancel_phase, cr_cancel)
+    # frame_rotation_2pi(cr_drive_phase, cr_drive)
+    # frame_rotation_2pi(cr_cancel_phase, cr_cancel)
     # Globally setting the frame rotations for cr_drive and cr_cancel
 
     with for_(m, 0, m < num_of_sequences, m + 1):  # QUA for_ loop over the random sequences
