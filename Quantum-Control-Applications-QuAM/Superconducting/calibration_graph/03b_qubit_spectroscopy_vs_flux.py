@@ -122,7 +122,6 @@ with program() as multi_qubit_spec_vs_flux:
                     # Bring the qubit to the desired point during the saturation pulse
                     qubit.z.play("const", amplitude_scale=dc / qubit.z.operations["const"].amplitude, duration=duration)
                     # Apply saturation pulse to all qubits
-                    qubit.xy.wait(qubit.z.settle_time * u.ns)
                     qubit.xy.play(
                         operation,
                         amplitude_scale=operation_amp,
