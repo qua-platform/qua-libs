@@ -38,7 +38,6 @@ from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 
-import matplotlib.pyplot as plt
 import numpy as np
 from qm.qua import *
 
