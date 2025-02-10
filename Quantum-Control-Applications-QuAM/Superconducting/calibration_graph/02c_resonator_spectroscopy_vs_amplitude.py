@@ -25,7 +25,7 @@ Before proceeding to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from configuration.get_quam import QuAM
 from quam_libs.lib.fit_utils import fit_resonator
-from quam_libs.macros import qua_declaration
+from experiments.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray

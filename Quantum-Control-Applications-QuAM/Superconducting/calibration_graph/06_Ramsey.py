@@ -21,12 +21,12 @@ from dataclasses import asdict
 # %% {Imports}
 from qualibrate import QualibrationNode
 from configuration.get_quam import QuAM
-from quam_libs.experiments.ramsey.analysis.fetch_dataset import fetch_dataset
-from quam_libs.experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
-from quam_libs.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from quam_libs.experiments.ramsey.plotting import plot_ramseys_data_with_fit
-from quam_libs.experiments.simulation import simulate_and_plot
-from quam_libs.macros import qua_declaration, readout_state
+from experiments.ramsey.analysis.fetch_dataset import fetch_dataset
+from experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
+from experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from experiments.ramsey.plotting import plot_ramseys_data_with_fit
+from experiments.simulation import simulate_and_plot
+from experiments.macros import qua_declaration, readout_state
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -48,9 +48,9 @@ node = QualibrationNode(
         use_state_discrimination=False,
         flux_point_joint_or_independent="joint",
         multiplexed=False,
+        simulate=True,
     )
 )
-
 
 # %% {Initialize_QuAM_and_QOP}
 u = unit(coerce_to_integer=True)

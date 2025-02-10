@@ -31,7 +31,7 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
 from configuration.get_quam import QuAM
-from quam_libs.macros import qua_declaration
+from experiments.macros import qua_declaration
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import peaks_dips

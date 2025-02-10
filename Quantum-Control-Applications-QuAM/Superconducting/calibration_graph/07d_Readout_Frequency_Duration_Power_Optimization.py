@@ -23,20 +23,19 @@ import matplotlib.pyplot as plt
 
 from qualibrate import QualibrationNode
 
-from quam_libs.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
+from experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
     calculate_readout_fidelity, get_maximum_fidelity_per_qubit
-from quam_libs.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
-from quam_libs.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
-from quam_libs.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
-from quam_libs.lib.instrument_limits import instrument_limits
+from experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
+from experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
+from experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
 from quam_libs.trackable_object import tracked_updates
-from quam_libs.components import QuAM
-from quam_libs.experiments.readout_optimization_3d.parameters import Parameters, get_durations
-from quam_libs.experiments.readout_optimization_3d.parameters import (
+from configuration.get_quam import QuAM
+from experiments.readout_optimization_3d.parameters import Parameters, get_durations
+from experiments.readout_optimization_3d.parameters import (
     get_frequency_detunings_in_hz,
     get_amplitude_factors
 )
-from quam_libs.experiments.simulation import simulate_and_plot
+from experiments.simulation import simulate_and_plot
 
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array

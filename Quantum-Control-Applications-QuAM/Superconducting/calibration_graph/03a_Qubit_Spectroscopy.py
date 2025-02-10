@@ -26,13 +26,13 @@ from qualibrate import QualibrationNode
 
 from configuration.get_quam import QuAM
 from quam_libs.lib.instrument_limits import instrument_limits
-from quam_libs.macros import qua_declaration
-from quam_libs.experiments.simulation import simulate_and_plot
-from quam_libs.experiments.execution import print_progress_bar
-from quam_libs.experiments.Qubit_Spectroscopy.parameters import Parameters
-from quam_libs.experiments.Qubit_Spectroscopy.node import get_optional_pulse_duration
-from quam_libs.experiments.Qubit_Spectroscopy.analysis import fetch_dataset, fit_qubits
-from quam_libs.experiments.Qubit_Spectroscopy.plotting import plot_qubit_response
+from experiments.macros import qua_declaration
+from experiments.simulation import simulate_and_plot
+from experiments.execution import print_progress_bar
+from experiments.qubit_spectroscopy.parameters import Parameters
+from experiments.qubit_spectroscopy.node import get_optional_pulse_duration
+from experiments.qubit_spectroscopy.analysis import fetch_dataset, fit_qubits
+from experiments.qubit_spectroscopy.plotting import plot_qubit_response
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
