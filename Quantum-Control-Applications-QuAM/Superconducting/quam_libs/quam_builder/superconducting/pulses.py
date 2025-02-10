@@ -89,21 +89,26 @@ def add_default_transmon_pulses(transmon: Union[FixedFrequencyTransmon, FluxTuna
             amplitude=0.25, length=20 * u.us, axis_angle=0, digital_marker="ON"
         )
 
-    if hasattr(transmon, "z"):
-        transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
+    if hasattr(transmon, "z"): # TODO: maybe these two line can be combined...
+        if transmon.z is not None:
+            transmon.z.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
     if hasattr(transmon, "resonator"):
-        transmon.resonator.operations["readout"] = pulses.SquareReadoutPulse(
-            length=1024 * u.ns, amplitude=0.01, threshold=0.0, digital_marker="ON"
-        )
-        transmon.resonator.operations["const"] = pulses.SquarePulse(amplitude=0.125, length=100)
+        if transmon.resonator is not None:
+            transmon.resonator.operations["readout"] = pulses.SquareReadoutPulse(
+                length=1024 * u.ns, amplitude=0.01, threshold=0.0, digital_marker="ON"
+            )
+            transmon.resonator.operations["const"] = pulses.SquarePulse(amplitude=0.125, length=100)
 
 
 def add_default_transmon_pair_pulses(transmon_pair):
     if hasattr(transmon_pair, "coupler"):
-        transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
+        if transmon_pair.coupler is not None:
+            transmon_pair.coupler.operations["const"] = pulses.SquarePulse(amplitude=0.1, length=100)
     if hasattr(transmon_pair, "cross_resonance"):
-        transmon_pair.cross_resonance.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
+        if transmon_pair.cross_resonance is not None:
+            transmon_pair.cross_resonance.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
     if hasattr(transmon_pair, "zz_drive"):
-        transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
+        if transmon_pair.zz_drive is not None:
+            transmon_pair.zz_drive.operations["square"] = pulses.SquarePulse(amplitude=0.1, length=100)
 
