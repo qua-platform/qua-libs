@@ -4,8 +4,11 @@ from typing import Optional, Union
 import warnings
 
 from qm.qua import *
+from qm.qua._dsl import _ResultSource
+from qm.qua._expressions import QuaVariable
+
 from configuration.get_quam import QuAM
-from quam_libs.components import Transmon
+from quam_libs.components.superconducting.qubit import FluxTunableTransmon, FixedFrequencyTransmon
 
 __all__ = [
     "qua_declaration",
@@ -16,7 +19,8 @@ __all__ = [
 ]
 
 
-def qua_declaration(num_qubits):
+def qua_declaration(num_qubits) -> tuple[
+    list[QuaVariable], list[_ResultSource], list[QuaVariable], list[_ResultSource], QuaVariable, _ResultSource]:
     """
     Macro to declare the necessary QUA variables
 
@@ -29,9 +33,6 @@ def qua_declaration(num_qubits):
     Q = [declare(fixed) for _ in range(num_qubits)]
     I_st = [declare_stream() for _ in range(num_qubits)]
     Q_st = [declare_stream() for _ in range(num_qubits)]
-    # Workaround to manually assign the results variables to the readout elements
-    # for i in range(num_qubits):
-    #     assign_variables_to_element(f"rr{i}", I[i], Q[i])
     return I, I_st, Q, Q_st, n, n_st
 
 
@@ -103,7 +104,7 @@ def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = 
 
 
 def readout_state_gef(
-    qubit: Transmon, state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None
+    qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon], state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None
 ):
     I = declare(fixed)
     Q = declare(fixed)
@@ -124,7 +125,7 @@ def readout_state_gef(
 
 
 def active_reset_gef(
-    qubit: Transmon,
+    qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon],
     readout_pulse_name: str = "readout",
     pi_01_pulse_name: str = "x180",
     pi_12_pulse_name: str = "EF_x180",
@@ -159,7 +160,7 @@ def active_reset_gef(
 
 
 def active_reset(
-        qubit: Transmon,
+        qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon],
         save_qua_var: Optional[StreamType] = None,
         pi_pulse_name: str = "x180",
         readout_pulse_name: str = "readout",
