@@ -16,6 +16,8 @@ from quam.components.ports import (
 from .transmon import Transmon
 from .transmon_pair import TransmonPair
 
+from ..cloud_infrastructure import CloudQuantumMachinesManager
+
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
@@ -167,7 +169,7 @@ class QuAM(QuamRoot):
 
         Returns: the opened Quantum Machine Manager.
         """
-        if self.network["cloud"]:
+        if self.network.get("cloud",False):
             self.qmm = CloudQuantumMachinesManager(self.network["quantum_computer_backend"])
         else:
             settings = dict(
