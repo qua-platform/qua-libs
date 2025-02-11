@@ -50,6 +50,7 @@ These files showcase various experiments that can be done on a qubit coupled to 
 * [PID Cavity Lock](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO/Use%20Case%202%20-%20Yiwen%20Chu%20Lab%20-%20Locking%20of%20Optical%20Cavities)
   performed in the lab of Prof. Yiwen Chu at ETH Zurich.
 
+
 ## Optically addressable spin qubits
 
 ### [Cryogenic nanophotonic cavity](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/Optically%20addressable%20spin%20qubits/Cryogenic%20nanophotonic%20cavity#single-yb-center-in-a-cyrogenic-nanophotonic-cavity)
