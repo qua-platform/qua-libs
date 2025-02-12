@@ -13,11 +13,11 @@ from quam_libs.quam_builder.superconducting.add_transmon_pair_component import (
 )
 from quam_libs.quam_builder.superconducting.add_transmon_resonator_component import add_transmon_resonator_component
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from quam_libs.components.superconducting.qpu import BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM
+from quam_libs.components.superconducting.qpu import AnyQuAM
 from quam_libs.quam_builder.qop_connectivity.build_quam_wiring import save_machine
 
 
-def build_quam(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], quam_state_path: Union[Path, str]) -> Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]:
+def build_quam(machine: Union[AnyQuAM], quam_state_path: Union[Path, str]) -> Union[AnyQuAM]:
     add_octaves(machine, quam_state_path)
     add_external_mixers(machine)
     add_ports(machine)
@@ -28,7 +28,7 @@ def build_quam(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], qu
 
     return machine
 
-def add_ports(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
+def add_ports(machine: Union[AnyQuAM]):
     """
     Creates and stores all input/output ports according to what has been
     allocated to each element in the machine's wiring.
@@ -48,7 +48,7 @@ def _set_default_grid_location(qubit_number: int, total_nuber_of_qubits: int):
     return f"{x},{y}"
 
 
-def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
+def add_transmons(machine: Union[AnyQuAM]):
     for element_type, wiring_by_element in machine.wiring.items():
         if element_type == "qubits":
             machine.active_qubit_names = []
@@ -91,7 +91,7 @@ def add_transmons(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM])
                     machine.active_qubit_pair_names.append(transmon_pair.name)
 
 
-def add_pulses(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
+def add_pulses(machine: Union[AnyQuAM]):
     if hasattr(machine, "qubits"):
         for transmon in machine.qubits.values():
             add_default_transmon_pulses(transmon)
@@ -101,7 +101,7 @@ def add_pulses(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
             add_default_transmon_pair_pulses(qubit_pair)
 
 
-def add_octaves(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], quam_state_path: Union[Path, str]):
+def add_octaves(machine: Union[AnyQuAM], quam_state_path: Union[Path, str]):
     if isinstance(quam_state_path, str):
         quam_state_path = Path(quam_state_path)
     quam_state_path = str(quam_state_path.parent.resolve())
@@ -120,7 +120,7 @@ def add_octaves(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], q
 
     return machine
 
-def add_external_mixers(machine: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM]):
+def add_external_mixers(machine: Union[AnyQuAM]):
     for wiring_by_element in machine.wiring.values():
         for qubit, wiring_by_line_type in wiring_by_element.items():
             for line_type, references in wiring_by_line_type.items():
