@@ -1,7 +1,7 @@
 from typing import List, Union
 
 from quam_libs.components.superconducting.qubit import AnyTransmon
-from quam_libs.experiments.time_of_flight.parameters import Parameters
+from experiments.time_of_flight.parameters import Parameters
 
 
 def get_optional_pulse_duration(qubits: List[AnyTransmon], node_parameters: Parameters):

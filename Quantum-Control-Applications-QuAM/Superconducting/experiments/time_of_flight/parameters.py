@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from quam_libs.experiments.node_parameters import SimulatableNodeParameters, QubitsExperimentNodeParameters
+from experiments.node_parameters import SimulatableNodeParameters, QubitsExperimentNodeParameters
 
 
 class Parameters(QubitsExperimentNodeParameters, SimulatableNodeParameters):
