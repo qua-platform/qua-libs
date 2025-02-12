@@ -26,7 +26,6 @@ def add_transmon_pair_cross_resonance_component(transmon_pair: Union[FixedFreque
     qubit_target_name = ports["target_qubit"].name
     qubit_pair_name = f"{qubit_control_name}_{qubit_target_name}"
     cross_resonance_name = f"cr_{qubit_pair_name}"
-
     if "opx_output_I" in ports.keys() and "opx_output_Q" in ports.keys():
         transmon_pair.cross_resonance = CrossResonanceIQ(
             id=cross_resonance_name,
@@ -51,7 +50,6 @@ def add_transmon_pair_zz_drive_component(transmon_pair: Union[FixedFrequencyTran
     qubit_target_name = ports["target_qubit"].name
     qubit_pair_name = f"{qubit_control_name}_{qubit_target_name}"
     zz_drive_name = f"zz_{qubit_pair_name}"
-
     if "opx_output_I" in ports.keys() and "opx_output_Q" in ports.keys():
         transmon_pair.zz_drive = ZZDriveIQ(
             id=zz_drive_name,
@@ -64,7 +62,6 @@ def add_transmon_pair_zz_drive_component(transmon_pair: Union[FixedFrequencyTran
             target_qubit_IF_frequency=ports.data["target_qubit"] + "/xy/intermediate_frequency",
             detuning=0,
         )
-
 
     elif "opx_output" in ports.keys():
         transmon_pair.zz_drive = ZZDriveMW(id=zz_drive_name, opx_output=f"{wiring_path}/opx_output")

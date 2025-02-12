@@ -1,13 +1,12 @@
 from quam.core import quam_dataclass
 from quam.components.channels import IQChannel, MWChannel
-import numpy as np
 
-__all__ = ["CrossResonance", "CrossResonanceIQ", "CrossResonanceMW"]
+__all__ = ["CrossResonanceIQ", "CrossResonanceMW"]
 
 @quam_dataclass
 class CrossResonanceBase:
-    target_qubit_LO_frequency: int=None
-    target_qubit_IF_frequency: int=None
+    target_qubit_LO_frequency: int = None
+    target_qubit_IF_frequency: int = None
     bell_state_fidelity: float = None
 
 @quam_dataclass
@@ -21,12 +20,6 @@ class CrossResonanceIQ(IQChannel, CrossResonanceBase):
     def inferred_intermediate_frequency(self):
         return self.target_qubit_LO_frequency + self.target_qubit_IF_frequency - self.LO_frequency
 
-    # def get_output_power(self, operation, Z=50) -> float:
-    #     power = self.frequency_converter_up.power
-    #     amplitude = self.operations[operation].amplitude
-    #     x_mw = 10 ** (power / 10)
-    #     x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
-    #     return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
 
 @quam_dataclass
 class CrossResonanceMW(MWChannel, CrossResonanceBase):
@@ -41,15 +34,3 @@ class CrossResonanceMW(MWChannel, CrossResonanceBase):
     @property
     def inferred_RF_frequency(self):
         return self.upconverter_frequency + self.inferred_intermediate_frequency
-
-    # add property of upconverter here?
-    def get_output_power(self, operation, Z=50) -> float:
-        power = self.opx_output.full_scale_power_dbm
-        amplitude = self.operations[operation].amplitude
-        x_mw = 10 ** (power / 10)
-        x_v = amplitude * np.sqrt(2 * Z * x_mw / 1000)
-        return 10 * np.log10(((x_v / np.sqrt(2)) ** 2 * 1000) / Z)
-
-
-CrossResonance = CrossResonanceMW
-
