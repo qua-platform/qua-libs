@@ -3,18 +3,20 @@ from matplotlib.figure import Figure
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 
 
-def plot(ds, qubits, fit_results, N_pi, state_discrimination) -> Figure:
+def plot_rabi_oscillations(ds, qubits, fit_results, N_pi, state_discrimination) -> Figure:
     
     """
     Plots the Rabi oscillation results and fit for a given dataset and qubits.
+    
     Parameters:
-    ds (xarray.Dataset): The dataset containing the experimental data.
-    qubits (list): A list of qubit objects to be plotted.
-    fit_results (dict): A dictionary containing the fit evaluation results and data max indices.
-    N_pi (int): The number of pi pulses used in the experiment.
-    state_discrimination (bool): A flag indicating whether state discrimination is used.
+    - ds (xarray.Dataset): The dataset containing the experimental data.
+    - qubits (list): A list of qubit objects to be plotted.
+    - fit_results (dict): A dictionary containing the fit evaluation results and data max indices.
+    - N_pi (int): The number of pi pulses used in the experiment.
+    - state_discrimination (bool): A flag indicating whether state discrimination is used.
+    
     Returns:
-    Figure: The matplotlib figure object containing the plots.
+        Figure: The matplotlib figure object containing the plots.
     """
     
 

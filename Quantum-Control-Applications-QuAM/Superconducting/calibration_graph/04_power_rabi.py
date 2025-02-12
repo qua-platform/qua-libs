@@ -21,10 +21,10 @@ Next steps before going to the next node:
 
 from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
-from quam_libs.experiments.Power_Rabi.parameters import Parameters
-from quam_libs.experiments.Power_Rabi.plotting import plot
+from quam_libs.experiments.power_rabi.parameters import Parameters
+from quam_libs.experiments.power_rabi.plotting import plot_rabi_oscillations
 from quam_libs.experiments.simulation import simulate_and_plot
-from quam_libs.experiments.Power_Rabi.analysis import fetch_dataset, fit_pi_amplitude
+from quam_libs.experiments.power_rabi.analysis import fetch_dataset, fit_pi_amplitude
 from quam_libs.macros import qua_declaration, active_reset
 
 from qualang_tools.results import progress_counter, fetching_tool
@@ -62,63 +62,51 @@ node = QualibrationNode(
 
 
 # %% {Initialize_QuAM_and_QOP}
-# Class containing tools to help handling units and conversions.
+
+
 u = unit(coerce_to_integer=True)
-# Instantiate the QuAM class from the state file
+
 machine = QuAM.load()
-# Get the relevant QuAM components
+
 qubits = machine.get_qubits_used_in_node(node.parameters)
 resonators = machine.get_resonators_used_in_node(node.parameters)
-# Generate the OPX and Octave configurations
+
 config = machine.generate_config()
 
 num_qubits = len(qubits)
-# Open Communication with the QOP
 if node.parameters.load_data_id is None:
     qmm = machine.connect()    
 
 
 # %% {QUA_program}
-n_avg = node.parameters.num_averages  # The number of averages
-N_pi = node.parameters.max_number_rabi_pulses_per_sweep  # Number of applied Rabi pulses sweep
-flux_point = node.parameters.flux_point_joint_or_independent  # 'independent' or 'joint'
-reset_type = node.parameters.reset_type_thermal_or_active  # "active" or "thermal"
+n_avg = node.parameters.num_averages  
+N_pi = node.parameters.max_number_rabi_pulses_per_sweep  
+flux_point = node.parameters.flux_point_joint_or_independent  
+reset_type = node.parameters.reset_type_thermal_or_active  
 state_discrimination = node.parameters.state_discrimination
-operation = node.parameters.operation_x180_or_any_90  # The qubit operation to play
+operation = node.parameters.operation_x180_or_any_90  
+
 # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-amps = np.arange(
-    node.parameters.min_amp_factor,
-    node.parameters.max_amp_factor,
-    node.parameters.amp_factor_step,
-)
+amps = node.parameters.amps
 
 # Number of applied Rabi pulses sweep
-if N_pi > 1:
-    if operation == "x180":
-        N_pi_vec = np.arange(1, N_pi, 2).astype("int")
-    elif operation in ["x90", "-x90", "y90", "-y90"]:
-        N_pi_vec = np.arange(2, N_pi, 4).astype("int")
-    else:
-        raise ValueError(f"Unrecognized operation {operation}.")
-else:
-    N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
-
+N_pi_vec = node.parameters.get_n_pi_vec()
 
 with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
     if state_discrimination:
         state = [declare(bool) for _ in range(num_qubits)]
         state_stream = [declare_stream() for _ in range(num_qubits)]
-    a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor
-    npi = declare(int)  # QUA variable for the number of qubit pulses
-    count = declare(int)  # QUA variable for counting the qubit pulses
+    a = declare(fixed)  
+    npi = declare(int)  
+    count = declare(int) 
  
-    for i, multiplexed_qubits in qubits.batch():
+    for multiplexed_qubits in qubits.batch():
         
         q0 = list(multiplexed_qubits.values())[0]
-        # Bring the active qubits to the desired frequency point
-        machine.set_all_fluxes(flux_point, target=q0)
         
+        machine.set_all_fluxes(flux_point, target=q0)
+            
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
             with for_(*from_array(npi, N_pi_vec)):
@@ -141,7 +129,7 @@ with program() as power_rabi:
                     
                     align()
                     
-                    for qubit in multiplexed_qubits.values():
+                    for i, qubit in multiplexed_qubits.items():
                         qubit.resonator.measure("readout", qua_vars=(I[i], Q[i]))
                         if state_discrimination:
                             assign(state[i], I[i] > qubit.resonator.operations["readout"].threshold)
@@ -149,7 +137,7 @@ with program() as power_rabi:
                         else:
                             save(I[i], I_st[i])
                             save(Q[i], Q_st[i])
-                            
+                                
 
     with stream_processing():
         n_st.save("n")
@@ -180,8 +168,6 @@ if node.parameters.simulate:
     # Simulates the QUA program for the specified duration
     fig, samples = simulate_and_plot(qmm, config, power_rabi, node.parameters)
     node.results = {"figure": fig, "samples": samples}
-    # Save the figure
-    node.results = {"figure": fig, "samples": samples}
     node.save()
 
 elif node.parameters.load_data_id is None:
@@ -189,27 +175,26 @@ elif node.parameters.load_data_id is None:
         job = qm.execute(power_rabi)
         results = fetching_tool(job, ["n"], mode="live")
         while results.is_processing():
-            # Fetch results
             n = results.fetch_all()[0]
-            # Progress bar
             progress_counter(n, n_avg, start_time=results.start_time)
 
 # %% {Data_fetching_and_dataset_creation}
 if not node.parameters.simulate:
     if node.parameters.load_data_id is None:
-        ds = fetch_dataset(job, qubits, state_discrimination=state_discrimination, 
-                           operation=operation, amps=amps, N_pi_vec=N_pi_vec)
+        ds = fetch_dataset(job, qubits, parameters=node.parameters, state_discrimination=state_discrimination)                           
     else:
-        node = node.load_from_id(node.parameters.load_data_id)
+        load_data_id = node.parameters.load_data_id
+        node = node.load_from_id(load_data_id)
+        node.parameters.load_data_id = load_data_id
         ds = node.results["ds"] 
-    # Add the dataset to the node
+    
     node.results = {"ds": ds}
 
 # %% {Data_analysis}
 fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_pi_vec)
 node.results["fit_results"] = fit_results 
 # %% {Plotting}
-fig = plot(ds, qubits, fit_results, N_pi, state_discrimination)
+fig = plot_rabi_oscillations(ds, qubits, fit_results, N_pi, state_discrimination)
 node.results["figure"] = fig
 # %% {Update_state}
 if node.parameters.load_data_id is None:
