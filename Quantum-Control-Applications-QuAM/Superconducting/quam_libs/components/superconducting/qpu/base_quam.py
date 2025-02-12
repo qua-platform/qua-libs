@@ -6,14 +6,15 @@ from quam.core import QuamRoot, quam_dataclass
 from quam.components.octave import Octave
 from quam.components.ports import FEMPortsContainer, OPXPlusPortsContainer
 from quam_libs.components.superconducting.qubit_pair.flux_tunable_transmons import TransmonPair
-from quam_libs.components.superconducting.qubit.base_transmon import BaseTransmon
+from quam_libs.components.superconducting.qubit import AnyTransmon
+from quam_libs.components.superconducting.architectural_elements.readout_resonator import ReadoutResonatorMW, ReadoutResonatorIQ
 from qm import QuantumMachinesManager, QuantumMachine
 from qualang_tools.results.data_handler import DataHandler
 
 from dataclasses import field
 from typing import List, Dict, ClassVar, Optional, Sequence, Union
 
-__all__ = ["BaseQuAM", "BaseTransmon", "TransmonPair"]
+__all__ = ["BaseQuAM"]
 
 # from ....experiments.node_parameters import QubitsExperimentNodeParameters
 # from quam_libs.batchable_list import make_batchable_list
@@ -25,7 +26,7 @@ class BaseQuAM(QuamRoot):
     octaves: Dict[str, Octave] = field(default_factory=dict)
     mixers: Dict[str, FrequencyConverter] = field(default_factory=dict)
 
-    qubits: Dict[str, BaseTransmon] = field(default_factory=dict)
+    qubits: Dict[str, AnyTransmon] = field(default_factory=dict)
     qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
     wiring: dict = field(default_factory=dict)
     network: dict = field(default_factory=dict)
@@ -100,19 +101,19 @@ class BaseQuAM(QuamRoot):
             except NoCalibrationElements:
                 print(f"No calibration elements found for {name}. Skipping calibration.")
 
-    # def get_qubits_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[BaseTransmon]:
-    #     if node_parameters.qubits is None or node_parameters.qubits == "":
-    #         qubits = self.active_qubits
-    #     else:
-    #         qubits = [self.qubits[q] for q in node_parameters.qubits]
-    #
-    #     return make_batchable_list(qubits, node_parameters)
-    #
-    # def get_resonators_used_in_node(self, node_parameters: QubitsExperimentNodeParameters) -> Sequence[
-    #     Union[ReadoutResonatorIQ, ReadoutResonatorMW]]:
-    #     resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node_parameters)]
-    #
-    #     return make_batchable_list(resonators, node_parameters)
+    def get_qubits_used_in_node(self, node_parameters) -> Sequence[AnyTransmon]:
+        if node_parameters.qubits is None or node_parameters.qubits == "":
+            qubits = self.active_qubits
+        else:
+            qubits = [self.qubits[q] for q in node_parameters.qubits]
+        return qubits
+        # return make_batchable_list(qubits, node_parameters)
+
+    def get_resonators_used_in_node(self, node_parameters) -> Sequence[
+        Union[ReadoutResonatorIQ, ReadoutResonatorMW]]:
+        resonators = [qubit.resonator for qubit in self.get_qubits_used_in_node(node_parameters)]
+        return resonators
+        # return make_batchable_list(resonators, node_parameters)
 
     @property
     def data_handler(self) -> DataHandler:
@@ -123,7 +124,7 @@ class BaseQuAM(QuamRoot):
         return self._data_handler
 
     @property
-    def active_qubits(self) -> List[BaseTransmon]:
+    def active_qubits(self) -> List[AnyTransmon]:
         """Return the list of active qubits."""
         return [self.qubits[q] for q in self.active_qubit_names]
 
