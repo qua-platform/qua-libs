@@ -16,10 +16,11 @@ __all__ = ["QuAM", "FluxTunableTransmon", "TransmonPair"]
 class QuAM(BaseQuAM):
     """Example QuAM root component."""
 
-    qubits: Dict[str, FluxTunableTransmon] = field(default_factory=dict)
     qubit_type: ClassVar[Type[FluxTunableTransmon]] = FluxTunableTransmon
-    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
     qubit_pair_type: ClassVar[Type[TransmonPair]] = TransmonPair
+
+    qubits: Dict[str, FluxTunableTransmon] = field(default_factory=dict)
+    qubit_pairs: Dict[str, TransmonPair] = field(default_factory=dict)
 
     def load(self, *args, **kwargs) -> "QuAM":
         return super().load(*args, **kwargs)
