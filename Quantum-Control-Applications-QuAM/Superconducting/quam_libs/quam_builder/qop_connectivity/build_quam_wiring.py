@@ -12,11 +12,7 @@ from quam.components.ports import (
 def build_quam_wiring(
     connectivity: Connectivity, host_ip: str, cluster_name: str, quam_state_path: Union[Path, str], quam_instance: Union[BaseQuAM, FixedFrequencyQuAM, FluxTunableQuAM], port: int = None
 ):
-    # TODO: I removed this because it was raising QUAM warnings, maybe we should consider adding an update_quam_wiring function instead
-    # if os.path.exists(quam_state_path) and "state.json" in os.listdir(quam_state_path):
-    #     # if there is a non-empty QuAM state already
-    #     machine = quam_instance.load(quam_state_path)
-    # else:
+
     machine = quam_instance
     add_ports_container(connectivity, machine)
     add_name_and_ip(machine, host_ip, cluster_name, port)
