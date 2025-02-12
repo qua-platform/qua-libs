@@ -7,11 +7,11 @@ import xarray as xr
 from qm import QmJob
 from qualang_tools.config import ReadoutResonator
 
-from quam_libs.components import Transmon
+from quam_libs.components.superconducting.qubit import AnyTransmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], resonators: List[ReadoutResonator]):
+def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], resonators: List[ReadoutResonator]):
     """
     Fetches raw ADC data from the OPX and processes it into an xarray dataset with labeled coordinates and attributes.
 
@@ -38,7 +38,7 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], resonators: List[ReadoutRe
     return ds
 
 
-def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[Transmon]) -> Tuple[xr.Dataset, dict]:
+def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[AnyTransmon]) -> Tuple[xr.Dataset, dict]:
     """
     Processes the dataset by filtering signals, detecting pulse arrival times, and adding coordinates.
 
@@ -58,7 +58,7 @@ def analyze_pulse_arrival_times(ds: xr.Dataset, qubits: List[Transmon]) -> Tuple
     return ds, fit_results
 
 
-def detect_pulse_arrival(ds: xr.Dataset, qubits: List[Transmon], window_length=11, polyorder=3) -> Tuple[List[int], dict]:
+def detect_pulse_arrival(ds: xr.Dataset, qubits: List[AnyTransmon], window_length=11, polyorder=3) -> Tuple[List[int], dict]:
     """
     Detects the pulse arrival times for each qubit by analyzing the filtered IQ_abs signal.
 

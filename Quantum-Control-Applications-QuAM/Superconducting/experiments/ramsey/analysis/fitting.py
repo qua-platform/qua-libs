@@ -1,12 +1,11 @@
 import logging
-from dataclasses import dataclass, asdict
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import xarray as xr
 
-from quam_libs.components import Transmon
-from quam_libs.experiments.ramsey.parameters import Parameters
+from experiments.ramsey.parameters import Parameters
 from quam_libs.lib.fit import fit_oscillation_decay_exp
 
 

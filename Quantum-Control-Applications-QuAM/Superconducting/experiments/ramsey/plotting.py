@@ -3,13 +3,13 @@ from typing import List, Dict
 import xarray as xr
 
 from quam_libs.lib.fit import oscillation_decay_exp
-from quam_libs.components import Transmon
-from quam_libs.experiments.ramsey.analysis.fitting import RamseyFit
-from quam_libs.experiments.ramsey.parameters import Parameters
+from quam_libs.components.superconducting.qubit import AnyTransmon
+from experiments.ramsey.analysis.fitting import RamseyFit
+from experiments.ramsey.parameters import Parameters
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 
 
-def plot_ramseys_data_with_fit(ds: xr.Dataset, qubits: List[Transmon],
+def plot_ramseys_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon],
                                node_parameters: Parameters, fits: Dict[str, RamseyFit]):
     """
     Plot qubit data for Ramsey experiments.

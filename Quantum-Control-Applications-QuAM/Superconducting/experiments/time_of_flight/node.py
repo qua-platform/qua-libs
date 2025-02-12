@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Union
 
-from quam_libs.components import ReadoutResonator
+from quam_libs.components.superconducting.architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
 from quam_libs.trackable_object import tracked_updates
-from quam_libs.experiments.time_of_flight.parameters import Parameters
+from experiments.time_of_flight.parameters import Parameters
 
-def patch_readout_pulse_params(resonators: List[ReadoutResonator], node_parameters: Parameters):
+def patch_readout_pulse_params(resonators: List[Union[ReadoutResonatorIQ, ReadoutResonatorMW]], node_parameters: Parameters):
     patched_resonators = []
     for resonator in resonators:
         # make temporary updates before running the program and revert at the end.
