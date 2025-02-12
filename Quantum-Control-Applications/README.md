@@ -42,11 +42,14 @@ These files showcase various experiments that can be done on a single fixed-freq
 These files showcase various experiments that can be done on a qubit coupled to a 3d storage cavity.
 
 ## [AMO Qubits](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO)
-### Rydberg Arrays
+### Rydberg Arrays and Quantum Transducers
 
 #### <u> Advanced use-cases: </u>
 * [2D Atom Sorting](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO/Use%20Case%201%20-%20Saffman%20Lab%20-%20Atom%20Sorting#atom-sorting-with-the-opx)
   performed in the lab of Prof. Mark Saffman in the University of Wisconsin-Madison.
+* [PID Cavity Lock](https://github.com/qua-platform/qua-libs/tree/main/Quantum-Control-Applications/AMO/Use%20Case%202%20-%20Yiwen%20Chu%20Lab%20-%20Locking%20of%20Optical%20Cavities)
+  performed in the lab of Prof. Yiwen Chu at ETH Zurich.
+
 
 ## Optically addressable spin qubits
 
