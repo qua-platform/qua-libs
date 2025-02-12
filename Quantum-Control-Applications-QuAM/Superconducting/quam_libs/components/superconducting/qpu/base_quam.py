@@ -14,6 +14,11 @@ from qualang_tools.results.data_handler import DataHandler
 from dataclasses import field
 from typing import List, Dict, ClassVar, Optional, Sequence, Union
 
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 __all__ = ["BaseQuAM"]
 
 # from ....experiments.node_parameters import QubitsExperimentNodeParameters
@@ -38,6 +43,34 @@ class BaseQuAM(QuamRoot):
 
     _data_handler: ClassVar[DataHandler] = None
     qmm: ClassVar[Optional[QuantumMachinesManager]] = None
+
+    @classmethod
+    def get_quam_state_path(cls) -> Optional[Path]:
+        qualibrate_config_path = Path.home() / ".qualibrate" / "config.toml"
+
+        if "QUAM_STATE_PATH" in os.environ:
+            return Path(os.environ["QUAM_STATE_PATH"])
+        elif qualibrate_config_path.exists():
+            config = tomllib.loads(qualibrate_config_path.read_text())
+            quam_state_path = config.get("quam", {}).get("state_path", None)
+            return Path(quam_state_path)
+        else:
+            return None
+
+    @classmethod
+    def load(cls, *args, **kwargs) -> "QuAM":
+        if not args:
+            quam_state_path = cls.get_quam_state_path()
+            if quam_state_path is None:
+                raise ValueError(
+                    "No path argument provided to load the QuAM state. "
+                    "Please provide a path or set the 'QUAM_STATE_PATH' environment variable. "
+                    "See the README for instructions."
+                )
+
+            args = (quam_state_path,)
+
+        return super().load(*args, **kwargs)
 
     @classmethod
     def load(cls, *args, **kwargs) -> "QuAM":

@@ -22,6 +22,7 @@ qiskit-experiments = "*"
 tqdm = "*"
 qualibrate = "*"
 qm-qua = "1.2.1"
+tomli = { version = "^2.0.1", python = "<3.11" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

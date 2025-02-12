@@ -43,63 +43,22 @@ pip install -e .
 > **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_libs`!
 
 ## Setup
-The QuAM framework stores a database of calibration values in a collection of .json files. These files are generated when you run `make_quam.py`. In order to use them in experiment, you need to direct QuAM to the correct location. You can do this by creating an environment variable called `QUAM_STATE_PATH`, and setting its value to the directory of the `quam_state` folder created during `make_quam.py`.
+The QuAM framework stores a database of calibration values in a collection of .json files. 
+These files are generated when you run `make_quam.py`. 
+In order to use them in experiment, you need to setup a `qualibrate` config file, which will reside in `~/.qualibrate/config.toml`.
 
-### Setting Up the `QUAM_STATE_PATH` Environment Variable
-#### Linux
 1. Open a terminal.
-2. Edit the `/etc/environment` file:
-   ```sh
-   sudo nano /etc/environment
-   ```
-3. Add the line:
-   ```sh
-   QUAM_STATE_PATH="/path/to/configuration/quam_state"
-   ```
-4. Save the file and log out, then log back in for changes to take effect.
+2. Navigate to the main directory `qua-libs/Quantum-Control-Applications-QuAM/Superconducting/`.
+3. Run `python create_qualibrate_config.py`.  
+  This will interactively create a `qualibrate` config file in the `configuration` folder.
+  The available settings are:
+  - `project`: The name of the project.
+  - `storage_location`: The location to store the calibration data.
+  - `calibration_library_folder`: The location of the calibration nodes.
+  - `quam_state_path`: The location of the QuAM state.
 
-#### Mac
-1. Open a terminal.
-2. Edit the `/etc/launchd.conf` file:
-   ```sh
-   sudo nano /etc/launchd.conf
-   ```
-3. Add the line:
-   ```sh
-   setenv QUAM_STATE_PATH "/path/to/configuration/quam_state"
-   ```
-4. Save the file and restart your system for changes to take effect.
+Usually the default values are fine, but you can change them to suit your needs, for example if you want to use a different storage location for the calibration data.
 
-#### Windows
-1. Press `Win + X`, select **System**.
-2. Click **Advanced system settings** > **Environment Variables**.
-3. Click **New** under **System variables**.
-4. Set **Variable name** to `QUAM_STATE_PATH`.
-5. Set **Variable value** to `C:\path\to\configuration\quam_state`.
-6. Click **OK** to close all windows.
-
-The `QUAM_STATE_PATH` environment variable is now set up globally on your system.
-
-## Setting up the browser frontend (Qualibrate)
-> **_NOTE:_**  For more detailed and up-to-date documentation about Qualibrate, see the [documentation](https://qua-platform.github.io/qualibrate/).
- 
-While the calibration nodes are runnable as individual scripts, they can also be run through a browser. The frontend 
-also allows for the execution of calibration graphs.
-
-During the installation of `quam_libs`, the requirement `qualibrate` was installed. We can use the command-line to 
-generate a config for `qualibrate` which points the frontend application to our calibration nodes directory as follows:
-```sh
-# change into the folder containing the `calibration_graph`
-cd path/that/contains/calibration_graph
-
-# replace the values in this command with ones suitable for your project.
-qualibrate config \
-  --app-project <name_of_your_project> \
-  --app-user-storage <path_to_your_data_folder> \
-  --runner-calibration-library-folder <path_to_your_calibration_nodes> \
-  --active-machine-path <path_to_your_quam_state>
-
-```
 To verify that `qualibrate` installed correctly, you can launch the web interface:
 ```shell
 qualibrate start
