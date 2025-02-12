@@ -20,7 +20,7 @@ from dataclasses import asdict
 
 # %% {Imports}
 from qualibrate import QualibrationNode
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from experiments.ramsey.analysis.fetch_dataset import fetch_dataset
 from experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
 from experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles

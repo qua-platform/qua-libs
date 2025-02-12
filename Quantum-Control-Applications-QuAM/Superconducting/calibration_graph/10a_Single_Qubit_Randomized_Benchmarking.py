@@ -21,7 +21,7 @@ Prerequisites:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.get_quam import QuAM, Transmon
+from configuration.my_quam import QuAM, Transmon
 from experiments.macros import qua_declaration, active_reset, readout_state
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 from quam_libs.lib.save_utils import fetch_results_as_xarray

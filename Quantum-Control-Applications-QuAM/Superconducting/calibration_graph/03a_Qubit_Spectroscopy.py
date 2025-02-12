@@ -24,7 +24,7 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode
 
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.lib.instrument_limits import instrument_limits
 from experiments.macros import qua_declaration
 from experiments.simulation import simulate_and_plot

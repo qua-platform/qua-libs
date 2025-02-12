@@ -23,7 +23,7 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.lib.fit_utils import fit_resonator
 from experiments.macros import qua_declaration
 from quam_libs.lib.qua_datasets import convert_IQ_to_V, subtract_slope, apply_angle

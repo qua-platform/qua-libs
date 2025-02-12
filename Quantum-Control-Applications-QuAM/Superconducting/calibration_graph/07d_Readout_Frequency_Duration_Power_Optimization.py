@@ -29,7 +29,7 @@ from experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dat
 from experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
 from experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
 from quam_libs.trackable_object import tracked_updates
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from experiments.readout_optimization_3d.parameters import Parameters, get_durations
 from experiments.readout_optimization_3d.parameters import (
     get_frequency_detunings_in_hz,

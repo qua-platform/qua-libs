@@ -7,7 +7,7 @@ from qm.qua import *
 from qm.qua._dsl import _ResultSource
 from qm.qua._expressions import QuaVariable
 
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.components.superconducting.qubit import FluxTunableTransmon, FixedFrequencyTransmon
 
 __all__ = [

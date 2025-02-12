@@ -1,7 +1,7 @@
 # %%
 import json
 from qualang_tools.units import unit
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.quam_builder.superconducting.build_quam import save_machine
 import numpy as np
 

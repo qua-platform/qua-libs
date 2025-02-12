@@ -259,7 +259,7 @@ according to the wiring and the QUAM components. The default values used for the
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
 ```python
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.quam_builder.machine import build_quam
 
 path = "./quam_state"
@@ -277,6 +277,7 @@ quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_setting
 Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
+
 ```python
 import json
 from qm import SimulationConfig
@@ -285,7 +286,7 @@ from quam import QuamDict
 from quam.components.ports import MWFEMAnalogOutputPort, MWFEMAnalogInputPort
 from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 
 machine = QuAM()  # or, QuAM.load() if the state already exists
 
@@ -296,38 +297,38 @@ machine.wiring = QuamDict({})
 # ^^^
 
 mw_out = MWChannel(
-   id = "mw_out",
-   operations = {
-      "cw": SquarePulse(amplitude=1, length=100),
-      "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   upconverter=1,
-   intermediate_frequency=20e6
+    id="mw_out",
+    operations={
+        "cw": SquarePulse(amplitude=1, length=100),
+        "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
+    opx_output=MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    upconverter=1,
+    intermediate_frequency=20e6
 )
 mw_in = InOutMWChannel(
-   id = "mw_in",
-   operations = {
-      "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   opx_input = MWFEMAnalogInputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
-   ),
-   upconverter=1,
-   time_of_flight=28,
-   intermediate_frequency=10e6
+    id="mw_in",
+    operations={
+        "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
+    opx_output=MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    opx_input=MWFEMAnalogInputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
+    ),
+    upconverter=1,
+    time_of_flight=28,
+    intermediate_frequency=10e6
 )
 
 machine.qubits["dummy_out"] = mw_out
 machine.qubits["dummy_in"] = mw_in
 
 with program() as prog:
-   mw_out.play("cw")
-   mw_in.align()
-   mw_in.play("readout")
+    mw_out.play("cw")
+    mw_in.align()
+    mw_in.play("readout")
 
 config = machine.generate_config()
 qmm = machine.connect()
@@ -342,7 +343,7 @@ machine.save("dummy_state.json")
 # %%
 # View the corresponding "raw-QUA" config
 with open("dummy_qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ```
 ### [4. Updating the parameters of state.json](./configuration/modify_quam.py)
 Once the state is created, each parameter can be updated based on the desired initial values using
@@ -352,7 +353,7 @@ Once the state is created, each parameter can be updated based on the desired in
 # %%
 import numpy as np
 import json
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.quam_builder.machine import save_machine
 
 # Load QuAM
@@ -367,10 +368,10 @@ rr_if = rr_freq - rr_LO
 rr_max_power_dBm = -8
 
 for i, q in enumerate(machine.qubits):
-   machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-   machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-   machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-   machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
+    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
+    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
 
 # %%
 # save into state.json
@@ -379,7 +380,7 @@ save_machine(machine, path)
 # %%
 # View the corresponding "raw-QUA" config
 with open("qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ````
 
 Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be

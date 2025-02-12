@@ -2,7 +2,7 @@ from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
 from quam_libs.quam_builder.qop_connectivity import build_quam_wiring
 from quam_libs.quam_builder.superconducting import build_quam
-from get_quam import QuAM
+from my_quam import QuAM
 
 ########################################################################################################################
 # %%                                              Define static parameters

@@ -19,7 +19,7 @@ Next steps before going to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.get_quam import QuAM
+from configuration.my_quam import QuAM
 from experiments.macros import qua_declaration, active_reset
 from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
