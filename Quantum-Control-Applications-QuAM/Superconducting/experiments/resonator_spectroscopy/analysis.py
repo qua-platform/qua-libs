@@ -6,12 +6,12 @@ import xarray as xr
 from qm import QmJob
 from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
 
-from quam_libs.components import Transmon
+from quam_libs.components.superconducting.qubit import AnyTransmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit_utils import fit_resonator
 
 
-def fetch_dataset(job: QmJob, qubits: List[Transmon], frequencies: List[float]):
+def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], frequencies: List[float]):
     """
     Fetches IQ measurement results from the OPX as a function of resonator frequency detuning and processes them into an xarray dataset.
 
@@ -50,7 +50,7 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], frequencies: List[float]):
     )
     return ds
 
-def fit_resonators(ds: xr.Dataset, qubits: List[Transmon]):
+def fit_resonators(ds: xr.Dataset, qubits: List[AnyTransmon]):
     """
     Fits the resonator frequency and quality factors for each qubit in the dataset.
     """

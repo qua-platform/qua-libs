@@ -8,7 +8,7 @@ from qm.qua._dsl import _ResultSource
 from qm.qua._expressions import QuaVariable
 
 from configuration.my_quam import QuAM
-from quam_libs.components.superconducting.qubit import FluxTunableTransmon, FixedFrequencyTransmon
+from quam_libs.components.superconducting.qubit import AnyTransmon
 
 __all__ = [
     "qua_declaration",
@@ -104,7 +104,7 @@ def readout_state(qubit, state, pulse_name: str = "readout", threshold: float = 
 
 
 def readout_state_gef(
-    qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon], state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None
+    qubit: AnyTransmon, state: QuaVariableType, pulse_name: str = "readout", save_qua_var: StreamType = None
 ):
     I = declare(fixed)
     Q = declare(fixed)
@@ -125,7 +125,7 @@ def readout_state_gef(
 
 
 def active_reset_gef(
-    qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon],
+    qubit: AnyTransmon,
     readout_pulse_name: str = "readout",
     pi_01_pulse_name: str = "x180",
     pi_12_pulse_name: str = "EF_x180",
@@ -160,7 +160,7 @@ def active_reset_gef(
 
 
 def active_reset(
-        qubit: Union[FluxTunableTransmon, FixedFrequencyTransmon],
+        qubit: AnyTransmon,
         save_qua_var: Optional[StreamType] = None,
         pi_pulse_name: str = "x180",
         readout_pulse_name: str = "readout",

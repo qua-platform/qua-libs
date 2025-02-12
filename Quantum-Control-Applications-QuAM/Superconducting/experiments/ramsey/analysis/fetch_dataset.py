@@ -1,6 +1,6 @@
 import xarray as xr
 
-from quam_libs.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 
