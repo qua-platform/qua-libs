@@ -1,5 +1,5 @@
 from typing import Optional
-from configuration.my_quam import QuAM
+from quam_libs.components.superconducting.qubit import AnyTransmon
 import numpy as np
 import xarray as xr
 
@@ -23,7 +23,7 @@ def extract_dict(ds: xr.Dataset, data_var) -> dict:
     return ds[[data_var]].to_dataframe().to_dict()[data_var]
 
 
-def convert_IQ_to_V(da: xr.DataArray, qubits: list[QuAM.qubit_type], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False) -> xr.DataArray:
+def convert_IQ_to_V(da: xr.DataArray, qubits: list[AnyTransmon], IQ_list: list[str] = ("I", "Q"), single_demod: bool = False) -> xr.DataArray:
     # TODO: this is Transmon specific so it should probably not belong here
     """
     return data array with the 'I' and 'Q' quadratures converted to Volts.
@@ -31,7 +31,7 @@ def convert_IQ_to_V(da: xr.DataArray, qubits: list[QuAM.qubit_type], IQ_list: li
     :param da: the array on which to calculate angle. Assumed to have complex data
     :type da: xr.DataArray
     :param qubits: the list of qubits components.
-    :type qubits: list[QuAM.qubit_type]
+    :type qubits: list[AnyTransmon]
     :param IQ_list: the list of data to convert to V e.g. ["I", "Q"].
     :type IQ_list: list[str]
     :param single_demod: Flag to add the additional factor of 2 needed for single demod.
