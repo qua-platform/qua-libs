@@ -1,12 +1,12 @@
 # %%
 import json
 from qualang_tools.units import unit
-from quam_libs.components import QuAM
-from quam_libs.quam_builder.machine import save_machine
+from configuration.my_quam import QuAM
+from quam_libs.quam_builder.superconducting.build_quam import save_machine
 import numpy as np
 
-
-path = r"C:\Users\KevinAVillegasRosale\OneDrive - QM Machines LTD\Documents\GitKraken\qua-libs\quam_state"
+# TODO: to do properly
+path = "./quam_state"
 
 machine = QuAM.load(path)
 

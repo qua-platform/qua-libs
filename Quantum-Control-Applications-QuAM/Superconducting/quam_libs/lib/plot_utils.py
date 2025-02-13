@@ -1,20 +1,19 @@
 import re
-from typing import List, Tuple
-import plotly.express as px
-
+from typing import List, Tuple, Union
 import plotly
-import matplotlib.pyplot as plt
-import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
 from matplotlib import axes
 from matplotlib import pyplot as plt
 import matplotlib
 from qm import QmJob
 import xarray as xr
+import numpy as np
 
 
 def plot_channel(ax, data: np.ndarray, title: str):
-    if data.dtype == np.complex:
+    # TODO: is this used anywhere?
+    if np.iscomplex(data).any():
         ax.plot(data.real)
         ax.plot(data.imag)
     else:
@@ -24,6 +23,7 @@ def plot_channel(ax, data: np.ndarray, title: str):
 
 
 def get_simulated_samples_by_element(element_name: str, job: QmJob, config: dict):
+    # TODO: this seems very deprecated since it doesn't take into account the OPX1000 --> shall we keep it?
     element = config["elements"][element_name]
     sample_struct = job.get_simulated_samples()
     if "mixInputs" in element:
@@ -40,6 +40,7 @@ def get_simulated_samples_by_element(element_name: str, job: QmJob, config: dict
 
 
 def plot_simulator_output(plot_axes: List[List[str]], job: QmJob, config: dict, duration_nsec: int):
+    # TODO: Is this even used or useful?
     """
     generate a plot of simulator output by elements
 
@@ -81,6 +82,7 @@ def plot_simulator_output(plot_axes: List[List[str]], job: QmJob, config: dict, 
 
 
 def plot_ar_attempts(ar_data: dict[str, np.typing.NDArray], **hist_kwargs):
+    # TODO: is this relevant in the context of the calibration graph?
     """
     plot the distribution of active reset attempts acquired when running `reset_active(save_qua_var=...)`
 
@@ -122,6 +124,7 @@ def plot_ar_attempts(ar_data: dict[str, np.typing.NDArray], **hist_kwargs):
 def plot_spectrum(
     signal: np.ndarray, t_s_usec: float, num_zero_pad: int = 0
 ) -> tuple[np.ndarray, np.ndarray, plotly.graph_objs.Figure]:
+    # TODO: is this relevant in the context of the calibration graph? This could go to the py-qua-tools if useful
     """
     plot the spectrum of a signal
 
@@ -154,19 +157,20 @@ def grid_pair_names(qubit_pairs) -> Tuple[List[str], List[str]]:
 
 
 class QubitPairGrid:
+    # TODO: not sure this is working, to check...
     """Creates a grid object where qubit pairs are placed on a grid.
-    The grid is builtb with references to the qubit pair names,
+    The grid is built with references to the qubit pair names,
     which should of the form: 'q-i,j-q-n,m' where i,j and n,m are
-    integeres describing the x and y coordinates of the qubits of
+    integers describing the x and y coordinates of the qubits of
     the pair on a qubit grid.
 
-    Iteration of the resuting grid can be done using 'grid_iter'
+    Iteration of the resulting grid can be done using 'grid_iter'
     defined in lib.qua_datasets
 
     :param ds: The ds containing the names of the qubit in ds.qubit
 
     :var fig: the created figure object
-    :var all_axes: all of the created axis, used and unused
+    :var all_axes: all the created axes, used and unused
     :var axes: a list of the axes relevant for the grid
     :name_dicts: a list containing the names of the qubit, taken from ds.qubit, in the
                 convention of FacetGrid dict_names
@@ -177,7 +181,7 @@ class QubitPairGrid:
 
     '''
     from quam_libs.lib.qua_datasets import grid_iter
-    grid_names = [ dict(zip(q.extras_[0:len(q.extras_):2],q.extras_[1:len(q.extras_):2]))['grid_name'] for q in machine.active_qubits]
+    grid_names = [ dict(zip(q.extras_[0:len(q.extras_):2],q.extras_[1:len(q.extras_):2]))['grid_name'] for q in qubits]
     grid = coupler_grid(ds, grid_names)
 
     for ax, coupler in grid_iter(grid):
@@ -186,13 +190,15 @@ class QubitPairGrid:
 
     """
 
-    def _convert_to_int(self, incoming_string):
+    @staticmethod
+    def _convert_to_int(incoming_string):
         return tuple(map(int, incoming_string.split("_")))
 
     def _list_clean(self, list_input_string):
         return [self._clean_up(input_string) for input_string in list_input_string]
 
-    def _clean_up(self, input_string):
+    @staticmethod
+    def _clean_up(input_string):
         return re.sub("[^0-9]", "", input_string)
 
     def __init__(self, grid_names: list[str], qubit_pair_names: list[str], size: int = 4):
@@ -260,27 +266,20 @@ class QubitPairGrid:
         self.name_dicts = [[{"qubit": qubit_pair_name} for qubit_pair_name in qubit_names]]
 
 
-def grid_names(machine) -> List[str]:
-    """ "
-    Runs over active qubits in a QUAM object and returns a list of the grid_name attribute of each qubit
-    """
-    return [f"q-{q.grid_location}" for q in machine.active_qubits]
-
-
 class QubitGrid:
-    """Creates a grid object where qubits are placed on a grid.
-    Accepts a dataset whose dimension 'qubit is used as the dimension on which the grid is built.
-    It also accepts a parameter "grid_names" that specifies the positon of each wubit on a grid. If none
-    it assumes that qubit names are of the form: 'q-i,j' where i,j are integeres describing the x and y coordinates of the grid.
+    """Creates a grid object where the qubits are placed.
+    Accepts a dataset whose dimension 'qubit' is used as the dimension on which the grid is built.
+    It also accepts a parameter "grid_names" that specifies syntax for the position of each qubit on the grid. If none
+    it assumes that qubit names are of the form: 'q-i,j' where i,j are integers describing the x and y coordinates of the grid.
 
-    Iteration of the resuting grid can be done using 'grid_iter' defined in lib.qua_datasets
+    Iteration of the resulting grid can be done using 'grid_iter' defined in lib.plot_utils.
 
-    :param ds: The ds containing the names of the qubit in ds.qubit
+    :param ds: The dataset containing the names of the qubit under ds.qubit
     :params grid_names: a list of names in the required qubit names, in case the qubits names
-                        given in a different format. Defalut is None
+                        given in a different format. Default is None
 
     :var fig: the created figure object
-    :var all_axes: all of the created axis, used and unused
+    :var all_axes: all the created axes, used and unused
     :var axes: a list of the axes relevant for the grid
     :name_dicts: a list containing the names of the qubit, taken from ds.qubit, in the
                 convention of FacetGrid dict_names
@@ -300,8 +299,8 @@ class QubitGrid:
     If the names of the qubits are not of the acceptable form it is possible to use:
 
     '''
-    from quam_libs.lib.qua_datasets import grid_iter, QubitGrid, grid_names
-    grid = QubitGrid(ds, grid_names(machine))
+    from quam_libs.lib.plot_utils import grid_iter, QubitGrid
+    grid = QubitGrid(ds, [q.grid_location for q in qubits])
 
     for ax, qubit in grid_iter(grid):
         ds.loc[qubit].I.plot(ax = ax)
@@ -313,10 +312,11 @@ class QubitGrid:
     def _list_clean(self, list_input_string):
         return [self._clean_up(input_string) for input_string in list_input_string]
 
-    def _clean_up(self, input_string):
+    @staticmethod
+    def _clean_up(input_string):
         return re.sub("[^0-9]", "", input_string)
 
-    def __init__(self, ds: xr.DataArray, grid_names: list = None, size: int = 3):
+    def __init__(self, ds: xr.DataArray, grid_names: Union[list[str], str] = None, size: int = 3):
         if grid_names:
             if type(grid_names) == str:
                 grid_names = [grid_names]
@@ -332,8 +332,9 @@ class QubitGrid:
         else:
             try:
                 grid_name_mapping = dict(zip(grid_indices, [str(ds.qubit.values[0])]))
-            except:
+            except (Exception,):
                 grid_name_mapping = dict(zip(grid_indices, [str(ds.qubit.values)]))
+
         grid_row_idxs = [idx[1] for idx in grid_indices]
         grid_col_idxs = [idx[0] for idx in grid_indices]
         min_grid_row = min(grid_row_idxs)
@@ -342,8 +343,7 @@ class QubitGrid:
 
         figure, all_axes = plt.subplots(*shape, figsize=(shape[1] * size, shape[0] * size), squeeze=False)
 
-        axes = []
-
+        grid_axes = []
         qubit_names = []
 
         for row, axis_row in enumerate(all_axes):
@@ -351,7 +351,7 @@ class QubitGrid:
                 grid_row = max(grid_row_idxs) - row
                 grid_col = col + min_grid_col
                 if (grid_col, grid_row) in grid_indices:
-                    axes.append(ax)
+                    grid_axes.append(ax)
                     name = grid_name_mapping.get((grid_col, grid_row))
                     if name is not None:
                         qubit_names.append(grid_name_mapping[(grid_col, grid_row)])
@@ -360,7 +360,7 @@ class QubitGrid:
 
         self.fig = figure
         self.all_axes = all_axes
-        self.axes = [axes]
+        self.axes = [grid_axes]
         self.name_dicts = [[{ds.qubit.name: value} for value in qubit_names]]
 
 
