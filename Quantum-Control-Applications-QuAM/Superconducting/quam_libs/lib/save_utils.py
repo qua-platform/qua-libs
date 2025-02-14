@@ -1,3 +1,4 @@
+import numpy as np
 from qualibrate_app.config import get_config_path, get_settings
 from quam_libs.components import QuAM
 import os
@@ -35,12 +36,12 @@ def fetch_results_as_xarray(handles, qubits, measurement_axis):
     ]
     measurement_axis["qubit"] = [qubit.name for qubit in qubits]
     measurement_axis = {key: measurement_axis[key] for key in reversed(measurement_axis.keys())}
-
+    
     ds = xr.Dataset(
         {f"{meas_var}": ([key for key in measurement_axis.keys()], values[i]) for i, meas_var in enumerate(meas_vars)},
         coords=measurement_axis,
     )
-
+    
     return ds
 
 
