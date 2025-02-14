@@ -7,7 +7,7 @@ from quam_libs.components import Transmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.lib.instrument_limits import instrument_limits
-from quam_libs.experiments.power_rabi.parameters import Parameters
+from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_pi_pulses
 
 
 def fetch_dataset(job: QmJob, qubits: List[Transmon], parameters: Parameters, state_discrimination: bool) -> xr.Dataset:
@@ -37,14 +37,18 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], parameters: Parameters, st
     - ds (xr.Dataset): the dataset containing the fetched measurement results.
     """
     
-    amps = parameters.amps
-    N_pi_vec = parameters.N_pi_vec
+    amps = np.arange(
+                        parameters.min_amp_factor,
+                        parameters.max_amp_factor,
+                        parameters.amp_factor_step,
+                )
+    N_rabi_pulses = get_number_of_pi_pulses(parameters)
     operation = parameters.operation_x180_or_any_90
     
     # operation: str, amps: np.ndarray, N_pi_vec: np.ndarray
     
     # Fetch the data from the OPX and convert it into a xarray with corresponding axes (from most inner to outer loop)
-    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps,  "N": N_pi_vec})
+    ds = fetch_results_as_xarray(job.result_handles, qubits, {"amp": amps,  "N": N_rabi_pulses})
     
     if not state_discrimination:
         ds = convert_IQ_to_V(ds, qubits)

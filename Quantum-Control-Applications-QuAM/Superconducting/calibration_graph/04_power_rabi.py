@@ -21,7 +21,7 @@ Next steps before going to the next node:
 
 from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
-from quam_libs.experiments.power_rabi.parameters import Parameters
+from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_pi_pulses
 from quam_libs.experiments.power_rabi.plotting import plot_rabi_oscillations
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.experiments.power_rabi.analysis import fetch_dataset, fit_pi_amplitude
@@ -85,12 +85,12 @@ flux_point = node.parameters.flux_point_joint_or_independent
 reset_type = node.parameters.reset_type_thermal_or_active  
 state_discrimination = node.parameters.state_discrimination
 operation = node.parameters.operation_x180_or_any_90  
-
-# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
-amps = node.parameters.amps
-
-# Number of applied Rabi pulses sweep
-N_pi_vec = node.parameters.get_n_pi_vec()
+amps = np.arange(
+                        node.parameters.min_amp_factor,
+                        node.parameters.max_amp_factor,
+                        node.parameters.amp_factor_step,
+                    )
+N_rabi_pulses = get_number_of_pi_pulses(node.parameters)
 
 with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
@@ -109,7 +109,7 @@ with program() as power_rabi:
             
         with for_(n, 0, n < n_avg, n + 1):
             save(n, n_st)
-            with for_(*from_array(npi, N_pi_vec)):
+            with for_(*from_array(npi, N_rabi_pulses)):
                 with for_(*from_array(a, amps)):
                     
                     for qubit in multiplexed_qubits.values():
@@ -191,7 +191,7 @@ if not node.parameters.simulate:
     node.results = {"ds": ds}
 
 # %% {Data_analysis}
-fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_pi_vec)
+fit_results = fit_pi_amplitude(ds, N_pi, state_discrimination, qubits, operation, N_rabi_pulses)
 node.results["fit_results"] = fit_results 
 # %% {Plotting}
 fig = plot_rabi_oscillations(ds, qubits, fit_results, N_pi, state_discrimination)

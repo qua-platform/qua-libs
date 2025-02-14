@@ -33,30 +33,46 @@ class RabiParameters(RunnableParameters):
     state_discrimination: bool = False
     update_x90: bool = True
     
-    def __post_init__(self):
-        
-        self.amps = np.arange(
-                        self.min_amp_factor,
-                        self.max_amp_factor,
-                        self.amp_factor_step,
-                    )
-        self.N_pi_vec = self.get_n_pi_vec()
 
-    def get_n_pi_vec(self):
-        
-        N_pi = self.max_number_rabi_pulses_per_sweep
-        operation = self.operation_x180_or_any_90
-        if N_pi > 1:
-            if operation == "x180":
-                N_pi_vec = np.arange(1, N_pi, 2).astype("int")
-            elif operation in ["x90", "-x90", "y90", "-y90"]:
-                N_pi_vec = np.arange(2, N_pi, 4).astype("int")
-            else:
-                raise ValueError(f"Unrecognized operation {operation}.")
+def get_number_of_pi_pulses(parameters: RabiParameters) -> np.ndarray:
+    
+    N_pi = parameters.max_number_rabi_pulses_per_sweep
+    operation = parameters.operation_x180_or_any_90
+    if N_pi > 1:
+        if operation == "x180":
+            N_rabi_pulses = _get_number_of_pi_pulses_for_x180_rabi(parameters)
+        elif operation in ["x90", "-x90", "y90", "-y90"]:
+            N_rabi_pulses = _get_number_of_pi_half_pulses_for_x90_rabi(parameters)
         else:
-            N_pi_vec = np.linspace(1, N_pi, N_pi).astype("int")[::2]
-            
-        return N_pi_vec
+            raise ValueError(f"Unrecognized operation {operation}.")
+    else:
+        N_rabi_pulses = np.linspace(1, N_pi, N_pi).astype("int")[::2]
+        
+    return N_rabi_pulses
+
+def _get_number_of_pi_pulses_for_x180_rabi(parameters: RabiParameters):
+   """
+   Generates the sweep axis for the number of pi-pulses to be applied in a Rabi experiment.
+
+   The axis starts at 1 and steps by 2 each time so that on-resonance, the state-population is always
+   high
+   """
+   
+   N_pi = parameters.max_number_rabi_pulses_per_sweep
+   
+   return np.arange(1, N_pi, 2).astype("int")
+
+def _get_number_of_pi_half_pulses_for_x90_rabi(parameters: RabiParameters):
+   """
+   Generates the sweep axis for the number of pi/2-pulses to be applied in a Rabi experiment.
+
+   The axis starts at 2 and steps by 4 each time so that on-resonance, the state-population is always
+   high
+   """
+   
+   N_pi_half = parameters.max_number_rabi_pulses_per_sweep
+   
+   return np.arange(2, N_pi_half, 4).astype("int")
     
 
 class Parameters(   
