@@ -34,7 +34,7 @@ class RabiParameters(RunnableParameters):
     update_x90: bool = True
     
 
-def get_number_of_pi_pulses(parameters: RabiParameters) -> np.ndarray:
+def get_number_of_rabi_pulses(parameters: RabiParameters) -> np.ndarray:
     
     N_pi = parameters.max_number_rabi_pulses_per_sweep
     operation = parameters.operation_x180_or_any_90

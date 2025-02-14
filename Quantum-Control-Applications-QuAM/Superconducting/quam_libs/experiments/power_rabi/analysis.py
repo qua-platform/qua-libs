@@ -7,7 +7,7 @@ from quam_libs.components import Transmon
 from quam_libs.lib.save_utils import fetch_results_as_xarray
 from quam_libs.lib.fit import fit_oscillation, oscillation
 from quam_libs.lib.instrument_limits import instrument_limits
-from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_pi_pulses
+from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_rabi_pulses
 
 
 def fetch_dataset(job: QmJob, qubits: List[Transmon], parameters: Parameters, state_discrimination: bool) -> xr.Dataset:
@@ -42,7 +42,7 @@ def fetch_dataset(job: QmJob, qubits: List[Transmon], parameters: Parameters, st
                         parameters.max_amp_factor,
                         parameters.amp_factor_step,
                 )
-    N_rabi_pulses = get_number_of_pi_pulses(parameters)
+    N_rabi_pulses = get_number_of_rabi_pulses(parameters)
     operation = parameters.operation_x180_or_any_90
     
     # operation: str, amps: np.ndarray, N_pi_vec: np.ndarray

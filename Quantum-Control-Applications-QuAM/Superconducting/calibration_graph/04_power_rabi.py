@@ -21,7 +21,7 @@ Next steps before going to the next node:
 
 from qualibrate import QualibrationNode
 from quam_libs.components import QuAM
-from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_pi_pulses
+from quam_libs.experiments.power_rabi.parameters import Parameters, get_number_of_rabi_pulses
 from quam_libs.experiments.power_rabi.plotting import plot_rabi_oscillations
 from quam_libs.experiments.simulation import simulate_and_plot
 from quam_libs.experiments.power_rabi.analysis import fetch_dataset, fit_pi_amplitude
@@ -90,7 +90,7 @@ amps = np.arange(
                         node.parameters.max_amp_factor,
                         node.parameters.amp_factor_step,
                     )
-N_rabi_pulses = get_number_of_pi_pulses(node.parameters)
+N_rabi_pulses = get_number_of_rabi_pulses(node.parameters)
 
 with program() as power_rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(num_qubits=num_qubits)
