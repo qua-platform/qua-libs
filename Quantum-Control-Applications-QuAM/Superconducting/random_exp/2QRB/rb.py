@@ -118,7 +118,8 @@ for l, circuits in transpiled_circuits.items():
         circuit_gate_angles.extend(gate_angle)
 
 
-circuits_as_int = [2,2,2,2,2]
+circuits_as_int = [2,4,8,16,32]
+qubit_indices = [0,0,0,0,0]
 
 with program() as rb:
     
