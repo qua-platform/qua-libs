@@ -38,7 +38,7 @@ node = BaseNode(
         qubit_pair_name="qC2-qC1",
         circuit_lengths=[4], # [1,2,4,8,16,32],
         num_circuits_per_length = 1,
-        num_averages = 5,
+        num_averages = 1,
         basis_gates = basis_gates, # gates are as written in state
         seed = 0,
         reset_type = "thermal",
@@ -69,8 +69,8 @@ machine = QuAM.load()
 
 # Qubits and resonators
 qubit_pair = [pair for pair in machine.active_qubit_pairs if pair.id == node.parameters.qubit_pair_name][0]
-qubit_control = machine.qubits['qubitC2'] # qubit_pair.qubit_control
-qubit_target = machine.qubits['qubitC4'] # qubit_pair.qubit_target
+qubit_control = qubit_pair.qubit_control
+qubit_target = qubit_pair.qubit_target
 qubits = [qubit_control, qubit_target]
 
 
@@ -118,8 +118,9 @@ for l, circuits in transpiled_circuits.items():
         circuit_gate_angles.extend(gate_angle)
 
 
-circuits_as_int = [2,4,8,16,32]
-qubit_indices = [0,0,0,0,0]
+circuits_as_int = [2,2,2,2,2][:2]
+qubit_indices = [0,0,0,0,0][:2]
+circuit_gate_angles = [0.,0.,0.,0.,0.][:2]
 
 with program() as rb:
     
@@ -133,9 +134,10 @@ with program() as rb:
 
     # machine.set_all_fluxes('joint', qubit_control)
     
-    i = declare(int)
+    gate = declare(int)
+    qubit_index = declare(int)
+    angle = declare(fixed)
     n = declare(int)
-    g_id = declare(int)
     
     num_lengths = len(node.parameters.circuit_lengths)
     num_circuits_per_length = node.parameters.num_circuits_per_length
@@ -146,9 +148,6 @@ with program() as rb:
     rz_id_qua = declare(int, value=rz_id)
     measure_id_qua = declare(int, value=measure_id)
     barrier_id_qua = declare(int, value=barrier_id)
-    qubit_indices_qua = declare(int, value=qubit_indices)
-    circuit_qua = declare(int, value=circuits_as_int) # The circuits as integers
-    angles_qua = declare(fixed, value=circuit_gate_angles) # The angles of the gates
    
     with for_(n, 0, n < n_avg, n + 1):
         # save(n, n_st)
@@ -158,38 +157,36 @@ with program() as rb:
             
         align() # align(qubit_control.name, qubit_target.name)
         
-
-        with for_(i, 0, i < len(circuits_as_int), i + 1):   
+        with for_each_((gate, qubit_index, angle), ([circuits_as_int, qubit_indices, circuit_gate_angles])):   
             
-            g_id = circuit_qua[i]
-            with switch_(g_id, unsafe=True):
+            with switch_(gate, unsafe=True):
                 with case_(cz_id_qua):
                     cz.execute()
                 with case_(barrier_id_qua):
-                    align() # align(qubit_control.name, qubit_target.name)
+                    align() 
                 with case_(measure_id_qua):
                     # readout
                     readout_state(qubit_control, state_control)
                     readout_state(qubit_target, state_target)
                     # assign(state, state_control*2 + state_target)
                     assign(state, (Cast.to_int(state_control) << 1) + Cast.to_int(state_target))
-                    save(state, state_st)
+                    # save(state, state_st)
                     
                     # reset qubits
                     reset_qubits(node, qubit_control, qubit_target, thermalization_time)
                 with case_(rz_id_qua):
-                    with if_(qubit_indices_qua[i] == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
-                        qubit_control.xy.frame_rotation(angles_qua[i])
+                    with if_(qubit_index == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
+                        qubit_control.xy.frame_rotation(angle)
                     with else_():
-                        qubit_target.xy.frame_rotation(angles_qua[i])
+                        qubit_target.xy.frame_rotation(angle)
                 with case_(x90_id_qua):
-                    with if_(qubit_indices_qua[i] == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
+                    with if_(qubit_index == 0):
                         qubit_control.xy.play('x90')
-                    with else_():
+                    with elif_(qubit_index == 1):
                         qubit_target.xy.play('x90')
                         
                 with case_(x180_id_qua):
-                    with if_(qubit_indices_qua[i] == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
+                    with if_(qubit_index == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
                         qubit_control.xy.play('x180')
                     with else_():
                         qubit_target.xy.play('x180')
