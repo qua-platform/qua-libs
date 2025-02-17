@@ -4,8 +4,6 @@ QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 
 import numpy as np
 from scipy.signal.windows import gaussian
-import os
-from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
 

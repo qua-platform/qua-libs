@@ -7,7 +7,6 @@ from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
 
-
 #######################
 # AUXILIARY FUNCTIONS #
 #######################

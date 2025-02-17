@@ -168,7 +168,7 @@ def measurement_basis_change(k, l, qubit1, qubit2):
     # Change basis with operation k on qubit1
     with switch_(k):
         with case_(0):
-            wait(pi_len // 4, f"q{qubit2}_xy")
+            wait(pi_len // 4, f"q{qubit1}_xy")
         with case_(1):
             play("x180", f"q{qubit1}_xy")
         with case_(2):
@@ -224,6 +224,10 @@ with program() as two_qubit_process_tomography:
                         m2, 0, m2 <= 5, m2 + 1
                     ):  # QUA for_ loop for switching between Bloch basis projections/measurements on qubit 2
 
+                        # NOTE: the following frame and phase resets may not be necessary, depending on whether you're
+                        # investigating more trivial single qubit gates or more complex entangling gates where
+                        # relative phases are more important
+
                         reset_frame(f"q{qubit1}_xy")
                         reset_frame(f"q{qubit2}_xy")
 
@@ -238,7 +242,7 @@ with program() as two_qubit_process_tomography:
                         # apply the process to be analysed
                         analysed_process(qubit1, qubit2)
 
-                        aling()
+                        align()
 
                         # projective measurement basis change
                         measurement_basis_change(m1, m2, qubit1, qubit2)
