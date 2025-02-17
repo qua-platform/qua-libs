@@ -203,6 +203,10 @@ else:
     print(f"Offsets to add for I: {ds.offsets_I.values * 1000} mV")
     print(f"Offsets to add for Q: {ds.offsets_Q.values * 1000} mV")
 
+    # Revert the change done at the beginning of the node
+    for resonator in tracked_resonators:
+        resonator.revert_changes()
+
     with node.record_state_updates():
         for q in qubits:
             if node.parameters.time_of_flight_in_ns is not None:
@@ -210,38 +214,35 @@ else:
             else:
                 q.resonator.time_of_flight += int(ds.sel(qubit=q.name).delays)
 
-    # Update the offsets per controller for each qubit
-    for con in np.unique(ds.con.values):
-        for i, q in enumerate(ds.where(ds.con == con).qubit.values):
-            # Only add the offsets once,
-            if i == 0:
-                if machine.qubits[q].resonator.opx_input_I.offset is not None:
-                    machine.qubits[q].resonator.opx_input_I.offset += float(
-                        ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
-                    )
+        # Update the offsets per controller for each qubit
+        for con in np.unique(ds.con.values):
+            for i, q in enumerate(ds.where(ds.con == con).qubit.values):
+                # Only add the offsets once,
+                if i == 0:
+                    if machine.qubits[q].resonator.opx_input_I.offset is not None:
+                        machine.qubits[q].resonator.opx_input_I.offset += float(
+                            ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
+                        )
+                    else:
+                        machine.qubits[q].resonator.opx_input_I.offset = float(
+                            ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
+                        )
+                    if machine.qubits[q].resonator.opx_input_Q.offset is not None:
+                        machine.qubits[q].resonator.opx_input_Q.offset += float(
+                            ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
+                        )
+                    else:
+                        machine.qubits[q].resonator.opx_input_Q.offset = float(
+                            ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
+                        )
+                # else copy the values from the updated qubit
                 else:
-                    machine.qubits[q].resonator.opx_input_I.offset = float(
-                        ds.where(ds.con == con).offsets_I.mean(dim="qubit").values
-                    )
-                if machine.qubits[q].resonator.opx_input_Q.offset is not None:
-                    machine.qubits[q].resonator.opx_input_Q.offset += float(
-                        ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
-                    )
-                else:
-                    machine.qubits[q].resonator.opx_input_Q.offset = float(
-                        ds.where(ds.con == con).offsets_Q.mean(dim="qubit").values
-                    )
-            # else copy the values from the updated qubit
-            else:
-                machine.qubits[q].resonator.opx_input_I.offset = machine.qubits[
-                    ds.where(ds.con == con).qubit.values[0]
-                ].resonator.opx_input_I.offset
-                machine.qubits[q].resonator.opx_input_Q.offset = machine.qubits[
-                    ds.where(ds.con == con).qubit.values[0]
-                ].resonator.opx_input_Q.offset
-    # Revert the change done at the beginning of the node
-    for resonator in tracked_resonators:
-        resonator.revert_changes()
+                    machine.qubits[q].resonator.opx_input_I.offset = machine.qubits[
+                        ds.where(ds.con == con).qubit.values[0]
+                    ].resonator.opx_input_I.offset
+                    machine.qubits[q].resonator.opx_input_Q.offset = machine.qubits[
+                        ds.where(ds.con == con).qubit.values[0]
+                    ].resonator.opx_input_Q.offset
 
     # %% {Save_results}
     node.outcomes = {rr.name: "successful" for rr in resonators}
