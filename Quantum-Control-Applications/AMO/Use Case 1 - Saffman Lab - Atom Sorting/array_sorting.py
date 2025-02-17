@@ -604,7 +604,7 @@ with program() as atom_sorting:
 #####################################
 Simulation = False
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 if not Simulation:
     # Open a quantum machine

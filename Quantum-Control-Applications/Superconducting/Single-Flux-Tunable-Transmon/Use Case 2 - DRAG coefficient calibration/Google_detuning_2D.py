@@ -71,7 +71,8 @@ with program() as drag:
         n_st.save("iteration")
         state_st.boolean_to_int().buffer(len(iters)).average().save("state")
 
-qmm = QuantumMachinesManager(host="192.168.88.10", port=80)
+
+qmm = QuantumMachinesManager(**qmm_settings)
 
 xaxis = []
 yaxis = []

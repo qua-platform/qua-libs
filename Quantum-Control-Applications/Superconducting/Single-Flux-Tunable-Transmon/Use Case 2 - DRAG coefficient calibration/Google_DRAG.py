@@ -74,7 +74,7 @@ with program() as drag:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host="192.168.88.10", port=80)
+qmm = QuantumMachinesManager(**qmm_settings)
 # Open quantum machine
 qm = qmm.open_qm(config, close_other_machines=False)
 # Execute QUA program

@@ -1,19 +1,19 @@
 """
 hello_octave.py: template for basic usage of the Octave
 """
+import os
+import time
 
 from qm import QuantumMachinesManager
 from qm.qua import *
-from qm.octave import *
 from configuration import *
 from qm import SimulationConfig
-import time
 
 
 ###################################
 # Open Communication with the QOP #
 ###################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave_calibration_db_path=os.getcwd())
 
 ###################
 # The QUA program #

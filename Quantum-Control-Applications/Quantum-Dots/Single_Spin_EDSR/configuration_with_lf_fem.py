@@ -35,20 +35,20 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
 
-# Set octave_config to None if no octave are present
-octave_config = None
-
-
 #############################################
 #              OPX PARAMETERS               #
 #############################################
 sampling_rate = int(1e9)  # or, int(2e9)
+
 
 ######################
 #       READOUT      #
@@ -134,7 +134,6 @@ config = {
                             #   "amplified": 5Vpp (-2.5V to 2.5V), 330MHz bandwidth
                             # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             "output_mode": "amplified",
-                            # Note, 'offset' takes absolute values, e.g., if in amplified mode and want to output 2.0 V, then set "offset": 2.0
                             # The "sampling_rate" can be adjusted by using more FEM cores, i.e.,
                             #   1 GS/s: uses one core per output (default)
                             #   2 GS/s: uses two cores per output

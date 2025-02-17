@@ -11,7 +11,7 @@ from qualang_tools.plot import interrupt_on_close
 ######################################
 #  Open Communication with the QOP  #
 ######################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 # Open quantum machine
 qm = qmm.open_qm(config)

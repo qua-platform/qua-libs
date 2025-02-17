@@ -18,8 +18,8 @@ qop_ip = "127.0.0.1"
 cluster_name = "my_cluster"
 qop_port = 80
 
-# Set octave_config to None if no octave are present
-octave_config = None
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 # Frequencies
 blue_sideband = 140e6  # 287e6#253e6

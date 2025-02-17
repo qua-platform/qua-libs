@@ -36,7 +36,9 @@ qop_ip = "127.0.0.1"
 cluster_name = "my_cluster"
 qop_port = 80
 
-octave_config = None
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
 con = "con1"
 fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 
