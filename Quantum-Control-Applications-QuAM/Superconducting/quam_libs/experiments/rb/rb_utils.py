@@ -27,8 +27,8 @@ def rb_decay_curve(x, A, alpha, B):
 
 class RBBase:
     
-    known_basis_gates = ['cz', 'rz', 'sx', 'x', 'sy', 'y']
-    map_to_known_basis_gates = {'x180': 'x', 'y180': 'y', 'x90': 'sx', 'y90': 'sy'}
+    known_basis_gates = ['cz', 'z','sz', 'rz', 'sx', 'x', 'sy', 'y']
+    map_to_known_basis_gates = {'x180': 'x', 'y180': 'y', 'x90': 'sx', 'y90': 'sy', 'z90': 'sz', 'z180': 'z'}
     
     def __init__(self, circuit_lengths: list[int], num_circuits_per_length: int, basis_gates: list[str] = ['cz', 'rz', 'sx', 'x'], 
                  num_qubits: int = 2, seed: int | None = None):
