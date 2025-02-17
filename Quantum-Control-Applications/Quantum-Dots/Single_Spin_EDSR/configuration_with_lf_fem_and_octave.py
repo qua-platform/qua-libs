@@ -17,7 +17,9 @@ qop_port = None  # Write the QOP port if version < QOP220
 octave_calibration_db_path = os.getcwd()
 
 # Combined settings for initializing the QuantumMachinesManager
-qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path)
+qmm_settings = dict(
+    host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path
+)
 
 #####################
 # OPX configuration #
