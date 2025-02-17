@@ -16,6 +16,9 @@ from qualang_tools.loops import from_array
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+# In QOP versions > 2.2.2, the Octave is automatically deteced by the QOP.
+# For QOP versions <= 2.2.2, see Tutorials/intro-to-octave/qop 222 and below.
+# Below you can specify the path for the Octave mixer calibration's database file.
 octave_calibration_db_path = os.getcwd()  # Write the path to the Octave's mixer calibration database
 
 # Combined settings for initializing the QuantumMachinesManager

@@ -16,6 +16,9 @@ from qualang_tools.units import unit
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+# In QOP versions > 2.2.2, the Octave is automatically deteced by the QOP.
+# For QOP versions <= 2.2.2, see Tutorials/intro-to-octave/qop 222 and below.
+# Below you can specify the path for the Octave mixer calibration's database file.
 octave_calibration_db_path = os.getcwd()
 
 # Combined settings for initializing the QuantumMachinesManager
