@@ -2,7 +2,7 @@ import numpy as np
 
 from typing import Optional
 
-from quam.components import MWChannel
+from quam.components.channels import MWChannel
 
 
 def set_output_power_mw_channel(channel: MWChannel, power_in_dbm: float, operation: str,
@@ -13,9 +13,11 @@ def set_output_power_mw_channel(channel: MWChannel, power_in_dbm: float, operati
     given operation’s amplitude to match exactly the target power level.
 
     Parameters:
+        channel:
         power_in_dbm (float): The target power level in dBm for the operation.
+        operation (str): The operation for which the power setting is applied.
         full_scale_power_dbm (Optional[int]): The full-scale power in dBm within [-41, 10] in 3 dB increments.
-        operation (Optional[str]): The operation for which the power setting is applied.
+        max_amplitude (Optional[float]):
 
     """
     allowed_full_scale_power_in_dbm_values = np.arange(-41, 11, 3)

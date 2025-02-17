@@ -43,63 +43,22 @@ pip install -e .
 > **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_libs`!
 
 ## Setup
-The QuAM framework stores a database of calibration values in a collection of .json files. These files are generated when you run `make_quam.py`. In order to use them in experiment, you need to direct QuAM to the correct location. You can do this by creating an environment variable called `QUAM_STATE_PATH`, and setting its value to the directory of the `quam_state` folder created during `make_quam.py`.
+The QuAM framework stores a database of calibration values in a collection of .json files. 
+These files are generated when you run `make_quam.py`. 
+In order to use them in experiment, you need to setup a `qualibrate` config file, which will reside in `~/.qualibrate/config.toml`.
 
-### Setting Up the `QUAM_STATE_PATH` Environment Variable
-#### Linux
 1. Open a terminal.
-2. Edit the `/etc/environment` file:
-   ```sh
-   sudo nano /etc/environment
-   ```
-3. Add the line:
-   ```sh
-   QUAM_STATE_PATH="/path/to/configuration/quam_state"
-   ```
-4. Save the file and log out, then log back in for changes to take effect.
+2. Navigate to the main directory `qua-libs/Quantum-Control-Applications-QuAM/Superconducting/`.
+3. Run `python create_qualibrate_config.py`.  
+  This will interactively create a `qualibrate` config file in the `configuration` folder.
+  The available settings are:
+  - `project`: The name of the project.
+  - `storage_location`: The location to store the calibration data.
+  - `calibration_library_folder`: The location of the calibration nodes.
+  - `quam_state_path`: The location of the QuAM state.
 
-#### Mac
-1. Open a terminal.
-2. Edit the `/etc/launchd.conf` file:
-   ```sh
-   sudo nano /etc/launchd.conf
-   ```
-3. Add the line:
-   ```sh
-   setenv QUAM_STATE_PATH "/path/to/configuration/quam_state"
-   ```
-4. Save the file and restart your system for changes to take effect.
+Usually the default values are fine, but you can change them to suit your needs, for example if you want to use a different storage location for the calibration data.
 
-#### Windows
-1. Press `Win + X`, select **System**.
-2. Click **Advanced system settings** > **Environment Variables**.
-3. Click **New** under **System variables**.
-4. Set **Variable name** to `QUAM_STATE_PATH`.
-5. Set **Variable value** to `C:\path\to\configuration\quam_state`.
-6. Click **OK** to close all windows.
-
-The `QUAM_STATE_PATH` environment variable is now set up globally on your system.
-
-## Setting up the browser frontend (Qualibrate)
-> **_NOTE:_**  For more detailed and up-to-date documentation about Qualibrate, see the [documentation](https://qua-platform.github.io/qualibrate/).
- 
-While the calibration nodes are runnable as individual scripts, they can also be run through a browser. The frontend 
-also allows for the execution of calibration graphs.
-
-During the installation of `quam_libs`, the requirement `qualibrate` was installed. We can use the command-line to 
-generate a config for `qualibrate` which points the frontend application to our calibration nodes directory as follows:
-```sh
-# change into the folder containing the `calibration_graph`
-cd path/that/contains/calibration_graph
-
-# replace the values in this command with ones suitable for your project.
-qualibrate config \
-  --app-project <name_of_your_project> \
-  --app-user-storage <path_to_your_data_folder> \
-  --runner-calibration-library-folder <path_to_your_calibration_nodes> \
-  --active-machine-path <path_to_your_quam_state>
-
-```
 To verify that `qualibrate` installed correctly, you can launch the web interface:
 ```shell
 qualibrate start
@@ -259,7 +218,7 @@ according to the wiring and the QUAM components. The default values used for the
 under the [quam_builder](./quam_libs/quam_builder) folder.
 
 ```python
-from quam_libs.components import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.quam_builder.machine import build_quam
 
 path = "./quam_state"
@@ -277,6 +236,7 @@ quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_setting
 Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
+
 ```python
 import json
 from qm import SimulationConfig
@@ -285,7 +245,7 @@ from quam import QuamDict
 from quam.components.ports import MWFEMAnalogOutputPort, MWFEMAnalogInputPort
 from quam.components.channels import InOutMWChannel, MWChannel
 from quam.components.pulses import SquarePulse, SquareReadoutPulse
-from quam_libs.components import QuAM
+from configuration.my_quam import QuAM
 
 machine = QuAM()  # or, QuAM.load() if the state already exists
 
@@ -296,38 +256,38 @@ machine.wiring = QuamDict({})
 # ^^^
 
 mw_out = MWChannel(
-   id = "mw_out",
-   operations = {
-      "cw": SquarePulse(amplitude=1, length=100),
-      "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   upconverter=1,
-   intermediate_frequency=20e6
+    id="mw_out",
+    operations={
+        "cw": SquarePulse(amplitude=1, length=100),
+        "readout": SquareReadoutPulse(amplitude=0.2, length=100), },
+    opx_output=MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=2, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    upconverter=1,
+    intermediate_frequency=20e6
 )
 mw_in = InOutMWChannel(
-   id = "mw_in",
-   operations = {
-      "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
-   opx_output = MWFEMAnalogOutputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
-   ),
-   opx_input = MWFEMAnalogInputPort(
-      controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
-   ),
-   upconverter=1,
-   time_of_flight=28,
-   intermediate_frequency=10e6
+    id="mw_in",
+    operations={
+        "readout": SquareReadoutPulse(amplitude=0.1, length=100), },
+    opx_output=MWFEMAnalogOutputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, upconverter_frequency=int(3e9), full_scale_power_dbm=-14
+    ),
+    opx_input=MWFEMAnalogInputPort(
+        controller_id="con1", fem_id=1, port_id=1, band=1, downconverter_frequency=int(3e9)
+    ),
+    upconverter=1,
+    time_of_flight=28,
+    intermediate_frequency=10e6
 )
 
 machine.qubits["dummy_out"] = mw_out
 machine.qubits["dummy_in"] = mw_in
 
 with program() as prog:
-   mw_out.play("cw")
-   mw_in.align()
-   mw_in.play("readout")
+    mw_out.play("cw")
+    mw_in.align()
+    mw_in.play("readout")
 
 config = machine.generate_config()
 qmm = machine.connect()
@@ -342,7 +302,7 @@ machine.save("dummy_state.json")
 # %%
 # View the corresponding "raw-QUA" config
 with open("dummy_qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ```
 ### [4. Updating the parameters of state.json](./configuration/modify_quam.py)
 Once the state is created, each parameter can be updated based on the desired initial values using
@@ -352,7 +312,7 @@ Once the state is created, each parameter can be updated based on the desired in
 # %%
 import numpy as np
 import json
-from quam_libs.components import QuAM
+from configuration.my_quam import QuAM
 from quam_libs.quam_builder.machine import save_machine
 
 # Load QuAM
@@ -367,10 +327,10 @@ rr_if = rr_freq - rr_LO
 rr_max_power_dBm = -8
 
 for i, q in enumerate(machine.qubits):
-   machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
-   machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
-   machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
-   machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
+    machine.qubits[q].resonator.opx_output.full_scale_power_dbm = rr_max_power_dBm
+    machine.qubits[q].resonator.opx_output.upconverter_frequency = rr_LO
+    machine.qubits[q].resonator.opx_input.downconverter_frequency = rr_LO
+    machine.qubits[q].resonator.intermediate_frequency = rr_if[i]
 
 # %%
 # save into state.json
@@ -379,7 +339,7 @@ save_machine(machine, path)
 # %%
 # View the corresponding "raw-QUA" config
 with open("qua_config.json", "w+") as f:
-   json.dump(machine.generate_config(), f, indent=4)
+    json.dump(machine.generate_config(), f, indent=4)
 ````
 
 Note that these parameters serve as a starting point before starting to calibrate the chip and their values will be
