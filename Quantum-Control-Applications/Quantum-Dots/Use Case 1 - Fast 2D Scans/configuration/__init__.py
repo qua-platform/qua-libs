@@ -12,6 +12,8 @@ from .digital_waveforms import digital_waveforms
 from qualang_tools.units import unit
 
 qop_ip = "127.0.0.1"
+qmm_settings = dict(qop_ip=qop_ip)
+
 u = unit()
 
 config = {

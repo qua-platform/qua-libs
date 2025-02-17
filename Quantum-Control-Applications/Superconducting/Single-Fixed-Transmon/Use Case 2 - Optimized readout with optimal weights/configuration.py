@@ -65,6 +65,11 @@ def readout_macro(threshold=None, state=None, I=None, Q=None):
 #############
 
 qop_ip = "127.0.0.1"
+qop_port = None
+cluster_name = "Cluster_1"
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 # Qubits
 qubit_IF = -95.82483696051314e6 + 0.15e6

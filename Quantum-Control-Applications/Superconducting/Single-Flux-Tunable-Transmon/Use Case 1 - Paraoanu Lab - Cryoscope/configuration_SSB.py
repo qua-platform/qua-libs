@@ -23,6 +23,9 @@ def IQ_imbalance(g, phi):
 qop_ip = "127.0.0.1"
 qop_port = 80
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port)
+
 # Qubits
 qubit_LO = 7.4e9
 qubit_IF = qubit_LO - 7.27e9 - 3.6e6 + 0.325e6 - 0.234e6 - 0.0124e6

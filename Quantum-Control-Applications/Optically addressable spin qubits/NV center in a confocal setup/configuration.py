@@ -31,8 +31,9 @@ def IQ_imbalance(g, phi):
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-# Set octave_config to None if no octave are present
-octave_config = None
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 # Frequencies
 NV_IF_freq = 40 * u.MHz

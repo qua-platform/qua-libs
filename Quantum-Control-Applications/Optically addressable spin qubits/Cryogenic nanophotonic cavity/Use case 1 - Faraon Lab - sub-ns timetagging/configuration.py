@@ -44,6 +44,9 @@ def generalized_gaussian(amplitude, length, sigma, exponent):
 u = unit()
 qop_ip = "192.168.1.209"
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip)
+
 # Frequencies
 Yb_IF_freq = 275.76e6 + 500e3  # in units of Hz
 Yb_LO_freq = 2.83e9  # in units of Hz

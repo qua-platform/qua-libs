@@ -120,7 +120,7 @@ with program() as iswap:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ###########################
 # Run or Simulate Program #

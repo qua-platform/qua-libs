@@ -14,7 +14,8 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
-octave_config = None
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 con = "con1"
 fem = 5

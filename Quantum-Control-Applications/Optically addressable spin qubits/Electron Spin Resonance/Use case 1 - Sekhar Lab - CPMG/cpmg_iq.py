@@ -11,7 +11,7 @@ from qm.simulate.credentials import create_credentials
 # Open quantum machine manager #
 ################################
 
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ########################
 # Open quantum machine #

@@ -35,6 +35,10 @@ def print_2d(matrix):
 
 qop_ip = "127.0.0.1"
 qop_port = 80
+cluster_name = "Cluster_1"
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
 
 # Units
 ms = 1e6

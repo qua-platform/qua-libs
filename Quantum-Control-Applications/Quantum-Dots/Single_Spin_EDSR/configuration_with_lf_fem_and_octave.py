@@ -16,20 +16,16 @@ from qualang_tools.voltage_gates import VoltageGateSequence
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+octave_calibration_db_path = os.getcwd()
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path)
 
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
-
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
 
 
 #############################################

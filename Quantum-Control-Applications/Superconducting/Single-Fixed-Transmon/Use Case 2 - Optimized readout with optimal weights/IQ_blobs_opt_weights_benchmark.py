@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip, qop_port, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ###################
 # The QUA program #

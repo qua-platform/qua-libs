@@ -5,10 +5,10 @@ from qm.simulate import SimulationConfig
 
 import numpy as np
 import matplotlib.pyplot as plt
-from configuration import config, ge_IF, qubit_freq, disc_file_jpa
+from configuration import config, ge_IF, qubit_freq, disc_file_jpa, qm_settings
 from TwoStateDiscriminator_2103 import TwoStateDiscriminator
 
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(**qm_settings)
 discriminator = TwoStateDiscriminator(qmm, config, True, "rr", disc_file_jpa, lsb=True)
 
 

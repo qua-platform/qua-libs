@@ -127,7 +127,7 @@ with program() as cryoscope:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager()
+qmm = QuantumMachinesManager(**qmm_settings)
 # Open quantum machine
 qm = qmm.open_qm(config)
 # Execute QUA program

@@ -7,7 +7,7 @@ from configuration import *
 
 
 # Calibrate the Octave's mixers
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, octave=octave_config, log_level="ERROR")
+qmm = QuantumMachinesManager(**qmm_settings)
 qm = qmm.open_qm(config)
 
 

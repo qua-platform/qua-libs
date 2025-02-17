@@ -22,15 +22,11 @@ qop_ip = "192.168.5.7"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
-
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
 
 
 #####################

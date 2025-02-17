@@ -87,7 +87,7 @@ with program() as charge_stability_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ###########################
 # Run or Simulate Program #
@@ -123,10 +123,10 @@ else:
         # Fetch the data from the last OPX run corresponding to the current slow axis iteration
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
-        DC_signal = u.demod2volts(DC_signal, readout_len)
+        DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
         progress_counter(iteration, n_points_slow, start_time=results.start_time)
         # Plot data

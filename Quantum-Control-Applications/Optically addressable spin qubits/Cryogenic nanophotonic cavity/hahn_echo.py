@@ -100,7 +100,7 @@ with program() as hahn_echo:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(qop_ip)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 simulate = False
 if simulate:

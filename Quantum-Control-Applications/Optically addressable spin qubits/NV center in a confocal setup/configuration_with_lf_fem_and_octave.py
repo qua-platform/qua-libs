@@ -16,18 +16,13 @@ from qualang_tools.loops import from_array
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+octave_calibration_db_path = os.getcwd()  # Write the path to the Octave's mixer calibration database
+
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path)
 
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
-
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
-
 
 #############
 # VARIABLES #

@@ -100,7 +100,7 @@ def meas():
 ##############################
 ##  Two-qubit RB execution  ##
 ##############################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name)  # initialize qmm
+qmm = QuantumMachinesManager(**qmm_settings)  # initialize qmm
 
 # create RB experiment from configuration and defined functions
 rb = TwoQubitRb(

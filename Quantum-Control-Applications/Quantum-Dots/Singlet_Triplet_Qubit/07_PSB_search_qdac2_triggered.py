@@ -24,16 +24,15 @@ Before proceeding to the next node:
     - Identify the PSB region and update the config.
 """
 
-from qm.qua import *
-from qm import QuantumMachinesManager
-from qm import SimulationConfig
-from configuration import *
-from qualang_tools.results import progress_counter, fetching_tool
-from qualang_tools.plot import interrupt_on_close
-from qualang_tools.addons.variables import assign_variables_to_element
-from qdac2_driver import QDACII, load_voltage_list
 import matplotlib.pyplot as plt
-from macros import RF_reflectometry_macro, DC_current_sensing_macro
+from configuration import *
+from macros import DC_current_sensing_macro, RF_reflectometry_macro
+from qdac2_driver import QDACII, load_voltage_list
+from qm import QuantumMachinesManager, SimulationConfig
+from qm.qua import *
+from qualang_tools.addons.variables import assign_variables_to_element
+from qualang_tools.plot import interrupt_on_close
+from qualang_tools.results import fetching_tool, progress_counter
 
 ###################
 # The QUA program #
@@ -118,7 +117,7 @@ with program() as PSB_search_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ## QDAC2 section
 # Create the qdac instrument
@@ -173,10 +172,10 @@ else:
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
         min_idx = min(I.shape[0], Q.shape[0])
-        S = u.demod2volts(I[:min_idx, :] + 1j * Q[:min_idx, :], reflectometry_readout_length)
+        S = u.demod2volts(I[:min_idx, :] + 1j * Q[:min_idx, :], reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
-        DC_signal = u.demod2volts(DC_signal, readout_len)
+        DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
         progress_counter(iteration, n_points_slow)
         # Plot data

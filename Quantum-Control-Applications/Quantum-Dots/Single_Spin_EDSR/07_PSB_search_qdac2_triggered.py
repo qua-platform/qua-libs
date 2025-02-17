@@ -118,7 +118,7 @@ with program() as PSB_search_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 ## QDAC2 section
 # Create the qdac instrument
@@ -173,10 +173,10 @@ else:
         I, Q, DC_signal, iteration = results.fetch_all()
         # Convert results into Volts
         min_idx = min(I.shape[0], Q.shape[0])
-        S = u.demod2volts(I[:min_idx, :] + 1j * Q[:min_idx, :], reflectometry_readout_length)
+        S = u.demod2volts(I[:min_idx, :] + 1j * Q[:min_idx, :], reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
-        DC_signal = u.demod2volts(DC_signal, readout_len)
+        DC_signal = u.demod2volts(DC_signal, readout_len, single_demod=True)
         # Progress bar
         progress_counter(iteration, n_points_slow)
         # Plot data

@@ -1,11 +1,9 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & Octave
 """
-
+import os
 from pathlib import Path
 import numpy as np
-import os
-from qm.octave import QmOctaveConfig
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
 
@@ -22,14 +20,10 @@ u = unit(coerce_to_integer=True)
 qop_ip = "172.16.33.116"  # Write the QM router IP address
 cluster_name = "Beta_8"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+octave_calibration_db_path = os.getcwd()
 
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
-
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave_calibration_db_path=octave_calibration_db_path)
 
 #####################
 # OPX configuration #
@@ -436,7 +430,7 @@ config = {
             },
         },
         "cr_cancel_c1t2": {
-            "RF_inputs": {"port": ("oct1", 2)},
+            "RF_inputs": {"port": ("oct1", 3)},
             "intermediate_frequency": cr_cancel_IF_c1t2,  # in Hz
             "operations": {
                 "cw": "const_pulse",
@@ -445,7 +439,7 @@ config = {
             },
         },
         "cr_cancel_c2t1": {
-            "RF_inputs": {"port": ("oct1", 3)},
+            "RF_inputs": {"port": ("oct1", 2)},
             "intermediate_frequency": cr_cancel_IF_c2t1,  # in Hz
             "operations": {
                 "cw": "const_pulse",

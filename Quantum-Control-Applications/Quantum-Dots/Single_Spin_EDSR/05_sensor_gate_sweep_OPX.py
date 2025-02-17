@@ -73,7 +73,7 @@ with program() as charge_sensor_sweep:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(**qmm_settings)
 
 #######################
 # Simulate or execute #
@@ -102,7 +102,7 @@ else:
         # Fetch results
         I, Q, iteration = results.fetch_all()
         # Convert results into Volts
-        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length)
+        S = u.demod2volts(I + 1j * Q, reflectometry_readout_length, single_demod=True)
         R = np.abs(S)  # Amplitude
         phase = np.angle(S)  # Phase
         # Progress bar

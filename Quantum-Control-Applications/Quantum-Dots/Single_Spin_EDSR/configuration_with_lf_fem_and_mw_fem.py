@@ -15,14 +15,15 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
 #####################
 # OPX configuration #
 #####################
 con = "con1"
 lf_fem = 1  # Should be the LF-FEM index, e.g., 1
 mw_fem = 5  # Should be the MW-FEM index, e.g., 5
-
-octave_config = None
 
 #############################################
 #              OPX PARAMETERS               #

@@ -33,10 +33,11 @@ qop_ip = "127.0.0.1"
 qop_port = None
 cluster_name = "my_cluster_1"
 
+# Combined settings for initializing the QuantumMachinesManager
+qmm_settings = dict(host=qop_ip, port=qop_port, cluster_name=cluster_name)
+
 # Path to save data
 save_dir = Path().absolute() / "QM" / "INSTALLATION" / "data"
-# Set octave_config to None if no octave are present
-octave_config = None
 
 #############################################
 #                  Qubits                   #
