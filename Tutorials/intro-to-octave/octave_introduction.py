@@ -267,12 +267,9 @@ config = {
     },
 }
 
-# Create the octave config object
-octave_config = QmOctaveConfig()
-# Specify where to store the outcome of the calibration (correction matrix, offsets...)
-octave_config.set_calibration_db(os.getcwd())
-
-qmm = QuantumMachinesManager(host=qop_ip, port=opx_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(
+    host=qop_ip, port=opx_port, cluster_name=cluster_name, octave_calibration_db_path=os.getcwd()
+)
 
 qm = qmm.open_qm(config)
 

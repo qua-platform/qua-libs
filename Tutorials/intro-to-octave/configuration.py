@@ -2,23 +2,12 @@
 Octave configuration working up to QOP222 and qm-qua==1.1.7.
 """
 
-import os
-from qm.octave import QmOctaveConfig
-
 ######################
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
-
-############################
-# Set octave configuration #
-############################
-octave_config = QmOctaveConfig()
-# Location of the calibration database
-octave_config.set_calibration_db(os.getcwd())
-
 
 #####################
 # OPX configuration #
