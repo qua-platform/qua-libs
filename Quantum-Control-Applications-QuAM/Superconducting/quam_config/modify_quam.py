@@ -2,7 +2,7 @@
 import json
 from qualang_tools.units import unit
 from quam_config import QuAM
-from quam_builder.quam_builder.superconducting.build_quam import save_machine
+from quam_builder.builder.superconducting.build_quam import save_machine
 import numpy as np
 
 # TODO: to do properly and compare with oqc
@@ -18,9 +18,7 @@ def get_band(freq):
         raise ValueError(f"The specified frequency {freq} HZ is outside of the MW fem bandwidth [50 MHz, 10.5 GHz]")
 
 
-path = "./quam_state"
-
-machine = QuAM.load(path)
+machine = QuAM.load()
 
 u = unit(coerce_to_integer=True)
 
@@ -31,13 +29,13 @@ for i in range(len(machine.qubits.items())):
     machine.qubits[f"q{i+1}"].grid_location = f"{i},0"
 
 # Update frequencies
-rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147]) * u.GHz
+rr_freq = np.array([4.395, 4.412, 4.521, 4.728, 4.915, 5.147, 5.247, 5.347]) * u.GHz
 rr_LO = 4.75 * u.GHz
 rr_if = rr_freq - rr_LO
 rr_max_power_dBm = 4
 
-xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.254, 5.978]) * u.GHz
-xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 6.0]) * u.GHz
+xy_freq = np.array([6.012, 6.421, 6.785, 7.001, 7.083, 7.121, 7.184, 7.254]) * u.GHz
+xy_LO = np.array([6.0, 6.5, 6.5, 7.0, 7.04, 7.1, 7.1, 7.1]) * u.GHz
 xy_if = xy_freq - xy_LO
 xy_max_power_dBm = 1
 
@@ -83,7 +81,7 @@ for i, q in enumerate(machine.qubits):
 
 # %%
 # save into state.json
-save_machine(machine, path)
+save_machine(machine)
 
 # %%
 # View the corresponding "raw-QUA" config

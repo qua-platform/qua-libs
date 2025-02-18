@@ -25,14 +25,15 @@ Before proceeding to the next node:
 from qualibrate import QualibrationNode
 
 from quam_config import QuAM
-from quam_builder.lib.instrument_limits import instrument_limits
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_libs.instrument_limits import instrument_limits
 from quam_experiments.macros import qua_declaration
-from quam_experiments.simulation import simulate_and_plot
+from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.execution import print_progress_bar
-from quam_experiments.qubit_spectroscopy.parameters import Parameters
-from quam_experiments.qubit_spectroscopy.node import get_optional_pulse_duration
-from quam_experiments.qubit_spectroscopy.analysis import fetch_dataset, fit_qubits
-from quam_experiments.qubit_spectroscopy.plotting import plot_qubit_response
+from quam_experiments.experiments.qubit_spectroscopy.parameters import Parameters
+from quam_experiments.experiments.qubit_spectroscopy.node import get_optional_pulse_duration
+from quam_experiments.experiments.qubit_spectroscopy.analysis import fetch_dataset, fit_qubits
+from quam_experiments.experiments.qubit_spectroscopy.plotting import plot_qubit_response
 
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session
@@ -72,7 +73,7 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Get the relevant QuAM components
-qubits = machine.get_qubits_used_in_node(node)
+qubits = get_qubits_used_in_node(machine, node)
 resonators = machine.get_resonators_used_in_node(node)
 num_qubits = len(qubits)
 # Open Communication with the QOP

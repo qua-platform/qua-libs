@@ -113,9 +113,9 @@ It contains three files whose working principles are explained in more details b
 
 ### quam_builder
 This folder contains all the utility functions necessary to create the wiring or build the QUAM, as well as QUA macros and data processing tools:
-* [components](./quam_builder/components): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
-* [lib](./quam_builder/lib): contains several utility functions for saving, fitting and post-processing data.
-* [quam_builder](./quam_builder/quam_builder): contains the main functions called in [machine.py](./quam_builder/quam_builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_builder/components) folder. It also contains the [pulses.py](./quam_builder/quam_builder/pulses.py) file where the default qubits pulses are defined.
+* [components](./quam_builder.architecture): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
+* [lib](./quam_libs): contains several utility functions for saving, fitting and post-processing data.
+* [quam_builder](./quam_builder.builder): contains the main functions called in [machine.py](./quam_builder.builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_builder.architecture) folder. It also contains the [pulses.py](./quam_builder.builder/pulses.py) file where the default qubits pulses are defined.
 
 ## How to generate the QuAM
 Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QuAM](https://github.com/qua-platform/quam)) for the desired
@@ -176,7 +176,7 @@ allocate_wiring(connectivity, instruments)
    The wiring and port mapping can also be visualized in a matplotlib figure.
 
 ```python
-from quam_builder.quam_builder.machine import build_quam_wiring
+from quam_builder.builder.machine import build_quam_wiring
 from qualang_tools.wirer import visualize
 # Build the wiring and network into a QuAM machine and save it as "wiring.json"
 build_quam_wiring(connectivity, host_ip, cluster_name, path)
@@ -186,21 +186,21 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 ```
 ![opx1000_wiring](./.img/opx1000_wiring.PNG)
 
-### [2. The QuAM components](./quam_builder/components)
+### [2. The QuAM components](./quam_builder.architecture)
 Describe the structure of the QuAM components and how they can be customized, what to pay attention to...
 Also, how to create a new one and update the wiring and build_quam accordingly.
 
 The hierarchy and structure of QUAM can be detailed as follows:
-1. [quam_root.py](./quam_builder/components/quam_root.py) represents the highest level in terms of hierarchy.
+1. [quam_root.py](./quam_builder.architecture/quam_root.py) represents the highest level in terms of hierarchy.
    It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
    Its methods are usually applied to all qubits or active qubits.
-2. The definition of a QuAM transmon is defined in [transmon.py](./quam_builder/components/transmon.py). It contains the
+2. The definition of a QuAM transmon is defined in [transmon.py](./quam_builder.architecture/transmon.py). It contains the
    general transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
    `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
-   [transmon_pair.py](./quam_builder/components/transmon_pair.py).
+   [transmon_pair.py](./quam_builder.architecture/transmon_pair.py).
 3. The QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
    directly defined as an `IQChannel`, or from user-defined components such as
-   [readout_resonator](./quam_builder/components/readout_resonator.py) or [flux_line](./quam_builder/components/flux_line.py),
+   [readout_resonator](./quam_builder.architecture/readout_resonator.py) or [flux_line](./quam_builder.architecture/flux_line.py),
    which allows the customization of their attributes.
 
 
@@ -215,11 +215,11 @@ according to the wiring file. The Octaves connection parameters can also be edit
 
 The QuAM generation happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
 according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found
-under the [quam_builder](./quam_builder/quam_builder) folder.
+under the [quam_builder](./quam_builder.builder) folder.
 
 ```python
 from quam_config import QuAM
-from quam_builder.quam_builder.machine import build_quam
+from quam_builder.builder.machine import build_quam
 
 path = "./quam_state"
 
@@ -233,7 +233,7 @@ octave_settings = {}
 quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_settings)
 ```
 
-Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_builder/quam_builder/pulses.py).
+Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_builder.builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
 
@@ -313,7 +313,7 @@ Once the state is created, each parameter can be updated based on the desired in
 import numpy as np
 import json
 from quam_config import QuAM
-from quam_builder.quam_builder.machine import save_machine
+from quam_builder.builder.machine import save_machine
 
 # Load QuAM
 path = "./quam_state"

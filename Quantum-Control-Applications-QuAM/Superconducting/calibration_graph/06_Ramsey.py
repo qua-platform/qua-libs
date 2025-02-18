@@ -21,11 +21,12 @@ from dataclasses import asdict
 # %% {Imports}
 from qualibrate import QualibrationNode
 from quam_config import QuAM
-from quam_experiments.ramsey.analysis.fetch_dataset import fetch_dataset
-from quam_experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
-from quam_experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from quam_experiments.ramsey.plotting import plot_ramseys_data_with_fit
-from quam_experiments.simulation import simulate_and_plot
+from quam_experiments.experiments.ramsey.analysis.fetch_dataset import fetch_dataset
+from quam_experiments.experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
+from quam_experiments.experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from quam_experiments.experiments.ramsey.plotting import plot_ramseys_data_with_fit
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.workflow.simulation import simulate_and_plot
 from quam_experiments.macros import qua_declaration, readout_state
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -57,7 +58,7 @@ u = unit(coerce_to_integer=True)
 
 machine = QuAM.load()
 
-qubits = machine.get_qubits_used_in_node(node.parameters)
+qubits = get_qubits_used_in_node(machine, node.parameters)
 num_qubits = len(qubits)
 
 config = machine.generate_config()

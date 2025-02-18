@@ -1,8 +1,8 @@
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
-from quam_builder.quam_builder.qop_connectivity import build_quam_wiring
-from quam_builder.quam_builder.superconducting import build_quam
-from my_quam import QuAM
+from quam_builder.builder.qop_connectivity import build_quam_wiring
+from quam_builder.builder.superconducting import build_quam
+from quam_config import QuAM
 
 ########################################################################################################################
 # %%                                              Define static parameters
@@ -10,8 +10,7 @@ from my_quam import QuAM
 host_ip = "172.16.33.101"  # QOP IP address
 port = None  # QOP Port
 cluster_name = "Cluster_81"  # Name of the cluster
-# Desired location of wiring.json and state.json - The folder must not contain other json files
-path = "./quam_state"
+calibration_db_path = "/path/to/calibration_db"
 
 ########################################################################################################################
 # %%                                      Define the available instrument setup
@@ -63,7 +62,7 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 ########################################################################################################################
 quam = QuAM()
 # Build the wiring (wiring.json) and initiate the QuAM
-build_quam_wiring(connectivity, host_ip, cluster_name, path, quam)
+build_quam_wiring(connectivity, host_ip, cluster_name, quam)
 # Build the QuAM object and save the state as state.json
-machine = QuAM.load(path)
-quam = build_quam(machine, quam_state_path=path)
+machine = QuAM.load()
+quam = build_quam(machine)

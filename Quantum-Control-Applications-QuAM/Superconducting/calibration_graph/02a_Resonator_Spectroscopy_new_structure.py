@@ -19,10 +19,11 @@ Before proceeding to the next node:
 # %% {Imports}
 from qualibrate import QualibrationNode
 from quam_config import QuAM
-from quam_experiments.simulation import simulate_and_plot
-from quam_experiments.resonator_spectroscopy.analysis import fetch_dataset, fit_resonators
-from quam_experiments.resonator_spectroscopy.plotting import plot_raw_amplitude, plot_raw_phase, plot_fit_amplitude
-from quam_experiments.resonator_spectroscopy.parameters import Parameters
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_experiments.workflow.simulation import simulate_and_plot
+from quam_experiments.experiments.resonator_spectroscopy.analysis import fetch_dataset, fit_resonators
+from quam_experiments.experiments.resonator_spectroscopy.plotting import plot_raw_amplitude, plot_raw_phase, plot_fit_amplitude
+from quam_experiments.experiments.resonator_spectroscopy.parameters import Parameters
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
@@ -56,7 +57,7 @@ machine = QuAM.load()
 # Generate the OPX and Octave configurations
 config = machine.generate_config()
 # Get the relevant QuAM components
-qubits = machine.get_qubits_used_in_node(node)
+qubits = get_qubits_used_in_node(machine, node)
 resonators = machine.get_resonators_used_in_node(node)
 num_qubits = len(qubits)
 # Open Communication with the QOP

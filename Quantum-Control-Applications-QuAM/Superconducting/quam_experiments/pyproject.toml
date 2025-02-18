@@ -11,6 +11,12 @@ build-backend = "setuptools.build_meta"
 python = ">=3.9, <3.13"
 plotly = "*"
 xarray = "*"
+qm-qua = ">=1.2.1"
+lmfit = "*"
+quam_config = "*"
+quam_builder = "*"
+scipy = "*"
+qiskit-experiments = "*"
 
 [tool.setuptools]
 py-modules = []

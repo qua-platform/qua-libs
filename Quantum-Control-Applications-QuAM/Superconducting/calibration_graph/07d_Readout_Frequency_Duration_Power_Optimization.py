@@ -19,23 +19,22 @@ Next steps before going to the next node:
 """
 
 # %% {Imports}
-import matplotlib.pyplot as plt
-
 from qualibrate import QualibrationNode
 
-from quam_experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
+from quam_experiments.experiments.readout_optimization_3d.analysis.calculate_readout_fidelity import \
     calculate_readout_fidelity, get_maximum_fidelity_per_qubit
-from quam_experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
-from quam_experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
-from quam_experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
-from quam_builder.trackable_object import tracked_updates
+from quam_experiments.experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
+from quam_experiments.experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
+from quam_experiments.experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
+from quam_experiments.parameters.qubits_experiment import get_qubits_used_in_node
+from quam_libs.trackable_object import tracked_updates
 from quam_config import QuAM
-from quam_experiments.readout_optimization_3d.parameters import Parameters, get_durations
-from quam_experiments.readout_optimization_3d.parameters import (
+from quam_experiments.experiments.readout_optimization_3d.parameters import Parameters, get_durations
+from quam_experiments.experiments.readout_optimization_3d.parameters import (
     get_frequency_detunings_in_hz,
     get_amplitude_factors
 )
-from quam_experiments.simulation import simulate_and_plot
+from quam_experiments.workflow.simulation import simulate_and_plot
 
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
@@ -78,7 +77,7 @@ machine = QuAM.load()
 if node.parameters.load_data_id is None:
     qmm = machine.connect()
 
-qubits = machine.get_qubits_used_in_node(node.parameters)
+qubits = get_qubits_used_in_node(machine, node.parameters)
 num_qubits = len(qubits)
 
 readout_pulse_name = "readout"
