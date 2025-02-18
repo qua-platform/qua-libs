@@ -100,8 +100,16 @@ simulate = False
 if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, ro_freq_opt, simulation_config)
-    job.get_simulated_samples().con1.plot()
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 
 else:
     # Open the quantum machine
