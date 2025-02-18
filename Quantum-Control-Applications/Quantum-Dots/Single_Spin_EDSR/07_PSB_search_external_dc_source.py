@@ -29,7 +29,6 @@ from qm import SimulationConfig
 from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool, wait_until_job_is_paused
 from qualang_tools.plot import interrupt_on_close
-from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 import matplotlib.pyplot as plt
 
@@ -65,10 +64,6 @@ with program() as PSB_search_prog:
     I = declare(fixed)
     Q = declare(fixed)
     dc_signal = declare(fixed)
-
-    # Ensure that the result variables are assign to the pulse processor used for readout
-    assign_variables_to_element("tank_circuit", I, Q)
-    assign_variables_to_element("TIA", dc_signal)
 
     with for_(i, 0, i < n_points_slow + 1, i + 1):
         with for_(j, 0, j < n_points_fast, j + 1):
