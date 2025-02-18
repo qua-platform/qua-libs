@@ -32,31 +32,51 @@ with program() as TimeTagging_calibration:
 #  Open Communication with the QOP  #
 #####################################
 qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-# Open Quantum Machine
-qm = qmm.open_qm(config)
-# Execute program
-job = qm.execute(TimeTagging_calibration)
-# create a handle to get results
-res_handles = job.result_handles
-# Wait untill the program is done
-res_handles.wait_for_all_values()
-# Fetch results and convert traces to volts
-adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
-adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
-# Plot data
-plt.figure()
-plt.subplot(121)
-plt.title("Single run")
-plt.plot(adc1_single_run, label="Input 1")
-plt.xlabel("Time [ns]")
-plt.ylabel("Signal amplitude [V]")
-plt.legend()
 
-plt.subplot(122)
-plt.title("Averaged run")
-plt.plot(adc1, label="Input 1")
-plt.xlabel("Time [ns]")
-plt.legend()
-plt.tight_layout()
+###########################
+# Run or Simulate Program #
+###########################
+simulate = False
 
-print(f"\nInput1 mean: {np.mean(adc1)} V")
+if simulate:
+    # Simulates the QUA program for the specified duration
+    simulation_config = SimulationConfig(duration=10_000)  # In clock cycles = 4ns
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, TimeTagging_calibration, simulation_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
+else:
+    # Open Quantum Machine
+    qm = qmm.open_qm(config)
+    # Execute program
+    job = qm.execute(TimeTagging_calibration)
+    # create a handle to get results
+    res_handles = job.result_handles
+    # Wait untill the program is done
+    res_handles.wait_for_all_values()
+    # Fetch results and convert traces to volts
+    adc1 = u.raw2volts(res_handles.get("adc1").fetch_all())
+    adc1_single_run = u.raw2volts(res_handles.get("adc1_single_run").fetch_all())
+    # Plot data
+    plt.figure()
+    plt.subplot(121)
+    plt.title("Single run")
+    plt.plot(adc1_single_run, label="Input 1")
+    plt.xlabel("Time [ns]")
+    plt.ylabel("Signal amplitude [V]")
+    plt.legend()
+
+    plt.subplot(122)
+    plt.title("Averaged run")
+    plt.plot(adc1, label="Input 1")
+    plt.xlabel("Time [ns]")
+    plt.legend()
+    plt.tight_layout()
+
+    print(f"\nInput1 mean: {np.mean(adc1)} V")
