@@ -2,11 +2,11 @@ from typing import List, Dict
 
 import xarray as xr
 
-from quam_libs.lib.fit import oscillation_decay_exp
-from quam_libs.components.superconducting.qubit import AnyTransmon
+from quam_builder.lib.fit import oscillation_decay_exp
+from quam_builder.components.superconducting.qubit import AnyTransmon
 from quam_experiments.ramsey.analysis.fitting import RamseyFit
 from quam_experiments.ramsey.parameters import Parameters
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
+from quam_builder.lib.plot_utils import QubitGrid, grid_iter
 
 
 def plot_ramseys_data_with_fit(ds: xr.Dataset, qubits: List[AnyTransmon],

@@ -24,8 +24,8 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, active_reset
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_builder.lib.plot_utils import QubitGrid, grid_iter
+from quam_builder.lib.save_utils import fetch_results_as_xarray
 from qualang_tools.analysis import two_state_discriminator
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array

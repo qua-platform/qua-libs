@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 
 from quam_experiments.ramsey.parameters import Parameters
-from quam_libs.lib.fit import fit_oscillation_decay_exp
+from quam_builder.lib.fit import fit_oscillation_decay_exp
 
 
 @dataclass

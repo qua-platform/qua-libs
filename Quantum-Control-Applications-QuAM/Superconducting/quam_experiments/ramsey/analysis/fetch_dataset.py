@@ -1,8 +1,8 @@
 import xarray as xr
 
 from quam_experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_builder.lib.qua_datasets import convert_IQ_to_V
+from quam_builder.lib.save_utils import fetch_results_as_xarray
 
 
 def fetch_dataset(job, qubits, node_parameters: Parameters) -> xr.Dataset:

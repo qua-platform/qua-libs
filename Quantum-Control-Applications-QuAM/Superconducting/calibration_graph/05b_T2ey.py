@@ -17,10 +17,10 @@ Next steps before going to the next node:
 from qualibrate import QualibrationNode, NodeParameters
 from quam_config import QuAM
 from quam_experiments.macros import qua_declaration, active_reset, readout_state
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import fit_decay_exp, decay_exp
+from quam_builder.lib.qua_datasets import convert_IQ_to_V
+from quam_builder.lib.plot_utils import QubitGrid, grid_iter
+from quam_builder.lib.save_utils import fetch_results_as_xarray
+from quam_builder.lib.fit import fit_decay_exp, decay_exp
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session

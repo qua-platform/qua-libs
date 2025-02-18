@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from quam_libs.components.superconducting.qubit import AnyTransmon
+from quam_builder.components.superconducting.qubit import AnyTransmon
 from quam_experiments.time_of_flight.parameters import Parameters
 
 

@@ -1,7 +1,7 @@
 from qualang_tools.wirer.wirer.channel_specs import *
 from qualang_tools.wirer import Instruments, Connectivity, allocate_wiring, visualize
-from quam_libs.quam_builder.qop_connectivity import build_quam_wiring
-from quam_libs.quam_builder.superconducting import build_quam
+from quam_builder.quam_builder.qop_connectivity import build_quam_wiring
+from quam_builder.quam_builder.superconducting import build_quam
 from my_quam import QuAM
 
 ########################################################################################################################
@@ -61,8 +61,9 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 ########################################################################################################################
 # %%                                   Build the wiring and QuAM
 ########################################################################################################################
+quam = QuAM()
 # Build the wiring (wiring.json) and initiate the QuAM
-build_quam_wiring(connectivity, host_ip, cluster_name, path, QuAM)
+build_quam_wiring(connectivity, host_ip, cluster_name, path, quam)
 # Build the QuAM object and save the state as state.json
 machine = QuAM.load(path)
 quam = build_quam(machine, quam_state_path=path)

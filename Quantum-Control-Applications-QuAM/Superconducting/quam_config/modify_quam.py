@@ -2,7 +2,7 @@
 import json
 from qualang_tools.units import unit
 from quam_config import QuAM
-from quam_libs.quam_builder.superconducting.build_quam import save_machine
+from quam_builder.quam_builder.superconducting.build_quam import save_machine
 import numpy as np
 
 # TODO: to do properly and compare with oqc

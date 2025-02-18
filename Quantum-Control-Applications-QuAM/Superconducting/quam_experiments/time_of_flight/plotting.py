@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
-from quam_libs.lib.plot_utils import QubitGrid, grid_iter
+from quam_builder.lib.plot_utils import QubitGrid, grid_iter
 
 
 def plot_adc_single_runs(ds, qubits) -> Figure:

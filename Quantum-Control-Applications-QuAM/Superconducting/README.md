@@ -12,7 +12,7 @@
    1. [calibration_data](#calibration_data)
    2. [calibration_graph](#calibration_graph)
    3. [configuration](#configuration)
-   4. [quam_libs](#quam_libs)
+   4. [quam_builder](#quam_builder)
 4. [How to generate the QuAM](#how-to-generate-the-quam)
    1. [1. Define the wiring](#1-define-the-wiring)
    2. [2. The QuAM components](#2-the-quam-components)
@@ -26,21 +26,21 @@
 
 
 ## Installation
-This folder contains an installable module called `quam_libs`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QuAM, making it easier to design and execute calibration nodes.
+This folder contains an installable module called `quam_builder`, which provides a collection of tailored components for controlling flux-tunable qubits and experiment functionality. These components extend the functionality of QuAM, making it easier to design and execute calibration nodes.
 
 ### Requirements
-To run the calibration nodes in this folder, you need to install `quam_libs`. During this installation, *all relevant* requirements for running QUA code
+To run the calibration nodes in this folder, you need to install `quam_builder`. During this installation, *all relevant* requirements for running QUA code
 and calibrations through the front-end will also be installed.
 
-To do so, first activate the desired Python environment and navigate to the `quam_libs` directory.
+To do so, first activate the desired Python environment and navigate to the `quam_builder` directory.
 Then run the following command to install the package:
 
 ```sh
-# Install `quam_libs` (locally, from this directory)
+# Install `quam_builder` (locally, from this directory)
 pip install -e .
 # or, simply `pip install .`
 ```
-> **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_libs`!
+> **_NOTE:_**  The `-e` flag means you *don't* have to reinstall if you make a local change to `quam_builder`!
 
 ## Setup
 The QuAM framework stores a database of calibration values in a collection of .json files. 
@@ -80,7 +80,7 @@ The typical QUAM/QUalibrate folder structure is as follows:
 ├───configuration
 │   └───quam_state
 |
-└───quam_libs
+└───quam_builder
     ├───components
     ├───lib
     └───quam_builder
@@ -111,11 +111,11 @@ It contains three files whose working principles are explained in more details b
 * [make_quam.py](./configuration/make_quam.py): create the state of the system based on the generated wiring and QUAM components and containing all the information necessary to calibrate the chip and run experiments. This state is used to generate the OPX configuration.
 * [modify_quam.py](./configuration/modify_quam.py): update the parameters of the state programmatically based on defaults values (previous calibration, chip manufacturer specification...).
 
-### quam_libs
+### quam_builder
 This folder contains all the utility functions necessary to create the wiring or build the QUAM, as well as QUA macros and data processing tools:
-* [components](./quam_libs/components): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
-* [lib](./quam_libs/lib): contains several utility functions for saving, fitting and post-processing data.
-* [quam_builder](./quam_libs/quam_builder): contains the main functions called in [machine.py](./quam_libs/quam_builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_libs/components) folder. It also contains the [pulses.py](./quam_libs/quam_builder/pulses.py) file where the default qubits pulses are defined.
+* [components](./quam_builder/components): this is where the QUAM root and custom QUAM components are defined. A set of basic QUAM components are already present, but advanced user can easily modify them or create new ones.
+* [lib](./quam_builder/lib): contains several utility functions for saving, fitting and post-processing data.
+* [quam_builder](./quam_builder/quam_builder): contains the main functions called in [machine.py](./quam_builder/quam_builder/machine.py) and used to generate the wiring and build the QUAM structure from it and the QUAM components declared in the [components](./quam_builder/components) folder. It also contains the [pulses.py](./quam_builder/quam_builder/pulses.py) file where the default qubits pulses are defined.
 
 ## How to generate the QuAM
 Before starting to run experiments, it is necessary to build the Quantum Abstract Machine ([QuAM](https://github.com/qua-platform/quam)) for the desired
@@ -176,7 +176,7 @@ allocate_wiring(connectivity, instruments)
    The wiring and port mapping can also be visualized in a matplotlib figure.
 
 ```python
-from quam_libs.quam_builder.machine import build_quam_wiring
+from quam_builder.quam_builder.machine import build_quam_wiring
 from qualang_tools.wirer import visualize
 # Build the wiring and network into a QuAM machine and save it as "wiring.json"
 build_quam_wiring(connectivity, host_ip, cluster_name, path)
@@ -186,21 +186,21 @@ visualize(connectivity.elements, available_channels=instruments.available_channe
 ```
 ![opx1000_wiring](./.img/opx1000_wiring.PNG)
 
-### [2. The QuAM components](./quam_libs/components)
+### [2. The QuAM components](./quam_builder/components)
 Describe the structure of the QuAM components and how they can be customized, what to pay attention to...
 Also, how to create a new one and update the wiring and build_quam accordingly.
 
 The hierarchy and structure of QUAM can be detailed as follows:
-1. [quam_root.py](./quam_libs/components/quam_root.py) represents the highest level in terms of hierarchy.
+1. [quam_root.py](./quam_builder/components/quam_root.py) represents the highest level in terms of hierarchy.
    It contains the qubits and qubit pairs objects, as well as the wiring, network and Octaves.
    Its methods are usually applied to all qubits or active qubits.
-2. The definition of a QuAM transmon is defined in [transmon.py](./quam_libs/components/transmon.py). It contains the
+2. The definition of a QuAM transmon is defined in [transmon.py](./quam_builder/components/transmon.py). It contains the
    general transmon attributes (T1, T2, f_01...) as well as the QuAM components composing the transmon (``xy``, ``resonator`` and
    `z` in this case). Two-qubit gates can also be implemented by defining a specific qubit pair component as shown in
-   [transmon_pair.py](./quam_libs/components/transmon_pair.py).
+   [transmon_pair.py](./quam_builder/components/transmon_pair.py).
 3. The QuAM components are either defined from the base QUAM components directly, such as the qubit xy drive which is
    directly defined as an `IQChannel`, or from user-defined components such as
-   [readout_resonator](./quam_libs/components/readout_resonator.py) or [flux_line](./quam_libs/components/flux_line.py),
+   [readout_resonator](./quam_builder/components/readout_resonator.py) or [flux_line](./quam_builder/components/flux_line.py),
    which allows the customization of their attributes.
 
 
@@ -215,11 +215,11 @@ according to the wiring file. The Octaves connection parameters can also be edit
 
 The QuAM generation happens in the `build_quam` function, which programmatically adds all the Octaves, ports, transmons and pulses
 according to the wiring and the QUAM components. The default values used for the QuAM components and pulses can be found
-under the [quam_builder](./quam_libs/quam_builder) folder.
+under the [quam_builder](./quam_builder/quam_builder) folder.
 
 ```python
 from quam_config import QuAM
-from quam_libs.quam_builder.machine import build_quam
+from quam_builder.quam_builder.machine import build_quam
 
 path = "./quam_state"
 
@@ -233,7 +233,7 @@ octave_settings = {}
 quam = build_quam(machine, quam_state_path=path, octaves_settings=octave_settings)
 ```
 
-Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_libs/quam_builder/pulses.py).
+Note that the set of default pulses, e.g. CosineDrag and Square, can be edited in [pulses.py](./quam_builder/quam_builder/pulses.py).
 
 For simplicity, or quick debugging/testing, the QuAM can also be generated "on-the-fly":
 
@@ -313,7 +313,7 @@ Once the state is created, each parameter can be updated based on the desired in
 import numpy as np
 import json
 from quam_config import QuAM
-from quam_libs.quam_builder.machine import save_machine
+from quam_builder.quam_builder.machine import save_machine
 
 # Load QuAM
 path = "./quam_state"

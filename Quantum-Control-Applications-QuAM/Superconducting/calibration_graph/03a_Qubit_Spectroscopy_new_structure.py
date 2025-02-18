@@ -25,7 +25,7 @@ Before proceeding to the next node:
 from qualibrate import QualibrationNode
 
 from quam_config import QuAM
-from quam_libs.lib.instrument_limits import instrument_limits
+from quam_builder.lib.instrument_limits import instrument_limits
 from quam_experiments.macros import qua_declaration
 from quam_experiments.simulation import simulate_and_plot
 from quam_experiments.execution import print_progress_bar

@@ -1,7 +1,7 @@
 from typing import List, Union
 
-from quam_libs.components.superconducting.architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
-from quam_libs.trackable_object import tracked_updates
+from quam_builder.components.superconducting.architectural_elements.readout_resonator import ReadoutResonatorIQ, ReadoutResonatorMW
+from quam_builder.trackable_object import tracked_updates
 from quam_experiments.time_of_flight.parameters import Parameters
 
 def patch_readout_pulse_params(resonators: List[Union[ReadoutResonatorIQ, ReadoutResonatorMW]], node_parameters: Parameters):

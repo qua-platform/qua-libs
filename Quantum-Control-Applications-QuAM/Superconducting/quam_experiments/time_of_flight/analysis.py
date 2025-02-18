@@ -7,8 +7,8 @@ import xarray as xr
 from qm import QmJob
 from qualang_tools.config import ReadoutResonator
 
-from quam_libs.components.superconducting.qubit import AnyTransmon
-from quam_libs.lib.save_utils import fetch_results_as_xarray
+from quam_builder.components.superconducting.qubit import AnyTransmon
+from quam_builder.lib.save_utils import fetch_results_as_xarray
 
 
 def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], resonators: List[ReadoutResonator]):

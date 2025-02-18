@@ -28,7 +28,7 @@ from quam_experiments.readout_optimization_3d.analysis.calculate_readout_fidelit
 from quam_experiments.readout_optimization_3d.analysis.fetch_dataset import fetch_dataset
 from quam_experiments.readout_optimization_3d.analysis.filtering import filter_readout_fidelity
 from quam_experiments.readout_optimization_3d.analysis.plotting import plot_fidelity_3d, plot_fidelity_2d
-from quam_libs.trackable_object import tracked_updates
+from quam_builder.trackable_object import tracked_updates
 from quam_config import QuAM
 from quam_experiments.readout_optimization_3d.parameters import Parameters, get_durations
 from quam_experiments.readout_optimization_3d.parameters import (

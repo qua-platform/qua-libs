@@ -2,10 +2,10 @@ from typing import List, Union
 import numpy as np
 import xarray as xr
 from qm import QmJob
-from quam_libs.lib.qua_datasets import convert_IQ_to_V
-from quam_libs.components.superconducting.qubit import AnyTransmon
-from quam_libs.lib.save_utils import fetch_results_as_xarray
-from quam_libs.lib.fit import peaks_dips
+from quam_builder.lib.qua_datasets import convert_IQ_to_V
+from quam_builder.components.superconducting.qubit import AnyTransmon
+from quam_builder.lib.save_utils import fetch_results_as_xarray
+from quam_builder.lib.fit import peaks_dips
 
 
 def fetch_dataset(job: QmJob, qubits: List[AnyTransmon], frequencies: List[float]):
