@@ -1,5 +1,5 @@
 from qm.qua import *
-from qm.QuantumMachinesManager import QuantumMachinesManager
+from qm import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration_cavity_locking_ETHZ_OPX1 import *
 from filter_cavities_lib import *
