@@ -19,8 +19,8 @@ Next steps before going to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from experiments.macros import qua_declaration, active_reset
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration, active_reset
 from quam_libs.lib.instrument_limits import instrument_limits
 from quam_libs.lib.qua_datasets import convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter

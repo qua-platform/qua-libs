@@ -20,13 +20,13 @@ from dataclasses import asdict
 
 # %% {Imports}
 from qualibrate import QualibrationNode
-from configuration.my_quam import QuAM
-from experiments.ramsey.analysis.fetch_dataset import fetch_dataset
-from experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
-from experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
-from experiments.ramsey.plotting import plot_ramseys_data_with_fit
-from experiments.simulation import simulate_and_plot
-from experiments.macros import qua_declaration, readout_state
+from quam_config import QuAM
+from quam_experiments.ramsey.analysis.fetch_dataset import fetch_dataset
+from quam_experiments.ramsey.analysis.fitting import fit_frequency_detuning_and_t2_decay
+from quam_experiments.ramsey.parameters import Parameters, get_idle_times_in_clock_cycles
+from quam_experiments.ramsey.plotting import plot_ramseys_data_with_fit
+from quam_experiments.simulation import simulate_and_plot
+from quam_experiments.macros import qua_declaration, readout_state
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 from qualang_tools.multi_user import qm_session

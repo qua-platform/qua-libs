@@ -6,7 +6,7 @@ from matplotlib.figure import Figure
 from qm import SimulationConfig, QuantumMachinesManager, Program
 from qm.results.simulator_samples import SimulatorSamples
 
-from experiments.time_of_flight.parameters import Parameters
+from quam_experiments.time_of_flight.parameters import Parameters
 
 
 def simulate_and_plot(qmm: QuantumMachinesManager, config: dict,

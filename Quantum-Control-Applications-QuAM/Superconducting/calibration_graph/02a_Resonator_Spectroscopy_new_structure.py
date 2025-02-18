@@ -18,17 +18,17 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode
-from configuration.my_quam import QuAM
-from experiments.simulation import simulate_and_plot
-from experiments.resonator_spectroscopy.analysis import fetch_dataset, fit_resonators
-from experiments.resonator_spectroscopy.plotting import plot_raw_amplitude, plot_raw_phase, plot_fit_amplitude
-from experiments.resonator_spectroscopy.parameters import Parameters
+from quam_config import QuAM
+from quam_experiments.simulation import simulate_and_plot
+from quam_experiments.resonator_spectroscopy.analysis import fetch_dataset, fit_resonators
+from quam_experiments.resonator_spectroscopy.plotting import plot_raw_amplitude, plot_raw_phase, plot_fit_amplitude
+from quam_experiments.resonator_spectroscopy.parameters import Parameters
 from qualang_tools.multi_user import qm_session
 from qualang_tools.units import unit
 from qm.qua import *
 import numpy as np
 
-from experiments.macros import qua_declaration
+from quam_experiments.macros import qua_declaration
 from qualang_tools.loops import from_array
 
 

@@ -6,7 +6,7 @@ from qualang_tools.units import unit
 from qualibrate import NodeParameters
 from qualibrate.parameters import RunnableParameters
 
-from experiments.node_parameters import (
+from quam_experiments.node_parameters import (
     QubitsExperimentNodeParameters,
     SimulatableNodeParameters,
     FluxControlledNodeParameters,

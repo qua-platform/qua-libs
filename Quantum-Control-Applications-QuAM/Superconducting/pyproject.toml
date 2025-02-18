@@ -22,8 +22,10 @@ qiskit-experiments = "*"
 tqdm = "*"
 qualibrate = "*"
 qm-qua = "1.2.1"
-colorama = "*"
 tomli = { version = "^2.0.1", python = "<3.11" }
+
+[tool.setuptools.packages.find]
+include = ["quam_config*", "quam_experiments*"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

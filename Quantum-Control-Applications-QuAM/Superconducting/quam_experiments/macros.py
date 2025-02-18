@@ -7,7 +7,7 @@ from qm.qua import *
 from qm.qua._dsl import _ResultSource
 from qm.qua._expressions import QuaVariable
 
-from configuration.my_quam import QuAM
+from quam_config import QuAM
 from quam_libs.components.superconducting.qubit import AnyTransmon
 
 __all__ = [

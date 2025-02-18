@@ -4,8 +4,8 @@ import xarray as xr
 
 from quam_libs.lib.fit import oscillation_decay_exp
 from quam_libs.components.superconducting.qubit import AnyTransmon
-from experiments.ramsey.analysis.fitting import RamseyFit
-from experiments.ramsey.parameters import Parameters
+from quam_experiments.ramsey.analysis.fitting import RamseyFit
+from quam_experiments.ramsey.parameters import Parameters
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter
 
 

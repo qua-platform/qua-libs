@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import savgol_filter
 from qualang_tools.units import unit
-from configuration.my_quam import QuAM
+from quam_config import QuAM
 
 ###################################################
 #  Load QuAM and open Communication with the QOP  #

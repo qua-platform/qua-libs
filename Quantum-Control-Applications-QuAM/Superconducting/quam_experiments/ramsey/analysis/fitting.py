@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 
-from experiments.ramsey.parameters import Parameters
+from quam_experiments.ramsey.parameters import Parameters
 from quam_libs.lib.fit import fit_oscillation_decay_exp
 
 

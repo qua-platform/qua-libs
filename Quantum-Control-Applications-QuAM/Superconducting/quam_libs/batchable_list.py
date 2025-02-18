@@ -1,7 +1,7 @@
 from typing import List, Any, Dict, Union
 from collections.abc import MutableSequence
 from quam_libs.components.superconducting.qubit import FixedFrequencyTransmon, FluxTunableTransmon
-# from experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
+# from quam_experiments.node_parameters import QubitsExperimentNodeParameters, MultiplexableNodeParameters
 
 
 class BatchableList(MutableSequence):

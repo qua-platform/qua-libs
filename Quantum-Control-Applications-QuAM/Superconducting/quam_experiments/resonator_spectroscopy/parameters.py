@@ -1,6 +1,6 @@
 from typing import Optional
 
-from experiments.node_parameters import SimulatableNodeParameters
+from quam_experiments.node_parameters import SimulatableNodeParameters
 
 
 class Parameters(SimulatableNodeParameters):

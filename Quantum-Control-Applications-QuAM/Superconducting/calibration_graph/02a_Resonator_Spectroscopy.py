@@ -18,8 +18,8 @@ Before proceeding to the next node:
 
 # %% {Imports}
 from qualibrate import QualibrationNode, NodeParameters
-from configuration.my_quam import QuAM
-from experiments.macros import qua_declaration
+from quam_config import QuAM
+from quam_experiments.macros import qua_declaration
 from quam_libs.lib.fit_utils import fit_resonator
 from quam_libs.lib.qua_datasets import apply_angle, subtract_slope, convert_IQ_to_V
 from quam_libs.lib.plot_utils import QubitGrid, grid_iter

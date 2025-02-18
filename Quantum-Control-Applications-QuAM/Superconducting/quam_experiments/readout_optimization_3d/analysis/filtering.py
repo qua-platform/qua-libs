@@ -3,7 +3,7 @@ import xarray as xr
 
 from scipy.ndimage import gaussian_filter
 
-from experiments.readout_optimization_3d.parameters import ReadoutOptimization3dParameters
+from quam_experiments.readout_optimization_3d.parameters import ReadoutOptimization3dParameters
 
 
 def filter_readout_fidelity(ds: xr.Dataset, node_parameters: ReadoutOptimization3dParameters):
