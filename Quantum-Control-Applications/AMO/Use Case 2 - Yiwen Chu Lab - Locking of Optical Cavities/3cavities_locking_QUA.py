@@ -3,7 +3,6 @@ from qm.QuantumMachinesManager import QuantumMachinesManager
 from qm import SimulationConfig
 from configuration_cavity_locking_ETHZ_OPX1 import *
 from filter_cavities_lib import *
-from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.results import fetching_tool
 import matplotlib.pyplot as plt
 import warnings
@@ -83,9 +82,6 @@ def main(
 
         single_shot_DC_transmission_st = declare_stream()
         single_shot_AC_transmission_st = declare_stream()
-        # Ensure that the results variables are assigned to the measurement elements
-        assign_variables_to_element("detector_DC", single_shot_DC)
-        assign_variables_to_element("detector_AC", I, Q, single_shot_AC)
 
         """Perform slow locks when starting far from resonance"""
 
