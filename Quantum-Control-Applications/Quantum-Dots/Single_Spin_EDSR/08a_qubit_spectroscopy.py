@@ -112,12 +112,13 @@ with program() as qubit_spectroscopy_prog:
 #####################################
 #  Open Communication with the QOP  #
 #####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+# qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+qmm = QuantumMachinesManager(host="172.16.33.101", cluster_name="Cluster_83")
 
 ###########################
 # Run or Simulate Program #
 ###########################
-simulate = False
+simulate = True
 
 if simulate:
     # Simulates the QUA program for the specified duration
