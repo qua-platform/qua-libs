@@ -28,7 +28,6 @@ from configuration import *
 from macros import DC_current_sensing_macro, RF_reflectometry_macro
 from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
-from qualang_tools.addons.variables import assign_variables_to_element
 from qualang_tools.loops import from_array
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import fetching_tool, progress_counter
@@ -56,10 +55,6 @@ with program() as Ramsey_chevron:
     I = declare(fixed)  # QUA variable for the measured 'I' quadrature
     Q = declare(fixed)  # QUA variable for the measured 'Q' quadrature
     dc_signal = declare(fixed)  # QUA variable for the measured dc signal
-
-    # Ensure that the result variables are assigned to the measurement elements
-    assign_variables_to_element("tank_circuit", I, Q)
-    assign_variables_to_element("TIA", dc_signal)
 
     with for_(n, 0, n < n_avg, n + 1):  # The averaging loop
         save(n, n_st)
