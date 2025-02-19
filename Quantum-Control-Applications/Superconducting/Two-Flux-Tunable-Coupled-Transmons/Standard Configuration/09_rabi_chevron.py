@@ -95,7 +95,6 @@ if simulate:
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
     waveform_report.create_plot(samples, plot=True, save_path="./")
-    plt.show()
 else:
     # Open the quantum machine
     qm = qmm.open_qm(config)
