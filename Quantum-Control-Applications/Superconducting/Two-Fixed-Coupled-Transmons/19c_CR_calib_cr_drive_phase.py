@@ -7,9 +7,9 @@ which is represented as:
     H = I ⊗ (a_X X + a_Y Y + a_Z Z) + Z ⊗ (b_I I + b_X X + b_Y Y + b_Z Z)
 
 For the calibration sequences, we employ echoed CR drive.
-                                   ____      ____ 
+                                   ____      ____
             Control(fC): _________| pi |____| pi |________________
-                             ____                     
+                             ____
                  CR(fT): ___|    |_____      _____________________
                                        |____|     _____
              Target(fT): ________________________| QST |__________

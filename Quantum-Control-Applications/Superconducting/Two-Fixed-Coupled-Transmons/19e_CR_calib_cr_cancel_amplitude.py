@@ -8,9 +8,9 @@ which is represented as:
 
 
 For the calibration sequences, we employ echoed CR drive.
-                                   ____      ____ 
+                                   ____      ____
             Control(fC): _________| pi |____| pi |________________
-                             ____                     
+                             ____
                  CR(fT): ___|    |_____      _____________________
                                        |____|     _____
              Target(fT): ________________________| QST |__________

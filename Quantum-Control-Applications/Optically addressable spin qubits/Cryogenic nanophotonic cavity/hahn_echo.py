@@ -104,7 +104,7 @@ qmm = QuantumMachinesManager(qop_ip)
 
 simulate = False
 if simulate:
-    simulation_config = SimulationConfig(duration=28_000, simulation_interface=LoopbackInterface([("1")]))
+    simulation_config = SimulationConfig(duration=28_000, simulation_interface=LoopbackInterface(["1"]))
     # Simulate blocks python until the simulation is done
     job = qmm.simulate(config, hahn_echo, simulation_config)
     # Get the simulated samples

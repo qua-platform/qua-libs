@@ -9,7 +9,7 @@ which is represented as:
 The pulse sequences are as follow:
                                    _____           ______
                 Control(fC): _____| y90 |_________| -y90 |___________
-                                           ______                    
+                                           ______
                      CR(fT): _____________|      |___________________
                                   ______  |  CR  |
                  Target(fT): ____| x180 |_|______|___________________

@@ -1,6 +1,6 @@
 """
        T1 MEASUREMENT
-The program consists in measuring the photon counts (in |0> and |1> successively) received by the SPCM across 
+The program consists in measuring the photon counts (in |0> and |1> successively) received by the SPCM across
 varying wait times either after initialization (start from |0>), or after a pi pulse (start from |1>).
 The sequence is repeated without playing the mw pulses to measure the dark counts on the SPCM.
 

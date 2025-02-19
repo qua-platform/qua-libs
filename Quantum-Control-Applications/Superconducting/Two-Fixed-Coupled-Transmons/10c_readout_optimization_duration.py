@@ -1,5 +1,5 @@
 """
-        READOUT OPTIMISATION: DURATION
+READOUT OPTIMISATION: DURATION
 """
 
 from qm import QuantumMachinesManager, SimulationConfig

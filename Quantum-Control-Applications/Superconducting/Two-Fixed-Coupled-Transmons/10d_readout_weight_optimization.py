@@ -1,5 +1,5 @@
 """
-        READOUT OPTIMISATION: INTEGRATION WEIGHTS
+READOUT OPTIMISATION: INTEGRATION WEIGHTS
 """
 
 from qm import QuantumMachinesManager, SimulationConfig

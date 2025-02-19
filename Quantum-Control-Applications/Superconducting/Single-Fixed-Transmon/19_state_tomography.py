@@ -1,6 +1,6 @@
 """
         SINGLE QUBIT STATE TOMOGRAPHY
-The goal of this program is to measure the projection of the Bloch vector of the qubit along the three axes of the Bloch 
+The goal of this program is to measure the projection of the Bloch vector of the qubit along the three axes of the Bloch
 sphere in order to reconstruct the full qubit state tomography.
 The qubit state preparation is left to user to define.
 

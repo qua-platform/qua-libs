@@ -10,7 +10,8 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.loops import from_array
 import plotly.io as pio
-pio.renderers.default = 'browser'
+
+pio.renderers.default = "browser"
 #############
 # VARIABLES #
 #############
