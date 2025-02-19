@@ -25,7 +25,7 @@ save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_lf_fem_and_mw_fem.py": "configuration_lf_fem_and_mw_fem.py",
+    "configuration_with_lf_fem_and_mw_fem.py": "configuration_with_lf_fem_and_mw_fem.py",
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
