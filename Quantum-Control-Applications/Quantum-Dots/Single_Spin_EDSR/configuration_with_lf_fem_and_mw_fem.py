@@ -1,6 +1,7 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
+from pathlib import Path
 
 import numpy as np
 from scipy.signal.windows import gaussian
@@ -22,6 +23,19 @@ lf_fem = 5  # Should be the LF-FEM index, e.g., 1
 mw_fem = 1  # Should be the MW-FEM index, e.g., 5
 
 octave_config = None
+
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #############################################
 #              OPX PARAMETERS               #

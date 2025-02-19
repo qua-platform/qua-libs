@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
 from qualang_tools.voltage_gates import VoltageGateSequence
+from pathlib import Path
 
 
 #######################
@@ -31,9 +32,20 @@ def IQ_imbalance(g, phi):
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+octave_config = None
+
+#############
+# Save Path #
+#############
 
 # Path to save data
-octave_config = None
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    "configuration.py": "configuration.py",
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 
 #############################################

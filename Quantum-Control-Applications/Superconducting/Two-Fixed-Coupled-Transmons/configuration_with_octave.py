@@ -65,10 +65,9 @@ save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_with_octave.py": "configuration_with_octave.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
-
 
 #############################################
 #                  Qubits                   #

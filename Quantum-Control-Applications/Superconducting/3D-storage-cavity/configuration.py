@@ -29,7 +29,7 @@ save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration.py": "configuration.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
 

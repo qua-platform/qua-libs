@@ -15,6 +15,7 @@ from qualang_tools.units import unit
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
 #############
 # Save Path #
 #############
@@ -24,10 +25,9 @@ save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
 
 default_additional_files = {
-    "configuration_with_lf_fem_and_octave.py": "configuration_with_lf_fem_and_octave.py",
+    Path(__file__).name: Path(__file__).name,
     "optimal_weights.npz": "optimal_weights.npz",
 }
-
 
 #####################
 # OPX configuration #
