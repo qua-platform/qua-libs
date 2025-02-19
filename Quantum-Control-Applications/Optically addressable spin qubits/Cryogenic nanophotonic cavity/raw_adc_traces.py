@@ -4,7 +4,7 @@ this allows checking that the ADC is not saturated, correct for DC offsets and d
 threshold for time-tagging.
 """
 
-from qm import QuantumMachinesManager
+from qm import QuantumMachinesManager, SimulationConfig
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
@@ -45,6 +45,8 @@ if simulate:
     job = qmm.simulate(config, TimeTagging_calibration, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
     # Get the waveform report object
     waveform_report = job.get_simulated_waveform_report()
     # Cast the waveform report to a python dictionary
