@@ -1,12 +1,25 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
+from pathlib import Path
 
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #######################
 # AUXILIARY FUNCTIONS #

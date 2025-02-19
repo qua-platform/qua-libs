@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from qualang_tools.config.waveform_tools import drag_gaussian_pulse_waveforms
 from qualang_tools.units import unit
@@ -6,6 +8,19 @@ from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
 
+
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 # Used to correct for IQ mixer imbalances
 def IQ_imbalance(g, phi):
