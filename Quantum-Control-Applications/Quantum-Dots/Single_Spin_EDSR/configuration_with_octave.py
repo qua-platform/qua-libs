@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
@@ -37,6 +39,18 @@ octaves = [octave_1]
 # Configure the Octaves
 octave_config = octave_declaration(octaves)
 
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #############################################
 #              OPX PARAMETERS               #
