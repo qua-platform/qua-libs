@@ -27,10 +27,9 @@ from quam_libs.experiments.rb.rb_utils import StandardRB, quantum_circuit_to_int
 import matplotlib.pyplot as plt
 
 
-
 # %% {Node_parameters}
 
-basis_gates = ['rz', 'x90',  'x180', 'cz'] # , 'y90', 'y180']
+basis_gates_for_transpilation = ['ry', 'rx', 'cz'] # ['rz', 'x90',  'x180', 'cz'] # ,'rz',
 
 node = BaseNode(
     name="2Q_RB",
@@ -39,7 +38,7 @@ node = BaseNode(
         circuit_lengths=[4], # [1,2,4,8,16,32],
         num_circuits_per_length = 1,
         num_averages = 1,
-        basis_gates = basis_gates, # gates are as written in state
+        basis_gates = basis_gates_for_transpilation, # gates are as written in state
         seed = 0,
         reset_type = "thermal",
         simulate = True,
@@ -49,19 +48,27 @@ node = BaseNode(
 
 x90_id = 2
 x180_id = 4
-rz_id = 8
-cz_id = 16
-measure_id = 32
-barrier_id = 64
+x270_id = 8
+y90_id = 16
+y180_id = 32
+y270_id = 64
+# rz_id = 8
+cz_id = 128
+measure_id = 256
+barrier_id = 512
 
-gate_to_int = dict(zip(basis_gates, range(len(basis_gates))))
+gate_opx_to_int = {}
+gate_opx_to_int['sx'] = x90_id
+gate_opx_to_int['x'] = x180_id
+gate_opx_to_int['x270'] = x270_id 
+gate_opx_to_int['sy'] = x90_id
+gate_opx_to_int['y'] = x180_id
+gate_opx_to_int['y270'] = x270_id 
+gate_opx_to_int['measure'] = measure_id
+gate_opx_to_int['barrier'] = barrier_id
+gate_opx_to_int['cz'] = cz_id
+# gate_to_int['rz'] = rz_id
 
-gate_to_int['measure'] = measure_id
-gate_to_int['barrier'] = barrier_id
-gate_to_int['cz'] = cz_id
-gate_to_int['rz'] = rz_id
-
-int_to_gate = {v: k for k, v in gate_to_int.items()}
 # %% {Initialize_QuAM_and_QOP}
 num_qubits = 2
 u = unit(coerce_to_integer=True)
@@ -100,27 +107,30 @@ standardRB = StandardRB(
 transpiled_circuits = standardRB.transpiled_circuits
 # %% {the QUA program}
 
-int_to_xy = {k : v for k,v in int_to_gate.items() if v not in ['measure', 'barrier', 'rz', 'cz']}
-
 n_avg = node.parameters.num_averages  # The number of averages
 
 circuits_as_int = []
-circuit_gate_angles = []
+acc_rz_angle_q0 = []
+acc_rz_angle_q1 = []
 qubit_indices = []
-circuits_start_index = [0]
 
-gate_to_int_qiskit_naming = {standardRB.map_to_known_basis_gates.get(k, k) : v for k, v in gate_to_int.items()}
 for l, circuits in transpiled_circuits.items():
     for qc in circuits:
-        gate_int, gate_angle, qubit_int = quantum_circuit_to_integer_and_angle_list(qc, gate_to_int_qiskit_naming)
+        gate_int, qubit_int, acc_rz_q0, acc_rz_q1  = quantum_circuit_to_integer_and_angle_list(qc, gate_opx_to_int)
         qubit_indices.extend(qubit_int)
         circuits_as_int.extend(gate_int)
-        circuit_gate_angles.extend(gate_angle)
+        acc_rz_angle_q0.extend(acc_rz_q0)
+        acc_rz_angle_q1.extend(acc_rz_q1)
+        
+# remove barriers to avoid align gaps
+
+# circuits_as_int, qubit_indices, circuit_gate_angles = zip(*[(g,q,a) for g, q, a, in zip(circuits_as_int, qubit_indices, circuit_gate_angles) if g != barrier_id])
+
+# accumulate the rz angle on the following x gates. This relies on the fact that 
 
 
-circuits_as_int = [2,2,2,2,2][:2]
-qubit_indices = [0,0,0,0,0][:2]
-circuit_gate_angles = [0.,0.,0.,0.,0.][:2]
+circuits_as_int = [2,4,8,2,4,8]
+qubit_indices = [0] * len(circuits_as_int)
 
 with program() as rb:
     
@@ -136,34 +146,59 @@ with program() as rb:
     
     gate = declare(int)
     qubit_index = declare(int)
-    angle = declare(fixed)
-    n = declare(int)
+    gate_plus_qubit = declare(int)
     
-    num_lengths = len(node.parameters.circuit_lengths)
-    num_circuits_per_length = node.parameters.num_circuits_per_length
+    n = declare(int)
     
     x90_id_qua = declare(int, value=x90_id)
     x180_id_qua = declare(int, value=x180_id)
+    x270_id_qua = declare(int, value=x270_id)
+    y90_id_qua = declare(int, value=y90_id)
+    y180_id_qua = declare(int, value=y180_id)
+    y270_id_qua = declare(int, value=y270_id)
     cz_id_qua = declare(int, value=cz_id)
-    rz_id_qua = declare(int, value=rz_id)
     measure_id_qua = declare(int, value=measure_id)
     barrier_id_qua = declare(int, value=barrier_id)
+    
    
     with for_(n, 0, n < n_avg, n + 1):
         # save(n, n_st)
         
-        # qubit_control.xy.play('x90')
         # reset_qubits(node, qubit_control, qubit_target, thermalization_time * u.ns)
             
-        align() # align(qubit_control.name, qubit_target.name)
+        # align() # align(qubit_control.name, qubit_target.name)
         
-        with for_each_((gate, qubit_index, angle), ([circuits_as_int, qubit_indices, circuit_gate_angles])):   
+        with for_each_((gate, qubit_index), ([circuits_as_int, qubit_indices])):   
             
-            with switch_(gate, unsafe=True):
+            gate_plus_qubit = gate + qubit_index
+                
+            with switch_(gate_plus_qubit, unsafe=True):
                 with case_(cz_id_qua):
                     cz.execute()
-                with case_(barrier_id_qua):
-                    align() 
+                with case_(x90_id_qua):
+                        qubit_control.xy.play('x90')
+                with case_(x180_id_qua):
+                        qubit_control.xy.play('x180')
+                with case_(x270_id_qua):
+                        qubit_control.xy.play('-x90')
+                # with case_(x90_id_qua + 1):
+                #         qubit_target.xy.play('x90')     
+                # with case_(x180_id_qua + 1):
+                #         qubit_target.xy.play('x180')
+                # with case_(x270_id_qua + 1):
+                #         qubit_target.xy.play('-x90')
+                with case_(y90_id_qua):
+                        qubit_control.xy.play('y90')
+                with case_(y180_id_qua):
+                        qubit_control.xy.play('y180')
+                with case_(y270_id_qua):
+                        qubit_control.xy.play('-y90')
+                # with case_(y90_id_qua + 1):
+                #         qubit_target.xy.play('y90')
+                # with case_(y180_id_qua + 1):
+                #         qubit_target.xy.play('y180')
+                # with case_(y270_id_qua + 1):
+                #         qubit_target.xy.play('-y90')
                 with case_(measure_id_qua):
                     # readout
                     readout_state(qubit_control, state_control)
@@ -174,22 +209,8 @@ with program() as rb:
                     
                     # reset qubits
                     reset_qubits(node, qubit_control, qubit_target, thermalization_time)
-                with case_(rz_id_qua):
-                    with if_(qubit_index == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
-                        qubit_control.xy.frame_rotation(angle)
-                    with else_():
-                        qubit_target.xy.frame_rotation(angle)
-                with case_(x90_id_qua):
-                    with if_(qubit_index == 0):
-                        qubit_control.xy.play('x90')
-                    with elif_(qubit_index == 1):
-                        qubit_target.xy.play('x90')
-                        
-                with case_(x180_id_qua):
-                    with if_(qubit_index == 0): # unfavourable becuase expected to genarate gaps from the case_ and the if_
-                        qubit_control.xy.play('x180')
-                    with else_():
-                        qubit_target.xy.play('x180')
+                # with case_(barrier_id_qua):
+                #     align() 
 
             
 
@@ -199,6 +220,7 @@ with program() as rb:
     #         # state_st_control.buffer(num_circuits_per_length).buffer(num_lengths).buffer(n_avg).save(f"state_control{i + 1}")
     #         # state_st_target.buffer(num_circuits_per_length).buffer(num_lengths).buffer(n_avg).save(f"state_target{i + 1}")
     #         state_st.buffer(num_circuits_per_length).buffer(num_lengths).buffer(n_avg).save(f"state{i + 1}")
+
 
 # %% 
 ###########################

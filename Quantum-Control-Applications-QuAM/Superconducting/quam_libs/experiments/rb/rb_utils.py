@@ -10,6 +10,8 @@ from more_itertools import flatten
 from scipy.optimize import curve_fit
 import xarray
 
+EPS = 1e-8
+
 def rb_decay_curve(x, A, alpha, B):
     """
     Exponential decay model for RB fidelity.
@@ -27,9 +29,6 @@ def rb_decay_curve(x, A, alpha, B):
 
 class RBBase:
     
-    known_basis_gates = ['cz', 'z','sz', 'rz', 'sx', 'x', 'sy', 'y']
-    map_to_known_basis_gates = {'x180': 'x', 'y180': 'y', 'x90': 'sx', 'y90': 'sy', 'z90': 'sz', 'z180': 'z'}
-    
     def __init__(self, circuit_lengths: list[int], num_circuits_per_length: int, basis_gates: list[str] = ['cz', 'rz', 'sx', 'x'], 
                  num_qubits: int = 2, seed: int | None = None):
         
@@ -37,7 +36,7 @@ class RBBase:
         self.circuit_lengths = circuit_lengths
         self.num_circuits_per_length = num_circuits_per_length
         
-        self.basis_gates = [g_name if g_name in self.known_basis_gates else self.map_to_known_basis_gates[g_name] for g_name in basis_gates]
+        self.basis_gates = basis_gates
         self.seed = seed
         
         self.circuits = self.generate_circuits()
@@ -64,7 +63,8 @@ class RBBase:
             for instruction in qc:
                 qc_per_inst = QuantumCircuit(len(instruction.qubits))
                 qc_per_inst.append(instruction)
-                transpiled_clifford = transpile(qc_per_inst, basis_gates=self.basis_gates)
+                # if optimization level is > 1 one might get fractional angles
+                transpiled_clifford = transpile(qc_per_inst, basis_gates=self.basis_gates, optimization_level=1)
                 transp_circ = transp_circ.compose(transpiled_clifford, front=True)
             
             transpiled_circuits.append(transp_circ)
@@ -164,7 +164,6 @@ class StandardRB(RBBase):
         
         return circuits
 
-
 def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
 
     dag = circuit_to_dag(qc)
@@ -177,28 +176,66 @@ def layerize_quantum_circuit(qc: QuantumCircuit) -> QuantumCircuit:
     return layered_qc
 
 
-def quantum_circuit_to_integer_and_angle_list(qc: QuantumCircuit, gate_map: dict) -> tuple[list[int], list[float]]:
+def quantum_circuit_to_integer_and_angle_list(qc: QuantumCircuit, gate_map: dict, ignore_barriers: bool = True) -> tuple[list[int], list[float]]:
 
     gate_interger_list = []
-    gate_angle_list = []
+    rz_angle_count_q0 = []
+    rz_angle_count_q1 = []
     qubit_index_list = [] # need to make this more robust
 
     layered_qc = layerize_quantum_circuit(qc)
 
+    ang_q0 = 0
+    ang_q1 = 0
+    
     for instruction in layered_qc:
-        gate_int = gate_map[instruction.name]
         
         qubit_index = instruction.qubits[0]._index # TODO : make this more robust
-        gate_angle = instruction.params[0] if instruction.name == "rz" else 0.0 # floats
-        gate_interger_list.append(gate_int)
-        gate_angle_list.append(gate_angle)
-        qubit_index_list.append(qubit_index)
+        
+        if instruction.name == 'rz':
+            # only follows the accumulation of rz angles. does not add a to gate list
+            if qubit_index == 0:
+                ang_q0 += instruction.params[0]
+            elif qubit_index == 1:
+                ang_q1 += instruction.params[0]
+            else:
+                raise ValueError("Only 2 qubits are supported")
+        
+        else:
+            # add a gate
+            if instruction.name in ['rx', 'ry']:
+                axis = instruction.name[1]
+                theta = instruction.params[0]
+                if (theta/np.pi - 0.5) < EPS:
+                    gate_int = gate_map[f's{axis}']
+                elif (theta/np.pi - (-0.5)) < EPS:
+                    gate_int = gate_map[f'{axis}270']
+                elif (theta/np.pi - 1) < EPS or (theta/np.pi - (-1)) < EPS:
+                    gate_int = gate_map[f'{axis}']
+                else:
+                    raise ValueError(f"Only 90, -90, 180, -180 rotations are supported not angle={theta}")
+            
+            elif instruction.name == 'barrier' and ignore_barriers:
+                continue
+            
+            else:
+                gate_int = gate_map[instruction.name]
+            
+            gate_interger_list.append(gate_int)
+            qubit_index_list.append(qubit_index)
+            rz_angle_count_q0.append(ang_q0)
+            rz_angle_count_q1.append(ang_q1)
+            
+            ang_q0 = 0  
+            ang_q1 = 0
+            
 
     # measurement
     gate_interger_list.append(gate_map['measure'])
-    gate_angle_list.append(0)
+    rz_angle_count_q0.append(0)
+    rz_angle_count_q1.append(0)
     qubit_index_list.append(0)
 
-    return gate_interger_list, gate_angle_list, qubit_index_list
+    return gate_interger_list, qubit_index_list, rz_angle_count_q0, rz_angle_count_q1
     
    
