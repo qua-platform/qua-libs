@@ -23,7 +23,7 @@ from qm import QuantumMachinesManager
 from qm import SimulationConfig, LoopbackInterface
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
-
+from qualang_tools.results.data_handler import DataHandler
 import matplotlib.pyplot as plt
 
 ##############################
@@ -245,3 +245,9 @@ else:
     angle, threshold, fidelity, gg, ge, eg, ee = two_state_discriminator(Ig, Qg, Ie, Qe, b_print=True, b_plot=True)
     plt.suptitle(f"{average_tries=}")
     print(f"{average_tries=}")
+# Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])

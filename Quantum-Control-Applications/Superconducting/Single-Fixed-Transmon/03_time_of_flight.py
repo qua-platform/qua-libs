@@ -20,7 +20,7 @@ from qm import SimulationConfig
 from configuration import *
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

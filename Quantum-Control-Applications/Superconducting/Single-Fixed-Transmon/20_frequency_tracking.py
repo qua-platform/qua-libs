@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
-
+from qualang_tools.results.data_handler import DataHandler
 
 ######################################
 #  Open Communication with the QOP  #
@@ -161,3 +161,9 @@ while results.is_processing():
     plt.ylabel("time [minutes]")
     plt.tight_layout()
     plt.pause(0.01)
+# Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
