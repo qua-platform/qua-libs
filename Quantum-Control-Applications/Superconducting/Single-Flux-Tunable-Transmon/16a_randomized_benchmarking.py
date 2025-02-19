@@ -250,6 +250,8 @@ if simulate:
     job = qmm.simulate(config, rb, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
     # Get the waveform report object
     waveform_report = job.get_simulated_waveform_report()
     # Cast the waveform report to a python dictionary
