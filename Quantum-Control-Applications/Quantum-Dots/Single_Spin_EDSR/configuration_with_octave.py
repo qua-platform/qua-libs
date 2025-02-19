@@ -3,7 +3,8 @@ from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
 from set_octave import OctaveUnit, octave_declaration
 from qualang_tools.voltage_gates import VoltageGateSequence
-
+import plotly.io as pio
+pio.renderers.default = 'browser'
 
 #######################
 # AUXILIARY FUNCTIONS #

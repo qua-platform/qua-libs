@@ -9,7 +9,8 @@ from qualang_tools.units import unit
 # These packages are imported here so that we don't have to import them in all the other files
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter, fetching_tool
-
+import plotly.io as pio
+pio.renderers.default = 'browser'
 
 #######################
 # AUXILIARY FUNCTIONS #
