@@ -17,8 +17,8 @@ from quam_builder.architecture.superconducting.qpu import AnyQuAM
 from quam_builder.builder.qop_connectivity.build_quam_wiring import save_machine
 
 
-def build_quam(machine: Union[AnyQuAM]) -> Union[AnyQuAM]:
-    add_octaves(machine)
+def build_quam(machine: Union[AnyQuAM], calibration_db_path: Optional[Union[Path, str]] = None) -> Union[AnyQuAM]:
+    add_octaves(machine, calibration_db_path=calibration_db_path)
     add_external_mixers(machine)
     add_ports(machine)
     add_transmons(machine)

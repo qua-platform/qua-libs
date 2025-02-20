@@ -1,6 +1,6 @@
 from quam.core import quam_dataclass
-from ..qubit.fixed_frequency_transmon import FixedFrequencyTransmon
-from ..qubit_pair.fixed_frequency_transmons import TransmonPair
+from quam_builder.architecture.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
+from quam_builder.architecture.superconducting.qubit_pair.fixed_frequency_transmons import TransmonPair
 from quam_builder.architecture.superconducting.qpu.base_quam import BaseQuAM
 
 from dataclasses import field
