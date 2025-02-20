@@ -1,5 +1,5 @@
 """
-hahn_echo.py: Measures T2.
+08_hahn_echo.py: Measures T2.
 """
 
 from qm import QuantumMachinesManager

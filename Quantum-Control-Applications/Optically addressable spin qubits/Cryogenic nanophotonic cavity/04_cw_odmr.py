@@ -1,5 +1,5 @@
 """
-cw_odmr.py: Counts photons while sweeping the frequency of the applied MW.
+04_cw_odmr.py: Counts photons while sweeping the frequency of the applied MW.
 """
 
 from qm import QuantumMachinesManager

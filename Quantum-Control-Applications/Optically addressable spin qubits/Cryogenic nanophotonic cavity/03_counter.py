@@ -1,5 +1,5 @@
 """
-counter.py: Starts a counter which reports the current counts from the SPCM.
+03_counter.py: Starts a counter which reports the current counts from the SPCM.
 """
 
 from qm import QuantumMachinesManager

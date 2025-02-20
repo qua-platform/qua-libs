@@ -1,5 +1,5 @@
 """
-ramsey.py: Measures T2*.
+09_T1.py: Measures T1. Can measure the decay from either |1> or |0>.
 """
 
 from qm import QuantumMachinesManager
@@ -18,16 +18,17 @@ t_max = 1000 // 4  # in clock cycles units
 dt = 40 // 4  # in clock cycles units
 t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
 n_avg = 1e6
+start_from_one = False
 
-with program() as ramsey:
+with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts
     times1 = declare(int, size=100)
     times2 = declare(int, size=100)
-    counts_1_st = declare_stream()  # stream for counts
-    counts_2_st = declare_stream()  # stream for counts
     t = declare(int)  # variable to sweep over in time
     n = declare(int)  # variable to for_loop
+    counts_1_st = declare_stream()  # stream for counts
+    counts_2_st = declare_stream()  # stream for counts
     n_st = declare_stream()  # stream to save iterations
 
     with for_(n, 0, n < n_avg, n + 1):
@@ -39,17 +40,15 @@ with program() as ramsey:
             play("switch_ON", "excited_state_mw")
             align()
 
-            # pulse sequence
-            play("pi_half", "Yb")  # Pi/2 pulse to qubit
+            if start_from_one:
+                play("pi", "Yb")
             wait(t, "Yb")  # variable delay in spin Echo
-            play("pi_half", "Yb")  # Pi/2 pulse to qubit
 
             align()
 
-            # laser readout
+            # readout laser
             play("laser_ON", "A_transition", duration=int(meas_len // 4))
             # does it needs buffer to prevent damage?
-
             align()
 
             # decay readout
@@ -66,21 +65,14 @@ with program() as ramsey:
             play("switch_ON", "excited_state_mw")
             align()
 
-            play("pi_half", "Yb")  # Pi/2 pulse to qubit
+            if start_from_one:
+                play("pi", "Yb")
             wait(t, "Yb")  # variable delay in spin Echo
-            frame_rotation_2pi(0.5, "Yb")  # Turns next pulse to -x
-            play("pi_half", "Yb")  # Pi/2 pulse to qubit
-            reset_frame("Yb")
+            play("pi", "Yb")  # Pi pulse to qubit to measure second state
 
             align()
 
-            # readout laser
             play("laser_ON", "A_transition", duration=int(meas_len // 4))
-            # does it needs buffer to prevent damage?
-
-            align()
-
-            # decay readout
             measure("readout", "SNSPD", None, time_tagging.analog(times2, meas_len, counts2))
             save(counts2, counts_2_st)  # save counts
             wait(100)
@@ -102,7 +94,7 @@ if simulate:
     # Simulates the QUA program for the specified duration
     simulation_config = SimulationConfig(duration=28_000)  # In clock cycles = 4ns
     # Simulate blocks python until the simulation is done
-    job = qmm.simulate(config, ramsey, simulation_config)
+    job = qmm.simulate(config, T1, simulation_config)
     # Get the simulated samples
     samples = job.get_simulated_samples()
     # Plot the simulated samples
@@ -117,7 +109,7 @@ if simulate:
 else:
     qm = qmm.open_qm(config)
     # execute QUA program
-    job = qm.execute(ramsey)
+    job = qm.execute(T1)
     # Get results from QUA program
     results = fetching_tool(job, data_list=["counts1", "counts2", "iteration"], mode="live")
     # Live plotting
@@ -132,8 +124,8 @@ else:
         # Plot data
         plt.cla()
         plt.plot(4 * t_vec, counts1 / 1000 / (meas_len / u.s), counts2 / 1000 / (meas_len / u.s))
-        plt.xlabel("Dephasing time [ns]")
+        plt.xlabel("Tau [ns]")
         plt.ylabel("Intensity [kcps]")
         plt.legend(("counts 1", "counts 2"))
-        plt.title("Ramsey")
+        plt.title(f"T1 - {'|1>' if start_from_one else '|0>'}")
         plt.pause(0.1)

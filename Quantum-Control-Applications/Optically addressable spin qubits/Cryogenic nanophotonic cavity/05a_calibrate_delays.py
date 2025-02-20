@@ -1,8 +1,8 @@
 """
-calibrate_delays.py: Plays a MW pulse during a laser pulse, while performing time tagging throughout the sequence.
+05a_calibrate_delays.py: Plays a MW pulse during a laser pulse, while performing time tagging throughout the sequence.
 This allows measuring all the delays in the system, as well as the NV initialization duration.
 If the counts are too high, the program might hang. In this case reduce the resolution or use
-calibrate_delays_python_histogram.py if high resolution is needed.
+05b_calibrate_delays_python_histogram.py if high resolution is needed.
 """
 
 from qm import QuantumMachinesManager

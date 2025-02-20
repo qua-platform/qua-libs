@@ -16,7 +16,7 @@ from macros import get_c2c_time
 ###################
 # The QUA program #
 ###################
-# Pi pulse duration calibrated with 'pi_pulse_calibration.py'
+# Pi pulse duration calibrated with '04_pi_pulse_calibration.py'
 pi_len = 320 // 4
 
 pulse1_min = 40 // 4

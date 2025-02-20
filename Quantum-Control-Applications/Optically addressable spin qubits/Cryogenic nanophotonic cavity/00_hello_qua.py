@@ -1,5 +1,5 @@
 """
-hello_qua.py: template for basic qua program demonstration
+00_hello_qua.py: template for basic qua program demonstration
 """
 
 import time
