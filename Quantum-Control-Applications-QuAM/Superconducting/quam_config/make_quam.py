@@ -10,7 +10,7 @@ from quam_config import QuAM
 host_ip = "172.16.33.101"  # QOP IP address
 port = None  # QOP Port
 cluster_name = "Cluster_81"  # Name of the cluster
-calibration_db_path = "/path/to/calibration_db"
+calibration_db_path = None  # "/path/to/some/config/folder"
 
 ########################################################################################################################
 # %%                                      Define the available instrument setup
@@ -65,4 +65,4 @@ quam = QuAM()
 build_quam_wiring(connectivity, host_ip, cluster_name, quam)
 # Build the QuAM object and save the state as state.json
 machine = QuAM.load()
-quam = build_quam(machine)
+quam = build_quam(machine, calibration_db_path)
