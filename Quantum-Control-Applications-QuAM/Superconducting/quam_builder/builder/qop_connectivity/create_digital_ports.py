@@ -1,4 +1,4 @@
-from .paths import PORTS_BASE_JSON_PATH
+from quam_builder.builder.qop_connectivity.paths import PORTS_BASE_JSON_PATH
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
 

@@ -3,8 +3,8 @@ from dataclasses import field
 from qm.qua import align, wait
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.flux_tunable_transmon import FluxTunableTransmon
-from ..components.tunable_coupler import TunableCoupler
+from quam_builder.architecture.superconducting.qubit.flux_tunable_transmon import FluxTunableTransmon
+from quam_builder.architecture.superconducting.components.tunable_coupler import TunableCoupler
 
 
 __all__ = ["TransmonPair"]

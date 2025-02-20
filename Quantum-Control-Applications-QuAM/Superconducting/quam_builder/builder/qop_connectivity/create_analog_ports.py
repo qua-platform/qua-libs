@@ -2,7 +2,9 @@ from typing import List
 
 from qualang_tools.wirer.connectivity.element import QubitReference
 from qualang_tools.wirer.connectivity.wiring_spec import WiringLineType
-from .paths import OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH, MIXERS_BASE_JSON_PATH
+from quam_builder.builder.qop_connectivity.paths import (
+    OCTAVES_BASE_JSON_PATH, PORTS_BASE_JSON_PATH, MIXERS_BASE_JSON_PATH
+)
 from qualang_tools.wirer.instruments.instrument_channel import AnyInstrumentChannel
 
 

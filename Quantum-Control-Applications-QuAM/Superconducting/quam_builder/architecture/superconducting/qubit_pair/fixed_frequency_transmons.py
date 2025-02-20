@@ -3,9 +3,9 @@ from dataclasses import field
 from qm.qua import align, wait
 
 from quam.core import QuamComponent, quam_dataclass
-from ..qubit.fixed_frequency_transmon import FixedFrequencyTransmon
-from ..components.cross_resonance import CrossResonanceIQ, CrossResonanceMW
-from ..components.zz_drive import ZZDriveIQ, ZZDriveMW
+from quam_builder.architecture.superconducting.qubit.fixed_frequency_transmon import FixedFrequencyTransmon
+from quam_builder.architecture.superconducting.components.cross_resonance import CrossResonanceIQ, CrossResonanceMW
+from quam_builder.architecture.superconducting.components.zz_drive import ZZDriveIQ, ZZDriveMW
 
 
 __all__ = ["TransmonPair"]
