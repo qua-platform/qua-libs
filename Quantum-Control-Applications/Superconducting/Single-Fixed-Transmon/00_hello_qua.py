@@ -45,7 +45,7 @@ if simulate:
     # Cast the waveform report to a python dictionary
     waveform_dict = waveform_report.to_dict()
     # Visualize and save the waveform report
-    waveform_report.create_plot(samples, plot=True)
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     # Open a quantum machine to execute the QUA program
     qm = qmm.open_qm(config)
