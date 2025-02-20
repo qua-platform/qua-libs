@@ -98,3 +98,9 @@ while b_cont or b_last:
 
     b_cont = res_handles.is_processing()
     b_last = not (b_cont or b_last)
+    # Save results
+    script_name = Path(__file__).name
+    data_handler = DataHandler(root_data_folder=save_dir)
+    save_data_dict.update({"fig_live": fig})
+    data_handler.additional_files = {script_name: script_name, **default_additional_files}
+    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
