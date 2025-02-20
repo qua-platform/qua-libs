@@ -45,22 +45,28 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 simulate = True
 
 if simulate:
-    # simulation properties
+    # Simulates the QUA program for the specified duration
     simulate_config = SimulationConfig(
         duration=2000,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
-    job = qmm.simulate(config, input_cal, simulate_config)  # do simulation with qmm
-    job.get_simulated_samples().con1.plot()  # visualize played pulses
-
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, input_cal, simulate_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 else:
     qm = qmm.open_qm(config)
-
     job = qm.execute(input_cal)  # execute QUA program
-
     res_hand = job.result_handles
     res_hand.wait_for_all_values()
-
     adc1 = u.raw2volts(res_hand.get("adc1").fetch_all())
     adc2 = u.raw2volts(res_hand.get("adc2").fetch_all())
     adc1_single_run = u.raw2volts(res_hand.get("adc1_single_run").fetch_all())

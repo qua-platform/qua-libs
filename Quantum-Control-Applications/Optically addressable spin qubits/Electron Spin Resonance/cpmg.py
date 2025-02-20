@@ -139,16 +139,24 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 simulate = True
 
 if simulate:
-    # simulation properties
+    # Simulate blocks python until the simulation is done
     simulate_config = SimulationConfig(
         duration=4000,
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
-    # the simulation is uses to assert the pulse positions and to make final adjustments
-    # to the QUA program
-    job = qmm.simulate(config, cpmg, simulate_config)  # do simulation with qmm
-    job.get_simulated_samples().con1.plot()  # visualize played pulses
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, cpmg, simulate_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
     # their position in time.
@@ -158,7 +166,7 @@ if simulate:
     # ver_t2: center-to-center time between the readout window to the second pulse arriving to 'ensemble'
     ver_t2 = get_c2c_time(job, ("ensemble", 2), ("resonator", 0))
     print("center to center time between readout and 2nd pulse", ver_t2)
-    # ver_t3: center-to-center time between the thrid pulse arriving to 'ensemble' and the last readout window
+    # ver_t3: center-to-center time between the third pulse arriving to 'ensemble' and the last readout window
     ver_t3 = -get_c2c_time(job, ("ensemble", 4), ("resonator", 0))
     print("center to center time between 3rd and readout pulse", ver_t3)
     # ver_t4: center-to-center time between first two pulses arriving to 'ensemble'
@@ -167,15 +175,11 @@ if simulate:
 
 else:
     qm = qmm.open_qm(config)
-
     job = qm.execute(cpmg)  # execute QUA program
-
     # Get results from QUA program
     results = fetching_tool(job, data_list=["i_echo", "tau", "I", "Q", "iteration"], mode="live")
-
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
-
     while results.is_processing():
         # Fetch results
         i_echo, tau, I, Q, iteration = results.fetch_all()

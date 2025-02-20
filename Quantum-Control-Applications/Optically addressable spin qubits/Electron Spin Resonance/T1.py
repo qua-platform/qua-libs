@@ -109,16 +109,24 @@ qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_na
 simulate = True
 
 if simulate:
-    # simulation properties
+    # Simulates the QUA program for the specified duration
     simulate_config = SimulationConfig(
         duration=2000,
         include_analog_waveforms=True,
         simulation_interface=LoopbackInterface(([("con1", 3, "con1", 1), ("con1", 4, "con1", 2)]), latency=180),
     )
-    # the simulation is used to assert the pulse positions and to make final adjustments
-    # to the QUA program
-    job = qmm.simulate(config, T1, simulate_config)  # do simulation with qmm
-    job.get_simulated_samples().con1.plot()  # visualize played pulses
+    # Simulate blocks python until the simulation is done
+    job = qmm.simulate(config, T1, simulate_config)
+    # Get the simulated samples
+    samples = job.get_simulated_samples()
+    # Plot the simulated samples
+    samples.con1.plot()
+    # Get the waveform report object
+    waveform_report = job.get_simulated_waveform_report()
+    # Cast the waveform report to a python dictionary
+    waveform_dict = waveform_report.to_dict()
+    # Visualize and save the waveform report
+    waveform_report.create_plot(samples, plot=True, save_path="./")
 
     # The lines of code below allow you to retrieve information from the simulated waveform to assert
     # their position in time.
@@ -135,12 +143,9 @@ if simulate:
 
 else:
     qm = qmm.open_qm(config)
-
     job = qm.execute(T1)  # execute QUA program
-
     # Get results from QUA program
     results = fetching_tool(job, data_list=["I", "Q", "iteration"], mode="live")
-
     fig = plt.figure()
     interrupt_on_close(fig, job)  # Interrupts the job when closing the figure
     while results.is_processing():
