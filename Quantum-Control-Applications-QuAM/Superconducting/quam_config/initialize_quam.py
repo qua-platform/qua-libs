@@ -79,6 +79,13 @@ for i, q in enumerate(machine.qubits):
         machine.qubits[q].xy.operations["x180_Square"].amplitude / 2
     )
 
+    # Add new pulses
+    from quam.components.pulses import (
+        SquarePulse, DragGaussianPulse, DragCosinePulse, FlatTopGaussianPulse, WaveformPulse,
+        SquareReadoutPulse
+    )
+    # e.g., machine.qubits[q].xy.operations["new_pulse"] = FlatTopGaussianPulse(...)
+
 # %%
 # save into state.json
 save_machine(machine)
