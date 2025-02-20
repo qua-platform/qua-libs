@@ -39,6 +39,9 @@ save_data_dict = {
 ###################
 # The QUA program #
 ###################
+
+n_runs = 10000  # Number of runs
+
 with program() as IQ_blobs:
     n = declare(int)
     I_g = declare(fixed)
