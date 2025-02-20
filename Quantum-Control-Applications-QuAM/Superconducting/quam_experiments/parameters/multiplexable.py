@@ -3,7 +3,7 @@ from typing import List
 from pydantic import Field
 from qualibrate.parameters import RunnableParameters
 
-from quam_experiments.parameters.batchable_list import BatchableList
+from quam_libs.batchable_list import BatchableList
 
 
 class MultiplexableNodeParameters(RunnableParameters):
