@@ -43,6 +43,7 @@ class Transmon(QuamComponent):
 
     xy: IQChannel = None
     z: FluxLine = None
+    z2: FluxLine = None
     resonator: ReadoutResonator = None
 
     f_01: float = None
@@ -156,9 +157,15 @@ class Transmon(QuamComponent):
 
     def align(self, other = None):
         channels = [self.xy.name, self.resonator.name, self.z.name]
+        
+        if self.z2 is not None:
+            channels += [self.z2.name]
 
         if other is not None:
             channels += [other.xy.name, other.resonator.name, other.z.name]
+            
+            if other.z2 is not None:
+                channels += [other.z2.name]
 
         align(*channels)
 
