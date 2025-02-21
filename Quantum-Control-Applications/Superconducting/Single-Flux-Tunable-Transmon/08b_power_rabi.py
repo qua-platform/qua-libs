@@ -39,6 +39,7 @@ amplitudes = np.linspace(a_min, a_max, n_a)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "amplitudes": amplitudes,
     "config": config,
 }
 with program() as power_rabi:

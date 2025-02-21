@@ -59,8 +59,11 @@ fitted_curve = fitted_curve.astype(int)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": frequencies,
+    "flux": flux,
     "config": config,
 }
+
 with program() as qubit_spec_2D:
     n = declare(int)  # QUA variable for the averaging index
     f = declare(int)  # QUA variable for the qubit frequency

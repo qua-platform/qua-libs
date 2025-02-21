@@ -43,6 +43,8 @@ amplitudes = np.linspace(a_min, a_max, n_a)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "amplitudes": amplitudes,
     "config": config,
 }
 with program() as rabi_amp_freq:

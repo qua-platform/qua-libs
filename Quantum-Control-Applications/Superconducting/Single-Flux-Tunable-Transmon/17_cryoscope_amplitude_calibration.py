@@ -43,6 +43,7 @@ flux_amp_array = np.linspace(0, -0.2, 101)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "flux_amp_array": flux_amp_array,
     "config": config,
 }
 with program() as cryoscope_amp:

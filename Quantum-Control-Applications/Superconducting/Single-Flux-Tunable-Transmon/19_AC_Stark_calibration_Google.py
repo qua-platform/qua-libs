@@ -47,6 +47,8 @@ iters = np.arange(iter_min, iter_max + 0.1, d)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detunings": detunings,
+    "iters": iters,
     "config": config,
 }
 with program() as ac_stark_shift:

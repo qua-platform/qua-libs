@@ -40,6 +40,8 @@ detuning = 1 * u.MHz  # in Hz
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detuning": detuning,
+    "taus": taus,
     "config": config,
 }
 with program() as ramsey:

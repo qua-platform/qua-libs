@@ -37,7 +37,8 @@ amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 
 
 # Data to save
 save_data_dict = {
-    "n_avg": n_avg,
+    "n_runs": n_runs,
+    "amplitudes": amplitudes,
     "config": config,
 }
 with program() as ro_amp_opt:

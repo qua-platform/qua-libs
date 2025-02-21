@@ -52,6 +52,8 @@ flux = np.arange(flux_min, flux_max + step / 2, step)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "flux": flux,
     "config": config,
 }
 with program() as resonator_spec_2D:

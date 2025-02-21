@@ -43,6 +43,8 @@ nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play an odd/even numb
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "amplitudes": amplitudes,
+    "max_nb_of_pulses": max_nb_of_pulses,
     "config": config,
 }
 with program() as power_rabi_err:

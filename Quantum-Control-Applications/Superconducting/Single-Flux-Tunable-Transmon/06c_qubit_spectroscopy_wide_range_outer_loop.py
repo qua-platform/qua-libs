@@ -45,6 +45,9 @@ frequency = np.array(np.concatenate([frequencies + freqs_external[i] for i in ra
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": frequencies,
+    "external_frequencies": freqs_external,
+    "frequencies": frequency,
     "config": config,
 }
 with program() as qubit_spec:

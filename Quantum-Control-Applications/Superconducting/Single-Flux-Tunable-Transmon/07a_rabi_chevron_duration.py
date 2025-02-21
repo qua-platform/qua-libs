@@ -43,6 +43,8 @@ durations = np.arange(t_min, t_max, dt)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "durations": durations,
     "config": config,
 }
 with program() as rabi_amp_freq:

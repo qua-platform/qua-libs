@@ -120,6 +120,7 @@ save_data_dict = {
     "number_of_divisions": number_of_divisions,
     "config": config,
 }
+
 with program() as opt_weights:
     n = declare(int)
     ind = declare(int)

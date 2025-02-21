@@ -145,6 +145,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "config": config,
 }
+
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index

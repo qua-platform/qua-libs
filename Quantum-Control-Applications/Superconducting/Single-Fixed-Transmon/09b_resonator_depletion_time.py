@@ -38,6 +38,7 @@ taus = np.arange(4, 1000, 1)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "ramsey_idle_time": ramsey_idle_time,
     "taus": taus,
     "config": config,
 }

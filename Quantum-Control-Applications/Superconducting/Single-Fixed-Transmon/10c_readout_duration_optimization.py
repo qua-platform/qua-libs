@@ -73,6 +73,7 @@ save_data_dict = {
     "number_of_divisions": number_of_divisions,
     "config": config,
 }
+
 with program() as ro_duration_opt:
     n = declare(int)
     II = declare(fixed, size=number_of_divisions)

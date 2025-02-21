@@ -38,6 +38,7 @@ taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "taus": taus,
     "config": config,
 }
 with program() as echo:

@@ -27,9 +27,7 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+
 n_avg = 1000
 # Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 tau_min = 4
@@ -42,8 +40,13 @@ detuning = 1 * u.MHz  # in Hz
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detuning": detuning,
+    "taus": taus,
     "config": config,
 }
+###################
+# The QUA program #
+###################
 with program() as ramsey:
     n = declare(int)  # QUA variable for the averaging loop
     tau = declare(int)  # QUA variable for the idle time

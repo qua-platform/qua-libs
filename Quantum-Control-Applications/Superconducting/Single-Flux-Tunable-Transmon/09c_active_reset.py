@@ -150,7 +150,7 @@ def active_reset_fast(threshold_g: float):
 
 # Data to save
 save_data_dict = {
-    "n_avg": n_avg,
+    "n_shot": n_shot,
     "config": config,
 }
 with program() as active_reset_prog:

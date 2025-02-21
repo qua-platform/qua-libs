@@ -118,6 +118,8 @@ step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
+    "flux_waveform": flux_waveform,
     "config": config,
 }
 with program() as cryoscope:

@@ -38,6 +38,7 @@ dfs = np.arange(-span, +span + 0.1, df)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
     "config": config,
 }
 with program() as ro_freq_opt:

@@ -47,6 +47,7 @@ assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "amps": amps,
     "config": config,
 }
 with program() as drag:

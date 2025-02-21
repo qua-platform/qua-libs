@@ -45,6 +45,8 @@ if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "taus": taus,
     "config": config,
 }
 with program() as ramsey_freq_duration:
