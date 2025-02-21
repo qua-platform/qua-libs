@@ -33,7 +33,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from macros import readout_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##############################
 # Program-specific variables #

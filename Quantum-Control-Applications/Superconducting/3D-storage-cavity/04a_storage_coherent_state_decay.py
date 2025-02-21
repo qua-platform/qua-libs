@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
 import scipy.optimize as spo
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

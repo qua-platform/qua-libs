@@ -27,7 +27,7 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.plot.fitting import Fit
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

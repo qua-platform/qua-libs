@@ -25,7 +25,7 @@ from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
 
 import matplotlib.pyplot as plt
-
+from qualang_tools.results.data_handler import DataHandler
 ##############################
 # Program-specific variables #
 ##############################

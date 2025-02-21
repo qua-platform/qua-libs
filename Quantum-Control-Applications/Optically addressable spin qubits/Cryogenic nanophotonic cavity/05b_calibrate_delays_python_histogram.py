@@ -8,7 +8,7 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

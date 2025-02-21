@@ -24,7 +24,7 @@ from configuration import *
 import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##############################
 # Program-specific variables #

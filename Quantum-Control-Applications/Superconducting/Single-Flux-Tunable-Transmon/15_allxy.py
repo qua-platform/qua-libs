@@ -22,7 +22,7 @@ from configuration import *
 from qualang_tools.results import progress_counter, fetching_tool
 from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##############################
 # Program-specific variables #

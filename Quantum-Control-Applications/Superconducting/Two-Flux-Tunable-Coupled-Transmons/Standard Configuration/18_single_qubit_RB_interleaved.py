@@ -32,7 +32,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
-
+from qualang_tools.results.data_handler import DataHandler
 
 #############################################
 # Program dependent variables and functions #

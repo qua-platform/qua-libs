@@ -35,7 +35,7 @@ from qualang_tools.results import progress_counter
 import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.bakery import baking
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##########
 # baking #

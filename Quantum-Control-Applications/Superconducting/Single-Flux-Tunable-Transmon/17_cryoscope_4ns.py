@@ -45,7 +45,7 @@ from qualang_tools.loops import from_array
 from macros import ge_averaged_measurement
 from scipy import signal, optimize
 import matplotlib.pyplot as plt
-
+from qualang_tools.results.data_handler import DataHandler
 
 ####################
 # Helper functions #

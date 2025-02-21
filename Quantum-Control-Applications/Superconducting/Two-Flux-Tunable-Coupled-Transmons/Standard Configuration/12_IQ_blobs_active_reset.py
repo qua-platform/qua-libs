@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from qualang_tools.results import fetching_tool
 from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout, reset_qubit
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

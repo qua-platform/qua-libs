@@ -28,7 +28,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.octave_tools import get_correction_for_each_LO_and_IF
 import matplotlib.pyplot as plt
 from scipy.signal import detrend
-
+from qualang_tools.results.data_handler import DataHandler
 
 #####################################
 #  Open Communication with the QOP  #

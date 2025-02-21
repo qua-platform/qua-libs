@@ -9,7 +9,7 @@ from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

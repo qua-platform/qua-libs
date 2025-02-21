@@ -29,7 +29,7 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.optimize import curve_fit
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##############################
 # Program-specific variables #

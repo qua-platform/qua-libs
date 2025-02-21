@@ -30,7 +30,7 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 from scipy import signal
 from scipy.optimize import curve_fit
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

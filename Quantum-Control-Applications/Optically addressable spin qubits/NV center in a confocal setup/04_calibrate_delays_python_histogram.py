@@ -15,7 +15,7 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 from qm import SimulationConfig
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

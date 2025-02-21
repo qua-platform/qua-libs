@@ -30,7 +30,7 @@ from qualang_tools.addons.variables import assign_variables_to_element
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-
+from qualang_tools.results.data_handler import DataHandler
 
 ##############################
 # Program-specific variables #

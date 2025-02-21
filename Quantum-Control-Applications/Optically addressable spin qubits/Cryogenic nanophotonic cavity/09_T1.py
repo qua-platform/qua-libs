@@ -8,7 +8,7 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

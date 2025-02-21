@@ -22,7 +22,7 @@ from qm import SimulationConfig
 from qm import QuantumMachinesManager
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
-
+from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################

@@ -24,7 +24,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.analysis import two_state_discriminator
 from macros import multiplexed_readout, qua_declaration
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

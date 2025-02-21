@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qm import SimulationConfig
-
+from qualang_tools.results.data_handler import DataHandler
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = 100
 delta_depth = 1

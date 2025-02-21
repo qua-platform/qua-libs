@@ -28,7 +28,7 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #

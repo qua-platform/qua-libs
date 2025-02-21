@@ -33,7 +33,7 @@ from qualang_tools.loops import from_array
 from qualang_tools.bakery import baking
 import matplotlib.pyplot as plt
 from macros import RF_reflectometry_macro, DC_current_sensing_macro
-
+from qualang_tools.results.data_handler import DataHandler
 
 ###################
 # The QUA program #
