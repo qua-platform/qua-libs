@@ -47,8 +47,13 @@ dfs = np.arange(-span, +span + 0.1, df)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "readout_len": readout_len,
+    "saturation_amp": saturation_amp,
+    "center_frequency": center,
+    "dfs": dfs,
     "config": config,
 }
+
 with program() as qubit_AC_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

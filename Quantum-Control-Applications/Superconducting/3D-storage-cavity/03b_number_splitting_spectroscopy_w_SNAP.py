@@ -46,8 +46,11 @@ dfs = np.arange(bottom, top, df)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "center_frequency": center,
+    "dfs": dfs,
     "config": config,
 }
+
 with program() as number_splitting_spectroscopy:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

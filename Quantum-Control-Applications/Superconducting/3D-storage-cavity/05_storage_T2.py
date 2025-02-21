@@ -46,8 +46,11 @@ durations = np.arange(t_min, t_max, dt)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detuning": detuning,
+    "durations": durations,
     "config": config,
 }
+
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit frequency

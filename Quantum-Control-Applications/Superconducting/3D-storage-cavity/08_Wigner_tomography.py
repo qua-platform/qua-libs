@@ -40,8 +40,11 @@ aQs = np.arange(-1.99, 1.99, 0.05)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "amplitude_aIs": aIs,
+    "amplitude_aQs": aQs,
     "config": config,
 }
+
 with program() as wigner_tomography:
     n = declare(int)  # QUA variable for the averaging loop
     aI = declare(fixed)  # QUA variable for the idle time

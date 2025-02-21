@@ -47,8 +47,10 @@ durations = np.arange(t_min, t_max, dt)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
     "config": config,
 }
+
 with program() as Cavity_T1:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit frequency
