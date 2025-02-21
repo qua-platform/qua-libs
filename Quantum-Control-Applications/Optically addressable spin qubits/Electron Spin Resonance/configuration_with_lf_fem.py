@@ -17,6 +17,7 @@ pio.renderers.default = "browser"
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
+u = unit(coerce_to_integer=True)
 def IQ_imbalance(g, phi):
     """
     Creates the correction matrix for the mixer imbalance caused by the gain and phase imbalances, more information can
@@ -39,8 +40,6 @@ con = "con1"
 fem = 1  # This should be the index of the LF-FEM module, e.g., 1
 
 sampling_rate = int(1e9)  # or, int(2e9)
-# API allowing the use of unit and data conversion
-u = unit()
 
 # IP address of the Quantum Orchestration Platform
 qop_ip = "127.0.0.1"

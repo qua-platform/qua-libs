@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 from qualang_tools.units import unit
 from qualang_tools.plot import interrupt_on_close
@@ -27,12 +28,29 @@ def IQ_imbalance(g, phi):
     return [float(N * x) for x in [(1 - g) * c, (1 + g) * s, (1 - g) * s, (1 + g) * c]]
 
 
-#############
-# VARIABLES #
-#############
+######################
+# Network parameters #
+######################
 qop_ip = "127.0.0.1"  # Write the OPX IP address
 cluster_name = "Cluster_1"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#############################################
+#              OPX PARAMETERS               #
+#############################################
 # Set octave_config to None if no octave are present
 octave_config = None
 

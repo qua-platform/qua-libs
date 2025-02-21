@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import numpy as np
 from qm.octave import QmOctaveConfig
 from qualang_tools.units import unit
@@ -33,8 +34,21 @@ octave_config.add_device_info("octave1", octave_ip, octave_port)
 
 
 #############
-# VARIABLES #
+# Save Path #
 #############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
+#############################################
+#              OPX PARAMETERS               #
+#############################################
 # Frequencies
 NV_IF_freq = 40 * u.MHz
 NV_LO_freq = 2.83 * u.GHz
