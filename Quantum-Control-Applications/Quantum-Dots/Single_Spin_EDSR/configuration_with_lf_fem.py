@@ -10,11 +10,11 @@ from qualang_tools.voltage_gates import VoltageGateSequence
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+
 #######################
 # AUXILIARY FUNCTIONS #
 #######################
 u = unit(coerce_to_integer=True)
-
 
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
@@ -41,7 +41,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -59,7 +58,6 @@ fem = 1  # Should be the LF-FEM index, e.g., 1
 
 # Set octave_config to None if no octave are present
 octave_config = None
-
 
 #############################################
 #              OPX PARAMETERS               #

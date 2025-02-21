@@ -10,6 +10,12 @@ from qualang_tools.voltage_gates import VoltageGateSequence
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
+
 ######################
 # Network parameters #
 ######################
@@ -20,7 +26,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -45,11 +50,9 @@ octave_config = None
 #############################################
 sampling_rate = int(1e9)  # or, int(2e9)
 
-
 ######################
 #       READOUT      #
 ######################
-u = unit(coerce_to_integer=True)
 
 # DC readout parameters
 readout_len = 1 * u.us
