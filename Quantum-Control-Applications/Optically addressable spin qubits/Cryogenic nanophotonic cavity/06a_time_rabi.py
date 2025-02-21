@@ -21,6 +21,7 @@ n_avg = 1e6
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "t_vec": t_vec,
     "config": config,
 }
 with program() as time_rabi:

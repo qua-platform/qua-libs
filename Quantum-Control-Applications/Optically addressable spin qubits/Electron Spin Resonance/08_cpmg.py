@@ -36,6 +36,7 @@ n_avg = 100
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "tau_array": tau_array,
     "config": config,
 }
 with program() as cpmg:

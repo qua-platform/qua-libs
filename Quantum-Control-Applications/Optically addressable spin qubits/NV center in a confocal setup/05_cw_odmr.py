@@ -34,6 +34,7 @@ readout_len = long_meas_len_1  # Readout duration for this experiment
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": f_vec,
     "config": config,
 }
 with program() as cw_odmr:

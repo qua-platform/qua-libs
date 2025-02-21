@@ -33,6 +33,7 @@ readout_delay = safe_delay - (pi_len + readout_len // 4) // 2 - 5
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "pulse1_vec": pulse1_vec,
     "config": config,
 }
 with program() as time_rabi:

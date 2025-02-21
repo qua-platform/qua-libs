@@ -31,6 +31,7 @@ n_avg = 100
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "pulse1_vec": pulse1_vec,
     "config": config,
 }
 with program() as pi_pulse_cal:

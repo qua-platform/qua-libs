@@ -21,6 +21,7 @@ n_avg = 1e6  # number of averages
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": f_vec,
     "config": config,
 }
 with program() as cw_odmr:

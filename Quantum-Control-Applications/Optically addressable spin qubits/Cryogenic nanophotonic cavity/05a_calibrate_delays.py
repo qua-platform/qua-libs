@@ -28,6 +28,7 @@ t_vec = np.arange(0, meas_len, 1)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "t_vec": t_vec,
     "config": config,
 }
 with program() as calib_delays:

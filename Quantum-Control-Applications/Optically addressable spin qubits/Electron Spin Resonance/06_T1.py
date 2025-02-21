@@ -34,6 +34,7 @@ readout_delay = safe_delay - (pi_len + readout_len // 4) // 2
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "wait_vec": wait_vec,
     "config": config,
 }
 with program() as T1:

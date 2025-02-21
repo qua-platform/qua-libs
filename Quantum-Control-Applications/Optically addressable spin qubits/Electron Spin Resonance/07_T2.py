@@ -30,6 +30,7 @@ n_avg = 100
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "delay_vec": delay_vec,
     "config": config,
 }
 with program() as T2:

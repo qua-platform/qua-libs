@@ -35,6 +35,13 @@ t_vec = np.arange(0, meas_len, 1)
 
 assert (initialization_len - mw_len) > 4, "The MW must be shorter than the laser pulse"
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "t_vec": t_vec,
+    "config": config,
+}
+
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'

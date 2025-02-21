@@ -28,6 +28,7 @@ assert (laser_len_cycles - mw_len_cycles) > 4, "The MW must be shorter than the 
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "t_vec": t_vec,
     "config": config,
 }
 with program() as calib_delays:

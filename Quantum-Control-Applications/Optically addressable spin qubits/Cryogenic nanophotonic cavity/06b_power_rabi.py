@@ -22,6 +22,7 @@ n_avg = 1e6  # number of iterations
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "a_vec": a_vec,
     "config": config,
 }
 with program() as power_rabi:

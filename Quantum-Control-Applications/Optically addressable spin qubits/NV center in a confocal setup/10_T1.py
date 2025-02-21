@@ -36,6 +36,7 @@ start_from_one = False
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "t_vec": t_vec,
     "config": config,
 }
 with program() as T1:

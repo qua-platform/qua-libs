@@ -23,6 +23,8 @@ start_from_one = False
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "start_from_one": start_from_one,
+    "t_vec": t_vec,
     "config": config,
 }
 with program() as T1:

@@ -7,7 +7,6 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
-from qualang_tools.results.data_handler import DataHandler
 ###################
 # The QUA program #
 ###################
@@ -17,11 +16,6 @@ single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 n_count = int(total_integration_time / single_integration_time_ns)
 
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 with program() as counter:
     times = declare(int, size=1000)
     counts = declare(int)
@@ -88,9 +82,3 @@ else:
         plt.ylabel("counts [kcps]")
         plt.title("Counter")
         plt.pause(0.1)
-    # Save results
-    script_name = Path(__file__).name
-    data_handler = DataHandler(root_data_folder=save_dir)
-    save_data_dict.update({"fig_live": fig})
-    data_handler.additional_files = {script_name: script_name, **default_additional_files}
-    data_handler.save_data(data=save_data_dict, name="_".join(script_name.split("_")[1:]).split(".")[0])
