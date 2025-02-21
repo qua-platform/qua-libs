@@ -16,7 +16,6 @@ pio.renderers.default = "browser"
 #######################
 u = unit(coerce_to_integer=True)
 
-
 # IQ imbalance matrix
 def IQ_imbalance(g, phi):
     """
@@ -40,11 +39,9 @@ cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 octave_config = None
 
-
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -54,6 +51,9 @@ default_additional_files = {
     "optimal_weights.npz": "optimal_weights.npz",
 }
 
+#####################
+# OPX configuration #
+#####################
 
 #############################################
 #                  Qubits                   #

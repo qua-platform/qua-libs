@@ -10,12 +10,30 @@ from qualang_tools.units import unit
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
+
 ######################
 # Network parameters #
 ######################
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 ############################
 # Set octave configuration #
@@ -38,30 +56,14 @@ octaves = [octave_1]
 # Configure the Octaves
 octave_config = octave_declaration(octaves)
 
-#############
-# Save Path #
-#############
-
-# Path to save data
-save_dir = Path().absolute() / "Data"
-save_dir.mkdir(exist_ok=True)
-
-default_additional_files = {
-    Path(__file__).name: Path(__file__).name,
-    "optimal_weights.npz": "optimal_weights.npz",
-}
-
 #####################
 # OPX configuration #
 #####################
+sampling_rate = int(1e9)  # or, int(2e9)
 
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
-
-sampling_rate = int(1e9)  # or, int(2e9)
-
 qubit_LO_q1 = 3.95 * u.GHz
 qubit_LO_q2 = 3.95 * u.GHz
 # Qubits IF

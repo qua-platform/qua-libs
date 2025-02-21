@@ -26,7 +26,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -39,7 +38,6 @@ default_additional_files = {
 ############################
 # Set octave configuration #
 ############################
-
 # The Octave port is 11xxx, where xxx are the last three digits of the Octave internal IP that can be accessed from
 # the OPX admin panel if you QOP version is >= QOP220. Otherwise, it is 50 for Octave1, then 51, 52 and so on.
 octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")

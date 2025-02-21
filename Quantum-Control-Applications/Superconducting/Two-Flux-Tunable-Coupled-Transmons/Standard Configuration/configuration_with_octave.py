@@ -23,6 +23,18 @@ qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = None  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
 
+#############
+# Save Path #
+#############
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
+
 ############################
 # Set octave configuration #
 ############################
@@ -41,19 +53,6 @@ octave_1 = OctaveUnit("octave1", qop_ip, port=11050, con="con1")
 octaves = [octave_1]
 # Configure the Octaves
 octave_config = octave_declaration(octaves)
-
-#############
-# Save Path #
-#############
-
-# Path to save data
-save_dir = Path().absolute() / "Data"
-save_dir.mkdir(exist_ok=True)
-
-default_additional_files = {
-    Path(__file__).name: Path(__file__).name,
-    "optimal_weights.npz": "optimal_weights.npz",
-}
 
 #####################
 # OPX configuration #

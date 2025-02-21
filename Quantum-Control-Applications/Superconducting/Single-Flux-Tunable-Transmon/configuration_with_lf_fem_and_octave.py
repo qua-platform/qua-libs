@@ -10,6 +10,10 @@ from qualang_tools.units import unit
 import plotly.io as pio
 
 pio.renderers.default = "browser"
+#######################
+# AUXILIARY FUNCTIONS #
+#######################
+u = unit(coerce_to_integer=True)
 
 ######################
 # Network parameters #
@@ -21,7 +25,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
@@ -36,7 +39,6 @@ default_additional_files = {
 #####################
 con = "con1"
 fem = 1  # Should be the LF-FEM index, e.g., 1
-
 
 ############################
 # Set octave configuration #
@@ -59,8 +61,6 @@ octave_config = octave_declaration(octaves)
 #############################################
 #                  Qubits                   #
 #############################################
-u = unit(coerce_to_integer=True)
-
 sampling_rate = int(1e9)  # or, int(2e9)
 
 qubit_LO = 7.4 * u.GHz

@@ -16,7 +16,6 @@ pio.renderers.default = "browser"
 #######################
 u = unit(coerce_to_integer=True)
 
-
 ######################
 # Network parameters #
 ######################
@@ -27,7 +26,6 @@ qop_port = None  # Write the QOP port if version < QOP220
 #############
 # Save Path #
 #############
-
 # Path to save data
 save_dir = Path().absolute() / "Data"
 save_dir.mkdir(exist_ok=True)
