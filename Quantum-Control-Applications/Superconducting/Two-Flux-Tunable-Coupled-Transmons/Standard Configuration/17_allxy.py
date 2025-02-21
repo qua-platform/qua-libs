@@ -112,6 +112,11 @@ def allXY(pulses, qubit, resonator):
 ###################
 # The QUA program #
 ###################
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as ALL_XY:
     n = declare(int)
     n_st = declare_stream()
