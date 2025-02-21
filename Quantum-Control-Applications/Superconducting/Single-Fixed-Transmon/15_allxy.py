@@ -98,7 +98,7 @@ def allXY(pulses):
     return I_xy, Q_xy
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as ALL_XY:
     n = declare(int)

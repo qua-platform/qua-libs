@@ -320,7 +320,7 @@ def play_sequence(sequence_list, number_of_gates):
 
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as rb:
     depth = declare(int)  # Current depth

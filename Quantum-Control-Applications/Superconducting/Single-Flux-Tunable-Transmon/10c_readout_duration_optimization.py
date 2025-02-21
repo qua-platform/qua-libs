@@ -152,20 +152,20 @@ with program() as ro_duration_opt:
         Qe_st.buffer(number_of_divisions).average().save("Qe_avg")
         # variances
         (
-            ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
-            - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
+                ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
+                - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
         ).save("Ig_var")
         (
-            ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
-            - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
+                ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
+                - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
         ).save("Qg_var")
         (
-            ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
-            - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
+                ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
+                - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
         ).save("Ie_var")
         (
-            ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
-            - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
+                ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
+                - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
         ).save("Qe_var")
 
 #####################################
