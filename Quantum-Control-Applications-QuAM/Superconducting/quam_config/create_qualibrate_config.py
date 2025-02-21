@@ -21,8 +21,8 @@ current_dir = Path(__file__).parent.absolute()
 # Define default values
 parameters = {
     "project": "QPU_project",
-    "storage_location": str(current_dir / "data"),
-    "calibration_library_folder": str(current_dir / "calibration_graph"),
+    "storage_location": str(current_dir.parent.absolute() / "data"),
+    "calibration_library_folder": str(current_dir.parent.absolute() / "calibration_graph"),
     "quam_state_path": str(current_dir / "quam_state"),
 }
 
