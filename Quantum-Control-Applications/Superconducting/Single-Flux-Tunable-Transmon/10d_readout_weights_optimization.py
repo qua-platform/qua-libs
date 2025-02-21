@@ -31,6 +31,7 @@ from qualang_tools.results import progress_counter, fetching_tool
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
+
 ####################
 # Helper functions #
 ####################

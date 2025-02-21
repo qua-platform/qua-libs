@@ -41,8 +41,7 @@ center = 178 * u.MHz
 top = 2.5 * u.MHz
 bottom = -3.5 * u.MHz
 df = 10 * u.kHz
-dfs = np.arange(bottom, top, df) # Qubit detuning sweep
-
+dfs = np.arange(bottom, top, df)  # Qubit detuning sweep
 
 
 # Data to save

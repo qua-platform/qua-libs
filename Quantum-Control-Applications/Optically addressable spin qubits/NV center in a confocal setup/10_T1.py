@@ -28,7 +28,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-t_vec = np.arange(4, 250, 10) # The wait time vector in clock cycles (4ns)
+t_vec = np.arange(4, 250, 10)  # The wait time vector in clock cycles (4ns)
 n_avg = 1_000_000  # The number averaging iterations
 start_from_one = False
 

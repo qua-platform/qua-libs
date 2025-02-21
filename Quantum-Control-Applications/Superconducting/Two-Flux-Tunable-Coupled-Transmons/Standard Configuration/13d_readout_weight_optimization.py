@@ -32,6 +32,7 @@ from qm import SimulationConfig
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.results.data_handler import DataHandler
 
+
 ####################
 # Helper functions #
 ####################

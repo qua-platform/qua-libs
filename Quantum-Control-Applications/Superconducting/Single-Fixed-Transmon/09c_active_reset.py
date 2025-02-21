@@ -30,7 +30,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-initialization_method = "active_reset_one_threshold" # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
+initialization_method = "active_reset_one_threshold"  # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
 n_shot = 10000  # Number of acquired shots
 # The thresholds ar calibrated with the IQ_blobs.py script:
 # If I > threshold_e, then the qubit is assumed to be in |e> and a pi pulse is played to reset it.
@@ -46,6 +46,7 @@ save_data_dict = {
     "n_shot": n_shot,
     "config": config,
 }
+
 
 ###################################
 # Helper functions and QUA macros #
@@ -150,6 +151,7 @@ def active_reset_fast(threshold_g: float):
     # Play a conditional pi-pulse to actively reset the qubit
     play("x180", "qubit", condition=(I_reset > threshold_g))
     return 1
+
 
 ###################
 # The QUA program #

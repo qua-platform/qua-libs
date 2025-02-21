@@ -110,6 +110,7 @@ save_data_dict = {
     "config": config,
 }
 
+
 def get_interleaved_gate(gate_index):
     if gate_index == 0:
         return "I"
@@ -348,6 +349,7 @@ def play_sequence(sequence_list, number_of_gates):
                             wait(x180_len // 4, "qubit")
                         else:
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
+
 
 ###################
 # The QUA program #

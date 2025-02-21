@@ -350,6 +350,7 @@ def play_sequence(sequence_list, number_of_gates):
                         else:
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
 
+
 ###################
 # The QUA program #
 ###################

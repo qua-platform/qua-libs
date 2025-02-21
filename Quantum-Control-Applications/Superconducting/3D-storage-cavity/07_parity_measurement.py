@@ -41,8 +41,9 @@ n_avg = 1000
 tau_min = 16 // 4
 tau_max = 1000 // 4
 d_tau = 4 // 4
-taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus. Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
-
+taus = np.arange(
+    tau_min, tau_max + 0.1, d_tau
+)  # + 0.1 to add tau_max to taus. Dephasing time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 
 
 # Data to save

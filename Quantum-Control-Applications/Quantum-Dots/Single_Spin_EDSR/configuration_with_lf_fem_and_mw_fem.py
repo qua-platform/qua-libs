@@ -1,6 +1,7 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & MW-FEM
 """
+
 from pathlib import Path
 import numpy as np
 from scipy.signal.windows import gaussian

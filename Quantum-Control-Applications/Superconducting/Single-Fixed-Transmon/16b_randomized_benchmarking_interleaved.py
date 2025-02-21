@@ -58,6 +58,7 @@ save_data_dict = {
     "config": config,
 }
 
+
 ###################################
 # Helper functions and QUA macros #
 ###################################
@@ -180,6 +181,7 @@ def play_sequence(sequence_list, depth):
                 play("-x90", "qubit")
                 play("y90", "qubit")
                 play("-x90", "qubit")
+
 
 ###################
 # The QUA program #

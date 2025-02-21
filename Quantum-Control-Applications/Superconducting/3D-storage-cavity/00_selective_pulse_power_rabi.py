@@ -34,7 +34,9 @@ n_avg = 1000  # The number of averages
 a_min = 0
 a_max = 1.0
 n_a = 101
-amplitudes = np.linspace(a_min, a_max, n_a) # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+amplitudes = np.linspace(
+    a_min, a_max, n_a
+)  # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 
 # Data to save
 save_data_dict = {

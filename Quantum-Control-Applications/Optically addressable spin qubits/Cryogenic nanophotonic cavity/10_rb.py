@@ -23,6 +23,7 @@ num_of_sequences = 50
 n_avg = 1
 seed = 345324
 
+
 ###################################
 # Helper functions and QUA macros #
 ###################################

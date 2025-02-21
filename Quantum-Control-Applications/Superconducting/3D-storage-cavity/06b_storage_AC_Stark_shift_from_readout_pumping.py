@@ -41,7 +41,7 @@ off_saturation_amp = 1  # Pre-factor to the value defined in the config - restri
 center = 100 * u.MHz
 span = 2 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df) # Storage detuning sweep
+dfs = np.arange(-span, +span + 0.1, df)  # Storage detuning sweep
 
 # Data to save
 save_data_dict = {

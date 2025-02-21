@@ -46,6 +46,7 @@ from macros import qua_declaration, multiplexed_readout
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
+
 ####################
 # Helper functions #
 ####################

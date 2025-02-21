@@ -41,7 +41,7 @@ detuning = 20 * u.kHz
 t_min = 10000 // 4
 t_max = 100000 // 4
 dt = 1000 // 4
-durations = np.arange(t_min, t_max, dt) # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 
 # Data to save
 save_data_dict = {

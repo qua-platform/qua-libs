@@ -51,7 +51,7 @@ n_avg = 500  # The number of averages
 t_min = 16 // 4
 t_max = 200 // 4
 dt = 4 // 4
-durations = np.arange(t_min, t_max, dt) # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 
 
 # Data to save

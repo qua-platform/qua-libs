@@ -42,7 +42,7 @@ t_min = 16 // 4
 t_max = 100000 // 4
 dt = 400 // 4
 # Detuning of the off pump pulses
-durations = np.arange(t_min, t_max, dt) # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+durations = np.arange(t_min, t_max, dt)  # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 
 
 detuning = 30 * u.MHz

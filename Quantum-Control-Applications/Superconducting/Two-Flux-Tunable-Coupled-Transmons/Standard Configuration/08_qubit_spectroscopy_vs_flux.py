@@ -25,6 +25,7 @@ from macros import qua_declaration, multiplexed_readout
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
+
 # Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
 # resonance while sweeping the flux
 def cosine_func(x, amplitude, frequency, phase, offset):

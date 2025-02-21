@@ -18,7 +18,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-pi_len = 320 // 4 # Pi pulse duration calibrated with '04_pi_pulse_calibration.py'
+pi_len = 320 // 4  # Pi pulse duration calibrated with '04_pi_pulse_calibration.py'
 
 pulse1_min = 40 // 4
 pulse1_max = 400 // 4

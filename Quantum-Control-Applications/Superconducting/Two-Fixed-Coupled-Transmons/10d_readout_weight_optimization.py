@@ -14,6 +14,7 @@ from qualang_tools.results.data_handler import DataHandler
 # Helper functions #
 ####################
 
+
 def normalize_complex_array(arr):
     # Calculate the simple norm of the complex array
     norm = np.sqrt(np.sum(np.abs(arr) ** 2))

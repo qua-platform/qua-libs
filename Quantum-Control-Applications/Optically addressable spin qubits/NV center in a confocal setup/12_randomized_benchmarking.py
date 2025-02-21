@@ -39,6 +39,7 @@ seed = 345324  # Pseudo-random number generator seed
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
+
 ###################################
 # Helper functions and QUA macros #
 ###################################

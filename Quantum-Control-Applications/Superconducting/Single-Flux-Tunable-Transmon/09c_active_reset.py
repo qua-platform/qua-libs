@@ -31,7 +31,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-initialization_method = "active_reset_one_threshold" # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
+initialization_method = "active_reset_one_threshold"  # "thermalization", "active_reset_one_threshold", "active_reset_two_thresholds", "active_reset_fast"
 
 n_shot = 10000  # Number of acquired shots
 # The thresholds ar calibrated with the IQ_blobs.py script:
@@ -48,6 +48,7 @@ save_data_dict = {
     "n_shot": n_shot,
     "config": config,
 }
+
 
 ###################################
 # Helper functions and QUA macros #

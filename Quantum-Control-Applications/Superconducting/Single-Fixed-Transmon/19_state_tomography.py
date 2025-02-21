@@ -20,6 +20,7 @@ from macros import readout_macro
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
+
 ######################################
 # Set-up a Bloch sphere for plotting #  (can be removed if not used)
 ######################################

@@ -41,7 +41,7 @@ n_avg = 1000  # The number of averages
 center = 100 * u.MHz
 span = 0.5 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df) # Storage detuning sweep
+dfs = np.arange(-span, +span + 0.1, df)  # Storage detuning sweep
 
 # Data to save
 save_data_dict = {

@@ -43,7 +43,7 @@ detuning = 20 * u.MHz  # Detuning frequency of the storage off pump pulse
 center = 100 * u.MHz
 span = 2 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df) # Qubit detuning sweep
+dfs = np.arange(-span, +span + 0.1, df)  # Qubit detuning sweep
 
 
 # Data to save

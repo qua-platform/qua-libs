@@ -36,7 +36,7 @@ from qualang_tools.results.data_handler import DataHandler
 #   Parameters   #
 ##################
 # Parameters Definition
-n_avg = 50 # Number of averages for each random sequence
+n_avg = 50  # Number of averages for each random sequence
 num_of_sequences = 50  # Number of random sequences
 max_circuit_depth = 1000  # Maximum circuit depth
 delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0

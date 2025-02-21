@@ -20,7 +20,7 @@ from qualang_tools.results.data_handler import DataHandler
 pulse1_min = 20 // 4
 pulse1_max = 400 // 4
 dpulse1 = 40 // 4
-pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1) # Pi/2 pulse duration to be scanned
+pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)  # Pi/2 pulse duration to be scanned
 
 # Resonator or qubit relaxation time
 cooldown_time = 10 * u.ms // 4

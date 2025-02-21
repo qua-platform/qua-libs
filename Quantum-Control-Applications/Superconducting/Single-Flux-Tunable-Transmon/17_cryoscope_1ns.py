@@ -47,6 +47,7 @@ from scipy import signal, optimize
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
+
 ####################
 # Helper functions #
 ####################
