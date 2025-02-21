@@ -108,6 +108,7 @@ save_data_dict = {
     "n_avg": n_avg,
     "config": config,
 }
+
 with program() as ALL_XY:
     n = declare(int)
     r = Random()  # Pseudo random number generator
