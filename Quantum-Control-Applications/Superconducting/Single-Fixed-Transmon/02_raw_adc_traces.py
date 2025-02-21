@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 n_avg = 100  # Number of averaging loops
 
 ###################
-# The QUA program #
+#   QUA Program   #
 ###################
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop
