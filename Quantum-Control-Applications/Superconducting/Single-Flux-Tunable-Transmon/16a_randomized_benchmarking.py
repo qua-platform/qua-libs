@@ -31,14 +31,14 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
+delta_clifford = 10  # Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -46,12 +46,18 @@ state_discrimination = False
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
 
 ###################################
 # Helper functions and QUA macros #
 ###################################
 def power_law(power, a, b, p):
-    return a * (p**power) + b
+    return a * (p ** power) + b
 
 
 def generate_sequence():
@@ -148,13 +154,6 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
                 play("-x90", "qubit")
 
-
-
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 
 ###################
 # The QUA program #
@@ -330,9 +329,9 @@ else:
     print(cov)
 
     one_minus_p = 1 - pars[2]
-    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_c = one_minus_p * (1 - 1 / 2 ** 1)
     r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_c_std = stdevs[2] * (1 - 1 / 2 ** 1)
     r_g_std = r_c_std / 1.875
 
     print("#########################")

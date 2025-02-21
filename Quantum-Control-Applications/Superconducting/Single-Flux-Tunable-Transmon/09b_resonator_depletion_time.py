@@ -27,10 +27,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1_000
 ramsey_idle_time = 1 * u.us
 # Time between populating the resonator and playing a Ramsey sequence in clock-cycles (4ns)
@@ -43,6 +43,10 @@ save_data_dict = {
     "taus": taus,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as res_depletion_time:
     n = declare(int)
     n_st = declare_stream()

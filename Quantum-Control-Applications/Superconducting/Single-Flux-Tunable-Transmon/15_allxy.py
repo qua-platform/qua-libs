@@ -24,11 +24,21 @@ from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1e4
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # All-XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
     ("I", "I"),
@@ -89,16 +99,9 @@ def allXY(pulses):
     )
     return I_xy, Q_xy
 
-
 ###################
 # The QUA program #
 ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
-
 with program() as ALL_XY:
     n = declare(int)
     r = Random()  # Pseudo random number generator

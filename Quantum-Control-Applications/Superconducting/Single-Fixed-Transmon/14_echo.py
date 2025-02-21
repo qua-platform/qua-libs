@@ -43,7 +43,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as echo:
     n = declare(int)

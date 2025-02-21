@@ -23,7 +23,7 @@ from configuration import *
 element = "resonator"
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as cw_output:
     with infinite_loop_():

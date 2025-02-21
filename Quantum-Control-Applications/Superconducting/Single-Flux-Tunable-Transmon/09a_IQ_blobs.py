@@ -24,10 +24,10 @@ from qm import QuantumMachinesManager
 from configuration import *
 from qualang_tools.analysis.discriminator import two_state_discriminator
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_runs = 10000  # Number of runs
 
 # Data to save
@@ -35,6 +35,10 @@ save_data_dict = {
     "n_runs": n_runs,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as IQ_blobs:
     n = declare(int)
     I_g = declare(fixed)

@@ -118,9 +118,10 @@ def baked_waveform(waveform, pulse_duration):
     return pulse_segments
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
@@ -146,6 +147,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index

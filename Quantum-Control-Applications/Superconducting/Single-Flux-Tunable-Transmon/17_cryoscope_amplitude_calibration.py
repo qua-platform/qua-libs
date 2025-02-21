@@ -30,9 +30,10 @@ from macros import ge_averaged_measurement
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 10_000  # Number of averages
 # Flag to set to True if state discrimination is calibrated (where the qubit state is inferred from the 'I' quadrature).
 # Otherwise, a preliminary sequence will be played to measure the averaged I and Q values when the qubit is in |g> and |e>.
@@ -46,6 +47,10 @@ save_data_dict = {
     "flux_amp_array": flux_amp_array,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as cryoscope_amp:
     n = declare(int)  # QUA variable for the averaging loop
     flux_amp = declare(fixed)  # Flux amplitude pre-factor

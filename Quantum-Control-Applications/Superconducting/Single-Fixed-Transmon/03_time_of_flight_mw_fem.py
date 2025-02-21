@@ -28,7 +28,7 @@ from scipy.signal import savgol_filter
 n_avg = 100  # Number of averaging loops
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as raw_trace_prog:
     n = declare(int)  # QUA variable for the averaging loop

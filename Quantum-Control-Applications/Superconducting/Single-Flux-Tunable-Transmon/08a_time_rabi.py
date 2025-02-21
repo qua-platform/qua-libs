@@ -25,10 +25,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # Pulse duration sweep (in clock cycles = 4ns)
 # must be larger than 4 clock cycles and larger than the pi_len defined in the config
@@ -43,6 +43,10 @@ save_data_dict = {
     "durations": durations,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as time_rabi:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

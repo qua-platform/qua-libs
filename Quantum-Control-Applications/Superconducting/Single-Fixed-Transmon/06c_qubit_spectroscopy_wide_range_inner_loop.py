@@ -52,7 +52,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop

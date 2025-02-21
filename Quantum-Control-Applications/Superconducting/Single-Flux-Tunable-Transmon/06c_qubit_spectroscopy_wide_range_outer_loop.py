@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 from time import sleep
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The intermediate frequency sweep parameters
 f_min = 50 * u.MHz
@@ -50,6 +50,10 @@ save_data_dict = {
     "frequencies": frequency,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep

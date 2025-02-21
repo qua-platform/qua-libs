@@ -38,9 +38,10 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth < 1000
@@ -57,6 +58,11 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 ###################################
 # Helper functions and QUA macros #
@@ -343,12 +349,6 @@ def play_sequence(sequence_list, number_of_gates):
                             wait(x180_len // 4, "qubit")
                         else:
                             play(single_qubit_gate_pairs[ii][iii], "qubit")
-
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 
 ###################
 # The QUA program #

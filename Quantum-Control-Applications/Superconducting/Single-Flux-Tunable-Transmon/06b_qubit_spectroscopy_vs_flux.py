@@ -24,9 +24,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # Number of averaging loops
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
@@ -42,6 +43,17 @@ step = 0.01
 flux = np.arange(dc_min, dc_max + step / 2, step)  # +da/2 to add a_max to the scan
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": frequencies,
+    "flux": flux,
+    "config": config,
+}
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # Get the resonator frequency vs flux trend from the node 05_resonator_spec_vs_flux.py in order to always measure on
 # resonance while sweeping the flux
 def cosine_func(x, amplitude, frequency, phase, offset):
@@ -55,15 +67,6 @@ fitted_curve = fitted_curve.astype(int)
 ###################
 # The QUA program #
 ###################
-
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "IF_frequencies": frequencies,
-    "flux": flux,
-    "config": config,
-}
-
 with program() as qubit_spec_2D:
     n = declare(int)  # QUA variable for the averaging index
     f = declare(int)  # QUA variable for the qubit frequency

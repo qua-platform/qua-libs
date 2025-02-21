@@ -23,9 +23,10 @@ from qualang_tools.loops import from_array, get_equivalent_log_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000
 # The wait time sweep (in clock cycles = 4ns) - must be larger than 4 clock cycles
 tau_min = 16 // 4
@@ -40,6 +41,10 @@ save_data_dict = {
     "taus": taus,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the wait time

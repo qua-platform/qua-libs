@@ -28,6 +28,7 @@ from qualang_tools.plot import interrupt_on_close
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
+
 ####################
 # Helper functions #
 ####################
@@ -47,9 +48,10 @@ def update_readout_length(new_readout_length, ringdown_length):
     }
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1e4  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = 5 * u.us  # Readout pulse duration
@@ -64,7 +66,6 @@ print("The readout has been sliced in the following number of divisions", number
 # Time axis for the plots at the end
 x_plot = np.arange(division_length * 4, readout_len + ringdown_len + 1, division_length * 4)
 
-
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -75,6 +76,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as ro_duration_opt:
     n = declare(int)
     II = declare(fixed, size=number_of_divisions)
@@ -148,20 +152,20 @@ with program() as ro_duration_opt:
         Qe_st.buffer(number_of_divisions).average().save("Qe_avg")
         # variances
         (
-            ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
-            - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
+                ((Ig_st.buffer(number_of_divisions) * Ig_st.buffer(number_of_divisions)).average())
+                - (Ig_st.buffer(number_of_divisions).average() * Ig_st.buffer(number_of_divisions).average())
         ).save("Ig_var")
         (
-            ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
-            - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
+                ((Qg_st.buffer(number_of_divisions) * Qg_st.buffer(number_of_divisions)).average())
+                - (Qg_st.buffer(number_of_divisions).average() * Qg_st.buffer(number_of_divisions).average())
         ).save("Qg_var")
         (
-            ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
-            - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
+                ((Ie_st.buffer(number_of_divisions) * Ie_st.buffer(number_of_divisions)).average())
+                - (Ie_st.buffer(number_of_divisions).average() * Ie_st.buffer(number_of_divisions).average())
         ).save("Ie_var")
         (
-            ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
-            - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
+                ((Qe_st.buffer(number_of_divisions) * Qe_st.buffer(number_of_divisions)).average())
+                - (Qe_st.buffer(number_of_divisions).average() * Qe_st.buffer(number_of_divisions).average())
         ).save("Qe_var")
 
 #####################################

@@ -25,9 +25,10 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_runs = 1000
 # The readout amplitude sweep (as a pre-factor of the readout amplitude) - must be within [-2; 2)
 a_min = 0.5
@@ -41,6 +42,10 @@ save_data_dict = {
     "amplitudes": amplitudes,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as ro_amp_opt:
     n = declare(int)  # QUA variable for the number of runs
     counter = declare(int, value=0)  # Counter for the progress bar

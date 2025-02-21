@@ -152,7 +152,7 @@ def active_reset_fast(threshold_g: float):
     return 1
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as active_reset_prog:
     n = declare(int)  # Averaging index

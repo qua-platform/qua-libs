@@ -31,10 +31,10 @@ from macros import readout_macro
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100
 # Detuning to compensate for the AC STark-shift
 detunings = np.arange(-10e6, 10e6, 1e6)
@@ -51,6 +51,10 @@ save_data_dict = {
     "iters": iters,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as ac_stark_shift:
     n = declare(int)  # QUA variable for the averaging loop
     it = declare(int)  # QUA variable for the number of qubit pulses

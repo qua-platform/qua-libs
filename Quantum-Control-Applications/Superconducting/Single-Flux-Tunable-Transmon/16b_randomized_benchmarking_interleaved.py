@@ -33,13 +33,14 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-#############################################
-# Program dependent variables and functions #
-#############################################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
-delta_clifford = 10  #  Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
+delta_clifford = 10  # Play each sequence with a depth step equals to 'delta_clifford - Must be > 0
 assert (max_circuit_depth / delta_clifford).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
 seed = 345324  # Pseudo-random number generator seed
 # Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)
@@ -51,6 +52,12 @@ inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 #  0: identity |  1: x180 |  2: y180
 # 12: x90      | 13: -x90 | 14: y90 | 15: -y90 |
 interleaved_gate_index = 2
+
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 
 ###################################
@@ -74,7 +81,7 @@ def get_interleaved_gate(gate_index):
 
 
 def power_law(power, a, b, p):
-    return a * (p**power) + b
+    return a * (p ** power) + b
 
 
 def generate_sequence(interleaved_gate_index):
@@ -177,12 +184,6 @@ def play_sequence(sequence_list, depth):
                 play("-x90", "qubit")
 
 
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
-
 ###################
 # The QUA program #
 ###################
@@ -268,7 +269,6 @@ with program() as rb:
             Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(max_circuit_depth / delta_clifford).average().save(
                 "Q_avg"
             )
-
 
 #####################################
 #  Open Communication with the QOP  #
@@ -360,9 +360,9 @@ else:
     print(cov)
 
     one_minus_p = 1 - pars[2]
-    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_c = one_minus_p * (1 - 1 / 2 ** 1)
     r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_c_std = stdevs[2] * (1 - 1 / 2 ** 1)
     r_g_std = r_c_std / 1.875
 
     print("#########################")

@@ -162,7 +162,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop

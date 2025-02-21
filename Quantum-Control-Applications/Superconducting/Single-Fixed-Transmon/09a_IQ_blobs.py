@@ -37,7 +37,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as IQ_blobs:
     n = declare(int)

@@ -8,7 +8,7 @@ from qm import SimulationConfig
 from configuration import *
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as hello_qua:
     a = declare(fixed)

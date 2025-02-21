@@ -51,8 +51,9 @@ save_data_dict = {
     "frequencies": dfs,
     "config": config,
 }
+
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop

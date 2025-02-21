@@ -123,7 +123,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as opt_weights:
     n = declare(int)

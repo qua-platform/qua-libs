@@ -30,13 +30,6 @@ import matplotlib.pyplot as plt
 from scipy.signal import detrend
 from qualang_tools.results.data_handler import DataHandler
 
-#####################################
-#  Open Communication with the QOP  #
-#####################################
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-# Open the quantum machine
-qm = qmm.open_qm(config)
-
 ##################
 #   Parameters   #
 ##################
@@ -79,7 +72,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
@@ -139,6 +132,13 @@ with program() as resonator_spec:
         I_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).save_all("I")
         Q_st.buffer(len(IFs)).buffer(n_avg).map(FUNCTIONS.average()).save_all("Q")
         n_st.save_all("iteration")
+
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
+# Open the quantum machine
+qm = qmm.open_qm(config)
 
 ###############
 # Run Program #

@@ -44,7 +44,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as res_depletion_time:
     n = declare(int)

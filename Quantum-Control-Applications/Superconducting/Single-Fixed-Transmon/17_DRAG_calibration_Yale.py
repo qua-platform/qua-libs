@@ -51,7 +51,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop

@@ -182,7 +182,7 @@ def play_sequence(sequence_list, depth):
                 play("-x90", "qubit")
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth

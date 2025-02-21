@@ -76,7 +76,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as ro_duration_opt:
     n = declare(int)

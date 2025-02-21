@@ -48,7 +48,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop

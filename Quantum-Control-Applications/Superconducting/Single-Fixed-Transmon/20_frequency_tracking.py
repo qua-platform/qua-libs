@@ -68,7 +68,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as prog:
     freq_track_obj.initialization()

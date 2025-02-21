@@ -30,9 +30,10 @@ import matplotlib.pyplot as plt
 from scipy import signal
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 100  # The number of averages
 # The frequency sweep around the resonator frequency "resonator_IF"
 span = 10 * u.MHz
@@ -50,6 +51,10 @@ save_data_dict = {
     "amplitudes": amplitudes,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency

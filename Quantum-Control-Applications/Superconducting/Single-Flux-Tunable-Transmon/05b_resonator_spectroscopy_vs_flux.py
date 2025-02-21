@@ -31,9 +31,10 @@ from scipy import signal
 from scipy.optimize import curve_fit
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 6000  # Number of averaging loops
 # The frequency sweep around the resonator frequency "resonator_IF"
 span = 10 * u.MHz
@@ -45,10 +46,6 @@ flux_max = 0.49
 step = 0.01
 flux = np.arange(flux_min, flux_max + step / 2, step)
 
-###################
-# The QUA program #
-###################
-
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
@@ -56,6 +53,10 @@ save_data_dict = {
     "flux": flux,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the readout frequency

@@ -43,8 +43,9 @@ save_data_dict = {
     "IF_frequencies": frequencies,
     "config": config,
 }
+
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop

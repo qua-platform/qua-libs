@@ -43,7 +43,7 @@ save_data_dict = {
 }
 
 ###################
-#   QUA Program   #
+# The QUA program #
 ###################
 with program() as ro_amp_opt:
     n = declare(int)  # QUA variable for the number of runs
