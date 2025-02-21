@@ -44,7 +44,6 @@ save_data_dict = {
     "config": config,
 }
 
-
 ###################################
 # Helper functions and QUA macros #
 ###################################
