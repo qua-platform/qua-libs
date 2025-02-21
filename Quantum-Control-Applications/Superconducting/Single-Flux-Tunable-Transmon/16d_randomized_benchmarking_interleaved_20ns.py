@@ -354,6 +354,11 @@ def play_sequence(sequence_list, number_of_gates):
 ###################
 # The QUA program #
 ###################
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as rb:
     depth = declare(int)  # Current depth
     depth_target = declare(int)  # Play the sequence every depth target
