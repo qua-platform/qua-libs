@@ -63,6 +63,7 @@ sequence = [
     ("y90", "y90"),
 ]
 
+
 # All-XY macro generating the pulse sequences from a python list.
 def allXY(pulses):
     """
@@ -96,6 +97,7 @@ def allXY(pulses):
         dual_demod.full("rotated_minus_sin", "rotated_cos", Q_xy),
     )
     return I_xy, Q_xy
+
 
 ###################
 # The QUA program #
