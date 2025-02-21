@@ -37,6 +37,7 @@ n_avg = 1000
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "times": times,
     "config": config,
 }
 with program() as rabi:

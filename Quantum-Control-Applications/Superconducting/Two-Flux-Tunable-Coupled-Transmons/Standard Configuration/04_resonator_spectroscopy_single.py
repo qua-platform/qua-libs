@@ -41,6 +41,7 @@ else:
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": frequencies,
     "config": config,
 }
 with program() as resonator_spec:

@@ -44,8 +44,11 @@ nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play an odd/even numb
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "max_nb_of_pulses": max_nb_of_pulses,
+    "amps": amps,
     "config": config,
 }
+
 with program() as rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor

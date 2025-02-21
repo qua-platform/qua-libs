@@ -15,7 +15,7 @@ n_runs = 10000  # Number of runs
 
 # Data to save
 save_data_dict = {
-    "n_avg": n_avg,
+    "n_runs": n_runs,
     "config": config,
 }
 with program() as iq_blobs:

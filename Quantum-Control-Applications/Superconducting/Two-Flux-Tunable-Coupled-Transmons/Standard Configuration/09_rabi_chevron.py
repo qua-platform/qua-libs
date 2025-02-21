@@ -40,6 +40,8 @@ amps = np.arange(0.0, 1, 0.02)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "amps": amps,
     "config": config,
 }
 with program() as rabi_chevron:

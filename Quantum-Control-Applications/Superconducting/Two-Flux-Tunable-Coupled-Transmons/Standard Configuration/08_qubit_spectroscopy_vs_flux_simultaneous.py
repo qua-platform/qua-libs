@@ -57,6 +57,12 @@ fitted_curve2 = (
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "saturation_len": saturation_len,
+    "saturation_amp": saturation_amp,
+    "flux_offset_1": flux_offset_1,
+    "flux_offset_2": flux_offset_2,
+    "dfs": dfs,
+    "dcs": dcs,
     "config": config,
 }
 with program() as multi_qubit_spec_vs_flux:

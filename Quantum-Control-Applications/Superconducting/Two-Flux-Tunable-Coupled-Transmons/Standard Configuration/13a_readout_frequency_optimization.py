@@ -36,8 +36,10 @@ dfs = np.arange(-10e6, 10e6, 0.1e6)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
     "config": config,
 }
+
 with program() as ro_freq_opt:
     Ig, Ig_st, Qg, Qg_st, n, n_st = qua_declaration(nb_of_qubits=2)
     Ie, Ie_st, Qe, Qe_st, _, _ = qua_declaration(nb_of_qubits=2)

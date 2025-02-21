@@ -37,6 +37,8 @@ t_delay = np.arange(4, 300, 4)  # Idle time sweep in clock cycles (Needs to be a
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "t_delay": t_delay,
     "config": config,
 }
 with program() as ramsey:

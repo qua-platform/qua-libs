@@ -40,9 +40,11 @@ amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 
 
 # Data to save
 save_data_dict = {
-    "n_avg": n_avg,
+    "n_runs": n_runs,
+    "amplitudes": amplitudes,
     "config": config,
 }
+
 with program() as ro_amp_opt:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)

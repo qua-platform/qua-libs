@@ -40,6 +40,7 @@ t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "t_delay": t_delay,
     "config": config,
 }
 with program() as T1:

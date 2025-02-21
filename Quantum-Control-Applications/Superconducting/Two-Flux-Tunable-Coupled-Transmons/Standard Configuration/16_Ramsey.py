@@ -39,6 +39,8 @@ detuning = 1e6  # "Virtual" detuning in Hz
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detuning": detuning,
+    "idle_times": idle_times,
     "config": config,
 }
 with program() as ramsey:

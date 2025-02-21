@@ -47,6 +47,8 @@ amplitudes = np.geomspace(a_min, a_max, 20)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "dfs": dfs,
+    "amplitudes": amplitudes,
     "config": config,
 }
 with program() as multi_res_spec_vs_amp:

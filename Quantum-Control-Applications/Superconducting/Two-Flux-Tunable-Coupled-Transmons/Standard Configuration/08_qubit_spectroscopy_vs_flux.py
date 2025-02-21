@@ -51,6 +51,10 @@ fitted_curve2 = (cosine_func(dcs, amplitude_fit2, frequency_fit2, phase_fit2, of
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "saturation_len": saturation_len,
+    "saturation_amp": saturation_amp,
+    "dfs": dfs,
+    "dcs": dcs,
     "config": config,
 }
 with program() as multi_qubit_spec_vs_flux:

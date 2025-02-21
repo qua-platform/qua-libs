@@ -43,8 +43,11 @@ n_avg = 1e4  # number of averages
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "division_length": division_length,
+    "number_of_divisions": number_of_divisions,
     "config": config,
 }
+
 with program() as ro_weights_opt:
     n = declare(int)  # QUA variable for the averaging loop
     ind = declare(int)  # QUA variable for the index used to save each element in the 'I' & 'Q' vectors

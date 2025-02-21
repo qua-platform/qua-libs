@@ -51,6 +51,9 @@ flux_bias = config["controllers"]["con1"]["analog_outputs"][
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "ts": ts,
+    "amps": amps,
+    "flux_bias": flux_bias,
     "config": config,
 }
 with program() as cz:

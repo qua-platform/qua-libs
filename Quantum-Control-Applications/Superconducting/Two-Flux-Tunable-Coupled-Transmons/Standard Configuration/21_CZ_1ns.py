@@ -79,6 +79,9 @@ xplot = np.arange(0, const_flux_len + 0.1, 1)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "amps": amps,
+    "flux_waveform": flux_waveform,
+    "flux_bias": flux_bias,
     "config": config,
 }
 with program() as cz:
