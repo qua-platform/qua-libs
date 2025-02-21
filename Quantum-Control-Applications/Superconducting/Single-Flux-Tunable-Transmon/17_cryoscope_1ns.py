@@ -144,6 +144,7 @@ xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "flux_waveform": flux_waveform,
     "config": config,
 }
 

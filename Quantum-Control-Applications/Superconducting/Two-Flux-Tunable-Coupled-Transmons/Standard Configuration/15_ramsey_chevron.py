@@ -27,9 +27,10 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # Number of averages
 dfs = np.arange(-10e6, 10e6, 0.1e6)  # Frequency detuning sweep in Hz
 t_delay = np.arange(4, 300, 4)  # Idle time sweep in clock cycles (Needs to be a list of integers)
@@ -41,6 +42,10 @@ save_data_dict = {
     "t_delay": t_delay,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the idle time

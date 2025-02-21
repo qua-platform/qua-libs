@@ -26,13 +26,23 @@ from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results import progress_counter
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qb = "q1_xy"  # The qubit under study
 res = "rr1"  # The resonator to measure the qubit defined above
 n_avg = 1000  # The number of averages
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
+
+###################################
+# Helper functions and QUA macros #
+###################################
 # All XY sequences. The sequence names must match corresponding operation in the config
 sequence = [
     ("I", "I"),
@@ -98,16 +108,9 @@ def allXY(pulses, qubit, resonator):
     )
     return I_xy, Q_xy
 
-
 ###################
 # The QUA program #
 ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
-
 with program() as ALL_XY:
     n = declare(int)
     n_st = declare_stream()

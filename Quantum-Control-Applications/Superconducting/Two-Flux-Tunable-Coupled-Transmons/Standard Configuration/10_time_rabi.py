@@ -27,9 +27,10 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 times = np.arange(4, 200, 2)  # In clock cycles = 4ns
 cooldown_time = 1 * u.us
 n_avg = 1000
@@ -40,6 +41,10 @@ save_data_dict = {
     "times": times,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the qubit pulse duration

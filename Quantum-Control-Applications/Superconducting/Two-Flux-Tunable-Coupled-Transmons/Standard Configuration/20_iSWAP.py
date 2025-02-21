@@ -35,9 +35,10 @@ import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit_in_e = 2  # Qubit number to put in |e> at the beginning of the sequence
 qubit_to_flux_tune = 1  # Qubit number to flux-tune
 
@@ -59,6 +60,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as iswap:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration

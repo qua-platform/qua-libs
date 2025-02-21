@@ -35,9 +35,10 @@ import numpy as np
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit_to_flux_tune = 1  # Qubit number to flux-tune
 
 n_avg = 1300  # The number of averages
@@ -56,6 +57,10 @@ save_data_dict = {
     "flux_bias": flux_bias,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as cz:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration

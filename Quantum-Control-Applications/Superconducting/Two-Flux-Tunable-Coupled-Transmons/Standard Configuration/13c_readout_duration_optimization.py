@@ -29,10 +29,10 @@ from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.plot import interrupt_on_close
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 division_length = 10  # in clock cycles
 number_of_divisions = int(readout_len / (4 * division_length))
 print("Integration weights chunk-size length in clock cycles:", division_length)
@@ -48,6 +48,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as ro_weights_opt:
     n = declare(int)  # QUA variable for the averaging loop
     ind = declare(int)  # QUA variable for the index used to save each element in the 'I' & 'Q' vectors

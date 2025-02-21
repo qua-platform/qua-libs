@@ -32,9 +32,9 @@ from qm import SimulationConfig
 from qualang_tools.results import fetching_tool, progress_counter
 from qualang_tools.results.data_handler import DataHandler
 
-###########
-# Helpers #
-###########
+####################
+# Helper functions #
+####################
 def divide_array_in_half(arr):
     split_index = len(arr) // 2
     arr1 = arr[:split_index]
@@ -80,9 +80,10 @@ def plot_three_complex_arrays(x, arr1, arr2, arr3):
     plt.show()
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1e4  # number of averages
 # Set maximum readout duration for this scan and update the configuration accordingly
 readout_len = readout_len
@@ -104,6 +105,10 @@ save_data_dict = {
     "number_of_divisions": number_of_divisions,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as opt_weights:
     n = declare(int)  # QUA variable for the averaging loop
     ind = declare(int)  # QUA variable for the index used to save each element in the 'I' & 'Q' vectors

@@ -32,9 +32,10 @@ def cosine_func(x, amplitude, frequency, phase, offset):
     return amplitude * np.cos(2 * np.pi * frequency * x + phase) + offset
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Adjust the pulse duration and amplitude to drive the qubit into a mixed state
 saturation_len = 10 * u.us  # In ns
@@ -65,6 +66,10 @@ save_data_dict = {
     "dcs": dcs,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as multi_qubit_spec_vs_flux:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit detuning

@@ -119,13 +119,12 @@ def baked_waveform(waveform, pulse_duration, qubit_index):
     return pulse_segments
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 # Index of the qubit to measure
 qubit = 1
-
-
 n_avg = 10_000  # Number of averages
 # FLux pulse waveform generation
 # The zeros are just here to visualize the rising and falling times of the flux pulse. they need to be set to 0 before
@@ -146,9 +145,13 @@ xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "flux_waveform": flux_waveform,
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     segment = declare(int)  # QUA variable for the flux pulse segment index

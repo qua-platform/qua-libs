@@ -28,9 +28,10 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
 # Qubit detuning sweep with respect to qubit_IF
 dfs = np.arange(-14e6, +14e6, 0.2e6)
@@ -44,6 +45,10 @@ save_data_dict = {
     "amps": amps,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as rabi_chevron:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the qubit detuning

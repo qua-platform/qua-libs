@@ -32,9 +32,10 @@ from scipy import signal
 from scipy.optimize import curve_fit
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 2000
 # The frequency sweep around the resonators' frequency "resonator_IF_q"
 span = 10 * u.MHz
@@ -53,6 +54,10 @@ save_data_dict = {
     "flux": flux,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as multi_res_spec_vs_flux:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)

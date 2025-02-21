@@ -32,9 +32,10 @@ from qualang_tools.plot import interrupt_on_close
 from macros import multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 qubit = 1
 
 if qubit == 1:
@@ -55,6 +56,11 @@ state_discrimination = True
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 
 ###################################
 # Helper functions and QUA macros #
@@ -157,16 +163,9 @@ def play_sequence(sequence_list, depth, qubit):
                 play("y90", f"q{qubit}_xy")
                 play("-x90", f"q{qubit}_xy")
 
-
 ###################
 # The QUA program #
 ###################
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
-
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the current depth (changes in steps of delta_clifford)

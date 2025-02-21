@@ -28,9 +28,10 @@ from qualang_tools.analysis import two_state_discriminator
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_runs = 10000  # Number of runs
 
 # Data to save
@@ -38,6 +39,10 @@ save_data_dict = {
     "n_runs": n_runs,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as iq_blobs:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)

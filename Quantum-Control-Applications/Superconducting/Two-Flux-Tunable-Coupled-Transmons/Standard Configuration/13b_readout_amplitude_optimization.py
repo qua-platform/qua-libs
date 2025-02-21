@@ -26,10 +26,10 @@ from qualang_tools.analysis import two_state_discriminator
 from macros import multiplexed_readout, qua_declaration
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_runs = 1
 # The readout amplitude sweep (as a pre-factor of the readout amplitude)
 a_min = 0.9
@@ -45,6 +45,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as ro_amp_opt:
     I_g, I_g_st, Q_g, Q_g_st, n, _ = qua_declaration(nb_of_qubits=2)
     I_e, I_e_st, Q_e, Q_e_st, _, _ = qua_declaration(nb_of_qubits=2)

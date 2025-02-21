@@ -25,24 +25,27 @@ from qualang_tools.results import progress_counter
 from macros import qua_declaration, multiplexed_readout
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000
 tau_min = 4  # in clock cycles
 tau_max = 10_000  # in clock cycles
 d_tau = 20  # in clock cycles
 t_delay = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
-t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
+# t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
-
-# QUA program
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
     "t_delay": t_delay,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the wait time

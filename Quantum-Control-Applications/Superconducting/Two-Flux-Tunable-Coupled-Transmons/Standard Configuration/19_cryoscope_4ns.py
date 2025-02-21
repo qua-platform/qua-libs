@@ -101,13 +101,12 @@ def filter_calc(exponential):
     return feedforward_taps, feedback_taps
 
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 # Index of the qubit to measure
 qubit = 1
-
-
 n_avg = 10_000  # Number of averages
 # Flux pulse durations in clock cycles (4ns) - must be > 4 or the pulse won't be played.
 durations = np.arange(3, const_flux_len // 4, 1)  # Starts at 3 clock-cycles to have the first point without pulse.
@@ -119,9 +118,14 @@ step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
+    "flux_waveform": flux_waveform,
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration
