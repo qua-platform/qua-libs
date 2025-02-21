@@ -24,11 +24,11 @@ from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-# The time vector for varying the idle time in clock cycles (4ns)
-t_vec = np.arange(4, 250, 10)
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+t_vec = np.arange(4, 250, 10) # The time vector for varying the idle time in clock cycles (4ns)
 n_avg = 1_000_000  # The number of averaging iterations
 
 # Data to save
@@ -37,6 +37,10 @@ save_data_dict = {
     "t_vec": t_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as ramsey:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts

@@ -10,10 +10,11 @@ from configuration import *
 import matplotlib.pyplot as plt
 from macros import get_c2c_time
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pi_len = 320 // 4  # Calibrated pi-pulse
 pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
@@ -39,6 +40,10 @@ save_data_dict = {
     "tau_array": tau_array,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as cpmg:
     n = declare(int)
     n_st = declare_stream()

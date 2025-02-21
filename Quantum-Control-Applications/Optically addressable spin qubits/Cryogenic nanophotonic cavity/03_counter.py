@@ -7,15 +7,19 @@ from qm.qua import *
 from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 total_integration_time = int(100 * u.ms)  # 100ms
 single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 n_count = int(total_integration_time / single_integration_time_ns)
 
+###################
+# The QUA program #
+###################
 with program() as counter:
     times = declare(int, size=1000)
     counts = declare(int)

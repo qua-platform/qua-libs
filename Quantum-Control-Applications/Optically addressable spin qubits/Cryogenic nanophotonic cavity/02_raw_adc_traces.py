@@ -9,11 +9,15 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 1000
+
 ###################
 # The QUA program #
 ###################
-n_avg = 1000
-
 with program() as TimeTagging_calibration:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)

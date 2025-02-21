@@ -23,10 +23,10 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 t_vec = np.arange(4, 400, 1)  # Pulse durations in clock cycles (4ns)
 n_avg = 1_000_000  # Number of averaging loops
 
@@ -36,6 +36,10 @@ save_data_dict = {
     "t_vec": t_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts

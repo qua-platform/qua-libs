@@ -22,12 +22,11 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
-# Frequency vector
-f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz) # Frequency vector
 n_avg = 1_000_000  # number of averages
 readout_len = long_meas_len_1  # Readout duration for this experiment
 
@@ -37,6 +36,10 @@ save_data_dict = {
     "IF_frequencies": f_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as cw_odmr:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts

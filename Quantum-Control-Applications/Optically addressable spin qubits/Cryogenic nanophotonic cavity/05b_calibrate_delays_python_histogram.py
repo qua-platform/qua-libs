@@ -9,10 +9,11 @@ from qm.qua import *
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 initial_delay_cycles = 500 // 4  # delay before laser (units of clock cycles = 4 ns)
 laser_len_cycles = 2000 // 4  # laser duration length (units of clock cycles = 4 ns)
 mw_len_cycles = 1000 // 4  # MW duration length (units of clock cycles = 4 ns)
@@ -31,6 +32,10 @@ save_data_dict = {
     "t_vec": t_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'

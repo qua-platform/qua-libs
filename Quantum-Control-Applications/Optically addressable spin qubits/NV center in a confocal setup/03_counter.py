@@ -11,18 +11,21 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
-# Total duration of the measurement
-total_integration_time = int(100 * u.ms)  # 100ms
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+total_integration_time = int(100 * u.ms)  # Total duration of the measurement
 # Duration of a single chunk. Needed because the OPX cannot measure for more than ~1ms
 single_integration_time_ns = int(500 * u.us)  # 500us
 single_integration_time_cycles = single_integration_time_ns // 4
 # Number of chunks to get the total measurement time
 n_count = int(total_integration_time / single_integration_time_ns)
 
+###################
+# The QUA program #
+###################
 with program() as counter:
     times = declare(int, size=1000)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts of a single chunk

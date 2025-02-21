@@ -11,6 +11,11 @@ import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qm import SimulationConfig
 from qualang_tools.results.data_handler import DataHandler
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 max_circuit_depth = 100
 delta_depth = 1
@@ -18,9 +23,9 @@ num_of_sequences = 50
 n_avg = 1
 seed = 345324
 
-qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
-
-
+###################################
+# Helper functions and QUA macros #
+###################################
 def generate_sequence():
     cayley = declare(int, value=c1_table.flatten().tolist())
     inv_list = declare(int, value=inv_gates)
@@ -121,6 +126,10 @@ save_data_dict = {
     "n_avg": n_avg,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as rb:
     depth = declare(int)
     saved_gate = declare(int)
@@ -172,6 +181,10 @@ with program() as rb:
     with stream_processing():
         counts_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(num_of_sequences, max_circuit_depth).save("res")
 
+#####################################
+#  Open Communication with the QOP  #
+#####################################
+qmm = QuantumMachinesManager(host=qop_ip, port=qop_port, cluster_name=cluster_name, octave=octave_config)
 
 simulate = True
 

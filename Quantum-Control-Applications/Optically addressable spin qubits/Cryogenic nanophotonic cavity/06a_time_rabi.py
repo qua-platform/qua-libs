@@ -8,10 +8,11 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 t_min = 16 // 4  # in clock cycles units (must be >= 4)
 t_max = 400 // 4  # in clock cycles units
 dt = 4 // 4  # in clock cycles units
@@ -24,6 +25,10 @@ save_data_dict = {
     "t_vec": t_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts

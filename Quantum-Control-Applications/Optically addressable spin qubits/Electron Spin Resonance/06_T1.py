@@ -12,10 +12,10 @@ from macros import get_c2c_time
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pi_len = 320 // 4  # Calibrated pi-pulse
 pi_half_len = 160 // 4  # Calibrated pi/2 pulse
 
@@ -37,6 +37,10 @@ save_data_dict = {
     "wait_vec": wait_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     n = declare(int)
     t_wait = declare(int)

@@ -12,7 +12,6 @@ from configuration import *
 ###################
 # The QUA program #
 ###################
-
 with program() as hello_qua:
     # a = declare(fixed, value=1)
     # b = declare(fixed, value=0.3)

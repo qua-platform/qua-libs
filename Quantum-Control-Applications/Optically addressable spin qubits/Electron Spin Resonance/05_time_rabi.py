@@ -13,11 +13,12 @@ import matplotlib.pyplot as plt
 from qualang_tools.loops import from_array
 from macros import get_c2c_time
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
-# Pi pulse duration calibrated with '04_pi_pulse_calibration.py'
-pi_len = 320 // 4
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+pi_len = 320 // 4 # Pi pulse duration calibrated with '04_pi_pulse_calibration.py'
 
 pulse1_min = 40 // 4
 pulse1_max = 400 // 4
@@ -36,6 +37,10 @@ save_data_dict = {
     "pulse1_vec": pulse1_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as time_rabi:
     n = declare(int)
     n_st = declare_stream()

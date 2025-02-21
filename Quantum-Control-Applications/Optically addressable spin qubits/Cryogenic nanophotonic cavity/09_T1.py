@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 t_min = 16 // 4  # in clock cycles units (must be >= 4)
 t_max = 1000 // 4  # in clock cycles units
 dt = 40 // 4  # in clock cycles units
@@ -27,6 +28,10 @@ save_data_dict = {
     "t_vec": t_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts

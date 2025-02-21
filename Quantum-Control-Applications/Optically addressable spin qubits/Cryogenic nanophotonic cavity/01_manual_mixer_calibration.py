@@ -6,7 +6,6 @@ from qm import QuantumMachinesManager
 from qm.qua import *
 from configuration import *
 
-
 ###################
 # The QUA program #
 ###################

@@ -9,11 +9,15 @@ from qm import QuantumMachinesManager
 from configuration import *
 import matplotlib.pyplot as plt
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
+n_avg = 5000
+
 ###################
 # The QUA program #
 ###################
-n_avg = 5000
-
 with program() as input_cal:
     n = declare(int)
     adc_st = declare_stream(adc_trace=True)

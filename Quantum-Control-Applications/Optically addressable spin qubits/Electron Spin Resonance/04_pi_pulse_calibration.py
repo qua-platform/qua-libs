@@ -13,15 +13,14 @@ from qualang_tools.loops import from_array
 from macros import get_c2c_time
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
-# Pi/2 pulse duration to be scanned
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 pulse1_min = 20 // 4
 pulse1_max = 400 // 4
 dpulse1 = 40 // 4
-pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1)
+pulse1_vec = np.arange(pulse1_min, pulse1_max + 0.1, dpulse1) # Pi/2 pulse duration to be scanned
 
 # Resonator or qubit relaxation time
 cooldown_time = 10 * u.ms // 4
@@ -34,6 +33,10 @@ save_data_dict = {
     "pulse1_vec": pulse1_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as pi_pulse_cal:
     n = declare(int)
     pulse1_len = declare(int)

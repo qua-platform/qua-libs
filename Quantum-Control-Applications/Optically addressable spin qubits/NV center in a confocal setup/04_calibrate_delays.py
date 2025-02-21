@@ -18,9 +18,10 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 laser_delay = 500  # delay before laser [ns]
 initialization_len = 2_000  # laser duration length [ns]
 mw_len = 1_000  # MW duration length [ns]
@@ -42,6 +43,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'

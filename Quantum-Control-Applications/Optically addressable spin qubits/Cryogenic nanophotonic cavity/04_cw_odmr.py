@@ -8,10 +8,11 @@ from qm import SimulationConfig
 import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 f_min = 270 * u.MHz  # start of freq sweep
 f_max = 280 * u.MHz  # end of freq sweep
 df = 2 * u.MHz  # freq step
@@ -24,6 +25,10 @@ save_data_dict = {
     "IF_frequencies": f_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as cw_odmr:
     times = declare(int, size=100)
     counts = declare(int)  # variable for number of counts

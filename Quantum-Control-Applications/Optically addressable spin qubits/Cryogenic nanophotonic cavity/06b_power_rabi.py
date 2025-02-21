@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
 
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 a_min = 0.1  # proportional factor to the pulse amplitude
 a_max = 1  # proportional factor to the pulse amplitude
 da = 0.02
@@ -25,6 +26,10 @@ save_data_dict = {
     "a_vec": a_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)

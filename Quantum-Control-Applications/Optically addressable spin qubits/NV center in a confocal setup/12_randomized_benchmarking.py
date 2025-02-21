@@ -26,9 +26,10 @@ import numpy as np
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results.data_handler import DataHandler
 
-##############################
-# Program-specific variables #
-##############################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 num_of_sequences = 50  # Number of random sequences
 n_avg = 20  # Number of averaging loops for each random sequence
 max_circuit_depth = 1000  # Maximum circuit depth
@@ -38,7 +39,9 @@ seed = 345324  # Pseudo-random number generator seed
 # List of recovery gates from the lookup table
 inv_gates = [int(np.where(c1_table[i, :] == 0)[0][0]) for i in range(24)]
 
-
+###################################
+# Helper functions and QUA macros #
+###################################
 def power_law(power, a, b, p):
     return a * (p**power) + b
 
@@ -68,7 +71,7 @@ def play_sequence(sequence_list, depth):
     with for_(i, 0, i <= depth, i + 1):
         with switch_(sequence_list[i], unsafe=True):
             with case_(0):
-                wait(pi_len_NV * u.ns, "NV")
+                wait(x180_len_NV * u.ns, "NV")
             with case_(1):
                 play("x180", "NV")
             with case_(2):
@@ -146,6 +149,10 @@ save_data_dict = {
     "n_avg": n_avg,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)

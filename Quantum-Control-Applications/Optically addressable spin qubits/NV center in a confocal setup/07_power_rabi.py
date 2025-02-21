@@ -24,10 +24,10 @@ from configuration import *
 from qualang_tools.loops import from_array
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 a_vec = np.arange(0.1, 1, 0.02)  # The amplitude pre-factor vector
 n_avg = 1_000_000  # number of iterations
 
@@ -37,6 +37,10 @@ save_data_dict = {
     "a_vec": a_vec,
     "config": config,
 }
+
+###################
+# The QUA program #
+###################
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)  # QUA vector for storing the time-tags
