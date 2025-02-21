@@ -57,7 +57,7 @@ save_data_dict = {
 # Helper functions and QUA macros #
 ###################################
 def power_law(power, a, b, p):
-    return a * (p**power) + b
+    return a * (p ** power) + b
 
 
 def generate_sequence():
@@ -154,13 +154,6 @@ def play_sequence(sequence_list, depth):
                 play("y90", "qubit")
                 play("-x90", "qubit")
 
-
-
-# Data to save
-save_data_dict = {
-    "n_avg": n_avg,
-    "config": config,
-}
 
 ###################
 # The QUA program #
@@ -336,9 +329,9 @@ else:
     print(cov)
 
     one_minus_p = 1 - pars[2]
-    r_c = one_minus_p * (1 - 1 / 2**1)
+    r_c = one_minus_p * (1 - 1 / 2 ** 1)
     r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-    r_c_std = stdevs[2] * (1 - 1 / 2**1)
+    r_c_std = stdevs[2] * (1 - 1 / 2 ** 1)
     r_g_std = r_c_std / 1.875
 
     print("#########################")
