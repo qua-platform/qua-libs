@@ -34,6 +34,11 @@ times = np.arange(4, 200, 2)  # In clock cycles = 4ns
 cooldown_time = 1 * u.us
 n_avg = 1000
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as rabi:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the qubit pulse duration

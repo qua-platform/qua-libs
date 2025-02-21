@@ -34,6 +34,11 @@ d_tau = 100 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
 # taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T1:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the wait time

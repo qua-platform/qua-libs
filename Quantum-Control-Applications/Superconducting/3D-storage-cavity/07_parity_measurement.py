@@ -42,6 +42,11 @@ d_tau = 4 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as parity_meas:
     n = declare(int)  # QUA variable for the averaging loop
     tau = declare(int)  # QUA variable for the idle time

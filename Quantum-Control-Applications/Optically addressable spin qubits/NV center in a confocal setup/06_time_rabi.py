@@ -30,6 +30,11 @@ from qualang_tools.results.data_handler import DataHandler
 t_vec = np.arange(4, 400, 1)  # Pulse durations in clock cycles (4ns)
 n_avg = 1_000_000  # Number of averaging loops
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as time_rabi:
     counts = declare(int)  # variable for number of counts
     counts_st = declare_stream()  # stream for counts

@@ -116,6 +116,11 @@ def play_sequence(sequence_list, depth):
                 play("-x90", "Yb")
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as rb:
     depth = declare(int)
     saved_gate = declare(int)

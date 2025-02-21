@@ -43,6 +43,11 @@ df = 1 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as storage_spec:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

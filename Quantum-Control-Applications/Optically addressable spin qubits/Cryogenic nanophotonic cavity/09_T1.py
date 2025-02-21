@@ -20,6 +20,11 @@ t_vec = np.arange(t_min, t_max + 0.1, dt)  # +0.1 to include t_max in array
 n_avg = 1e6
 start_from_one = False
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts

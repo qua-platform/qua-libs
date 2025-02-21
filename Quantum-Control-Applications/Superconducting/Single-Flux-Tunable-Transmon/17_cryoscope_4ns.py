@@ -115,6 +115,11 @@ flux_waveform = np.array([const_flux_amp] * max(durations))
 xplot = durations * 4  # x-axis for plotting and deriving the filter taps - must be in ns.
 step_response_th = [1.0] * len(xplot)  # Perfect step response (square)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the flux pulse duration

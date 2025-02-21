@@ -36,6 +36,13 @@ taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # + 0.1 to add tau_max to taus
 # Detuning converted into virtual Z-rotations to observe Ramsey oscillation and get the qubit frequency
 detuning = 1 * u.MHz  # in Hz
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "taus": taus,
+    "detuning": detuning,
+    "config": config,
+}
 with program() as ramsey:
     n = declare(int)  # QUA variable for the averaging loop
     tau = declare(int)  # QUA variable for the idle time

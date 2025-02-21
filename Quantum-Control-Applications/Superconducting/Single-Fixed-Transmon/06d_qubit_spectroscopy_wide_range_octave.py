@@ -43,6 +43,15 @@ df_lo = f_max - f_min
 LOs = np.arange(f_min_lo, f_max_lo + 0.1, df_lo)
 frequency = np.array(np.concatenate([IFs + LOs[i] for i in range(len(LOs))]))
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": IFs,
+    "LO_frequencies": LOs,
+    "frequencies": frequency,
+    "config": config,
+}
+
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep

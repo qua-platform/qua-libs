@@ -28,6 +28,11 @@ cooldown_time = 10 * u.ms // 4
 
 n_avg = 100
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as pi_pulse_cal:
     n = declare(int)
     pulse1_len = declare(int)

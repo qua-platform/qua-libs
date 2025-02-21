@@ -155,6 +155,11 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 
 n_avg = 10000
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as state_tomography:
     n = declare(int)  # QUA variable for average loop
     state = declare(bool)  # QUA variable for the qubit state

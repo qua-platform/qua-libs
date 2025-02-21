@@ -148,6 +148,11 @@ def active_reset_fast(threshold_g: float):
 # The QUA program #
 ###################
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as active_reset_prog:
     n = declare(int)  # Averaging index
     I = declare(fixed)

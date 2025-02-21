@@ -143,6 +143,11 @@ step_response_th = (
 xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - must be in ns
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cryoscope:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     segment = declare(int)  # QUA variable for the flux pulse segment index

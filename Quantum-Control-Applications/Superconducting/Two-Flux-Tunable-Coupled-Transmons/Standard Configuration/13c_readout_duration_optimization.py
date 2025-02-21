@@ -40,6 +40,11 @@ print("The readout has been sliced in the following number of divisions", number
 
 n_avg = 1e4  # number of averages
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as ro_weights_opt:
     n = declare(int)  # QUA variable for the averaging loop
     ind = declare(int)  # QUA variable for the index used to save each element in the 'I' & 'Q' vectors

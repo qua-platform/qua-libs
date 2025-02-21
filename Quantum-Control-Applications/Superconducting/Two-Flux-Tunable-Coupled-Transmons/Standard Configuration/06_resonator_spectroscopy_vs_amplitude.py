@@ -44,6 +44,11 @@ a_min = 0.001
 a_max = 1.99
 amplitudes = np.geomspace(a_min, a_max, 20)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as multi_res_spec_vs_amp:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)

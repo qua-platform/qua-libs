@@ -35,6 +35,11 @@ d_tau = 40 // 4
 taus = np.arange(tau_min, tau_max + 0.1, d_tau)  # Linear sweep
 # taus = np.logspace(np.log10(tau_min), np.log10(tau_max), 21)  # Log sweep
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as echo:
     n = declare(int)
     n_st = declare_stream()

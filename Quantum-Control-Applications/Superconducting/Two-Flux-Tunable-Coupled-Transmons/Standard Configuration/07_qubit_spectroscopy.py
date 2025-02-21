@@ -49,6 +49,11 @@ df = 100 * u.kHz
 dfs = np.arange(-span, +span + 0.1, df)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as multi_qubit_spec:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     df = declare(int)  # QUA variable for the readout frequency

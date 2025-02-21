@@ -33,6 +33,11 @@ total_num_echoes = np.sum(num_echo_array)  # total number of echoes played in th
 
 n_avg = 100
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cpmg:
     n = declare(int)
     n_st = declare_stream()

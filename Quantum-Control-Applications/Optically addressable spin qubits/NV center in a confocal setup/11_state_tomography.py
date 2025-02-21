@@ -154,6 +154,11 @@ bloch_sphere.label_bra(bloch_sphere.West * 1.1, "Y")
 
 n_avg = 1_000_000  # Number of averaging iterations
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as state_tomography:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts

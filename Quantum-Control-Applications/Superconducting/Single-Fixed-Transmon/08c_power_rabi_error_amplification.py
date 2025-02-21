@@ -39,6 +39,13 @@ amplitudes = np.linspace(a_min, a_max, n_a)
 max_nb_of_pulses = 80  # Maximum number of qubit pulses
 nb_of_pulses = np.arange(0, max_nb_of_pulses, 2)  # Always play an odd/even number of pulses to end up in the same state
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amplitudes": amplitudes,
+    "max_nb_of_pulses": max_nb_of_pulses,
+    "config": config,
+}
 with program() as power_rabi_err:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor

@@ -190,6 +190,11 @@ def play_sequence(sequence_list, depth, qubit):
 ###################
 # The QUA program #
 ###################
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as rb:
     depth = declare(int)  # QUA variable for the varying depth
     depth_target = declare(int)  # QUA variable for the the current depth (changes in steps of delta_clifford)

@@ -31,6 +31,11 @@ from qualang_tools.results.data_handler import DataHandler
 t_vec = np.arange(4, 250, 10)
 n_avg = 1_000_000  # The number of averaging iterations
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as ramsey:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts

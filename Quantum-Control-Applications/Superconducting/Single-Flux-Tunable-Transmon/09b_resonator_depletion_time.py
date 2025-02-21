@@ -36,6 +36,11 @@ ramsey_idle_time = 1 * u.us
 # Time between populating the resonator and playing a Ramsey sequence in clock-cycles (4ns)
 taus = np.arange(4, 1000, 1)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as res_depletion_time:
     n = declare(int)
     n_st = declare_stream()

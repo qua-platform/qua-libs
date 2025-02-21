@@ -43,6 +43,13 @@ amps = np.arange(a_min, a_max + da / 2, da)  # + da/2 to add a_max to amplitudes
 # Check that the DRAG coefficient is not 0
 assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amps": amps,
+    "config": config,
+}
+
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor

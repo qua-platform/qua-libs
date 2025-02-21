@@ -37,6 +37,11 @@ t_delay = np.logspace(np.log10(tau_min), np.log10(tau_max), 29)  # Log sweep
 
 
 # QUA program
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T1:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the wait time

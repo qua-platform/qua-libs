@@ -39,6 +39,14 @@ t_max = 1000
 dt = 10
 durations = np.arange(t_min, t_max, dt)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": dfs,
+    "durations": durations,
+    "config": config,
+}
+
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the qubit frequency

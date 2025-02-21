@@ -48,6 +48,11 @@ iters = np.arange(iter_min, iter_max + 0.1, d)
 # Check that the DRAG coefficient is not 0
 assert drag_coef != 0, "The DRAG coefficient 'drag_coef' must be different from 0 in the config."
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as drag:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the DRAG coefficient pre-factor

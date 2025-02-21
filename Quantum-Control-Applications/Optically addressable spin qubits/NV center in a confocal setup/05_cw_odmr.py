@@ -31,6 +31,11 @@ f_vec = np.arange(-30 * u.MHz, 70 * u.MHz, 2 * u.MHz)
 n_avg = 1_000_000  # number of averages
 readout_len = long_meas_len_1  # Readout duration for this experiment
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cw_odmr:
     times = declare(int, size=100)  # QUA vector for storing the time-tags
     counts = declare(int)  # variable for number of counts

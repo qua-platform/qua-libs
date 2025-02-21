@@ -31,6 +31,11 @@ n_avg = 100  # Number of averaging loops
 n_points = 101
 offsets = np.linspace(-0.2, 0.2, n_points)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as charge_sensor_sweep:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     i = declare(int)  # QUA integer used as an index to loop over the voltage points

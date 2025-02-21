@@ -31,6 +31,11 @@ n_avg = 100  # Number of averaging loops
 # The frequency axis
 frequencies = np.linspace(50 * u.MHz, 350 * u.MHz, 101)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as reflectometry_spectro:
     f = declare(int)  # QUA variable for the frequency sweep
     n = declare(int)  # QUA variable for the averaging loop

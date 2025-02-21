@@ -43,6 +43,11 @@ a_min = 0.001
 a_max = 1.99
 amplitudes = np.geomspace(a_min, a_max, 20)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as resonator_spec_2D:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the readout frequency

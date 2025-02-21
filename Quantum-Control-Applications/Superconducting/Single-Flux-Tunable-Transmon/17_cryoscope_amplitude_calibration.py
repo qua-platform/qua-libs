@@ -40,6 +40,11 @@ state_discrimination = False
 # Flux amplitude sweep (as a pre-factor of the flux amplitude) - must be within [-2; 2)
 flux_amp_array = np.linspace(0, -0.2, 101)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cryoscope_amp:
     n = declare(int)  # QUA variable for the averaging loop
     flux_amp = declare(fixed)  # Flux amplitude pre-factor

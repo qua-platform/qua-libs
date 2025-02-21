@@ -34,6 +34,12 @@ a_max = 1.5
 da = 0.01
 amplitudes = np.arange(a_min, a_max + da / 2, da)  # The amplitude vector +da/2 to add a_max to the scan
 
+# Data to save
+save_data_dict = {
+    "n_runs": n_runs,
+    "amplitudes": amplitudes,
+    "config": config,
+}
 with program() as ro_amp_opt:
     n = declare(int)  # QUA variable for the number of runs
     counter = declare(int, value=0)  # Counter for the progress bar

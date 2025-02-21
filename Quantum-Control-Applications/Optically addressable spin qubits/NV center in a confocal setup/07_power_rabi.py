@@ -31,6 +31,11 @@ from qualang_tools.results.data_handler import DataHandler
 a_vec = np.arange(0.1, 1, 0.02)  # The amplitude pre-factor vector
 n_avg = 1_000_000  # number of iterations
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)  # QUA vector for storing the time-tags

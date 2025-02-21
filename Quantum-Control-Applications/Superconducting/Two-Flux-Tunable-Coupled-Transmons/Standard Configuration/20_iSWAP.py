@@ -50,6 +50,11 @@ flux_bias = config["controllers"]["con1"]["analog_outputs"][
 ]["offset"]
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as iswap:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the flux pulse duration

@@ -72,6 +72,11 @@ for t in durations:  # Create the different baked sequences
     # Append the baking object in the list to call it from the QUA program
     pi_list.append(b)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as Ramsey_chevron:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

@@ -19,6 +19,11 @@ da = 0.02
 a_vec = np.arange(a_min, a_max + da / 2, da)  # +da/2 to include a_max
 n_avg = 1e6  # number of iterations
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as power_rabi:
     counts = declare(int)  # variable for number of counts
     times = declare(int, size=100)

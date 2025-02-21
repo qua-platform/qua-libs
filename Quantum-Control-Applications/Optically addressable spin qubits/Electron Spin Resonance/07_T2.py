@@ -27,6 +27,11 @@ cooldown_time = 10e6 // 4
 
 n_avg = 100
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T2:
     n = declare(int)
     t_delay = declare(int)

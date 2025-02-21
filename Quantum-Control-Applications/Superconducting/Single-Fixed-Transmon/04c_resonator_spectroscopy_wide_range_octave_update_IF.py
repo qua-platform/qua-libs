@@ -69,6 +69,15 @@ corrected_IFs, c00, c01, c10, c11, offset_I, offset_Q = get_correction_for_each_
     qm=qm,
 )
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": IFs,
+    "LO_frequencies": LOs,
+    "frequencies": frequency,
+    "config": config,
+}
+
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep

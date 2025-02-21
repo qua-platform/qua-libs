@@ -34,6 +34,11 @@ n_avg = 1000  # Number of averages
 dfs = np.arange(-10e6, 10e6, 0.1e6)  # Frequency detuning sweep in Hz
 t_delay = np.arange(4, 300, 4)  # Idle time sweep in clock cycles (Needs to be a list of integers)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as ramsey:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     t = declare(int)  # QUA variable for the idle time

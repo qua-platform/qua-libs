@@ -42,6 +42,11 @@ taus = np.arange(0, tau_max, d_tau)
 if len(np.where((taus > 0) & (taus < 4))[0]) > 0:
     raise Exception("Delay must be either 0 or an integer larger than 4.")
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as ramsey_freq_duration:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit detuning

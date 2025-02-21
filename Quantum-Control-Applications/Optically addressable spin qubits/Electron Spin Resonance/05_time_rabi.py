@@ -30,6 +30,11 @@ n_avg = 1000
 # This delay is defined as the duration between the center of the pi pulse and the center of the readout pulse
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2 - 5
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as time_rabi:
     n = declare(int)
     n_st = declare_stream()

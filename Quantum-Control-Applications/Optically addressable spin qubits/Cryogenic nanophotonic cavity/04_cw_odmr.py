@@ -18,6 +18,11 @@ df = 2 * u.MHz  # freq step
 f_vec = np.arange(f_min, f_max + 0.1, df)  # f_max + 0.1 so that f_max is included
 n_avg = 1e6  # number of averages
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cw_odmr:
     times = declare(int, size=100)
     counts = declare(int)  # variable for number of counts

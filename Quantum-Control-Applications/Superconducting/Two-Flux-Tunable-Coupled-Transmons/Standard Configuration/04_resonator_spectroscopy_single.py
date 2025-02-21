@@ -38,6 +38,11 @@ else:
     frequencies = np.arange(-135e6, -128e6, 0.1e6)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as resonator_spec:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the readout frequency --> Hz int 32 up to 2^32

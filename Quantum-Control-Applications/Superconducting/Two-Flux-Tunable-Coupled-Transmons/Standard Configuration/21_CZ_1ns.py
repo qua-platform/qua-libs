@@ -76,6 +76,11 @@ flux_bias = config["controllers"]["con1"]["analog_outputs"][
 ]["offset"]
 xplot = np.arange(0, const_flux_len + 0.1, 1)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cz:
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)
     a = declare(fixed)  # QUA variable for the flux pulse amplitude pre-factor.

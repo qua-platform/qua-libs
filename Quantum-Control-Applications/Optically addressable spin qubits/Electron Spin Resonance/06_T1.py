@@ -31,6 +31,11 @@ n_avg = 100
 pulse_delay = safe_delay - (pi_half_len + pi_len) // 2
 readout_delay = safe_delay - (pi_len + readout_len // 4) // 2
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T1:
     n = declare(int)
     t_wait = declare(int)

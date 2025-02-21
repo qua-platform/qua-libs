@@ -42,6 +42,14 @@ df_external = f_max - f_min
 freqs_external = np.arange(f_min_external, f_max_external + 0.1, df_external)
 frequency = np.array(np.concatenate([frequencies + freqs_external[i] for i in range(len(freqs_external))]))
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "IF_frequencies": frequencies,
+    "external_frequencies": freqs_external,
+    "frequencies": frequency,
+    "config": config,
+}
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     i = declare(int)  # QUA variable for the LO frequency sweep

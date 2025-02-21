@@ -35,6 +35,12 @@ a_max = 1.0
 n_a = 101
 amplitudes = np.linspace(a_min, a_max, n_a)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "amplitudes": amplitudes,
+    "config": config,
+}
 with program() as power_rabi:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor

@@ -140,6 +140,11 @@ step_response_th = (
 )  # Perfect step response (square)
 xplot = np.arange(0, len(flux_waveform) + 1, 1)  # x-axis for plotting - Must be in ns.
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as cryoscope:
     n = declare(int)  # QUA variable for the averaging loop
     segment = declare(int)  # QUA variable for the flux pulse segment index

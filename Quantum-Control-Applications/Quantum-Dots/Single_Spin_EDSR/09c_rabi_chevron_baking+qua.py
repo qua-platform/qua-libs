@@ -86,6 +86,11 @@ for t in range(16):  # Create the different baked sequences
     pi_list_4ns.append(b4ns)
 
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as Rabi_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

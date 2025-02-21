@@ -46,6 +46,11 @@ flux_max = 0.49
 step = 0.01
 flux = np.arange(flux_min, flux_max + step / 2, step)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as multi_res_spec_vs_flux:
     # QUA macro to declare the measurement variables and their corresponding streams for a given number of resonators
     I, I_st, Q, Q_st, n, n_st = qua_declaration(nb_of_qubits=2)

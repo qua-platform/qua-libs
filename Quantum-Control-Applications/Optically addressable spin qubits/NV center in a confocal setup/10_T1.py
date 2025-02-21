@@ -33,6 +33,11 @@ t_vec = np.arange(4, 250, 10)
 n_avg = 1_000_000  # The number averaging iterations
 start_from_one = False
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as T1:
     counts1 = declare(int)  # saves number of photon counts
     counts2 = declare(int)  # saves number of photon counts

@@ -25,6 +25,11 @@ resolution = 12  # ns
 meas_len = laser_len_cycles * 4 + 1000  # total measurement length (ns)
 t_vec = np.arange(0, meas_len, 1)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as calib_delays:
     times = declare(int, size=100)  # 'size' defines the max number of photons to be counted
     times_st = declare_stream()  # stream for 'times'

@@ -53,6 +53,11 @@ N = (int((readout_len + 1_000) / (2 * step_length)) + 1) * n_points_fast * n_poi
 voltage_values_slow = np.linspace(-1.5, 1.5, n_points_slow)
 voltage_values_fast = np.linspace(-1.5, 1.5, n_points_fast)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as charge_stability_prog:
     n = declare(int)  # QUA integer used as an index for the averaging loop
     counter = declare(int)  # QUA integer used as an index for the Coulomb pulse

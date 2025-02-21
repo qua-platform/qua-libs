@@ -40,6 +40,11 @@ a_max = 1.0
 n_a = 51
 amplitudes = np.linspace(a_min, a_max, n_a)
 
+# Data to save
+save_data_dict = {
+    "n_avg": n_avg,
+    "config": config,
+}
 with program() as rabi_amp_freq:
     n = declare(int)  # QUA variable for the averaging loop
     f = declare(int)  # QUA variable for the qubit frequency
