@@ -34,6 +34,7 @@ offsets = np.linspace(-0.2, 0.2, n_points)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "offsets": offsets,
     "config": config,
 }
 with program() as charge_sensor_sweep:

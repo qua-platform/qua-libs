@@ -47,6 +47,8 @@ _, _ = get_filtered_voltage(voltage_values_fast, step_duration=1e-6, bias_tee_cu
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "voltage_values_slow": voltage_values_slow,
+    "voltage_values_fast": voltage_values_fast,
     "config": config,
 }
 with program() as charge_stability_prog:

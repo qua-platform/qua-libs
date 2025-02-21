@@ -37,6 +37,8 @@ d_offset = np.diff(offsets)[0]
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "offsets": offsets,
+    "d_offset": d_offset,
     "config": config,
 }
 with program() as charge_sensor_sweep:

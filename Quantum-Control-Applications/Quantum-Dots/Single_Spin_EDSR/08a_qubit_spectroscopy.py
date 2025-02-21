@@ -72,6 +72,9 @@ seq.add_points("readout", level_readout, duration_readout)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": IFs,
+    "LO_frequencies": lo_frequencies,
+    "frequencies": frequencies,
     "config": config,
 }
 with program() as qubit_spectroscopy_prog:

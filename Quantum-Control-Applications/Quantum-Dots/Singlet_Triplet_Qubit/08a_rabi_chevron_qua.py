@@ -52,6 +52,8 @@ seq.add_points("readout", level_readout, duration_readout)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
+    "pi_levels": pi_levels,
     "config": config,
 }
 with program() as Rabi_prog:

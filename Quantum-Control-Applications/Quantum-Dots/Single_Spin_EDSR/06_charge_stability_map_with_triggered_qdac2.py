@@ -56,6 +56,10 @@ voltage_values_fast = np.linspace(-1.5, 1.5, n_points_fast)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "Coulomb_amp": Coulomb_amp,
+    "N_coulomb_pulses": N,
+    "voltage_values_slow": voltage_values_slow,
+    "voltage_values_fast": voltage_values_fast,
     "config": config,
 }
 with program() as charge_stability_prog:

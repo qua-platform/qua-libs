@@ -54,6 +54,8 @@ seq.add_points("readout", level_readout, duration_readout)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "detunings": detunings,
+    "durations": durations,
     "config": config,
 }
 with program() as Ramsey_chevron:

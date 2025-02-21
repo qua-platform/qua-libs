@@ -34,6 +34,7 @@ frequencies = np.linspace(50 * u.MHz, 350 * u.MHz, 101)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "IF_frequencies": frequencies,
     "config": config,
 }
 with program() as reflectometry_spectro:

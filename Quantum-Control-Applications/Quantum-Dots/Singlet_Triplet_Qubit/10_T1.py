@@ -52,6 +52,7 @@ seq.add_points("readout", level_readout, readout_len)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
     "config": config,
 }
 with program() as T1_prog:

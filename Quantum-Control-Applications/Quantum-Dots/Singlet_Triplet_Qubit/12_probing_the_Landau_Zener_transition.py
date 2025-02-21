@@ -59,6 +59,8 @@ seq.add_points("readout", level_readout, duration_readout)
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
+    "ramp_durations": ramp_durations,
     "config": config,
 }
 with program() as Landau_Zener_prog:

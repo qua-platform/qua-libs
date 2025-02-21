@@ -80,6 +80,8 @@ for t in durations:  # Create the different baked sequences
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "idle_levels": idle_levels,
+    "durations": durations,
     "config": config,
 }
 with program() as Ramsey_chevron:

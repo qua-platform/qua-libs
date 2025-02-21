@@ -104,6 +104,8 @@ for t in range(16):  # Create the different baked sequences
 # Data to save
 save_data_dict = {
     "n_avg": n_avg,
+    "durations": durations,
+    "B_fields": B_fields,
     "config": config,
 }
 with program() as Rabi_prog:
