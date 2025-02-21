@@ -1,7 +1,7 @@
 """
 QUA-Config supporting OPX1000 w/ LF-FEM & External Mixers
 """
-
+from pathlib import Path
 import numpy as np
 from scipy.signal.windows import gaussian
 from qualang_tools.units import unit
@@ -36,6 +36,19 @@ def IQ_imbalance(g, phi):
 qop_ip = "127.0.0.1"  # Write the QM router IP address
 cluster_name = "my_cluster"  # Write your cluster_name if version >= QOP220
 qop_port = None  # Write the QOP port if version < QOP220
+
+#############
+# Save Path #
+#############
+
+# Path to save data
+save_dir = Path().absolute() / "Data"
+save_dir.mkdir(exist_ok=True)
+
+default_additional_files = {
+    Path(__file__).name: Path(__file__).name,
+    "optimal_weights.npz": "optimal_weights.npz",
+}
 
 #####################
 # OPX configuration #
