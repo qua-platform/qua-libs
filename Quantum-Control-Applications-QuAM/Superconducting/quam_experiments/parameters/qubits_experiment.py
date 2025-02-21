@@ -7,7 +7,7 @@ from quam_builder.architecture.superconducting.qubit import AnyTransmon
 from quam_config.my_quam import BaseQuAM
 
 from quam_experiments.parameters import MultiplexableNodeParameters
-from quam_experiments.parameters.batchable_list import BatchableList
+from quam_libs.batchable_list import BatchableList
 from quam_experiments.parameters.multiplexable import make_batchable_list_from_multiplexed
 
 
