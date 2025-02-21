@@ -28,9 +28,11 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 import macros as macros
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000
 
 # Amplitude sweeping
@@ -45,6 +47,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as wigner_tomography:
     n = declare(int)  # QUA variable for the averaging loop
     aI = declare(fixed)  # QUA variable for the idle time

@@ -32,17 +32,18 @@ import numpy as np
 import scipy.optimize as spo
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 500  # The number of averages
 
-# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 t_min = 16 // 4
 t_max = 100000 // 4
 dt = 400 // 4
 # Detuning of the off pump pulses
-durations = np.arange(t_min, t_max, dt)
+durations = np.arange(t_min, t_max, dt) # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
+
 
 detuning = 30 * u.MHz
 
@@ -54,6 +55,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as swap:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit pulse duration

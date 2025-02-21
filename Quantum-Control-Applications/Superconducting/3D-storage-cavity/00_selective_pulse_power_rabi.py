@@ -25,16 +25,16 @@ from qualang_tools.loops import from_array
 import matplotlib.pyplot as plt
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
-
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
-# Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
+
 a_min = 0
 a_max = 1.0
 n_a = 101
-amplitudes = np.linspace(a_min, a_max, n_a)
+amplitudes = np.linspace(a_min, a_max, n_a) # Pulse amplitude sweep (as a pre-factor of the qubit pulse amplitude) - must be within [-2; 2)
 
 # Data to save
 save_data_dict = {
@@ -43,6 +43,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as power_rabi:
     n = declare(int)  # QUA variable for the averaging loop
     a = declare(fixed)  # QUA variable for the qubit drive amplitude pre-factor

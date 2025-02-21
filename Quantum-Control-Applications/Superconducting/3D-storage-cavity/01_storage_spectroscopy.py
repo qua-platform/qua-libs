@@ -32,16 +32,16 @@ import matplotlib.pyplot as plt
 import macros as macros
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 1000  # The number of averages
-# Storage detuning sweep
+
 center = 100 * u.MHz
 span = 0.5 * u.MHz
 df = 1 * u.kHz
-dfs = np.arange(-span, +span + 0.1, df)
-
+dfs = np.arange(-span, +span + 0.1, df) # Storage detuning sweep
 
 # Data to save
 save_data_dict = {
@@ -51,6 +51,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as storage_spec:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

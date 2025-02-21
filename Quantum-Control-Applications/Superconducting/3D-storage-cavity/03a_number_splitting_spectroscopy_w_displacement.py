@@ -29,17 +29,18 @@ import macros as macros
 import numpy as np
 from qualang_tools.results.data_handler import DataHandler
 
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 500  # The number of averages
-# Qubit detuning sweep
+
 center = 177 * u.MHz
 top = 3 * u.MHz
 bottom = -3 * u.MHz
 df = 10 * u.kHz
-dfs = np.arange(bottom, top, df)
-
+dfs = np.arange(bottom, top, df) # Qubit detuning sweep
 
 # Data to save
 save_data_dict = {
@@ -49,6 +50,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as number_splitting_spectroscopy:
     n = declare(int)  # QUA variable for the averaging loop
     df = declare(int)  # QUA variable for the qubit frequency

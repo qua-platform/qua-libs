@@ -30,18 +30,18 @@ import matplotlib.pyplot as plt
 import macros as macros
 import numpy as np
 from qualang_tools.results.data_handler import DataHandler
-###################
-# The QUA program #
-###################
+
+##################
+#   Parameters   #
+##################
+# Parameters Definition
 n_avg = 500  # The number of averages
 detuning = 20 * u.kHz
 
-# Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 t_min = 10000 // 4
 t_max = 100000 // 4
 dt = 1000 // 4
-durations = np.arange(t_min, t_max, dt)
-
+durations = np.arange(t_min, t_max, dt) # Duration time sweep (in clock cycles = 4ns) - minimum is 4 clock cycles
 
 # Data to save
 save_data_dict = {
@@ -51,6 +51,9 @@ save_data_dict = {
     "config": config,
 }
 
+###################
+# The QUA program #
+###################
 with program() as qubit_spec:
     n = declare(int)  # QUA variable for the averaging loop
     t = declare(int)  # QUA variable for the qubit frequency
